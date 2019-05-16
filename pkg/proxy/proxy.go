@@ -189,19 +189,26 @@ func (p *Proxy) processWebhookEvent(msg *websocket.WebhookEvent) {
 func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 	p.cfg.Log.Infof("Got response from local endpoint, status=%d", resp.StatusCode)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Errorf("Failed to read response from endpoint, error = %v\n", err)
 		return
 	}
 
+	body := truncate(string(buf), maxBodySize, true)
+
+	idx := 0
 	headers := make(map[string]string)
 	for k, v := range resp.Header {
-		headers[k] = v[0]
+		headers[truncate(k, maxHeaderKeySize, false)] = truncate(v[0], maxHeaderValueSize, true)
+		idx++
+		if idx > maxNumHeaders {
+			break
+		}
 	}
 
 	if p.webSocketClient != nil {
-		msg := websocket.NewWebhookResponse(webhookID, resp.StatusCode, string(body), headers)
+		msg := websocket.NewWebhookResponse(webhookID, resp.StatusCode, body, headers)
 		p.webSocketClient.SendMessage(msg)
 	}
 }
@@ -237,4 +244,52 @@ func New(cfg *Config) *Proxy {
 	}
 
 	return p
+}
+
+//
+// Private constants
+//
+
+const (
+	maxBodySize        = 5000
+	maxNumHeaders      = 20
+	maxHeaderKeySize   = 50
+	maxHeaderValueSize = 200
+)
+
+//
+// Private functions
+//
+
+// truncate will truncate str to be less than or equal to maxByteLength bytes.
+// It will respect UTF8 and truncate the string at a code point boundary.
+// If ellipsis is true, we'll append "..." to the truncated string if the string
+// was in fact truncated, and if there's enough room. Note that the
+// full string returned will always be <= maxByteLength bytes long, even with ellipsis.
+func truncate(str string, maxByteLength int, ellipsis bool) string {
+	if len(str) <= maxByteLength {
+		return str
+	}
+
+	bytes := []byte(str)
+
+	if ellipsis && maxByteLength > 3 {
+		maxByteLength -= 3
+	} else {
+		ellipsis = false
+	}
+
+	for maxByteLength > 0 && maxByteLength < len(bytes) && isUTF8ContinuationByte(bytes[maxByteLength]) {
+		maxByteLength--
+	}
+
+	result := string(bytes[0:maxByteLength])
+	if ellipsis {
+		result += "..."
+	}
+	return result
+}
+
+func isUTF8ContinuationByte(b byte) bool {
+	return (b & 0xC0) == 0x80
 }
