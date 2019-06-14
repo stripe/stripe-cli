@@ -111,7 +111,7 @@ You can also pass data in using the `-d` flag:
 These commands support many of the features on the Stripe API (e.g. selecting a version, pagination, and expansion) through command-line flags, so you won't need to provide specific headers.
 
 | Command | Flag | Description| Example|
-----------------------------------------
+|---------|------|------------|--------|
 | get, post, delete | `-d`, `--data` | Data to pass for the API request | `--data id=cust_123abc` |
 | get, post, delete | `-e`, `--expand` | Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion | `--expand customer,charges` |
 | get, post, delete | `-i`, `--idempotency` | Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period. | `--idempotency foobar123456` |
