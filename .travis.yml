@@ -1,0 +1,15 @@
+language: go
+
+go:
+- 1.12.x
+
+env:
+- GO111MODULE=on
+
+deploy:
+- provider: script
+  skip_cleanup: true
+  script: ./travis-goreleaser
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux

@@ -1,0 +1,42 @@
+{
+    /**
+    * --------------------------------
+    * GENERAL
+    * --------------------------------
+    */
+
+    // We lint on this, at least in JS.
+    "files.trimTrailingWhitespace": true,
+
+    // For speed and .gitignore & .ignore support.
+    "search.usePCRE2": true,
+    "search.useIgnoreFiles": true,
+
+    // Don't allow extensions to know Stripe things
+    "telemetry.enableTelemetry": false,
+
+    // Show the path in the top window bar.
+    "window.title": "${rootName}${separator}${activeEditorMedium}",
+
+    // We only want to run "goimports" et al on Go.
+    "editor.formatOnSave": false,
+
+    "gitlens.advanced.messages": {
+        "suppressUpdateNotice": true
+    },
+
+    // Configure "Open in Github" extension.
+    "openInGitHub.gitHubDomain": "git.corp.stripe.com",
+    "openInGitHub.providerType": "github",
+
+    /**
+    * --------------------------------
+    * GO (Linting, Etc.)
+    * --------------------------------
+    */
+
+    "go.formatTool": "goimports",
+    "[go]": {
+        "editor.formatOnSave": true
+    },
+}
