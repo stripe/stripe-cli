@@ -19,7 +19,8 @@ import (
 )
 
 const stripeURL = "https://api.stripe.com"
-var confirmationCommands = map[string]bool {"DELETE": true}
+
+var confirmationCommands = map[string]bool{"DELETE": true}
 
 // Base does stuff
 type Base struct {
@@ -77,16 +78,16 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringArrayVarP(&rb.Data, "data", "d", []string{}, "Data to pass for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
-	rb.Cmd.Flags().StringVarP(&rb.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period.")
+	rb.Cmd.Flags().StringVarP(&rb.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
 	rb.Cmd.Flags().StringVarP(&rb.Version, "api-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
-	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests.")
-	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands.")
+	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
+	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == "GET" {
 		rb.Cmd.Flags().StringVarP(&rb.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
-		rb.Cmd.Flags().StringVarP(&rb.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID.")
+		rb.Cmd.Flags().StringVarP(&rb.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
 		rb.Cmd.Flags().StringVarP(&rb.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
 	}
 }
