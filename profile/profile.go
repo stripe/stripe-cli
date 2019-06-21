@@ -139,7 +139,5 @@ func (p *Profile) InitConfig() {
 			"prefix": "profile.Profile.InitConfig",
 			"path":   viper.ConfigFileUsed(),
 		}).Debug("Using config file")
-	} else {
-		log.Error(err)
 	}
 }
