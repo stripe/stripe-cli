@@ -101,7 +101,7 @@ func NewClient(key string, cfg *Config) *Client {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
 	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = newHTTPClient(cfg.UnixSocket)
+		cfg.HTTPClient = NewHTTPClient(cfg.UnixSocket)
 	}
 	if cfg.URL == "" {
 		cfg.URL = defaultAuthorizeURL
@@ -121,7 +121,8 @@ const (
 	defaultAuthorizeURL = "https://api.stripe.com/v1/stripecli/sessions"
 )
 
-func newHTTPClient(unixSocket string) *http.Client {
+// NewHTTPClient returns a configured HTTP client.
+func NewHTTPClient(unixSocket string) *http.Client {
 	var httpTransport *http.Transport
 	if unixSocket != "" {
 		dialFunc := func(network, addr string) (net.Conn, error) {
