@@ -18,7 +18,7 @@ type Links struct {
 	VerificationCode string `json:"verification_code"`
 }
 
-func getLinks(authURL string, deviceName string) (Links, error) {
+func getLinks(authURL string, deviceName string) (*Links, error) {
 	client := stripeauth.NewHTTPClient("")
 
 	if authURL == "" {
@@ -30,25 +30,25 @@ func getLinks(authURL string, deviceName string) (Links, error) {
 
 	res, err := client.PostForm(authURL, data)
 	if err != nil {
-		return Links{}, err
+		return nil, err
 	}
 
 	defer res.Body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return Links{}, err
+		return nil, err
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return Links{}, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 	}
 
 	var links Links
 	err = json.Unmarshal(bodyBytes, &links)
 	if err != nil {
-		return Links{}, err
+		return nil, err
 	}
 
-	return links, nil
+	return &links, nil
 }

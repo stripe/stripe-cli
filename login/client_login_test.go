@@ -30,7 +30,7 @@ func TestGetLinks(t *testing.T) {
 
 	links, err := getLinks(ts.URL, "test")
 	assert.NoError(t, err)
-	assert.Equal(t, expectedLinks, links)
+	assert.Equal(t, expectedLinks, *links)
 }
 
 func TestGetLinksHTTPStatusError(t *testing.T) {
