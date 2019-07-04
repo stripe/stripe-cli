@@ -3,11 +3,10 @@ package login
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stripe/stripe-cli/stripeauth"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
-	"time"
 )
 
 const stripeCLIAuthURL = "https://dashboard.stripe.com/stripecli/auth"
@@ -20,9 +19,7 @@ type Links struct {
 }
 
 func getLinks(authURL string, deviceName string) (Links, error) {
-	var netClient = &http.Client{
-		Timeout: time.Second * 30,
-	}
+	client := stripeauth.NewHTTPClient("")
 
 	if authURL == "" {
 		authURL = stripeCLIAuthURL
@@ -31,7 +28,7 @@ func getLinks(authURL string, deviceName string) (Links, error) {
 	data := url.Values{}
 	data.Set("device_name", deviceName)
 
-	res, err := netClient.Post(authURL, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+	res, err := client.PostForm(authURL, data)
 	if err != nil {
 		return Links{}, err
 	}
