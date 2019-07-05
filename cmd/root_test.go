@@ -3,12 +3,12 @@ package cmd
 import (
 	"testing"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetPathNoXDG(t *testing.T) {
-	actual := profile.GetConfigFolder("")
+	actual := Profile.GetConfigFolder("")
 	expected, err := homedir.Dir()
 	expected += "/.config/stripe"
 
@@ -17,7 +17,7 @@ func TestGetPathNoXDG(t *testing.T) {
 }
 
 func TestGetPathXDG(t *testing.T) {
-	actual := profile.GetConfigFolder("/some/xdg/path")
+	actual := Profile.GetConfigFolder("/some/xdg/path")
 	expected := "/some/xdg/path/stripe"
 
 	assert.Equal(t, actual, expected)
