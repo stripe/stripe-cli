@@ -22,6 +22,7 @@ type Profile struct {
 	ConfigFile  string
 	LogLevel    string
 	ProfileName string
+	DeviceName string
 }
 
 // GetDeviceName returns the configured device name
@@ -139,5 +140,13 @@ func (p *Profile) InitConfig() {
 			"prefix": "profile.Profile.InitConfig",
 			"path":   viper.ConfigFileUsed(),
 		}).Debug("Using config file")
+	}
+
+	if p.DeviceName == "" {
+		deviceName, err := os.Hostname()
+		if err != nil {
+			deviceName = "unknown"
+		}
+		p.DeviceName = deviceName
 	}
 }

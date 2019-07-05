@@ -77,14 +77,14 @@ $ stripe listen --events charge.created,charge.updated --forward-to localhost:90
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
-	deviceName, err := profile.GetDeviceName()
+	deviceName, err := Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
 
 	endpointsMap := make(map[string][]string)
 
-	key, err := profile.GetSecretKey()
+	key, err := Profile.GetSecretKey()
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
 	examples := requests.Examples{
-		Profile:    profile,
+		Profile:    Profile,
 		APIVersion: "2019-03-14",
 		SecretKey:  secretKey,
 	}

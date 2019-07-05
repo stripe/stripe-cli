@@ -50,17 +50,18 @@ Supported events:
 		},
 	}
 
+
 	return tc
 }
 
 func triggerEvent(event string) error {
-	secretKey, err := profile.GetSecretKey()
+	secretKey, err := Profile.GetSecretKey()
 	if err != nil {
 		return err
 	}
 
 	examples := requests.Examples{
-		Profile:    profile,
+		Profile:    Profile,
 		APIUrl: stripeURL,
 		APIVersion: apiVersion,
 		SecretKey:  secretKey,

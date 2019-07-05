@@ -10,7 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/version"
 )
 
-var profile prof.Profile
+var Profile prof.Profile
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -82,20 +82,21 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 }
 
 func init() {
-	cobra.OnInitialize(profile.InitConfig)
+	cobra.OnInitialize(Profile.InitConfig)
 
 	rootCmd.PersistentFlags().String("api-key", "", "Your test mode API secret key to use for the command")
-	rootCmd.PersistentFlags().StringVar(&profile.Color, "color", "auto", "turn on/off color output (on, off, auto)")
-	rootCmd.PersistentFlags().StringVar(&profile.ConfigFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
-	rootCmd.PersistentFlags().StringVar(&profile.ProfileName, "project-name", "default", "the project name to read from for config")
-	rootCmd.PersistentFlags().StringVar(&profile.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&Profile.Color, "color", "auto", "turn on/off color output (on, off, auto)")
+	rootCmd.PersistentFlags().StringVar(&Profile.ConfigFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
+	rootCmd.PersistentFlags().StringVar(&Profile.ProfileName, "project-name", "default", "the project name to read from for config")
+	rootCmd.PersistentFlags().StringVar(&Profile.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&Profile.DeviceName, "device-name", "", "device name")
 	viper.BindPFlag("secret_key", rootCmd.PersistentFlags().Lookup("api-key")) // #nosec G104
 
 	viper.SetEnvPrefix("stripe")
 	viper.AutomaticEnv() // read in environment variables that match
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
-	rootCmd.AddCommand(newConfigureCmd().cmd)
+	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)

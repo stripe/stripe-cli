@@ -3,10 +3,14 @@ package login
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/stripe/stripe-cli/profile"
 	"github.com/stripe/stripe-cli/stripeauth"
+	"github.com/stripe/stripe-cli/validators"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os/exec"
+	"runtime"
 )
 
 const stripeCLIAuthURL = "https://dashboard.stripe.com/stripecli/auth"
@@ -16,6 +20,69 @@ type Links struct {
 	BrowserURL       string `json:"browser_url"`
 	PollURL          string `json:"poll_url"`
 	VerificationCode string `json:"verification_code"`
+}
+
+//TODO
+/*
+4. Observability and associated alerting? Business metrics (how many users use this flow)?
+5. Rate limiting for each operation?
+6. Audit trail for key generation
+7. Move configuration changes to profile package
+*/
+
+// Login function is used to obtain credentials via stripe dashboard.
+func Login(url string, profile profile.Profile) error {
+
+	links, err := getLinks(url, profile.DeviceName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Opening login link %s in your browser.\nVerification code is %s\n", links.BrowserURL, links.VerificationCode)
+
+	urlErr := openBrowser(links.BrowserURL)
+	if urlErr != nil {
+		return urlErr
+	}
+
+	//Call poll function
+	apiKey, err := PollForKey(links.PollURL, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	validateErr := validators.APIKey(apiKey)
+	if validateErr != nil {
+		return validateErr
+	}
+
+	configErr := profile.ConfigureProfile(apiKey)
+	if configErr != nil {
+		return configErr
+	}
+
+	return nil
+}
+
+func openBrowser(url string) error {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getLinks(authURL string, deviceName string) (*Links, error) {
