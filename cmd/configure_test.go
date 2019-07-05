@@ -35,7 +35,7 @@ func TestAPIKeyInputEmpty(t *testing.T) {
 func TestAPIKeyInputLivemode(t *testing.T) {
 	expectedKey := ""
 	livemodeKey := "sk_live_foo123"
-	expectedErrorString := "the CLI only supports using a test mode secret key"
+	expectedErrorString := "the CLI only supports using a test mode key"
 
 	cc := newConfigureCmd()
 	keyInput := strings.NewReader(livemodeKey + "\n")
