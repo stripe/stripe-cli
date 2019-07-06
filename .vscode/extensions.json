@@ -1,11 +1,6 @@
 {
     "recommendations": [
-        // Go Language plugins (~required)
         "ms-vscode.go",
-
-        // Highly recommended
-        "eamodio.gitlens",
-        "ziyasal.vscode-open-in-github",
         "EditorConfig.editorconfig",
     ]
 }
