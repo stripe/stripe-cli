@@ -14,7 +14,7 @@ func newGetCmd() *getCmd {
 	gc := &getCmd{}
 
 	gc.reqs.Method = "GET"
-	gc.reqs.Profile = profile
+	gc.reqs.Profile = Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "get",
 		Args:  validators.ExactArgs(1),

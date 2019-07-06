@@ -3,6 +3,7 @@ package login
 import (
 	"encoding/json"
 	"errors"
+
 	"fmt"
 	"github.com/stripe/stripe-cli/stripeauth"
 	"io/ioutil"
@@ -16,7 +17,7 @@ const intervalDefault = 1 * time.Second
 type pollAPIKeyResponse struct {
 	Redeemed  bool   `json:"redeemed"`
 	AccountID string `json:"account_id"`
-	APIKey    string `json:"api_key"`
+	APIKey    string `json:"testmode_key_secret"`
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
@@ -31,7 +32,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 	client := stripeauth.NewHTTPClient("")
 
-	var count = 0
+	var count= 0
 	for count < maxAttempts {
 		res, err := client.Get(pollURL)
 		if err != nil {
@@ -59,6 +60,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 		count++
 		time.Sleep(interval)
+
 	}
 
 	return "", errors.New("exceeded max attempts")

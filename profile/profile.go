@@ -22,6 +22,7 @@ type Profile struct {
 	ConfigFile  string
 	LogLevel    string
 	ProfileName string
+	DeviceName string
 }
 
 // GetDeviceName returns the configured device name
@@ -126,11 +127,10 @@ func (p *Profile) InitConfig() {
 		// Use config file from the flag.
 		viper.SetConfigFile(p.ConfigFile)
 	} else {
+		configFolder := p.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		configFile := filepath.Join(configFolder, "config.toml")
 		viper.SetConfigType("toml")
-		// Search config in home directory or xdg path with name "config.toml".
-		viper.AddConfigPath(p.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME")))
-		// TODO(tomer) - support overriding with configs in local dir
-		viper.SetConfigName("config")
+		viper.SetConfigFile(configFile)
 	}
 
 	// If a config file is found, read it in.
@@ -139,5 +139,13 @@ func (p *Profile) InitConfig() {
 			"prefix": "profile.Profile.InitConfig",
 			"path":   viper.ConfigFileUsed(),
 		}).Debug("Using config file")
+	}
+
+	if p.DeviceName == "" {
+		deviceName, err := os.Hostname()
+		if err != nil {
+			deviceName = "unknown"
+		}
+		p.DeviceName = deviceName
 	}
 }

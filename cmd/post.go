@@ -14,7 +14,7 @@ func newPostCmd() *postCmd {
 	gc := &postCmd{}
 
 	gc.reqs.Method = "POST"
-	gc.reqs.Profile = profile
+	gc.reqs.Profile = Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "post",
 		Args:  validators.ExactArgs(1),
@@ -31,6 +31,7 @@ Example:
 $ stripe post /payment_intents -d amount=2000 -d currency=usd -d payment_method_types[]=card`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
+
 
 	gc.reqs.InitFlags()
 
