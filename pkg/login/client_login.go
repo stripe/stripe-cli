@@ -14,6 +14,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+var execCommand = exec.Command
+
 const stripeCLIAuthURL = "https://dashboard.stripe.com/stripecli/auth"
 
 // Links provides the URLs for the CLI to continue the login flow
@@ -70,11 +72,11 @@ func openBrowser(url string) error {
 
 	switch runtime.GOOS {
 	case "linux":
-		err = exec.Command("xdg-open", url).Start()
+		err = execCommand("xdg-open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		err = execCommand("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	case "darwin":
-		err = exec.Command("open", url).Start()
+		err = execCommand("open", url).Start()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}
