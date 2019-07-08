@@ -1,6 +1,6 @@
 project_name: stripe
 builds:
-  -
+  - main: ./cmd/stripe/main.go
     env:
       - CGO_ENABLED=0
       - GO111MODULE=on
@@ -11,7 +11,7 @@ builds:
     goarch:
       - amd64
     ldflags:
-      - -s -w -X github.com/stripe/stripe-cli/version.Version={{.Version}}
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
 archives:
   -
     replacements:

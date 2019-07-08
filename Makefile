@@ -16,7 +16,7 @@ endif
 	golint -set_exit_status ./...
 
 vet:
-	go vet $(go list ./... | grep -v /vendor/)
+	go vet $(shell go list ./... | grep -v /vendor/)
 
 test: install-deps lint vet
 	go test -race -cover -v ./...
