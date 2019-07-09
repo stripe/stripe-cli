@@ -20,7 +20,7 @@ func TestAPIKeyInput(t *testing.T) {
 
 func TestAPIKeyInputEmpty(t *testing.T) {
 	expectedKey := ""
-	expectedErrorString := "API key is required, please provide your test mode secret API key"
+	expectedErrorString := "API key is required, please provide your API key"
 
 	keyInput := strings.NewReader(expectedKey + "\n")
 	actualKey, err := getConfigureAPIKey(keyInput)

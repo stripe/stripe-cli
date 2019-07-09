@@ -45,29 +45,29 @@ export HOMEBREW_GITHUB_API_TOKEN=foobar
 
 ## Commands
 
-### `configure`
+### `login`
 
 The Stripe CLI runs commands using a global configuration or project-specific configuration. To configure the CLI globally, run:
 
-    $ stripe configure
+    $ stripe login
 
-It’ll prompt you for some information:
-
-    $ stripe configure
-    Enter your test mode secret API key: sk_test_foobar
-    How would you like to identify this machine in the Stripe Dashboard? [default: st-tomer1]
-    You're configured and all set to get started
+You'll be redirected to the Stripe dashboard to confirm that you want to give access to your account to the CLI. After confirming, a new API key will be created and returned to the CLI.
 
 You can create project-specific configurations with the `--project-name` flag, which can be used in any context. To create an initial configuration:
 
-    $ stripe configure --project-name=rocket-rides
-    Enter your test mode secret API key: sk_test_foobar
-    How would you like to identify this machine in the Stripe Dashboard? [default: st-tomer1]
-    You're configured and all set to get started:
+    $ stripe login --project-name=rocket-rides
 
 If you do not provide the `--project-name` flag for a command, it will default to the global configuration.
 
 All configurations are stored in `~/.config/stripe/config.toml` but you can use the `[XDG_CONFIG_HOME](https://wiki.archlinux.org/index.php/XDG_Base_Directory)` environment variable to override this location.
+
+You can also provide an API key manually by passing the `--interactive` flag:
+
+    $ stripe login --interactive
+    Enter your API key: sk_test_foobar
+    Your API key is: sk_test_**obar
+    How would you like to identify this device in the Stripe Dashboard? [default: st-tomer1]
+    You're configured and all set to get started
 
 ### `listen`
 
