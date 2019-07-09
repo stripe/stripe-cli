@@ -2,7 +2,6 @@ package profile
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,8 +21,6 @@ func (p *Profile) ConfigureProfile(apiKey string) error {
 	if writeErr != nil {
 		return writeErr
 	}
-
-	fmt.Println("You're configured and all set to get started")
 
 	return nil
 }

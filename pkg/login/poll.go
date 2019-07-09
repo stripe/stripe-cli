@@ -21,7 +21,7 @@ type pollAPIKeyResponse struct {
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
-func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string, error) {
+func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string, string, error) {
 	if maxAttempts == 0 {
 		maxAttempts = maxAttemptsDefault
 	}
@@ -36,26 +36,26 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 	for count < maxAttempts {
 		res, err := client.Get(pollURL)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 
 		if res.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+			return "", "", fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 		}
 
 		var response pollAPIKeyResponse
 		jsonErr := json.Unmarshal(bodyBytes, &response)
 		if jsonErr != nil {
-			return "", jsonErr
+			return "", "", jsonErr
 		}
 
 		if response.Redeemed {
-			return response.APIKey, nil
+			return response.APIKey, response.AccountID, nil
 		}
 
 		count++
@@ -63,5 +63,5 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 	}
 
-	return "", errors.New("exceeded max attempts")
+	return "", "", errors.New("exceeded max attempts")
 }

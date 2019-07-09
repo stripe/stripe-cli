@@ -3,12 +3,15 @@ package login
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/profile"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -34,14 +37,19 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(url string, profile profile.Profile) error {
-
+func Login(url string, profile profile.Profile, input io.Reader) error {
 	links, err := getLinks(url, profile.DeviceName)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Opening login link %s in your browser.\nVerification code is %s\n", links.BrowserURL, links.VerificationCode)
+	color := ansi.Color(os.Stdout)
+	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
+
+	fmt.Printf("Press Enter to open up the browser (^C to quit)")
+	fmt.Fscanln(input)
+
+	s := ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
 
 	urlErr := openBrowser(links.BrowserURL)
 	if urlErr != nil {
@@ -49,7 +57,7 @@ func Login(url string, profile profile.Profile) error {
 	}
 
 	//Call poll function
-	apiKey, err := PollForKey(links.PollURL, 0, 0)
+	apiKey, accountID, err := PollForKey(links.PollURL, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -63,6 +71,8 @@ func Login(url string, profile profile.Profile) error {
 	if configErr != nil {
 		return configErr
 	}
+
+	ansi.StopSpinner(s, fmt.Sprintf("Done! The Stripe CLI is configured for account %s\n", color.Bold(accountID)), os.Stdout)
 
 	return nil
 }

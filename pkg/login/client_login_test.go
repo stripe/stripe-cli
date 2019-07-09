@@ -72,7 +72,8 @@ func TestLogin(t *testing.T) {
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/poll")
 	browserURL = fmt.Sprintf("%s%s", ts.URL, "/browser")
 
-	err := Login(authURL, p)
+	input := strings.NewReader("\n")
+	err := Login(authURL, p, input)
 	assert.NoError(t, err)
 }
 
