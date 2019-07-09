@@ -31,9 +31,9 @@ func TestBuildRequest(t *testing.T) {
 		SecretKey:  "secret-key",
 	}
 
-	req := ex.buildRequest("POST", []string{"foo=bar"})
+	req, params := ex.buildRequest("POST", []string{"foo=bar"})
 
-	assert.Equal(t, []string{"foo=bar"}, req.Data)
+	assert.Equal(t, []string{"foo=bar"}, params.data)
 	assert.Equal(t, "POST", req.Method)
 }
 

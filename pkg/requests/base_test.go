@@ -21,20 +21,20 @@ func convertToString(data io.Reader) string {
 
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
-	rb.Data = []string{"bender=robot", "fry=human"}
+	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
 	expected := "bender=robot&fry=human"
 
-	data, _ := rb.buildDataForRequest()
+	data, _ := rb.buildDataForRequest(params)
 	output := convertToString(data)
 	assert.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestExpand(t *testing.T) {
 	rb := Base{}
-	rb.Data = []string{"expand=futurama.employees", "expand=futurama.ships"}
+	params := &RequestParameters{data: []string{"expand=futurama.employees", "expand=futurama.ships"}}
 	expected := "expand=futurama.employees&expand=futurama.ships"
 
-	data, _ := rb.buildDataForRequest()
+	data, _ := rb.buildDataForRequest(params)
 	output := convertToString(data)
 	assert.Equal(t, expected, output)
 }
@@ -42,12 +42,16 @@ func TestBuildDataForRequestExpand(t *testing.T) {
 func TestBuildDataForRequestPagination(t *testing.T) {
 	rb := Base{}
 	rb.Method = "GET"
-	rb.limit = "10"
-	rb.startingAfter = "bender"
-	rb.endingBefore = "leela"
+
+	params := &RequestParameters{
+		limit:         "10",
+		startingAfter: "bender",
+		endingBefore:  "leela",
+	}
+
 	expected := "ending_before=leela&limit=10&starting_after=bender"
 
-	data, _ := rb.buildDataForRequest()
+	data, _ := rb.buildDataForRequest(params)
 	output := convertToString(data)
 	assert.Equal(t, expected, output)
 }
@@ -55,22 +59,26 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 func TestBuildDataForRequestGetOnly(t *testing.T) {
 	rb := Base{}
 	rb.Method = "POST"
-	rb.limit = "10"
-	rb.startingAfter = "bender"
-	rb.endingBefore = "leela"
+
+	params := &RequestParameters{
+		limit:         "10",
+		startingAfter: "bender",
+		endingBefore:  "leela",
+	}
+
 	expected := ""
 
-	data, _ := rb.buildDataForRequest()
+	data, _ := rb.buildDataForRequest(params)
 	output := convertToString(data)
 	assert.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
-	rb.Data = []string{"bender=robot", "fry"}
+	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
 	expected := "Invalid data argument: fry"
 
-	data, err := rb.buildDataForRequest()
+	data, err := rb.buildDataForRequest(params)
 	assert.Nil(t, data)
 	assert.Equal(t, expected, err.Error())
 }
@@ -93,9 +101,13 @@ func TestMakeRequest(t *testing.T) {
 
 	rb := Base{}
 	rb.Method = "GET"
-	rb.Data = []string{"bender=robot", "fry=human"}
-	rb.expand = []string{"expand=futurama.employees", "expand=futurama.ships"}
-	_, err := rb.MakeRequest("/foo/bar", ts.URL, "sk_test_1234")
+
+	params := &RequestParameters{
+		data:   []string{"bender=robot", "fry=human"},
+		expand: []string{"expand=futurama.employees", "expand=futurama.ships"},
+	}
+
+	_, err := rb.MakeRequest("sk_test_1234", ts.URL, "/foo/bar", params)
 	assert.Nil(t, err)
 }
 
