@@ -31,6 +31,8 @@ func InteractiveLogin(profile profile.Profile) error {
 		return configErr
 	}
 
+	fmt.Println("You're configured and all set to get started")
+
 	return nil
 }
 
