@@ -37,13 +37,14 @@ func InteractiveLogin(profile profile.Profile) error {
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
+	fmt.Print("Enter your API key: ")
 	apiKey, err := securePrompt(input)
 	if err != nil {
 		return "", err
 	}
 	apiKey = strings.TrimSpace(apiKey)
 	if apiKey == "" {
-		return "", errors.New("API key is required, please provide your test mode secret API key")
+		return "", errors.New("API key is required, please provide your API key")
 	}
 	err = validators.APIKey(apiKey)
 	if err != nil {
