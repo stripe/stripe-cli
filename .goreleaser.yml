@@ -31,28 +31,29 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
-brew:
-  github:
-    owner: stripe
-    name: homebrew-stripe-cli
-  download_strategy: CustomGitHubPrivateRepositoryReleaseDownloadStrategy
-  commit_author:
-    name: stripe-ci
-    email: support@stripe.com
-  custom_require: "../custom_download_strategy"
-  folder: Formula
-  install: |
-    bin.install "stripe"
-    rm Dir["#{bin}/{stripe-completion.bash,stripe-completion.zsh}"]
-    system bin/"stripe", "completion"
-    system bin/"stripe", "completion", "--shell", "zsh"
-    bash_completion.install "stripe-completion.bash"
-    zsh_completion.install "stripe-completion.zsh"
-    (zsh_completion/"_stripe").write <<~EOS
-      #compdef stripe
-      _stripe () {
-        local e
-        e=$(dirname ${funcsourcetrace[1]%:*})/stripe-completion.zsh
-        if [[ -f $e ]]; then source $e; fi
-      }
-    EOS
+brews:
+  -
+    github:
+      owner: stripe
+      name: homebrew-stripe-cli
+    download_strategy: CustomGitHubPrivateRepositoryReleaseDownloadStrategy
+    commit_author:
+      name: stripe-ci
+      email: support@stripe.com
+    custom_require: "../custom_download_strategy"
+    folder: Formula
+    install: |
+      bin.install "stripe"
+      rm Dir["#{bin}/{stripe-completion.bash,stripe-completion.zsh}"]
+      system bin/"stripe", "completion"
+      system bin/"stripe", "completion", "--shell", "zsh"
+      bash_completion.install "stripe-completion.bash"
+      zsh_completion.install "stripe-completion.zsh"
+      (zsh_completion/"_stripe").write <<~EOS
+        #compdef stripe
+        _stripe () {
+          local e
+          e=$(dirname ${funcsourcetrace[1]%:*})/stripe-completion.zsh
+          if [[ -f $e ]]; then source $e; fi
+        }
+      EOS
