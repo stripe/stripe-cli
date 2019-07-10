@@ -17,7 +17,7 @@ The main focus for this initial release is to improve the developer while integr
       * [Installation](#installation)
          * [Download the CLI](#download-the-cli)
       * [Commands](#commands)
-         * [configure](#configure)
+         * [login](#login)
          * [listen](#listen)
          * [get, post, and delete](#get-post-and-delete)
          * [trigger](#trigger)
