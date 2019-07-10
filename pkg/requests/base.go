@@ -18,35 +18,36 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const stripeURL = "https://api.stripe.com"
-
-var confirmationCommands = map[string]bool{"DELETE": true}
+// RequestParameters captures the structure of the parameters that can be sent to Stripe
+type RequestParameters struct {
+	data          []string
+	expand        []string
+	startingAfter string
+	endingBefore  string
+	idempotency   string
+	limit         string
+	version       string
+	stripeAccount string
+}
 
 // Base does stuff
 type Base struct {
 	Cmd *cobra.Command
 
-	// Generally needed to make requests
-	Method  string
-	Profile profile.Profile
-
-	// Data and Version are exposed publicly so that `trigger` can use this struct
-	Data    []string
-	Version string
+	Method      string
+	Profile     profile.Profile
+	autoConfirm bool
+	showHeaders bool
 
 	// SuppressOutput is used by `trigger` to hide output
 	SuppressOutput bool
-
-	// The rest are specific to the requests package and do not need to be exposed
-	autoConfirm   bool
-	endingBefore  string
-	expand        []string
-	idempotency   string
-	limit         string
-	showHeaders   bool
-	startingAfter string
-	stripeAccount string
 }
+
+var parameters RequestParameters
+
+const stripeURL = "https://api.stripe.com"
+
+var confirmationCommands = map[string]bool{"DELETE": true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
@@ -69,38 +70,38 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 
 	path := normalizePath(args[0])
 
-	_, err = rb.MakeRequest(path, stripeURL, secretKey)
+	_, err = rb.MakeRequest(secretKey, stripeURL, path, &parameters)
 
 	return err
 }
 
 // InitFlags initialize shared flags for all requests commands
 func (rb *Base) InitFlags() {
-	rb.Cmd.Flags().StringArrayVarP(&rb.Data, "data", "d", []string{}, "Data to pass for the API request")
-	rb.Cmd.Flags().StringArrayVarP(&rb.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
-	rb.Cmd.Flags().StringVarP(&rb.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
-	rb.Cmd.Flags().StringVarP(&rb.Version, "api-version", "v", "", "Set the Stripe API version to use for your request")
-	rb.Cmd.Flags().StringVar(&rb.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
+	rb.Cmd.Flags().StringArrayVarP(&parameters.data, "data", "d", []string{}, "Data to pass for the API request")
+	rb.Cmd.Flags().StringArrayVarP(&parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
+	rb.Cmd.Flags().StringVarP(&parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
+	rb.Cmd.Flags().StringVarP(&parameters.version, "api-version", "v", "", "Set the Stripe API version to use for your request")
+	rb.Cmd.Flags().StringVar(&parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == "GET" {
-		rb.Cmd.Flags().StringVarP(&rb.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
-		rb.Cmd.Flags().StringVarP(&rb.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
-		rb.Cmd.Flags().StringVarP(&rb.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+		rb.Cmd.Flags().StringVarP(&parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
+		rb.Cmd.Flags().StringVarP(&parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
+		rb.Cmd.Flags().StringVarP(&parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
 	}
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(path string, baseURL string, secretKey string) ([]byte, error) {
+func (rb *Base) MakeRequest(secretKey string, url string, path string, params *RequestParameters) ([]byte, error) {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 
-	builtURL := fmt.Sprintf("%s%s", baseURL, path)
+	builtURL := fmt.Sprintf("%s%s", url, path)
 
-	data, err := rb.buildDataForRequest()
+	data, err := rb.buildDataForRequest(params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -115,9 +116,9 @@ func (rb *Base) MakeRequest(path string, baseURL string, secretKey string) ([]by
 	req.Header.Set("Authorization", "Bearer "+secretKey)
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
-	rb.setIdempotencyHeader(req)
-	rb.setStripeAccountHeader(req)
-	rb.setVersionHeader(req)
+	rb.setIdempotencyHeader(req, params)
+	rb.setStripeAccountHeader(req, params)
+	rb.setVersionHeader(req, params)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -142,11 +143,11 @@ func (rb *Base) MakeRequest(path string, baseURL string, secretKey string) ([]by
 	return body, nil
 }
 
-func (rb *Base) buildDataForRequest() (io.Reader, error) {
+func (rb *Base) buildDataForRequest(params *RequestParameters) (io.Reader, error) {
 	data := url.Values{}
 
-	if len(rb.Data) > 0 || len(rb.expand) > 0 {
-		for _, datum := range rb.Data {
+	if len(params.data) > 0 || len(params.expand) > 0 {
+		for _, datum := range params.data {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
@@ -155,20 +156,20 @@ func (rb *Base) buildDataForRequest() (io.Reader, error) {
 
 			data.Add(splitDatum[0], splitDatum[1])
 		}
-		for _, datum := range rb.expand {
+		for _, datum := range params.expand {
 			data.Add("expand", datum)
 		}
 	}
 
 	if rb.Method == "GET" {
-		if rb.limit != "" {
-			data.Add("limit", rb.limit)
+		if params.limit != "" {
+			data.Add("limit", params.limit)
 		}
-		if rb.startingAfter != "" {
-			data.Add("starting_after", rb.startingAfter)
+		if params.startingAfter != "" {
+			data.Add("starting_after", params.startingAfter)
 		}
-		if rb.endingBefore != "" {
-			data.Add("ending_before", rb.endingBefore)
+		if params.endingBefore != "" {
+			data.Add("ending_before", params.endingBefore)
 		}
 	}
 
@@ -185,9 +186,9 @@ func (rb *Base) formatHeaders(response *http.Response) string {
 	return strings.Join(allHeaders, "\n") + "\n"
 }
 
-func (rb *Base) setIdempotencyHeader(request *http.Request) {
-	if rb.idempotency != "" {
-		request.Header.Set("Idempotency-Key", rb.idempotency)
+func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParameters) {
+	if params.idempotency != "" {
+		request.Header.Set("Idempotency-Key", params.idempotency)
 		if rb.Method == "GET" || rb.Method == "DELETE" {
 			warning := fmt.Sprintf(
 				"Warning: sending an idempotency key with a %s request has no effect and should be avoided, as %s requests are idempotent by definition.",
@@ -199,15 +200,15 @@ func (rb *Base) setIdempotencyHeader(request *http.Request) {
 	}
 }
 
-func (rb *Base) setVersionHeader(request *http.Request) {
-	if rb.Version != "" {
-		request.Header.Set("Stripe-Version", rb.Version)
+func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters) {
+	if params.version != "" {
+		request.Header.Set("Stripe-Version", params.version)
 	}
 }
 
-func (rb *Base) setStripeAccountHeader(request *http.Request) {
-	if rb.stripeAccount != "" {
-		request.Header.Set("Stripe-Account", rb.stripeAccount)
+func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeAccount != "" {
+		request.Header.Set("Stripe-Account", params.stripeAccount)
 	}
 }
 
