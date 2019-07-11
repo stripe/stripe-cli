@@ -39,41 +39,35 @@ func TestLogin(t *testing.T) {
 	}
 
 	var pollURL string
-	var browserURL string
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "auth") {
+		if r.URL.Path == "/stripecli/auth" {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			expectedLinks := Links{
-				BrowserURL:       browserURL,
+				BrowserURL:       "https://dashboard.stripe.com/stripecli/confirm_auth?t=cliauth_secret",
 				PollURL:          pollURL,
 				VerificationCode: "dinosaur-pineapple-polkadot",
 			}
 			json.NewEncoder(w).Encode(expectedLinks)
-		}
-		if strings.Contains(r.URL.Path, "browser") {
-			w.WriteHeader(http.StatusOK)
-			w.Header().Set("Content-Type", "text/html")
-			w.Write([]byte("<HTML></HTML>"))
+		} else if r.URL.Path == "/stripecli/auth/cliauth_123" {
+			assert.Equal(t, "cliauth_secret", r.URL.Query().Get("secret"))
 
-		}
-		if strings.Contains(r.URL.Path, "poll") {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			data := []byte(`{"redeemed":  true, "account_id": "acct_123", "testmode_key_secret": "sk_test_1234"}`)
 			fmt.Println(string(data))
 			w.Write(data)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer ts.Close()
 
-	authURL := fmt.Sprintf("%s%s", ts.URL, "/auth")
-	pollURL = fmt.Sprintf("%s%s", ts.URL, "/poll")
-	browserURL = fmt.Sprintf("%s%s", ts.URL, "/browser")
+	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
 	input := strings.NewReader("\n")
-	err := Login(authURL, p, input)
+	err := Login(ts.URL, p, input)
 	assert.NoError(t, err)
 }
 

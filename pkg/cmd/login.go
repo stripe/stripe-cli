@@ -6,13 +6,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 type loginCmd struct {
-	cmd         *cobra.Command
-	interactive bool
-	url         string
+	cmd              *cobra.Command
+	interactive      bool
+	dashboardBaseURL string
 }
 
 func newLoginCmd() *loginCmd {
@@ -26,8 +27,10 @@ func newLoginCmd() *loginCmd {
 		RunE:  lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "interactive configuration mode")
-	lc.cmd.Flags().StringVarP(&lc.url, "url", "u", "", "Testing URL for login ")
-	lc.cmd.Flags().MarkHidden("url")
+
+	// Hidden configuration flags, useful for dev/debugging
+	lc.cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
+	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 
 	return lc
 }
@@ -36,5 +39,5 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if lc.interactive {
 		return login.InteractiveLogin(Profile)
 	}
-	return login.Login(lc.url, Profile, os.Stdin)
+	return login.Login(lc.dashboardBaseURL, Profile, os.Stdin)
 }

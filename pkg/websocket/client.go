@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -40,8 +41,6 @@ type Config struct {
 
 	// Interval at which the websocket client should reset the connection
 	ReconnectInterval time.Duration
-
-	UnixSocket string
 
 	WriteWait time.Duration
 
@@ -328,7 +327,7 @@ func NewClient(url string, webSocketID string, cfg *Config) *Client {
 		cfg.ConnectAttemptWait = defaultConnectAttemptWait
 	}
 	if cfg.Dialer == nil {
-		cfg.Dialer = newWebSocketDialer(cfg.UnixSocket)
+		cfg.Dialer = newWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	}
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}

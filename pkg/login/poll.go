@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
-	"github.com/stripe/stripe-cli/pkg/stripeauth"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const maxAttemptsDefault = 2 * 60
@@ -30,11 +31,20 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 		interval = intervalDefault
 	}
 
-	client := stripeauth.NewHTTPClient("")
+	parsedURL, err := url.Parse(pollURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	baseURL := &url.URL{Scheme: parsedURL.Scheme, Host: parsedURL.Host}
+
+	client := &stripe.Client{
+		BaseURL: baseURL,
+	}
 
 	var count = 0
 	for count < maxAttempts {
-		res, err := client.Get(pollURL)
+		res, err := client.PerformRequest("GET", parsedURL.Path, parsedURL.Query(), nil)
 		if err != nil {
 			return "", "", err
 		}

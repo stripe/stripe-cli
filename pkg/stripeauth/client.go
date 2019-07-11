@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/url"
-	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stripe/stripe-cli/pkg/useragent"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+const stripeCLISessionPath = "/v1/stripecli/sessions"
 
 //
 // Public types
@@ -25,9 +24,7 @@ type Config struct {
 
 	HTTPClient *http.Client
 
-	UnixSocket string
-
-	URL string
+	APIBaseURL string
 }
 
 // Client is the client used to initiate new CLI sessions with Stripe.
@@ -44,22 +41,20 @@ func (c *Client) Authorize(deviceName string) (*StripeCLISession, error) {
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
 
-	form := url.Values{}
-	form.Add("device_name", deviceName)
-
-	req, err := http.NewRequest("POST", c.cfg.URL, strings.NewReader(form.Encode()))
+	parsedBaseURL, err := url.Parse(c.cfg.APIBaseURL)
 	if err != nil {
 		return nil, err
 	}
 
-	// Disable compression by requiring "identity"
-	req.Header.Set("Accept-Encoding", "identity")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
-	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
+	form := url.Values{}
+	form.Add("device_name", deviceName)
 
-	resp, err := c.cfg.HTTPClient.Do(req)
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
+		APIKey:  c.apiKey,
+	}
+
+	resp, err := client.PerformRequest("POST", stripeCLISessionPath, form, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -101,52 +96,12 @@ func NewClient(key string, cfg *Config) *Client {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
-	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = NewHTTPClient(cfg.UnixSocket)
-	}
-	if cfg.URL == "" {
-		cfg.URL = defaultAuthorizeURL
+	if cfg.APIBaseURL == "" {
+		cfg.APIBaseURL = stripe.DefaultAPIBaseURL
 	}
 
 	return &Client{
 		apiKey: key,
 		cfg:    cfg,
-	}
-}
-
-//
-// Private constants
-//
-
-const (
-	defaultAuthorizeURL = "https://api.stripe.com/v1/stripecli/sessions"
-)
-
-// NewHTTPClient returns a configured HTTP client.
-func NewHTTPClient(unixSocket string) *http.Client {
-	var httpTransport *http.Transport
-	if unixSocket != "" {
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
-		}
-		httpTransport = &http.Transport{
-			Dial:                  dialFunc,
-			DialTLS:               dialFunc,
-			ExpectContinueTimeout: 10 * time.Second,
-			ResponseHeaderTimeout: 30 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-		}
-	} else {
-		httpTransport = &http.Transport{
-			Dial: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).Dial,
-			Proxy:               http.ProxyFromEnvironment,
-			TLSHandshakeTimeout: 10 * time.Second,
-		}
-	}
-	return &http.Client{
-		Transport: httpTransport,
 	}
 }

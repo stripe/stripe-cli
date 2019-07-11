@@ -33,7 +33,7 @@ func TestAuthorize(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient("sk_test_123", &Config{
-		URL: ts.URL,
+		APIBaseURL: ts.URL,
 	})
 	session, err := client.Authorize("my-device")
 	assert.NoError(t, err)
@@ -50,7 +50,7 @@ func TestUserAgent(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient("sk_test_123", &Config{
-		URL: ts.URL,
+		APIBaseURL: ts.URL,
 	})
 	client.Authorize("my-device")
 }
@@ -73,7 +73,7 @@ func TestStripeClientUserAgent(t *testing.T) {
 	defer ts.Close()
 
 	client := NewClient("sk_test_123", &Config{
-		URL: ts.URL,
+		APIBaseURL: ts.URL,
 	})
 	client.Authorize("my-device")
 }

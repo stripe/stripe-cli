@@ -6,14 +6,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 const apiVersion = "2019-03-14"
-const stripeURL = "https://api.stripe.com"
 
 type triggerCmd struct {
 	cmd *cobra.Command
+
+	apiBaseURL string
 }
 
 func newTriggerCmd() *triggerCmd {
@@ -46,15 +48,17 @@ Supported events:
 	payment_intent.payment_failed
 	payment_intent.succeeded
 	payment_method.attached`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return triggerEvent(args[0])
-		},
+		RunE: tc.runTriggerCmd,
 	}
+
+	// Hidden configuration flags, useful for dev/debugging
+	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	tc.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	return tc
 }
 
-func triggerEvent(event string) error {
+func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	secretKey, err := Profile.GetSecretKey()
 	if err != nil {
 		return err
@@ -62,11 +66,12 @@ func triggerEvent(event string) error {
 
 	examples := requests.Examples{
 		Profile:    Profile,
-		APIUrl:     stripeURL,
+		APIBaseURL: tc.apiBaseURL,
 		APIVersion: apiVersion,
 		SecretKey:  secretKey,
 	}
 
+	event := args[0]
 	supportedEvents := map[string]interface{}{
 		"charge.captured":               examples.ChargeCaptured,
 		"charge.failed":                 examples.ChargeFailed,

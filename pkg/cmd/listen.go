@@ -24,9 +24,8 @@ type listenCmd struct {
 	loadFromWebhooksAPI bool
 	printJSON           bool
 
-	authorizeURL string
+	apiBaseURL   string
 	noWSS        bool
-	unixSocket   string
 	webSocketURL string
 }
 
@@ -59,14 +58,11 @@ $ stripe listen --events charge.created,charge.updated --forward-to localhost:90
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
 
 	// Hidden configuration flags, useful for dev/debugging
-	lc.cmd.Flags().StringVar(&lc.authorizeURL, "auth-url", "", "Sets the authorization URL")
-	lc.cmd.Flags().MarkHidden("auth-url") // #nosec G104
+	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
+	lc.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
-
-	lc.cmd.Flags().StringVar(&lc.unixSocket, "unix", "", "Sends auth and websocket connections through a Unix socket")
-	lc.cmd.Flags().MarkHidden("unix") // #nosec G104
 
 	lc.cmd.Flags().StringVar(&lc.webSocketURL, "ws-url", "", "Sets the websocket URL")
 	lc.cmd.Flags().MarkHidden("ws-url") // #nosec G104
@@ -116,12 +112,11 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		DeviceName:          deviceName,
 		Key:                 key,
 		EndpointsMap:        endpointsMap,
-		AuthorizeURL:        lc.authorizeURL,
+		APIBaseURL:          lc.apiBaseURL,
 		WebSocketURL:        lc.webSocketURL,
 		PrintJSON:           lc.printJSON,
 		UseLatestAPIVersion: lc.latestAPIVersion,
 		Log:                 log.StandardLogger(),
-		UnixSocket:          lc.unixSocket,
 		NoWSS:               lc.noWSS,
 	})
 

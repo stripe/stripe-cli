@@ -30,7 +30,7 @@ type WebhookEndpoint struct {
 // Examples stores possible webhook test events to trigger for the CLI
 type Examples struct {
 	Profile    profile.Profile
-	APIUrl     string
+	APIBaseURL string
 	APIVersion string
 	SecretKey  string
 }
@@ -45,13 +45,14 @@ func (ex *Examples) buildRequest(method string, data []string) (*Base, *RequestP
 		Profile:        ex.Profile,
 		Method:         method,
 		SuppressOutput: true,
+		APIBaseURL:     ex.APIBaseURL,
 	}
 
 	return base, params
 }
 
 func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *RequestParameters) (map[string]interface{}, error) {
-	resp, err := req.MakeRequest(ex.SecretKey, ex.APIUrl, endpoint, params)
+	resp, err := req.MakeRequest(ex.SecretKey, endpoint, params)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +474,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 		Method:         "GET",
 		SuppressOutput: true,
 	}
-	resp, _ := base.MakeRequest(ex.SecretKey, ex.APIUrl, "/webhook_endpoints", params)
+	resp, _ := base.MakeRequest(ex.SecretKey, "/webhook_endpoints", params)
 	data := WebhookEndpointList{}
 	json.Unmarshal([]byte(resp), &data)
 
