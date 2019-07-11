@@ -84,13 +84,13 @@ Trigger a payment_intent.created event:
 }
 
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
-	secretKey, err := Profile.GetSecretKey()
+	secretKey, err := Config.Profile.GetSecretKey()
 	if err != nil {
 		return err
 	}
 
 	examples := requests.Examples{
-		Profile:    Profile,
+		Profile:    Config.Profile,
 		APIBaseURL: tc.apiBaseURL,
 		APIVersion: apiVersion,
 		SecretKey:  secretKey,

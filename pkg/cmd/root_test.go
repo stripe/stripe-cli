@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetPathNoXDG(t *testing.T) {
-	actual := Profile.GetConfigFolder("")
+	actual := Config.GetProfilesFolder("")
 	expected, err := homedir.Dir()
 	expected += "/.config/stripe"
 
@@ -17,7 +17,7 @@ func TestGetPathNoXDG(t *testing.T) {
 }
 
 func TestGetPathXDG(t *testing.T) {
-	actual := Profile.GetConfigFolder("/some/xdg/path")
+	actual := Config.GetProfilesFolder("/some/xdg/path")
 	expected := "/some/xdg/path/stripe"
 
 	assert.Equal(t, actual, expected)

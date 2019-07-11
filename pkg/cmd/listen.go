@@ -81,14 +81,14 @@ to your localhost:
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
-	deviceName, err := Profile.GetDeviceName()
+	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
 
 	endpointsMap := make(map[string][]string)
 
-	key, err := Profile.GetSecretKey()
+	key, err := Config.Profile.GetSecretKey()
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
 	examples := requests.Examples{
-		Profile:    Profile,
+		Profile:    Config.Profile,
 		APIVersion: "2019-03-14",
 		SecretKey:  secretKey,
 	}

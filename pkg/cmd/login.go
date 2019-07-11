@@ -37,7 +37,7 @@ func newLoginCmd() *loginCmd {
 
 func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if lc.interactive {
-		return login.InteractiveLogin(Profile)
+		return login.InteractiveLogin(&Config)
 	}
-	return login.Login(lc.dashboardBaseURL, Profile, os.Stdin)
+	return login.Login(lc.dashboardBaseURL, &Config, os.Stdin)
 }
