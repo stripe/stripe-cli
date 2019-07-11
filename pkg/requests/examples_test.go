@@ -46,7 +46,7 @@ func TestChargeCaptured(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -64,7 +64,7 @@ func TestChargeFailed(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -82,7 +82,7 @@ func TestChargeSucceeded(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -100,7 +100,7 @@ func TestCustomerCreated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -118,7 +118,7 @@ func TestCustomerUpdated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -136,7 +136,7 @@ func TestCustomerSourceCreated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -154,7 +154,7 @@ func TestCustomerSourceUpdated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -172,7 +172,7 @@ func TestCustomerSubscriptionUpdated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -190,7 +190,7 @@ func TestInvoiceCreated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -208,7 +208,7 @@ func TestInvoiceFinalized(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -226,7 +226,7 @@ func TestInvoicePaymentSucceeded(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -244,7 +244,7 @@ func TestInvoiceUpdated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -262,7 +262,7 @@ func TestPaymentIntentCreated(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -280,7 +280,7 @@ func TestPaymentIntentSucceeded(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -298,7 +298,7 @@ func TestPaymentIntentFailed(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}
@@ -316,7 +316,7 @@ func TestPaymentMethodAttached(t *testing.T) {
 	defer ts.Close()
 
 	ex := Examples{
-		APIUrl:     ts.URL,
+		APIBaseURL: ts.URL,
 		APIVersion: "v1",
 		SecretKey:  "secret-key",
 	}

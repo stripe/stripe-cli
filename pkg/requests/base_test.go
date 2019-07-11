@@ -3,19 +3,19 @@ package requests
 import (
 	"bufio"
 	"bytes"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func convertToString(data io.Reader) string {
+func convertToString(data url.Values) string {
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(data)
+	buf.ReadFrom(strings.NewReader(data.Encode()))
 	return buf.String()
 }
 
@@ -92,14 +92,16 @@ func TestMakeRequest(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/foo/bar", r.URL.Path)
 		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
 		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "bender=robot&expand=expand%3Dfuturama.employees&expand=expand%3Dfuturama.ships&fry=human", string(reqBody))
+		assert.Equal(t, "bender=robot&expand=expand%3Dfuturama.employees&expand=expand%3Dfuturama.ships&fry=human", r.URL.RawQuery)
+		assert.Equal(t, "", string(reqBody))
 	}))
 	defer ts.Close()
 
-	rb := Base{}
+	rb := Base{APIBaseURL: ts.URL}
 	rb.Method = "GET"
 
 	params := &RequestParameters{
@@ -107,7 +109,7 @@ func TestMakeRequest(t *testing.T) {
 		expand: []string{"expand=futurama.employees", "expand=futurama.ships"},
 	}
 
-	_, err := rb.MakeRequest("sk_test_1234", ts.URL, "/foo/bar", params)
+	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params)
 	assert.Nil(t, err)
 }
 

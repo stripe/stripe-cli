@@ -3,17 +3,15 @@ package requests
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/profile"
-	"github.com/stripe/stripe-cli/pkg/useragent"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"github.com/spf13/cobra"
 )
@@ -34,18 +32,19 @@ type RequestParameters struct {
 type Base struct {
 	Cmd *cobra.Command
 
-	Method      string
-	Profile     profile.Profile
-	autoConfirm bool
-	showHeaders bool
+	Method  string
+	Profile profile.Profile
 
 	// SuppressOutput is used by `trigger` to hide output
 	SuppressOutput bool
+
+	APIBaseURL string
+
+	autoConfirm bool
+	showHeaders bool
 }
 
 var parameters RequestParameters
-
-const stripeURL = "https://api.stripe.com"
 
 var confirmationCommands = map[string]bool{"DELETE": true}
 
@@ -70,7 +69,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 
 	path := normalizePath(args[0])
 
-	_, err = rb.MakeRequest(secretKey, stripeURL, path, &parameters)
+	_, err = rb.MakeRequest(secretKey, path, &parameters)
 
 	return err
 }
@@ -91,36 +90,36 @@ func (rb *Base) InitFlags() {
 		rb.Cmd.Flags().StringVarP(&parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
 		rb.Cmd.Flags().StringVarP(&parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
 	}
+
+	// Hidden configuration flags, useful for dev/debugging
+	rb.Cmd.Flags().StringVar(&rb.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(secretKey string, url string, path string, params *RequestParameters) ([]byte, error) {
-	client := &http.Client{
-		Timeout: time.Second * 10,
+func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) ([]byte, error) {
+	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
+	if err != nil {
+		return []byte{}, err
 	}
 
-	builtURL := fmt.Sprintf("%s%s", url, path)
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
+		APIKey:  secretKey,
+	}
 
 	data, err := rb.buildDataForRequest(params)
 	if err != nil {
 		return []byte{}, err
 	}
 
-	req, err := http.NewRequest(rb.Method, builtURL, data)
-	if err != nil {
-		return []byte{}, err
+	configureReq := func(req *http.Request) {
+		rb.setIdempotencyHeader(req, params)
+		rb.setStripeAccountHeader(req, params)
+		rb.setVersionHeader(req, params)
 	}
 
-	// Disable compression by requiring "identity"
-	req.Header.Set("Accept-Encoding", "identity")
-	req.Header.Set("Authorization", "Bearer "+secretKey)
-	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
-	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
-	rb.setIdempotencyHeader(req, params)
-	rb.setStripeAccountHeader(req, params)
-	rb.setVersionHeader(req, params)
-
-	resp, err := client.Do(req)
+	resp, err := client.PerformRequest(rb.Method, path, data, configureReq)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -143,7 +142,7 @@ func (rb *Base) MakeRequest(secretKey string, url string, path string, params *R
 	return body, nil
 }
 
-func (rb *Base) buildDataForRequest(params *RequestParameters) (io.Reader, error) {
+func (rb *Base) buildDataForRequest(params *RequestParameters) (url.Values, error) {
 	data := url.Values{}
 
 	if len(params.data) > 0 || len(params.expand) > 0 {
@@ -173,7 +172,7 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (io.Reader, error
 		}
 	}
 
-	return strings.NewReader(data.Encode()), nil
+	return data, nil
 }
 
 func (rb *Base) formatHeaders(response *http.Response) string {
