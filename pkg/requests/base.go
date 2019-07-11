@@ -144,7 +144,7 @@ func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) (
 
 // Note: We converted to using two arrays to track keys and values, with our own
 // implementation of Go's url.Values Encode function due to our query parameters being
-// case sensitive for API requests involving arrays like `items` for `/v1/orders`.
+// order sensitive for API requests involving arrays like `items` for `/v1/orders`.
 // Go's url.Values uses Go's map, which jumbles the key ordering, and their Encode
 // implementation sorts keys by alphabetical order, but this doesn't work for us since
 // some API endpoints have required parameter ordering. Yes, this is hacky, but it works.
