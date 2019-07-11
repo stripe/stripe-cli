@@ -33,8 +33,7 @@ type Config struct {
 	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
 	EndpointsMap map[string][]string
 
-	// AuthorizeURL is the URL used to authenticate with Stripe
-	AuthorizeURL string
+	APIBaseURL string
 
 	// WebSocketURL is the websocket URL used to receive incoming events
 	WebSocketURL string
@@ -46,8 +45,6 @@ type Config struct {
 	UseLatestAPIVersion bool
 
 	Log *log.Logger
-
-	UnixSocket string
 
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
@@ -87,7 +84,6 @@ func (p *Proxy) Run() error {
 			Log:                 p.cfg.Log,
 			NoWSS:               p.cfg.NoWSS,
 			ReconnectInterval:   time.Duration(session.ReconnectDelay) * time.Second,
-			UnixSocket:          p.cfg.UnixSocket,
 			WebhookEventHandler: websocket.WebhookEventHandlerFunc(p.processWebhookEvent),
 		},
 	)
@@ -223,8 +219,7 @@ func New(cfg *Config) *Proxy {
 		cfg: cfg,
 		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
 			Log:        cfg.Log,
-			UnixSocket: cfg.UnixSocket,
-			URL:        cfg.AuthorizeURL,
+			APIBaseURL: cfg.APIBaseURL,
 		}),
 		interruptCh: make(chan os.Signal, 1),
 	}

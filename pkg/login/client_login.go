@@ -13,13 +13,13 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/profile"
-	"github.com/stripe/stripe-cli/pkg/stripeauth"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 var execCommand = exec.Command
 
-const stripeCLIAuthURL = "https://dashboard.stripe.com/stripecli/auth"
+const stripeCLIAuthPath = "/stripecli/auth"
 
 // Links provides the URLs for the CLI to continue the login flow
 type Links struct {
@@ -37,8 +37,8 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(url string, profile profile.Profile, input io.Reader) error {
-	links, err := getLinks(url, profile.DeviceName)
+func Login(baseURL string, profile profile.Profile, input io.Reader) error {
+	links, err := getLinks(baseURL, profile.DeviceName)
 	if err != nil {
 		return err
 	}
@@ -98,17 +98,20 @@ func openBrowser(url string) error {
 	return nil
 }
 
-func getLinks(authURL string, deviceName string) (*Links, error) {
-	client := stripeauth.NewHTTPClient("")
+func getLinks(baseURL string, deviceName string) (*Links, error) {
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
 
-	if authURL == "" {
-		authURL = stripeCLIAuthURL
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
 	}
 
 	data := url.Values{}
 	data.Set("device_name", deviceName)
 
-	res, err := client.PostForm(authURL, data)
+	res, err := client.PerformRequest("POST", stripeCLIAuthPath, data, nil)
 	if err != nil {
 		return nil, err
 	}
