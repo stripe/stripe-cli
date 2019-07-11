@@ -24,14 +24,12 @@ func newFeedbackdCmd() *feedbackCmd {
 				url := fmt.Sprintf("https://stri.pe/cli-feedback%s", os)
 
 				output := `
-      _        _
-     | |      (_)
-  ___| |_ _ __ _ _ __   ___
- / __| __| '__| | '_ \ / _ \
- \__ \ |_| |  | | |_) |  __/
- |___/\__|_|  |_| .__/ \___|
-                | |
-                |_|
+     _        _
+ ___| |_ _ __(_)_ __   ___
+/ __| __| '__| | '_ \ / _ \
+\__ \ |_| |  | | |_) |  __/
+|___/\__|_|  |_| .__/ \___|
+               |_|
 
 We'd love to know what you think of the CLI:
 
