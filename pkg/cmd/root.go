@@ -100,6 +100,7 @@ func init() {
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
+	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
