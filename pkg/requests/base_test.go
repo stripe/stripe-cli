@@ -2,30 +2,30 @@ package requests
 
 import (
 	"bufio"
-	"bytes"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func convertToString(data url.Values) string {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(strings.NewReader(data.Encode()))
-	return buf.String()
-}
-
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
 	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
 	expected := "bender=robot&fry=human"
 
-	data, _ := rb.buildDataForRequest(params)
-	output := convertToString(data)
+	output, _ := rb.buildDataForRequest(params)
+	assert.Equal(t, expected, output)
+}
+
+func TestBuildDataForRequestParamOrdering(t *testing.T) {
+	rb := Base{}
+	params := &RequestParameters{data: []string{"fry=human", "bender=robot"}}
+	expected := "fry=human&bender=robot"
+
+	output, _ := rb.buildDataForRequest(params)
 	assert.Equal(t, expected, output)
 }
 
@@ -34,8 +34,7 @@ func TestBuildDataForRequestExpand(t *testing.T) {
 	params := &RequestParameters{data: []string{"expand=futurama.employees", "expand=futurama.ships"}}
 	expected := "expand=futurama.employees&expand=futurama.ships"
 
-	data, _ := rb.buildDataForRequest(params)
-	output := convertToString(data)
+	output, _ := rb.buildDataForRequest(params)
 	assert.Equal(t, expected, output)
 }
 
@@ -49,10 +48,9 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 		endingBefore:  "leela",
 	}
 
-	expected := "ending_before=leela&limit=10&starting_after=bender"
+	expected := "limit=10&starting_after=bender&ending_before=leela"
 
-	data, _ := rb.buildDataForRequest(params)
-	output := convertToString(data)
+	output, _ := rb.buildDataForRequest(params)
 	assert.Equal(t, expected, output)
 }
 
@@ -68,8 +66,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 
 	expected := ""
 
-	data, _ := rb.buildDataForRequest(params)
-	output := convertToString(data)
+	output, _ := rb.buildDataForRequest(params)
 	assert.Equal(t, expected, output)
 }
 
@@ -79,7 +76,7 @@ func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	expected := "Invalid data argument: fry"
 
 	data, err := rb.buildDataForRequest(params)
-	assert.Nil(t, data)
+	assert.Equal(t, "", data)
 	assert.Equal(t, expected, err.Error())
 }
 
@@ -88,7 +85,7 @@ func TestMakeRequest(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK!"))
 
-		reqBody, err := ioutil.ReadAll(r.Body)
+		_, err := ioutil.ReadAll(r.Body)
 		assert.Nil(t, err)
 
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -96,8 +93,6 @@ func TestMakeRequest(t *testing.T) {
 		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
 		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "bender=robot&expand=expand%3Dfuturama.employees&expand=expand%3Dfuturama.ships&fry=human", r.URL.RawQuery)
-		assert.Equal(t, "", string(reqBody))
 	}))
 	defer ts.Close()
 

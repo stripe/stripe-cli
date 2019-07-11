@@ -54,7 +54,7 @@ func (c *Client) Authorize(deviceName string) (*StripeCLISession, error) {
 		APIKey:  c.apiKey,
 	}
 
-	resp, err := client.PerformRequest(http.MethodPost, stripeCLISessionPath, form, nil)
+	resp, err := client.PerformRequest(http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
