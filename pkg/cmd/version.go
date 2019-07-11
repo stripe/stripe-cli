@@ -20,7 +20,7 @@ func newVersionCmd() *versionCmd {
 			Args:  validators.NoArgs,
 			Short: "Get the version of the Stripe CLI",
 			Run: func(cmd *cobra.Command, args []string) {
-				fmt.Println("stripe version " + version.Version)
+				fmt.Println("stripe version " + version.Version + " (beta)")
 			},
 		},
 	}

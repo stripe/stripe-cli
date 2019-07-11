@@ -27,18 +27,21 @@ var rootCmd = &cobra.Command{
 		"listen":  "webhooks",
 	},
 	Version: version.Version,
-	Short:   "A CLI to help you develop your application with Stripe",
-	Long: `The Stripe CLI gives you tools to make integrating your application
-with Stripe easier. You do things like connect to a Stripe webhook tunnel to
-test webhooks locally, make test mode requests to the API, and trigger certain
-webhook events.
+	Short:   "A CLI to help you integrate Stripe with your application",
+	Long: `⚠️  The CLI is still in beta and we are actively working on features. If you
+have and feedback for us, we'd love to hear it. Run 'stripe feedback' to see
+where to send your feedback. ⚠️
 
-Before you use the CLI, you'll need to configure it:
-$ stripe configure
+The Stripe CLI gives you tools to make integrating your application with Stripe
+easier. You do things like connect to a Stripe webhook tunnel to test webhooks
+locally, make test mode requests to the API, and trigger certain webhook events.
 
-If you're working on multiple projects, you can run the configure command with the
+Before using the CLI, you'll need to login:
+$ stripe login
+
+If you're working on multiple projects, you can run the login command with the
 --project-name flag:
-$ stripe configure --project-name rocket-rides`,
+$ stripe login --project-name rocket-rides`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
