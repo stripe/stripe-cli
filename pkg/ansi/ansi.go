@@ -55,7 +55,7 @@ func ColorizeJSON(json string, w io.Writer) string {
 	return string(pretty.Color([]byte(json), nil))
 }
 
-// Fainit returns slightly offset color text if the writer supports it
+// Faint returns slightly offset color text if the writer supports it
 func Faint(text string) string {
 	if !shouldUseColors(os.Stdout) {
 		return text
