@@ -43,7 +43,7 @@ func (c *Client) PerformRequest(method, path string, params url.Values, configur
 	url = c.BaseURL.ResolveReference(url)
 
 	var body io.Reader
-	if method == "POST" {
+	if method == http.MethodPost {
 		body = strings.NewReader(params.Encode())
 	} else {
 		url.RawQuery = params.Encode()

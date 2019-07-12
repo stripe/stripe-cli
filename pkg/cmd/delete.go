@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -14,7 +15,7 @@ type deleteCmd struct {
 func newDeleteCmd() *deleteCmd {
 	gc := &deleteCmd{}
 
-	gc.reqs.Method = "DELETE"
+	gc.reqs.Method = http.MethodDelete
 	gc.reqs.Profile = Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "delete",

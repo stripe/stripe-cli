@@ -3,6 +3,7 @@ package requests
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/profile"
 )
@@ -60,7 +61,7 @@ func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *Req
 }
 
 func (ex *Examples) tokenCreated(card string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		fmt.Sprintf("card[number]=%s", card),
 		"card[exp_month]=12",
 		"card[exp_year]=2020",
@@ -76,7 +77,7 @@ func (ex *Examples) chargeCreated(card string, data []string) (map[string]interf
 	}
 	paymentSource := fmt.Sprintf("source=%s", paymentToken["id"])
 
-	req, params := ex.buildRequest("POST", append(data, paymentSource))
+	req, params := ex.buildRequest(http.MethodPost, append(data, paymentSource))
 	return ex.performStripeRequest(req, "/v1/charges", params)
 }
 
@@ -93,7 +94,7 @@ func (ex *Examples) ChargeCaptured() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{})
+	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/charges/%s/capture", charge["id"])
 
 	_, err = ex.performStripeRequest(req, reqURL, params)
@@ -119,7 +120,7 @@ func (ex *Examples) ChargeSucceeded() error {
 }
 
 func (ex *Examples) customerCreated(data []string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", data)
+	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/customers", params)
 }
 
@@ -136,7 +137,7 @@ func (ex *Examples) CustomerUpdated() error {
 	if err != nil {
 		return err
 	}
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
 	reqURL := fmt.Sprintf("/v1/customers/%s", customer["id"])
@@ -157,7 +158,7 @@ func (ex *Examples) CustomerSourceCreated() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		fmt.Sprintf("source=%s", token["id"]),
 	})
 
@@ -179,7 +180,7 @@ func (ex *Examples) CustomerSourceUpdated() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		fmt.Sprintf("source=%s", token["id"]),
 	})
 
@@ -189,7 +190,7 @@ func (ex *Examples) CustomerSourceUpdated() error {
 		return err
 	}
 
-	req, params = ex.buildRequest("POST", []string{
+	req, params = ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
 	reqURL = fmt.Sprintf("/v1/customers/%s/sources/%s", customer["id"], card["id"])
@@ -212,7 +213,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		"currency=usd",
 		"interval=month",
 		"amount=2000",
@@ -223,7 +224,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 		return err
 	}
 
-	req, params = ex.buildRequest("POST", []string{
+	req, params = ex.buildRequest(http.MethodPost, []string{
 		fmt.Sprintf("items[0][plan]=%s", plan["id"]),
 		fmt.Sprintf("customer=%s", customer["id"]),
 	})
@@ -232,7 +233,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 		return err
 	}
 
-	req, params = ex.buildRequest("POST", []string{
+	req, params = ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
 	reqURL := fmt.Sprintf("/v1/subscriptions/%s", subscription["id"])
@@ -241,12 +242,12 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 }
 
 func (ex *Examples) createInvoiceItem(data []string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", data)
+	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/invoiceitems", params)
 }
 
 func (ex *Examples) invoiceCreated(data []string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", data)
+	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/invoices", params)
 }
 
@@ -301,7 +302,7 @@ func (ex *Examples) InvoiceFinalized() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{})
+	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/finalize", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
 	return err
@@ -338,7 +339,7 @@ func (ex *Examples) InvoicePaymentSucceeded() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{})
+	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/pay", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
 	return err
@@ -368,7 +369,7 @@ func (ex *Examples) InvoiceUpdated() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
 
@@ -378,7 +379,7 @@ func (ex *Examples) InvoiceUpdated() error {
 }
 
 func (ex *Examples) paymentIntentCreated(data []string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", data)
+	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/payment_intents", params)
 }
 
@@ -431,7 +432,7 @@ func (ex *Examples) PaymentIntentFailed() error {
 }
 
 func (ex *Examples) paymentMethodCreated(card string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		"type=card",
 		fmt.Sprintf("card[number]=%s", card),
 		"card[exp_month]=12",
@@ -454,7 +455,7 @@ func (ex *Examples) PaymentMethodAttached() error {
 		return err
 	}
 
-	req, params := ex.buildRequest("POST", []string{
+	req, params := ex.buildRequest(http.MethodPost, []string{
 		fmt.Sprintf("customer=%s", customer["id"]),
 	})
 	reqURL := fmt.Sprintf("/v1/payment_methods/%s/attach", paymentMethod["id"])
@@ -471,7 +472,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 
 	base := &Base{
 		Profile:        ex.Profile,
-		Method:         "GET",
+		Method:         http.MethodGet,
 		SuppressOutput: true,
 	}
 	resp, _ := base.MakeRequest(ex.SecretKey, "/webhook_endpoints", params)

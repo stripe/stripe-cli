@@ -21,7 +21,7 @@ func TestAuthorize(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(session)
 
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
 		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))

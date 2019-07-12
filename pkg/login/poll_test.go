@@ -15,7 +15,7 @@ func TestRedeemed(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -44,7 +44,7 @@ func TestExceedMaxAttempts(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -68,7 +68,7 @@ func TestHTTPStatusError(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 

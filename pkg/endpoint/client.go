@@ -66,7 +66,7 @@ func (c *Client) Post(webhookID string, body string, headers map[string]string) 
 		"prefix": "endpoint.Client.Post",
 	}).Debug("Forwarding event to local endpoint")
 
-	req, err := http.NewRequest("POST", c.URL, bytes.NewBuffer([]byte(body)))
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
 	if err != nil {
 		return err
 	}

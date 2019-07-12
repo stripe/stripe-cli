@@ -79,7 +79,7 @@ func TestGetLinks(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 
 		assert.NoError(t, r.ParseForm())
@@ -98,7 +98,7 @@ func TestGetLinks(t *testing.T) {
 
 func TestGetLinksHTTPStatusError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -122,7 +122,7 @@ func TestGetLinksRequestError(t *testing.T) {
 
 func TestGetLinksParseError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 
 		w.WriteHeader(http.StatusOK)

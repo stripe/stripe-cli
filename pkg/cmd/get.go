@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -14,7 +15,7 @@ type getCmd struct {
 func newGetCmd() *getCmd {
 	gc := &getCmd{}
 
-	gc.reqs.Method = "GET"
+	gc.reqs.Method = http.MethodGet
 	gc.reqs.Profile = Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "get",
