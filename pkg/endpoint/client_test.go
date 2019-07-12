@@ -21,7 +21,7 @@ func TestClientHandler(t *testing.T) {
 		reqBody, err := ioutil.ReadAll(r.Body)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "TestAgent/v1", r.UserAgent())
 		assert.Equal(t, "t=123,v1=hunter2", r.Header.Get("Stripe-Signature"))
 		assert.Equal(t, "{}", string(reqBody))

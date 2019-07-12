@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -14,7 +15,7 @@ type postCmd struct {
 func newPostCmd() *postCmd {
 	gc := &postCmd{}
 
-	gc.reqs.Method = "POST"
+	gc.reqs.Method = http.MethodPost
 	gc.reqs.Profile = Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "post",

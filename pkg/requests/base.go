@@ -46,7 +46,7 @@ type Base struct {
 
 var parameters RequestParameters
 
-var confirmationCommands = map[string]bool{"DELETE": true}
+var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
@@ -85,7 +85,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
-	if rb.Method == "GET" {
+	if rb.Method == http.MethodGet {
 		rb.Cmd.Flags().StringVarP(&parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
 		rb.Cmd.Flags().StringVarP(&parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
 		rb.Cmd.Flags().StringVarP(&parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
@@ -160,7 +160,7 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (url.Values, erro
 		}
 	}
 
-	if rb.Method == "GET" {
+	if rb.Method == http.MethodGet {
 		if params.limit != "" {
 			data.Add("limit", params.limit)
 		}
@@ -188,7 +188,7 @@ func (rb *Base) formatHeaders(response *http.Response) string {
 func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParameters) {
 	if params.idempotency != "" {
 		request.Header.Set("Idempotency-Key", params.idempotency)
-		if rb.Method == "GET" || rb.Method == "DELETE" {
+		if rb.Method == http.MethodGet || rb.Method == http.MethodDelete {
 			warning := fmt.Sprintf(
 				"Warning: sending an idempotency key with a %s request has no effect and should be avoided, as %s requests are idempotent by definition.",
 				rb.Method,

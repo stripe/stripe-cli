@@ -44,7 +44,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 	var count = 0
 	for count < maxAttempts {
-		res, err := client.PerformRequest("GET", parsedURL.Path, parsedURL.Query(), nil)
+		res, err := client.PerformRequest(http.MethodGet, parsedURL.Path, parsedURL.Query(), nil)
 		if err != nil {
 			return "", "", err
 		}

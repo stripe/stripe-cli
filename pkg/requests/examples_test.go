@@ -31,10 +31,10 @@ func TestBuildRequest(t *testing.T) {
 		SecretKey:  "secret-key",
 	}
 
-	req, params := ex.buildRequest("POST", []string{"foo=bar"})
+	req, params := ex.buildRequest(http.MethodPost, []string{"foo=bar"})
 
 	assert.Equal(t, []string{"foo=bar"}, params.data)
-	assert.Equal(t, "POST", req.Method)
+	assert.Equal(t, http.MethodPost, req.Method)
 }
 
 func TestChargeCaptured(t *testing.T) {

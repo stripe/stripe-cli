@@ -111,7 +111,7 @@ func getLinks(baseURL string, deviceName string) (*Links, error) {
 	data := url.Values{}
 	data.Set("device_name", deviceName)
 
-	res, err := client.PerformRequest("POST", stripeCLIAuthPath, data, nil)
+	res, err := client.PerformRequest(http.MethodPost, stripeCLIAuthPath, data, nil)
 	if err != nil {
 		return nil, err
 	}

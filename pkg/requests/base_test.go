@@ -41,7 +41,7 @@ func TestBuildDataForRequestExpand(t *testing.T) {
 
 func TestBuildDataForRequestPagination(t *testing.T) {
 	rb := Base{}
-	rb.Method = "GET"
+	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
 		limit:         "10",
@@ -58,7 +58,7 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 
 func TestBuildDataForRequestGetOnly(t *testing.T) {
 	rb := Base{}
-	rb.Method = "POST"
+	rb.Method = http.MethodPost
 
 	params := &RequestParameters{
 		limit:         "10",
@@ -91,7 +91,7 @@ func TestMakeRequest(t *testing.T) {
 		reqBody, err := ioutil.ReadAll(r.Body)
 		assert.Nil(t, err)
 
-		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/foo/bar", r.URL.Path)
 		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
@@ -102,7 +102,7 @@ func TestMakeRequest(t *testing.T) {
 	defer ts.Close()
 
 	rb := Base{APIBaseURL: ts.URL}
-	rb.Method = "GET"
+	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
 		data:   []string{"bender=robot", "fry=human"},
@@ -142,7 +142,7 @@ func TestGetUserConfirmationRequired(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("yes\n"))
 
 	rb := Base{}
-	rb.Method = "DELETE"
+	rb.Method = http.MethodDelete
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
@@ -154,7 +154,7 @@ func TestGetUserConfirmationNotRequired(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader(""))
 
 	rb := Base{}
-	rb.Method = "GET"
+	rb.Method = http.MethodGet
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
@@ -166,7 +166,7 @@ func TestGetUserConfirmationAutoConfirm(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader(""))
 
 	rb := Base{}
-	rb.Method = "DELETE"
+	rb.Method = http.MethodDelete
 	rb.autoConfirm = true
 
 	confirmed, err := rb.getUserConfirmation(reader)
@@ -178,7 +178,7 @@ func TestGetUserConfirmationNoConfirm(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("blah\n"))
 
 	rb := Base{}
-	rb.Method = "DELETE"
+	rb.Method = http.MethodDelete
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
