@@ -57,7 +57,7 @@ func Login(baseURL string, profile profile.Profile, input io.Reader) error {
 	}
 
 	//Call poll function
-	apiKey, accountID, err := PollForKey(links.PollURL, 0, 0)
+	apiKey, account, err := PollForKey(links.PollURL, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,8 @@ func Login(baseURL string, profile profile.Profile, input io.Reader) error {
 		return configErr
 	}
 
-	ansi.StopSpinner(s, fmt.Sprintf("Done! The Stripe CLI is configured for account %s\n", color.Bold(accountID)), os.Stdout)
+
+	ansi.StopSpinner(s, SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey), os.Stdout)
 
 	return nil
 }

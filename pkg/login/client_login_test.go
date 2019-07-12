@@ -55,7 +55,7 @@ func TestLogin(t *testing.T) {
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
-			data := []byte(`{"redeemed":  true, "account_id": "acct_123", "testmode_key_secret": "sk_test_1234"}`)
+			data := []byte(`{"redeemed":  true, "account_id": "acct_123", "testmode_key_secret": "sk_test_1234", "display_name": "test_disp_name"}`)
 			fmt.Println(string(data))
 			w.Write(data)
 		} else {
