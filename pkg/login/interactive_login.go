@@ -98,11 +98,12 @@ func securePrompt(input io.Reader) (string, error) {
 		}
 
 		buf, err := terminal.ReadPassword(int(syscall.Stdin))
-		signal.Stop(signalChan)
-
 		if err != nil {
 			return "", err
 		}
+
+		signal.Stop(signalChan)
+
 		fmt.Print("\n")
 		return string(buf), nil
 	}
