@@ -142,37 +142,67 @@ func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) (
 	return body, nil
 }
 
-func (rb *Base) buildDataForRequest(params *RequestParameters) (url.Values, error) {
-	data := url.Values{}
+// Note: We converted to using two arrays to track keys and values, with our own
+// implementation of Go's url.Values Encode function due to our query parameters being
+// order sensitive for API requests involving arrays like `items` for `/v1/orders`.
+// Go's url.Values uses Go's map, which jumbles the key ordering, and their Encode
+// implementation sorts keys by alphabetical order, but this doesn't work for us since
+// some API endpoints have required parameter ordering. Yes, this is hacky, but it works.
+func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
+	keys := []string{}
+	values := []string{}
 
 	if len(params.data) > 0 || len(params.expand) > 0 {
 		for _, datum := range params.data {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
-				return nil, fmt.Errorf("Invalid data argument: %s", datum)
+				return "", fmt.Errorf("Invalid data argument: %s", datum)
 			}
 
-			data.Add(splitDatum[0], splitDatum[1])
+			keys = append(keys, splitDatum[0])
+			values = append(values, splitDatum[1])
 		}
 		for _, datum := range params.expand {
-			data.Add("expand", datum)
+			keys = append(keys, "expand")
+			values = append(values, datum)
 		}
 	}
 
 	if rb.Method == http.MethodGet {
 		if params.limit != "" {
-			data.Add("limit", params.limit)
+			keys = append(keys, "limit")
+			values = append(values, params.limit)
 		}
 		if params.startingAfter != "" {
-			data.Add("starting_after", params.startingAfter)
+			keys = append(keys, "starting_after")
+			values = append(values, params.startingAfter)
 		}
 		if params.endingBefore != "" {
-			data.Add("ending_before", params.endingBefore)
+			keys = append(keys, "ending_before")
+			values = append(values, params.endingBefore)
 		}
 	}
 
-	return data, nil
+	return encode(keys, values), nil
+}
+
+// encode creates a url encoded string with the request parameters
+func encode(keys []string, values []string) string {
+	var buf strings.Builder
+	for i := range keys {
+		key := keys[i]
+		value := values[i]
+
+		keyEscaped := url.QueryEscape(key)
+		if buf.Len() > 0 {
+			buf.WriteByte('&')
+		}
+		buf.WriteString(keyEscaped)
+		buf.WriteByte('=')
+		buf.WriteString(url.QueryEscape(value))
+	}
+	return buf.String()
 }
 
 func (rb *Base) formatHeaders(response *http.Response) string {

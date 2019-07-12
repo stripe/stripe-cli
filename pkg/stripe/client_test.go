@@ -30,7 +30,7 @@ func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	_, err := client.PerformRequest(http.MethodDelete, "/delete", params, nil)
+	_, err := client.PerformRequest(http.MethodDelete, "/delete", params.Encode(), nil)
 	assert.NoError(t, err)
 }
 
@@ -54,7 +54,7 @@ func TestPerformRequest_ParamsEncoding_Get(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	_, err := client.PerformRequest(http.MethodGet, "/get", params, nil)
+	_, err := client.PerformRequest(http.MethodGet, "/get", params.Encode(), nil)
 	assert.NoError(t, err)
 }
 
@@ -78,7 +78,7 @@ func TestPerformRequest_ParamsEncoding_Post(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	_, err := client.PerformRequest(http.MethodPost, "/post", params, nil)
+	_, err := client.PerformRequest(http.MethodPost, "/post", params.Encode(), nil)
 	assert.NoError(t, err)
 }
 
@@ -94,7 +94,7 @@ func TestPerformRequest_ApiKey_Provided(t *testing.T) {
 		APIKey:  "sk_test_1234",
 	}
 
-	_, err := client.PerformRequest(http.MethodGet, "/get", nil, nil)
+	_, err := client.PerformRequest(http.MethodGet, "/get", "", nil)
 	assert.NoError(t, err)
 }
 
@@ -109,7 +109,7 @@ func TestPerformRequest_ApiKey_Omitted(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	_, err := client.PerformRequest(http.MethodGet, "/get", nil, nil)
+	_, err := client.PerformRequest(http.MethodGet, "/get", "", nil)
 	assert.NoError(t, err)
 }
 
@@ -124,7 +124,7 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	_, err := client.PerformRequest(http.MethodGet, "/get", nil, func(r *http.Request) {
+	_, err := client.PerformRequest(http.MethodGet, "/get", "", func(r *http.Request) {
 		r.Header.Add("Stripe-Version", "2019-07-10")
 	})
 	assert.NoError(t, err)
