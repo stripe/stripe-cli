@@ -72,7 +72,7 @@ func getUserAccount(baseURL string, apiKey string) (*Account, error) {
 		APIKey: apiKey,
 	}
 
-	resp, err := client.PerformRequest("GET", "/v1/account", url.Values{}, nil)
+	resp, err := client.PerformRequest("GET", "/v1/account", "", nil)
 
 	if err != nil {
 		return nil, err
