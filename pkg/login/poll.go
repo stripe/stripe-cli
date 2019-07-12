@@ -18,7 +18,7 @@ const intervalDefault = 1 * time.Second
 type pollAPIKeyResponse struct {
 	Redeemed  bool   `json:"redeemed"`
 	AccountID string `json:"account_id"`
-	DisplayName string `json:"display_name"`
+	AccountDisplayName string `json:"account_display_name"`
 	APIKey    string `json:"testmode_key_secret"`
 }
 
@@ -70,7 +70,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 				ID: response.AccountID,
 			}
 
-			account.Settings.Dashboard.DisplayName = response.DisplayName
+			account.Settings.Dashboard.DisplayName = response.AccountDisplayName
 
 			return response.APIKey, account, nil
 		}

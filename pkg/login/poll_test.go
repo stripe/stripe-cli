@@ -25,7 +25,7 @@ func TestRedeemed(t *testing.T) {
 		if atomic.LoadUint64(&attempts) == 2 {
 			response.Redeemed = true
 			response.AccountID = "acct_123"
-			response.DisplayName = "test_disp_name"
+			response.AccountDisplayName = "test_disp_name"
 			response.APIKey = "sk_test_123"
 		}
 		w.WriteHeader(http.StatusOK)
@@ -89,10 +89,10 @@ func TestExceedMaxAttempts(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, accountID, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	assert.EqualError(t, err, "exceeded max attempts")
 	assert.Empty(t, apiKey)
-	assert.Empty(t, accountID)
+	assert.Empty(t, account)
 	assert.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
 }
 
@@ -108,10 +108,10 @@ func TestHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, accountID, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	assert.EqualError(t, err, "unexpected http status code: 500 ")
 	assert.Empty(t, apiKey)
-	assert.Empty(t, accountID)
+	assert.Nil(t, account)
 	assert.Equal(t, uint64(1), atomic.LoadUint64(&attempts))
 }
 
@@ -120,9 +120,9 @@ func TestHTTPRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	apiKey, accountID, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "connect: connection refused")
 	assert.Empty(t, apiKey)
-	assert.Empty(t, accountID)
+	assert.Nil(t, account)
 }
