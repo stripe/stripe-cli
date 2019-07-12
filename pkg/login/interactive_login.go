@@ -92,12 +92,14 @@ func securePrompt(input io.Reader) (string, error) {
 		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
 		// this results in the terminal input staying hidden after program exit.
 		// We need to manually catch the interrupt and restore terminal state before exiting.
-		err := protectTerminalState()
+		signalChan, err := protectTerminalState()
 		if err != nil {
 			return "", err
 		}
 
 		buf, err := terminal.ReadPassword(int(syscall.Stdin))
+		signal.Stop(signalChan)
+
 		if err != nil {
 			return "", err
 		}
@@ -109,10 +111,10 @@ func securePrompt(input io.Reader) (string, error) {
 	return reader.ReadString('\n')
 }
 
-func protectTerminalState() error {
+func protectTerminalState() (chan os.Signal, error) {
 	originalTerminalState, err := terminal.GetState(int(syscall.Stdin))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	signalChan := make(chan os.Signal)
@@ -123,5 +125,5 @@ func protectTerminalState() error {
 		os.Exit(1)
 	}()
 
-	return nil
+	return signalChan, nil
 }
