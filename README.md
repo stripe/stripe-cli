@@ -161,7 +161,7 @@ To trigger an event, run:
 
 ### Installation
 
-The Stripe CLI is built using Go. To download the source code, run:
+The Stripe CLI is built using Go. To download and compile the source code, run:
 
     $ go get -u github.com/stripe/stripe-cli/...
 
