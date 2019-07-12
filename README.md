@@ -157,8 +157,6 @@ To trigger an event, run:
 
     $ stripe trigger <event>
 
-Events triggered through the CLI are real objects and
-
 ## Developing the Stripe CLI
 
 ### Installation
