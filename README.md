@@ -165,7 +165,7 @@ Events triggered through the CLI are real objects and
 
 The Stripe CLI is built using Go. To download the source code, run:
 
-    $ go get -u github.com/stripe/stripe-cli
+    $ go get -u github.com/stripe/stripe-cli/...
 
 ### Tests
 
