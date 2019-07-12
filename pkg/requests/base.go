@@ -184,11 +184,11 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 		}
 	}
 
-	return Encode(keys, values), nil
+	return encode(keys, values), nil
 }
 
-// Encode creates a url encoded string with the request parameters
-func Encode(keys []string, values []string) string {
+// encode creates a url encoded string with the request parameters
+func encode(keys []string, values []string) string {
 	var buf strings.Builder
 	for i := range keys {
 		key := keys[i]

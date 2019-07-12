@@ -85,7 +85,7 @@ func TestMakeRequest(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK!"))
 
-		_, err := ioutil.ReadAll(r.Body)
+		reqBody, err := ioutil.ReadAll(r.Body)
 		assert.Nil(t, err)
 
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -93,6 +93,8 @@ func TestMakeRequest(t *testing.T) {
 		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
 		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		assert.Equal(t, "bender=robot&fry=human&expand=expand%3Dfuturama.employees&expand=expand%3Dfuturama.ships", r.URL.RawQuery)
+		assert.Equal(t, "", string(reqBody))
 	}))
 	defer ts.Close()
 
