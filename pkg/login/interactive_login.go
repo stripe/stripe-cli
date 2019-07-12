@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 	"syscall"
 
@@ -87,6 +88,15 @@ func redactAPIKey(apiKey string) string {
 
 func securePrompt(input io.Reader) (string, error) {
 	if input == os.Stdin {
+
+		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
+		// this results in the terminal input staying hidden after program exit.
+		// We need to manually catch the interrupt and restore terminal state before exiting.
+		err := protectTerminalState()
+		if err != nil {
+			return "", err
+		}
+
 		buf, err := terminal.ReadPassword(int(syscall.Stdin))
 		if err != nil {
 			return "", err
@@ -97,4 +107,21 @@ func securePrompt(input io.Reader) (string, error) {
 
 	reader := bufio.NewReader(input)
 	return reader.ReadString('\n')
+}
+
+func protectTerminalState() error {
+	originalTerminalState, err := terminal.GetState(int(syscall.Stdin))
+	if err != nil {
+		return err
+	}
+
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		<-signalChan
+		terminal.Restore(int(syscall.Stdin), originalTerminalState)
+		os.Exit(1)
+	}()
+
+	return nil
 }
