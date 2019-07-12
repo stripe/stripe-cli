@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	prof "github.com/stripe/stripe-cli/pkg/profile"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -28,58 +29,71 @@ var rootCmd = &cobra.Command{
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
-	Long: `⚠️  The CLI is still in beta and we are actively working on features. If you
-have and feedback for us, we'd love to hear it. Run 'stripe feedback' to see
-where to send your feedback. ⚠️
+	Long: fmt.Sprintf(`%s
 
-The Stripe CLI gives you tools to make integrating your application with Stripe
-easier. You do things like connect to a Stripe webhook tunnel to test webhooks
-locally, make test mode requests to the API, and trigger certain webhook events.
+The Stripe CLI gives you tools to help build with Stripe. You can do things like
+connect to a Stripe webhook tunnel and test webhooks locally, make test mode
+requests to the API, and trigger certain webhook events.
 
 Before using the CLI, you'll need to login:
-$ stripe login
+
+  $ stripe login
 
 If you're working on multiple projects, you can run the login command with the
 --project-name flag:
-$ stripe login --project-name rocket-rides`,
+
+  $ stripe login --project-name rocket-rides`,
+		ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+	),
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd.SetUsageTemplate(`Usage:{{if .Runnable}}
+	rootCmd.SetUsageTemplate(fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
   {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
 
-Aliases:
+%s
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
-Examples:
+%s
   {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
 
-API commands:{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "api")}}
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "api")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
-Webhook commands:{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
-Other commands:{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
+%s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
-Available commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+%s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
-Flags:
+%s
 {{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
-Global flags:
+%s
 {{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
 
-Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+%s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
-`)
+`,
+		ansi.Bold("Usage:"),
+		ansi.Bold("Aliases:"),
+		ansi.Bold("Examples:"),
+		ansi.Bold("API commands:"),
+		ansi.Bold("Webhook commands:"),
+		ansi.Bold("Other commands:"),
+		ansi.Bold("Available commands:"),
+		ansi.Bold("Flags:"),
+		ansi.Bold("Global flags:"),
+		ansi.Bold("Additional help topics:"),
+	))
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

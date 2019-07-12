@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"net/http"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,18 +24,25 @@ func newGetCmd() *getCmd {
 		Use:   "get",
 		Args:  validators.ExactArgs(1),
 		Short: "Make GET requests to the Stripe API using your test mode key.",
-		Long: `Make GET requests to the Stripe API using your test mode key.
+		Long: fmt.Sprintf(`%s
 
-You can only get data in test mode, the get command does not work for live mode.
-The command also supports common API features like pagination and limits.
+Make GET requests to the Stripe API using your test mode key.
 
-For a full list of supported paths, see the API reference: https://stripe.com/docs/api
+The command supports common API features like pagination and limits. Currently,
+you can only get data in test mode.
 
-GET a charge:
-$ stripe get /charges/ch_1EGYgUByst5pquEtjb0EkYha
+For a full list of supported paths, see the API reference:
+https://stripe.com/docs/api
 
-GET 50 charges:
-$ stripe get --limit 50 /charges`,
+To get a charge:
+
+  $ stripe get /charges/ch_1EGYgUByst5pquEtjb0EkYha
+
+To get 50 charges:
+
+  $ stripe get --limit 50 /charges`,
+			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+		),
 
 		RunE: gc.reqs.RunRequestsCmd,
 	}

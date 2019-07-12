@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -21,34 +22,60 @@ type triggerCmd struct {
 func newTriggerCmd() *triggerCmd {
 	tc := &triggerCmd{}
 	tc.cmd = &cobra.Command{
-		Use:   "trigger",
-		Args:  validators.ExactArgs(1),
+		Use:  "trigger",
+		Args: validators.ExactArgs(1),
+		ValidArgs: []string{
+			"charge.captured",
+			"charge.failed",
+			"charge.succeeded",
+			"customer.created",
+			"customer.updated",
+			"customer.source.created",
+			"customer.source.updated",
+			"customer.subscription.updated",
+			"invoice.created",
+			"invoice.finalized",
+			"invoice.payment_succeeded",
+			"invoice.updated",
+			"payment_intent.created",
+			"payment_intent.payment_failed",
+			"payment_intent.succeeded",
+			"payment_method.attached",
+		},
 		Short: "Trigger test webhook events to fire",
-		Long: `Cause a specific webhook event to be created and sent. Webhooks tested through
+		Long: fmt.Sprintf(`%s
+
+Cause a specific webhook event to be created and sent. Webhooks tested through
 the trigger command will also create all necessary side-effect events that are
 needed to create the triggered event.
 
 Trigger a payment_intent.created event:
-$ stripe trigger payment_intent.created
 
-Supported events:
-	charge.captured
-	charge.failed
-	charge.succeeded
-	customer.created
-	customer.updated
-	customer.source.created
-	customer.source.updated
-	customer.subscription.updated
-	invoice.created
-	invoice.finalized
-	invoice.payment_succeeded
-	invoice.updated
-	payment_intent.created
-	payment_intent.payment_failed
-	payment_intent.succeeded
-	payment_method.attached`,
-		RunE: tc.runTriggerCmd,
+  $ stripe trigger payment_intent.created
+
+%s
+  charge.captured
+  charge.failed
+  charge.succeeded
+  customer.created
+  customer.updated
+  customer.source.created
+  customer.source.updated
+  customer.subscription.updated
+  invoice.created
+  invoice.finalized
+  invoice.payment_succeeded
+  invoice.updated
+  payment_intent.created
+  payment_intent.payment_failed
+  payment_intent.succeeded
+  payment_method.attached`,
+			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			ansi.Bold("Supported events:"),
+		),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return triggerEvent(args[0])
+		},
 	}
 
 	// Hidden configuration flags, useful for dev/debugging
