@@ -59,7 +59,7 @@ You can create project-specific configurations with the `--project-name` flag, w
 
 If you do not provide the `--project-name` flag for a command, it will default to the global configuration.
 
-All configurations are stored in `~/.config/stripe/config.toml` but you can use the `[XDG_CONFIG_HOME](https://wiki.archlinux.org/index.php/XDG_Base_Directory)` environment variable to override this location.
+All configurations are stored in `~/.config/stripe/config.toml` but you can use the [`XDG_CONFIG_HOME`](https://wiki.archlinux.org/index.php/XDG_Base_Directory) environment variable to override this location.
 
 You can also provide an API key manually by passing the `--interactive` flag:
 
@@ -157,15 +157,13 @@ To trigger an event, run:
 
     $ stripe trigger <event>
 
-Events triggered through the CLI are real objects and
-
 ## Developing the Stripe CLI
 
 ### Installation
 
-The Stripe CLI is built using Go. To download the source code, run:
+The Stripe CLI is built using Go. To download and compile the source code, run:
 
-    $ go get -u github.com/stripe/stripe-cli
+    $ go get -u github.com/stripe/stripe-cli/...
 
 ### Tests
 
