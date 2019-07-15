@@ -4,7 +4,7 @@
 
 The Stripe CLI is a command-line interface for Stripe that can:
 
-1. `configure` your API key and machine name
+1. `login` to your Stripe account and authenticate the CLI
 2. `listen` for webhooks and forward them to a local server
 3. Run `get`, `post`, and `delete` commands to the Stripe API
 4. `trigger` a limited set of webhook events

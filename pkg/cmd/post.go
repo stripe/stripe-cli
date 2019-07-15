@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"net/http"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,16 +24,22 @@ func newPostCmd() *postCmd {
 		Use:   "post",
 		Args:  validators.ExactArgs(1),
 		Short: "Make POST requests to the Stripe API using your test mode key.",
-		Long: `Make POST requests to the Stripe API using your test mode key.
+		Long: fmt.Sprintf(`%s
 
-You can only POST data in test mode, the post command does not work for
-live mode. The post command supports API features like idempotency keys and
-expand flags.
+Make POST requests to the Stripe API using your test mode key.
 
-For a full list of supported paths, see the API reference: https://stripe.com/docs/api
+The post command supports API features like idempotency keys and expand flags.
+Currently, you can only POST data in test mode.
+
+For a full list of supported paths, see the API reference:
+https://stripe.com/docs/api
 
 Example:
-$ stripe post /payment_intents -d amount=2000 -d currency=usd -d payment_method_types[]=card`,
+
+  $ stripe post /payment_intents -d amount=2000 -d currency=usd -d "payment_method_types[]=card"`,
+
+			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+		),
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 

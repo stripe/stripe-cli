@@ -22,8 +22,8 @@ func newLoginCmd() *loginCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "login",
 		Args:  validators.NoArgs,
-		Short: "Log into your Stripe account",
-		Long:  `Log into your Stripe account to write your configuration file`,
+		Short: "Login to your Stripe account",
+		Long:  `Login to your Stripe account to write your configuration file`,
 		RunE:  lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "interactive configuration mode")

@@ -30,6 +30,12 @@ var EnvironmentOverrideColors = true
 // Public functions
 //
 
+// Bold returns bolded text if the writer supports colors
+func Bold(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Bold(text))
+}
+
 // Color returns an aurora.Aurora instance with colors enabled or disabled
 // depending on whether the writer supports colors.
 func Color(w io.Writer) aurora.Aurora {
@@ -44,6 +50,18 @@ func ColorizeJSON(json string, w io.Writer) string {
 	}
 
 	return string(pretty.Color([]byte(json), nil))
+}
+
+// Faint returns slightly offset color text if the writer supports it
+func Faint(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Faint(text))
+}
+
+// Italic returns italicized text if the writer supports it.
+func Italic(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Italic(text))
 }
 
 // Linkify returns an ANSI escape sequence with an hyperlink, if the writer

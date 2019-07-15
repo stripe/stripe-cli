@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"path"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -35,19 +37,25 @@ func newListenCmd() *listenCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "listen",
 		Args:  validators.NoArgs,
-		Short: "listens for webhook events sent from Stripe to help test your integration.",
-		Long: `The listen command lets you watch for and forward webhook events from Stripe.
+		Short: "Listens for webhook events sent from Stripe to help test your integration.",
+		Long: fmt.Sprintf(`%s
+
+The listen command lets you watch for and forward webhook events from Stripe.
 The command establishes a direct connection with Stripe to send the webhook
 events to your local machine. With that, you can either leave it open to see
 webhooks come in, filter on specific events, or forward the events to a local
 instance of your application.
 
 Watch for all events sent from Stripe:
-$ stripe listen
+
+  $ stripe listen
 
 Start listening for 'charge.created' and 'charge.updated' events and forward
 to your localhost:
-$ stripe listen --events charge.created,charge.updated --forward-to localhost:9000/events`,
+
+  $ stripe listen --events charge.created,charge.updated --forward-to localhost:9000/events`,
+			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+		),
 		RunE: lc.runListenCmd,
 	}
 
