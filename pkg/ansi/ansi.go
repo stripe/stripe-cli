@@ -32,10 +32,6 @@ var EnvironmentOverrideColors = true
 
 // Bold returns bolded text if the writer supports colors
 func Bold(text string) string {
-	if !shouldUseColors(os.Stdout) {
-		return text
-	}
-
 	color := Color(os.Stdout)
 	return color.Sprintf(color.Bold(text))
 }
@@ -58,20 +54,12 @@ func ColorizeJSON(json string, w io.Writer) string {
 
 // Faint returns slightly offset color text if the writer supports it
 func Faint(text string) string {
-	if !shouldUseColors(os.Stdout) {
-		return text
-	}
-
 	color := Color(os.Stdout)
 	return color.Sprintf(color.Faint(text))
 }
 
 // Italic returns italicized text if the writer supports it.
 func Italic(text string) string {
-	if !shouldUseColors(os.Stdout) {
-		return text
-	}
-
 	color := Color(os.Stdout)
 	return color.Sprintf(color.Italic(text))
 }
