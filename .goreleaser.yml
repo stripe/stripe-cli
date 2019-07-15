@@ -46,8 +46,6 @@ brews:
     github:
       owner: stripe
       name: homebrew-stripe-cli
-    download_strategy: CustomGitHubPrivateRepositoryReleaseDownloadStrategy
-    custom_require: "../custom_download_strategy"
     commit_author:
       name: stripe-ci
       email: support@stripe.com
