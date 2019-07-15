@@ -35,7 +35,12 @@ func InteractiveLogin(profile profile.Profile) error {
 	// The '>' character is automatically included at the end of client login
 	// due to ansi spinner. Since no spinner is used with interactive login,
 	// we need to include it manually to maintain consistency in outputs.
-	fmt.Println(fmt.Sprintf("> %s", SuccessMessage(nil, stripe.DefaultAPIBaseURL, apiKey)))
+	message, err := SuccessMessage(nil, stripe.DefaultAPIBaseURL, apiKey)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("> Error verifying the CLI was setup successfully: %s", err))
+	} else {
+		fmt.Println(fmt.Sprintf("> %s", message))
+	}
 
 	return nil
 }

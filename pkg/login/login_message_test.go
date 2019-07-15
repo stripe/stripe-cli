@@ -15,7 +15,8 @@ func TestSuccessMessage(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = "test_disp_name"
 
-	msg := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(account, "", "sk_test_123")
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
@@ -28,7 +29,8 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	msg := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(account, "", "sk_test_123")
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
@@ -38,7 +40,8 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &Account{}
-	msg := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(account, "", "sk_test_123")
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
 		"Done! The Stripe CLI is configured\n",
@@ -61,7 +64,8 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg := SuccessMessage(nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
@@ -83,7 +87,8 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg := SuccessMessage(nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
+	assert.Nil(t, err)
 	assert.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",

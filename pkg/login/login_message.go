@@ -27,13 +27,13 @@ type Dashboard struct {
 }
 
 // SuccessMessage returns the display message for a successfully authenticated user
-func SuccessMessage(account *Account, baseURL string, apiKey string) string {
+func SuccessMessage(account *Account, baseURL string, apiKey string) (string, error) {
 
 	// Account will be nil if user did interactive login
 	if account == nil {
 		acc, err := getUserAccount(baseURL, apiKey)
 		if err != nil {
-			return fmt.Sprintf("%s", err)
+			return "", err
 		}
 		account = acc
 	}
@@ -48,17 +48,17 @@ func SuccessMessage(account *Account, baseURL string, apiKey string) string {
 			"Done! The Stripe CLI is configured for %s with account id %s\n",
 			color.Bold(displayName),
 			color.Bold(accountID),
-		)
+		), nil
 	}
 
 	if accountID != "" {
 		return fmt.Sprintf(
 			"Done! The Stripe CLI is configured for your account with account id %s\n",
 			color.Bold(accountID),
-		)
+		), nil
 	}
 
-	return fmt.Sprintf("Done! The Stripe CLI is configured\n")
+	return fmt.Sprintf("Done! The Stripe CLI is configured\n"), nil
 }
 
 func getUserAccount(baseURL string, apiKey string) (*Account, error) {

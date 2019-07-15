@@ -72,8 +72,12 @@ func Login(baseURL string, profile profile.Profile, input io.Reader) error {
 		return configErr
 	}
 
-
-	ansi.StopSpinner(s, SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey), os.Stdout)
+	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("> Error verifying the CLI was setup successfully: %s", err))
+	} else {
+		ansi.StopSpinner(s, message, os.Stdout)
+	}
 
 	return nil
 }
