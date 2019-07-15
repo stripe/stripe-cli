@@ -29,19 +29,57 @@ The main focus for this initial release is to improve the developer while integr
 
 ### Download the CLI
 
-> **Note:** For Homebrew, you’ll need to create a personal access token because this repository is still private. Make sure to save your access token since GitHub won’t show it to you again.
+#### macOS
 
-1. Create a [personal access token](https://github.com/settings/tokens) on github.com. Provide a name like “Stripe CLI: Homebrew download” and enable repository access.
+_With homebrew:_
 
-2. Copy the token github.com provides and add a line to your terminal configuration, e.g. `~/.bash_profile` or `~/.zshrc`:
+1. Run `brew tap stripe/stripe-cli`
 
-    ```sh
-    export HOMEBREW_GITHUB_API_TOKEN=foobar
-    ```
+2. Run `brew install stripe`
 
-3. Run `brew tap stripe/stripe-cli`
+_Without homebrew:_
 
-4. Run `brew install stripe`
+1. Download the latest `mac-os` ta.gz file from https://github.com/stripe/stripe-cli/releases/latest
+
+2. Unzip the file: `tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz`
+
+3. (optional) Move the binary to somewhere you can execute it globally, like `~/usr/local/bin`
+
+#### Linux
+
+_With a package manager:_
+
+1. Download the latest rpm or deb file from https://github.com/stripe/stripe-cli/releases/latest
+
+If you're on Ubuntu (or using `dpkg`): `dpkg -i stripe_x.x.x_linux_amd64.deb`
+
+If you're on Red Hat (or using `rpm`): `rpm -i stripe_x.x.x_linux_amd64.rpm`
+
+_Without a package manager:_
+
+1. Download the latest `linux` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
+
+2. Unzip the file: `tar -xvf stripe_X.X.X_linux_x86_64.tar.gz`
+
+3. Run the executable: `./stripe`
+
+#### Windows
+
+_With scoop:_
+
+1. Run `scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git`
+
+2. Run `scoop install stripe-cli`
+
+_Without scoop:_
+
+1. Download the latest `windows` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
+
+2. Unzip the `stripe_X.X.X_windows_x86_64.tar.gz` file
+
+3. Run the unzipped `.exe` file!
+
+### Success!
 
 🎉 The `stripe` command should now work!
 
