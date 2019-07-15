@@ -72,7 +72,7 @@ _With scoop:_
 
 1. Run `scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git`
 
-2. Run `scoop install stripe-cli`
+2. Run `scoop install stripe`
 
 _Without scoop:_
 
