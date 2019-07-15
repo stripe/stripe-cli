@@ -73,9 +73,7 @@ Trigger a payment_intent.created event:
 			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
 			ansi.Bold("Supported events:"),
 		),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return triggerEvent(args[0])
-		},
+		RunE: tc.runTriggerCmd,
 	}
 
 	// Hidden configuration flags, useful for dev/debugging
