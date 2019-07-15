@@ -36,7 +36,8 @@ func Bold(text string) string {
 		return text
 	}
 
-	return aurora.Sprintf(aurora.Bold(text))
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Bold(text))
 }
 
 // Color returns an aurora.Aurora instance with colors enabled or disabled
@@ -61,7 +62,8 @@ func Faint(text string) string {
 		return text
 	}
 
-	return aurora.Sprintf(aurora.Faint(text))
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Faint(text))
 }
 
 // Italic returns italicized text if the writer supports it.
@@ -70,7 +72,8 @@ func Italic(text string) string {
 		return text
 	}
 
-	return aurora.Sprintf(aurora.Italic(text))
+	color := Color(os.Stdout)
+	return color.Sprintf(color.Italic(text))
 }
 
 // Linkify returns an ANSI escape sequence with an hyperlink, if the writer
