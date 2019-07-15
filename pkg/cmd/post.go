@@ -36,7 +36,8 @@ https://stripe.com/docs/api
 
 Example:
 
-  $ stripe post /payment_intents -d amount=2000 -d currency=usd -d payment_method_types[]=card`,
+  $ stripe post /payment_intents -d amount=2000 -d currency=usd -d "payment_method_types[]=card"`,
+
 			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
 		),
 		RunE: gc.reqs.RunRequestsCmd,

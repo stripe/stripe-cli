@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -20,7 +21,7 @@ func newVersionCmd() *versionCmd {
 			Args:  validators.NoArgs,
 			Short: "Get the version of the Stripe CLI",
 			Run: func(cmd *cobra.Command, args []string) {
-				fmt.Println("stripe version " + version.Version + " (beta)")
+				fmt.Println(fmt.Sprintf("stripe version "+version.Version+" %s", ansi.Bold("(beta)")))
 			},
 		},
 	}

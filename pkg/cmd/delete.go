@@ -36,7 +36,7 @@ https://stripe.com/docs/api
 
 To delete a charge:
 
-  $ stripe delete /charges/ch_1EGYgUByst5pquEtjb0EkYha`,
+  $ stripe delete /customers/cus_FROPkgsHVRRspg`,
 			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
 		),
 		RunE: gc.reqs.RunRequestsCmd,
