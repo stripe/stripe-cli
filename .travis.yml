@@ -3,6 +3,11 @@ language: go
 go:
 - 1.12.x
 
+addons:
+  apt:
+    packages:
+    - rpm
+
 env:
 - GO111MODULE=on
 
