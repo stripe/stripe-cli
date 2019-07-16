@@ -31,8 +31,8 @@ func TestBuildDataForRequestParamOrdering(t *testing.T) {
 
 func TestBuildDataForRequestExpand(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"expand=futurama.employees", "expand=futurama.ships"}}
-	expected := "expand=futurama.employees&expand=futurama.ships"
+	params := &RequestParameters{expand: []string{"futurama.employees", "futurama.ships"}}
+	expected := "expand[]=futurama.employees&expand[]=futurama.ships"
 
 	output, _ := rb.buildDataForRequest(params)
 	assert.Equal(t, expected, output)
@@ -93,7 +93,7 @@ func TestMakeRequest(t *testing.T) {
 		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		assert.NotEmpty(t, r.UserAgent())
 		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "bender=robot&fry=human&expand=expand%3Dfuturama.employees&expand=expand%3Dfuturama.ships", r.URL.RawQuery)
+		assert.Equal(t, "bender=robot&fry=human&expand[]=futurama.employees&expand[]=futurama.ships", r.URL.RawQuery)
 		assert.Equal(t, "", string(reqBody))
 	}))
 	defer ts.Close()
@@ -103,7 +103,7 @@ func TestMakeRequest(t *testing.T) {
 
 	params := &RequestParameters{
 		data:   []string{"bender=robot", "fry=human"},
-		expand: []string{"expand=futurama.employees", "expand=futurama.ships"},
+		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
 	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params)
