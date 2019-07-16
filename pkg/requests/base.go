@@ -106,6 +106,7 @@ func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) (
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
 		APIKey:  secretKey,
+		Verbose: rb.showHeaders,
 	}
 
 	data, err := rb.buildDataForRequest(params)
@@ -129,10 +130,6 @@ func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) (
 	if !rb.SuppressOutput {
 		if err != nil {
 			return []byte{}, err
-		}
-
-		if rb.showHeaders {
-			fmt.Println(rb.formatHeaders(resp))
 		}
 
 		result := ansi.ColorizeJSON(string(body), os.Stdout)
@@ -210,16 +207,6 @@ func encode(keys []string, values []string) string {
 		buf.WriteString(url.QueryEscape(value))
 	}
 	return buf.String()
-}
-
-func (rb *Base) formatHeaders(response *http.Response) string {
-	var allHeaders []string
-	for name, headers := range response.Header {
-		for _, h := range headers {
-			allHeaders = append(allHeaders, fmt.Sprintf("< %v: %v", name, h))
-		}
-	}
-	return strings.Join(allHeaders, "\n") + "\n"
 }
 
 func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParameters) {
