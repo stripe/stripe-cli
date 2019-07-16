@@ -164,7 +164,7 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 			values = append(values, splitDatum[1])
 		}
 		for _, datum := range params.expand {
-			keys = append(keys, "expand")
+			keys = append(keys, "expand[]")
 			values = append(values, datum)
 		}
 	}
@@ -195,6 +195,13 @@ func encode(keys []string, values []string) string {
 		value := values[i]
 
 		keyEscaped := url.QueryEscape(key)
+
+		// Don't use strict form encoding by changing the square bracket
+		// control characters back to their literals. This is fine by the
+		// server, and makes these parameter strings easier to read.
+		keyEscaped = strings.ReplaceAll(keyEscaped, "%5B", "[")
+		keyEscaped = strings.ReplaceAll(keyEscaped, "%5D", "]")
+
 		if buf.Len() > 0 {
 			buf.WriteByte('&')
 		}
