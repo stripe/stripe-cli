@@ -9,7 +9,7 @@ The Stripe CLI is a command-line interface for Stripe that can:
 3. Run `get`, `post`, and `delete` commands to the Stripe API
 4. `trigger` a limited set of webhook events
 
-The main focus for this initial release is to improve the developer while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
+The main focus for this initial release is to improve the developer experience while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
 
 ## Table of Contents
 
