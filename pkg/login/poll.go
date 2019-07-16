@@ -18,11 +18,12 @@ const intervalDefault = 1 * time.Second
 type pollAPIKeyResponse struct {
 	Redeemed  bool   `json:"redeemed"`
 	AccountID string `json:"account_id"`
+	AccountDisplayName string `json:"account_display_name"`
 	APIKey    string `json:"testmode_key_secret"`
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
-func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string, string, error) {
+func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string, *Account, error) {
 	if maxAttempts == 0 {
 		maxAttempts = maxAttemptsDefault
 	}
@@ -33,7 +34,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 	parsedURL, err := url.Parse(pollURL)
 	if err != nil {
-		return "", "", err
+		return "", nil, err
 	}
 
 	baseURL := &url.URL{Scheme: parsedURL.Scheme, Host: parsedURL.Host}
@@ -46,26 +47,32 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 	for count < maxAttempts {
 		res, err := client.PerformRequest(http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
 		if err != nil {
-			return "", "", err
+			return "", nil, err
 		}
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return "", "", err
+			return "", nil, err
 		}
 
 		if res.StatusCode != http.StatusOK {
-			return "", "", fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+			return "", nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 		}
 
 		var response pollAPIKeyResponse
 		jsonErr := json.Unmarshal(bodyBytes, &response)
 		if jsonErr != nil {
-			return "", "", jsonErr
+			return "", nil, jsonErr
 		}
 
 		if response.Redeemed {
-			return response.APIKey, response.AccountID, nil
+			account := &Account{
+				ID: response.AccountID,
+			}
+
+			account.Settings.Dashboard.DisplayName = response.AccountDisplayName
+
+			return response.APIKey, account, nil
 		}
 
 		count++
@@ -73,5 +80,5 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 
 	}
 
-	return "", "", errors.New("exceeded max attempts")
+	return "", nil, errors.New("exceeded max attempts")
 }

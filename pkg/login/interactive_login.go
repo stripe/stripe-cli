@@ -14,12 +14,12 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // InteractiveLogin lets the user set configuration on the command line
 func InteractiveLogin(profile profile.Profile) error {
-
 	apiKey, err := getConfigureAPIKey(os.Stdin)
 	if err != nil {
 		return err
@@ -32,7 +32,15 @@ func InteractiveLogin(profile profile.Profile) error {
 		return configErr
 	}
 
-	fmt.Println("You're configured and all set to get started")
+	// The '>' character is automatically included at the end of client login
+	// due to ansi spinner. Since no spinner is used with interactive login,
+	// we need to include it manually to maintain consistency in outputs.
+	message, err := SuccessMessage(nil, stripe.DefaultAPIBaseURL, apiKey)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("> Error verifying the CLI was setup successfully: %s", err))
+	} else {
+		fmt.Println(fmt.Sprintf("> %s", message))
+	}
 
 	return nil
 }
