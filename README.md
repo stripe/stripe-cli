@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.com/stripe/stripe-cli.svg?token=eQWDVpt1sJR63TxbC1KA&branch=master)](https://travis-ci.com/stripe/stripe-cli)
 
+_🏗 The Stripe CLI is currently in beta! We're working on more features to make the experience great. If you have any [feedback](https://stri.pe/cli-feedback), find [issues](https://github.com/stripe/stripe-cli/issues), or would like to be involved in more active testing, please let us know!_
+
 The Stripe CLI is a command-line interface for Stripe that can:
 
 1. `login` to your Stripe account and authenticate the CLI
