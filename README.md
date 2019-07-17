@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/stripe/stripe-cli.svg?token=eQWDVpt1sJR63TxbC1KA&branch=master)](https://travis-ci.com/stripe/stripe-cli)
 
-_🏗 The Stripe CLI is currently in beta! We're working on more features to make the experience great. If you have any [feedback](https://docs.google.com/forms/d/e/1FAIpQLScA6MwRBmfyWSBRzxUPd_P2oy9uL6_bFLjOUsnRRYiwAUDCXw/viewform), find [issues](https://github.com/stripe/stripe-cli/issues), or would like to be involved in more active testing, please let us know!_
+_🏗 The Stripe CLI is currently in beta! We're working on more features to make the experience great. If you have any [feedback](https://stri.pe/cli-feedback), find [issues](https://github.com/stripe/stripe-cli/issues), or would like to be involved in more active testing, please let us know!_
 
 The Stripe CLI is a command-line interface for Stripe that can:
 
