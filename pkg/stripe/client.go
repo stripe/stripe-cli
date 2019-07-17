@@ -29,6 +29,10 @@ type Client struct {
 	// empty, the `Authorization` header will be omitted.
 	APIKey string
 
+	// When this is enabled, request and response headers will be printed to
+	// stdout.
+	Verbose bool
+
 	// Cached HTTP client, lazily created the first time the Client is used to
 	// send a request.
 	httpClient *http.Client
@@ -68,7 +72,7 @@ func (c *Client) PerformRequest(method, path string, params string, configure fu
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = newHTTPClient(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		c.httpClient = newHTTPClient(c.Verbose, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	}
 
 	resp, err := c.httpClient.Do(req)
@@ -79,7 +83,7 @@ func (c *Client) PerformRequest(method, path string, params string, configure fu
 	return resp, nil
 }
 
-func newHTTPClient(unixSocket string) *http.Client {
+func newHTTPClient(verbose bool, unixSocket string) *http.Client {
 	var httpTransport *http.Transport
 	if unixSocket != "" {
 		dialFunc := func(network, addr string) (net.Conn, error) {
@@ -105,7 +109,14 @@ func newHTTPClient(unixSocket string) *http.Client {
 			TLSHandshakeTimeout: 10 * time.Second,
 		}
 	}
-	return &http.Client{
+
+	tr := &verboseTransport{
 		Transport: httpTransport,
+		Verbose:   verbose,
+		Out:       os.Stderr,
+	}
+
+	return &http.Client{
+		Transport: tr,
 	}
 }

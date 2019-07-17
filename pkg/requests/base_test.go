@@ -110,31 +110,6 @@ func TestMakeRequest(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestFormatHeaders(t *testing.T) {
-	rb := Base{}
-
-	resp := &http.Response{
-		Header: make(http.Header, 0),
-	}
-
-	emptyHeaders := rb.formatHeaders(resp)
-	emptyExpected := "\n"
-
-	assert.Equal(t, emptyExpected, emptyHeaders)
-
-	resp.Header.Add("header-one", "header-one-value")
-	resp.Header.Add("header-two", "header-two-value")
-	resp.Header.Add("header-three", "header-three-value")
-
-	headers := rb.formatHeaders(resp)
-
-	// Since Headers are stored in a map, the order is not deterministic
-	// and we must check for contains each header vs. direct string comparison
-	assert.Contains(t, headers, "< Header-One: header-one-value\n")
-	assert.Contains(t, headers, "< Header-Two: header-two-value\n")
-	assert.Contains(t, headers, "< Header-Three: header-three-value\n")
-}
-
 func TestGetUserConfirmationRequired(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("yes\n"))
 
