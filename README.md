@@ -141,7 +141,7 @@ The webhook signing secret provided will not change between restarts to the `lis
 You can specify which events you want to listen to using `--events` with a comma-separated [list of Stripe events](https://stripe.com/docs/api/events/list).
 
 ```sh
-$ stripe listen --events=payment_intents.created,payment_intents.updated
+$ stripe listen --events=payment_intent.created,payment_intent.updated
 ```
 
 You may have webhook endpoints you've already configured with specific Stripe events in your Dashboard. The Stripe CLI can automatically listen to those events with the `--load-from-webhooks-api` flag, used alongside the `--forward-to` flag. This will read any endpoints configured in test mode for your account and forward associated events to the provided URL:
