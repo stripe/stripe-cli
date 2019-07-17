@@ -37,7 +37,7 @@ func (p *Profile) GetDeviceName() (string, error) {
 		return viper.GetString("default.device_name"), nil
 	}
 
-	return "", errors.New("your device name has not been configured. Use `stripe configure` to set your device name")
+	return "", errors.New("your device name has not been configured. Use `stripe login` to set your device name")
 }
 
 // GetSecretKey will return the existing key for the given profile
@@ -62,7 +62,7 @@ func (p *Profile) GetSecretKey() (string, error) {
 		return key, nil
 	}
 
-	return "", errors.New("your API key has not been configured. Use `stripe configure` to set your API key")
+	return "", errors.New("your API key has not been configured. Use `stripe login` to set your API key")
 }
 
 // GetConfigField returns the configuration field for the specific profile
