@@ -8,12 +8,12 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	prof "github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
-// Profile is the cli configuration for the user
-var Profile prof.Profile
+// Config is the cli configuration for the user
+var Config config.Config
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -101,14 +101,16 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 }
 
 func init() {
-	cobra.OnInitialize(Profile.InitConfig)
+	cobra.OnInitialize(Config.InitConfig)
 
 	rootCmd.PersistentFlags().String("api-key", "", "Your test mode API secret key to use for the command")
-	rootCmd.PersistentFlags().StringVar(&Profile.Color, "color", "auto", "turn on/off color output (on, off, auto)")
-	rootCmd.PersistentFlags().StringVar(&Profile.ConfigFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
-	rootCmd.PersistentFlags().StringVar(&Profile.ProfileName, "project-name", "default", "the project name to read from for config")
-	rootCmd.PersistentFlags().StringVar(&Profile.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
-	rootCmd.PersistentFlags().StringVar(&Profile.DeviceName, "device-name", "", "device name")
+	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "auto", "turn on/off color output (on, off, auto)")
+	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
+	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
+
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.ProfileName, "project-name", "default", "the project name to read from for config")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
+
 	viper.BindPFlag("secret_key", rootCmd.PersistentFlags().Lookup("api-key")) // #nosec G104
 
 	viper.SetEnvPrefix("stripe")

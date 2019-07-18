@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ type Base struct {
 	Cmd *cobra.Command
 
 	Method  string
-	Profile profile.Profile
+	Profile config.Profile
 
 	// SuppressOutput is used by `trigger` to hide output
 	SuppressOutput bool

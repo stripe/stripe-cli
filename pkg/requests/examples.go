@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func parseResponse(response []byte) (map[string]interface{}, error) {
@@ -30,7 +30,7 @@ type WebhookEndpoint struct {
 
 // Examples stores possible webhook test events to trigger for the CLI
 type Examples struct {
-	Profile    profile.Profile
+	Profile    config.Profile
 	APIBaseURL string
 	APIVersion string
 	SecretKey  string

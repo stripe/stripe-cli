@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestLogin(t *testing.T) {
@@ -29,13 +29,18 @@ func TestLogin(t *testing.T) {
 	}
 	defer func() { execCommand = exec.Command }()
 
-	configFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
-	p := profile.Profile{
-		Color:       "auto",
-		ConfigFile:  configFile,
-		LogLevel:    "info",
-		ProfileName: "tests",
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+
+	p := config.Profile{
 		DeviceName:  "st-testing",
+		ProfileName: "tests",
+	}
+
+	c := &config.Config{
+		Color: "auto",
+		LogLevel: "info",
+		Profile: p,
+		ProfilesFile: profilesFile,
 	}
 
 	var pollURL string
@@ -67,7 +72,7 @@ func TestLogin(t *testing.T) {
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
 	input := strings.NewReader("\n")
-	err := Login(ts.URL, p, input)
+	err := Login(ts.URL, c, input)
 	assert.NoError(t, err)
 }
 

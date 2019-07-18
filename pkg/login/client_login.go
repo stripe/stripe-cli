@@ -12,7 +12,7 @@ import (
 	"runtime"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -37,8 +37,8 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(baseURL string, profile profile.Profile, input io.Reader) error {
-	links, err := getLinks(baseURL, profile.DeviceName)
+func Login(baseURL string, config *config.Config, input io.Reader) error {
+	links, err := getLinks(baseURL, config.Profile.DeviceName)
 	if err != nil {
 		return err
 	}
@@ -67,9 +67,10 @@ func Login(baseURL string, profile profile.Profile, input io.Reader) error {
 		return validateErr
 	}
 
-	configErr := profile.ConfigureProfile(apiKey)
-	if configErr != nil {
-		return configErr
+	config.Profile.SecretKey = apiKey
+	profileErr := config.Profile.CreateProfile()
+	if profileErr != nil {
+		return profileErr
 	}
 
 	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey)

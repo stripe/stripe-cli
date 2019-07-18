@@ -13,23 +13,24 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/profile"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // InteractiveLogin lets the user set configuration on the command line
-func InteractiveLogin(profile profile.Profile) error {
+func InteractiveLogin(config *config.Config) error {
 	apiKey, err := getConfigureAPIKey(os.Stdin)
 	if err != nil {
 		return err
 	}
 
-	profile.DeviceName = getConfigureDeviceName(os.Stdin)
+	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
+	config.Profile.SecretKey = apiKey
 
-	configErr := profile.ConfigureProfile(apiKey)
-	if configErr != nil {
-		return configErr
+	profileErr := config.Profile.CreateProfile()
+	if profileErr != nil {
+		return profileErr
 	}
 
 	// The '>' character is automatically included at the end of client login
