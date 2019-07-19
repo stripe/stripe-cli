@@ -1,10 +1,19 @@
+export GO111MODULE := on
+
 all: test
 
 install-deps:
-	GO111MODULE=on go get
+	go get
+.PHONY: install-deps
 
 update-deps:
-	GO111MODULE=on go get -u
+	go get -u
+.PHONY: update-deps
+
+update-openapi-spec:
+	rm -f ./api/openapi-spec/spec3.sdk.json
+	wget https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.sdk.json -P ./api/openapi-spec
+.PHONY: update-openapi-spec
 
 lint:
 # In travis, we need to install golint explicitly. Don't do this in other
@@ -14,13 +23,22 @@ ifeq ($(ENVIRONMENT), travis)
 	git checkout .
 endif
 	golint -set_exit_status ./...
+.PHONY: lint
 
 vet:
 	go vet $(shell go list ./... | grep -v /vendor/)
+.PHONY: vet
 
 test: install-deps lint vet
 	go test -race -cover -v ./...
 	@echo '\o/ yay, we did it!'
+.PHONY: test
+
+build:
+	go mod download
+	go generate ./...
+	go build -o stripe -ldflags "-s -w" cmd/stripe/main.go
+.PHONY: build
 
 # This does not release anything from your local machine but creates a tag
 # for our CI to handle it
@@ -33,3 +51,4 @@ release:
 	@read -p "Enter new version (of the format vN.N.N): " version; \
 	git tag $$version
 	git push --tags
+.PHONY: release
