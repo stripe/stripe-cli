@@ -9,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -128,4 +129,11 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+
+	stripeAPI, err := spec.LoadSpec("")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Failed to parse OpenAPI spec")
+		os.Exit(1)
+	}
+	addAllResourceCmds(rootCmd, stripeAPI)
 }

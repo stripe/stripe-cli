@@ -7,6 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkLoadSpec(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		LoadSpec("")
+	}
+}
+
 func TestLoadSpec(t *testing.T) {
 	data, err := LoadSpec("")
 	assert.NoError(t, err)

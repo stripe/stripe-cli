@@ -28,6 +28,10 @@ type RequestParameters struct {
 	stripeAccount string
 }
 
+func (r *RequestParameters) AppendData(data []string) {
+	r.data = append(r.data, data...)
+}
+
 // Base does stuff
 type Base struct {
 	Cmd *cobra.Command
