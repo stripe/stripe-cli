@@ -35,6 +35,8 @@ type Base struct {
 	Method  string
 	Profile config.Profile
 
+	Parameters RequestParameters
+
 	// SuppressOutput is used by `trigger` to hide output
 	SuppressOutput bool
 
@@ -43,8 +45,6 @@ type Base struct {
 	autoConfirm bool
 	showHeaders bool
 }
-
-var parameters RequestParameters
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
@@ -69,26 +69,26 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 
 	path := normalizePath(args[0])
 
-	_, err = rb.MakeRequest(secretKey, path, &parameters)
+	_, err = rb.MakeRequest(secretKey, path, &rb.Parameters)
 
 	return err
 }
 
 // InitFlags initialize shared flags for all requests commands
 func (rb *Base) InitFlags() {
-	rb.Cmd.Flags().StringArrayVarP(&parameters.data, "data", "d", []string{}, "Data to pass for the API request")
-	rb.Cmd.Flags().StringArrayVarP(&parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
-	rb.Cmd.Flags().StringVarP(&parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
-	rb.Cmd.Flags().StringVarP(&parameters.version, "api-version", "v", "", "Set the Stripe API version to use for your request")
-	rb.Cmd.Flags().StringVar(&parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "api-version", "v", "", "Set the Stripe API version to use for your request")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
-		rb.Cmd.Flags().StringVarP(&parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
-		rb.Cmd.Flags().StringVarP(&parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
-		rb.Cmd.Flags().StringVarP(&parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+		rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
+		rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
+		rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
 	}
 
 	// Hidden configuration flags, useful for dev/debugging
