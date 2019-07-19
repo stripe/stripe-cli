@@ -1,3 +1,5 @@
+//go:generate go run gen_resources_cmds.go
+
 package cmd
 
 import (
@@ -20,13 +22,14 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Annotations: map[string]string{
-		"get":     "http",
-		"post":    "http",
-		"delete":  "http",
-		"trigger": "webhooks",
-		"listen":  "webhooks",
-		"logs":    "stripe",
-		"status":  "stripe",
+		"get":       "http",
+		"post":      "http",
+		"delete":    "http",
+		"trigger":   "webhooks",
+		"listen":    "webhooks",
+		"logs":      "stripe",
+		"status":    "stripe",
+		"resources": "help",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -86,4 +89,7 @@ func init() {
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
+	rootCmd.AddCommand(newResourcesCmd().cmd)
+
+	addAllResourcesCmds(rootCmd)
 }

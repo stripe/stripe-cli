@@ -9,10 +9,27 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
-func init() {
-	cobra.AddTemplateFunc("wrappedInheritedFlagUsages", wrappedInheritedFlagUsages)
-	cobra.AddTemplateFunc("wrappedLocalFlagUsages", wrappedLocalFlagUsages)
+//
+// Public functions
+//
+
+// WrappedInheritedFlagUsages returns a string containing the usage information
+// for all flags which were inherited from parent commands, wrapped to the
+// terminal's width.
+func WrappedInheritedFlagUsages(cmd *cobra.Command) string {
+	return cmd.InheritedFlags().FlagUsagesWrapped(getTerminalWidth())
 }
+
+// WrappedLocalFlagUsages returns a string containing the usage information
+// for all flags specifically set in the current command, wrapped to the
+// terminal's width.
+func WrappedLocalFlagUsages(cmd *cobra.Command) string {
+	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
+}
+
+//
+// Private functions
+//
 
 func getBanner() string {
 	return ansi.Italic("⚠️  The Stripe CLI is in beta! Share your feedback with `stripe feedback` ⚠️")
@@ -45,10 +62,10 @@ func getUsageTemplate() string {
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 %s
-{{wrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+{{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
-{{wrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
 
 %s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
 {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
@@ -78,10 +95,7 @@ func getTerminalWidth() int {
 	return width
 }
 
-func wrappedInheritedFlagUsages(cmd *cobra.Command) string {
-	return cmd.InheritedFlags().FlagUsagesWrapped(getTerminalWidth())
-}
-
-func wrappedLocalFlagUsages(cmd *cobra.Command) string {
-	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
+func init() {
+	cobra.AddTemplateFunc("WrappedInheritedFlagUsages", WrappedInheritedFlagUsages)
+	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
 }
