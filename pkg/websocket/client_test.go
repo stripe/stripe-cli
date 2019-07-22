@@ -50,8 +50,8 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		url,
 		"websocket-random-id",
 		&Config{
-			WebhookEventHandler: WebhookEventHandlerFunc(func(msg *WebhookEvent) {
-				rcvMsg = msg
+			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
+				rcvMsg = msg.WebhookEvent
 				wg.Done()
 			}),
 		},

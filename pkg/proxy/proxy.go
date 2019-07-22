@@ -84,7 +84,7 @@ func (p *Proxy) Run() error {
 			Log:                 p.cfg.Log,
 			NoWSS:               p.cfg.NoWSS,
 			ReconnectInterval:   time.Duration(session.ReconnectDelay) * time.Second,
-			WebhookEventHandler: websocket.WebhookEventHandlerFunc(p.processWebhookEvent),
+			EventHandler: websocket.EventHandlerFunc(p.processWebhookEvent),
 		},
 	)
 	go p.webSocketClient.Run()
@@ -144,18 +144,25 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	return false
 }
 
-func (p *Proxy) processWebhookEvent(msg *websocket.WebhookEvent) {
+func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
+	if msg.WebhookEvent == nil {
+		p.cfg.Log.Warn("WebSocket specified for Webhooks received non-webhook event")
+		return
+	}
+
+	webhookEvent := msg.WebhookEvent
+
 	p.cfg.Log.WithFields(log.Fields{
 		"prefix":     "proxy.Proxy.processWebhookEvent",
-		"webhook_id": msg.WebhookID,
+		"webhook_id": webhookEvent.WebhookID,
 	}).Debugf("Processing webhook event")
 
-	if p.filterWebhookEvent(msg) {
+	if p.filterWebhookEvent(webhookEvent) {
 		return
 	}
 
 	var evt stripeEvent
-	err := json.Unmarshal([]byte(msg.EventPayload), &evt)
+	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
 		p.cfg.Log.Warn("Received malformed event from Stripe, ignoring")
 		return
@@ -173,12 +180,12 @@ func (p *Proxy) processWebhookEvent(msg *websocket.WebhookEvent) {
 	)
 
 	if p.cfg.PrintJSON {
-		fmt.Println(msg.EventPayload)
+		fmt.Println(webhookEvent.EventPayload)
 	}
 
 	for _, endpoint := range p.endpointClients {
 		if endpoint.SupportsEventType(evt.Type) {
-			go endpoint.Post(msg.WebhookID, msg.EventPayload, msg.HTTPHeaders)
+			go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
 		}
 	}
 	// TODO: handle errors returned by endpointClients
