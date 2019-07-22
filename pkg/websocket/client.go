@@ -44,22 +44,22 @@ type Config struct {
 
 	WriteWait time.Duration
 
-	WebhookEventHandler WebhookEventHandler
+	EventHandler EventHandler
 }
 
-// WebhookEventHandler handles a webhook event.
-type WebhookEventHandler interface {
-	ProcessWebhookEvent(*WebhookEvent)
+// EventHandler handles an event.
+type EventHandler interface {
+	ProcessEvent(IncomingMessage)
 }
 
-// WebhookEventHandlerFunc is an adapter to allow the use of ordinary
-// functions as webhook event handlers. If f is a function with the
-// appropriate signature, WebhookEventHandlerFunc(f) is a
-// WebhookEventHandler that calls f.
-type WebhookEventHandlerFunc func(*WebhookEvent)
+// EventHandlerFunc is an adapter to allow the use of ordinary
+// functions as event handlers. If f is a function with the
+// appropriate signature, EventHandlerFunc(f) is a
+// EventHandler that calls f.
+type EventHandlerFunc func(IncomingMessage)
 
-// ProcessWebhookEvent calls f(msg).
-func (f WebhookEventHandlerFunc) ProcessWebhookEvent(msg *WebhookEvent) {
+// ProcessEvent calls f(msg).
+func (f EventHandlerFunc) ProcessEvent(msg IncomingMessage) {
 	f(msg)
 }
 
@@ -239,9 +239,7 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		if msg.WebhookEvent != nil {
-			go c.cfg.WebhookEventHandler.ProcessWebhookEvent(msg.WebhookEvent)
-		}
+		go c.cfg.EventHandler.ProcessEvent(msg)
 	}
 }
 
@@ -344,8 +342,8 @@ func NewClient(url string, webSocketID string, cfg *Config) *Client {
 	if cfg.WriteWait == 0 {
 		cfg.WriteWait = defaultWriteWait
 	}
-	if cfg.WebhookEventHandler == nil {
-		cfg.WebhookEventHandler = nullWebhookEventHandler
+	if cfg.EventHandler == nil {
+		cfg.EventHandler = nullEventHandler
 	}
 
 	return &Client{
@@ -377,7 +375,7 @@ const (
 
 var subprotocols = [...]string{"stripecli-devproxy-v1"}
 
-var nullWebhookEventHandler = WebhookEventHandlerFunc(func(*WebhookEvent) {})
+var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
 
 //
 // Private functions
