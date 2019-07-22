@@ -13,3 +13,5 @@
 
 # Goreleaser
 dist/
+
+stripe
