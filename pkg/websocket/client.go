@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -162,7 +161,6 @@ func (c *Client) connect() bool {
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	fmt.Println(url)
 	conn, _, err := c.cfg.Dialer.Dial(url, header)
 	if err != nil {
 		c.cfg.Log.WithFields(log.Fields{
