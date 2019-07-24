@@ -75,9 +75,10 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("> Error verifying the CLI was setup successfully: %s", err))
+		fmt.Println(fmt.Sprintf("> Error verifying the CLI was set up successfully: %s", err))
 	} else {
 		ansi.StopSpinner(s, message, os.Stdout)
+		fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
 	}
 
 	return nil
