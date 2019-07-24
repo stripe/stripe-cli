@@ -17,6 +17,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+const webhooksWebSocketFeature = "webhooks"
+
 type listenCmd struct {
 	cmd *cobra.Command
 
@@ -72,9 +74,6 @@ to your localhost:
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
 
-	lc.cmd.Flags().StringVar(&lc.webSocketURL, "ws-url", "", "Sets the websocket URL")
-	lc.cmd.Flags().MarkHidden("ws-url") // #nosec G104
-
 	return lc
 }
 
@@ -121,7 +120,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Key:                 key,
 		EndpointsMap:        endpointsMap,
 		APIBaseURL:          lc.apiBaseURL,
-		WebSocketURL:        lc.webSocketURL,
+		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
 		UseLatestAPIVersion: lc.latestAPIVersion,
 		Log:                 log.StandardLogger(),
