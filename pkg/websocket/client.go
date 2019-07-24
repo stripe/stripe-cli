@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -71,6 +72,9 @@ type Client struct {
 
 	// ID sent by the client in the `Websocket-Id` header when connecting
 	WebSocketID string
+
+	// Feature that the websocket is specified for
+	WebSocketAuthorizedFeature string
 
 	// Optional configuration parameters
 	cfg *Config
@@ -150,11 +154,15 @@ func (c *Client) connect() bool {
 	if c.cfg.NoWSS && strings.HasPrefix(url, "wss") {
 		url = "ws" + strings.TrimPrefix(c.URL, "wss")
 	}
+
+	url = url + "?websocket_feature=" + c.WebSocketAuthorizedFeature
+
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "websocket.Client.connect",
 		"url":    url,
 	}).Debug("Dialing websocket")
 
+	fmt.Println(url)
 	conn, _, err := c.cfg.Dialer.Dial(url, header)
 	if err != nil {
 		c.cfg.Log.WithFields(log.Fields{
@@ -317,7 +325,7 @@ func (c *Client) writePump() {
 //
 
 // NewClient returns a new Client.
-func NewClient(url string, webSocketID string, cfg *Config) *Client {
+func NewClient(url string, webSocketID string, websocketAuthorizedFeature string, cfg *Config) *Client {
 	if cfg == nil {
 		cfg = &Config{}
 	}
@@ -347,11 +355,12 @@ func NewClient(url string, webSocketID string, cfg *Config) *Client {
 	}
 
 	return &Client{
-		URL:         url,
-		WebSocketID: webSocketID,
-		cfg:         cfg,
-		done:        make(chan struct{}),
-		send:        make(chan *OutgoingMessage),
+		URL:                        url,
+		WebSocketID:                webSocketID,
+		WebSocketAuthorizedFeature: websocketAuthorizedFeature,
+		cfg:                        cfg,
+		done:                       make(chan struct{}),
+		send:                       make(chan *OutgoingMessage),
 	}
 }
 

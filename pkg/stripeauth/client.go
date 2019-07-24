@@ -36,7 +36,7 @@ type Client struct {
 }
 
 // Authorize sends a request to Stripe to initiate a new CLI session.
-func (c *Client) Authorize(deviceName string) (*StripeCLISession, error) {
+func (c *Client) Authorize(deviceName string, websocketFeature string) (*StripeCLISession, error) {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
@@ -48,6 +48,7 @@ func (c *Client) Authorize(deviceName string) (*StripeCLISession, error) {
 
 	form := url.Values{}
 	form.Add("device_name", deviceName)
+	form.Add("websocket_feature", websocketFeature)
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
@@ -75,18 +76,15 @@ func (c *Client) Authorize(deviceName string) (*StripeCLISession, error) {
 	}
 
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix":          "stripeauth.Client.Authorize",
-		"websocket_url":   session.WebSocketURL,
-		"websocket_id":    session.WebSocketID,
-		"reconnect_delay": session.ReconnectDelay,
+		"prefix":            "stripeauth.Client.Authorize",
+		"websocket_url":     session.WebSocketURL,
+		"websocket_id":      session.WebSocketID,
+		"websocket_authorized_feature": session.WebSocketAuthorizedFeature,
+		"reconnect_delay":   session.ReconnectDelay,
 	}).Debug("Got successful response from Stripe")
 
 	return session, nil
 }
-
-//
-// Public functions
-//
 
 // NewClient returns a new Client.
 func NewClient(key string, cfg *Config) *Client {

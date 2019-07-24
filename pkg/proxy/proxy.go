@@ -35,8 +35,8 @@ type Config struct {
 
 	APIBaseURL string
 
-	// WebSocketURL is the websocket URL used to receive incoming events
-	WebSocketURL string
+	// WebSocketFeature is the feature specified for the websocket connection
+	WebSocketFeature string
 
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
@@ -71,7 +71,7 @@ func (p *Proxy) Run() error {
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	session, err := p.authorize()
+	session, err := p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature)
 	if err != nil {
 		// TODO: better error handling / retries
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
@@ -80,6 +80,7 @@ func (p *Proxy) Run() error {
 	p.webSocketClient = websocket.NewClient(
 		session.WebSocketURL,
 		session.WebSocketID,
+		session.WebSocketAuthorizedFeature,
 		&websocket.Config{
 			Log:                 p.cfg.Log,
 			NoWSS:               p.cfg.NoWSS,
@@ -110,19 +111,6 @@ func (p *Proxy) Run() error {
 			return nil
 		}
 	}
-}
-
-func (p *Proxy) authorize() (*stripeauth.StripeCLISession, error) {
-	if len(p.cfg.WebSocketURL) > 0 {
-		p.cfg.Log.Info("Skipping authentication step because --ws-url was passed")
-		session := &stripeauth.StripeCLISession{
-			WebSocketID:  "",
-			WebSocketURL: p.cfg.WebSocketURL,
-		}
-		return session, nil
-	}
-
-	return p.stripeAuthClient.Authorize(p.cfg.DeviceName)
 }
 
 func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {

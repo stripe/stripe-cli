@@ -24,6 +24,9 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		assert.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
 		assert.Nil(t, err)
+
+		assert.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
+
 		defer c.Close()
 
 		evt := WebhookEvent{
@@ -49,6 +52,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 	client := NewClient(
 		url,
 		"websocket-random-id",
+		"webhook-payloads",
 		&Config{
 			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
 				rcvMsg = msg.WebhookEvent

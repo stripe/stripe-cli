@@ -14,8 +14,9 @@ import (
 func TestAuthorize(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		session := StripeCLISession{
-			WebSocketID:  "some-id",
-			WebSocketURL: "wss://example.com/subscribe/acct_123",
+			WebSocketID:                "some-id",
+			WebSocketURL:               "wss://example.com/subscribe/acct_123",
+			WebSocketAuthorizedFeature: "webhook-payloads",
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -28,17 +29,18 @@ func TestAuthorize(t *testing.T) {
 
 		body, err := ioutil.ReadAll(r.Body)
 		assert.NoError(t, err)
-		assert.Equal(t, "device_name=my-device", string(body))
+		assert.Equal(t, "device_name=my-device&websocket_feature=webhooks", string(body))
 	}))
 	defer ts.Close()
 
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	session, err := client.Authorize("my-device")
+	session, err := client.Authorize("my-device", "webhooks")
 	assert.NoError(t, err)
 	assert.Equal(t, "some-id", session.WebSocketID)
 	assert.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
+	assert.Equal(t, "webhook-payloads", session.WebSocketAuthorizedFeature)
 }
 
 func TestUserAgent(t *testing.T) {
@@ -52,7 +54,7 @@ func TestUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device")
+	client.Authorize("my-device", "webhooks")
 }
 
 func TestStripeClientUserAgent(t *testing.T) {
@@ -75,5 +77,5 @@ func TestStripeClientUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device")
+	client.Authorize("my-device", "webhooks")
 }
