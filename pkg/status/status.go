@@ -24,8 +24,9 @@ type statuses struct {
 	Dashboard  string `json:"dashboard"`
 	Stripejs   string `json:"stripejs"`
 	Checkoutjs string `json:"checkoutjs"`
-	Webhooks   string `json:"webhooks"`
-	Emails     string `json:"emails"`
+	// These two are not used and may not be reliable
+	Webhooks string `json:"webhooks"`
+	Emails   string `json:"emails"`
 }
 
 // GetStatus makes a request to the Stripe status site and returns all the
@@ -60,7 +61,6 @@ func (r *Response) getMap(verbose bool) map[string]interface{} {
 			"dashboard":  r.Statuses.Dashboard,
 			"stripejs":   r.Statuses.Stripejs,
 			"checkoutjs": r.Statuses.Checkoutjs,
-			"webhooks":   r.Statuses.Webhooks,
 		}
 	}
 
