@@ -84,9 +84,8 @@ func (r *Response) FormattedMessage(format string, verbose bool) (string, error)
 	statusString := fmt.Sprintf(`%s %s{{if .statuses}}
 %s API
 %s Dashboard
-%s StripeJS
-%s CheckoutJS
-%s Webhooks{{end}}
+%s Stripe.js
+%s Checkout.js{{end}}
 As of: %s`,
 		emojifiedStatus(r.LargeStatus),
 		ansi.Bold(r.Message),
