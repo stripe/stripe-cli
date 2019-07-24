@@ -93,7 +93,6 @@ As of: %s`,
 		emojifiedStatus(r.Statuses.Dashboard),
 		emojifiedStatus(r.Statuses.Stripejs),
 		emojifiedStatus(r.Statuses.Checkoutjs),
-		emojifiedStatus(r.Statuses.Webhooks),
 		ansi.Italic(r.Time),
 	)
 

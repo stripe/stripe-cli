@@ -45,7 +45,6 @@ func TestGetMapVerbose(t *testing.T) {
 	assert.Equal(t, statuses["dashboard"], "up")
 	assert.Equal(t, statuses["stripejs"], "up")
 	assert.Equal(t, statuses["checkoutjs"], "up")
-	assert.Equal(t, statuses["webhooks"], "up")
 }
 
 func TestFormatJSON(t *testing.T) {
@@ -71,8 +70,7 @@ func TestFormatJSONVerbose(t *testing.T) {
     "api": "up",
     "checkoutjs": "up",
     "dashboard": "up",
-    "stripejs": "up",
-    "webhooks": "up"
+    "stripejs": "up"
   },
   "time": "July 21, 4:00 +0:00"
 }`
@@ -97,9 +95,8 @@ func TestFormatDefaultVerbose(t *testing.T) {
 	expected := `✅ All systems operational
 ✅ API
 ✅ Dashboard
-✅ StripeJS
-✅ CheckoutJS
-✅ Webhooks
+✅ Stripe.js
+✅ Checkout.js
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", true)
