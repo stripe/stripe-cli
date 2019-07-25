@@ -10,6 +10,7 @@ The Stripe CLI is a command-line interface for Stripe that can:
 2. `listen` for webhooks and forward them to a local server
 3. Run `get`, `post`, and `delete` commands to the Stripe API
 4. `trigger` a limited set of webhook events
+5. Pull Stripe status from status.stripe.com
 
 The main focus for this initial release is to improve the developer experience while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
 
@@ -26,6 +27,7 @@ The main focus for this initial release is to improve the developer experience w
     * [listen](#listen)
     * [get, post, and delete](#get-post-and-delete)
     * [trigger](#trigger)
+    * [status](#status)
   * [Developing the Stripe CLI](#developing-the-stripe-cli)
     * [Installation](#installation-1)
     * [Tests](#tests)
@@ -221,6 +223,24 @@ To trigger an event, run:
 ```sh
 $ stripe trigger <event>
 ```
+
+### `status`
+
+You can load Stripe status from the CLI instead of going to status.stripe.com. The CLI status loads from the status site, which is the canonical source of truth.
+
+To load status, run:
+```
+$ stripe status
+✅ All services are online.
+As of: July 23, 2019 @ 07:52PM +00:00
+```
+
+The status command supports several different flags:
+1. `--verbose` lists out individual Stripe system status using.
+2. `--format json` has the CLI render the status as a JSON blob for easier grepping and for using with tools like `jq`.
+3. `--poll` will continuously check the status site for changes
+4. `--poll-rate` let's you specify how often to check the status site. The default is once every 60 seconds and this can be modified down to once every 5 seconds.
+5. `--hide-spinner` will hide the spinner that's shown when polling.
 
 ## Developing the Stripe CLI
 

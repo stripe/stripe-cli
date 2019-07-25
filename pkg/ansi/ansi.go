@@ -86,7 +86,11 @@ func StartSpinner(msg string, w io.Writer) *spinner.Spinner {
 
 	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 	s.Writer = w
-	s.Suffix = " " + msg
+
+	if msg != "" {
+		s.Suffix = " " + msg
+	}
+
 	s.Start()
 	return s
 }
@@ -99,7 +103,10 @@ func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 		return
 	}
 
-	s.FinalMSG = "> " + msg + "\n"
+	if msg != "" {
+		s.FinalMSG = "> " + msg + "\n"
+	}
+
 	s.Stop()
 }
 
