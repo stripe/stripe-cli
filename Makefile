@@ -36,7 +36,6 @@ test: install-deps lint vet
 
 build:
 	go mod download
-	go generate ./...
 	go build -o stripe -ldflags "-s -w" cmd/stripe/main.go
 .PHONY: build
 
