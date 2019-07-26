@@ -37,27 +37,27 @@ type Config struct {
 	ProfilesFile string
 }
 
-// GetProfilesFolder retrieves the folder where the profiles file is stored
+// GetConfigFolder retrieves the folder where the profiles file is stored
 // It searches for the xdg environment path first and will secondarily
 // place it in the home directory
-func (c *Config) GetProfilesFolder(xdgPath string) string {
-	profilesPath := xdgPath
+func (c *Config) GetConfigFolder(xdgPath string) string {
+	configPath := xdgPath
 
 	log.WithFields(log.Fields{
 		"prefix": "config.Config.GetProfilesFolder",
-		"path":   profilesPath,
+		"path":   configPath,
 	}).Debug("Using profiles file")
 
-	if profilesPath == "" {
+	if configPath == "" {
 		home, err := homedir.Dir()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		profilesPath = filepath.Join(home, ".config")
+		configPath = filepath.Join(home, ".config")
 	}
 
-	return filepath.Join(profilesPath, "stripe")
+	return filepath.Join(configPath, "stripe")
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -70,12 +70,11 @@ func (c *Config) InitConfig() {
 	if c.ProfilesFile != "" {
 		viper.SetConfigFile(c.ProfilesFile)
 	} else {
-		profilesFolder := c.GetProfilesFolder(os.Getenv("XDG_CONFIG_HOME"))
-		profilesFile := filepath.Join(profilesFolder, "config.toml")
-		c.ProfilesFile = profilesFile
-
+		configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		configFile := filepath.Join(configFolder, "config.toml")
+		c.ProfilesFile = configFile
 		viper.SetConfigType("toml")
-		viper.SetConfigFile(profilesFile)
+		viper.SetConfigFile(configFile)
 	}
 
 	// If a profiles file is found, read it in.
