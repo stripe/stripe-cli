@@ -129,5 +129,5 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
-	rootCmd.AddCommand(newLogsCmd().Cmd)
+	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 }
