@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/briandowns/spinner v1.6.1
 	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gorilla/websocket v1.4.0
 	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
@@ -32,5 +33,5 @@ require (
 	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
-	golang.org/x/text v0.3.2 // indirect
+	gopkg.in/src-d/go-git.v4 v4.13.1
 )
