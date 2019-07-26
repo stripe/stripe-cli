@@ -26,6 +26,7 @@ var rootCmd = &cobra.Command{
 		"delete":  "api",
 		"trigger": "webhooks",
 		"listen":  "webhooks",
+		"logs tail": "logs",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -128,4 +129,5 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+	rootCmd.AddCommand(newLogsCmd().Cmd)
 }
