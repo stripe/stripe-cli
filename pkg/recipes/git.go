@@ -1,8 +1,6 @@
 package recipes
 
 import (
-	"path/filepath"
-
 	"gopkg.in/src-d/go-git.v4"
 )
 
@@ -14,17 +12,32 @@ var recipesList = map[string]string{
 	"billing-quickstart":          "https://github.com/ctrudeau-stripe/stripe-billing-quickstart.git",
 }
 
-func (r *Recipes) clone(app string) error {
-	path, err := r.cacheFolder()
+func (r *Recipes) clone(appCachePath, app string) error {
+	_, err := git.PlainClone(appCachePath, false, &git.CloneOptions{
+		URL: recipesList[app],
+	})
 	if err != nil {
 		return err
 	}
 
-	appPath := filepath.Join(path, app)
+	return nil
+}
 
-	git.PlainClone(appPath, false, &git.CloneOptions{
-		URL: recipesList[app],
-	})
+func (r *Recipes) pull(appCachePath, app string) error {
+	repo, err := git.PlainOpen(appCachePath)
+	if err != nil {
+		return err
+	}
+
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	err = worktree.Pull(&git.PullOptions{})
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
