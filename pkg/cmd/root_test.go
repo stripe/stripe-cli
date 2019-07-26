@@ -25,7 +25,7 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 }
 
 func TestGetPathNoXDG(t *testing.T) {
-	actual := Config.GetProfilesFolder("")
+	actual := Config.GetConfigFolder("")
 	expected, err := homedir.Dir()
 	expected += "/.config/stripe"
 
@@ -34,7 +34,7 @@ func TestGetPathNoXDG(t *testing.T) {
 }
 
 func TestGetPathXDG(t *testing.T) {
-	actual := Config.GetProfilesFolder("/some/xdg/path")
+	actual := Config.GetConfigFolder("/some/xdg/path")
 	expected := "/some/xdg/path/stripe"
 
 	require.Equal(t, actual, expected)
