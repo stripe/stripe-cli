@@ -122,6 +122,7 @@ func init() {
 	viper.SetEnvPrefix("stripe")
 	viper.AutomaticEnv() // read in environment variables that match
 
+	rootCmd.AddCommand(newAppsCmd().cmd)
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
@@ -129,6 +130,7 @@ func init() {
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
+	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
