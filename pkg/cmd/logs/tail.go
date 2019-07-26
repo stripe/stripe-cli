@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/logs"
 )
@@ -14,16 +15,19 @@ const requestLogsWebSocketFeature = "request_logs"
 
 // LogsTailCmd wraps the configuration for the tail command
 type LogsTailCmd struct {
-	Cmd *cobra.Command
+	Cmd          *cobra.Command
 
 	apiBaseURL   string
+	cfg          *config.Config
 	noWSS        bool
 	webSocketURL string
 }
 
 // NewLogsTailCmd creates and initializes the tail command for the logs package
-func NewLogsTailCmd() *LogsTailCmd {
-	tailCmd := &LogsTailCmd{}
+func NewLogsTailCmd(config *config.Config) *LogsTailCmd {
+	tailCmd := &LogsTailCmd{
+		cfg: config,
+	}
 
 	tailCmd.Cmd = &cobra.Command{
 		Use:   "tail",
@@ -50,12 +54,12 @@ Watch for all request logs sent from Stripe:
 }
 
 func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
-	deviceName, err := Config.Profile.GetDeviceName()
+	deviceName, err := tailCmd.cfg.Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
 
-	key, err := Config.Profile.GetSecretKey()
+	key, err := tailCmd.cfg.Profile.GetSecretKey()
 	if err != nil {
 		return err
 	}

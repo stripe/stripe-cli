@@ -4,16 +4,21 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/stripe/stripe-cli/pkg/config"
+	logs "github.com/stripe/stripe-cli/pkg/cmd/logs"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // LogsCmd is a wrapper for the base logs command
 type LogsCmd struct {
 	Cmd *cobra.Command
+	cfg *config.Config
 }
 
-func newLogsCmd() *LogsCmd {
-	logsCmd := &LogsCmd{}
+func newLogsCmd(config *config.Config) *LogsCmd {
+	logsCmd := &LogsCmd{
+		cfg: config,
+	}
 
 	logsCmd.Cmd = &cobra.Command{
 		Use:   "logs",
@@ -28,7 +33,7 @@ Invokable via:
 `),
 	}
 
-	logsCmd.Cmd.AddCommand(NewLogsTailCmd().Cmd)
+	logsCmd.Cmd.AddCommand(logs.NewLogsTailCmd(logsCmd.cfg).Cmd)
 
 	return logsCmd
 }
