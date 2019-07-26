@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/otiai10/copy"
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/recipes"
 )
@@ -21,7 +24,20 @@ func newAppsCmd() *appsCmd {
 					Config: Config,
 				}
 				// TODO: display waiting prompt
-				recipe.Download(args[0])
+				repoPath, err := recipe.Download(args[0])
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				targetPath, err := recipe.MakeFolder(args[0])
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				err = copy.Copy(repoPath, targetPath)
+				if err != nil {
+					fmt.Println(err)
+				}
 				// TODO: display interactive prompt to select folders
 				// TODO: copy select config to specified directory
 				// TODO: setup .env
