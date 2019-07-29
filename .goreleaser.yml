@@ -3,7 +3,6 @@ env:
 before:
   hooks:
     - go mod download
-    - go generate ./...
 project_name: stripe
 builds:
   - main: ./cmd/stripe/main.go
