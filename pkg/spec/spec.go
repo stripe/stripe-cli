@@ -1,4 +1,4 @@
-//go:generate go run vfsgen.go
+//go:generate vfsgendev -source="github.com/stripe/stripe-cli/pkg/spec".FS
 
 package spec
 
