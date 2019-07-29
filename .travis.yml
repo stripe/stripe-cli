@@ -11,6 +11,10 @@ addons:
 env:
 - GO111MODULE=on
 
+install:
+  - make install-deps
+  - go mod download
+
 deploy:
 - provider: script
   skip_cleanup: true
