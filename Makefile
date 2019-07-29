@@ -1,4 +1,6 @@
 export GO111MODULE := on
+export GOBIN := $(shell pwd)/bin
+export PATH := $(GOBIN):$(PATH)
 
 all: test
 
