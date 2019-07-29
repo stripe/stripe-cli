@@ -2,8 +2,10 @@ package recipes
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (r *Recipes) cacheFolder() (string, error) {
@@ -49,4 +51,31 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 	}
 
 	return appFolder, nil
+}
+
+func (r *Recipes) getFolders(path string) ([]string, error) {
+	files, err := ioutil.ReadDir(path)
+	var dir []string
+	if err != nil {
+		return []string{}, err
+	}
+
+	for _, file := range files {
+		// We only want directories that are not hidden
+		if file.IsDir() && !strings.HasPrefix(file.Name(), ".") {
+			dir = append(dir, file.Name())
+		}
+	}
+
+	return dir, nil
+}
+
+func folderSearch(folders []string, name string) bool {
+	for _, folder := range folders {
+		if folder == name {
+			return true
+		}
+	}
+
+	return false
 }
