@@ -9,11 +9,10 @@ addons:
     - rpm
 
 env:
-- GO111MODULE=on
-
-install:
-  - make install-deps
-  - go mod download
+  global:
+    - GO111MODULE=on
+    - GOBIN="${GOPATH}/bin"
+    - PATH="${GOBIN}:${PATH}"
 
 deploy:
 - provider: script
