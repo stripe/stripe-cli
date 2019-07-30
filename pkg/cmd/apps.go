@@ -62,6 +62,29 @@ func newAppsCmd() *appsCmd {
 				var clientPath string
 
 				if integration != "" {
+					if integration == "all" {
+						integrations, err := recipe.GetFolders(repoPath)
+						if err != nil {
+							return err
+						}
+
+						for _, i := range integrations {
+							serverPath = filepath.Join(repoPath, i, "server", language)
+							clientPath = filepath.Join(repoPath, i, "client")
+
+							err = copy.Copy(serverPath, filepath.Join(targetPath, i, "server"))
+							if err != nil {
+								return err
+							}
+							err = copy.Copy(clientPath, filepath.Join(targetPath, i, "client"))
+							if err != nil {
+								return err
+							}
+						}
+
+						return nil
+					}
+
 					serverPath = filepath.Join(repoPath, integration, "server", language)
 					clientPath = filepath.Join(repoPath, integration, "client")
 				} else {
@@ -77,7 +100,6 @@ func newAppsCmd() *appsCmd {
 					return err
 				}
 
-				// TODO: copy all if selected
 				// TODO: setup .env
 				return nil
 			},

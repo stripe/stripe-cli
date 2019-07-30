@@ -41,35 +41,48 @@ func (r *Recipes) BuildPrompts(repoPath string) (string, string, error) {
 	var language string
 	var integration string
 
-	topLevelFolders, err := r.getFolders(repoPath)
+	topLevelFolders, err := r.GetFolders(repoPath)
 	if err != nil {
 		return "", "", err
 	}
 
 	if folderSearch(topLevelFolders, "server") {
-		languages, err := r.getFolders(filepath.Join(repoPath, "server"))
+		languages, err := r.GetFolders(filepath.Join(repoPath, "server"))
 		if err != nil {
 			return "", "", err
 		}
 
 		language = languageSelectPrompt(languages)
 	} else {
-		integrations, err := r.getFolders(repoPath)
+		integrations, err := r.GetFolders(repoPath)
 		if err != nil {
 			return "", "", err
 		}
+		integrations = append(integrations, "all")
 
 		integration = integrationSelectPrompt(integrations)
 
-		languages, err := r.getFolders(filepath.Join(repoPath, integration, "server"))
-		if err != nil {
-			return "", "", err
+		var languages []string
+		if integration == "all" {
+			// All integrations will have the same language support so we can just pull the langauges
+			// for the first integration type
+			languages, err = r.GetFolders(filepath.Join(repoPath, integrations[0], "server"))
+			if err != nil {
+				return "", "", err
+			}
+		} else {
+			languages, err = r.GetFolders(filepath.Join(repoPath, integration, "server"))
+			if err != nil {
+				return "", "", err
+			}
 		}
 
 		language = languageSelectPrompt(languages)
 	}
 
-	if integration != "" {
+	if integration == "all" {
+		fmt.Println("Setting up", ansi.Bold(language), "for", ansi.Bold(integration), "integrations")
+	} else if integration != "" {
 		fmt.Println("Setting up", ansi.Bold(language), "for", ansi.Bold(integration))
 	} else {
 		fmt.Println("Setting up", ansi.Bold(language))
