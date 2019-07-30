@@ -53,7 +53,7 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 	return appFolder, nil
 }
 
-func (r *Recipes) getFolders(path string) ([]string, error) {
+func (r *Recipes) GetFolders(path string) ([]string, error) {
 	files, err := ioutil.ReadDir(path)
 	var dir []string
 	if err != nil {
