@@ -29,14 +29,20 @@ func (r *Recipes) pull(appCachePath, app string) error {
 		return err
 	}
 
+	repo.Fetch(&git.FetchOptions{
+		Force: true,
+	})
+
 	worktree, err := repo.Worktree()
 	if err != nil {
 		return err
 	}
 
-	err = worktree.Pull(&git.PullOptions{})
+	err = worktree.Reset(&git.ResetOptions{
+		Mode: git.HardReset,
+	})
 	if err != nil {
-		return err
+		return nil
 	}
 
 	return nil
