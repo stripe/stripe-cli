@@ -17,7 +17,22 @@ env:
 deploy:
 - provider: script
   skip_cleanup: true
-  script: ./travis-goreleaser
+  script: curl -sL https://git.io/goreleaser | bash -s -- --rm-dist
+  verbose: true
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux
+- provider: script
+  skip_cleanup: true
+  script: bash scripts/publish-deb-to-bintray.sh
+  verbose: true
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux
+- provider: script
+  skip_cleanup: true
+  script: bash scripts/publish-rpm-to-bintray.sh
+  verbose: true
   on:
     tags: true
     condition: $TRAVIS_OS_NAME = linux
