@@ -34,33 +34,41 @@ The main focus for this initial release is to improve the developer experience w
 
 ## Installation
 
-### Download the CLI
-
-#### macOS
+### macOS
 
 _With homebrew:_
 
-1. Run `brew tap stripe/stripe-cli`
-
-2. Run `brew install stripe`
+Run `brew install stripe/stripe-cli/stripe`
 
 _Without homebrew:_
 
-1. Download the latest `mac-os` ta.gz file from https://github.com/stripe/stripe-cli/releases/latest
+1. Download the latest `mac-os` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
 
 2. Unzip the file: `tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz`
 
 3. (optional) Move the binary to somewhere you can execute it globally, like `~/usr/local/bin`
 
-#### Linux
+### Linux
 
 _With a package manager:_
 
-1. Download the latest rpm or deb file from https://github.com/stripe/stripe-cli/releases/latest
+**Debian/Ubuntu-based distributions**:
 
-If you're on Ubuntu (or using `dpkg`): `dpkg -i stripe_x.x.x_linux_amd64.deb`
+1. Add Bintray's GPG key to the apt sources keyring: `sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net --recv-keys 379CE192D401AB61`
 
-If you're on Red Hat (or using `rpm`): `rpm -i stripe_x.x.x_linux_amd64.rpm`
+2. Add stripe-cli's apt repository to the apt sources list: `echo "deb https://dl.bintray.com/stripe/stripe-cli-deb stable main" | sudo tee -a /etc/apt/sources.list`
+
+3. Update the package list: `sudo apt-get update`
+
+4. Install the CLI: `sudo apt-get install stripe`
+
+**RedHat/CentOS-based distributions:**
+
+1. Add stripe-cli's yum repository to the yum sources list: `wget https://bintray.com/stripe/stripe-cli-rpm/rpm -O bintray-stripe-stripe-cli-rpm.repo && sudo mv bintray-stripe-stripe-cli-rpm.repo /etc/yum.repos.d/`
+
+2. Update the package list: `sudo yum update`
+
+3. Install the CLI: `sudo yum install stripe`
 
 _Without a package manager:_
 
@@ -70,7 +78,7 @@ _Without a package manager:_
 
 3. Run the executable: `./stripe`
 
-#### Windows
+### Windows
 
 _With scoop:_
 
@@ -85,10 +93,6 @@ _Without scoop:_
 2. Unzip the `stripe_X.X.X_windows_x86_64.tar.gz` file
 
 3. Run the unzipped `.exe` file!
-
-### Success!
-
-🎉 The `stripe` command should now work!
 
 ## Commands
 
