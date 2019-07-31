@@ -58,35 +58,42 @@ func newAppsCmd() *appsCmd {
 					return err
 				}
 
+				// Possible approach one:
+				// Copy everything over and then delete what I don't want
+				// Might be a little weird because I'll be deleting most things and
+				// needing to restructure folders after-the-fact
+				//
+				// err = copy.Copy(repoPath, targetPath)
+				// if err != nil {
+				//	return err
+				// }
+
 				var serverPath string
 				var clientPath string
 
-				if integration != "" {
-					if integration == "all" {
-						integrations, err := recipe.GetFolders(repoPath)
+				// Approach two:
+				// Copy over the specific things I care about
+				// A lot of conditional logic depending on flags the users select
+				// TODO -- clean all of this up
+				if len(integration) > 1 {
+					for _, i := range integration {
+						serverPath = filepath.Join(repoPath, i, "server", language)
+						clientPath = filepath.Join(repoPath, i, "client")
+
+						err = copy.Copy(serverPath, filepath.Join(targetPath, i, "server"))
 						if err != nil {
 							return err
 						}
-
-						for _, i := range integrations {
-							serverPath = filepath.Join(repoPath, i, "server", language)
-							clientPath = filepath.Join(repoPath, i, "client")
-
-							err = copy.Copy(serverPath, filepath.Join(targetPath, i, "server"))
-							if err != nil {
-								return err
-							}
-							err = copy.Copy(clientPath, filepath.Join(targetPath, i, "client"))
-							if err != nil {
-								return err
-							}
+						err = copy.Copy(clientPath, filepath.Join(targetPath, i, "client"))
+						if err != nil {
+							return err
 						}
-
-						return nil
 					}
 
-					serverPath = filepath.Join(repoPath, integration, "server", language)
-					clientPath = filepath.Join(repoPath, integration, "client")
+					return nil
+				} else if len(integration) == 1 {
+					serverPath = filepath.Join(repoPath, integration[0], "server", language)
+					clientPath = filepath.Join(repoPath, integration[0], "client")
 				} else {
 					serverPath = filepath.Join(repoPath, "server", language)
 					clientPath = filepath.Join(repoPath, "client")
