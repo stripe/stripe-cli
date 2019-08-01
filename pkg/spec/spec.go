@@ -1,4 +1,4 @@
-//go:generate go run github.com/shurcooL/vfsgen/cmd/vfsgendev -source="github.com/stripe/stripe-cli/pkg/spec".FS
+//go:generate go run vfsgen.go
 
 package spec
 
