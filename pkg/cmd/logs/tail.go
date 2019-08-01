@@ -19,6 +19,7 @@ type LogsTailCmd struct {
 
 	apiBaseURL   string
 	cfg          *config.Config
+	format       string
 	noWSS        bool
 	webSocketURL string
 }
@@ -43,6 +44,8 @@ Watch for all request logs sent from Stripe:
 		RunE: tailCmd.runTailCmd,
 	}
 
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.format, "format", "default", "Specifies the output format of request logs")
+
 	// Hidden configuration flags, useful for dev/debugging
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", "", "Sets the API base URL")
 	tailCmd.Cmd.Flags().MarkHidden("api-base") // #nosec G104
@@ -65,12 +68,13 @@ func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error 
 	}
 
 	tailer := logs.New(&logs.Config{
+		APIBaseURL:          tailCmd.apiBaseURL,
 		DeviceName:          deviceName,
 		Key:                 key,
-		APIBaseURL:          tailCmd.apiBaseURL,
-		WebSocketFeature:    requestLogsWebSocketFeature,
 		Log:                 log.StandardLogger(),
 		NoWSS:               tailCmd.noWSS,
+		OutputFormat:        tailCmd.format,
+		WebSocketFeature:    requestLogsWebSocketFeature,
 	})
 
 	err = tailer.Run()
