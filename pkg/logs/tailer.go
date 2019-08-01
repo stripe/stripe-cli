@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -42,6 +44,15 @@ type Tailer struct {
 	webSocketClient  *websocket.Client
 
 	interruptCh chan os.Signal
+}
+
+// EventPayload is the mapping for fields in event payloads from request log tailing
+type EventPayload struct {
+	CreatedAt float64 `json:"created_at"`
+	Method    string `json:"method"`
+	RequestID string `json:"request_id"`
+	Status    int `json:"status"`
+	URL       string `json:"url"`
 }
 
 // New creates a new Tailer
@@ -121,7 +132,23 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		"webhook_id": requestLogEvent.RequestLogID,
 	}).Debugf("Processing request log event")
 
-	fmt.Println(requestLogEvent.RequestLogID)
-	fmt.Println(requestLogEvent.Type)
-	fmt.Println(requestLogEvent.EventPayload)
+	var payload EventPayload
+	if err := json.Unmarshal([]byte(requestLogEvent.EventPayload), &payload); err != nil {
+		tailer.cfg.Log.Warn("Received malformed payload: ", err)
+	}
+
+	coloredStatus := colorizeStatus(payload.Status)
+
+	outputStr := fmt.Sprintf("%g [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, payload.RequestID)
+	fmt.Println(outputStr)
+}
+
+func colorizeStatus(status int) aurora.Value {
+	if status >= 500 {
+		return aurora.Red(status)
+	} else if status >= 400 {
+		return aurora.Yellow(status)
+	} else {
+		return aurora.White(status).Bold()
+	}
 }
