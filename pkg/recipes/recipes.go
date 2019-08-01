@@ -156,6 +156,26 @@ func (r *Recipes) Copy(target string) error {
 	return nil
 }
 
+func (r *Recipes) destinationName(i int) string {
+	if len(r.integration) > 0 && len(r.integrations) > 0 {
+		if r.integration[0] == "all" {
+			return r.integrations[i]
+		}
+
+		return r.integration[i]
+	}
+
+	return ""
+}
+
+func (r *Recipes) destinationPath(target string, integration string, folder string) string {
+	if len(r.integration) <= 1 {
+		return filepath.Join(target, folder)
+	}
+
+	return filepath.Join(target, integration, folder)
+}
+
 func selectOptions(label string, options []string) string {
 	prompt := promptui.Select{
 		Label: label,
@@ -183,24 +203,4 @@ func integrationSelectPrompt(integrations []string) []string {
 	}
 
 	return []string{selected}
-}
-
-func (r *Recipes) destinationName(i int) string {
-	if len(r.integration) > 0 && len(r.integrations) > 0 {
-		if r.integration[0] == "all" {
-			return r.integrations[i]
-		}
-
-		return r.integration[i]
-	}
-
-	return ""
-}
-
-func (r *Recipes) destinationPath(target string, integration string, folder string) string {
-	if len(r.integration) <= 1 {
-		return filepath.Join(target, folder)
-	}
-
-	return filepath.Join(target, integration, folder)
 }
