@@ -4,6 +4,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
+// TODO: what do we want to name these for it to be easier for users to select?
 var recipesList = map[string]string{
 	"adding-sales-tax":            "https://github.com/stripe-samples/adding-sales-tax.git",
 	"placing-a-hold":              "https://github.com/stripe-samples/placing-a-hold.git",
