@@ -70,6 +70,23 @@ func (r *Recipes) GetFolders(path string) ([]string, error) {
 	return dir, nil
 }
 
+func (r *Recipes) GetFiles(path string) ([]string, error) {
+	files, err := ioutil.ReadDir(path)
+	var file []string
+	if err != nil {
+		return []string{}, err
+	}
+
+	for _, f := range files {
+		// We only want files
+		if !f.IsDir() {
+			file = append(file, f.Name())
+		}
+	}
+
+	return file, nil
+}
+
 func folderSearch(folders []string, name string) bool {
 	for _, folder := range folders {
 		if folder == name {
