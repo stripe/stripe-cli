@@ -48,10 +48,10 @@ type Tailer struct {
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
-	CreatedAt float64 `json:"created_at"`
+	CreatedAt string `json:"created_at"`
 	Method    string `json:"method"`
 	RequestID string `json:"request_id"`
-	Status    int `json:"status"`
+	Status    int    `json:"status"`
 	URL       string `json:"url"`
 }
 
@@ -139,16 +139,16 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 
 	coloredStatus := colorizeStatus(payload.Status)
 
-	outputStr := fmt.Sprintf("%g [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, payload.RequestID)
+	outputStr := fmt.Sprintf("%s [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, payload.RequestID)
 	fmt.Println(outputStr)
 }
 
 func colorizeStatus(status int) aurora.Value {
 	if status >= 500 {
-		return aurora.Red(status)
+		return aurora.Red(status).Bold()
 	} else if status >= 400 {
-		return aurora.Yellow(status)
+		return aurora.Yellow(status).Bold()
 	} else {
-		return aurora.White(status).Bold()
+		return aurora.Green(status).Bold()
 	}
 }
