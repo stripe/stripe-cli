@@ -5,11 +5,10 @@ import (
 )
 
 var recipesList = map[string]string{
-	"sales-tax":                   "https://github.com/adreyfus-stripe/sales-tax.git",
-	"placing-a-hold":              "https://github.com/adreyfus-stripe/placing-a-hold.git",
-	"elements-modal":              "https://github.com/ctrudeau-stripe/elements-modal-demo.git",
-	"saving-card-without-payment": "https://github.com/ctrudeau-stripe/saving-card-without-payment.git",
-	"billing-quickstart":          "https://github.com/ctrudeau-stripe/stripe-billing-quickstart.git",
+	"adding-sales-tax":            "https://github.com/stripe-samples/adding-sales-tax.git",
+	"placing-a-hold":              "https://github.com/stripe-samples/placing-a-hold.git",
+	"payment-form-model":          "https://github.com/stripe-samples/payment-form-modal.git",
+	"saving-card-without-payment": "https://github.com/stripe-samples/saving-card-without-payment.git",
 }
 
 func (r *Recipes) clone(appCachePath, app string) error {
