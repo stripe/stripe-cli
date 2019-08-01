@@ -17,23 +17,28 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
+const outputFormatJSON = "json"
+
 // Config provides the cfguration of a Proxy
 type Config struct {
+	APIBaseURL string
+
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 
 	// Key is the API key used to authenticate with Stripe
 	Key string
 
-	APIBaseURL string
-
-	// WebSocketFeature is the feature specified for the websocket connection
-	WebSocketFeature string
-
 	Log *log.Logger
 
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+
+	// Output format for request logs
+	OutputFormat string
+
+	// WebSocketFeature is the feature specified for the websocket connection
+	WebSocketFeature string
 }
 
 // Tailer is the main interface for running the log tailing session
@@ -131,6 +136,11 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		"prefix":     "logs.Tailer.processRequestLogEvent",
 		"webhook_id": requestLogEvent.RequestLogID,
 	}).Debugf("Processing request log event")
+
+	if tailer.cfg.OutputFormat == outputFormatJSON {
+		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, os.Stdout))
+		return
+	}
 
 	var payload EventPayload
 	if err := json.Unmarshal([]byte(requestLogEvent.EventPayload), &payload); err != nil {
