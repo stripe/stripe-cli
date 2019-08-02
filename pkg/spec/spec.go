@@ -238,19 +238,7 @@ type StatusCode string
 
 // LoadSpec loads and returns the OpenAPI spec.
 func LoadSpec(specPath string) (*Spec, error) {
-	var data []byte
-	var err error
-
-	if specPath == "" {
-		file, err := FS.Open("./spec3.sdk.json")
-		if err != nil {
-			return nil, err
-		}
-
-		data, err = ioutil.ReadAll(file)
-	} else {
-		data, err = ioutil.ReadFile(specPath)
-	}
+	data, err := readSpecData(specPath)
 	if err != nil {
 		return nil, err
 	}
@@ -262,4 +250,20 @@ func LoadSpec(specPath string) (*Spec, error) {
 	}
 
 	return &stripeSpec, nil
+}
+
+//
+// Private functions
+//
+
+func readSpecData(specPath string) ([]byte, error) {
+	if specPath != "" {
+		return ioutil.ReadFile(specPath)
+	}
+
+	file, err := FS.Open("./spec3.sdk.json")
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(file)
 }

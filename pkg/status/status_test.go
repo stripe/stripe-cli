@@ -105,7 +105,7 @@ As of: July 21, 4:00 +0:00`
 
 func TestEmojification(t *testing.T) {
 	assert.Equal(t, "✅", emojifiedStatus("up"))
-	assert.Equal(t, "⚠️", emojifiedStatus("degraged"))
+	assert.Equal(t, "⚠️", emojifiedStatus("degraded"))
 	assert.Equal(t, "🔴", emojifiedStatus("down"))
 	assert.Equal(t, "", emojifiedStatus("foo"))
 }

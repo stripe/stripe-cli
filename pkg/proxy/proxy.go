@@ -82,10 +82,10 @@ func (p *Proxy) Run() error {
 		session.WebSocketID,
 		session.WebSocketAuthorizedFeature,
 		&websocket.Config{
-			Log:                 p.cfg.Log,
-			NoWSS:               p.cfg.NoWSS,
-			ReconnectInterval:   time.Duration(session.ReconnectDelay) * time.Second,
-			EventHandler: websocket.EventHandlerFunc(p.processWebhookEvent),
+			Log:               p.cfg.Log,
+			NoWSS:             p.cfg.NoWSS,
+			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
+			EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
 		},
 	)
 	go p.webSocketClient.Run()
@@ -93,24 +93,22 @@ func (p *Proxy) Run() error {
 	color := ansi.Color(p.cfg.Log.Out)
 	ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", color.Bold(session.Secret)), p.cfg.Log.Out)
 
-	for {
-		select {
-		case <-p.interruptCh:
-			log.WithFields(log.Fields{
-				"prefix": "proxy.Proxy.Run",
-			}).Debug("Ctrl+C received, cleaning up...")
+	// Block until Ctrl+C is received
+	<-p.interruptCh
 
-			if p.webSocketClient != nil {
-				p.webSocketClient.Stop()
-			}
+	log.WithFields(log.Fields{
+		"prefix": "proxy.Proxy.Run",
+	}).Debug("Ctrl+C received, cleaning up...")
 
-			log.WithFields(log.Fields{
-				"prefix": "proxy.Proxy.Run",
-			}).Debug("Bye!")
-
-			return nil
-		}
+	if p.webSocketClient != nil {
+		p.webSocketClient.Stop()
 	}
+
+	log.WithFields(log.Fields{
+		"prefix": "proxy.Proxy.Run",
+	}).Debug("Bye!")
+
+	return nil
 }
 
 func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {

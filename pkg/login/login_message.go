@@ -3,8 +3,8 @@ package login
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"net/url"
+	"os"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -12,7 +12,7 @@ import (
 
 // Account is the most outer layer of the json response from Stripe
 type Account struct {
-	ID string `json:"id"`
+	ID       string   `json:"id"`
 	Settings Settings `json:"settings"`
 }
 
@@ -69,7 +69,7 @@ func getUserAccount(baseURL string, apiKey string) (*Account, error) {
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey: apiKey,
+		APIKey:  apiKey,
 	}
 
 	resp, err := client.PerformRequest("GET", "/v1/account", "", nil)

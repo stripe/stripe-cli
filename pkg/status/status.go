@@ -102,7 +102,7 @@ As of: %s`,
 		return "", err
 	}
 	var output bytes.Buffer
-	tmpl.Execute(&output, statusData)
+	err = tmpl.Execute(&output, statusData)
 	if err != nil {
 		return "", nil
 	}
@@ -111,11 +111,12 @@ As of: %s`,
 }
 
 func emojifiedStatus(status string) string {
-	if status == "up" {
+	switch status {
+	case "up":
 		return "✅"
-	} else if status == "degraged" {
+	case "degraded":
 		return "⚠️"
-	} else if status == "down" {
+	case "down":
 		return "🔴"
 	}
 

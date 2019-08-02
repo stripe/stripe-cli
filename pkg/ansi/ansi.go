@@ -127,11 +127,14 @@ func shouldUseColors(w io.Writer) bool {
 	useColors := ForceColors || checkIfTerminal(w)
 
 	if EnvironmentOverrideColors {
-		if force, ok := os.LookupEnv("CLICOLOR_FORCE"); ok && force != "0" {
+		force, ok := os.LookupEnv("CLICOLOR_FORCE")
+
+		switch {
+		case ok && force != "0":
 			useColors = true
-		} else if ok && force == "0" {
+		case ok && force == "0":
 			useColors = false
-		} else if os.Getenv("CLICOLOR") == "0" {
+		case os.Getenv("CLICOLOR") == "0":
 			useColors = false
 		}
 	}
