@@ -82,7 +82,7 @@ func TestFormatJSONVerbose(t *testing.T) {
 func TestFormatDefault(t *testing.T) {
 	response := buildResponse()
 
-	expected := `✅ All systems operational
+	expected := `✔ All systems operational
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", false)
@@ -92,11 +92,11 @@ As of: July 21, 4:00 +0:00`
 func TestFormatDefaultVerbose(t *testing.T) {
 	response := buildResponse()
 
-	expected := `✅ All systems operational
-✅ API
-✅ Dashboard
-✅ Stripe.js
-✅ Checkout.js
+	expected := `✔ All systems operational
+✔ API
+✔ Dashboard
+✔ Stripe.js
+✔ Checkout.js
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", true)
@@ -104,8 +104,8 @@ As of: July 21, 4:00 +0:00`
 }
 
 func TestEmojification(t *testing.T) {
-	assert.Equal(t, "✅", emojifiedStatus("up"))
-	assert.Equal(t, "⚠️", emojifiedStatus("degraded"))
-	assert.Equal(t, "🔴", emojifiedStatus("down"))
+	assert.Equal(t, "✔", emojifiedStatus("up"))
+	assert.Equal(t, "!", emojifiedStatus("degraded"))
+	assert.Equal(t, "✘", emojifiedStatus("down"))
 	assert.Equal(t, "", emojifiedStatus("foo"))
 }
