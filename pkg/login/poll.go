@@ -16,10 +16,10 @@ const maxAttemptsDefault = 2 * 60
 const intervalDefault = 1 * time.Second
 
 type pollAPIKeyResponse struct {
-	Redeemed  bool   `json:"redeemed"`
-	AccountID string `json:"account_id"`
+	Redeemed           bool   `json:"redeemed"`
+	AccountID          string `json:"account_id"`
 	AccountDisplayName string `json:"account_display_name"`
-	APIKey    string `json:"testmode_key_secret"`
+	APIKey             string `json:"testmode_key_secret"`
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
@@ -49,6 +49,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (string
 		if err != nil {
 			return "", nil, err
 		}
+		defer res.Body.Close()
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
