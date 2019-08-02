@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"text/template"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -111,13 +112,14 @@ As of: %s`,
 }
 
 func emojifiedStatus(status string) string {
+	color := ansi.Color(os.Stdout)
 	switch status {
 	case "up":
-		return "✅"
+		return color.Green("✔").String()
 	case "degraded":
-		return "⚠️"
+		return color.Yellow("!").String()
 	case "down":
-		return "🔴"
+		return color.Red("✘").String()
 	}
 
 	// To avoid potentially confusing users, if the status does not fit one of
