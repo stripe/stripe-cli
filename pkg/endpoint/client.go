@@ -79,6 +79,7 @@ func (c *Client) Post(webhookID string, body string, headers map[string]string) 
 		c.cfg.Log.Errorf("Failed to POST event to local endpoint, error = %v\n", err)
 		return err
 	}
+	defer resp.Body.Close()
 
 	c.cfg.ResponseHandler.ProcessResponse(webhookID, resp)
 

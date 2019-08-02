@@ -38,6 +38,7 @@ func GetStatus() (Response, error) {
 	if err != nil {
 		return status, err
 	}
+	defer resp.Body.Close()
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

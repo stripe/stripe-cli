@@ -161,7 +161,7 @@ func (c *Client) connect() bool {
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, _, err := c.cfg.Dialer.Dial(url, header)
+	conn, resp, err := c.cfg.Dialer.Dial(url, header)
 	if err != nil {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.connect",
@@ -169,6 +169,7 @@ func (c *Client) connect() bool {
 		}).Debug("Websocket connection error")
 		return false
 	}
+	defer resp.Body.Close()
 	c.changeConnection(conn)
 	c.isConnected = true
 
