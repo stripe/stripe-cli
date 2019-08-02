@@ -1,18 +1,19 @@
+dist: bionic
+
 language: go
 
-go:
-- 1.12.x
+go: '1.12.x'
 
 addons:
   apt:
     packages:
     - rpm
 
-env:
-  global:
-    - GO111MODULE=on
-    - GOBIN="${GOPATH}/bin"
-    - PATH="${GOBIN}:${PATH}"
+install:
+  - make setup
+
+script:
+  - make ci
 
 deploy:
 - provider: script

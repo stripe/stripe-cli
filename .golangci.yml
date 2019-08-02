@@ -1,0 +1,18 @@
+run:
+  tests: false
+
+linters:
+  goimports:
+    local-prefixes: github.com/stripe/stripe-cli
+
+linters:
+  enable-all: true
+  disable:
+    - errcheck
+    - gochecknoglobals
+    - gochecknoinits
+    - gosec
+    - lll
+    - maligned
+    - unparam
+    - stylecheck

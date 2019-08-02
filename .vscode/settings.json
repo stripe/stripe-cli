@@ -5,6 +5,13 @@
     "editor.formatOnSave": false,
 
     "go.formatTool": "goimports",
+    "go.formatFlags": [
+        "-local", "github.com/stripe/stripe-cli",
+    ],
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--fast",
+    ],
     "[go]": {
         "editor.formatOnSave": true
     },
