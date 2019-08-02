@@ -477,7 +477,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 	}
 	resp, _ := base.MakeRequest(ex.SecretKey, "/webhook_endpoints", params)
 	data := WebhookEndpointList{}
-	json.Unmarshal([]byte(resp), &data)
+	json.Unmarshal(resp, &data)
 
 	return data
 }
