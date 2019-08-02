@@ -111,11 +111,12 @@ As of: %s`,
 }
 
 func emojifiedStatus(status string) string {
-	if status == "up" {
+	switch status {
+	case "up":
 		return "✅"
-	} else if status == "degraged" {
+	case "degraded":
 		return "⚠️"
-	} else if status == "down" {
+	case "down":
 		return "🔴"
 	}
 
