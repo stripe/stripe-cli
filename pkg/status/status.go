@@ -102,7 +102,7 @@ As of: %s`,
 		return "", err
 	}
 	var output bytes.Buffer
-	tmpl.Execute(&output, statusData)
+	err = tmpl.Execute(&output, statusData)
 	if err != nil {
 		return "", nil
 	}
