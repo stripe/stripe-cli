@@ -94,6 +94,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Global flags:"),
 		ansi.Bold("Additional help topics:"),
 	))
+	rootCmd.SetVersionTemplate(version.Template)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -110,6 +111,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.ProfileName, "project-name", "default", "the project name to read from for config")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
+	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
 	viper.BindPFlag("secret_key", rootCmd.PersistentFlags().Lookup("api-key")) // #nosec G104
 
