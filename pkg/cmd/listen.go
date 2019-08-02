@@ -28,9 +28,8 @@ type listenCmd struct {
 	loadFromWebhooksAPI bool
 	printJSON           bool
 
-	apiBaseURL   string
-	noWSS        bool
-	webSocketURL string
+	apiBaseURL string
+	noWSS      bool
 }
 
 func newListenCmd() *listenCmd {
