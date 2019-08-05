@@ -21,7 +21,6 @@ type LogsTailCmd struct {
 	cfg          *config.Config
 	format       string
 	noWSS        bool
-	webSocketURL string
 }
 
 // NewLogsTailCmd creates and initializes the tail command for the logs package

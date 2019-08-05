@@ -104,24 +104,22 @@ func (tailer *Tailer) Run() error {
 
 	ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", tailer.cfg.Log.Out)
 
-	for {
-		select {
-		case <-tailer.interruptCh:
-			log.WithFields(log.Fields{
-				"prefix": "logs.Tailer.Run",
-			}).Debug("Ctrl+C received, cleaning up...")
+	// Block until Ctrl+C is received
+	<-tailer.interruptCh
 
-			if tailer.webSocketClient != nil {
-				tailer.webSocketClient.Stop()
-			}
+	log.WithFields(log.Fields{
+		"prefix": "logs.Tailer.Run",
+	}).Debug("Ctrl+C received, cleaning up...")
 
-			log.WithFields(log.Fields{
-				"prefix": "logs.Tailer.Run",
-			}).Debug("Bye!")
-
-			return nil
-		}
+	if tailer.webSocketClient != nil {
+		tailer.webSocketClient.Stop()
 	}
+
+	log.WithFields(log.Fields{
+		"prefix": "logs.Tailer.Run",
+	}).Debug("Bye!")
+
+	return nil
 }
 
 func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
@@ -156,11 +154,12 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 func colorizeStatus(status int) aurora.Value {
 	color := ansi.Color(os.Stdout)
 
-	if status >= 500 {
+	switch {
+	case status >= 500:
 		return color.Red(status).Bold()
-	} else if status >= 400 {
+	case status >= 400:
 		return color.Yellow(status).Bold()
-	} else {
+	default:
 		return color.Green(status).Bold()
 	}
 }
