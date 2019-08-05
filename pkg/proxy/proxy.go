@@ -82,7 +82,7 @@ func (p *Proxy) Run() error {
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	session, err := p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature)
+	session, err := p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
 	if err != nil {
 		// TODO: better error handling / retries
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
