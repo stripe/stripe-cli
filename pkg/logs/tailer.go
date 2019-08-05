@@ -154,11 +154,13 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 }
 
 func colorizeStatus(status int) aurora.Value {
+	color := ansi.Color(os.Stdout)
+
 	if status >= 500 {
-		return aurora.Red(status).Bold()
+		return color.Red(status).Bold()
 	} else if status >= 400 {
-		return aurora.Yellow(status).Bold()
+		return color.Yellow(status).Bold()
 	} else {
-		return aurora.Green(status).Bold()
+		return color.Green(status).Bold()
 	}
 }
