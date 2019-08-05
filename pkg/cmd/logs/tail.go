@@ -4,24 +4,22 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/logs"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 const requestLogsWebSocketFeature = "request_logs"
 
 // LogsTailCmd wraps the configuration for the tail command
 type LogsTailCmd struct {
-	Cmd          *cobra.Command
-
-	apiBaseURL   string
-	cfg          *config.Config
-	format       string
-	noWSS        bool
+	apiBaseURL string
+	cfg        *config.Config
+	Cmd        *cobra.Command
+	format     string
+	noWSS      bool
 }
 
 // NewLogsTailCmd creates and initializes the tail command for the logs package
@@ -68,13 +66,13 @@ func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error 
 	}
 
 	tailer := logs.New(&logs.Config{
-		APIBaseURL:          tailCmd.apiBaseURL,
-		DeviceName:          deviceName,
-		Key:                 key,
-		Log:                 log.StandardLogger(),
-		NoWSS:               tailCmd.noWSS,
-		OutputFormat:        tailCmd.format,
-		WebSocketFeature:    requestLogsWebSocketFeature,
+		APIBaseURL:       tailCmd.apiBaseURL,
+		DeviceName:       deviceName,
+		Key:              key,
+		Log:              log.StandardLogger(),
+		NoWSS:            tailCmd.noWSS,
+		OutputFormat:     tailCmd.format,
+		WebSocketFeature: requestLogsWebSocketFeature,
 	})
 
 	err = tailer.Run()
