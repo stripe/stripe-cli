@@ -75,7 +75,6 @@ func New(cfg *Config) *Tailer {
 	}
 }
 
-
 // Run sets the websocket connection
 func (tailer *Tailer) Run() error {
 	s := ansi.StartSpinner("Getting ready...", tailer.cfg.Log.Out)
@@ -94,10 +93,10 @@ func (tailer *Tailer) Run() error {
 		session.WebSocketID,
 		session.WebSocketAuthorizedFeature,
 		&websocket.Config{
-			Log:                 tailer.cfg.Log,
-			NoWSS:               tailer.cfg.NoWSS,
-			ReconnectInterval:   time.Duration(session.ReconnectDelay) * time.Second,
-			EventHandler: websocket.EventHandlerFunc(tailer.processRequestLogEvent),
+			EventHandler:      websocket.EventHandlerFunc(tailer.processRequestLogEvent),
+			Log:               tailer.cfg.Log,
+			NoWSS:             tailer.cfg.NoWSS,
+			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 		},
 	)
 	go tailer.webSocketClient.Run()
