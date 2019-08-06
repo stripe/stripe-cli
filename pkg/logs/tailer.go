@@ -19,6 +19,16 @@ import (
 
 const outputFormatJSON = "json"
 
+// LogFilters contains all of the potential user-provided filters for log tailing
+type LogFilters struct {
+	FilterIPAddress      string `json:"filter_ip_address,omitempty"`
+	FilterHTTPMethod     string `json:"filter_http_method,omitempty"`
+	FilterRequestPath    string `json:"filter_request_path,omitempty"`
+	FilterSource         string `json:"filter_source,omitempty"`
+	FilterStatusCode     string `json:"filter_status_code,omitempty"`
+	FilterStatusCodeType string `json:"filter_status_code_type,omitempty"`
+}
+
 // Config provides the cfguration of a Proxy
 type Config struct {
 	APIBaseURL string
@@ -26,9 +36,13 @@ type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 
+	// Filters for API request logs
+	Filters *LogFilters
+
 	// Key is the API key used to authenticate with Stripe
 	Key string
 
+	// Info, error, etc. logger. Unrelated to API request logs.
 	Log *log.Logger
 
 	// Force use of unencrypted ws:// protocol instead of wss://
@@ -82,7 +96,12 @@ func (tailer *Tailer) Run() error {
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(tailer.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	session, err := tailer.stripeAuthClient.Authorize(tailer.cfg.DeviceName, tailer.cfg.WebSocketFeature)
+	filters, err := jsonifyFilters(tailer.cfg.Filters)
+	if err != nil {
+		tailer.cfg.Log.Fatalf("Error while converting log filters to JSON encoding: %v", err)
+	}
+
+	session, err := tailer.stripeAuthClient.Authorize(tailer.cfg.DeviceName, tailer.cfg.WebSocketFeature, &filters)
 	if err != nil {
 		// TODO: better error handling / retries
 		tailer.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
@@ -161,4 +180,14 @@ func colorizeStatus(status int) aurora.Value {
 	default:
 		return color.Green(status).Bold()
 	}
+}
+
+func jsonifyFilters(logFilters *LogFilters) (string, error) {
+	bytes, err := json.Marshal(logFilters)
+    if err != nil {
+        return "", err
+	}
+
+	jsonStr := string(bytes)
+	return jsonStr, nil
 }

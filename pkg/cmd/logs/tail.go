@@ -19,6 +19,7 @@ type LogsTailCmd struct {
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
+	LogFilters *logs.LogFilters
 	noWSS      bool
 }
 
@@ -26,6 +27,7 @@ type LogsTailCmd struct {
 func NewLogsTailCmd(config *config.Config) *LogsTailCmd {
 	tailCmd := &LogsTailCmd{
 		cfg: config,
+		LogFilters: &logs.LogFilters{},
 	}
 
 	tailCmd.Cmd = &cobra.Command{
@@ -43,6 +45,14 @@ Watch for all request logs sent from Stripe:
 	}
 
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.format, "format", "default", "Specifies the output format of request logs")
+
+	// Log filters
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterIPAddress, "filter-ip-address", "", "Filter request logs by ip address")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterHTTPMethod, "filter-http-method", "", "Filter request logs by http method")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterRequestPath, "filter-request-path", "", "Filter request logs by request path")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterSource, "filter-source", "", "Filter request logs by source (dashboard or API)")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterStatusCode, "filter-status-code", "", "Filter request logs by status code")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterStatusCodeType, "filter-status-code-type", "", "Filter request logs by status code type")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -68,6 +78,7 @@ func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error 
 	tailer := logs.New(&logs.Config{
 		APIBaseURL:       tailCmd.apiBaseURL,
 		DeviceName:       deviceName,
+		Filters:          tailCmd.LogFilters,
 		Key:              key,
 		Log:              log.StandardLogger(),
 		NoWSS:            tailCmd.noWSS,
