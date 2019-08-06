@@ -21,12 +21,12 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Annotations: map[string]string{
-		"get":       "api",
-		"post":      "api",
-		"delete":    "api",
-		"trigger":   "webhooks",
-		"listen":    "webhooks",
-		"logs tail": "logs",
+		"get":     "api",
+		"post":    "api",
+		"delete":  "api",
+		"trigger": "webhooks",
+		"listen":  "webhooks",
+		"logs":    "logs",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -67,6 +67,9 @@ func Execute() {
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "logs")}}
+  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+
 %s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
@@ -89,6 +92,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("API commands:"),
 		ansi.Bold("Webhook commands:"),
+		ansi.Bold("Logs commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),

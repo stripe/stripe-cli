@@ -22,10 +22,10 @@ func newLogsCmd(config *config.Config) *LogsCmd {
 	logsCmd.Cmd = &cobra.Command{
 		Use:   "logs",
 		Args:  validators.NoArgs,
-		Short: "Top-level package for logs commands with Stripe.",
+		Short: "Top-level command for interacting with API request logs from Stripe. Run `stripe logs --help` to learn more about different logs commands.",
 		Long: `
-The logs package contains the sub-command 'tail', which allows you to tail your API request logs
-in real-time from Stripe.
+The logs command allows you to interact with your API request logs from Stripe. The first supported feature is log tailing, which allows you
+to view your API request logs in real-time.
 
 Invokable via:
     $ stripe logs tail
