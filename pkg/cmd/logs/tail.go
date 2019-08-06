@@ -13,8 +13,8 @@ import (
 
 const requestLogsWebSocketFeature = "request_logs"
 
-// LogsTailCmd wraps the configuration for the tail command
-type LogsTailCmd struct {
+// TailCmd wraps the configuration for the tail command
+type TailCmd struct {
 	apiBaseURL string
 	cfg        *config.Config
 	Cmd        *cobra.Command
@@ -23,9 +23,9 @@ type LogsTailCmd struct {
 	noWSS      bool
 }
 
-// NewLogsTailCmd creates and initializes the tail command for the logs package
-func NewLogsTailCmd(config *config.Config) *LogsTailCmd {
-	tailCmd := &LogsTailCmd{
+// NewTailCmd creates and initializes the tail command for the logs package
+func NewTailCmd(config *config.Config) *TailCmd {
+	tailCmd := &TailCmd{
 		cfg:        config,
 		LogFilters: &logTailing.LogFilters{},
 	}
@@ -64,7 +64,7 @@ Watch for all request logs sent from Stripe:
 	return tailCmd
 }
 
-func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
+func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	deviceName, err := tailCmd.cfg.Profile.GetDeviceName()
 	if err != nil {
 		return err
