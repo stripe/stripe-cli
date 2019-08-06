@@ -1,4 +1,4 @@
-package logs
+package logtailing
 
 import (
 	"encoding/json"
