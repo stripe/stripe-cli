@@ -43,6 +43,8 @@ type EndpointClient struct {
 	// URL the client sends POST requests to
 	URL string
 
+	connect bool
+
 	events map[string]bool
 
 	// Optional configuration parameters
@@ -51,7 +53,11 @@ type EndpointClient struct {
 
 // SupportsEventType takes an event of a webhook and compares it to the internal
 // list of supported events
-func (c *EndpointClient) SupportsEventType(eventType string) bool {
+func (c *EndpointClient) SupportsEventType(connect bool, eventType string) bool {
+	if connect != c.connect {
+		return false
+	}
+
 	// Endpoint supports all events, always return true
 	if c.events["*"] || c.events[eventType] {
 		return true
@@ -91,7 +97,7 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 //
 
 // NewEndpointClient returns a new EndpointClient.
-func NewEndpointClient(url string, events []string, cfg *EndpointConfig) *EndpointClient {
+func NewEndpointClient(url string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -108,9 +114,10 @@ func NewEndpointClient(url string, events []string, cfg *EndpointConfig) *Endpoi
 	}
 
 	return &EndpointClient{
-		URL:    url,
-		events: convertToMap(events),
-		cfg:    cfg,
+		URL:     url,
+		connect: connect,
+		events:  convertToMap(events),
+		cfg:     cfg,
 	}
 }
 

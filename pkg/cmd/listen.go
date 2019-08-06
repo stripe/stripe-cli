@@ -23,6 +23,7 @@ type listenCmd struct {
 	cmd *cobra.Command
 
 	forwardURL          string
+	forwardConnectURL   string
 	events              []string
 	latestAPIVersion    bool
 	loadFromWebhooksAPI bool
@@ -62,6 +63,7 @@ to your localhost:
 
 	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of which webhook events\nto listen for. For a list of all possible events, see:\nhttps://stripe.com/docs/api/events/types")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "p", false, "Print full JSON objects to stdout")
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
@@ -95,9 +97,19 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		lc.events = []string{"*"}
 	}
 
+	if len(lc.forwardConnectURL) == 0 {
+		lc.forwardConnectURL = lc.forwardURL
+	}
+
 	if len(lc.forwardURL) > 0 {
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-			URL:        lc.forwardURL,
+			URL:        parseURL(lc.forwardURL),
+			Connect:    false,
+			EventTypes: lc.events,
+		})
+		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
+			URL:        parseURL(lc.forwardConnectURL),
+			Connect:    true,
 			EventTypes: lc.events,
 		})
 	}
@@ -106,13 +118,16 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		if strings.HasPrefix(lc.forwardURL, "/") {
 			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
 		}
+		if strings.HasPrefix(lc.forwardConnectURL, "/") {
+			return errors.New("--forward-connect-to cannot be a relative path when loading webhook endpoints from the API")
+		}
 
 		endpoints := lc.getEndpointsFromAPI(key)
 		if len(endpoints.Data) == 0 {
 			return errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 
-		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL))
+		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL))
 	} else if lc.loadFromWebhooksAPI && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
@@ -146,7 +161,7 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	return examples.WebhookEndpointsList()
 }
 
-func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL string) []proxy.EndpointRoute {
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 	for _, endpoint := range endpoints.Data {
 		u, err := url.Parse(endpoint.URL)
@@ -154,10 +169,19 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL stri
 		if err == nil {
 			// Since webhooks in the dashboard may have a more generic url, only extract
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
-			endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-				URL:        path.Join(forwardURL, u.Path),
-				EventTypes: endpoint.EnabledEvents,
-			})
+			if endpoint.Application == "" {
+				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
+					URL:        path.Join(forwardURL, u.Path),
+					Connect:    false,
+					EventTypes: endpoint.EnabledEvents,
+				})
+			} else {
+				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
+					URL:        path.Join(forwardConnectURL, u.Path),
+					Connect:    true,
+					EventTypes: endpoint.EnabledEvents,
+				})
+			}
 		}
 	}
 
