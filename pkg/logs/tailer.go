@@ -29,7 +29,7 @@ type LogFilters struct {
 	FilterStatusCodeType string `json:"filter_status_code_type,omitempty"`
 }
 
-// Config provides the cfguration of a Proxy
+// Config provides the configuration of a log tailer
 type Config struct {
 	APIBaseURL string
 
@@ -171,7 +171,10 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 
 	coloredStatus := colorizeStatus(payload.Status)
 
-	outputStr := fmt.Sprintf("%s [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, payload.RequestID)
+	url := fmt.Sprintf("https://dashboard.stripe.com/test/logs/%s", payload.RequestID)
+	requestLink := ansi.Linkify(payload.RequestID, url, os.Stdout)
+
+	outputStr := fmt.Sprintf("%s [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
 }
 
