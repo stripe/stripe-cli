@@ -1,4 +1,4 @@
-package cmd
+package logs
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/logs"
+	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -19,7 +19,7 @@ type LogsTailCmd struct {
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
-	LogFilters *logs.LogFilters
+	LogFilters *logTailing.LogFilters
 	noWSS      bool
 }
 
@@ -27,7 +27,7 @@ type LogsTailCmd struct {
 func NewLogsTailCmd(config *config.Config) *LogsTailCmd {
 	tailCmd := &LogsTailCmd{
 		cfg:        config,
-		LogFilters: &logs.LogFilters{},
+		LogFilters: &logTailing.LogFilters{},
 	}
 
 	tailCmd.Cmd = &cobra.Command{
@@ -75,7 +75,7 @@ func (tailCmd *LogsTailCmd) runTailCmd(cmd *cobra.Command, args []string) error 
 		return err
 	}
 
-	tailer := logs.New(&logs.Config{
+	tailer := logTailing.New(&logTailing.Config{
 		APIBaseURL:       tailCmd.apiBaseURL,
 		DeviceName:       deviceName,
 		Filters:          tailCmd.LogFilters,
