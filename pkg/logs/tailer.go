@@ -190,8 +190,8 @@ func colorizeStatus(status int) aurora.Value {
 
 func jsonifyFilters(logFilters *LogFilters) (string, error) {
 	bytes, err := json.Marshal(logFilters)
-    if err != nil {
-        return "", err
+	if err != nil {
+		return "", err
 	}
 
 	jsonStr := string(bytes)

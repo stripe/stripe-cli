@@ -26,7 +26,7 @@ type LogsTailCmd struct {
 // NewLogsTailCmd creates and initializes the tail command for the logs package
 func NewLogsTailCmd(config *config.Config) *LogsTailCmd {
 	tailCmd := &LogsTailCmd{
-		cfg: config,
+		cfg:        config,
 		LogFilters: &logs.LogFilters{},
 	}
 
