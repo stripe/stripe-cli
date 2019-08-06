@@ -239,12 +239,12 @@ $ stripe logs tail
 ```
 
 A number of built-in filtering options are also supported:
-* `--filter-ip-address your.remote.ip.address`
-* `--filter-http-method GET`, supports `GET`, `POST`, and `DELETE`
-* `--filter-request-path /v1/charges`, supports a direct match to any Stripe path
-* `--filter-source api`, supports `api` and `dashboard`
-* `--filter-status-code 200`, supports any status code
-* `--filter-status-code-type 400`, supports 200/400/500
+* `--filter-ip-address`, supports a direct match with any ip address
+* `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
+* `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
+* `--filter-source`, supports `api` and `dashboard`
+* `--filter-status-code`, supports any status code (e.g., `200`)
+* `--filter-status-code-type`, supports `200`, `400`, and `500`
 
 Multiple filters can be used together:
 
