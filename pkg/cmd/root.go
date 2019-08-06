@@ -26,8 +26,8 @@ var rootCmd = &cobra.Command{
 		"delete":  "http",
 		"trigger": "webhooks",
 		"listen":  "webhooks",
-		"logs":    "api",
-		"status":  "api",
+		"logs":    "stripe",
+		"status":  "stripe",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -68,7 +68,7 @@ func Execute() {
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "api")}}
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "stripe")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
 %s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
@@ -93,7 +93,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("HTTP commands:"),
 		ansi.Bold("Webhook commands:"),
-		ansi.Bold("API commands:"),
+		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
