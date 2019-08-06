@@ -21,12 +21,13 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Annotations: map[string]string{
-		"get":     "api",
-		"post":    "api",
-		"delete":  "api",
+		"get":     "http",
+		"post":    "http",
+		"delete":  "http",
 		"trigger": "webhooks",
 		"listen":  "webhooks",
-		"logs":    "logs",
+		"logs":    "stripe",
+		"status":  "stripe",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -61,13 +62,13 @@ func Execute() {
 %s
   {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
 
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "api")}}
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "http")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "logs")}}
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "stripe")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
 %s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
@@ -90,9 +91,9 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Usage:"),
 		ansi.Bold("Aliases:"),
 		ansi.Bold("Examples:"),
-		ansi.Bold("API commands:"),
+		ansi.Bold("HTTP commands:"),
 		ansi.Bold("Webhook commands:"),
-		ansi.Bold("Logs commands:"),
+		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
