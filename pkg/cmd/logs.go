@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	logs "github.com/stripe/stripe-cli/pkg/cmd/logs"
@@ -25,13 +23,13 @@ func newLogsCmd(config *config.Config) *LogsCmd {
 		Use:   "logs",
 		Args:  validators.NoArgs,
 		Short: "Top-level package for logs commands with Stripe.",
-		Long: fmt.Sprintf(`
+		Long: `
 The logs package contains the sub-command 'tail', which allows you to tail your API request logs
 in real-time from Stripe.
 
 Invokable via:
     $ stripe logs tail
-`),
+`,
 	}
 
 	logsCmd.Cmd.AddCommand(logs.NewLogsTailCmd(logsCmd.cfg).Cmd)
