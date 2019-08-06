@@ -32,7 +32,7 @@ Invokable via:
 `,
 	}
 
-	logsCmd.Cmd.AddCommand(logs.NewLogsTailCmd(logsCmd.cfg).Cmd)
+	logsCmd.Cmd.AddCommand(logs.NewTailCmd(logsCmd.cfg).Cmd)
 
 	return logsCmd
 }
