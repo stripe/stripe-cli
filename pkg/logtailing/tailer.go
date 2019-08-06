@@ -174,7 +174,7 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	url := fmt.Sprintf("https://dashboard.stripe.com/test/logs/%s", payload.RequestID)
 	requestLink := ansi.Linkify(payload.RequestID, url, os.Stdout)
 
-	outputStr := fmt.Sprintf("%s [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, requestLink)
+	outputStr := fmt.Sprintf("%s UTC [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
 }
 
