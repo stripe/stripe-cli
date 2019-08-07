@@ -2,8 +2,8 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/viper"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -75,6 +75,46 @@ func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
 }
 
+func (p *Profile) WriteConfigField(field, value string) error {
+	viper.Set(p.GetConfigField(field), value)
+	return viper.WriteConfig()
+}
+
+func (p *Profile) DeleteConfigField(field string) error {
+	v, err := removeKey(viper.GetViper(), p.GetConfigField(field))
+	if err != nil {
+		return err
+	}
+	return p.writeProfile(v)
+}
+
+func (p *Profile) PrintConfig() {
+	var projects []string
+	allSettings := viper.AllSettings()
+	delete(allSettings, "secret_key")
+
+	if p.ProfileName == "default" {
+		projects = []string{"default"}
+		for project := range allSettings {
+			if project != "default" {
+				projects = append(projects, project)
+			}
+		}
+	} else {
+		projects = []string{p.ProfileName}
+	}
+
+	for _, project := range projects {
+		fmt.Println(fmt.Sprintf("[%s]", project))
+		projectSettings := allSettings[project].(map[string]interface{})
+		for field, value := range projectSettings {
+			fmt.Println(fmt.Sprintf("%s=%s", field, value))
+		}
+
+		fmt.Println()
+	}
+}
+
 func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 
@@ -87,9 +127,6 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	runtimeViper.Set(p.ProfileName+".device_name", strings.TrimSpace(p.DeviceName))
-	runtimeViper.Set(p.ProfileName+".secret_key", strings.TrimSpace(p.SecretKey))
 
 	runtimeViper.MergeInConfig()
 	runtimeViper.WriteConfig()

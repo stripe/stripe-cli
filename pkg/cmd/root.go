@@ -119,6 +119,7 @@ func init() {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
+	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
