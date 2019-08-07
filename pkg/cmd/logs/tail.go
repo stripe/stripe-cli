@@ -65,6 +65,11 @@ Watch for all request logs sent from Stripe:
 }
 
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
+	err := tailCmd.validateArgs()
+	if err != nil {
+		return err
+	}
+
 	deviceName, err := tailCmd.cfg.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -87,6 +92,30 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	})
 
 	err = tailer.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tailCmd *TailCmd) validateArgs() error {
+	err := validators.CallNonEmpty(validators.HTTPMethod, tailCmd.LogFilters.FilterHTTPMethod)
+	if err != nil {
+		return err
+	}
+
+	err = validators.CallNonEmpty(validators.StatusCode, tailCmd.LogFilters.FilterStatusCode)
+	if err != nil {
+		return err
+	}
+
+	err = validators.CallNonEmpty(validators.StatusCodeType, tailCmd.LogFilters.FilterStatusCodeType)
+	if err != nil {
+		return err
+	}
+
+	err = validators.CallNonEmpty(validators.RequestSource, tailCmd.LogFilters.FilterSource)
 	if err != nil {
 		return err
 	}

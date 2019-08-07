@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+type ArgValidator func(string) error
+
+// Call allows any validator to be called on a specified argument
+// If the arg is empty, then the validator is not called.
+func CallNonEmpty(val ArgValidator, arg string) error {
+	if arg == "" {
+		return nil
+	}
+
+	return val(arg)
+}
+
 // APIKey validates an API key.
 func APIKey(input string) error {
 	if len(input) < 12 {
