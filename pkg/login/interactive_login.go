@@ -106,7 +106,7 @@ func securePrompt(input io.Reader) (string, error) {
 			return "", err
 		}
 
-		buf, err := terminal.ReadPassword(syscall.Stdin)
+		buf, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 		if err != nil {
 			return "", err
 		}
@@ -122,7 +122,7 @@ func securePrompt(input io.Reader) (string, error) {
 }
 
 func protectTerminalState() (chan os.Signal, error) {
-	originalTerminalState, err := terminal.GetState(syscall.Stdin)
+	originalTerminalState, err := terminal.GetState(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func protectTerminalState() (chan os.Signal, error) {
 	signal.Notify(signalChan, os.Interrupt)
 	go func() {
 		<-signalChan
-		terminal.Restore(syscall.Stdin, originalTerminalState)
+		terminal.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
 		os.Exit(1)
 	}()
 
