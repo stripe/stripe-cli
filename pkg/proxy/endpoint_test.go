@@ -32,6 +32,7 @@ func TestClientHandler(t *testing.T) {
 	rcvWebhookID := ""
 	client := NewEndpointClient(
 		ts.URL,
+		false,
 		[]string{"*"},
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID string, resp *http.Response) {

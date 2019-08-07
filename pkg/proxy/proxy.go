@@ -26,6 +26,9 @@ type EndpointRoute struct {
 	// URL is the endpoint's URL.
 	URL string
 
+	// Connect indicates whether the endpoint should receive normal (when false) or Connect (when true) events.
+	Connect bool
+
 	// EventTypes is the list of event types that should be sent to the endpoint.
 	EventTypes []string
 }
@@ -178,7 +181,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	for _, endpoint := range p.endpointClients {
-		if endpoint.SupportsEventType(evt.Type) {
+		if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
 			go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
 		}
 	}
@@ -236,6 +239,7 @@ func New(cfg *Config) *Proxy {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
+			route.Connect,
 			route.EventTypes,
 			&EndpointConfig{
 				Log:             p.cfg.Log,

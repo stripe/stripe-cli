@@ -24,8 +24,9 @@ type WebhookEndpointList struct {
 
 // WebhookEndpoint contains the data for each webhook endpoint
 type WebhookEndpoint struct {
-	URL           string   `json:"url"`
+	Application   string   `json:"application"`
 	EnabledEvents []string `json:"enabled_events"`
+	URL           string   `json:"url"`
 }
 
 // Examples stores possible webhook test events to trigger for the CLI
