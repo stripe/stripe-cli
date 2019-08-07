@@ -55,6 +55,7 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 	return appFolder, nil
 }
 
+// GetFolders returns a list of all folders for a given path
 func (r *Recipes) GetFolders(path string) ([]string, error) {
 	files, err := ioutil.ReadDir(path)
 	var dir []string
@@ -72,6 +73,7 @@ func (r *Recipes) GetFolders(path string) ([]string, error) {
 	return dir, nil
 }
 
+// GetFiles returns a list of files for a given path
 func (r *Recipes) GetFiles(path string) ([]string, error) {
 	files, err := ioutil.ReadDir(path)
 	var file []string
