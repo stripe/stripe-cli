@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/endpoint"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -56,7 +55,7 @@ type Config struct {
 type Proxy struct {
 	cfg *Config
 
-	endpointClients  []*endpoint.Client
+	endpointClients  []*EndpointClient
 	stripeAuthClient *stripeauth.Client
 	webSocketClient  *websocket.Client
 
@@ -226,12 +225,12 @@ func New(cfg *Config) *Proxy {
 
 	for url, events := range cfg.EndpointsMap {
 		// append to endpointClients
-		p.endpointClients = append(p.endpointClients, endpoint.NewClient(
+		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			url,
 			events,
-			&endpoint.Config{
+			&EndpointConfig{
 				Log:             p.cfg.Log,
-				ResponseHandler: endpoint.ResponseHandlerFunc(p.processEndpointResponse),
+				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
 			},
 		))
 	}
