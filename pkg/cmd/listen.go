@@ -84,7 +84,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	endpointsMap := make(map[string][]string)
+	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
 	key, err := Config.Profile.GetSecretKey()
 	if err != nil {
@@ -96,7 +96,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(lc.forwardURL) > 0 {
-		endpointsMap[parseURL(lc.forwardURL)] = lc.events
+		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
+			URL:        lc.forwardURL,
+			EventTypes: lc.events,
+		})
 	}
 
 	if lc.loadFromWebhooksAPI && len(lc.forwardURL) > 0 {
@@ -109,7 +112,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 			return errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 
-		endpointsMap = buildEndpointsMap(endpoints, parseURL(lc.forwardURL))
+		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL))
 	} else if lc.loadFromWebhooksAPI && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
@@ -117,7 +120,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	p := proxy.New(&proxy.Config{
 		DeviceName:          deviceName,
 		Key:                 key,
-		EndpointsMap:        endpointsMap,
+		EndpointRoutes:      endpointRoutes,
 		APIBaseURL:          lc.apiBaseURL,
 		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
@@ -143,19 +146,22 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	return examples.WebhookEndpointsList()
 }
 
-func buildEndpointsMap(endpoints requests.WebhookEndpointList, forwardURL string) map[string][]string {
-	endpointsMap := make(map[string][]string)
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL string) []proxy.EndpointRoute {
+	endpointRoutes := make([]proxy.EndpointRoute, 0)
 	for _, endpoint := range endpoints.Data {
 		u, err := url.Parse(endpoint.URL)
 		// Silently skip over invalid paths
 		if err == nil {
 			// Since webhooks in the dashboard may have a more generic url, only extract
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
-			endpointsMap[path.Join(forwardURL, u.Path)] = endpoint.EnabledEvents
+			endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
+				URL:        path.Join(forwardURL, u.Path),
+				EventTypes: endpoint.EnabledEvents,
+			})
 		}
 	}
 
-	return endpointsMap
+	return endpointRoutes
 }
 
 // parseURL parses the potentially incomplete URL provided in the configuration

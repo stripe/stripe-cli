@@ -21,7 +21,16 @@ import (
 // Public types
 //
 
-// Config provides the cfguration of a Proxy
+// EndpointRoute describes a local endpoint's routing configuration.
+type EndpointRoute struct {
+	// URL is the endpoint's URL.
+	URL string
+
+	// EventTypes is the list of event types that should be sent to the endpoint.
+	EventTypes []string
+}
+
+// Config provides the configuration of a Proxy
 type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
@@ -30,7 +39,7 @@ type Config struct {
 	Key string
 
 	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
-	EndpointsMap map[string][]string
+	EndpointRoutes []EndpointRoute
 
 	APIBaseURL string
 
@@ -223,11 +232,11 @@ func New(cfg *Config) *Proxy {
 		interruptCh: make(chan os.Signal, 1),
 	}
 
-	for url, events := range cfg.EndpointsMap {
+	for _, route := range cfg.EndpointRoutes {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
-			url,
-			events,
+			route.URL,
+			route.EventTypes,
 			&EndpointConfig{
 				Log:             p.cfg.Log,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),

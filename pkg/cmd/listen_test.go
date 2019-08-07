@@ -19,7 +19,7 @@ func TestParseUrl(t *testing.T) {
 	assert.Equal(t, "http://localhost:3000", parseURL("3000"))
 }
 
-func TestBuildEndpointsMap(t *testing.T) {
+func TestBuildEndpointRoutes(t *testing.T) {
 	localURL := "http://localhost"
 
 	endpoint := requests.WebhookEndpoint{
@@ -31,6 +31,8 @@ func TestBuildEndpointsMap(t *testing.T) {
 		Data: []requests.WebhookEndpoint{endpoint},
 	}
 
-	output := buildEndpointsMap(endpointList, localURL)
-	assert.Equal(t, output["http:/localhost/hooks"], []string{"*"})
+	output := buildEndpointRoutes(endpointList, localURL)
+	assert.Equal(t, 1, len(output))
+	assert.Equal(t, output[0].URL, "http:/localhost/hooks")
+	assert.Equal(t, output[0].EventTypes, []string{"*"})
 }
