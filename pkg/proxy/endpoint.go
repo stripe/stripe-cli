@@ -1,4 +1,4 @@
-package endpoint
+package proxy
 
 import (
 	"bytes"
@@ -13,17 +13,17 @@ import (
 // Public types
 //
 
-// Config contains the optional configuration parameters of a Client.
-type Config struct {
+// EndpointConfig contains the optional configuration parameters of an EndpointClient.
+type EndpointConfig struct {
 	HTTPClient *http.Client
 
 	Log *log.Logger
 
-	ResponseHandler ResponseHandler
+	ResponseHandler EndpointResponseHandler
 }
 
 // ResponseHandler handles a response from the endpoint.
-type ResponseHandler interface {
+type EndpointResponseHandler interface {
 	ProcessResponse(string, *http.Response)
 }
 
@@ -31,27 +31,27 @@ type ResponseHandler interface {
 // functions as response handlers. If f is a function with the
 // appropriate signature, ResponseHandler(f) is a
 // ResponseHandler that calls f.
-type ResponseHandlerFunc func(string, *http.Response)
+type EndpointResponseHandlerFunc func(string, *http.Response)
 
 // ProcessResponse calls f(webhookID, resp).
-func (f ResponseHandlerFunc) ProcessResponse(webhookID string, resp *http.Response) {
+func (f EndpointResponseHandlerFunc) ProcessResponse(webhookID string, resp *http.Response) {
 	f(webhookID, resp)
 }
 
-// Client is the client used to POST webhook requests to the local endpoint.
-type Client struct {
+// EndpointClient is the client used to POST webhook requests to the local endpoint.
+type EndpointClient struct {
 	// URL the client sends POST requests to
 	URL string
 
 	events map[string]bool
 
 	// Optional configuration parameters
-	cfg *Config
+	cfg *EndpointConfig
 }
 
 // SupportsEventType takes an event of a webhook and compares it to the internal
 // list of supported events
-func (c *Client) SupportsEventType(eventType string) bool {
+func (c *EndpointClient) SupportsEventType(eventType string) bool {
 	// Endpoint supports all events, always return true
 	if c.events["*"] || c.events[eventType] {
 		return true
@@ -61,9 +61,9 @@ func (c *Client) SupportsEventType(eventType string) bool {
 }
 
 // Post sends a message to the local endpoint.
-func (c *Client) Post(webhookID string, body string, headers map[string]string) error {
+func (c *EndpointClient) Post(webhookID string, body string, headers map[string]string) error {
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix": "endpoint.Client.Post",
+		"prefix": "proxy.EndpointClient.Post",
 	}).Debug("Forwarding event to local endpoint")
 
 	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
@@ -90,10 +90,10 @@ func (c *Client) Post(webhookID string, body string, headers map[string]string) 
 // Public functions
 //
 
-// NewClient returns a new Client.
-func NewClient(url string, events []string, cfg *Config) *Client {
+// NewEndpointClient returns a new EndpointClient.
+func NewEndpointClient(url string, events []string, cfg *EndpointConfig) *EndpointClient {
 	if cfg == nil {
-		cfg = &Config{}
+		cfg = &EndpointConfig{}
 	}
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
@@ -104,10 +104,10 @@ func NewClient(url string, events []string, cfg *Config) *Client {
 		}
 	}
 	if cfg.ResponseHandler == nil {
-		cfg.ResponseHandler = nullResponseHandler
+		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, *http.Response) {})
 	}
 
-	return &Client{
+	return &EndpointClient{
 		URL:    url,
 		events: convertToMap(events),
 		cfg:    cfg,
@@ -121,12 +121,6 @@ func NewClient(url string, events []string, cfg *Config) *Client {
 const (
 	defaultTimeout = 30 * time.Second
 )
-
-//
-// Private variables
-//
-
-var nullResponseHandler = ResponseHandlerFunc(func(string, *http.Response) {})
 
 //
 // Private functions

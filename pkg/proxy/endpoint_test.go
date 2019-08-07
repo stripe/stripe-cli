@@ -1,4 +1,4 @@
-package endpoint
+package proxy
 
 import (
 	"io/ioutil"
@@ -30,11 +30,11 @@ func TestClientHandler(t *testing.T) {
 
 	rcvBody := ""
 	rcvWebhookID := ""
-	client := NewClient(
+	client := NewEndpointClient(
 		ts.URL,
 		[]string{"*"},
-		&Config{
-			ResponseHandler: ResponseHandlerFunc(func(webhookID string, resp *http.Response) {
+		&EndpointConfig{
+			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
 				assert.Nil(t, err)
 
