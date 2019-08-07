@@ -28,6 +28,11 @@ func newAppsCmd() *appsCmd {
 				app := args[0]
 
 				spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", app), os.Stdout)
+				// Initialize the selected recipe in the local cache directory.
+				// This will either clone or update the specified recipe,
+				// depending on whether or not it's. Additionally, this
+				// identifies if the recipe has multiple integrations and what
+				// languages it supports.
 				err := recipe.Initialize(app)
 				if err != nil {
 					switch e := err.Error(); e {
@@ -47,16 +52,25 @@ func newAppsCmd() *appsCmd {
 				}
 				ansi.StopSpinner(spinner, "Finished downloading.", os.Stdout)
 
+				// Once we've initialized the recipe in the local cache
+				// directory, the user needs to select which integration they
+				// want to work with (if applicable) and which langauge they
+				// want to copy
 				err = recipe.SelectOptions()
 				if err != nil {
 					return err
 				}
 
+				// Create the target folder to copy the recipe in to. We do
+				/// this here in case any of the steps above fail, minimizing
+				// the change that we create a dangling empty folder
 				targetPath, err := recipe.MakeFolder(app)
 				if err != nil {
 					return err
 				}
 
+				// Perform the copy of the recipe given the selected options
+				// from the selections above
 				err = recipe.Copy(targetPath)
 				if err != nil {
 					return err
