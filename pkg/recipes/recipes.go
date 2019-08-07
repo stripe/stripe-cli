@@ -12,19 +12,35 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
-// Recipes does stuff
-// TODO
+// Recipes stores the information for the selected recipe in addition to the
+// selected configuration option to copy over
 type Recipes struct {
 	Config config.Config
 
-	integrations []string
-	languages    []string
+	// source repository to clone from
+	repo string
 
+	// Available integrations
+	integrations []string
+
+	// Available languages
+	languages []string
+
+	//selected integrations. We store selected integration as an array
+	// in case they pick more than one
 	integration []string
-	language    string
-	repo        string
+
+	// selected language
+	language string
 }
 
+// Initialize get the recipe ready for the user to copy. It:
+// 1. creates the recipe cache folder if it doesn't exist
+// 2. store the path of the locale cache folder for later use
+// 3. if the selected app does not exist in the local cache folder, clone it
+// 4. if the selected app does exist in the local cache folder, pull changes
+// 5. see if there are different integrations available for the recipe
+// 6. see what languages the recipe is available in
 func (r *Recipes) Initialize(app string) error {
 	appPath, err := r.appCacheFolder(app)
 	if err != nil {
@@ -47,11 +63,20 @@ func (r *Recipes) Initialize(app string) error {
 		}
 	}
 
+	// Recipes can have multiple integration types, each of which will have its
+	// own client/server implementation. For example, the adding sales tax
+	// sample, has a manual confirmation and automatic confirmation integration.
+	// These integrations are stored as folders in the top-level of the recipe.
+	// Since much of the recipe setup logic is going to be dependent on the
+	// structure of the recipe, we want to check for whether there are
+	// integrations upfront.
 	err = r.checkForIntegrations()
 	if err != nil {
 		return err
 	}
 
+	// Once we've pulled the integration, we want to check what languages are
+	// supported so that we can ask the user which langauge they want to copy.
 	err = r.loadLanguages()
 	if err != nil {
 		return err
@@ -60,6 +85,15 @@ func (r *Recipes) Initialize(app string) error {
 	return nil
 }
 
+// checkForIntegrations scans the recipe to see if there are different
+// integration option available. Integratios are the different ways to build
+// the specific recipe, for example if it uses charges or payment intents
+// would be two separate integrations.
+//
+// A recipe's folder structure will either contain "client" and "server"
+// folders in its top-level or it'll have folders that each contain a different
+// integration. This function scans to see if there is a "server" folder in the
+// top level and uses that to determine if there are integrations.
 func (r *Recipes) checkForIntegrations() error {
 	folders, err := r.GetFolders(r.repo)
 	if err != nil {
@@ -73,6 +107,14 @@ func (r *Recipes) checkForIntegrations() error {
 	return nil
 }
 
+// Each recipe will have specific languages that it supports. Right now, there
+// is a goal to support java, node, php, python, and ruby for all our recipes.
+// We did not hard code those to avoid having to release a CLI update if we
+// ever add new language support.
+//
+// Recipes do not release until all integrations have all supported languages
+// built out. With that, we can simply check the languages supported in any
+// folder and assume that all will have the same languages.
 func (r *Recipes) loadLanguages() error {
 	var err error
 
@@ -91,6 +133,8 @@ func (r *Recipes) loadLanguages() error {
 	return nil
 }
 
+// SelectOptions prompts the user to select the integration they want to use
+// (if available) and the language they want the intergation to be.
 func (r *Recipes) SelectOptions() error {
 	if len(r.integrations) > 0 {
 		r.integration = integrationSelectPrompt(r.integrations)
@@ -107,7 +151,29 @@ func (r *Recipes) SelectOptions() error {
 	return nil
 }
 
+// Copy will copy all of the files from the selected configuration above over.
+// This has a few different behaviors, depending on the configuration.
+// Ultimately, we want the user to do as minimal of folder traversing as
+// possible. What we want to end up with is:
+//
+// |- example-recipe/
+// +-- client/
+// +-- server/
+// +-- readme.md
+// +-- ...
+// `-- .env.example
+//
+// The behavior here is:
+// * If there are no integrations available, copy the top-level files, the
+//   client folder, and the selected language inside of the server folder to
+//   the server top-level (example above)
+// * If the user selects 1 integration, mirror the structure above for the
+//   selected integration (example above)
+// * If they selected >1 integration, we want the same structure above but
+//   replicated once per selected in integration.
 func (r *Recipes) Copy(target string) error {
+	// The condition for the loop starts as true since we will always want to
+	// process at least once.
 	for i := 0; true; i++ {
 		integration := r.destinationName(i)
 
@@ -130,6 +196,7 @@ func (r *Recipes) Copy(target string) error {
 			return err
 		}
 
+		// This copies all top-level files specific to integrations
 		for _, file := range filesSource {
 			err = copy.Copy(filepath.Join(r.repo, integration, file), filepath.Join(target, integration, file))
 			if err != nil {
@@ -142,6 +209,7 @@ func (r *Recipes) Copy(target string) error {
 		}
 	}
 
+	// This copies all top-level files specific to the entire recipe repo
 	filesSource, err := r.GetFiles(r.repo)
 	if err != nil {
 		return err

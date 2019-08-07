@@ -8,9 +8,10 @@ import (
 	"strings"
 )
 
+// cacheFolder is the local directory where we place local copies of recipes
 func (r *Recipes) cacheFolder() (string, error) {
 	configPath := r.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	cachePath := filepath.Join(configPath, "cache")
+	cachePath := filepath.Join(configPath, "recipes-cache")
 
 	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
 		err := os.MkdirAll(cachePath, os.ModePerm)
@@ -22,6 +23,7 @@ func (r *Recipes) cacheFolder() (string, error) {
 	return cachePath, nil
 }
 
+// appCacheFolder returns the full path of the local cache with the recipe name
 func (r *Recipes) appCacheFolder(app string) (string, error) {
 	path, err := r.cacheFolder()
 	if err != nil {
