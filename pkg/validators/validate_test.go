@@ -38,13 +38,28 @@ func TestHTTPMethod(t *testing.T) {
 }
 
 func TestHTTPMethodInvalid(t *testing.T) {
-	err := HTTPMethod("INVALID")
-	assert.Equal(t, "INVALID is not an acceptable HTTP method (GET, POST, DELETE)", fmt.Sprintf("%s", err))
+	err := HTTPMethod("invalid")
+	assert.Equal(t, "invalid is not an acceptable HTTP method (GET, POST, DELETE)", fmt.Sprintf("%s", err))
 }
 
 func TestHTTPMethodLowercase(t *testing.T) {
 	err := HTTPMethod("post")
 	assert.Nil(t, err)
+}
+
+func TestRequestSourceAPI(t *testing.T) {
+	err := RequestSource("API")
+	assert.Nil(t, err)
+}
+
+func TestRequestSourceDashboard(t *testing.T) {
+	err := RequestSource("dashboard")
+	assert.Nil(t, err)
+}
+
+func TestRequestSourceInvalid(t *testing.T) {
+	err := RequestSource("invalid")
+	assert.Equal(t, "invalid is not an acceptable source (API, DASHBOARD)", fmt.Sprintf("%s", err))
 }
 
 func TestStatusCode(t *testing.T) {

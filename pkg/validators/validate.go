@@ -30,13 +30,23 @@ func APIKey(input string) error {
 }
 
 func HTTPMethod(method string) error {
-	method = strings.ToUpper(method)
+	methodUpper := strings.ToUpper(method)
 
-	if method == "GET" || method == "POST" || method == "DELETE" {
+	if methodUpper == "GET" || methodUpper == "POST" || methodUpper == "DELETE" {
 		return nil
 	}
 
 	return fmt.Errorf("%s is not an acceptable HTTP method (GET, POST, DELETE)", method)
+}
+
+func RequestSource(source string) error {
+	sourceUpper := strings.ToUpper(source)
+
+	if sourceUpper == "API" || sourceUpper == "DASHBOARD" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable source (API, DASHBOARD)", source)
 }
 
 // StatusCode validates that a provided status code is within the range of those used in the Stripe API
