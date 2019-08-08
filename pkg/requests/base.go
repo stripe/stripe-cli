@@ -33,7 +33,7 @@ type Base struct {
 	Cmd *cobra.Command
 
 	Method  string
-	Profile config.Profile
+	Profile *config.Profile
 
 	Parameters RequestParameters
 
@@ -50,6 +50,7 @@ var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
+	fmt.Print(rb.Profile.ProfileName)
 	if len(args) > 1 {
 		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
 	}

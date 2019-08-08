@@ -19,7 +19,7 @@ func newGetCmd() *getCmd {
 	gc := &getCmd{}
 
 	gc.reqs.Method = http.MethodGet
-	gc.reqs.Profile = Config.Profile
+	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "get",
 		Args:  validators.ExactArgs(1),

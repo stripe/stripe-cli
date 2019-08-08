@@ -19,7 +19,7 @@ func newDeleteCmd() *deleteCmd {
 	gc := &deleteCmd{}
 
 	gc.reqs.Method = http.MethodDelete
-	gc.reqs.Profile = Config.Profile
+	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "delete",
 		Args:  validators.ExactArgs(1),
