@@ -33,7 +33,7 @@ type Base struct {
 	Cmd *cobra.Command
 
 	Method  string
-	Profile config.Profile
+	Profile *config.Profile
 
 	Parameters RequestParameters
 

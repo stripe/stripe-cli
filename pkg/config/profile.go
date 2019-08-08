@@ -33,8 +33,13 @@ func (p *Profile) CreateProfile() error {
 
 // GetDeviceName returns the configured device name
 func (p *Profile) GetDeviceName() (string, error) {
+	deviceName := viper.GetString("device_name")
+	if deviceName != "" {
+		return deviceName, nil
+	}
+
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString("default.device_name"), nil
+		return viper.GetString(p.GetConfigField("device_name")), nil
 	}
 
 	return "", errors.New("your device name has not been configured. Use `stripe login` to set your device name")

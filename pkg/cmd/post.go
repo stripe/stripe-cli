@@ -19,7 +19,7 @@ func newPostCmd() *postCmd {
 	gc := &postCmd{}
 
 	gc.reqs.Method = http.MethodPost
-	gc.reqs.Profile = Config.Profile
+	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "post",
 		Args:  validators.ExactArgs(1),
