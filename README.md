@@ -239,9 +239,11 @@ $ stripe logs tail
 ```
 
 A number of built-in filtering options are also supported:
+* `--filter-account`, (*CONNECT ONLY*) supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
 * `--filter-ip-address`, supports a direct match with any ip address
 * `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
 * `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
+* `--filter-request-status`, supports `succeeded` and `failed`
 * `--filter-source`, supports `api` and `dashboard`
 * `--filter-status-code`, supports any status code (e.g., `200`)
 * `--filter-status-code-type`, supports `200`, `400`, and `500`
