@@ -21,12 +21,14 @@ const outputFormatJSON = "json"
 
 // LogFilters contains all of the potential user-provided filters for log tailing
 type LogFilters struct {
-	FilterIPAddress      string `json:"filter_ip_address,omitempty"`
-	FilterHTTPMethod     string `json:"filter_http_method,omitempty"`
-	FilterRequestPath    string `json:"filter_request_path,omitempty"`
-	FilterSource         string `json:"filter_source,omitempty"`
-	FilterStatusCode     string `json:"filter_status_code,omitempty"`
-	FilterStatusCodeType string `json:"filter_status_code_type,omitempty"`
+	FilterAccount        []string `json:"filter_account,omitempty"`
+	FilterIPAddress      []string `json:"filter_ip_address,omitempty"`
+	FilterHTTPMethod     []string `json:"filter_http_method,omitempty"`
+	FilterRequestPath    []string `json:"filter_request_path,omitempty"`
+	FilterRequestStatus  []string `json:"filter_request_status,omitempty"`
+	FilterSource         []string `json:"filter_source,omitempty"`
+	FilterStatusCode     []string `json:"filter_status_code,omitempty"`
+	FilterStatusCodeType []string `json:"filter_status_code_type,omitempty"`
 }
 
 // Config provides the configuration of a log tailer

@@ -47,12 +47,14 @@ Watch for all request logs sent from Stripe:
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.format, "format", "default", "Specifies the output format of request logs")
 
 	// Log filters
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterIPAddress, "filter-ip-address", "", "Filter request logs by ip address")
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterHTTPMethod, "filter-http-method", "", "Filter request logs by http method")
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterRequestPath, "filter-request-path", "", "Filter request logs by request path")
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterSource, "filter-source", "", "Filter request logs by source (dashboard or API)")
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterStatusCode, "filter-status-code", "", "Filter request logs by status code")
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.LogFilters.FilterStatusCodeType, "filter-status-code-type", "", "Filter request logs by status code type")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterAccount, "filter-account", []string{}, "Filter request logs by source and destination account")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterIPAddress, "filter-ip-address", []string{}, "Filter request logs by ip address")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterHTTPMethod, "filter-http-method", []string{}, "Filter request logs by http method")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterRequestPath, "filter-request-path", []string{}, "Filter request logs by request path")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterRequestStatus, "filter-request-status", []string{}, "Filter request logs by request status")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterSource, "filter-source", []string{}, "Filter request logs by source (dashboard or API)")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterStatusCode, "filter-status-code", []string{}, "Filter request logs by status code")
+	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterStatusCodeType, "filter-status-code-type", []string{}, "Filter request logs by status code type")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -100,25 +102,34 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 }
 
 func (tailCmd *TailCmd) validateArgs() error {
-	err := validators.CallNonEmpty(validators.HTTPMethod, tailCmd.LogFilters.FilterHTTPMethod)
+	err := validators.CallNonEmptyArray(validators.Account, tailCmd.LogFilters.FilterAccount)
 	if err != nil {
 		return err
 	}
 
-	err = validators.CallNonEmpty(validators.StatusCode, tailCmd.LogFilters.FilterStatusCode)
+	err = validators.CallNonEmptyArray(validators.HTTPMethod, tailCmd.LogFilters.FilterHTTPMethod)
 	if err != nil {
 		return err
 	}
 
-	err = validators.CallNonEmpty(validators.StatusCodeType, tailCmd.LogFilters.FilterStatusCodeType)
+	err = validators.CallNonEmptyArray(validators.StatusCode, tailCmd.LogFilters.FilterStatusCode)
 	if err != nil {
 		return err
 	}
 
-	err = validators.CallNonEmpty(validators.RequestSource, tailCmd.LogFilters.FilterSource)
+	err = validators.CallNonEmptyArray(validators.StatusCodeType, tailCmd.LogFilters.FilterStatusCodeType)
 	if err != nil {
 		return err
 	}
 
+	err = validators.CallNonEmptyArray(validators.RequestSource, tailCmd.LogFilters.FilterSource)
+	if err != nil {
+		return err
+	}
+
+	err = validators.CallNonEmptyArray(validators.RequestStatus, tailCmd.LogFilters.FilterRequestStatus)
+	if err != nil {
+		return err
+	}
 	return nil
 }

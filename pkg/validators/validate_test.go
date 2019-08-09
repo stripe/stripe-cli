@@ -57,6 +57,21 @@ func TestRequestSourceDashboard(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestRequestStatusSucceeded(t *testing.T) {
+	err := RequestStatus("succeeded")
+	assert.Nil(t, err)
+}
+
+func TestRequestStatusFailed(t *testing.T) {
+	err := RequestStatus("failed")
+	assert.Nil(t, err)
+}
+
+func TestRequestStatusInvalid(t *testing.T) {
+	err := RequestStatus("invalid")
+	assert.Equal(t, "invalid is not an acceptable request status (SUCCEEDED, FAILED)", fmt.Sprintf("%s", err))
+}
+
 func TestRequestSourceInvalid(t *testing.T) {
 	err := RequestSource("invalid")
 	assert.Equal(t, "invalid is not an acceptable source (API, DASHBOARD)", fmt.Sprintf("%s", err))

@@ -9,14 +9,29 @@ import (
 
 type ArgValidator func(string) error
 
-// Call allows any validator to be called on a specified argument
+// Call allows any validator to be called on a specified string array argument
 // If the arg is empty, then the validator is not called.
-func CallNonEmpty(val ArgValidator, arg string) error {
-	if arg == "" {
+func CallNonEmptyArray(validator ArgValidator, values []string) error {
+	if len(values) == 0 {
 		return nil
 	}
 
-	return val(arg)
+	for _, value := range values {
+		err := CallNonEmpty(validator, value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CallNonEmpty(validator ArgValidator, value string) error {
+	if value == "" {
+		return nil
+	}
+
+	return validator(value)
 }
 
 // APIKey validates an API key.
@@ -41,6 +56,17 @@ func APIKey(input string) error {
 	return nil
 }
 
+// Filter argument validators
+func Account(account string) error {
+	accountUpper := strings.ToUpper(account)
+
+	if accountUpper == "CONNECT_IN" || accountUpper == "CONNECT_OUT" || accountUpper == "SELF" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable account filter (CONNECT_IN, CONNECT_OUT, SELF)", account)
+}
+
 func HTTPMethod(method string) error {
 	methodUpper := strings.ToUpper(method)
 
@@ -59,6 +85,16 @@ func RequestSource(source string) error {
 	}
 
 	return fmt.Errorf("%s is not an acceptable source (API, DASHBOARD)", source)
+}
+
+func RequestStatus(status string) error {
+	statusUpper := strings.ToUpper(status)
+
+	if statusUpper == "SUCCEEDED" || statusUpper == "FAILED" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable request status (SUCCEEDED, FAILED)", status)
 }
 
 // StatusCode validates that a provided status code is within the range of those used in the Stripe API
