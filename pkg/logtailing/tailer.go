@@ -124,6 +124,11 @@ func (tailer *Tailer) Run() error {
 
 	ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", tailer.cfg.Log.Out)
 
+	if session.DisplayConnectFilterWarning {
+		color := ansi.Color(os.Stdout)
+		fmt.Println(fmt.Sprintf("%s you specified the 'account' filter for connect accounts but are not a connect merchant, so the filter will not be applied.", color.Yellow("Warning")))
+	}
+
 	// Block until Ctrl+C is received
 	<-tailer.interruptCh
 

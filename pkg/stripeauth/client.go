@@ -81,11 +81,12 @@ func (c *Client) Authorize(deviceName string, websocketFeature string, filters *
 	}
 
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix":                       "stripeauth.Client.Authorize",
-		"websocket_url":                session.WebSocketURL,
-		"websocket_id":                 session.WebSocketID,
-		"websocket_authorized_feature": session.WebSocketAuthorizedFeature,
-		"reconnect_delay":              session.ReconnectDelay,
+		"prefix":                         "stripeauth.Client.Authorize",
+		"websocket_url":                  session.WebSocketURL,
+		"websocket_id":                   session.WebSocketID,
+		"websocket_authorized_feature":   session.WebSocketAuthorizedFeature,
+		"reconnect_delay":                session.ReconnectDelay,
+		"display_connect_filter_warning": session.DisplayConnectFilterWarning,
 	}).Debug("Got successful response from Stripe")
 
 	return session, nil
