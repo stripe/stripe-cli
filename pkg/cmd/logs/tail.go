@@ -44,17 +44,67 @@ Watch for all request logs sent from Stripe:
 		RunE: tailCmd.runTailCmd,
 	}
 
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.format, "format", "default", "Specifies the output format of request logs")
+	tailCmd.Cmd.Flags().StringVar(
+		&tailCmd.format,
+		"format",
+		"",
+		`Specifies the output format of request logs
+Acceptable values:
+	'JSON' - Output logs in JSON format`,
+	)
 
 	// Log filters
-	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterAccount, "filter-account", []string{}, "Filter request logs by source and destination account")
+	tailCmd.Cmd.Flags().StringSliceVar(
+		&tailCmd.LogFilters.FilterAccount,
+		"filter-account",
+		[]string{},
+		`*CONNECT ONLY* Filter request logs by source and destination account
+Acceptable values:
+	'connect_in'  - Incoming connect requests
+	'connect_out' - Outgoing connect requests
+	'self'        - Non-connect requests`,
+	)
 	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterIPAddress, "filter-ip-address", []string{}, "Filter request logs by ip address")
-	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterHTTPMethod, "filter-http-method", []string{}, "Filter request logs by http method")
+	tailCmd.Cmd.Flags().StringSliceVar(
+		&tailCmd.LogFilters.FilterHTTPMethod,
+		"filter-http-method",
+		[]string{},
+		`Filter request logs by http method
+Acceptable values:
+	'GET'    - HTTP get requests
+	'POST'   - HTTP post requests
+	'DELETE' - HTTP delete requests`,
+	)
 	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterRequestPath, "filter-request-path", []string{}, "Filter request logs by request path")
-	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterRequestStatus, "filter-request-status", []string{}, "Filter request logs by request status")
-	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterSource, "filter-source", []string{}, "Filter request logs by source (dashboard or API)")
+	tailCmd.Cmd.Flags().StringSliceVar(
+		&tailCmd.LogFilters.FilterRequestStatus,
+		"filter-request-status",
+		[]string{},
+		`Filter request logs by request status
+Acceptable values:
+	'SUCCEEDED' - Requests that succeeded (status codes 200, 201, 202)
+	'FAILED'    - Requests that failed`,
+	)
+	tailCmd.Cmd.Flags().StringSliceVar(
+		&tailCmd.LogFilters.FilterSource,
+		"filter-source",
+		[]string{},
+		`Filter request logs by source
+Acceptable values:
+	'API'       - Requests that came through the Stripe API
+	'DASHBOARD' - Requests that came through the Stripe Dashboard`,
+	)
 	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterStatusCode, "filter-status-code", []string{}, "Filter request logs by status code")
-	tailCmd.Cmd.Flags().StringSliceVar(&tailCmd.LogFilters.FilterStatusCodeType, "filter-status-code-type", []string{}, "Filter request logs by status code type")
+	tailCmd.Cmd.Flags().StringSliceVar(
+		&tailCmd.LogFilters.FilterStatusCodeType,
+		"filter-status-code-type",
+		[]string{},
+		`Filter request logs by status code type
+Acceptable values:
+	'200' - All 200 status codes
+	'400' - All 400 status codes
+	'500' - All 500 status codes`,
+	)
 
 	// Hidden configuration flags, useful for dev/debugging
 	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", "", "Sets the API base URL")
