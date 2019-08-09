@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/recipes"
@@ -24,6 +25,7 @@ func newAppsCmd() *appsCmd {
 			RunE: func(cmd *cobra.Command, args []string) error {
 				recipe := recipes.Recipes{
 					Config: Config,
+					Fs:     afero.NewOsFs(),
 				}
 				app := args[0]
 
@@ -54,7 +56,7 @@ func newAppsCmd() *appsCmd {
 
 				// Once we've initialized the recipe in the local cache
 				// directory, the user needs to select which integration they
-				// want to work with (if applicable) and which langauge they
+				// want to work with (if applicable) and which language they
 				// want to copy
 				err = recipe.SelectOptions()
 				if err != nil {

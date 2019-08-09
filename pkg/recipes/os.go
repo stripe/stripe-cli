@@ -2,10 +2,11 @@ package recipes
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/spf13/afero"
 )
 
 // cacheFolder is the local directory where we place local copies of recipes
@@ -13,8 +14,8 @@ func (r *Recipes) cacheFolder() (string, error) {
 	configPath := r.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	cachePath := filepath.Join(configPath, "recipes-cache")
 
-	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
-		err := os.MkdirAll(cachePath, os.ModePerm)
+	if _, err := r.Fs.Stat(cachePath); os.IsNotExist(err) {
+		err := r.Fs.MkdirAll(cachePath, os.ModePerm)
 		if err != nil {
 			return "", err
 		}
@@ -43,8 +44,8 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 	}
 
 	appFolder := filepath.Join(dir, name)
-	if _, err := os.Stat(appFolder); os.IsNotExist(err) {
-		err = os.Mkdir(appFolder, os.ModePerm)
+	if _, err := r.Fs.Stat(appFolder); os.IsNotExist(err) {
+		err = r.Fs.Mkdir(appFolder, os.ModePerm)
 		if err != nil {
 			return "", err
 		}
@@ -57,7 +58,7 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 
 // GetFolders returns a list of all folders for a given path
 func (r *Recipes) GetFolders(path string) ([]string, error) {
-	files, err := ioutil.ReadDir(path)
+	files, err := afero.ReadDir(r.Fs, path)
 	var dir []string
 	if err != nil {
 		return []string{}, err
@@ -75,7 +76,7 @@ func (r *Recipes) GetFolders(path string) ([]string, error) {
 
 // GetFiles returns a list of files for a given path
 func (r *Recipes) GetFiles(path string) ([]string, error) {
-	files, err := ioutil.ReadDir(path)
+	files, err := afero.ReadDir(r.Fs, path)
 	var file []string
 	if err != nil {
 		return []string{}, err
