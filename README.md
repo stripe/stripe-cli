@@ -239,7 +239,7 @@ $ stripe logs tail
 ```
 
 A number of built-in filtering options are also supported:
-* `--filter-account`, (*CONNECT ONLY*) supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
+* `--filter-account`, (*connect only*) supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
 * `--filter-ip-address`, supports a direct match with any ip address
 * `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
 * `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
