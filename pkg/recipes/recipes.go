@@ -8,6 +8,8 @@ import (
 
 	"github.com/manifoldco/promptui"
 	"github.com/otiai10/copy"
+	"github.com/spf13/afero"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -16,6 +18,7 @@ import (
 // selected configuration option to copy over
 type Recipes struct {
 	Config config.Config
+	Fs     afero.Fs
 
 	// source repository to clone from
 	repo string
@@ -51,7 +54,7 @@ func (r *Recipes) Initialize(app string) error {
 	// that we can still work with (like no updates or repo already exists)
 	r.repo = appPath
 
-	if _, err := os.Stat(appPath); os.IsNotExist(err) {
+	if _, err := r.Fs.Stat(appPath); os.IsNotExist(err) {
 		err = r.clone(appPath, app)
 		if err != nil {
 			return err
@@ -76,7 +79,7 @@ func (r *Recipes) Initialize(app string) error {
 	}
 
 	// Once we've pulled the integration, we want to check what languages are
-	// supported so that we can ask the user which langauge they want to copy.
+	// supported so that we can ask the user which language they want to copy.
 	err = r.loadLanguages()
 	if err != nil {
 		return err
