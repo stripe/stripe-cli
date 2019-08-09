@@ -48,7 +48,7 @@ func (p *Profile) GetAPIKey() (string, error) {
 		p.RegisterAlias("api_key", "secret_key")
 	}
 
-	key := viper.GetString(p.GetConfigField("api_key"))
+	key := viper.GetString("api_key")
 	if key != "" {
 		err := validators.APIKey(key)
 		if err != nil {
@@ -102,8 +102,12 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	runtimeViper.SetConfigFile(profilesFile)
 
-	runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
-	runtimeViper.Set(p.GetConfigField("api_key"), strings.TrimSpace(p.APIKey))
+	if p.DeviceName != "" {
+		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
+	}
+	if p.APIKey != "" {
+		runtimeViper.Set(p.GetConfigField("api_key"), strings.TrimSpace(p.APIKey))
+	}
 
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
