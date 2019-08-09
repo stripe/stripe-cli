@@ -67,7 +67,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 		return validateErr
 	}
 
-	config.Profile.SecretKey = apiKey
+	config.Profile.APIKey = apiKey
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr

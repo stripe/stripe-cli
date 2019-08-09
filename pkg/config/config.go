@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +26,6 @@ type Config struct {
 	LogLevel     string
 	Profile      Profile
 	ProfilesFile string
-
-	location string
 }
 
 // GetProfilesFolder retrieves the folder where the profiles file is stored
@@ -89,12 +88,11 @@ func (c *Config) InitConfig() {
 	}
 
 	if c.ProfilesFile != "" {
-		// Use profiles file from the flag.
 		viper.SetConfigFile(c.ProfilesFile)
 	} else {
 		profilesFolder := c.GetProfilesFolder(os.Getenv("XDG_CONFIG_HOME"))
 		profilesFile := filepath.Join(profilesFolder, "config.toml")
-		c.location = profilesFile
+		c.ProfilesFile = profilesFile
 
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(profilesFile)
@@ -120,11 +118,11 @@ func (c *Config) InitConfig() {
 func (c *Config) EditConfig() error {
 	var err error
 
-	fmt.Println("Opening config file:", c.location)
+	fmt.Println("Opening config file:", c.ProfilesFile)
 
 	switch runtime.GOOS {
 	case "darwin", "linux":
-		cmd := exec.Command(os.Getenv("EDITOR"), c.location)
+		cmd := exec.Command(os.Getenv("EDITOR"), c.ProfilesFile)
 		// Some editors detect whether they have control of stdin/out and will
 		// fail if they do not.
 		cmd.Stdin = os.Stdin
@@ -133,12 +131,33 @@ func (c *Config) EditConfig() error {
 	case "windows":
 		// As far as I can tell, Windows doesn't have an easily accesible or
 		// comparable option to $EDITOR, so default to notepad for now
-		err = exec.Command("notepad", c.location).Run()
+		err = exec.Command("notepad", c.ProfilesFile).Run()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}
 
 	return err
+}
+
+func (c *Config) PrintConfig() error {
+	if c.Profile.ProfileName == "default" {
+		configFile, err := ioutil.ReadFile(c.ProfilesFile)
+		if err != nil {
+			return err
+		}
+		fmt.Printf(string(configFile))
+	} else {
+		configs := viper.GetStringMapString(c.Profile.ProfileName)
+
+		if len(configs) > 0 {
+			fmt.Println(fmt.Sprintf("[%s]", c.Profile.ProfileName))
+			for field, value := range configs {
+				fmt.Println(fmt.Sprintf("  %s=%s", field, value))
+			}
+		}
+	}
+
+	return nil
 }
 
 // Temporary workaround until https://github.com/spf13/viper/pull/519 can remove a key from viper

@@ -37,7 +37,7 @@ func (cc *configCmd) runConfigCmd(cmd *cobra.Command, args []string) error {
 	} else if len(args) == 1 && cc.unset {
 		return cc.config.Profile.DeleteConfigField(args[0])
 	} else if cc.list {
-		cc.config.Profile.PrintConfig()
+		cc.config.PrintConfig()
 	} else if cc.edit {
 		return cc.config.EditConfig()
 	}

@@ -88,7 +88,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
-	key, err := Config.Profile.GetSecretKey()
+	key, err := Config.Profile.GetAPIKey()
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	examples := requests.Examples{
 		Profile:    Config.Profile,
 		APIVersion: "2019-03-14",
-		SecretKey:  secretKey,
+		APIKey:     secretKey,
 	}
 	return examples.WebhookEndpointsList()
 }

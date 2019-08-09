@@ -11,9 +11,18 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/main.go",
+            "program": "${workspaceFolder}/cmd/stripe/main.go",
             "env": {},
             "args": ["listen", "--log-level", "debug"]
+        },
+        {
+            "name": "Set config",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/stripe/main.go",
+            "env": {},
+            "args": ["config", "color", "foo"]
         },
         {
             "name": "Run tests for current package",

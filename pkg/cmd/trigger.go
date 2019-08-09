@@ -84,7 +84,7 @@ Trigger a payment_intent.created event:
 }
 
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
-	secretKey, err := Config.Profile.GetSecretKey()
+	secretKey, err := Config.Profile.GetAPIKey()
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		Profile:    Config.Profile,
 		APIBaseURL: tc.apiBaseURL,
 		APIVersion: apiVersion,
-		SecretKey:  secretKey,
+		APIKey:     secretKey,
 	}
 
 	event := args[0]
