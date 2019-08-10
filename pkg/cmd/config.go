@@ -32,14 +32,16 @@ func newConfigCmd() *configCmd {
 }
 
 func (cc *configCmd) runConfigCmd(cmd *cobra.Command, args []string) error {
-	if len(args) == 2 {
+	switch ok := true; ok {
+	case len(args) == 2:
 		return cc.config.Profile.WriteConfigField(args[0], args[1])
-	} else if len(args) == 1 && cc.unset {
+	case len(args) == 1 && cc.unset:
 		return cc.config.Profile.DeleteConfigField(args[0])
-	} else if cc.list {
+	case cc.list:
 		cc.config.PrintConfig()
-	} else if cc.edit {
+	case cc.edit:
 		return cc.config.EditConfig()
 	}
+
 	return nil
 }

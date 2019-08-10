@@ -145,7 +145,7 @@ func (c *Config) PrintConfig() error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf(string(configFile))
+		fmt.Print(string(configFile))
 	} else {
 		configs := viper.GetStringMapString(c.Profile.ProfileName)
 
