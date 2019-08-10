@@ -245,7 +245,7 @@ A number of built-in filtering options are also supported:
 * `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
 * `--filter-request-status`, supports `succeeded` and `failed`
 * `--filter-source`, supports `api` and `dashboard`
-* `--filter-status-code`, supports any status code (e.g., `200`)
+* `--filter-status-code`, supports any status code that is a `200`, `400`, or `500` (e.g., `404`)
 * `--filter-status-code-type`, supports `200`, `400`, and `500`
 
 Multiple filters can be used together:
