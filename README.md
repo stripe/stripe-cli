@@ -239,7 +239,7 @@ $ stripe logs tail
 ```
 
 A number of built-in filtering options are also supported:
-* `--filter-account`, (*connect only*) supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
+* `--filter-account`, *(connect only)* supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
 * `--filter-ip-address`, supports a direct match with any ip address
 * `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
 * `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
@@ -248,7 +248,7 @@ A number of built-in filtering options are also supported:
 * `--filter-status-code`, supports any status code that is a `200`, `400`, or `500` (e.g., `404`)
 * `--filter-status-code-type`, supports `200`, `400`, and `500`
 
-Multiple filters can be used together, where a log must match *all* filters to be shown:
+Multiple filters can be used together, where a log must match all filters to be shown:
 
 ```sh
 $ stripe logs tail --filter-http-method POST --filter-status-code-type 400
