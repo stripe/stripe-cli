@@ -248,7 +248,7 @@ A number of built-in filtering options are also supported:
 * `--filter-status-code`, supports any status code that is a `200`, `400`, or `500` (e.g., `404`)
 * `--filter-status-code-type`, supports `200`, `400`, and `500`
 
-Multiple filters can be used together:
+Multiple filters can be used together, where a log must match *all* filters to be shown:
 
 ```sh
 $ stripe logs tail --filter-http-method POST --filter-status-code-type 400
