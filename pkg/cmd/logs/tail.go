@@ -132,7 +132,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	key, err := tailCmd.cfg.Profile.GetSecretKey()
+	key, err := tailCmd.cfg.Profile.GetAPIKey()
 	if err != nil {
 		return err
 	}
