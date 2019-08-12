@@ -194,7 +194,7 @@ func (tailCmd *TailCmd) convertArgs() error {
 	// The backend expects to receive the status code type as a string representing the start of the range (e.g., '200')
 	if len(tailCmd.LogFilters.FilterStatusCodeType) > 0 {
 		for i, code := range tailCmd.LogFilters.FilterStatusCodeType {
-			tailCmd.LogFilters.FilterStatusCodeType[i] = strings.ReplaceAll(code, "X", "0")
+			tailCmd.LogFilters.FilterStatusCodeType[i] = strings.ReplaceAll(strings.ToUpper(code), "X", "0")
 		}
 	}
 
