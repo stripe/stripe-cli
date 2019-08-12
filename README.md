@@ -254,6 +254,12 @@ Multiple filters can be used together, where a log must match all filters to be 
 $ stripe logs tail --filter-http-method POST --filter-status-code-type 4XX
 ```
 
+Multiple values for a single filter can also be specified as a comma-separated list:
+
+```sh
+$ stripe logs tail --filter-http-method GET,POST
+```
+
 ### `status`
 
 You can load Stripe status from the CLI instead of going to status.stripe.com. The CLI status loads from the status site, which is the canonical source of truth.
