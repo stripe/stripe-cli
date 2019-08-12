@@ -26,7 +26,8 @@ type Recipes struct {
 	repo string
 
 	// Available integrations
-	integrations []string
+	integrations  []string
+	isIntegration bool
 
 	// Available languages
 	languages []string
@@ -107,8 +108,10 @@ func (r *Recipes) checkForIntegrations() error {
 
 	if !folderSearch(folders, "server") {
 		r.integrations = folders
+		r.isIntegration = true
 	}
 
+	r.isIntegration = false
 	return nil
 }
 
@@ -123,7 +126,7 @@ func (r *Recipes) checkForIntegrations() error {
 func (r *Recipes) loadLanguages() error {
 	var err error
 
-	if len(r.integrations) > 0 {
+	if r.isIntegration {
 		// The same languages will be supported by all integrations in a repo so we can
 		// rely on only checking the first
 		r.languages, err = r.GetFolders(filepath.Join(r.repo, r.integrations[0], "server"))
@@ -141,13 +144,13 @@ func (r *Recipes) loadLanguages() error {
 // SelectOptions prompts the user to select the integration they want to use
 // (if available) and the language they want the integration to be.
 func (r *Recipes) SelectOptions() error {
-	if len(r.integrations) > 0 {
+	if r.isIntegration {
 		r.integration = integrationSelectPrompt(r.integrations)
 	}
 
 	r.language = languageSelectPrompt(r.languages)
 
-	if len(r.integrations) > 0 {
+	if r.isIntegration {
 		fmt.Println("Setting up", ansi.Bold(r.language), "for", ansi.Bold(strings.Join(r.integration, ",")))
 	} else {
 		fmt.Println("Setting up", ansi.Bold(r.language))
@@ -230,7 +233,7 @@ func (r *Recipes) Copy(target string) error {
 }
 
 func (r *Recipes) destinationName(i int) string {
-	if len(r.integration) > 0 && len(r.integrations) > 0 {
+	if len(r.integration) > 0 && r.isIntegration {
 		if r.integration[0] == "all" {
 			return r.integrations[i]
 		}
