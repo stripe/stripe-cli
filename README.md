@@ -10,7 +10,8 @@ The Stripe CLI is a command-line interface for Stripe that can:
 2. `listen` for webhooks and forward them to a local server
 3. Run `get`, `post`, and `delete` commands to the Stripe API
 4. `trigger` a limited set of webhook events
-5. Pull Stripe status from status.stripe.com
+5. Tail your test mode API request logs
+6. Pull Stripe status from status.stripe.com
 
 The main focus for this initial release is to improve the developer experience while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
 
@@ -226,6 +227,37 @@ To trigger an event, run:
 
 ```sh
 $ stripe trigger <event>
+```
+
+### `logs tail`
+`logs tail` establishes a direct connection with Stripe and enables you to tail your test mode Stripe API request logs in real-time from your terminal.
+
+By default, `logs tail` will display all of your test mode request logs. To begin log tailing, run:
+
+```sh
+$ stripe logs tail
+```
+
+A number of built-in filtering options are also supported:
+* `--filter-account`, *(Connect only)* supports `connect_in` (incoming Connect requests), `connect_out` (outgoing Connect requests), and `self` (non-Connect requests)
+* `--filter-ip-address`, supports a direct match with any ip address
+* `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
+* `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
+* `--filter-request-status`, supports `succeeded` and `failed`
+* `--filter-source`, supports `api` and `dashboard`
+* `--filter-status-code`, supports any status code that is a `200`, `400`, or `500` (e.g., `404`)
+* `--filter-status-code-type`, supports `2XX`, `4XX`, and `5XX`
+
+Multiple filters can be used together, where a log must match all filters to be shown:
+
+```sh
+$ stripe logs tail --filter-http-method POST --filter-status-code-type 4XX
+```
+
+Multiple values for a single filter can also be specified as a comma-separated list, where a log only needs to match one of the values:
+
+```sh
+$ stripe logs tail --filter-http-method GET,POST
 ```
 
 ### `status`
