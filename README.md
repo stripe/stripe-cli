@@ -246,7 +246,7 @@ A number of built-in filtering options are also supported:
 * `--filter-request-status`, supports `succeeded` and `failed`
 * `--filter-source`, supports `api` and `dashboard`
 * `--filter-status-code`, supports any status code that is a `200`, `400`, or `500` (e.g., `404`)
-* `--filter-status-code-type`, supports `200`, `400`, and `500`
+* `--filter-status-code-type`, supports `2XX`, `4XX`, and `5XX`
 
 Multiple filters can be used together, where a log must match all filters to be shown:
 
