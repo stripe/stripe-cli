@@ -12,6 +12,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/git"
 )
 
 // Recipes stores the information for the selected recipe in addition to the
@@ -19,6 +20,7 @@ import (
 type Recipes struct {
 	Config config.Config
 	Fs     afero.Fs
+	git    git.Interface
 
 	// source repository to clone from
 	repo string
@@ -55,12 +57,12 @@ func (r *Recipes) Initialize(app string) error {
 	r.repo = appPath
 
 	if _, err := r.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = r.clone(appPath, app)
+		err = r.git.Clone(appPath, recipesList[app])
 		if err != nil {
 			return err
 		}
 	} else {
-		err := r.pull(appPath, app)
+		err := r.git.Pull(appPath)
 		if err != nil {
 			return err
 		}
@@ -137,7 +139,7 @@ func (r *Recipes) loadLanguages() error {
 }
 
 // SelectOptions prompts the user to select the integration they want to use
-// (if available) and the language they want the intergation to be.
+// (if available) and the language they want the integration to be.
 func (r *Recipes) SelectOptions() error {
 	if len(r.integrations) > 0 {
 		r.integration = integrationSelectPrompt(r.integrations)
