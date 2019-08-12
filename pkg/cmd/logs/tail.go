@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -100,9 +101,9 @@ Acceptable values:
 		[]string{},
 		`Filter request logs by status code type
 Acceptable values:
-	'200' - All 200 status codes
-	'400' - All 400 status codes
-	'500' - All 500 status codes`,
+	'2XX' - All 2XX status codes
+	'4XX' - All 4XX status codes
+	'5XX' - All 5XX status codes`,
 	)
 
 	// Hidden configuration flags, useful for dev/debugging
@@ -117,6 +118,11 @@ Acceptable values:
 
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	err := tailCmd.validateArgs()
+	if err != nil {
+		return err
+	}
+
+	err = tailCmd.convertArgs()
 	if err != nil {
 		return err
 	}
@@ -180,5 +186,17 @@ func (tailCmd *TailCmd) validateArgs() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (tailCmd *TailCmd) convertArgs() error {
+	// The backend expects to receive the status code type as a string representing the start of the range (e.g., '200')
+	if len(tailCmd.LogFilters.FilterStatusCodeType) > 0 {
+		for i, code := range tailCmd.LogFilters.FilterStatusCodeType {
+			tailCmd.LogFilters.FilterStatusCodeType[i] = strings.ReplaceAll(code, "X", "0")
+		}
+	}
+
 	return nil
 }

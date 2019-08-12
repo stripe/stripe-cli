@@ -88,16 +88,16 @@ func TestStatusCodeUnusedInStripe(t *testing.T) {
 }
 
 func TestStatusCodeType(t *testing.T) {
-	err := StatusCodeType("200")
+	err := StatusCodeType("2Xx")
 	assert.Nil(t, err)
 }
 
 func TestStatusCodeTypeUnusedInStripe(t *testing.T) {
-	err := StatusCodeType("300")
-	assert.Equal(t, "Provided status code type 300 is not a valid type (200, 400, 500)", fmt.Sprintf("%s", err))
+	err := StatusCodeType("3XX")
+	assert.Equal(t, "Provided status code type 3XX is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
 }
 
-func TestStatusCodeNotEvenHundred(t *testing.T) {
+func TestStatusCodeNotXs(t *testing.T) {
 	err := StatusCodeType("201")
-	assert.Equal(t, "Provided status code type 201 is not a valid type (200, 400, 500)", fmt.Sprintf("%s", err))
+	assert.Equal(t, "Provided status code type 201 is not a valid type (2XX, 4XX, 5XX)", fmt.Sprintf("%s", err))
 }

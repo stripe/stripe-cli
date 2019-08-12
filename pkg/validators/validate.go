@@ -117,13 +117,10 @@ func StatusCode(code string) error {
 
 // StatusCodeType validates that a provided status code type is one of those used in the Stripe API
 func StatusCodeType(code string) error {
-	num, err := strconv.Atoi(code)
-	if err != nil {
-		return err
-	}
+	codeUpper := strings.ToUpper(code)
 
-	if num != 200 && num != 400 && num != 500 {
-		return fmt.Errorf("Provided status code type %s is not a valid type (200, 400, 500)", code)
+	if codeUpper != "2XX" && codeUpper != "4XX" && codeUpper != "5XX" {
+		return fmt.Errorf("Provided status code type %s is not a valid type (2XX, 4XX, 5XX)", code)
 	}
 
 	return nil
