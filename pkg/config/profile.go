@@ -13,17 +13,12 @@ import (
 type Profile struct {
 	DeviceName  string
 	ProfileName string
-	SecretKey   string
+	APIKey      string
 }
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	runtimeViper, removeErr := removeKey(viper.GetViper(), "secret_key")
-	if removeErr != nil {
-		return removeErr
-	}
-
-	writeErr := p.writeProfile(runtimeViper)
+	writeErr := p.writeProfile(viper.GetViper())
 	if writeErr != nil {
 		return writeErr
 	}
@@ -45,10 +40,15 @@ func (p *Profile) GetDeviceName() (string, error) {
 	return "", errors.New("your device name has not been configured. Use `stripe login` to set your device name")
 }
 
-// GetSecretKey will return the existing key for the given profile
-func (p *Profile) GetSecretKey() (string, error) {
-	// Try to fetch the API key from the command-line flag or the environment first
-	key := viper.GetString("secret_key")
+// GetAPIKey will return the existing key for the given profile
+func (p *Profile) GetAPIKey() (string, error) {
+	// If the user doesn't have an api_key field set, they might be using an
+	// old configuration so try to read from secret_key
+	if !viper.IsSet(p.GetConfigField("api_key")) {
+		p.RegisterAlias("api_key", "secret_key")
+	}
+
+	key := viper.GetString("api_key")
 	if key != "" {
 		err := validators.APIKey(key)
 		if err != nil {
@@ -59,7 +59,7 @@ func (p *Profile) GetSecretKey() (string, error) {
 
 	// Try to fetch the API key from the configuration file
 	if err := viper.ReadInConfig(); err == nil {
-		key := viper.GetString(p.GetConfigField("secret_key"))
+		key := viper.GetString(p.GetConfigField("api_key"))
 		err := validators.APIKey(key)
 		if err != nil {
 			return "", err
@@ -75,6 +75,23 @@ func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
 }
 
+func (p *Profile) RegisterAlias(alias, key string) {
+	viper.RegisterAlias(p.GetConfigField(alias), p.GetConfigField(key))
+}
+
+func (p *Profile) WriteConfigField(field, value string) error {
+	viper.Set(p.GetConfigField(field), value)
+	return viper.WriteConfig()
+}
+
+func (p *Profile) DeleteConfigField(field string) error {
+	v, err := removeKey(viper.GetViper(), p.GetConfigField(field))
+	if err != nil {
+		return err
+	}
+	return p.writeProfile(v)
+}
+
 func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 
@@ -85,11 +102,15 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	runtimeViper.SetConfigFile(profilesFile)
 
+	if p.DeviceName != "" {
+		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
+	}
+	if p.APIKey != "" {
+		runtimeViper.Set(p.GetConfigField("api_key"), strings.TrimSpace(p.APIKey))
+	}
+
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	runtimeViper.Set(p.ProfileName+".device_name", strings.TrimSpace(p.DeviceName))
-	runtimeViper.Set(p.ProfileName+".secret_key", strings.TrimSpace(p.SecretKey))
 
 	runtimeViper.MergeInConfig()
 	runtimeViper.WriteConfig()

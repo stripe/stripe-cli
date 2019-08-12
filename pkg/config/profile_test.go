@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -15,19 +16,20 @@ func TestWriteProfile(t *testing.T) {
 	p := Profile{
 		DeviceName:  "st-testing",
 		ProfileName: "tests",
-		SecretKey: "sk_test_123",
+		APIKey:      "sk_test_123",
 	}
 
 	c := &Config{
-		Color: "auto",
-		LogLevel: "info",
-		Profile: p,
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
 
 	v := viper.New()
 
+	fmt.Println(profilesFile)
 	err := p.writeProfile(v)
 	assert.NoError(t, err)
 
@@ -36,8 +38,8 @@ func TestWriteProfile(t *testing.T) {
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
 [tests]
+  api_key = "sk_test_123"
   device_name = "st-testing"
-  secret_key = "sk_test_123"
 `
 	assert.EqualValues(t, expectedConfig, string(configValues))
 
@@ -49,13 +51,13 @@ func TestWriteProfilesMerge(t *testing.T) {
 	p := Profile{
 		ProfileName: "tests",
 		DeviceName:  "st-testing",
-		SecretKey: "sk_test_123",
+		APIKey:      "sk_test_123",
 	}
 
 	c := &Config{
-		Color: "auto",
-		LogLevel: "info",
-		Profile: p,
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
 	c.InitConfig()
@@ -74,12 +76,12 @@ func TestWriteProfilesMerge(t *testing.T) {
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
 [tests]
+  api_key = "sk_test_123"
   device_name = "st-testing"
-  secret_key = "sk_test_123"
 
 [tests-merge]
+  api_key = "sk_test_123"
   device_name = "st-testing"
-  secret_key = "sk_test_123"
 `
 
 	assert.EqualValues(t, expectedConfig, string(configValues))

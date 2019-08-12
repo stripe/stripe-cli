@@ -28,7 +28,7 @@ func TestParseResponse(t *testing.T) {
 func TestBuildRequest(t *testing.T) {
 	ex := Examples{
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	req, params := ex.buildRequest(http.MethodPost, []string{"foo=bar"})
@@ -48,7 +48,7 @@ func TestChargeCaptured(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.ChargeCaptured()
@@ -66,7 +66,7 @@ func TestChargeFailed(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.ChargeFailed()
@@ -84,7 +84,7 @@ func TestChargeSucceeded(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.ChargeSucceeded()
@@ -102,7 +102,7 @@ func TestCustomerCreated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.CustomerCreated()
@@ -120,7 +120,7 @@ func TestCustomerUpdated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.CustomerUpdated()
@@ -138,7 +138,7 @@ func TestCustomerSourceCreated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.CustomerSourceCreated()
@@ -156,7 +156,7 @@ func TestCustomerSourceUpdated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.CustomerSourceUpdated()
@@ -174,7 +174,7 @@ func TestCustomerSubscriptionUpdated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.CustomerSubscriptionUpdated()
@@ -192,7 +192,7 @@ func TestInvoiceCreated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.InvoiceCreated()
@@ -210,7 +210,7 @@ func TestInvoiceFinalized(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.InvoiceFinalized()
@@ -228,7 +228,7 @@ func TestInvoicePaymentSucceeded(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.InvoicePaymentSucceeded()
@@ -246,7 +246,7 @@ func TestInvoiceUpdated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.InvoiceUpdated()
@@ -264,7 +264,7 @@ func TestPaymentIntentCreated(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.PaymentIntentCreated()
@@ -282,7 +282,7 @@ func TestPaymentIntentSucceeded(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.PaymentIntentSucceeded()
@@ -300,7 +300,7 @@ func TestPaymentIntentFailed(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.PaymentIntentFailed()
@@ -318,7 +318,7 @@ func TestPaymentMethodAttached(t *testing.T) {
 	ex := Examples{
 		APIBaseURL: ts.URL,
 		APIVersion: "v1",
-		SecretKey:  "secret-key",
+		APIKey:     "secret-key",
 	}
 
 	err := ex.PaymentMethodAttached()

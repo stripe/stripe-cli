@@ -3,8 +3,12 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -84,11 +88,12 @@ func (c *Config) InitConfig() {
 	}
 
 	if c.ProfilesFile != "" {
-		// Use profiles file from the flag.
 		viper.SetConfigFile(c.ProfilesFile)
 	} else {
 		profilesFolder := c.GetProfilesFolder(os.Getenv("XDG_CONFIG_HOME"))
 		profilesFile := filepath.Join(profilesFolder, "config.toml")
+		c.ProfilesFile = profilesFile
+
 		viper.SetConfigType("toml")
 		viper.SetConfigFile(profilesFile)
 	}
@@ -110,11 +115,58 @@ func (c *Config) InitConfig() {
 	}
 }
 
+func (c *Config) EditConfig() error {
+	var err error
+
+	fmt.Println("Opening config file:", c.ProfilesFile)
+
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		cmd := exec.Command(os.Getenv("EDITOR"), c.ProfilesFile)
+		// Some editors detect whether they have control of stdin/out and will
+		// fail if they do not.
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		return cmd.Run()
+	case "windows":
+		// As far as I can tell, Windows doesn't have an easily accesible or
+		// comparable option to $EDITOR, so default to notepad for now
+		err = exec.Command("notepad", c.ProfilesFile).Run()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+
+	return err
+}
+
+func (c *Config) PrintConfig() error {
+	if c.Profile.ProfileName == "default" {
+		configFile, err := ioutil.ReadFile(c.ProfilesFile)
+		if err != nil {
+			return err
+		}
+		fmt.Print(string(configFile))
+	} else {
+		configs := viper.GetStringMapString(c.Profile.ProfileName)
+
+		if len(configs) > 0 {
+			fmt.Println(fmt.Sprintf("[%s]", c.Profile.ProfileName))
+			for field, value := range configs {
+				fmt.Println(fmt.Sprintf("  %s=%s", field, value))
+			}
+		}
+	}
+
+	return nil
+}
+
 // Temporary workaround until https://github.com/spf13/viper/pull/519 can remove a key from viper
 func removeKey(v *viper.Viper, key string) (*viper.Viper, error) {
 	configMap := v.AllSettings()
-
-	delete(configMap, key)
+	path := strings.Split(key, ".")
+	lastKey := strings.ToLower(path[len(path)-1])
+	deepestMap := deepSearch(configMap, path[0:len(path)-1])
+	delete(deepestMap, lastKey)
 
 	buf := new(bytes.Buffer)
 	encodeErr := toml.NewEncoder(buf).Encode(configMap)
@@ -143,4 +195,30 @@ func makePath(path string) error {
 		}
 	}
 	return nil
+}
+
+// taken from https://github.com/spf13/viper/blob/master/util.go#L199,
+// we need this to delete configs, remove when viper supprts unset natively
+func deepSearch(m map[string]interface{}, path []string) map[string]interface{} {
+	for _, k := range path {
+		m2, ok := m[k]
+		if !ok {
+			// intermediate key does not exist
+			// => create it and continue from there
+			m3 := make(map[string]interface{})
+			m[k] = m3
+			m = m3
+			continue
+		}
+		m3, ok := m2.(map[string]interface{})
+		if !ok {
+			// intermediate key is a value
+			// => replace with a new map
+			m3 = make(map[string]interface{})
+			m[k] = m3
+		}
+		// continue search from here
+		m = m3
+	}
+	return m
 }

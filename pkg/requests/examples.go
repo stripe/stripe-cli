@@ -34,7 +34,7 @@ type Examples struct {
 	Profile    config.Profile
 	APIBaseURL string
 	APIVersion string
-	SecretKey  string
+	APIKey     string
 }
 
 func (ex *Examples) buildRequest(method string, data []string) (*Base, *RequestParameters) {
@@ -54,7 +54,7 @@ func (ex *Examples) buildRequest(method string, data []string) (*Base, *RequestP
 }
 
 func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *RequestParameters) (map[string]interface{}, error) {
-	resp, err := req.MakeRequest(ex.SecretKey, endpoint, params)
+	resp, err := req.MakeRequest(ex.APIKey, endpoint, params)
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +476,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 	}
-	resp, _ := base.MakeRequest(ex.SecretKey, "/webhook_endpoints", params)
+	resp, _ := base.MakeRequest(ex.APIKey, "/webhook_endpoints", params)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
