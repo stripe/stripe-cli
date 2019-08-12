@@ -28,6 +28,7 @@ The main focus for this initial release is to improve the developer experience w
     * [listen](#listen)
     * [get, post, and delete](#get-post-and-delete)
     * [trigger](#trigger)
+    * [log tailing](#logs-tail)
     * [status](#status)
   * [Developing the Stripe CLI](#developing-the-stripe-cli)
     * [Installation](#installation-1)
