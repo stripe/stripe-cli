@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -153,10 +154,16 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 }
 
 func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
+	apiBaseURL := lc.apiBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+
 	examples := requests.Examples{
 		Profile:    Config.Profile,
 		APIVersion: "2019-03-14",
 		APIKey:     secretKey,
+		APIBaseURL: apiBaseURL,
 	}
 	return examples.WebhookEndpointsList()
 }
@@ -171,20 +178,19 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
 			if endpoint.Application == "" {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        path.Join(forwardURL, u.Path),
+					URL:        buildForwardURL(forwardURL, u),
 					Connect:    false,
 					EventTypes: endpoint.EnabledEvents,
 				})
 			} else {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        path.Join(forwardConnectURL, u.Path),
+					URL:        buildForwardURL(forwardConnectURL, u),
 					Connect:    true,
 					EventTypes: endpoint.EnabledEvents,
 				})
 			}
 		}
 	}
-
 	return endpointRoutes
 }
 
@@ -208,4 +214,13 @@ func parseURL(url string) string {
 	}
 
 	return url
+}
+
+func buildForwardURL(forwardURL string, destination *url.URL) string {
+	f, err := url.Parse(forwardURL)
+	if err != nil {
+		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
+	}
+
+	return fmt.Sprintf("%s://%s", f.Scheme, path.Join(f.Host, destination.Path))
 }

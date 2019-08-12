@@ -475,8 +475,9 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 		Profile:        &ex.Profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,
+		APIBaseURL:     ex.APIBaseURL,
 	}
-	resp, _ := base.MakeRequest(ex.APIKey, "/webhook_endpoints", params)
+	resp, _ := base.MakeRequest(ex.APIKey, "/v1/webhook_endpoints", params)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
