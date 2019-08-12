@@ -10,7 +10,7 @@ The Stripe CLI is a command-line interface for Stripe that can:
 2. `listen` for webhooks and forward them to a local server
 3. Run `get`, `post`, and `delete` commands to the Stripe API
 4. `trigger` a limited set of webhook events
-5. Tail your testmode API request logs
+5. Tail your test mode API request logs
 6. Pull Stripe status from status.stripe.com
 
 The main focus for this initial release is to improve the developer experience while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
@@ -230,16 +230,16 @@ $ stripe trigger <event>
 ```
 
 ### `logs tail`
-`logs tail` establishes a direct connection with Stripe and enables you to tail your testmode Stripe API request logs in real-time from your terminal.
+`logs tail` establishes a direct connection with Stripe and enables you to tail your test mode Stripe API request logs in real-time from your terminal.
 
-By default, `logs tail` will display all of your testmode request logs. To begin log tailing, run:
+By default, `logs tail` will display all of your test mode request logs. To begin log tailing, run:
 
 ```sh
 $ stripe logs tail
 ```
 
 A number of built-in filtering options are also supported:
-* `--filter-account`, *(connect only)* supports `connect_in` (incoming connect requests), `connect_out` (outgoing connect requests), and `self` (non-connect requests)
+* `--filter-account`, *(Connect only)* supports `connect_in` (incoming Connect requests), `connect_out` (outgoing Connect requests), and `self` (non-Connect requests)
 * `--filter-ip-address`, supports a direct match with any ip address
 * `--filter-http-method`, supports `GET`, `POST`, and `DELETE`
 * `--filter-request-path`, supports a direct match to any Stripe path (e.g., `/v1/charges`)
