@@ -48,7 +48,7 @@ func newAppsCmd() *appsCmd {
 						// repository
 						break
 					default:
-						ansi.StopSpinner(spinner, "An error occured.", os.Stdout)
+						ansi.StopSpinner(spinner, "An error occurred.", os.Stdout)
 						return err
 					}
 				}
