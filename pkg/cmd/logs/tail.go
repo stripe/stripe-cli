@@ -33,9 +33,8 @@ func NewTailCmd(config *config.Config) *TailCmd {
 	tailCmd.Cmd = &cobra.Command{
 		Use:   "tail",
 		Args:  validators.NoArgs,
-		Short: "Listens for API request logs sent from Stripe to help test your integration.",
-		Long: fmt.Sprintf(`
-The tail command lets you tail API request logs from Stripe.
+		Short: "Tails request logs created by making API requests to Stripe.",
+		Long: fmt.Sprintf(`The tail command lets you tail API request logs from Stripe.
 The command establishes a direct connection with Stripe to send the request logs to your local machine.
 
 Watch for all request logs sent from Stripe:

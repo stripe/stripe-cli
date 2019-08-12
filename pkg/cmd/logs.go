@@ -23,13 +23,7 @@ func newLogsCmd(config *config.Config) *LogsCmd {
 		Use:   "logs",
 		Args:  validators.NoArgs,
 		Short: "Interact with Stripe request logs",
-		Long: `
-The logs command allows you to interact with your API request logs from Stripe. The first supported feature is log tailing, which allows you
-to view your API request logs in real-time.
-
-Invokable via:
-    $ stripe logs tail
-`,
+		Long:  `The logs command allows you to interact with your API request logs from Stripe. The first supported feature is log tailing, which allows you to view your API request logs in real-time.`,
 	}
 
 	logsCmd.Cmd.AddCommand(logs.NewTailCmd(logsCmd.cfg).Cmd)
