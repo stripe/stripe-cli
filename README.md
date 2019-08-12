@@ -251,7 +251,7 @@ A number of built-in filtering options are also supported:
 Multiple filters can be used together, where a log must match all filters to be shown:
 
 ```sh
-$ stripe logs tail --filter-http-method POST --filter-status-code-type 400
+$ stripe logs tail --filter-http-method POST --filter-status-code-type 4XX
 ```
 
 ### `status`
