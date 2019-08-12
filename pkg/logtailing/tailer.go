@@ -69,7 +69,7 @@ type Tailer struct {
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
-	CreatedAt string `json:"created_at"`
+	CreatedAt int    `json:"created_at"`
 	Method    string `json:"method"`
 	RequestID string `json:"request_id"`
 	Status    int    `json:"status"`
@@ -184,7 +184,10 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		payload.URL = "[View path in dashboard]"
 	}
 
-	outputStr := fmt.Sprintf("%s UTC [%d] %s %s %s", payload.CreatedAt, coloredStatus, payload.Method, payload.URL, requestLink)
+	exampleLayout := "2006-01-02 15:04:05"
+	localTime := time.Unix(int64(payload.CreatedAt), 0).Format(exampleLayout)
+
+	outputStr := fmt.Sprintf("%s [%d] %s %s %s", localTime, coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
 }
 
