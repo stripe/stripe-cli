@@ -254,7 +254,7 @@ Multiple filters can be used together, where a log must match all filters to be 
 $ stripe logs tail --filter-http-method POST --filter-status-code-type 4XX
 ```
 
-Multiple values for a single filter can also be specified as a comma-separated list:
+Multiple values for a single filter can also be specified as a comma-separated list, where a log only needs to match one of the values:
 
 ```sh
 $ stripe logs tail --filter-http-method GET,POST
