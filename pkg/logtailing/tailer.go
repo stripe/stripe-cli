@@ -105,7 +105,6 @@ func (tailer *Tailer) Run() error {
 
 	session, err := tailer.stripeAuthClient.Authorize(tailer.cfg.DeviceName, tailer.cfg.WebSocketFeature, &filters)
 	if err != nil {
-		// TODO: better error handling / retries
 		tailer.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
 
