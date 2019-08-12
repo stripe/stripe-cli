@@ -36,7 +36,7 @@ type Client struct {
 }
 
 // Authorize sends a request to Stripe to initiate a new CLI session.
-func (c *Client) Authorize(deviceName string, websocketFeature string) (*StripeCLISession, error) {
+func (c *Client) Authorize(deviceName string, websocketFeature string, filters *string) (*StripeCLISession, error) {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
@@ -49,6 +49,10 @@ func (c *Client) Authorize(deviceName string, websocketFeature string) (*StripeC
 	form := url.Values{}
 	form.Add("device_name", deviceName)
 	form.Add("websocket_feature", websocketFeature)
+
+	if filters != nil {
+		form.Add("filters", *filters)
+	}
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
@@ -77,11 +81,12 @@ func (c *Client) Authorize(deviceName string, websocketFeature string) (*StripeC
 	}
 
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix":                       "stripeauth.Client.Authorize",
-		"websocket_url":                session.WebSocketURL,
-		"websocket_id":                 session.WebSocketID,
-		"websocket_authorized_feature": session.WebSocketAuthorizedFeature,
-		"reconnect_delay":              session.ReconnectDelay,
+		"prefix":                         "stripeauth.Client.Authorize",
+		"websocket_url":                  session.WebSocketURL,
+		"websocket_id":                   session.WebSocketID,
+		"websocket_authorized_feature":   session.WebSocketAuthorizedFeature,
+		"reconnect_delay":                session.ReconnectDelay,
+		"display_connect_filter_warning": session.DisplayConnectFilterWarning,
 	}).Debug("Got successful response from Stripe")
 
 	return session, nil

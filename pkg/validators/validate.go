@@ -2,8 +2,37 @@ package validators
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 )
+
+type ArgValidator func(string) error
+
+// Call allows any validator to be called on a specified string array argument
+// If the arg is empty, then the validator is not called.
+func CallNonEmptyArray(validator ArgValidator, values []string) error {
+	if len(values) == 0 {
+		return nil
+	}
+
+	for _, value := range values {
+		err := CallNonEmpty(validator, value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CallNonEmpty(validator ArgValidator, value string) error {
+	if value == "" {
+		return nil
+	}
+
+	return validator(value)
+}
 
 // APIKey validates an API key.
 func APIKey(input string) error {
@@ -22,6 +51,76 @@ func APIKey(input string) error {
 
 	if keyParts[1] != "test" {
 		return errors.New("the CLI only supports using a test mode key")
+	}
+
+	return nil
+}
+
+// Filter argument validators
+func Account(account string) error {
+	accountUpper := strings.ToUpper(account)
+
+	if accountUpper == "CONNECT_IN" || accountUpper == "CONNECT_OUT" || accountUpper == "SELF" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable account filter (CONNECT_IN, CONNECT_OUT, SELF)", account)
+}
+
+func HTTPMethod(method string) error {
+	methodUpper := strings.ToUpper(method)
+
+	if methodUpper == "GET" || methodUpper == "POST" || methodUpper == "DELETE" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable HTTP method (GET, POST, DELETE)", method)
+}
+
+func RequestSource(source string) error {
+	sourceUpper := strings.ToUpper(source)
+
+	if sourceUpper == "API" || sourceUpper == "DASHBOARD" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable source (API, DASHBOARD)", source)
+}
+
+func RequestStatus(status string) error {
+	statusUpper := strings.ToUpper(status)
+
+	if statusUpper == "SUCCEEDED" || statusUpper == "FAILED" {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not an acceptable request status (SUCCEEDED, FAILED)", status)
+}
+
+// StatusCode validates that a provided status code is within the range of those used in the Stripe API
+func StatusCode(code string) error {
+	num, err := strconv.Atoi(code)
+	if err != nil {
+		return err
+	}
+
+	if num >= 200 && num < 300 {
+		return nil
+	}
+
+	if num >= 400 && num < 600 {
+		return nil
+	}
+
+	return fmt.Errorf("Provided status code %s is not in the range of acceptable status codes (200's, 400's, 500's)", code)
+}
+
+// StatusCodeType validates that a provided status code type is one of those used in the Stripe API
+func StatusCodeType(code string) error {
+	codeUpper := strings.ToUpper(code)
+
+	if codeUpper != "2XX" && codeUpper != "4XX" && codeUpper != "5XX" {
+		return fmt.Errorf("Provided status code type %s is not a valid type (2XX, 4XX, 5XX)", code)
 	}
 
 	return nil

@@ -36,7 +36,7 @@ func TestAuthorize(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	session, err := client.Authorize("my-device", "webhooks")
+	session, err := client.Authorize("my-device", "webhooks", nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "some-id", session.WebSocketID)
 	assert.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
@@ -54,7 +54,7 @@ func TestUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device", "webhooks")
+	client.Authorize("my-device", "webhooks", nil)
 }
 
 func TestStripeClientUserAgent(t *testing.T) {
@@ -77,5 +77,5 @@ func TestStripeClientUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device", "webhooks")
+	client.Authorize("my-device", "webhooks", nil)
 }
