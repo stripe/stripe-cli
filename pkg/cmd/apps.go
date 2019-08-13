@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/recipes"
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -26,6 +27,7 @@ func newAppsCmd() *appsCmd {
 				recipe := recipes.Recipes{
 					Config: Config,
 					Fs:     afero.NewOsFs(),
+					Git:    gitpkg.Operations{},
 				}
 				app := args[0]
 
