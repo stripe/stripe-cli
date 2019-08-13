@@ -20,7 +20,7 @@ import (
 type Recipes struct {
 	Config config.Config
 	Fs     afero.Fs
-	git    git.Interface
+	Git    git.Interface
 
 	// source repository to clone from
 	repo string
@@ -58,12 +58,12 @@ func (r *Recipes) Initialize(app string) error {
 	r.repo = appPath
 
 	if _, err := r.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = r.git.Clone(appPath, recipesList[app])
+		err = r.Git.Clone(appPath, recipesList[app])
 		if err != nil {
 			return err
 		}
 	} else {
-		err := r.git.Pull(appPath)
+		err := r.Git.Pull(appPath)
 		if err != nil {
 			return err
 		}
@@ -109,6 +109,7 @@ func (r *Recipes) checkForIntegrations() error {
 	if !folderSearch(folders, "server") {
 		r.integrations = folders
 		r.isIntegration = true
+		return nil
 	}
 
 	r.isIntegration = false
