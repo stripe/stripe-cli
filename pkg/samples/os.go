@@ -1,4 +1,4 @@
-package recipes
+package samples
 
 import (
 	"fmt"
@@ -9,13 +9,13 @@ import (
 	"github.com/spf13/afero"
 )
 
-// cacheFolder is the local directory where we place local copies of recipes
-func (r *Recipes) cacheFolder() (string, error) {
-	configPath := r.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	cachePath := filepath.Join(configPath, "recipes-cache")
+// cacheFolder is the local directory where we place local copies of samples
+func (s *Samples) cacheFolder() (string, error) {
+	configPath := s.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	cachePath := filepath.Join(configPath, "samples-cache")
 
-	if _, err := r.Fs.Stat(cachePath); os.IsNotExist(err) {
-		err := r.Fs.MkdirAll(cachePath, os.ModePerm)
+	if _, err := s.Fs.Stat(cachePath); os.IsNotExist(err) {
+		err := s.Fs.MkdirAll(cachePath, os.ModePerm)
 		if err != nil {
 			return "", err
 		}
@@ -25,8 +25,8 @@ func (r *Recipes) cacheFolder() (string, error) {
 }
 
 // appCacheFolder returns the full path of the local cache with the recipe name
-func (r *Recipes) appCacheFolder(app string) (string, error) {
-	path, err := r.cacheFolder()
+func (s *Samples) appCacheFolder(app string) (string, error) {
+	path, err := s.cacheFolder()
 	if err != nil {
 		return "", err
 	}
@@ -37,15 +37,15 @@ func (r *Recipes) appCacheFolder(app string) (string, error) {
 }
 
 // MakeFolder creates the folder that'll contain the Stripe app the user is creating
-func (r *Recipes) MakeFolder(name string) (string, error) {
+func (s *Samples) MakeFolder(name string) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 
 	appFolder := filepath.Join(dir, name)
-	if _, err := r.Fs.Stat(appFolder); os.IsNotExist(err) {
-		err = r.Fs.Mkdir(appFolder, os.ModePerm)
+	if _, err := s.Fs.Stat(appFolder); os.IsNotExist(err) {
+		err = s.Fs.Mkdir(appFolder, os.ModePerm)
 		if err != nil {
 			return "", err
 		}
@@ -57,8 +57,8 @@ func (r *Recipes) MakeFolder(name string) (string, error) {
 }
 
 // GetFolders returns a list of all folders for a given path
-func (r *Recipes) GetFolders(path string) ([]string, error) {
-	files, err := afero.ReadDir(r.Fs, path)
+func (s *Samples) GetFolders(path string) ([]string, error) {
+	files, err := afero.ReadDir(s.Fs, path)
 	var dir []string
 	if err != nil {
 		return []string{}, err
@@ -75,8 +75,8 @@ func (r *Recipes) GetFolders(path string) ([]string, error) {
 }
 
 // GetFiles returns a list of files for a given path
-func (r *Recipes) GetFiles(path string) ([]string, error) {
-	files, err := afero.ReadDir(r.Fs, path)
+func (s *Samples) GetFiles(path string) ([]string, error) {
+	files, err := afero.ReadDir(s.Fs, path)
 	var file []string
 	if err != nil {
 		return []string{}, err
