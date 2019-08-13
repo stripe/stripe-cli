@@ -8,36 +8,36 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
-	"github.com/stripe/stripe-cli/pkg/recipes"
+	"github.com/stripe/stripe-cli/pkg/samples"
 	"gopkg.in/src-d/go-git.v4"
 )
 
-type appsCmd struct {
+type samplesCmd struct {
 	cmd *cobra.Command
 }
 
-func newAppsCmd() *appsCmd {
-	return &appsCmd{
+func newSamplesCmd() *samplesCmd {
+	return &samplesCmd{
 		cmd: &cobra.Command{
 			// TODO: create subcommand
 			// TODO: list subcommand
 			// TODO: fixtures subcommand
-			Use: "apps",
+			Use: "samples",
 			RunE: func(cmd *cobra.Command, args []string) error {
-				recipe := recipes.Recipes{
+				sample := samples.Samples{
 					Config: Config,
 					Fs:     afero.NewOsFs(),
 					Git:    gitpkg.Operations{},
 				}
-				app := args[0]
+				selectedSample := args[0]
 
-				spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", app), os.Stdout)
-				// Initialize the selected recipe in the local cache directory.
-				// This will either clone or update the specified recipe,
+				spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
+				// Initialize the selected sample in the local cache directory.
+				// This will either clone or update the specified sample,
 				// depending on whether or not it's. Additionally, this
-				// identifies if the recipe has multiple integrations and what
+				// identifies if the sample has multiple integrations and what
 				// languages it supports.
-				err := recipe.Initialize(app)
+				err := sample.Initialize(selectedSample)
 				if err != nil {
 					switch e := err.Error(); e {
 					case git.NoErrAlreadyUpToDate.Error():
@@ -56,26 +56,26 @@ func newAppsCmd() *appsCmd {
 				}
 				ansi.StopSpinner(spinner, "Finished downloading.", os.Stdout)
 
-				// Once we've initialized the recipe in the local cache
+				// Once we've initialized the sample in the local cache
 				// directory, the user needs to select which integration they
-				// want to work with (if applicable) and which language they
+				// want to work with (if selectedSamplelicable) and which language they
 				// want to copy
-				err = recipe.SelectOptions()
+				err = sample.SelectOptions()
 				if err != nil {
 					return err
 				}
 
-				// Create the target folder to copy the recipe in to. We do
+				// Create the target folder to copy the sample in to. We do
 				/// this here in case any of the steps above fail, minimizing
 				// the change that we create a dangling empty folder
-				targetPath, err := recipe.MakeFolder(app)
+				targetPath, err := sample.MakeFolder(selectedSample)
 				if err != nil {
 					return err
 				}
 
-				// Perform the copy of the recipe given the selected options
+				// Perform the copy of the sample given the selected options
 				// from the selections above
-				err = recipe.Copy(targetPath)
+				err = sample.Copy(targetPath)
 				if err != nil {
 					return err
 				}
