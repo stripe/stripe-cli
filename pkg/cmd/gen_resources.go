@@ -1,0 +1,147 @@
+//+build gen_resources
+
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"go/format"
+	"io/ioutil"
+	"strings"
+	"text/template"
+
+	"github.com/iancoleman/strcase"
+
+	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/spec"
+)
+
+type TemplateData struct {
+	Namespaces map[string]*NamespaceData
+}
+
+type NamespaceData struct {
+	Resources map[string]*ResourceData
+}
+
+type ResourceData struct {
+	Operations map[string]*OperationData
+}
+
+type OperationData struct {
+	Path     string
+	HTTPVerb string
+}
+
+const (
+	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
+
+	pathOutput = "resources.go"
+)
+
+func main() {
+	// This is the script that generates the `resources.go` file from the
+	// OpenAPI spec file.
+
+	// Load the spec and prepare the template data
+	templateData, err := getTemplateData()
+	if err != nil {
+		panic(err)
+	}
+
+	// Load the template with a custom function map
+	tmpl := template.Must(template.
+		// Note that the template name MUST match the file name
+		New("resources.go.tpl").
+		Funcs(template.FuncMap{
+			// The `ToCamel` function is used to turn snake_case strings to
+			// CamelCase strings. The template uses this to form Go variable
+			// names.
+			"ToCamel": strcase.ToCamel,
+		}).
+		ParseFiles("resources.go.tpl"))
+
+	// Execute the template
+	var result bytes.Buffer
+	err = tmpl.Execute(&result, templateData)
+	if err != nil {
+		panic(err)
+	}
+
+	// Format the output of the template execution
+	formatted, err := format.Source(result.Bytes())
+	if err != nil {
+		panic(err)
+	}
+
+	// Write the formatted source code to disk
+	fmt.Printf("writing %s\n", pathOutput)
+	err = ioutil.WriteFile(pathOutput, formatted, 0644)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func getTemplateData() (*TemplateData, error) {
+	data := &TemplateData{
+		Namespaces: make(map[string]*NamespaceData),
+	}
+
+	// Load the JSON OpenAPI spec
+	stripeAPI, err := spec.LoadSpec(pathStripeSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	// Iterate over every resource schema
+	for name, schema := range stripeAPI.Components.Schemas {
+		// Skip resources that don't have any operations
+		if schema.XStripeOperations == nil {
+			continue
+		}
+
+		nsName, resName := parseSchemaName(name)
+
+		// Iterate over every operation for the resource
+		for _, op := range *schema.XStripeOperations {
+			// We're only implementing "service" operations
+			if op.MethodOn != "service" {
+				continue
+			}
+
+			// If we haven't seen the namespace before, initialize it
+			if _, ok := data.Namespaces[nsName]; !ok {
+				data.Namespaces[nsName] = &NamespaceData{
+					Resources: make(map[string]*ResourceData),
+				}
+			}
+
+			// If we haven't seen the resource before, initialize it
+			resCmdName := resource.GetResourceCmdName(resName)
+			if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
+				data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
+					Operations: make(map[string]*OperationData),
+				}
+			}
+
+			// If we haven't seen the operation before, initialize it
+			if _, ok := data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]; !ok {
+				data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
+					Path:     op.Path,
+					HTTPVerb: string(op.Operation),
+				}
+			}
+		}
+
+	}
+
+	return data, nil
+}
+
+func parseSchemaName(name string) (string, string) {
+	if strings.Contains(name, ".") {
+		components := strings.SplitN(name, ".", 2)
+		return components[0], components[1]
+	}
+	return "", name
+}

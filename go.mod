@@ -7,6 +7,7 @@ require (
 	github.com/briandowns/spinner v1.6.1
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/gorilla/websocket v1.4.0
+	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20190428105938-cea283e61946
 	github.com/magiconair/properties v1.8.1 // indirect
@@ -15,8 +16,6 @@ require (
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
-	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
-	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
