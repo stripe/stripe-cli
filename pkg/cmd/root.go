@@ -1,3 +1,5 @@
+//go:generate go run gen_resources.go
+
 package cmd
 
 import (
@@ -86,4 +88,6 @@ func init() {
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
+
+	addAllResourcesCmd(rootCmd)
 }
