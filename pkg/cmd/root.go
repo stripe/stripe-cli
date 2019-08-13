@@ -77,7 +77,7 @@ func init() {
 	viper.SetEnvPrefix("stripe")
 	viper.AutomaticEnv() // read in environment variables that match
 
-	rootCmd.AddCommand(newAppsCmd().cmd)
+	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)

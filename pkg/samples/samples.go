@@ -1,4 +1,4 @@
-package recipes
+package samples
 
 import (
 	"fmt"
@@ -15,9 +15,9 @@ import (
 	"github.com/stripe/stripe-cli/pkg/git"
 )
 
-// Recipes stores the information for the selected recipe in addition to the
+// Samples stores the information for the selected sample in addition to the
 // selected configuration option to copy over
-type Recipes struct {
+type Samples struct {
 	Config config.Config
 	Fs     afero.Fs
 	Git    git.Interface
@@ -40,50 +40,50 @@ type Recipes struct {
 	language string
 }
 
-// Initialize get the recipe ready for the user to copy. It:
-// 1. creates the recipe cache folder if it doesn't exist
+// Initialize get the sample ready for the user to copy. It:
+// 1. creates the sample cache folder if it doesn't exist
 // 2. store the path of the locale cache folder for later use
 // 3. if the selected app does not exist in the local cache folder, clone it
 // 4. if the selected app does exist in the local cache folder, pull changes
-// 5. see if there are different integrations available for the recipe
-// 6. see what languages the recipe is available in
-func (r *Recipes) Initialize(app string) error {
-	appPath, err := r.appCacheFolder(app)
+// 5. see if there are different integrations available for the sample
+// 6. see what languages the sample is available in
+func (s *Samples) Initialize(app string) error {
+	appPath, err := s.appCacheFolder(app)
 	if err != nil {
 		return err
 	}
 
 	// We still set the repo path here. There are some failure cases
 	// that we can still work with (like no updates or repo already exists)
-	r.repo = appPath
+	s.repo = appPath
 
-	if _, err := r.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = r.Git.Clone(appPath, recipesList[app])
+	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
+		err = s.Git.Clone(appPath, samplesList[app])
 		if err != nil {
 			return err
 		}
 	} else {
-		err := r.Git.Pull(appPath)
+		err := s.Git.Pull(appPath)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Recipes can have multiple integration types, each of which will have its
+	// Samples can have multiple integration types, each of which will have its
 	// own client/server implementation. For example, the adding sales tax
 	// sample, has a manual confirmation and automatic confirmation integration.
-	// These integrations are stored as folders in the top-level of the recipe.
-	// Since much of the recipe setup logic is going to be dependent on the
-	// structure of the recipe, we want to check for whether there are
+	// These integrations are stored as folders in the top-level of the sample.
+	// Since much of the sample setup logic is going to be dependent on the
+	// structure of the sample, we want to check for whether there are
 	// integrations upfront.
-	err = r.checkForIntegrations()
+	err = s.checkForIntegrations()
 	if err != nil {
 		return err
 	}
 
 	// Once we've pulled the integration, we want to check what languages are
 	// supported so that we can ask the user which language they want to copy.
-	err = r.loadLanguages()
+	err = s.loadLanguages()
 	if err != nil {
 		return err
 	}
@@ -91,48 +91,48 @@ func (r *Recipes) Initialize(app string) error {
 	return nil
 }
 
-// checkForIntegrations scans the recipe to see if there are different
+// checkForIntegrations scans the sample to see if there are different
 // integration option available. Integratios are the different ways to build
-// the specific recipe, for example if it uses charges or payment intents
+// the specific sample, for example if it uses charges or payment intents
 // would be two separate integrations.
 //
-// A recipe's folder structure will either contain "client" and "server"
+// A sample's folder structure will either contain "client" and "server"
 // folders in its top-level or it'll have folders that each contain a different
 // integration. This function scans to see if there is a "server" folder in the
 // top level and uses that to determine if there are integrations.
-func (r *Recipes) checkForIntegrations() error {
-	folders, err := r.GetFolders(r.repo)
+func (s *Samples) checkForIntegrations() error {
+	folders, err := s.GetFolders(s.repo)
 	if err != nil {
 		return err
 	}
 
 	if !folderSearch(folders, "server") {
-		r.integrations = folders
-		r.isIntegration = true
+		s.integrations = folders
+		s.isIntegration = true
 		return nil
 	}
 
-	r.isIntegration = false
+	s.isIntegration = false
 	return nil
 }
 
-// Each recipe will have specific languages that it supports. Right now, there
-// is a goal to support java, node, php, python, and ruby for all our recipes.
+// Each sample will have specific languages that it supports. Right now, there
+// is a goal to support java, node, php, python, and ruby for all our samples.
 // We did not hard code those to avoid having to release a CLI update if we
 // ever add new language support.
 //
-// Recipes do not release until all integrations have all supported languages
+// Samples do not release until all integrations have all supported languages
 // built out. With that, we can simply check the languages supported in any
 // folder and assume that all will have the same languages.
-func (r *Recipes) loadLanguages() error {
+func (s *Samples) loadLanguages() error {
 	var err error
 
-	if r.isIntegration {
+	if s.isIntegration {
 		// The same languages will be supported by all integrations in a repo so we can
 		// rely on only checking the first
-		r.languages, err = r.GetFolders(filepath.Join(r.repo, r.integrations[0], "server"))
+		s.languages, err = s.GetFolders(filepath.Join(s.repo, s.integrations[0], "server"))
 	} else {
-		r.languages, err = r.GetFolders(filepath.Join(r.repo, "server"))
+		s.languages, err = s.GetFolders(filepath.Join(s.repo, "server"))
 	}
 
 	if err != nil {
@@ -144,28 +144,28 @@ func (r *Recipes) loadLanguages() error {
 
 // SelectOptions prompts the user to select the integration they want to use
 // (if available) and the language they want the integration to be.
-func (r *Recipes) SelectOptions() error {
-	if r.isIntegration {
-		r.integration = integrationSelectPrompt(r.integrations)
+func (s *Samples) SelectOptions() error {
+	if s.isIntegration {
+		s.integration = integrationSelectPrompt(s.integrations)
 	}
 
-	r.language = languageSelectPrompt(r.languages)
+	s.language = languageSelectPrompt(s.languages)
 
-	if r.isIntegration {
-		fmt.Println("Setting up", ansi.Bold(r.language), "for", ansi.Bold(strings.Join(r.integration, ",")))
+	if s.isIntegration {
+		fmt.Println("Setting up", ansi.Bold(s.language), "for", ansi.Bold(strings.Join(s.integration, ",")))
 	} else {
-		fmt.Println("Setting up", ansi.Bold(r.language))
+		fmt.Println("Setting up", ansi.Bold(s.language))
 	}
 
 	return nil
 }
 
-// Copy will copy all of the files from the selected configuration above over.
+// Copy will copy all of the files from the selected configuration above oves.
 // This has a few different behaviors, depending on the configuration.
 // Ultimately, we want the user to do as minimal of folder traversing as
 // possible. What we want to end up with is:
 //
-// |- example-recipe/
+// |- example-sample/
 // +-- client/
 // +-- server/
 // +-- readme.md
@@ -180,21 +180,21 @@ func (r *Recipes) SelectOptions() error {
 //   selected integration (example above)
 // * If they selected >1 integration, we want the same structure above but
 //   replicated once per selected in integration.
-func (r *Recipes) Copy(target string) error {
+func (s *Samples) Copy(target string) error {
 	// The condition for the loop starts as true since we will always want to
 	// process at least once.
 	for i := 0; true; i++ {
-		integration := r.destinationName(i)
+		integration := s.destinationName(i)
 
-		serverSource := filepath.Join(r.repo, integration, "server", r.language)
-		clientSource := filepath.Join(r.repo, integration, "client")
-		filesSource, err := r.GetFiles(filepath.Join(r.repo, integration))
+		serverSource := filepath.Join(s.repo, integration, "server", s.language)
+		clientSource := filepath.Join(s.repo, integration, "client")
+		filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
 		if err != nil {
 			return err
 		}
 
-		serverDestination := r.destinationPath(target, integration, "server")
-		clientDestination := r.destinationPath(target, integration, "client")
+		serverDestination := s.destinationPath(target, integration, "server")
+		clientDestination := s.destinationPath(target, integration, "client")
 
 		err = copy.Copy(serverSource, serverDestination)
 		if err != nil {
@@ -207,24 +207,24 @@ func (r *Recipes) Copy(target string) error {
 
 		// This copies all top-level files specific to integrations
 		for _, file := range filesSource {
-			err = copy.Copy(filepath.Join(r.repo, integration, file), filepath.Join(target, integration, file))
+			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(target, integration, file))
 			if err != nil {
 				return err
 			}
 		}
 
-		if i >= len(r.integration)-1 {
+		if i >= len(s.integration)-1 {
 			break
 		}
 	}
 
-	// This copies all top-level files specific to the entire recipe repo
-	filesSource, err := r.GetFiles(r.repo)
+	// This copies all top-level files specific to the entire sample repo
+	filesSource, err := s.GetFiles(s.repo)
 	if err != nil {
 		return err
 	}
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(r.repo, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repo, file), filepath.Join(target, file))
 		if err != nil {
 			return err
 		}
@@ -233,20 +233,20 @@ func (r *Recipes) Copy(target string) error {
 	return nil
 }
 
-func (r *Recipes) destinationName(i int) string {
-	if len(r.integration) > 0 && r.isIntegration {
-		if r.integration[0] == "all" {
-			return r.integrations[i]
+func (s *Samples) destinationName(i int) string {
+	if len(s.integration) > 0 && s.isIntegration {
+		if s.integration[0] == "all" {
+			return s.integrations[i]
 		}
 
-		return r.integration[i]
+		return s.integration[i]
 	}
 
 	return ""
 }
 
-func (r *Recipes) destinationPath(target string, integration string, folder string) string {
-	if len(r.integration) <= 1 {
+func (s *Samples) destinationPath(target string, integration string, folder string) string {
+	if len(s.integration) <= 1 {
 		return filepath.Join(target, folder)
 	}
 
