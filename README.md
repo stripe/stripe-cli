@@ -19,10 +19,10 @@ The main focus for this initial release is to improve the developer experience w
 
 * [Stripe CLI](#stripe-cli)
   * [Installation](#installation)
-    * [Download the CLI](#download-the-cli)
-      * [macOS](#macos)
-      * [Linux](#linux)
-      * [Windows](#windows)
+    * [macOS](#macos)
+    * [Linux](#linux)
+    * [Windows](#windows)
+    * [Docker](#docker)
   * [Commands](#commands)
     * [login](#login)
     * [listen](#listen)
@@ -95,6 +95,15 @@ _Without scoop:_
 2. Unzip the `stripe_X.X.X_windows_x86_64.tar.gz` file
 
 3. Run the unzipped `.exe` file!
+
+### Docker
+
+The CLI is also available as a Docker image: [`stripe/stripe-cli`](https://hub.docker.com/r/stripe/stripe-cli).
+
+```sh
+$ docker run --rm -it stripe/stripe-cli version
+stripe version x.y.z (beta)
+```
 
 ## Commands
 
@@ -268,7 +277,7 @@ You can load Stripe status from the CLI instead of going to status.stripe.com. T
 To load status, run:
 ```
 $ stripe status
-✅ All services are online.
+✔ All services are online.
 As of: July 23, 2019 @ 07:52PM +00:00
 ```
 
