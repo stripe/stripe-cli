@@ -38,7 +38,7 @@ func TestInitialize(t *testing.T) {
 
 	recipe := Recipes{
 		Fs: fs,
-		git: mockGit{
+		Git: mockGit{
 			fs: fs,
 		},
 	}
@@ -60,8 +60,9 @@ func TestDestinationNameEmpty(t *testing.T) {
 
 func TestDestinationNameAll(t *testing.T) {
 	recipe := Recipes{
-		integration:  []string{"all"},
-		integrations: []string{"webhooks", "non-webhooks"},
+		integration:   []string{"all"},
+		integrations:  []string{"webhooks", "non-webhooks"},
+		isIntegration: true,
 	}
 
 	assert.Equal(t, "webhooks", recipe.destinationName(0))
@@ -70,8 +71,9 @@ func TestDestinationNameAll(t *testing.T) {
 
 func TestDestinationName(t *testing.T) {
 	recipe := Recipes{
-		integration:  []string{"webhooks"},
-		integrations: []string{"webhooks", "non-webhooks"},
+		integration:   []string{"webhooks"},
+		integrations:  []string{"webhooks", "non-webhooks"},
+		isIntegration: true,
 	}
 
 	assert.Equal(t, "webhooks", recipe.destinationName(0))
