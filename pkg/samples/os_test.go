@@ -1,4 +1,4 @@
-package recipes
+package samples
 
 import (
 	"fmt"
@@ -31,13 +31,13 @@ func TestCacheFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
 
-	expectedPath := filepath.Join(home(), ".config", "stripe", "recipes-cache")
+	expectedPath := filepath.Join(home(), ".config", "stripe", "samples-cache")
 
-	path, err := recipe.cacheFolder()
+	path, err := sample.cacheFolder()
 	pathExists, err := afero.Exists(fs, path)
 
 	assert.Equal(t, expectedPath, path)
@@ -49,13 +49,13 @@ func TestAppCacheFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
 
-	expectedPath := filepath.Join(home(), ".config", "stripe", "recipes-cache", "bender")
+	expectedPath := filepath.Join(home(), ".config", "stripe", "samples-cache", "bender")
 
-	path, err := recipe.appCacheFolder("bender")
+	path, err := sample.appCacheFolder("bender")
 
 	assert.Equal(t, expectedPath, path)
 	assert.Nil(t, err)
@@ -65,14 +65,14 @@ func TestMakeFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
 
 	wd, _ := os.Getwd()
 	expectedPath := filepath.Join(wd, "bender")
 
-	path, err := recipe.MakeFolder("bender")
+	path, err := sample.MakeFolder("bender")
 	exists, _ := afero.Exists(fs, path)
 
 	assert.Equal(t, expectedPath, path)
@@ -84,7 +84,7 @@ func TestMakeFolderExists(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
 
@@ -92,7 +92,7 @@ func TestMakeFolderExists(t *testing.T) {
 	preExistingPath := filepath.Join(wd, "bender")
 	fs.MkdirAll(preExistingPath, os.ModePerm)
 
-	path, err := recipe.MakeFolder("bender")
+	path, err := sample.MakeFolder("bender")
 
 	assert.Equal(t, "", path)
 	assert.EqualError(t, err, fmt.Sprintf("Path already exists, aborting: %s", preExistingPath))
@@ -106,10 +106,10 @@ func TestGetFolders(t *testing.T) {
 	fs.Mkdir("leela", os.ModePerm)
 	fs.Create("zoidberg")
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
-	folders, err := recipe.GetFolders("/")
+	folders, err := sample.GetFolders("/")
 
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, []string{"bender", "fry", "leela"}, folders)
@@ -123,10 +123,10 @@ func TestGetFiles(t *testing.T) {
 	fs.Create("leela")
 	fs.Mkdir("zoidberg", os.ModePerm)
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 	}
-	files, err := recipe.GetFiles("/")
+	files, err := sample.GetFiles("/")
 
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, []string{"bender", "fry", "leela"}, files)
