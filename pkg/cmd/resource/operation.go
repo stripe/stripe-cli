@@ -38,6 +38,8 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	path := formatURL(oc.Path, args[:len(oc.URLParams)])
 
+	oc.Parameters.AppendData(args[len(oc.URLParams):])
+
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters)
 
 	return err
@@ -69,7 +71,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string) *Ope
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
-	operationCmd.InitFlags()
+	operationCmd.InitFlags(false)
 
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[name] = "operation"
@@ -106,6 +108,7 @@ func operationUsageTemplate(urlParams []string) string {
 		}
 		return r
 	}, strings.Join(urlParams, " "))
+	args += " [param1=value1] [param2=value2] ..."
 
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}} %s{{end}}{{if .HasAvailableSubCommands}}

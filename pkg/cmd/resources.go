@@ -30,7 +30,7 @@ func addAllResourcesCmd(rootCmd *cobra.Command) {
 	rBankAccountsCmd := resource.NewResourceCmd(rootCmd, "bank_accounts")
 	rBitcoinReceiversCmd := resource.NewResourceCmd(rootCmd, "bitcoin_receivers")
 	rBitcoinTransactionsCmd := resource.NewResourceCmd(rootCmd, "bitcoin_transactions")
-	rCapabilitysCmd := resource.NewResourceCmd(rootCmd, "capabilitys")
+	rCapabilitiesCmd := resource.NewResourceCmd(rootCmd, "capabilities")
 	rCardsCmd := resource.NewResourceCmd(rootCmd, "cards")
 	rChargesCmd := resource.NewResourceCmd(rootCmd, "charges")
 	rCountrySpecsCmd := resource.NewResourceCmd(rootCmd, "country_specs")
@@ -135,9 +135,9 @@ func addAllResourcesCmd(rootCmd *cobra.Command) {
 
 	resource.NewOperationCmd(rBitcoinTransactionsCmd.Cmd, "list", "/v1/bitcoin/receivers/{receiver}/transactions", http.MethodGet)
 
-	resource.NewOperationCmd(rCapabilitysCmd.Cmd, "list", "/v1/accounts/{account}/capabilities", http.MethodGet)
-	resource.NewOperationCmd(rCapabilitysCmd.Cmd, "retrieve", "/v1/accounts/{account}/capabilities/{capability}", http.MethodGet)
-	resource.NewOperationCmd(rCapabilitysCmd.Cmd, "update", "/v1/accounts/{account}/capabilities/{capability}", http.MethodPost)
+	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "list", "/v1/accounts/{account}/capabilities", http.MethodGet)
+	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "retrieve", "/v1/accounts/{account}/capabilities/{capability}", http.MethodGet)
+	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "update", "/v1/accounts/{account}/capabilities/{capability}", http.MethodPost)
 
 	resource.NewOperationCmd(rCardsCmd.Cmd, "delete", "/v1/customers/{customer}/sources/{id}", http.MethodDelete)
 	resource.NewOperationCmd(rCardsCmd.Cmd, "update", "/v1/customers/{customer}/sources/{id}", http.MethodPost)

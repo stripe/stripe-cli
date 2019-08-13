@@ -36,6 +36,8 @@ func GetResourceCmdName(name string) string {
 	case "balance":
 		// `balance` is a singleton resource and is not pluralized
 		return "balance"
+	case "capability":
+		return "capabilities"
 	case "three_d_secure":
 		return "3d_secure"
 	default:
