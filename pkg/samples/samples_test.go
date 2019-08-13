@@ -1,4 +1,4 @@
-package recipes
+package samples
 
 import (
 	"os"
@@ -36,61 +36,61 @@ func TestInitialize(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "adding-sales-tax"
 
-	recipe := Recipes{
+	sample := Samples{
 		Fs: fs,
 		Git: mockGit{
 			fs: fs,
 		},
 	}
 
-	err := recipe.Initialize(name)
+	err := sample.Initialize(name)
 	assert.Nil(t, err)
-	assert.ElementsMatch(t, recipe.integrations, []string{"webhooks", "no-webhooks"})
-	assert.ElementsMatch(t, recipe.languages, []string{"node", "python", "ruby"})
+	assert.ElementsMatch(t, sample.integrations, []string{"webhooks", "no-webhooks"})
+	assert.ElementsMatch(t, sample.languages, []string{"node", "python", "ruby"})
 }
 
 func TestDestinationNameEmpty(t *testing.T) {
-	recipe := Recipes{
+	sample := Samples{
 		integration:  []string{"webhooks"},
 		integrations: []string{},
 	}
 
-	assert.Equal(t, "", recipe.destinationName(0))
+	assert.Equal(t, "", sample.destinationName(0))
 }
 
 func TestDestinationNameAll(t *testing.T) {
-	recipe := Recipes{
+	sample := Samples{
 		integration:   []string{"all"},
 		integrations:  []string{"webhooks", "non-webhooks"},
 		isIntegration: true,
 	}
 
-	assert.Equal(t, "webhooks", recipe.destinationName(0))
-	assert.Equal(t, "non-webhooks", recipe.destinationName(1))
+	assert.Equal(t, "webhooks", sample.destinationName(0))
+	assert.Equal(t, "non-webhooks", sample.destinationName(1))
 }
 
 func TestDestinationName(t *testing.T) {
-	recipe := Recipes{
+	sample := Samples{
 		integration:   []string{"webhooks"},
 		integrations:  []string{"webhooks", "non-webhooks"},
 		isIntegration: true,
 	}
 
-	assert.Equal(t, "webhooks", recipe.destinationName(0))
+	assert.Equal(t, "webhooks", sample.destinationName(0))
 }
 
 func TestDestinationPathWithIntegration(t *testing.T) {
-	recipe := Recipes{
+	sample := Samples{
 		integration: []string{"bender", "fry"},
 	}
 
-	assert.Equal(t, "planet-express/robots/bender", recipe.destinationPath("planet-express", "robots", "bender"))
+	assert.Equal(t, "planet-express/robots/bender", sample.destinationPath("planet-express", "robots", "bender"))
 }
 
 func TestDestinationPath(t *testing.T) {
-	recipe := Recipes{
+	sample := Samples{
 		integration: []string{"bender"},
 	}
 
-	assert.Equal(t, "planet-express/bender", recipe.destinationPath("planet-express", "robots", "bender"))
+	assert.Equal(t, "planet-express/bender", sample.destinationPath("planet-express", "robots", "bender"))
 }
