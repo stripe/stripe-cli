@@ -35,12 +35,12 @@ func (p *Profile) GetColor() (string, error) {
 
 	color = viper.GetString(p.GetConfigField("color"))
 	switch color {
-	case "", "auto":
-		return "auto", nil
-	case "on":
-		return "on", nil
-	case "off":
-		return "off", nil
+	case "", ColorAuto:
+		return ColorAuto, nil
+	case ColorOn:
+		return ColorOn, nil
+	case ColorOff:
+		return ColorOff, nil
 	default:
 		return "", fmt.Errorf("color value not supported: %s", color)
 	}

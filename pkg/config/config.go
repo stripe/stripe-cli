@@ -20,6 +20,10 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+const ColorOn = "on"
+const ColorOff = "off"
+const ColorAuto = "auto"
+
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color        string
@@ -90,13 +94,13 @@ func (c *Config) InitConfig() {
 		log.Fatalf("%s", err)
 	}
 	switch color {
-	case "on":
+	case ColorOn:
 		ansi.ForceColors = true
 		logFormatter.ForceColors = true
-	case "off":
+	case ColorOff:
 		ansi.DisableColors = true
 		logFormatter.DisableColors = true
-	case "auto":
+	case ColorAuto:
 		// Nothing to do
 	default:
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
