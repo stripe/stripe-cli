@@ -58,7 +58,38 @@ func (c *Config) InitConfig() {
 		TimestampFormat: time.RFC1123,
 	}
 
-	switch c.Color {
+	if c.ProfilesFile != "" {
+		viper.SetConfigFile(c.ProfilesFile)
+	} else {
+		profilesFolder := c.GetProfilesFolder(os.Getenv("XDG_CONFIG_HOME"))
+		profilesFile := filepath.Join(profilesFolder, "config.toml")
+		c.ProfilesFile = profilesFile
+
+		viper.SetConfigType("toml")
+		viper.SetConfigFile(profilesFile)
+	}
+
+	// If a profiles file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		log.WithFields(log.Fields{
+			"prefix": "config.Config.InitConfig",
+			"path":   viper.ConfigFileUsed(),
+		}).Debug("Using profiles file")
+	}
+
+	if c.Profile.DeviceName == "" {
+		deviceName, err := os.Hostname()
+		if err != nil {
+			deviceName = "unknown"
+		}
+		c.Profile.DeviceName = deviceName
+	}
+
+	color, err := c.Profile.GetColor()
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+	switch color {
 	case "on":
 		ansi.ForceColors = true
 		logFormatter.ForceColors = true
@@ -85,25 +116,6 @@ func (c *Config) InitConfig() {
 		log.SetLevel(log.ErrorLevel)
 	default:
 		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
-	}
-
-	if c.ProfilesFile != "" {
-		viper.SetConfigFile(c.ProfilesFile)
-	} else {
-		profilesFolder := c.GetProfilesFolder(os.Getenv("XDG_CONFIG_HOME"))
-		profilesFile := filepath.Join(profilesFolder, "config.toml")
-		c.ProfilesFile = profilesFile
-
-		viper.SetConfigType("toml")
-		viper.SetConfigFile(profilesFile)
-	}
-
-	// If a profiles file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.WithFields(log.Fields{
-			"prefix": "config.Config.InitConfig",
-			"path":   viper.ConfigFileUsed(),
-		}).Debug("Using profiles file")
 	}
 
 	if c.Profile.DeviceName == "" {

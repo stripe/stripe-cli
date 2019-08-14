@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -24,6 +25,25 @@ func (p *Profile) CreateProfile() error {
 	}
 
 	return nil
+}
+
+func (p *Profile) GetColor() (string, error) {
+	color := viper.GetString("color")
+	if color != "" {
+		return color, nil
+	}
+
+	color = viper.GetString(p.GetConfigField("color"))
+	switch color {
+	case "", "auto":
+		return "auto", nil
+	case "on":
+		return "on", nil
+	case "off":
+		return "off", nil
+	default:
+		return "", fmt.Errorf("color value not supported: %s", color)
+	}
 }
 
 // GetDeviceName returns the configured device name
