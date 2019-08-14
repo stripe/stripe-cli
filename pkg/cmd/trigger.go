@@ -22,7 +22,7 @@ type triggerCmd struct {
 func newTriggerCmd() *triggerCmd {
 	tc := &triggerCmd{}
 	tc.cmd = &cobra.Command{
-		Use:  "trigger",
+		Use:  "trigger <event>",
 		Args: validators.ExactArgs(1),
 		ValidArgs: []string{
 			"charge.captured",
@@ -49,10 +49,6 @@ Cause a specific webhook event to be created and sent. Webhooks tested through
 the trigger command will also create all necessary side-effect events that are
 needed to create the triggered event.
 
-Trigger a payment_intent.created event:
-
-  $ stripe trigger payment_intent.created
-
 %s
   charge.captured
   charge.failed
@@ -70,10 +66,11 @@ Trigger a payment_intent.created event:
   payment_intent.payment_failed
   payment_intent.succeeded
   payment_method.attached`,
-			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			getBanner(),
 			ansi.Bold("Supported events:"),
 		),
-		RunE: tc.runTriggerCmd,
+		Example: `stripe trigger payment_intent.created`,
+		RunE:    tc.runTriggerCmd,
 	}
 
 	// Hidden configuration flags, useful for dev/debugging

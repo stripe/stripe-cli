@@ -17,7 +17,7 @@ func newCompletionCmd() *completionCmd {
 
 	cc.cmd = &cobra.Command{
 		Use:   "completion",
-		Short: "Generates bash and zsh completion scripts",
+		Short: "Generate bash and zsh completion scripts",
 		Args:  validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cc.shell == "zsh" {
