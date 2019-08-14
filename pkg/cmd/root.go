@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -45,61 +44,14 @@ If you're working on multiple projects, you can run the login command with the
 --project-name flag:
 
   $ stripe login --project-name rocket-rides`,
-		ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+		getBanner(),
 	),
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd.SetUsageTemplate(fmt.Sprintf(`%s{{if .Runnable}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
-
-%s
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
-
-%s
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
-
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "http")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
-
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
-
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "stripe")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
-
-%s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}{{else}}
-
-%s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-
-%s
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
-
-%s
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-
-%s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
-`,
-		ansi.Bold("Usage:"),
-		ansi.Bold("Aliases:"),
-		ansi.Bold("Examples:"),
-		ansi.Bold("HTTP commands:"),
-		ansi.Bold("Webhook commands:"),
-		ansi.Bold("Stripe commands:"),
-		ansi.Bold("Other commands:"),
-		ansi.Bold("Available commands:"),
-		ansi.Bold("Flags:"),
-		ansi.Bold("Global flags:"),
-		ansi.Bold("Additional help topics:"),
-	))
+	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
