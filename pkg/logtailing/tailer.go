@@ -17,7 +17,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
-const outputFormatJSON = "json"
+const outputFormatJSON = "JSON"
 
 // LogFilters contains all of the potential user-provided filters for log tailing
 type LogFilters struct {
