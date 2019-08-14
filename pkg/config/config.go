@@ -117,14 +117,6 @@ func (c *Config) InitConfig() {
 	default:
 		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
 	}
-
-	if c.Profile.DeviceName == "" {
-		deviceName, err := os.Hostname()
-		if err != nil {
-			deviceName = "unknown"
-		}
-		c.Profile.DeviceName = deviceName
-	}
 }
 
 func (c *Config) EditConfig() error {
