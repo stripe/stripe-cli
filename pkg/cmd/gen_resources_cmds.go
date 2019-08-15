@@ -36,7 +36,9 @@ type OperationData struct {
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
 
-	pathOutput = "resources.go"
+	pathTemplate = "resources_cmds.go.tpl"
+
+	pathOutput = "resources_cmds.go"
 )
 
 func main() {
@@ -52,14 +54,14 @@ func main() {
 	// Load the template with a custom function map
 	tmpl := template.Must(template.
 		// Note that the template name MUST match the file name
-		New("resources.go.tpl").
+		New(pathTemplate).
 		Funcs(template.FuncMap{
 			// The `ToCamel` function is used to turn snake_case strings to
 			// CamelCase strings. The template uses this to form Go variable
 			// names.
 			"ToCamel": strcase.ToCamel,
 		}).
-		ParseFiles("resources.go.tpl"))
+		ParseFiles(pathTemplate))
 
 	// Execute the template
 	var result bytes.Buffer

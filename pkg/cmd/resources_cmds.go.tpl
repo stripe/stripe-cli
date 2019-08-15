@@ -10,11 +10,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 )
 
-func addAllResourcesCmd(rootCmd *cobra.Command) {
+func addAllResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, ""){{ range $nsName, $_ := .Namespaces }}{{ if ne $nsName "" }}
 	ns{{ $nsName | ToCamel }}Cmd := resource.NewNamespaceCmd(rootCmd, "{{ $nsName }}"){{ end }}{{ end }}
-	
+
 	// Resource commands{{ range $nsName, $nsData := .Namespaces }}{{ range $resName, $_ := $nsData.Resources }}
 	r{{ (printf "%s_%s" $nsName $resName) | ToCamel }}Cmd := resource.NewResourceCmd({{ if ne $nsName "" }}ns{{ $nsName | ToCamel }}Cmd.Cmd{{ else }}rootCmd{{ end }}, "{{ $resName }}"){{ end }}
 	{{ end }}
