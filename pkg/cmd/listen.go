@@ -28,6 +28,7 @@ type listenCmd struct {
 	latestAPIVersion    bool
 	loadFromWebhooksAPI bool
 	printJSON           bool
+	skipVerify          bool
 
 	apiBaseURL string
 	noWSS      bool
@@ -67,6 +68,7 @@ to your localhost:
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "p", false, "Print full JSON objects to stdout")
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
+	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -140,6 +142,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
 		UseLatestAPIVersion: lc.latestAPIVersion,
+		SkipVerify:          lc.skipVerify,
 		Log:                 log.StandardLogger(),
 		NoWSS:               lc.noWSS,
 	})
