@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -54,6 +55,9 @@ type Config struct {
 
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
+
+	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
+	SkipVerify bool
 
 	Log *log.Logger
 
@@ -242,6 +246,12 @@ func New(cfg *Config) *Proxy {
 			route.Connect,
 			route.EventTypes,
 			&EndpointConfig{
+				HTTPClient: &http.Client{
+					Timeout: defaultTimeout,
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
+					},
+				},
 				Log:             p.cfg.Log,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
 			},
