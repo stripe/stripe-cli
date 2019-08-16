@@ -41,7 +41,7 @@ To delete a charge:
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	gc.reqs.InitFlags(true)
 
 	return gc
 }

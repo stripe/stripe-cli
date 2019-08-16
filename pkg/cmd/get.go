@@ -46,7 +46,7 @@ To get 50 charges:
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	gc.reqs.InitFlags(true)
 
 	return gc
 }
