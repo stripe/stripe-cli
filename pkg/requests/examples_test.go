@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func jsonBytes() []byte {
@@ -21,8 +21,8 @@ func jsonBytes() []byte {
 func TestParseResponse(t *testing.T) {
 	bytes := jsonBytes()
 	resp, err := parseResponse(bytes)
-	assert.Nil(t, err)
-	assert.Equal(t, "test-id", resp["id"])
+	require.Nil(t, err)
+	require.Equal(t, "test-id", resp["id"])
 }
 
 func TestBuildRequest(t *testing.T) {
@@ -33,8 +33,8 @@ func TestBuildRequest(t *testing.T) {
 
 	req, params := ex.buildRequest(http.MethodPost, []string{"foo=bar"})
 
-	assert.Equal(t, []string{"foo=bar"}, params.data)
-	assert.Equal(t, http.MethodPost, req.Method)
+	require.Equal(t, []string{"foo=bar"}, params.data)
+	require.Equal(t, http.MethodPost, req.Method)
 }
 
 func TestChargeCaptured(t *testing.T) {
@@ -52,7 +52,7 @@ func TestChargeCaptured(t *testing.T) {
 	}
 
 	err := ex.ChargeCaptured()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestChargeFailed(t *testing.T) {
@@ -70,7 +70,7 @@ func TestChargeFailed(t *testing.T) {
 	}
 
 	err := ex.ChargeFailed()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestChargeSucceeded(t *testing.T) {
@@ -88,7 +88,7 @@ func TestChargeSucceeded(t *testing.T) {
 	}
 
 	err := ex.ChargeSucceeded()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestCustomerCreated(t *testing.T) {
@@ -106,7 +106,7 @@ func TestCustomerCreated(t *testing.T) {
 	}
 
 	err := ex.CustomerCreated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestCustomerUpdated(t *testing.T) {
@@ -124,7 +124,7 @@ func TestCustomerUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerUpdated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestCustomerSourceCreated(t *testing.T) {
@@ -142,7 +142,7 @@ func TestCustomerSourceCreated(t *testing.T) {
 	}
 
 	err := ex.CustomerSourceCreated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestCustomerSourceUpdated(t *testing.T) {
@@ -160,7 +160,7 @@ func TestCustomerSourceUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerSourceUpdated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestCustomerSubscriptionUpdated(t *testing.T) {
@@ -178,7 +178,7 @@ func TestCustomerSubscriptionUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerSubscriptionUpdated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestInvoiceCreated(t *testing.T) {
@@ -196,7 +196,7 @@ func TestInvoiceCreated(t *testing.T) {
 	}
 
 	err := ex.InvoiceCreated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestInvoiceFinalized(t *testing.T) {
@@ -214,7 +214,7 @@ func TestInvoiceFinalized(t *testing.T) {
 	}
 
 	err := ex.InvoiceFinalized()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestInvoicePaymentSucceeded(t *testing.T) {
@@ -232,7 +232,7 @@ func TestInvoicePaymentSucceeded(t *testing.T) {
 	}
 
 	err := ex.InvoicePaymentSucceeded()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestInvoiceUpdated(t *testing.T) {
@@ -250,7 +250,7 @@ func TestInvoiceUpdated(t *testing.T) {
 	}
 
 	err := ex.InvoiceUpdated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestPaymentIntentCreated(t *testing.T) {
@@ -268,7 +268,7 @@ func TestPaymentIntentCreated(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentCreated()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestPaymentIntentSucceeded(t *testing.T) {
@@ -286,7 +286,7 @@ func TestPaymentIntentSucceeded(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentSucceeded()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestPaymentIntentFailed(t *testing.T) {
@@ -304,7 +304,7 @@ func TestPaymentIntentFailed(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentFailed()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestPaymentMethodAttached(t *testing.T) {
@@ -322,5 +322,5 @@ func TestPaymentMethodAttached(t *testing.T) {
 	}
 
 	err := ex.PaymentMethodAttached()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }

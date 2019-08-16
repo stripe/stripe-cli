@@ -28,6 +28,7 @@ type RequestParameters struct {
 	stripeAccount string
 }
 
+// AppendData appends data to the request parameters.
 func (r *RequestParameters) AppendData(data []string) {
 	r.data = append(r.data, data...)
 }

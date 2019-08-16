@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewNamespaceCmd_NonEmptyName(t *testing.T) {
@@ -12,12 +12,12 @@ func TestNewNamespaceCmd_NonEmptyName(t *testing.T) {
 
 	nsc := NewNamespaceCmd(rootCmd, "foo")
 
-	assert.Equal(t, "foo", nsc.Name)
-	assert.True(t, rootCmd.HasSubCommands())
+	require.Equal(t, "foo", nsc.Name)
+	require.True(t, rootCmd.HasSubCommands())
 	val, ok := rootCmd.Annotations["foo"]
-	assert.True(t, ok)
-	assert.Equal(t, "namespace", val)
-	assert.Contains(t, nsc.Cmd.UsageTemplate(), "Available Resources")
+	require.True(t, ok)
+	require.Equal(t, "namespace", val)
+	require.Contains(t, nsc.Cmd.UsageTemplate(), "Available Resources")
 }
 
 func TestNewNamespaceCmd_EmptyName(t *testing.T) {
@@ -25,9 +25,9 @@ func TestNewNamespaceCmd_EmptyName(t *testing.T) {
 
 	nsc := NewNamespaceCmd(rootCmd, "")
 
-	assert.Equal(t, "", nsc.Name)
-	assert.False(t, rootCmd.HasSubCommands())
+	require.Equal(t, "", nsc.Name)
+	require.False(t, rootCmd.HasSubCommands())
 	_, ok := rootCmd.Annotations[""]
-	assert.False(t, ok)
-	assert.Contains(t, nsc.Cmd.UsageTemplate(), "Available Resources")
+	require.False(t, ok)
+	require.Contains(t, nsc.Cmd.UsageTemplate(), "Available Resources")
 }

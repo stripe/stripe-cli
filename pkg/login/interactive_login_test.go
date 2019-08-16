@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAPIKeyInput(t *testing.T) {
@@ -14,8 +14,8 @@ func TestAPIKeyInput(t *testing.T) {
 	keyInput := strings.NewReader(expectedKey + "\n")
 	actualKey, err := getConfigureAPIKey(keyInput)
 
-	assert.Equal(t, expectedKey, actualKey)
-	assert.Nil(t, err)
+	require.Equal(t, expectedKey, actualKey)
+	require.Nil(t, err)
 }
 
 func TestAPIKeyInputEmpty(t *testing.T) {
@@ -25,9 +25,9 @@ func TestAPIKeyInputEmpty(t *testing.T) {
 	keyInput := strings.NewReader(expectedKey + "\n")
 	actualKey, err := getConfigureAPIKey(keyInput)
 
-	assert.Equal(t, expectedKey, actualKey)
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, expectedErrorString)
+	require.Equal(t, expectedKey, actualKey)
+	require.NotNil(t, err)
+	require.EqualError(t, err, expectedErrorString)
 }
 
 func TestAPIKeyInputLivemode(t *testing.T) {
@@ -38,9 +38,9 @@ func TestAPIKeyInputLivemode(t *testing.T) {
 	keyInput := strings.NewReader(livemodeKey + "\n")
 	actualKey, err := getConfigureAPIKey(keyInput)
 
-	assert.Equal(t, expectedKey, actualKey)
-	assert.NotNil(t, err)
-	assert.EqualError(t, err, expectedErrorString)
+	require.Equal(t, expectedKey, actualKey)
+	require.NotNil(t, err)
+	require.EqualError(t, err, expectedErrorString)
 }
 
 func TestDeviceNameInput(t *testing.T) {
@@ -49,7 +49,7 @@ func TestDeviceNameInput(t *testing.T) {
 
 	actualDeviceName := getConfigureDeviceName(deviceNameInput)
 
-	assert.Equal(t, expectedDeviceName, actualDeviceName)
+	require.Equal(t, expectedDeviceName, actualDeviceName)
 }
 
 func TestDeviceNameAutoDetect(t *testing.T) {
@@ -58,5 +58,5 @@ func TestDeviceNameAutoDetect(t *testing.T) {
 
 	actualDeviceName := getConfigureDeviceName(deviceNameInput)
 
-	assert.Equal(t, hostName, actualDeviceName)
+	require.Equal(t, hostName, actualDeviceName)
 }

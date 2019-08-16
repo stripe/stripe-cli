@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -37,16 +37,17 @@ func TestLogin(t *testing.T) {
 	}
 
 	c := &config.Config{
-		Color: "auto",
-		LogLevel: "info",
-		Profile: p,
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
 
 	var pollURL string
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/stripecli/auth" {
+		switch r.URL.Path {
+		case "/stripecli/auth":
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			expectedLinks := Links{
@@ -55,15 +56,15 @@ func TestLogin(t *testing.T) {
 				VerificationCode: "dinosaur-pineapple-polkadot",
 			}
 			json.NewEncoder(w).Encode(expectedLinks)
-		} else if r.URL.Path == "/stripecli/auth/cliauth_123" {
-			assert.Equal(t, "cliauth_secret", r.URL.Query().Get("secret"))
+		case "/stripecli/auth/cliauth_123":
+			require.Equal(t, "cliauth_secret", r.URL.Query().Get("secret"))
 
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			data := []byte(`{"redeemed":  true, "account_id": "acct_123", "testmode_key_secret": "sk_test_1234", "account_display_name": "test_disp_name"}`)
 			fmt.Println(string(data))
 			w.Write(data)
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -73,7 +74,7 @@ func TestLogin(t *testing.T) {
 
 	input := strings.NewReader("\n")
 	err := Login(ts.URL, c, input)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetLinks(t *testing.T) {
@@ -84,11 +85,11 @@ func TestGetLinks(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 
-		assert.NoError(t, r.ParseForm())
-		assert.Equal(t, "test", r.PostFormValue("device_name"))
+		require.NoError(t, r.ParseForm())
+		require.Equal(t, "test", r.PostFormValue("device_name"))
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -97,21 +98,21 @@ func TestGetLinks(t *testing.T) {
 	defer ts.Close()
 
 	links, err := getLinks(ts.URL, "test")
-	assert.NoError(t, err)
-	assert.Equal(t, expectedLinks, *links)
+	require.NoError(t, err)
+	require.Equal(t, expectedLinks, *links)
 }
 
 func TestGetLinksHTTPStatusError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer ts.Close()
 
 	links, err := getLinks(ts.URL, "test")
-	assert.EqualError(t, err, "unexpected http status code: 500 ")
-	assert.Empty(t, links)
+	require.EqualError(t, err, "unexpected http status code: 500 ")
+	require.Empty(t, links)
 }
 
 func TestGetLinksRequestError(t *testing.T) {
@@ -120,15 +121,15 @@ func TestGetLinksRequestError(t *testing.T) {
 	ts.Close()
 
 	links, err := getLinks(ts.URL, "test")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connect: connection refused")
-	assert.Empty(t, links)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "connect: connection refused")
+	require.Empty(t, links)
 }
 
 func TestGetLinksParseError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -140,6 +141,6 @@ func TestGetLinksParseError(t *testing.T) {
 	defer ts.Close()
 
 	links, err := getLinks(ts.URL, "test")
-	assert.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
-	assert.Empty(t, links)
+	require.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
+	require.Empty(t, links)
 }
