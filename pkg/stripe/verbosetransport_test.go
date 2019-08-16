@@ -26,10 +26,13 @@ func TestVerboseTransport_Verbose(t *testing.T) {
 		Out:       &b,
 	}
 	client := &http.Client{Transport: tr}
-	req, _ := http.NewRequest("POST", ts.URL+"/test", nil)
+	req, err := http.NewRequest("POST", ts.URL+"/test", nil)
+	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer token")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client.Do(req)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	defer resp.Body.Close()
 
 	out := b.String()
 	assert.Regexp(t, regexp.MustCompile("> POST http://(.+)/test\n"), out)

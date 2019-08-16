@@ -9,11 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testDisplayName = "test_disp_name"
+
 func TestSuccessMessage(t *testing.T) {
 	account := &Account{
 		ID: "acct_123",
 	}
-	account.Settings.Dashboard.DisplayName = "test_disp_name"
+	account.Settings.Dashboard.DisplayName = testDisplayName
 
 	msg, err := SuccessMessage(account, "", "sk_test_123")
 	assert.Nil(t, err)
@@ -56,7 +58,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 		account := &Account{
 			ID: "acct_123",
 		}
-		account.Settings.Dashboard.DisplayName = "test_disp_name"
+		account.Settings.Dashboard.DisplayName = testDisplayName
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")

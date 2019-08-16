@@ -3,7 +3,7 @@ package cmd
 import (
 	"testing"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 )

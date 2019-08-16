@@ -10,7 +10,7 @@ import (
 	"time"
 
 	ws "github.com/gorilla/websocket"
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClientWebhookEventHandler(t *testing.T) {
@@ -99,7 +99,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		evt := RequestLogEvent{
 			EventPayload: "{}",
 			RequestLogID: "resp_123",
-			Type: "request_log_event",
+			Type:         "request_log_event",
 		}
 
 		msg, err := json.Marshal(evt)

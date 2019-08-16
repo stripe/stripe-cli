@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClientHandler(t *testing.T) {

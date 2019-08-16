@@ -3,7 +3,7 @@ package websocket
 import (
 	"testing"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewWebhookResponse(t *testing.T) {

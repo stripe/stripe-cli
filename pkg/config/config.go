@@ -115,6 +115,7 @@ func (c *Config) InitConfig() {
 	}
 }
 
+// EditConfig opens the configuration file in the default editor.
 func (c *Config) EditConfig() error {
 	var err error
 
@@ -139,6 +140,7 @@ func (c *Config) EditConfig() error {
 	return err
 }
 
+// PrintConfig outputs the contents of the configuration file.
 func (c *Config) PrintConfig() error {
 	if c.Profile.ProfileName == "default" {
 		configFile, err := ioutil.ReadFile(c.ProfilesFile)

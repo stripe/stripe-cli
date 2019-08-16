@@ -37,16 +37,17 @@ func TestLogin(t *testing.T) {
 	}
 
 	c := &config.Config{
-		Color: "auto",
-		LogLevel: "info",
-		Profile: p,
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
 
 	var pollURL string
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/stripecli/auth" {
+		switch r.URL.Path {
+		case "/stripecli/auth":
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			expectedLinks := Links{
@@ -55,7 +56,7 @@ func TestLogin(t *testing.T) {
 				VerificationCode: "dinosaur-pineapple-polkadot",
 			}
 			json.NewEncoder(w).Encode(expectedLinks)
-		} else if r.URL.Path == "/stripecli/auth/cliauth_123" {
+		case "/stripecli/auth/cliauth_123":
 			assert.Equal(t, "cliauth_secret", r.URL.Query().Get("secret"))
 
 			w.WriteHeader(http.StatusOK)
@@ -63,7 +64,7 @@ func TestLogin(t *testing.T) {
 			data := []byte(`{"redeemed":  true, "account_id": "acct_123", "testmode_key_secret": "sk_test_1234", "account_display_name": "test_disp_name"}`)
 			fmt.Println(string(data))
 			w.Write(data)
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))

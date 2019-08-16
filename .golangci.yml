@@ -1,9 +1,5 @@
 run:
-  tests: false
-
-linters:
-  goimports:
-    local-prefixes: github.com/stripe/stripe-cli
+  tests: true
 
 linters:
   enable-all: true
@@ -16,3 +12,16 @@ linters:
     - maligned
     - unparam
     - stylecheck
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/stripe/stripe-cli
+  misspell:
+    locale: US
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+  exclude-use-default: false
