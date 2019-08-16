@@ -68,7 +68,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rSkusCmd := resource.NewResourceCmd(rootCmd, "skus")
 	rSourcesCmd := resource.NewResourceCmd(rootCmd, "sources")
 	rSubscriptionItemsCmd := resource.NewResourceCmd(rootCmd, "subscription_items")
-	rSubscriptionScheduleRevisionsCmd := resource.NewResourceCmd(rootCmd, "subscription_schedule_revisions")
 	rSubscriptionSchedulesCmd := resource.NewResourceCmd(rootCmd, "subscription_schedules")
 	rSubscriptionsCmd := resource.NewResourceCmd(rootCmd, "subscriptions")
 	rTaxIdsCmd := resource.NewResourceCmd(rootCmd, "tax_ids")
@@ -123,8 +122,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 
 	resource.NewOperationCmd(rBalanceCmd.Cmd, "retrieve", "/v1/balance", http.MethodGet)
 
-	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "list", "/v1/balance/history", http.MethodGet)
-	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "retrieve", "/v1/balance/history/{id}", http.MethodGet)
+	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "list", "/v1/balance_transactions", http.MethodGet)
+	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "retrieve", "/v1/balance_transactions/{id}", http.MethodGet)
 
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "delete", "/v1/customers/{customer}/sources/{id}", http.MethodDelete)
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "update", "/v1/customers/{customer}/sources/{id}", http.MethodPost)
@@ -331,9 +330,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "retrieve", "/v1/subscription_items/{item}", http.MethodGet)
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "update", "/v1/subscription_items/{item}", http.MethodPost)
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "usage_record_summaries", "/v1/subscription_items/{subscription_item}/usage_record_summaries", http.MethodGet)
-
-	resource.NewOperationCmd(rSubscriptionScheduleRevisionsCmd.Cmd, "list", "/v1/subscription_schedules/{schedule}/revisions", http.MethodGet)
-	resource.NewOperationCmd(rSubscriptionScheduleRevisionsCmd.Cmd, "retrieve", "/v1/subscription_schedules/{schedule}/revisions/{revision}", http.MethodGet)
 
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "cancel", "/v1/subscription_schedules/{schedule}/cancel", http.MethodPost)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "create", "/v1/subscription_schedules", http.MethodPost)
