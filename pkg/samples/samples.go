@@ -207,7 +207,7 @@ func (s *Samples) Copy(target string) error {
 
 		// This copies all top-level files specific to integrations
 		for _, file := range filesSource {
-			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(target, integration, file))
+			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(s.destinationPath(target, integration, ""), file))
 			if err != nil {
 				return err
 			}
