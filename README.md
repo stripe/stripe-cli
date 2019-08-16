@@ -171,6 +171,33 @@ $ stripe listen --load-from-webhooks-api --forward-to https://example.com/hooks
 
 > **Note:** You will receive events for all interactions on your Stripe account. There is currently no way to limit events to only those that a specific user created.
 
+### API requests commands
+
+You can easily make API requests using the CLI:
+
+```sh
+$ stripe charges retrieve ch_123
+$ stripe charges create amount=100 currency=usd source=tok_visa
+```
+
+For a full list of available resources, type `stripe resources`.
+
+To find out which API operations are available for a given resource, simply enter the resource names with no other arguments:
+
+```sh
+$ stripe charges
+Usage:
+  stripe charges <operation> [parameters...]
+
+Available Operations:
+  capture
+  create
+  list
+  retrieve
+  update
+...
+```
+
 ### `get`, `post`, and `delete`
 
 The CLI has three commands that let you interact with the Stripe API in test mode. You can easily make `GET`, `POST`, and `DELETE` commands with the Stripe CLI.
@@ -178,7 +205,7 @@ The CLI has three commands that let you interact with the Stripe API in test mod
 For example, you can retrieve a specific charge:
 
 ```sh
-$ stripe get /charges/ch_1EGYgUByst5pquEtjb0EkYha
+$ stripe get /charges/ch_123
 ```
 
 You can also pass data in using the `-d` flag:
