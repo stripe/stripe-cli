@@ -6,7 +6,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func executeCommand(root *cobra.Command, args ...string) (output string, err error) {
@@ -29,21 +29,21 @@ func TestGetPathNoXDG(t *testing.T) {
 	expected, err := homedir.Dir()
 	expected += "/.config/stripe"
 
-	assert.Nil(t, err)
-	assert.Equal(t, actual, expected)
+	require.Nil(t, err)
+	require.Equal(t, actual, expected)
 }
 
 func TestGetPathXDG(t *testing.T) {
 	actual := Config.GetProfilesFolder("/some/xdg/path")
 	expected := "/some/xdg/path/stripe"
 
-	assert.Equal(t, actual, expected)
+	require.Equal(t, actual, expected)
 }
 
 func TestHelpFlag(t *testing.T) {
 	Execute()
 	output, err := executeCommand(rootCmd, "--help")
 
-	assert.Contains(t, output, "Stripe commands:")
-	assert.NoError(t, err)
+	require.Contains(t, output, "Stripe commands:")
+	require.NoError(t, err)
 }

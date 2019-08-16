@@ -10,7 +10,7 @@ import (
 	"time"
 
 	ws "github.com/gorilla/websocket"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClientWebhookEventHandler(t *testing.T) {
@@ -19,13 +19,13 @@ func TestClientWebhookEventHandler(t *testing.T) {
 
 	upgrader := ws.Upgrader{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.NotEmpty(t, r.UserAgent())
-		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
-		assert.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
+		require.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
 
 		defer c.Close()
 
@@ -39,10 +39,10 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		}
 
 		msg, err := json.Marshal(evt)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
 		err = c.WriteMessage(ws.TextMessage, msg)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 	}))
 	defer ts.Close()
 
@@ -72,12 +72,12 @@ func TestClientWebhookEventHandler(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(500 * time.Millisecond):
-		assert.FailNow(t, "Timed out waiting for response from test server")
+		require.FailNow(t, "Timed out waiting for response from test server")
 	}
 
-	assert.Equal(t, "TestAgent/v1", rcvMsg.HTTPHeaders["User-Agent"])
-	assert.Equal(t, "t=123,v1=hunter2", rcvMsg.HTTPHeaders["Stripe-Signature"])
-	assert.Equal(t, "{}", rcvMsg.EventPayload)
+	require.Equal(t, "TestAgent/v1", rcvMsg.HTTPHeaders["User-Agent"])
+	require.Equal(t, "t=123,v1=hunter2", rcvMsg.HTTPHeaders["Stripe-Signature"])
+	require.Equal(t, "{}", rcvMsg.EventPayload)
 }
 
 func TestClientRequestLogEventHandler(t *testing.T) {
@@ -86,13 +86,13 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 
 	upgrader := ws.Upgrader{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.NotEmpty(t, r.UserAgent())
-		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
-		assert.Equal(t, "websocket_feature=request-log-payloads", r.URL.RawQuery)
+		require.Equal(t, "websocket_feature=request-log-payloads", r.URL.RawQuery)
 
 		defer c.Close()
 
@@ -103,10 +103,10 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		}
 
 		msg, err := json.Marshal(evt)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
 		err = c.WriteMessage(ws.TextMessage, msg)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 	}))
 	defer ts.Close()
 
@@ -136,10 +136,10 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(500 * time.Millisecond):
-		assert.FailNow(t, "Timed out waiting for response from test server")
+		require.FailNow(t, "Timed out waiting for response from test server")
 	}
 
-	assert.Equal(t, "resp_123", rcvMsg.RequestLogID)
-	assert.Equal(t, "request_log_event", rcvMsg.Type)
-	assert.Equal(t, "{}", rcvMsg.EventPayload)
+	require.Equal(t, "resp_123", rcvMsg.RequestLogID)
+	require.Equal(t, "request_log_event", rcvMsg.Type)
+	require.Equal(t, "{}", rcvMsg.EventPayload)
 }

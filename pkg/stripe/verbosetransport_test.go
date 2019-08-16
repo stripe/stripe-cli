@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVerboseTransport_Verbose(t *testing.T) {
@@ -27,18 +27,18 @@ func TestVerboseTransport_Verbose(t *testing.T) {
 	}
 	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest("POST", ts.URL+"/test", nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer token")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := client.Do(req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	out := b.String()
-	assert.Regexp(t, regexp.MustCompile("> POST http://(.+)/test\n"), out)
-	assert.Contains(t, out, "> Authorization: Bearer [REDACTED]\n")
-	assert.Contains(t, out, "> Content-Type: application/x-www-form-urlencoded\n")
-	assert.Contains(t, out, "< HTTP 200\n")
-	assert.Contains(t, out, "< Request-Id: req_123\n")
-	assert.NotContains(t, out, "Non-Whitelisted-Header")
+	require.Regexp(t, regexp.MustCompile("> POST http://(.+)/test\n"), out)
+	require.Contains(t, out, "> Authorization: Bearer [REDACTED]\n")
+	require.Contains(t, out, "> Content-Type: application/x-www-form-urlencoded\n")
+	require.Contains(t, out, "< HTTP 200\n")
+	require.Contains(t, out, "< Request-Id: req_123\n")
+	require.NotContains(t, out, "Non-Whitelisted-Header")
 }

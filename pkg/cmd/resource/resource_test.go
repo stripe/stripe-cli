@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewResourceCmd(t *testing.T) {
@@ -12,10 +12,10 @@ func TestNewResourceCmd(t *testing.T) {
 
 	rc := NewResourceCmd(parentCmd, "foo")
 
-	assert.Equal(t, "foo", rc.Name)
-	assert.True(t, parentCmd.HasSubCommands())
+	require.Equal(t, "foo", rc.Name)
+	require.True(t, parentCmd.HasSubCommands())
 	val, ok := parentCmd.Annotations["foo"]
-	assert.True(t, ok)
-	assert.Equal(t, "resource", val)
-	assert.Contains(t, rc.Cmd.UsageTemplate(), "Available Operations")
+	require.True(t, ok)
+	require.Equal(t, "resource", val)
+	require.Contains(t, rc.Cmd.UsageTemplate(), "Available Operations")
 }

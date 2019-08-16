@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -17,7 +17,7 @@ func TestBuildDataForRequest(t *testing.T) {
 	expected := "bender=robot&fry=human"
 
 	output, _ := rb.buildDataForRequest(params)
-	assert.Equal(t, expected, output)
+	require.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestParamOrdering(t *testing.T) {
@@ -26,7 +26,7 @@ func TestBuildDataForRequestParamOrdering(t *testing.T) {
 	expected := "fry=human&bender=robot"
 
 	output, _ := rb.buildDataForRequest(params)
-	assert.Equal(t, expected, output)
+	require.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestExpand(t *testing.T) {
@@ -35,7 +35,7 @@ func TestBuildDataForRequestExpand(t *testing.T) {
 	expected := "expand[]=futurama.employees&expand[]=futurama.ships"
 
 	output, _ := rb.buildDataForRequest(params)
-	assert.Equal(t, expected, output)
+	require.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestPagination(t *testing.T) {
@@ -51,7 +51,7 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 	expected := "limit=10&starting_after=bender&ending_before=leela"
 
 	output, _ := rb.buildDataForRequest(params)
-	assert.Equal(t, expected, output)
+	require.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestGetOnly(t *testing.T) {
@@ -67,7 +67,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 	expected := ""
 
 	output, _ := rb.buildDataForRequest(params)
-	assert.Equal(t, expected, output)
+	require.Equal(t, expected, output)
 }
 
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
@@ -76,8 +76,8 @@ func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	expected := "Invalid data argument: fry"
 
 	data, err := rb.buildDataForRequest(params)
-	assert.Equal(t, "", data)
-	assert.Equal(t, expected, err.Error())
+	require.Equal(t, "", data)
+	require.Equal(t, expected, err.Error())
 }
 
 func TestMakeRequest(t *testing.T) {
@@ -86,15 +86,15 @@ func TestMakeRequest(t *testing.T) {
 		w.Write([]byte("OK!"))
 
 		reqBody, err := ioutil.ReadAll(r.Body)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/foo/bar", r.URL.Path)
-		assert.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
-		assert.NotEmpty(t, r.UserAgent())
-		assert.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
-		assert.Equal(t, "bender=robot&fry=human&expand[]=futurama.employees&expand[]=futurama.ships", r.URL.RawQuery)
-		assert.Equal(t, "", string(reqBody))
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/foo/bar", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "bender=robot&fry=human&expand[]=futurama.employees&expand[]=futurama.ships", r.URL.RawQuery)
+		require.Equal(t, "", string(reqBody))
 	}))
 	defer ts.Close()
 
@@ -107,7 +107,7 @@ func TestMakeRequest(t *testing.T) {
 	}
 
 	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 }
 
 func TestGetUserConfirmationRequired(t *testing.T) {
@@ -118,8 +118,8 @@ func TestGetUserConfirmationRequired(t *testing.T) {
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
-	assert.True(t, confirmed)
-	assert.Nil(t, err)
+	require.True(t, confirmed)
+	require.Nil(t, err)
 }
 
 func TestGetUserConfirmationNotRequired(t *testing.T) {
@@ -130,8 +130,8 @@ func TestGetUserConfirmationNotRequired(t *testing.T) {
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
-	assert.True(t, confirmed)
-	assert.Nil(t, err)
+	require.True(t, confirmed)
+	require.Nil(t, err)
 }
 
 func TestGetUserConfirmationAutoConfirm(t *testing.T) {
@@ -142,8 +142,8 @@ func TestGetUserConfirmationAutoConfirm(t *testing.T) {
 	rb.autoConfirm = true
 
 	confirmed, err := rb.getUserConfirmation(reader)
-	assert.True(t, confirmed)
-	assert.Nil(t, err)
+	require.True(t, confirmed)
+	require.Nil(t, err)
 }
 
 func TestGetUserConfirmationNoConfirm(t *testing.T) {
@@ -154,13 +154,13 @@ func TestGetUserConfirmationNoConfirm(t *testing.T) {
 	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
-	assert.False(t, confirmed)
-	assert.Nil(t, err)
+	require.False(t, confirmed)
+	require.Nil(t, err)
 }
 
 func TestNormalizePath(t *testing.T) {
-	assert.Equal(t, "/v1/charges", normalizePath("/v1/charges"))
-	assert.Equal(t, "/v1/charges", normalizePath("v1/charges"))
-	assert.Equal(t, "/v1/charges", normalizePath("/charges"))
-	assert.Equal(t, "/v1/charges", normalizePath("charges"))
+	require.Equal(t, "/v1/charges", normalizePath("/v1/charges"))
+	require.Equal(t, "/v1/charges", normalizePath("v1/charges"))
+	require.Equal(t, "/v1/charges", normalizePath("/charges"))
+	require.Equal(t, "/v1/charges", normalizePath("charges"))
 }

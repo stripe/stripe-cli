@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriteProfile(t *testing.T) {
@@ -31,9 +31,9 @@ func TestWriteProfile(t *testing.T) {
 
 	fmt.Println(profilesFile)
 	err := p.writeProfile(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.FileExists(t, c.ProfilesFile)
+	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
@@ -41,7 +41,7 @@ func TestWriteProfile(t *testing.T) {
   api_key = "sk_test_123"
   device_name = "st-testing"
 `
-	assert.EqualValues(t, expectedConfig, string(configValues))
+	require.EqualValues(t, expectedConfig, string(configValues))
 
 	cleanUp(c.ProfilesFile)
 }
@@ -65,13 +65,13 @@ func TestWriteProfilesMerge(t *testing.T) {
 	v := viper.New()
 	writeErr := p.writeProfile(v)
 
-	assert.NoError(t, writeErr)
-	assert.FileExists(t, c.ProfilesFile)
+	require.NoError(t, writeErr)
+	require.FileExists(t, c.ProfilesFile)
 
 	p.ProfileName = "tests-merge"
 	writeErrTwo := p.writeProfile(v)
-	assert.NoError(t, writeErrTwo)
-	assert.FileExists(t, c.ProfilesFile)
+	require.NoError(t, writeErrTwo)
+	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
@@ -84,7 +84,7 @@ func TestWriteProfilesMerge(t *testing.T) {
   device_name = "st-testing"
 `
 
-	assert.EqualValues(t, expectedConfig, string(configValues))
+	require.EqualValues(t, expectedConfig, string(configValues))
 
 	cleanUp(c.ProfilesFile)
 }
