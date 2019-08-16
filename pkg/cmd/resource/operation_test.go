@@ -5,12 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "get")
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "get", &config.Config{})
 
 	assert.Equal(t, "foo", oc.Name)
 	assert.Equal(t, "/v1/bars/{id}", oc.Path)

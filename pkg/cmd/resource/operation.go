@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -50,12 +51,13 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 //
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string) *OperationCmd {
+func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg *config.Config) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
-			Method: httpVerb,
+			Method:  httpVerb,
+			Profile: &cfg.Profile,
 		},
 		Name:      name,
 		HTTPVerb:  httpVerb,
