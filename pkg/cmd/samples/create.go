@@ -91,6 +91,11 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	err = sample.ConfigureDotEnv(targetPath)
+	if err != nil {
+		return err
+	}
+
 	// TODO: setup .env
 	return nil
 }

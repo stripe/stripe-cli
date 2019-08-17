@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/manifoldco/promptui"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
@@ -13,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
 // Samples stores the information for the selected sample in addition to the
@@ -228,6 +230,47 @@ func (s *Samples) Copy(target string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
+	// .env.example file will always be at the project root
+	exFile := filepath.Join(sampleLocation, ".env.example")
+
+	file, err := s.Fs.Open(exFile)
+	if err != nil {
+		return err
+	}
+
+	dotenv, err := godotenv.Parse(file)
+	if err != nil {
+		return err
+	}
+
+	apiKey, err := s.Config.Profile.GetAPIKey()
+	if err != nil {
+		return err
+	}
+	deviceName, err := s.Config.Profile.GetDeviceName()
+	if err != nil {
+		return err
+	}
+
+	authClient := stripeauth.NewClient(apiKey, nil)
+	authSession, err := authClient.Authorize(deviceName, "webhooks", nil)
+	if err != nil {
+		return err
+	}
+
+	dotenv["STRIPE_SECRET_KEY"] = apiKey
+	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
+
+	envFile := filepath.Join(sampleLocation, ".env")
+	err = godotenv.Write(dotenv, envFile)
+	if err != nil {
+		return err
 	}
 
 	return nil
