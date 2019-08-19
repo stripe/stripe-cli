@@ -41,11 +41,13 @@ var placingAHold = &SampleData{
 	Description: "Learn how to place a hold on a credit card (split auth / capture)",
 	URL:         "https://github.com/stripe-samples/placing-a-hold",
 }
+
 var paymentFormModal = &SampleData{
 	Name:        "payment-form-modal",
 	Description: "How to implement Stripe Elements within a modal dialog",
 	URL:         "https://github.com/stripe-samples/payment-form-modal",
 }
+
 var savingCardWithoutPayment = &SampleData{
 	Name:        "saving-card-without-payment",
 	Description: "How to build a form to save a credit card without taking a payment",
