@@ -55,6 +55,9 @@ func getUsageTemplate() string {
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "stripe")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
+%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "resources")}}
+  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+
 %s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
@@ -65,10 +68,7 @@ func getUsageTemplate() string {
 {{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
-{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-
-%s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-{{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+{{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableSubCommands}}
 
 Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `,
@@ -78,11 +78,11 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("HTTP commands:"),
 		ansi.Bold("Webhook commands:"),
 		ansi.Bold("Stripe commands:"),
+		ansi.Bold("Resource commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global flags:"),
-		ansi.Bold("Additional help topics:"),
 	)
 }
 

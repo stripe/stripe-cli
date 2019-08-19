@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 		"listen":    "webhooks",
 		"logs":      "stripe",
 		"status":    "stripe",
-		"resources": "help",
+		"resources": "resources",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
