@@ -6,16 +6,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+// SampleData stores the information needed for Stripe Samples to operate in
+// the CLI
 type SampleData struct {
 	Name        string
 	URL         string
 	Description string
 }
 
+// BoldName returns an ansi bold string for the name
 func (sd *SampleData) BoldName() string {
 	return ansi.Bold(sd.Name)
 }
 
+// GitRepo returns a string of the repo with the .git prefix
 func (sd *SampleData) GitRepo() string {
 	return fmt.Sprintf("%s.git", sd.URL)
 }
@@ -59,6 +63,7 @@ var List = map[string]*SampleData{
 	"saving-card-without-payment":      savingCardWithoutPayment,
 }
 
+// Names returns a list of all the sample's names
 func Names() []string {
 	keys := make([]string, 0, len(List))
 	for k := range List {

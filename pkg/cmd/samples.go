@@ -5,12 +5,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/samples"
 )
 
-type SamplesCmd struct {
+type samplesCmd struct {
 	Cmd *cobra.Command
 }
 
-func newSamplesCmd() *SamplesCmd {
-	samplesCmd := &SamplesCmd{
+func newSamplesCmd() *cobra.Command {
+	samplesCmd := &samplesCmd{
 		Cmd: &cobra.Command{
 			// TODO: fixtures subcommand
 			Use:   "samples",
@@ -19,8 +19,8 @@ func newSamplesCmd() *SamplesCmd {
 		},
 	}
 
-	samplesCmd.Cmd.AddCommand(samples.NewCreateCmd(&Config).Cmd)
-	samplesCmd.Cmd.AddCommand(samples.NewListCmd().Cmd)
+	samplesCmd.Cmd.AddCommand(samples.NewCreateCmd(&Config))
+	samplesCmd.Cmd.AddCommand(samples.NewListCmd())
 
-	return samplesCmd
+	return samplesCmd.Cmd
 }

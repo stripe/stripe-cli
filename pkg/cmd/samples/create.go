@@ -14,13 +14,14 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-type CreateCmd struct {
+type createCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 }
 
-func NewCreateCmd(config *config.Config) *CreateCmd {
-	createCmd := &CreateCmd{
+// NewCreateCmd returns a create command for samples
+func NewCreateCmd(config *config.Config) *cobra.Command {
+	createCmd := &createCmd{
 		cfg: config,
 	}
 	createCmd.Cmd = &cobra.Command{
@@ -31,10 +32,10 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 		RunE:      createCmd.runCreateCmd,
 	}
 
-	return createCmd
+	return createCmd.Cmd
 }
 
-func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
+func (cc *createCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
