@@ -8,10 +8,11 @@ The Stripe CLI is a command-line interface for Stripe that can:
 
 1. `login` to your Stripe account and authenticate the CLI
 2. `listen` for webhooks and forward them to a local server
-3. Run `get`, `post`, and `delete` commands to the Stripe API
-4. `trigger` a limited set of webhook events
-5. Tail your test mode API request logs
-6. Pull Stripe status from status.stripe.com
+3. Run resource commands for things like `stripe charges create`
+4. Run `get`, `post`, and `delete` commands to the Stripe API
+5. `trigger` a limited set of webhook events
+6. Tail your test mode API request logs
+7. Pull Stripe status from status.stripe.com
 
 The main focus for this initial release is to improve the developer experience while integrating and testing webhooks. Interactions through the CLI are currently limited to test mode only.
 
@@ -26,10 +27,12 @@ The main focus for this initial release is to improve the developer experience w
   * [Commands](#commands)
     * [login](#login)
     * [listen](#listen)
+    * [Resource commands](#resource-commands)
     * [get, post, and delete](#get-post-and-delete)
     * [trigger](#trigger)
     * [logs tail](#logs-tail)
     * [status](#status)
+    * [config](#config)
   * [Developing the Stripe CLI](#developing-the-stripe-cli)
     * [Installation](#installation-1)
     * [Tests](#tests)
@@ -171,7 +174,7 @@ $ stripe listen --load-from-webhooks-api --forward-to https://example.com/hooks
 
 > **Note:** You will receive events for all interactions on your Stripe account. There is currently no way to limit events to only those that a specific user created.
 
-### API requests commands
+### Resource commands
 
 You can easily make API requests using the CLI:
 
@@ -180,7 +183,77 @@ $ stripe charges retrieve ch_123
 $ stripe charges create amount=100 currency=usd source=tok_visa
 ```
 
-For a full list of available resources, type `stripe resources`.
+For a full list of available resources, type `stripe resources`. The list of supported commands are:
+
+```sh
+$ stripe resources
+Available Namespaces:
+  checkout
+  issuing
+  radar
+  reporting
+  terminal
+
+Available Resources:
+  3d_secure
+  account_links
+  accounts
+  apple_pay_domains
+  application_fees
+  balance
+  balance_transactions
+  bank_accounts
+  bitcoin_receivers
+  bitcoin_transactions
+  capabilities
+  cards
+  charges
+  country_specs
+  coupons
+  credit_notes
+  customer_balance_transactions
+  customers
+  disputes
+  ephemeral_keys
+  events
+  exchange_rates
+  external_accounts
+  fee_refunds
+  file_links
+  files
+  invoiceitems
+  invoices
+  issuer_fraud_records
+  line_items
+  login_links
+  order_returns
+  orders
+  payment_intents
+  payment_methods
+  payment_sources
+  payouts
+  persons
+  plans
+  products
+  recipients
+  refunds
+  reviews
+  scheduled_query_runs
+  setup_intents
+  skus
+  sources
+  subscription_items
+  subscription_schedules
+  subscriptions
+  tax_ids
+  tax_rates
+  tokens
+  topups
+  transfer_reversals
+  transfers
+  usage_records
+  webhook_endpoints
+```
 
 To find out which API operations are available for a given resource, simply enter the resource names with no other arguments:
 
@@ -315,6 +388,41 @@ The status command supports several different flags:
 4. `--poll-rate` let's you specify how often to check the status site. The default is once every 60 seconds and this can be modified down to once every 5 seconds.
 5. `--hide-spinner` will hide the spinner that's shown when polling.
 
+### `config`
+
+If you need, you can manually set configuration values for the CLI using the `config` command. The config command supports:
+
+* Setting values
+* Unsetting values
+* Listing config values
+* Opening the editor to the config file
+
+All operations support the `--project-name` global flag to manipulate specific projects.
+
+To set values, run `stripe config` with the key name and the value.
+
+```sh
+$ stripe config <name> <value>
+```
+
+To unset a value, pass the `--unset` flag with the name:
+
+```sh
+$ stripe config --unset <name>
+```
+
+To list all config values, run with `--list`:
+
+```sh
+$ stripe config --list
+```
+
+To open your editor at the config file, using `--edit` or `-e`:
+
+```sh
+$ stripe config -e
+```
+
 ## Developing the Stripe CLI
 
 ### Installation
@@ -324,6 +432,16 @@ The Stripe CLI is built using Go. To download and compile the source code, run:
 ```sh
 $ go get -u github.com/stripe/stripe-cli/...
 ```
+
+### Releasing
+
+To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.
+
+### Linting
+
+To run the linter, run `make lint`.
+
+Make sure `golangci-lint` is installed: `brew install golangci/tap/golangci-lint`
 
 ### Tests
 
