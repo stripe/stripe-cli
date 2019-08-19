@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -75,15 +76,19 @@ func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
 }
 
+// RegisterAlias registers an alias for a given key.
 func (p *Profile) RegisterAlias(alias, key string) {
 	viper.RegisterAlias(p.GetConfigField(alias), p.GetConfigField(key))
 }
 
+// WriteConfigField updates a configuration field and writes the updated
+// configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
 	viper.Set(p.GetConfigField(field), value)
 	return viper.WriteConfig()
 }
 
+// DeleteConfigField deletes a configuration field.
 func (p *Profile) DeleteConfigField(field string) error {
 	v, err := removeKey(viper.GetViper(), p.GetConfigField(field))
 	if err != nil {

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClientHandler(t *testing.T) {
@@ -19,12 +19,12 @@ func TestClientHandler(t *testing.T) {
 		w.Write([]byte("OK!"))
 
 		reqBody, err := ioutil.ReadAll(r.Body)
-		assert.Nil(t, err)
+		require.Nil(t, err)
 
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "TestAgent/v1", r.UserAgent())
-		assert.Equal(t, "t=123,v1=hunter2", r.Header.Get("Stripe-Signature"))
-		assert.Equal(t, "{}", string(reqBody))
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "TestAgent/v1", r.UserAgent())
+		require.Equal(t, "t=123,v1=hunter2", r.Header.Get("Stripe-Signature"))
+		require.Equal(t, "{}", string(reqBody))
 	}))
 	defer ts.Close()
 
@@ -37,7 +37,7 @@ func TestClientHandler(t *testing.T) {
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
-				assert.Nil(t, err)
+				require.Nil(t, err)
 
 				rcvBody = string(buf)
 				rcvWebhookID = webhookID
@@ -58,7 +58,7 @@ func TestClientHandler(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Nil(t, err)
-	assert.Equal(t, "OK!", rcvBody)
-	assert.Equal(t, "wh_123", rcvWebhookID)
+	require.Nil(t, err)
+	require.Equal(t, "OK!", rcvBody)
+	require.Equal(t, "wh_123", rcvWebhookID)
 }

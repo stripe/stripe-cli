@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -29,6 +28,7 @@ type listenCmd struct {
 	latestAPIVersion    bool
 	loadFromWebhooksAPI bool
 	printJSON           bool
+	skipVerify          bool
 
 	apiBaseURL string
 	noWSS      bool
@@ -40,7 +40,7 @@ func newListenCmd() *listenCmd {
 	lc.cmd = &cobra.Command{
 		Use:   "listen",
 		Args:  validators.NoArgs,
-		Short: "Listens for webhook events sent from Stripe to help test your integration.",
+		Short: "Listen for webhook events",
 		Long: fmt.Sprintf(`%s
 
 The listen command lets you watch for and forward webhook events from Stripe.
@@ -57,17 +57,18 @@ Start listening for 'charge.created' and 'charge.updated' events and forward
 to your localhost:
 
   $ stripe listen --events charge.created,charge.updated --forward-to localhost:9000/events`,
-			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			getBanner(),
 		),
 		RunE: lc.runListenCmd,
 	}
 
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of which webhook events\nto listen for. For a list of all possible events, see:\nhttps://stripe.com/docs/api/events/types")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of which webhook events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "p", false, "Print full JSON objects to stdout")
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
+	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -141,6 +142,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
 		UseLatestAPIVersion: lc.latestAPIVersion,
+		SkipVerify:          lc.skipVerify,
 		Log:                 log.StandardLogger(),
 		NoWSS:               lc.noWSS,
 	})

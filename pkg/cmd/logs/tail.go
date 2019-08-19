@@ -144,7 +144,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		Key:              key,
 		Log:              log.StandardLogger(),
 		NoWSS:            tailCmd.noWSS,
-		OutputFormat:     tailCmd.format,
+		OutputFormat:     strings.ToUpper(tailCmd.format),
 		WebSocketFeature: requestLogsWebSocketFeature,
 	})
 

@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,9 +20,9 @@ func newDeleteCmd() *deleteCmd {
 	gc.reqs.Method = http.MethodDelete
 	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
-		Use:   "delete",
+		Use:   "delete <path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Make DELETE requests to the Stripe API using your test mode key.",
+		Short: "Make a DELETE request to the Stripe API",
 		Long: fmt.Sprintf(`%s
 
 Make DELETE requests to the Stripe API using your test mode key.
@@ -37,12 +36,12 @@ https://stripe.com/docs/api
 To delete a charge:
 
   $ stripe delete /customers/cus_FROPkgsHVRRspg`,
-			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			getBanner(),
 		),
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	gc.reqs.InitFlags(true)
 
 	return gc
 }

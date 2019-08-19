@@ -31,7 +31,7 @@ fmt:
 
 # Run all the linters
 lint:
-	# TODO: fix tests and disabled linter issues
+	# TODO: fix disabled linter issues
 	./bin/golangci-lint run ./...
 	./bin/misspell -error **/*.go
 .PHONY: lint

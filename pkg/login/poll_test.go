@@ -8,14 +8,14 @@ import (
 	"testing"
 	"time"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRedeemed(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -35,18 +35,18 @@ func TestRedeemed(t *testing.T) {
 	defer ts.Close()
 
 	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
-	assert.NoError(t, err)
-	assert.Equal(t, "sk_test_123", apiKey)
-	assert.Equal(t, "acct_123", account.ID)
-	assert.Equal(t, "test_disp_name", account.Settings.Dashboard.DisplayName)
-	assert.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
+	require.NoError(t, err)
+	require.Equal(t, "sk_test_123", apiKey)
+	require.Equal(t, "acct_123", account.ID)
+	require.Equal(t, "test_disp_name", account.Settings.Dashboard.DisplayName)
+	require.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
 }
 
 func TestRedeemedNoDisplayName(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		require.Equal(t, "GET", r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -65,18 +65,18 @@ func TestRedeemedNoDisplayName(t *testing.T) {
 	defer ts.Close()
 
 	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
-	assert.NoError(t, err)
-	assert.Equal(t, "sk_test_123", apiKey)
-	assert.Equal(t, "acct_123", account.ID)
-	assert.Equal(t, "", account.Settings.Dashboard.DisplayName)
-	assert.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
+	require.NoError(t, err)
+	require.Equal(t, "sk_test_123", apiKey)
+	require.Equal(t, "acct_123", account.ID)
+	require.Equal(t, "", account.Settings.Dashboard.DisplayName)
+	require.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
 }
 
 func TestExceedMaxAttempts(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -90,17 +90,17 @@ func TestExceedMaxAttempts(t *testing.T) {
 	defer ts.Close()
 
 	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
-	assert.EqualError(t, err, "exceeded max attempts")
-	assert.Empty(t, apiKey)
-	assert.Empty(t, account)
-	assert.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
+	require.EqualError(t, err, "exceeded max attempts")
+	require.Empty(t, apiKey)
+	require.Empty(t, account)
+	require.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
 }
 
 func TestHTTPStatusError(t *testing.T) {
 	var attempts uint64
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, http.MethodGet, r.Method)
 
 		atomic.AddUint64(&attempts, 1)
 
@@ -109,10 +109,10 @@ func TestHTTPStatusError(t *testing.T) {
 	defer ts.Close()
 
 	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
-	assert.EqualError(t, err, "unexpected http status code: 500 ")
-	assert.Empty(t, apiKey)
-	assert.Nil(t, account)
-	assert.Equal(t, uint64(1), atomic.LoadUint64(&attempts))
+	require.EqualError(t, err, "unexpected http status code: 500 ")
+	require.Empty(t, apiKey)
+	require.Nil(t, account)
+	require.Equal(t, uint64(1), atomic.LoadUint64(&attempts))
 }
 
 func TestHTTPRequestError(t *testing.T) {
@@ -121,8 +121,8 @@ func TestHTTPRequestError(t *testing.T) {
 	ts.Close()
 
 	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "connect: connection refused")
-	assert.Empty(t, apiKey)
-	assert.Nil(t, account)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "connect: connection refused")
+	require.Empty(t, apiKey)
+	require.Nil(t, account)
 }

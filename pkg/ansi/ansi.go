@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -84,7 +85,16 @@ func StartSpinner(msg string, w io.Writer) *spinner.Spinner {
 		return nil
 	}
 
-	s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	// See https://github.com/briandowns/spinner#available-character-sets for
+	// list of available charsets
+	charSetIdx := 11
+	if runtime.GOOS == "windows" {
+		// Less fancy, but uses ASCII characters so works with Windows default
+		// console.
+		charSetIdx = 8
+	}
+
+	s := spinner.New(spinner.CharSets[charSetIdx], 100*time.Millisecond)
 	s.Writer = w
 
 	if msg != "" {
