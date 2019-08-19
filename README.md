@@ -425,6 +425,12 @@ $ stripe config -e
 
 ## Developing the Stripe CLI
 
+If you're working on developing the CLI, it's recommended that you alias the go command to run the dev version. Place this in your shell rc file (such as `.bashrc` or `.zshrc`)
+
+```sh
+alias stripe-dev='go run cmd/stripe/main.go'
+```
+
 ### Installation
 
 The Stripe CLI is built using Go. To download and compile the source code, run:
