@@ -9,6 +9,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// ListCmd prints a list of all the available sample projects that users can
+// generate
 type ListCmd struct {
 	Cmd *cobra.Command
 }

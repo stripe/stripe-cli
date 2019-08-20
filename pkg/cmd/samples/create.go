@@ -16,6 +16,8 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
+// CreateCmd wraps the `create` command for samples which generates a new
+// project
 type CreateCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
