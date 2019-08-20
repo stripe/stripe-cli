@@ -28,6 +28,8 @@ func (p *Profile) CreateProfile() error {
 	return nil
 }
 
+// GetColor gets the color setting for the user based on the flag or the
+// persisted color stored in the config file
 func (p *Profile) GetColor() (string, error) {
 	color := viper.GetString("color")
 	if color != "" {

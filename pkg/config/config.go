@@ -20,8 +20,13 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+// ColorOn represnets the on-state for colors
 const ColorOn = "on"
+
+// ColorOff represents the off-state for colors
 const ColorOff = "off"
+
+// ColorAuto represents the auto-state for colors
 const ColorAuto = "auto"
 
 // Config handles all overall configuration for the CLI
