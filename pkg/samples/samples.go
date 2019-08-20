@@ -18,7 +18,7 @@ import (
 // Samples stores the information for the selected sample in addition to the
 // selected configuration option to copy over
 type Samples struct {
-	Config config.Config
+	Config *config.Config
 	Fs     afero.Fs
 	Git    git.Interface
 
@@ -58,7 +58,7 @@ func (s *Samples) Initialize(app string) error {
 	s.repo = appPath
 
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = s.Git.Clone(appPath, samplesList[app])
+		err = s.Git.Clone(appPath, List[app].GitRepo())
 		if err != nil {
 			return err
 		}
