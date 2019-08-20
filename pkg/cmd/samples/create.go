@@ -23,20 +23,20 @@ type CreateCmd struct {
 	Cmd *cobra.Command
 }
 
-// NewCreateCmd returns a create command for samples
+// NewCreateCmd creates and returns a create command for samples
 func NewCreateCmd(config *config.Config) *CreateCmd {
-	CreateCmd := &CreateCmd{
+	createCmd := &CreateCmd{
 		cfg: config,
 	}
-	CreateCmd.Cmd = &cobra.Command{
+	createCmd.Cmd = &cobra.Command{
 		Use:       "create",
 		Args:      validators.ExactArgs(1),
 		ValidArgs: samples.Names(),
 		Short:     "create a Stripe sample",
-		RunE:      CreateCmd.runCreateCmd,
+		RunE:      createCmd.runCreateCmd,
 	}
 
-	return CreateCmd
+	return createCmd
 }
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
@@ -92,6 +92,11 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	// Perform the copy of the sample given the selected options
 	// from the selections above
 	err = sample.Copy(targetPath)
+	if err != nil {
+		return err
+	}
+
+	err = sample.ConfigureDotEnv(targetPath)
 	if err != nil {
 		return err
 	}

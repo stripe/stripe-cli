@@ -54,7 +54,7 @@ var savingCardWithoutPayment = &SampleData{
 	URL:         "https://github.com/stripe-samples/saving-card-without-payment",
 }
 
-// List comains a mapping of Stripe Samples that we want to be available in the
+// List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
 var List = map[string]*SampleData{
