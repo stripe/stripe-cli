@@ -15,18 +15,18 @@ type ListCmd struct {
 	Cmd *cobra.Command
 }
 
-// NewListCmd defines a new samples command that lists all samples
+// NewListCmd creates and returns a list command for samples
 func NewListCmd() *ListCmd {
-	ListCmd := &ListCmd{}
-	ListCmd.Cmd = &cobra.Command{
+	listCmd := &ListCmd{}
+	listCmd.Cmd = &cobra.Command{
 		Use:   "list",
 		Args:  validators.NoArgs,
 		Short: "list available Stripe samples",
 		Long:  `A list of available Stripe Sample integrations`,
-		Run:   ListCmd.runListCmd,
+		Run:   listCmd.runListCmd,
 	}
 
-	return ListCmd
+	return listCmd
 }
 
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
