@@ -268,6 +268,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 	dotenv["STRIPE_SECRET_KEY"] = apiKey
 	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
+	dotenv["STATIC_DIR"] = "../client"
 
 	envFile := filepath.Join(sampleLocation, ".env")
 	err = godotenv.Write(dotenv, envFile)
