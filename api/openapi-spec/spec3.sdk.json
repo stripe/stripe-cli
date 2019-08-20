@@ -135,7 +135,7 @@
                 "$ref": "#/components/schemas/account_settings"
               }
             ],
-            "description": "Account options for customizing how the account functions within Stripe.",
+            "description": "Options for customizing how the account functions within Stripe.",
             "nullable": true
           },
           "tos_acceptance": {
@@ -519,8 +519,8 @@
             ],
             "type": "string"
           },
-          "platform_payments": {
-            "description": "The status of the platform payments capability of the account, or whether your platform can process charges on behalf of the account.",
+          "transfers": {
+            "description": "The status of the transfers capability of the account, or whether your platform can transfer funds to the account.",
             "enum": [
               "active",
               "inactive",
@@ -601,6 +601,7 @@
           "statement_descriptor_prefix": {
             "description": "The default text that appears on credit card statements when a charge is made. This field prefixes any dynamic `statement_descriptor` specified on the charge. `statement_descriptor_prefix` is useful for maximizing descriptor space for the dynamic portion.",
             "maxLength": 5000,
+            "nullable": true,
             "type": "string"
           }
         },
@@ -1845,21 +1846,21 @@
             "method_on": "class",
             "method_type": "list",
             "operation": "get",
-            "path": "/v1/balance/history"
+            "path": "/v1/balance_transactions"
           },
           {
             "method_name": "list",
             "method_on": "service",
             "method_type": "list",
             "operation": "get",
-            "path": "/v1/balance/history"
+            "path": "/v1/balance_transactions"
           },
           {
             "method_name": "retrieve",
             "method_on": "class",
             "method_type": "retrieve",
             "operation": "get",
-            "path": "/v1/balance/history/{id}",
+            "path": "/v1/balance_transactions/{id}",
             "path_resource_variables": [
               {
                 "method_parameter": "id",
@@ -1872,7 +1873,7 @@
             "method_on": "service",
             "method_type": "retrieve",
             "operation": "get",
-            "path": "/v1/balance/history/{id}",
+            "path": "/v1/balance_transactions/{id}",
             "path_resource_variables": [
               {
                 "method_parameter": "id",
@@ -2858,7 +2859,10 @@
           "available_payout_methods": {
             "description": "A set of available payout methods for this card. Will be either `[\"standard\"]` or `[\"standard\", \"instant\"]`. Only values from this set should be passed as the `method` when creating a transfer.",
             "items": {
-              "maxLength": 5000,
+              "enum": [
+                "instant",
+                "standard"
+              ],
               "type": "string"
             },
             "nullable": true,
@@ -3615,7 +3619,13 @@
             }
           },
           "statement_descriptor": {
-            "description": "Extra information about a charge. This will appear on your customer's credit card statement. It must contain at least one letter.",
+            "description": "For card charges, use `statement_descriptor_suffix` instead. Otherwise, you can use this value as the complete description of a charge on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "statement_descriptor_suffix": {
+            "description": "Provides information about the charge that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -3962,7 +3972,7 @@
       "checkout.session": {
         "properties": {
           "billing_address_collection": {
-            "description": "The value (`auto` or `required`) for whether Checkout collected the customer's billing address.",
+            "description": "The value (`auto` or `required`) for whether Checkout collected the\ncustomer's billing address.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -3988,7 +3998,7 @@
                 "$ref": "#/components/schemas/customer"
               }
             ],
-            "description": "The ID of the customer for this session. A new customer will be created unless an existing customer was provided in when the session was created.",
+            "description": "The ID of the customer for this session. A new customer will be created\nunless an existing customer was provided in when the session was\ncreated.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -4009,10 +4019,11 @@
             "items": {
               "$ref": "#/components/schemas/checkout_session_display_item"
             },
+            "nullable": true,
             "type": "array"
           },
           "id": {
-            "description": "Unique identifier for the object. Used to pass to `redirectToCheckout` in Stripe.js.",
+            "description": "Unique identifier for the object. Used to pass to `redirectToCheckout`\nin Stripe.js.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -4021,7 +4032,7 @@
             "type": "boolean"
           },
           "locale": {
-            "description": "The IETF language tag of the locale Checkout is displayed in. If blank or `auto`, the browser's locale is used.",
+            "description": "The IETF language tag of the locale Checkout is displayed in. If blank\nor `auto`, the browser's locale is used.",
             "enum": [
               "auto",
               "da",
@@ -4070,7 +4081,7 @@
             }
           },
           "payment_method_types": {
-            "description": "A list of the types of payment methods (e.g. card) this Checkout Session is allowed to accept.",
+            "description": "A list of the types of payment methods (e.g. card) this Checkout\nSession is allowed to accept.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -4078,7 +4089,7 @@
             "type": "array"
           },
           "submit_type": {
-            "description": "Describes the type of transaction being performed by Checkout in order to customize relevant text on the page, such as the submit button. `submit_type` can only be specified on Checkout Sessions using line items or a SKU, but not Checkout Sessions for subscriptions. Supported values are `auto`, `book`, `donate`, or `pay`.",
+            "description": "Describes the type of transaction being performed by Checkout in order\nto customize relevant text on the page, such as the submit button.\n`submit_type` can only be specified on Checkout Sessions using line\nitems or a SKU, but not Checkout Sessions for subscriptions. Supported\nvalues are\n`auto`, `book`, `donate`, or `pay`.",
             "enum": [
               "auto",
               "book",
@@ -4109,14 +4120,13 @@
             }
           },
           "success_url": {
-            "description": "The URL the customer will be directed to after the payment or subscription creation is successful.",
+            "description": "The URL the customer will be directed to after the payment or\nsubscription creation is successful.",
             "maxLength": 5000,
             "type": "string"
           }
         },
         "required": [
           "cancel_url",
-          "display_items",
           "id",
           "livemode",
           "object",
@@ -4737,7 +4747,7 @@
       "credit_note": {
         "properties": {
           "amount": {
-            "description": "The integer amount in **%s** representing the total amount of the credit note.",
+            "description": "The integer amount in **%s** representing the total amount of the credit note, including tax.",
             "type": "integer"
           },
           "created": {
@@ -4894,6 +4904,12 @@
               "pre_payment"
             ],
             "type": "string"
+          },
+          "voided_at": {
+            "description": "The time that the credit note was voided.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
           }
         },
         "required": [
@@ -8081,7 +8097,7 @@
             "type": "integer"
           },
           "subtotal": {
-            "description": "Total of all subscriptions, invoice items, and prorations on the invoice before any discount is applied.",
+            "description": "Total of all subscriptions, invoice items, and prorations on the invoice before any discount or tax is applied.",
             "type": "integer"
           },
           "tax": {
@@ -8098,13 +8114,13 @@
             "$ref": "#/components/schemas/invoice_threshold_reason"
           },
           "total": {
-            "description": "Total after discount.",
+            "description": "Total after discounts and taxes.",
             "type": "integer"
           },
           "total_tax_amounts": {
             "description": "The aggregate amounts calculated per tax rate for all line items.",
             "items": {
-              "$ref": "#/components/schemas/tax_amount"
+              "$ref": "#/components/schemas/invoice_tax_amount"
             },
             "nullable": true,
             "type": "array"
@@ -8409,11 +8425,11 @@
           "inner_classes": [
             "invoice_item_threshold_reason",
             "invoice_setting_custom_field",
+            "invoice_tax_amount",
             "invoice_threshold_reason",
             "invoice_transfer_data",
             "invoices_resource_invoice_tax_id",
-            "invoices_status_transitions",
-            "tax_amount"
+            "invoices_status_transitions"
           ]
         }
       },
@@ -8562,6 +8578,51 @@
         "x-stripeResource": {
           "class_name": "InvoiceSettings",
           "in_class": "subscription_schedule"
+        }
+      },
+      "invoice_tax_amount": {
+        "properties": {
+          "amount": {
+            "description": "The amount, in %s, of the tax.",
+            "type": "integer"
+          },
+          "inclusive": {
+            "description": "Whether this tax amount is inclusive or exclusive.",
+            "type": "boolean"
+          },
+          "tax_rate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/tax_rate"
+              }
+            ],
+            "description": "The tax rate that was applied to get this tax amount.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/tax_rate"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "amount",
+          "inclusive",
+          "tax_rate"
+        ],
+        "title": "InvoiceTaxAmount",
+        "type": "object",
+        "x-expandableFields": [
+          "tax_rate"
+        ],
+        "x-stripeResource": {
+          "class_name": "TaxAmount",
+          "in_class": "invoice"
         }
       },
       "invoice_threshold_reason": {
@@ -8774,8 +8835,13 @@
             "nullable": true,
             "type": "array"
           },
+          "unified_proration": {
+            "description": "For prorations this indicates whether Stripe automatically grouped multiple related debit and credit line items into a single combined line item.",
+            "type": "boolean"
+          },
           "unit_amount": {
             "description": "Unit Amount (in the `currency` specified) of the invoice item.",
+            "nullable": true,
             "type": "integer"
           }
         },
@@ -9471,6 +9537,15 @@
             ],
             "type": "string"
           },
+          "pin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/issuing_card_pin"
+              }
+            ],
+            "description": "Metadata about the PIN on the card.",
+            "nullable": true
+          },
           "replacement_for": {
             "anyOf": [
               {
@@ -9550,6 +9625,7 @@
         "x-expandableFields": [
           "authorization_controls",
           "cardholder",
+          "pin",
           "replacement_for",
           "shipping"
         ],
@@ -9668,6 +9744,7 @@
           "in_package": "Issuing",
           "inner_classes": [
             "issuing_card_authorization_controls",
+            "issuing_card_pin",
             "issuing_card_shipping",
             "issuing_card_spending_limit"
           ]
@@ -10441,7 +10518,7 @@
             "type": "string"
           },
           "reason": {
-            "description": "One of `authorization_controls`, `card_active`, `card_inactive`, `insufficient_funds`, `account_compliance_disabled`, `account_inactive`, `suspected_fraud`, `webhook_approved`, `webhook_declined`, or `webhook_timeout`.",
+            "description": "One of `authentication_failed`, `authorization_controls`, `card_active`, `card_inactive`, `insufficient_funds`, `account_compliance_disabled`, `account_inactive`, `suspected_fraud`, `webhook_approved`, `webhook_declined`, or `webhook_timeout`.",
             "maxLength": 5000,
             "type": "string"
           }
@@ -10589,6 +10666,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -10883,6 +10961,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -11129,6 +11208,27 @@
           "in_class": "issuing.card"
         }
       },
+      "issuing_card_pin": {
+        "properties": {
+          "status": {
+            "description": "The status of the pin. One of `blocked` or `active`.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "IssuingCardPin",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Pin",
+          "in_class": "issuing.card"
+        }
+      },
       "issuing_card_shipping": {
         "properties": {
           "address": {
@@ -11291,6 +11391,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -11638,6 +11739,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -11932,6 +12034,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -12257,6 +12360,7 @@
                 "dentists_orthodontists",
                 "department_stores",
                 "detective_agencies",
+                "digital_goods_applications",
                 "direct_marketing_catalog_merchant",
                 "direct_marketing_combination_catalog_and_retail_merchant",
                 "direct_marketing_inbound_telemarketing",
@@ -12793,7 +12897,6 @@
           }
         },
         "required": [
-          "document",
           "status"
         ],
         "title": "LegalEntityPersonVerification",
@@ -13042,7 +13145,7 @@
           "tax_amounts": {
             "description": "The amount of tax calculated per tax rate for this line item",
             "items": {
-              "$ref": "#/components/schemas/tax_amount"
+              "$ref": "#/components/schemas/invoice_tax_amount"
             },
             "nullable": true,
             "type": "array"
@@ -13064,6 +13167,7 @@
             "type": "string"
           },
           "unified_proration": {
+            "description": "For prorations this indicates whether Stripe automatically grouped multiple related debit and credit line items into a single combined line item.",
             "type": "boolean"
           }
         },
@@ -13957,7 +14061,7 @@
             ]
           },
           "client_secret": {
-            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. Please refer to our [automatic confirmation quickstart guide](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) to learn about how `client_secret` should be handled.",
+            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. \n\nThe client secret can be used to complete a payment from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.\n\nPlease refer to our [automatic confirmation quickstart guide](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) to learn about how `client_secret` should be handled.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -13990,7 +14094,7 @@
                 "$ref": "#/components/schemas/customer"
               }
             ],
-            "description": "ID of the Customer this PaymentIntent is for if one exists.",
+            "description": "ID of the Customer this PaymentIntent belongs to, if one exists.\n\nIf present, payment methods used with this PaymentIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this PaymentIntent.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -14108,6 +14212,15 @@
               ]
             }
           },
+          "payment_method_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_intent_payment_method_options"
+              }
+            ],
+            "description": "Payment-method-specific configuration for this PaymentIntent.",
+            "nullable": true
+          },
           "payment_method_types": {
             "description": "The list of payment method types (e.g. card) that this PaymentIntent is allowed to use.",
             "items": {
@@ -14143,7 +14256,7 @@
             }
           },
           "setup_future_usage": {
-            "description": "When provided, this property indicates how you intend to use the payment method that your customer provides after the current payment completes. If applicable, additional authentication may be performed to comply with regional legislation or network rules required to enable the usage of the same payment method for additional payments.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.",
+            "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -14178,13 +14291,19 @@
             }
           },
           "statement_descriptor": {
-            "description": "Extra information about a PaymentIntent. This will appear on your customer's statement when this PaymentIntent succeeds in creating a charge.",
+            "description": "For non-card charges, you can use this value as the complete description that appears on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "statement_descriptor_suffix": {
+            "description": "Provides information about a card payment that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "status": {
-            "description": "Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://stripe.com/docs/payments/payment-intents/status).",
+            "description": "Status of this PaymentIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `requires_capture`, `canceled`, or `succeeded`. Read more about each PaymentIntent [status](https://stripe.com/docs/payments/intents#intent-statuses).",
             "enum": [
               "canceled",
               "processing",
@@ -14235,6 +14354,7 @@
           "next_action",
           "on_behalf_of",
           "payment_method",
+          "payment_method_options",
           "review",
           "shipping",
           "source",
@@ -14408,6 +14528,7 @@
           "inner_classes": [
             "payment_intent_next_action",
             "payment_intent_next_action_redirect_to_url",
+            "payment_intent_payment_method_options",
             "transfer_data"
           ]
         }
@@ -14463,6 +14584,48 @@
         "x-stripeResource": {
           "class_name": "NextActionRedirectToUrl",
           "in_class": "payment_intent"
+        }
+      },
+      "payment_intent_payment_method_options": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/payment_intent_payment_method_options_card"
+          }
+        },
+        "title": "PaymentIntentPaymentMethodOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "card"
+        ],
+        "x-stripeResource": {
+          "class_name": "PaymentMethodOptions",
+          "in_class": "payment_intent",
+          "inner_classes": [
+            "payment_intent_payment_method_options_card"
+          ]
+        }
+      },
+      "payment_intent_payment_method_options_card": {
+        "properties": {
+          "request_three_d_secure": {
+            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+            "enum": [
+              "any",
+              "automatic",
+              "challenge_only"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "payment_intent_payment_method_options_card",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Card",
+          "in_class": "payment_intent_payment_method_options"
         }
       },
       "payment_method": {
@@ -15067,6 +15230,9 @@
           "alipay": {
             "$ref": "#/components/schemas/payment_method_details_alipay"
           },
+          "au_becs_debit": {
+            "$ref": "#/components/schemas/payment_method_details_au_becs_debit"
+          },
           "bancontact": {
             "$ref": "#/components/schemas/payment_method_details_bancontact"
           },
@@ -15088,6 +15254,9 @@
           "ideal": {
             "$ref": "#/components/schemas/payment_method_details_ideal"
           },
+          "klarna": {
+            "$ref": "#/components/schemas/payment_method_details_klarna"
+          },
           "multibanco": {
             "$ref": "#/components/schemas/payment_method_details_multibanco"
           },
@@ -15107,7 +15276,7 @@
             "$ref": "#/components/schemas/payment_method_details_stripe_account"
           },
           "type": {
-            "description": "The type of transaction-specific details of the payment method used in the payment, one of `ach_credit_transfer`, `ach_debit`, `alipay`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `multibanco`, `p24`, `sepa_debit`, `sofort`, `stripe_account`, or `wechat`.\nAn additional hash is included on `payment_method_details` with a name matching this value.\nIt contains information specific to the payment method.",
+            "description": "The type of transaction-specific details of the payment method used in the payment, one of `ach_credit_transfer`, `ach_debit`, `alipay`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `klarna`, `multibanco`, `p24`, `sepa_debit`, `sofort`, `stripe_account`, or `wechat`.\nAn additional hash is included on `payment_method_details` with a name matching this value.\nIt contains information specific to the payment method.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -15125,6 +15294,7 @@
           "ach_debit",
           "acss_debit",
           "alipay",
+          "au_becs_debit",
           "bancontact",
           "bitcoin",
           "card",
@@ -15132,6 +15302,7 @@
           "eps",
           "giropay",
           "ideal",
+          "klarna",
           "multibanco",
           "p24",
           "sepa_credit_transfer",
@@ -15148,6 +15319,7 @@
             "payment_method_details_ach_debit",
             "payment_method_details_acss_debit",
             "payment_method_details_alipay",
+            "payment_method_details_au_becs_debit",
             "payment_method_details_bancontact",
             "payment_method_details_bitcoin",
             "payment_method_details_card",
@@ -15155,6 +15327,7 @@
             "payment_method_details_eps",
             "payment_method_details_giropay",
             "payment_method_details_ideal",
+            "payment_method_details_klarna",
             "payment_method_details_multibanco",
             "payment_method_details_p24",
             "payment_method_details_sepa_credit_transfer",
@@ -15301,6 +15474,37 @@
         ],
         "x-stripeResource": {
           "class_name": "Alipay",
+          "in_class": "payment_method_details"
+        }
+      },
+      "payment_method_details_au_becs_debit": {
+        "properties": {
+          "bsb_number": {
+            "description": "Bank-State-Branch number of the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "Uniquely identifies this particular bank account. You can use this attribute to check whether two bank accounts are the same.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "last4": {
+            "description": "Last four digits of the bank account number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "payment_method_details_au_becs_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AuBecsDebit",
           "in_class": "payment_method_details"
         }
       },
@@ -15465,6 +15669,11 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "moto": {
+            "description": "True if this payment was marked as MOTO and out of scope for SCA.",
+            "nullable": true,
+            "type": "boolean"
           },
           "three_d_secure": {
             "anyOf": [
@@ -15998,6 +16207,19 @@
         ],
         "x-stripeResource": {
           "class_name": "Ideal",
+          "in_class": "payment_method_details"
+        }
+      },
+      "payment_method_details_klarna": {
+        "properties": {
+        },
+        "title": "payment_method_details_klarna",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Klarna",
           "in_class": "payment_method_details"
         }
       },
@@ -16980,6 +17202,11 @@
           },
           "director": {
             "description": "Whether the person is a director of the account's legal entity. Currently only required for accounts in the EU. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "executive": {
+            "description": "Whether the person has significant responsibility to control, manage, or direct the organization.",
             "nullable": true,
             "type": "boolean"
           },
@@ -19540,8 +19767,18 @@
               ]
             }
           },
+          "cancellation_reason": {
+            "description": "Reason for cancellation of this SetupIntent, one of `abandoned`, `requested_by_customer`, or `duplicate`.",
+            "enum": [
+              "abandoned",
+              "duplicate",
+              "requested_by_customer"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
           "client_secret": {
-            "description": "The client secret of this SetupIntent. Used for client-side retrieval using a publishable key.",
+            "description": "The client secret of this SetupIntent. Used for client-side retrieval using a publishable key.\n\nThe client secret can be used to complete payment setup from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -19561,7 +19798,7 @@
                 "$ref": "#/components/schemas/customer"
               }
             ],
-            "description": "ID of the Customer this SetupIntent belongs to, if one exists.",
+            "description": "ID of the Customer this SetupIntent belongs to, if one exists.\n\nIf present, payment methods used with this SetupIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this SetupIntent.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -19606,10 +19843,10 @@
           "next_action": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/payment_intent_next_action"
+                "$ref": "#/components/schemas/setup_intent_next_action"
               }
             ],
-            "description": "If present, this property tells you what actions you need to take in order for your customer to set up this payment method.",
+            "description": "If present, this property tells you what actions you need to take in order for your customer to continue payment setup.",
             "nullable": true
           },
           "object": {
@@ -19659,6 +19896,15 @@
               ]
             }
           },
+          "payment_method_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/setup_intent_payment_method_options"
+              }
+            ],
+            "description": "Payment-method-specific configuration for this SetupIntent.",
+            "nullable": true
+          },
           "payment_method_types": {
             "description": "The list of payment method types (e.g. card) that this SetupIntent is allowed to set up.",
             "items": {
@@ -19668,7 +19914,7 @@
             "type": "array"
           },
           "status": {
-            "description": "Status of this SetupIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `canceled`, or `succeeded`.",
+            "description": "[Status](https://stripe.com/docs/payments/intents#intent-statuses) of this SetupIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `canceled`, or `succeeded`.",
             "enum": [
               "canceled",
               "processing",
@@ -19680,7 +19926,7 @@
             "type": "string"
           },
           "usage": {
-            "description": "Indicates how the payment method is intended to be used in the future.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.",
+            "description": "Indicates how the payment method is intended to be used in the future.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. If not provided, this value defaults to `off_session`.",
             "maxLength": 5000,
             "type": "string"
           }
@@ -19702,7 +19948,8 @@
           "last_setup_error",
           "next_action",
           "on_behalf_of",
-          "payment_method"
+          "payment_method",
+          "payment_method_options"
         ],
         "x-resourceId": "setup_intent",
         "x-stripeOperations": [
@@ -19842,7 +20089,107 @@
         "x-stripeResource": {
           "class_name": "SetupIntent",
           "has_collection_class": true,
-          "in_package": ""
+          "in_package": "",
+          "inner_classes": [
+            "setup_intent_next_action",
+            "setup_intent_next_action_redirect_to_url",
+            "setup_intent_payment_method_options"
+          ]
+        }
+      },
+      "setup_intent_next_action": {
+        "properties": {
+          "redirect_to_url": {
+            "$ref": "#/components/schemas/setup_intent_next_action_redirect_to_url"
+          },
+          "type": {
+            "description": "Type of the next action to perform, one of `redirect_to_url` or `use_stripe_sdk`.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "use_stripe_sdk": {
+            "description": "When confirming a SetupIntent with Stripe.js, Stripe.js depends on the contents of this dictionary to invoke authentication flows. The shape of the contents is subject to change and is only intended to be used by Stripe.js.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SetupIntentNextAction",
+        "type": "object",
+        "x-expandableFields": [
+          "redirect_to_url"
+        ],
+        "x-stripeResource": {
+          "class_name": "NextAction",
+          "in_class": "setup_intent"
+        }
+      },
+      "setup_intent_next_action_redirect_to_url": {
+        "properties": {
+          "return_url": {
+            "description": "If the customer does not exit their browser while authenticating, they will be redirected to this specified URL after completion.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "url": {
+            "description": "The URL you must redirect your customer to in order to authenticate.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "SetupIntentNextActionRedirectToUrl",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "NextActionRedirectToUrl",
+          "in_class": "setup_intent"
+        }
+      },
+      "setup_intent_payment_method_options": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/setup_intent_payment_method_options_card"
+          }
+        },
+        "title": "SetupIntentPaymentMethodOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "card"
+        ],
+        "x-stripeResource": {
+          "class_name": "PaymentMethodOptions",
+          "in_class": "setup_intent",
+          "inner_classes": [
+            "setup_intent_payment_method_options_card"
+          ]
+        }
+      },
+      "setup_intent_payment_method_options_card": {
+        "properties": {
+          "request_three_d_secure": {
+            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+            "enum": [
+              "any",
+              "automatic",
+              "challenge_only"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "setup_intent_payment_method_options_card",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Card",
+          "in_class": "setup_intent_payment_method_options"
         }
       },
       "shipping": {
@@ -19875,9 +20222,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "address"
-        ],
         "title": "Shipping",
         "type": "object",
         "x-expandableFields": [
@@ -20208,6 +20552,9 @@
             "nullable": true,
             "type": "integer"
           },
+          "au_becs_debit": {
+            "$ref": "#/components/schemas/source_type_au_becs_debit"
+          },
           "bancontact": {
             "$ref": "#/components/schemas/source_type_bancontact"
           },
@@ -20260,6 +20607,9 @@
           "ideal": {
             "$ref": "#/components/schemas/source_type_ideal"
           },
+          "klarna": {
+            "$ref": "#/components/schemas/source_type_klarna"
+          },
           "livemode": {
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
             "type": "boolean"
@@ -20310,6 +20660,9 @@
           "sofort": {
             "$ref": "#/components/schemas/source_type_sofort"
           },
+          "source_order": {
+            "$ref": "#/components/schemas/source_order"
+          },
           "statement_descriptor": {
             "description": "Extra information about a source. This will appear on your customer's statement every time you charge the source.",
             "maxLength": 5000,
@@ -20325,18 +20678,20 @@
             "$ref": "#/components/schemas/source_type_three_d_secure"
           },
           "type": {
-            "description": "The `type` of the source. The `type` is a payment method, one of `ach_credit_transfer`, `ach_debit`, `alipay`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `multibanco`, `p24`, `sepa_debit`, `sofort`, `three_d_secure`, or `wechat`. An additional hash is included on the source with a name matching this value. It contains additional information specific to the [payment method](https://stripe.com/docs/sources) used.",
+            "description": "The `type` of the source. The `type` is a payment method, one of `ach_credit_transfer`, `ach_debit`, `alipay`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `multibanco`, `klarna`, `p24`, `sepa_debit`, `sofort`, `three_d_secure`, or `wechat`. An additional hash is included on the source with a name matching this value. It contains additional information specific to the [payment method](https://stripe.com/docs/sources) used.",
             "enum": [
               "ach_credit_transfer",
               "ach_debit",
               "acss_debit",
               "alipay",
+              "au_becs_debit",
               "bancontact",
               "card",
               "card_present",
               "eps",
               "giropay",
               "ideal",
+              "klarna",
               "multibanco",
               "p24",
               "sepa_credit_transfer",
@@ -20374,7 +20729,8 @@
           "code_verification",
           "owner",
           "receiver",
-          "redirect"
+          "redirect",
+          "source_order"
         ],
         "x-resourceId": "source",
         "x-stripeOperations": [
@@ -20536,6 +20892,8 @@
           "in_package": "",
           "inner_classes": [
             "source_code_verification_flow",
+            "source_order",
+            "source_order_item",
             "source_owner",
             "source_receiver_flow",
             "source_redirect_flow",
@@ -20543,12 +20901,14 @@
             "source_type_ach_debit",
             "source_type_acss_debit",
             "source_type_alipay",
+            "source_type_au_becs_debit",
             "source_type_bancontact",
             "source_type_card",
             "source_type_card_present",
             "source_type_eps",
             "source_type_giropay",
             "source_type_ideal",
+            "source_type_klarna",
             "source_type_multibanco",
             "source_type_p24",
             "source_type_sepa_credit_transfer",
@@ -20711,6 +21071,89 @@
         "x-stripeResource": {
           "class_name": "SepaDebitData",
           "in_class": "source_mandate_notification"
+        }
+      },
+      "source_order": {
+        "properties": {
+          "amount": {
+            "description": "A positive integer in the smallest currency unit (that is, 100 cents for $1.00, or 1 for ¥1, Japanese Yen being a zero-decimal currency) representing the total amount for the order.",
+            "type": "integer"
+          },
+          "currency": {
+            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+            "maxLength": 3,
+            "type": "string"
+          },
+          "email": {
+            "description": "The email address of the customer placing the order.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "items": {
+            "description": "List of items constituting the order.",
+            "items": {
+              "$ref": "#/components/schemas/source_order_item"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "shipping": {
+            "$ref": "#/components/schemas/shipping"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "SourceOrder",
+        "type": "object",
+        "x-expandableFields": [
+          "items",
+          "shipping"
+        ],
+        "x-stripeResource": {
+          "class_name": "Order",
+          "in_class": "source"
+        }
+      },
+      "source_order_item": {
+        "properties": {
+          "amount": {
+            "description": "The amount (price) for this order item.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "currency": {
+            "description": "This currency of this order item. Required when `amount` is present.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "description": "Human-readable description for this order item.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "quantity": {
+            "description": "The quantity of this order item. When type is `sku`, this is the number of instances of the SKU to be ordered.",
+            "type": "integer"
+          },
+          "type": {
+            "description": "The type of this order item. Must be `sku`, `tax`, or `shipping`.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "SourceOrderItem",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "OrderItem",
+          "in_class": "source"
         }
       },
       "source_owner": {
@@ -20890,6 +21333,9 @@
             "maxLength": 3,
             "type": "string"
           },
+          "gbp_credit_transfer": {
+            "$ref": "#/components/schemas/source_transaction_gbp_credit_transfer_data"
+          },
           "id": {
             "description": "Unique identifier for the object.",
             "maxLength": 5000,
@@ -20934,6 +21380,7 @@
               "eps",
               "giropay",
               "ideal",
+              "klarna",
               "multibanco",
               "p24",
               "sepa_debit",
@@ -20942,9 +21389,6 @@
               "wechat"
             ],
             "type": "string"
-          },
-          "uk_credit_transfer": {
-            "$ref": "#/components/schemas/source_transaction_uk_credit_transfer_data"
           }
         },
         "required": [
@@ -20963,9 +21407,9 @@
         "x-expandableFields": [
           "ach_credit_transfer",
           "chf_credit_transfer",
+          "gbp_credit_transfer",
           "paper_check",
-          "sepa_credit_transfer",
-          "uk_credit_transfer"
+          "sepa_credit_transfer"
         ],
         "x-resourceId": "source_transaction",
         "x-stripeResource": {
@@ -20975,9 +21419,9 @@
           "inner_classes": [
             "source_transaction_ach_credit_transfer_data",
             "source_transaction_chf_credit_transfer_data",
+            "source_transaction_gbp_credit_transfer_data",
             "source_transaction_paper_check_data",
-            "source_transaction_sepa_credit_transfer_data",
-            "source_transaction_uk_credit_transfer_data"
+            "source_transaction_sepa_credit_transfer_data"
           ]
         }
       },
@@ -21052,6 +21496,39 @@
           "in_class": "source_transaction"
         }
       },
+      "source_transaction_gbp_credit_transfer_data": {
+        "properties": {
+          "fingerprint": {
+            "description": "Bank account fingerprint associated with the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "last4": {
+            "description": "Last 4 digits of account number associated with the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "sender_name": {
+            "description": "Sender name associated with the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "sort_code": {
+            "description": "Sort code associated with the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "title": "SourceTransactionGbpCreditTransferData",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "GbpCreditTransferData",
+          "in_class": "source_transaction"
+        }
+      },
       "source_transaction_paper_check_data": {
         "properties": {
           "available_at": {
@@ -21100,39 +21577,6 @@
         ],
         "x-stripeResource": {
           "class_name": "SepaCreditTransferData",
-          "in_class": "source_transaction"
-        }
-      },
-      "source_transaction_uk_credit_transfer_data": {
-        "properties": {
-          "fingerprint": {
-            "description": "Bank account fingerprint associated with the transfer.",
-            "maxLength": 5000,
-            "type": "string"
-          },
-          "last4": {
-            "description": "Last 4 digits of account number associated with the transfer.",
-            "maxLength": 5000,
-            "type": "string"
-          },
-          "sender_name": {
-            "description": "Sender name associated with the transfer.",
-            "maxLength": 5000,
-            "type": "string"
-          },
-          "sort_code": {
-            "description": "Sort code associated with the transfer.",
-            "maxLength": 5000,
-            "type": "string"
-          }
-        },
-        "title": "SourceTransactionUKCreditTransferData",
-        "type": "object",
-        "x-expandableFields": [
-
-        ],
-        "x-stripeResource": {
-          "class_name": "UKCreditTransferData",
           "in_class": "source_transaction"
         }
       },
@@ -21277,6 +21721,27 @@
         "type": "object",
         "x-stripeResource": {
           "class_name": "Alipay",
+          "in_class": "source"
+        }
+      },
+      "source_type_au_becs_debit": {
+        "properties": {
+          "bsb_number": {
+            "nullable": true,
+            "type": "string"
+          },
+          "fingerprint": {
+            "nullable": true,
+            "type": "string"
+          },
+          "last4": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-stripeResource": {
+          "class_name": "AuBecsDebit",
           "in_class": "source"
         }
       },
@@ -21531,6 +21996,91 @@
         "type": "object",
         "x-stripeResource": {
           "class_name": "Ideal",
+          "in_class": "source"
+        }
+      },
+      "source_type_klarna": {
+        "properties": {
+          "background_image_url": {
+            "type": "string"
+          },
+          "client_token": {
+            "nullable": true,
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "logo_url": {
+            "type": "string"
+          },
+          "page_title": {
+            "type": "string"
+          },
+          "pay_later_asset_urls_descriptive": {
+            "type": "string"
+          },
+          "pay_later_asset_urls_standard": {
+            "type": "string"
+          },
+          "pay_later_name": {
+            "type": "string"
+          },
+          "pay_later_redirect_url": {
+            "type": "string"
+          },
+          "pay_now_asset_urls_descriptive": {
+            "type": "string"
+          },
+          "pay_now_asset_urls_standard": {
+            "type": "string"
+          },
+          "pay_now_name": {
+            "type": "string"
+          },
+          "pay_now_redirect_url": {
+            "type": "string"
+          },
+          "pay_over_time_asset_urls_descriptive": {
+            "type": "string"
+          },
+          "pay_over_time_asset_urls_standard": {
+            "type": "string"
+          },
+          "pay_over_time_name": {
+            "type": "string"
+          },
+          "pay_over_time_redirect_url": {
+            "type": "string"
+          },
+          "payment_method_categories": {
+            "type": "string"
+          },
+          "purchase_country": {
+            "type": "string"
+          },
+          "purchase_type": {
+            "type": "string"
+          },
+          "redirect_url": {
+            "type": "string"
+          },
+          "shipping_first_name": {
+            "type": "string"
+          },
+          "shipping_last_name": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "x-stripeResource": {
+          "class_name": "Klarna",
           "in_class": "source"
         }
       },
@@ -22089,6 +22639,26 @@
             ],
             "type": "string"
           },
+          "pending_setup_intent": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/setup_intent"
+              }
+            ],
+            "description": "You can use this [SetupIntent](https://stripe.com/docs/api/setup_intents) to collect user authentication when creating a subscription without immediate payment or updating a subscription's payment method, allowing you to optimize for off-session payments. Learn more in the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication#scenario-2).",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/setup_intent"
+                }
+              ]
+            }
+          },
           "plan": {
             "anyOf": [
               {
@@ -22180,6 +22750,7 @@
           "discount",
           "items",
           "latest_invoice",
+          "pending_setup_intent",
           "plan",
           "transfer_data"
         ],
@@ -22771,11 +23342,6 @@
             "description": "Interval and duration at which the subscription schedule renews for when it ends if `renewal_behavior` is `renew`.",
             "nullable": true
           },
-          "revision": {
-            "description": "ID of the current revision of the subscription schedule.",
-            "maxLength": 5000,
-            "type": "string"
-          },
           "status": {
             "description": "Possible values are `not_started`, `active`, `completed`, `released`, and `canceled`.",
             "enum": [
@@ -22816,7 +23382,6 @@
           "object",
           "phases",
           "renewal_behavior",
-          "revision",
           "status"
         ],
         "title": "SubscriptionSchedule",
@@ -22963,19 +23528,6 @@
               {
                 "method_parameter": "schedule",
                 "name": "schedule"
-              }
-            ]
-          },
-          {
-            "method_name": "revisions",
-            "method_on": "instance",
-            "method_type": "custom",
-            "operation": "get",
-            "path": "/v1/subscription_schedules/{schedule}/revisions",
-            "path_resource_variables": [
-              {
-                "name": "schedule",
-                "object_property": "id"
               }
             ]
           }
@@ -23186,212 +23738,6 @@
         "x-stripeResource": {
           "class_name": "RenewalInterval",
           "in_class": "subscription_schedule"
-        }
-      },
-      "subscription_schedule_revision": {
-        "properties": {
-          "created": {
-            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
-            "format": "unix-time",
-            "type": "integer"
-          },
-          "id": {
-            "description": "Unique identifier for the object.",
-            "maxLength": 5000,
-            "type": "string"
-          },
-          "invoice_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/invoice_setting_subscription_schedule_setting"
-              }
-            ],
-            "nullable": true
-          },
-          "livemode": {
-            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
-            "type": "boolean"
-          },
-          "metadata": {
-            "additionalProperties": {
-              "maxLength": 500,
-              "type": "string"
-            },
-            "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
-            "nullable": true,
-            "type": "object"
-          },
-          "object": {
-            "description": "String representing the object's type. Objects of the same type share the same value.",
-            "enum": [
-              "subscription_schedule_revision"
-            ],
-            "type": "string"
-          },
-          "phases": {
-            "description": "Configuration for the subscription schedule's phases.",
-            "items": {
-              "$ref": "#/components/schemas/subscription_schedule_phase_configuration"
-            },
-            "type": "array"
-          },
-          "previous_revision": {
-            "maxLength": 5000,
-            "nullable": true,
-            "type": "string"
-          },
-          "renewal_behavior": {
-            "description": "Behavior of the subscription schedule and underlying subscription when it ends.",
-            "enum": [
-              "none",
-              "release",
-              "renew"
-            ],
-            "type": "string"
-          },
-          "renewal_interval": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/subscription_schedule_renewal_interval"
-              }
-            ],
-            "description": "Interval and duration at which the subscription schedule renews for when it ends if `renewal_behavior` is `renew`.",
-            "nullable": true
-          },
-          "schedule": {
-            "description": "ID of the subscription schedule the revision points to.",
-            "maxLength": 5000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "created",
-          "id",
-          "livemode",
-          "object",
-          "phases",
-          "renewal_behavior",
-          "schedule"
-        ],
-        "title": "SubscriptionScheduleRevision",
-        "type": "object",
-        "x-expandableFields": [
-          "invoice_settings",
-          "phases",
-          "renewal_interval"
-        ],
-        "x-resourceId": "subscription_schedule_revision",
-        "x-stripeOperations": [
-          {
-            "method_name": "list",
-            "method_on": "collection",
-            "method_type": "list",
-            "operation": "get",
-            "path": "/v1/subscription_schedules/{schedule}/revisions",
-            "path_resource_variables": [
-              {
-                "method_parameter": "schedule",
-                "name": "schedule"
-              }
-            ]
-          },
-          {
-            "method_name": "list",
-            "method_on": "service",
-            "method_type": "list",
-            "operation": "get",
-            "path": "/v1/subscription_schedules/{schedule}/revisions",
-            "path_resource_variables": [
-              {
-                "method_parameter": "schedule",
-                "name": "schedule"
-              }
-            ]
-          },
-          {
-            "method_name": "retrieve",
-            "method_on": "collection",
-            "method_type": "retrieve",
-            "operation": "get",
-            "path": "/v1/subscription_schedules/{schedule}/revisions/{revision}",
-            "path_resource_variables": [
-              {
-                "method_parameter": "schedule",
-                "name": "schedule"
-              },
-              {
-                "method_parameter": "revision",
-                "name": "revision"
-              }
-            ]
-          },
-          {
-            "method_name": "retrieve",
-            "method_on": "service",
-            "method_type": "retrieve",
-            "operation": "get",
-            "path": "/v1/subscription_schedules/{schedule}/revisions/{revision}",
-            "path_resource_variables": [
-              {
-                "method_parameter": "schedule",
-                "name": "schedule"
-              },
-              {
-                "method_parameter": "revision",
-                "name": "revision"
-              }
-            ]
-          }
-        ],
-        "x-stripeResource": {
-          "class_name": "SubscriptionScheduleRevision",
-          "has_collection_class": true,
-          "in_package": ""
-        }
-      },
-      "tax_amount": {
-        "properties": {
-          "amount": {
-            "description": "The amount, in %s, of the tax.",
-            "type": "integer"
-          },
-          "inclusive": {
-            "description": "Whether this tax amount is inclusive or exclusive.",
-            "type": "boolean"
-          },
-          "tax_rate": {
-            "anyOf": [
-              {
-                "maxLength": 5000,
-                "type": "string"
-              },
-              {
-                "$ref": "#/components/schemas/tax_rate"
-              }
-            ],
-            "description": "The tax rate that was applied to get this tax amount.",
-            "x-expansionResources": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/tax_rate"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "amount",
-          "inclusive",
-          "tax_rate"
-        ],
-        "title": "TaxAmount",
-        "type": "object",
-        "x-expandableFields": [
-          "tax_rate"
-        ],
-        "x-stripeResource": {
-          "class_name": "TaxAmount",
-          "in_class": "invoice"
         }
       },
       "tax_id": {
@@ -25079,6 +25425,10 @@
       },
       "transfer_data": {
         "properties": {
+          "amount": {
+            "description": "A positive integer representing how much to charge in the [smallest currency unit](https://stripe.com/docs/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://stripe.com/docs/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).",
+            "type": "integer"
+          },
           "destination": {
             "anyOf": [
               {
@@ -25795,7 +26145,7 @@
     "description": "The Stripe REST API. Please see https://stripe.com/docs/api for more details.",
     "termsOfService": "https://stripe.com/us/terms/",
     "title": "Stripe API",
-    "version": "2019-05-16",
+    "version": "2019-08-14",
     "x-stripeSpecFilename": "spec3.sdk"
   },
   "openapi": "3.0.0",
@@ -26814,7 +27164,7 @@
                         "card_issuing",
                         "card_payments",
                         "legacy_payments",
-                        "platform_payments"
+                        "transfers"
                       ],
                       "maxLength": 5000,
                       "type": "string",
@@ -27723,7 +28073,7 @@
                         "card_issuing",
                         "card_payments",
                         "legacy_payments",
-                        "platform_payments"
+                        "transfers"
                       ],
                       "maxLength": 5000,
                       "type": "string",
@@ -29328,7 +29678,7 @@
     },
     "/v1/accounts/{account}/persons/{person}": {
       "delete": {
-        "description": "<p>Deletes an existing person’s relationship to the account’s legal entity. Any person with a relationship for an account can be deleted through the API, except if the person is the <code>account_opener</code>. If your integration is using the deprecated <code>controller</code> or <code>executive</code> parameter, you cannot delete the only verified <code>controller</code> (or <code>executive</code>), or the only <code>controller</code> (or <code>executive</code>) on file.</p>",
+        "description": "<p>Deletes an existing person’s relationship to the account’s legal entity. Any person with a relationship for an account can be deleted through the API, except if the person is the <code>account_opener</code>. If your integration is using the <code>executive</code> parameter, you cannot delete the only verified <code>executive</code> on file.</p>",
         "operationId": "DeleteAccountsAccountPersonsPerson",
         "parameters": [
           {
@@ -31191,10 +31541,10 @@
         }
       }
     },
-    "/v1/balance/history": {
+    "/v1/balance_transactions": {
       "get": {
-        "description": "<p>Returns a list of transactions that have contributed to the Stripe account balance (e.g., charges, transfers, and so forth). The transactions are returned in sorted order, with the most recent transactions appearing first.</p>",
-        "operationId": "GetBalanceHistory",
+        "description": "<p>Returns a list of transactions that have contributed to the Stripe account balance (e.g., charges, transfers, and so forth). The transactions are returned in sorted order, with the most recent transactions appearing first.</p>\n\n<p>Note that this endpoint was previously called “Balance history” and used the path <code>/v1/balance/history</code>.</p>",
+        "operationId": "GetBalanceTransactions",
         "parameters": [
           {
             "explode": true,
@@ -31432,10 +31782,10 @@
         }
       }
     },
-    "/v1/balance/history/{id}": {
+    "/v1/balance_transactions/{id}": {
       "get": {
-        "description": "<p>Retrieves the balance transaction with the given ID.</p>",
-        "operationId": "GetBalanceHistoryId",
+        "description": "<p>Retrieves the balance transaction with the given ID.</p>\n\n<p>Note that this endpoint previously used the path <code>/v1/balance/history/:id</code>.</p>",
+        "operationId": "GetBalanceTransactionsId",
         "parameters": [
           {
             "description": "Specifies which fields in the response should be expanded.",
@@ -32246,7 +32596,12 @@
                     "x-stripeBypassValidation": true
                   },
                   "statement_descriptor": {
-                    "description": "An arbitrary string to be used as the dynamic portion of the full descriptor displayed on your customer's credit card statement. This value will be prefixed by your [account's statement descriptor](https://stripe.com/docs/charges#dynamic-statement-descriptor). As an example, if your account's statement descriptor is `RUNCLUB` and the item you're charging for is a race ticket, you may want to specify a `statement_descriptor` of `5K RACE`, so that the resulting full descriptor would be `RUNCLUB* 5K RACE`. The full descriptor may be up to *22 characters*. This value must contain at least one letter, may not include `<>\"'` characters, and will appear on your customer's statement in capital letters. Non-ASCII characters are automatically stripped. While most banks display this information consistently, some may display it incorrectly or not at all.",
+                    "description": "For card charges, use `statement_descriptor_suffix` instead. Otherwise, you can use this value as the complete description of a charge on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "statement_descriptor_suffix": {
+                    "description": "Provides information about the charge that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
                     "maxLength": 22,
                     "type": "string"
                   },
@@ -32619,7 +32974,12 @@
                     "type": "string"
                   },
                   "statement_descriptor": {
-                    "description": "An arbitrary string to be used as the dynamic portion of the full descriptor displayed on your customer's credit card statement. This value will be prefixed by your [account's statement descriptor](https://stripe.com/docs/charges#dynamic-statement-descriptor). As an example, if your account's statement descriptor is `RUNCLUB` and the item you're charging for is a race ticket, you may want to specify a `statement_descriptor` of `5K RACE`, so that the resulting full descriptor would be `RUNCLUB* 5K RACE`. The full descriptor may be up to *22 characters*. This value must contain at least one letter, may not include `<>\"'` characters, and will appear on your customer's statement in capital letters. Non-ASCII characters are automatically stripped. Updating this value will overwrite the previous `statement_descriptor` of this charge. While most banks display this information consistently, some may display it incorrectly or not at all.",
+                    "description": "For card charges, use `statement_descriptor_suffix` instead. Otherwise, you can use this value as the complete description of a charge on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "statement_descriptor_suffix": {
+                    "description": "Provides information about the charge that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
                     "maxLength": 22,
                     "type": "string"
                   },
@@ -32932,7 +33292,7 @@
                     "type": "string"
                   },
                   "customer": {
-                    "description": "ID of an existing customer paying for this session, if one exists.\nMay only be used with line_items. Usage with subscription_data is not\nyet available. If blank, Checkout will create a new customer object\nbased on information provided during the session. The email stored on\nthe customer will be used to prefill the email field on the Checkout\npage. If the customer changes their email on the Checkout page, the\nCustomer object will be updated with the new email.",
+                    "description": "ID of an existing customer, if one exists. If blank, Checkout will\ncreate a new customer object based on information provided during the\nsession. The email stored on the customer will be used to prefill the\nemail field on the Checkout page. If the customer changes their email\non the Checkout page, the Customer object will be updated with the new\nemail.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -32949,7 +33309,7 @@
                     "type": "array"
                   },
                   "line_items": {
-                    "description": "A list of items the customer is purchasing. Use this parameter for\none-time payments. To create subscriptions, use `subscription_data.items`.",
+                    "description": "A list of items the customer is purchasing. Use this parameter for\none-time payments or adding invoice line items to a subscription (used\nin conjunction with `subscription_data`).",
                     "items": {
                       "properties": {
                         "amount": {
@@ -33050,11 +33410,20 @@
                         "type": "object"
                       },
                       "on_behalf_of": {
-                        "description": "The Stripe account ID for which these funds are intended. For details, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
+                        "description": "The Stripe account ID for which these funds are intended. For details,\nsee the PaymentIntents [use case for connected\naccounts](/docs/payments/payment-intents/use-cases#connected-accounts).",
                         "type": "string"
                       },
                       "receipt_email": {
                         "description": "Email address that the receipt for the resulting payment will be sent to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "setup_future_usage": {
+                        "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
+                        "enum": [
+                          "off_session",
+                          "on_session"
+                        ],
                         "maxLength": 5000,
                         "type": "string"
                       },
@@ -33124,7 +33493,7 @@
                         "type": "object"
                       },
                       "statement_descriptor": {
-                        "description": "Extra information about the payment. This will appear on your customer's statement when this payment succeeds in creating a charge.",
+                        "description": "Extra information about the payment. This will appear on your\ncustomer's statement when this payment succeeds in creating a charge.",
                         "maxLength": 22,
                         "type": "string"
                       },
@@ -33147,7 +33516,7 @@
                     "type": "object"
                   },
                   "payment_method_types": {
-                    "description": "A list of the types of payment methods (e.g. card) this Checkout Session is allowed to accept. The only supported value today is `card`.",
+                    "description": "A list of the types of payment methods (e.g. card) this Checkout\nSession is allowed to accept. The only supported value today is `card`.",
                     "items": {
                       "enum": [
                         "card"
@@ -33173,6 +33542,10 @@
                   "subscription_data": {
                     "description": "A subset of parameters to be passed to subscription creation.",
                     "properties": {
+                      "application_fee_percent": {
+                        "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. To use an application fee percent, the request must be made on behalf of another account, using the `Stripe-Account` header or an OAuth key. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
+                        "type": "number"
+                      },
                       "items": {
                         "description": "A list of items, each with an attached plan, that the customer is\nsubscribing to. Use this parameter for subscriptions. To create one-time\npayments, use `line_items`.",
                         "items": {
@@ -33206,12 +33579,12 @@
                         "type": "object"
                       },
                       "trial_end": {
-                        "description": "Unix timestamp representing the end of the trial period the customer will get before being charged for the first time. Has to be at least 48h in the future.",
+                        "description": "Unix timestamp representing the end of the trial period the customer\nwill get before being charged for the first time. Has to be at least\n48 hours in the future.",
                         "format": "unix-time",
                         "type": "integer"
                       },
                       "trial_period_days": {
-                        "description": "Integer representing the number of trial period days before the customer is charged for the first time.Has to be at least 1.",
+                        "description": "Integer representing the number of trial period days before the\ncustomer is charged for the first time. Has to be at least 1.",
                         "type": "integer"
                       }
                     },
@@ -34018,6 +34391,17 @@
         "operationId": "GetCreditNotes",
         "parameters": [
           {
+            "description": "Only return credit notes for the customer specified by this customer ID.",
+            "in": "query",
+            "name": "customer",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
             "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
             "in": "query",
             "name": "ending_before",
@@ -34044,7 +34428,7 @@
             "style": "deepObject"
           },
           {
-            "description": "ID of the invoice.",
+            "description": "Only return credit notes for the invoice specified by this invoice ID.",
             "in": "query",
             "name": "invoice",
             "required": false,
@@ -34220,7 +34604,6 @@
                   }
                 },
                 "required": [
-                  "amount",
                   "invoice"
                 ],
                 "type": "object"
@@ -35521,7 +35904,7 @@
     },
     "/v1/customers/{customer}/balance_transactions": {
       "get": {
-        "description": "<p>Retrieves the list of transactions that updated the customer’s <a href=\"/docs/api/customers/object#customer_object-balance\"><code>balance</code></a>.</p>",
+        "description": "<p>Returns a list of transactions that updated the customer’s <a href=\"/docs/api/customers/object#customer_object-balance\"><code>balance</code></a>.</p>",
         "operationId": "GetCustomersCustomerBalanceTransactions",
         "parameters": [
           {
@@ -40582,6 +40965,17 @@
             "style": "form"
           },
           {
+            "description": "Date a subscription is intended to start (can be future or past)",
+            "in": "query",
+            "name": "subscription_start_date",
+            "required": false,
+            "schema": {
+              "format": "unix-time",
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
             "description": "If provided, the invoice returned will preview updating or creating a subscription with that tax percent. If set, one of `subscription_items` or `subscription` is required. This field has been deprecated and will be removed in a future API version, for further information view the [migration docs](https://stripe.com/docs/billing/migration/taxes) for `tax_rates`.",
             "in": "query",
             "name": "subscription_tax_percent",
@@ -40789,7 +41183,7 @@
         }
       },
       "post": {
-        "description": "<p>Draft invoices are fully editable. Once an invoice is <a href=\"/docs/billing/invoices/workflow#finalized\">finalized</a>,\nmonetary values, as well as <code>billing</code>, become uneditable.</p>\n\n<p>If you would like to stop the Stripe Billing engine from automatically finalizing, reattempting payments on,\nsending reminders for, or <a href=\"/docs/billing/invoices/reconciliation\">automatically reconciling</a> invoices, pass\n<code>auto_advance=false</code>.</p>",
+        "description": "<p>Draft invoices are fully editable. Once an invoice is <a href=\"/docs/billing/invoices/workflow#finalized\">finalized</a>,\nmonetary values, as well as <code>collection_method</code>, become uneditable.</p>\n\n<p>If you would like to stop the Stripe Billing engine from automatically finalizing, reattempting payments on,\nsending reminders for, or <a href=\"/docs/billing/invoices/reconciliation\">automatically reconciling</a> invoices, pass\n<code>auto_advance=false</code>.</p>",
         "operationId": "PostInvoicesInvoice",
         "parameters": [
           {
@@ -40843,6 +41237,15 @@
                     "description": "Controls whether Stripe will perform [automatic collection](https://stripe.com/docs/billing/invoices/workflow/#auto_advance) of the invoice.",
                     "type": "boolean"
                   },
+                  "collection_method": {
+                    "description": "Either `charge_automatically` or `send_invoice`. This field can be updated only on `draft` invoices.",
+                    "enum": [
+                      "charge_automatically",
+                      "send_invoice"
+                    ],
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
                   "custom_fields": {
                     "anyOf": [
                       {
@@ -40881,7 +41284,7 @@
                     "description": "A list of up to 4 custom fields to be displayed on the invoice. If a value for `custom_fields` is specified, the list specified will replace the existing custom field list on this invoice."
                   },
                   "days_until_due": {
-                    "description": "The number of days from which the invoice is created until it is due. Only valid for invoices where `billing=send_invoice`. This field can only be updated on `draft` invoices.",
+                    "description": "The number of days from which the invoice is created until it is due. Only valid for invoices where `collection_method=send_invoice`. This field can only be updated on `draft` invoices.",
                     "type": "integer"
                   },
                   "default_payment_method": {
@@ -40920,7 +41323,7 @@
                     "type": "string"
                   },
                   "due_date": {
-                    "description": "The date on which payment for this invoice is due. Only valid for invoices where `billing=send_invoice`. This field can only be updated on `draft` invoices.",
+                    "description": "The date on which payment for this invoice is due. Only valid for invoices where `collection_method=send_invoice`. This field can only be updated on `draft` invoices.",
                     "format": "unix-time",
                     "type": "integer"
                   },
@@ -41336,6 +41739,10 @@
                     "description": "In cases where the source used to pay the invoice has insufficient funds, passing `forgive=true` controls whether a charge should be attempted for the full amount available on the source, up to the amount to fully pay the invoice. This effectively forgives the difference between the amount available on the source and the amount due. \n\nPassing `forgive=false` will fail the charge if the source hasn't been pre-funded with the right amount. An example for this case is with ACH Credit Transfers and wires: if the amount wired is less than the amount due by a small amount, you might want to forgive the difference.",
                     "type": "boolean"
                   },
+                  "off_session": {
+                    "description": "Indicates if a customer is on or off-session while an invoice payment is attempted.",
+                    "type": "boolean"
+                  },
                   "paid_out_of_band": {
                     "description": "Boolean representing whether an invoice is paid outside of Stripe. This will result in no charge being made.",
                     "type": "boolean"
@@ -41519,6 +41926,7 @@
     },
     "/v1/issuer_fraud_records": {
       "get": {
+        "deprecated": true,
         "description": "<p>Returns a list of issuer fraud records.</p>",
         "operationId": "GetIssuerFraudRecords",
         "parameters": [
@@ -41656,6 +42064,7 @@
     },
     "/v1/issuer_fraud_records/{issuer_fraud_record}": {
       "get": {
+        "deprecated": true,
         "description": "<p>Retrieves the details of an issuer fraud record that has previously been created. </p>\n\n<p>Please refer to the <a href=\"#issuer_fraud_record_object\">issuer fraud record</a> object reference for more details.</p>",
         "operationId": "GetIssuerFraudRecordsIssuerFraudRecord",
         "parameters": [
@@ -42555,6 +42964,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -42852,6 +43262,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -43157,6 +43568,7 @@
                                   "dentists_orthodontists",
                                   "department_stores",
                                   "detective_agencies",
+                                  "digital_goods_applications",
                                   "direct_marketing_catalog_merchant",
                                   "direct_marketing_combination_catalog_and_retail_merchant",
                                   "direct_marketing_inbound_telemarketing",
@@ -43736,6 +44148,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -44033,6 +44446,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -44338,6 +44752,7 @@
                                   "dentists_orthodontists",
                                   "department_stores",
                                   "detective_agencies",
+                                  "digital_goods_applications",
                                   "direct_marketing_catalog_merchant",
                                   "direct_marketing_combination_catalog_and_retail_merchant",
                                   "direct_marketing_inbound_telemarketing",
@@ -45076,6 +45491,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -45373,6 +45789,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -45686,6 +46103,7 @@
                                   "dentists_orthodontists",
                                   "department_stores",
                                   "detective_agencies",
+                                  "digital_goods_applications",
                                   "direct_marketing_catalog_merchant",
                                   "direct_marketing_combination_catalog_and_retail_merchant",
                                   "direct_marketing_inbound_telemarketing",
@@ -46274,6 +46692,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -46571,6 +46990,7 @@
                             "dentists_orthodontists",
                             "department_stores",
                             "detective_agencies",
+                            "digital_goods_applications",
                             "direct_marketing_catalog_merchant",
                             "direct_marketing_combination_catalog_and_retail_merchant",
                             "direct_marketing_inbound_telemarketing",
@@ -46884,6 +47304,7 @@
                                   "dentists_orthodontists",
                                   "department_stores",
                                   "detective_agencies",
+                                  "digital_goods_applications",
                                   "direct_marketing_catalog_merchant",
                                   "direct_marketing_combination_catalog_and_retail_merchant",
                                   "direct_marketing_inbound_telemarketing",
@@ -49454,6 +49875,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "payment_method_options": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "payment_method_types": {
                   "explode": true,
                   "style": "deepObject"
@@ -49488,7 +49913,7 @@
                     "type": "string"
                   },
                   "confirm": {
-                    "description": "Set to `true` to attempt to confirm this PaymentIntent immediately. This parameter defaults to `false`. If the payment method attached is a card, a return_url may be provided in case additional authentication is required.",
+                    "description": "Set to `true` to attempt to [confirm](https://stripe.com/docs/api/payment_intents/confirm) this PaymentIntent immediately. This parameter defaults to `false`. When creating and confirming a PaymentIntent at the same time, parameters available in the [confirm](https://stripe.com/docs/api/payment_intents/confirm) API may also be provided.",
                     "type": "boolean"
                   },
                   "confirmation_method": {
@@ -49505,7 +49930,7 @@
                     "type": "string"
                   },
                   "customer": {
-                    "description": "ID of the customer this PaymentIntent is for if one exists.",
+                    "description": "ID of the Customer this PaymentIntent belongs to, if one exists.\n\nIf present, payment methods used with this PaymentIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this PaymentIntent.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -49543,7 +49968,7 @@
                         "type": "string"
                       }
                     ],
-                    "description": "Used in payment flows that collect payment details and charge later, when the customer is not available to complete additional required steps for the payment. Setting this parameter indicates that this payment attempt is happening while the customer is not in your checkout flow. Use `recurring` for payments made on a recurring basis (for example, subscriptions) and `one_off` for all other off-session payments."
+                    "description": "Set to `true` to indicate that the customer is not in your checkout flow during this payment attempt, and therefore is unable to authenticate. This parameter is intended for scenarios where you collect card details and [charge them later](https://stripe.com/docs/payments/cards/charging-saved-cards). This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm)."
                   },
                   "on_behalf_of": {
                     "description": "The Stripe account ID for which these funds are intended. For details, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
@@ -49553,6 +49978,34 @@
                     "description": "ID of the payment method (a PaymentMethod, Card, BankAccount, or saved Source object) to attach to this PaymentIntent.",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "payment_method_options": {
+                    "description": "Payment-method-specific configuration for this PaymentIntent.",
+                    "properties": {
+                      "card": {
+                        "description": "Configuration for any card payments attempted on this PaymentIntent.",
+                        "properties": {
+                          "moto": {
+                            "description": "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
+                            "type": "boolean"
+                          },
+                          "request_three_d_secure": {
+                            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+                            "enum": [
+                              "any",
+                              "automatic"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "payment_intent_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "payment_method_options_param",
+                    "type": "object"
                   },
                   "payment_method_types": {
                     "description": "The list of payment method types (e.g. card) that this PaymentIntent is allowed to use. If this is not provided, defaults to [\"card\"].",
@@ -49567,11 +50020,10 @@
                   },
                   "receipt_email": {
                     "description": "Email address that the receipt for the resulting payment will be sent to.",
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "return_url": {
-                    "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site.\nIf you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.\nThis param can only be used if `confirm=true`.",
+                    "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm).",
                     "type": "string"
                   },
                   "save_payment_method": {
@@ -49579,7 +50031,7 @@
                     "type": "boolean"
                   },
                   "setup_future_usage": {
-                    "description": "When provided, this property indicates how you intend to use the payment method that your customer provides after the current payment completes. If applicable, additional authentication may be performed to comply with regional legislation or network rules required to enable the usage of the same payment method for additional payments.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.",
+                    "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
                     "enum": [
                       "off_session",
                       "on_session"
@@ -49658,13 +50110,22 @@
                     "type": "string"
                   },
                   "statement_descriptor": {
-                    "description": "Extra information about a PaymentIntent. This will appear on your customer's statement when this PaymentIntent succeeds in creating a charge.",
+                    "description": "For non-card charges, you can use this value as the complete description that appears on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "statement_descriptor_suffix": {
+                    "description": "Provides information about a card payment that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
                     "maxLength": 22,
                     "type": "string"
                   },
                   "transfer_data": {
                     "description": "The parameters used to automatically create a Transfer when the payment succeeds.\nFor more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
                     "properties": {
+                      "amount": {
+                        "description": "The amount that will be transferred automatically when a charge succeeds.\nThe amount is capped at the total transaction amount and if no amount is set,\nthe full amount is transferred.\n\nIf you intend to collect a fee and you need a more robust reporting experience, using\n[application_fee_amount](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-application_fee_amount)\nmight be a better fit for your integration.",
+                        "type": "integer"
+                      },
                       "destination": {
                         "description": "If specified, successful charges will be attributed to the destination\naccount for tax reporting, and the funds from charges will be transferred\nto the destination account. The ID of the resulting transfer will be\nreturned on the successful charge's `transfer` field.",
                         "type": "string"
@@ -49831,7 +50292,15 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "receipt_email": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "shipping": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "transfer_data": {
                   "explode": true,
                   "style": "deepObject"
                 }
@@ -49862,7 +50331,7 @@
                     "type": "string"
                   },
                   "customer": {
-                    "description": "ID of the customer this PaymentIntent is for if one exists.",
+                    "description": "ID of the Customer this PaymentIntent belongs to, if one exists.\n\nIf present, payment methods used with this PaymentIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this PaymentIntent.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -49903,13 +50372,32 @@
                     }
                   },
                   "receipt_email": {
-                    "description": "Email address that the receipt for the resulting payment will be sent to.",
-                    "maxLength": 5000,
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Email address that the receipt for the resulting payment will be sent to."
                   },
                   "save_payment_method": {
                     "description": "If the PaymentIntent has a `payment_method` and a `customer` or if you're attaching a payment method to the PaymentIntent in this request, you can pass `save_payment_method=true` to save the payment method to the customer. Defaults to `false`.\n\nIf the payment method is already saved to a customer, this does nothing. If this type of payment method cannot be saved to a customer, the request will error.",
                     "type": "boolean"
+                  },
+                  "setup_future_usage": {
+                    "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.\n\nIf `setup_future_usage` is already set and you are performing a request using a publishable key, you may only update the value from `on_session` to `off_session`.",
+                    "enum": [
+                      "",
+                      "off_session",
+                      "on_session"
+                    ],
+                    "maxLength": 5000,
+                    "type": "string"
                   },
                   "shipping": {
                     "anyOf": [
@@ -49992,9 +50480,25 @@
                     "type": "string"
                   },
                   "statement_descriptor": {
-                    "description": "Extra information about a PaymentIntent. This will appear on your customer's statement when this PaymentIntent succeeds in creating a charge.",
+                    "description": "For non-card charges, you can use this value as the complete description that appears on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
                     "maxLength": 22,
                     "type": "string"
+                  },
+                  "statement_descriptor_suffix": {
+                    "description": "Provides information about a card payment that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "transfer_data": {
+                    "description": "The parameters used to automatically create a Transfer when the payment succeeds. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount that will be transferred automatically when a charge succeeds.",
+                        "type": "integer"
+                      }
+                    },
+                    "title": "transfer_data_update_params",
+                    "type": "object"
                   },
                   "transfer_group": {
                     "description": "A string that identifies the resulting payment as part of a group. `transfer_group` may only be provided if it has not been set. See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts) for details.",
@@ -50135,6 +50639,10 @@
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "transfer_data": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -50155,6 +50663,27 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "statement_descriptor": {
+                    "description": "For non-card charges, you can use this value as the complete description that appears on your customers’ statements. Must contain at least one letter, maximum 22 characters.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "statement_descriptor_suffix": {
+                    "description": "Provides information about a card payment that customers see on their statements. Concatenated with the prefix (shortened descriptor) or statement descriptor that’s set on the account to form the complete statement descriptor. Maximum 22 characters for the concatenated descriptor.",
+                    "maxLength": 22,
+                    "type": "string"
+                  },
+                  "transfer_data": {
+                    "description": "The parameters used to automatically create a Transfer when the payment\nis captured. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
+                    "properties": {
+                      "amount": {
+                        "description": "The amount that will be transferred automatically when a charge succeeds.",
+                        "type": "integer"
+                      }
+                    },
+                    "title": "transfer_data_update_params",
+                    "type": "object"
                   }
                 },
                 "type": "object"
@@ -50216,6 +50745,14 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "payment_method_options": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "receipt_email": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "shipping": {
                   "explode": true,
                   "style": "deepObject"
@@ -50246,17 +50783,54 @@
                         "type": "string"
                       }
                     ],
-                    "description": "Set to `true` to indicate that the customer is not in your checkout flow during this payment attempt, and therefore is unable to authenticate. This parameter is intended for scenarios where you collect card details and [charge them later](https://stripe.com/docs/payments/payment-intents/off-session)."
+                    "description": "Set to `true` to indicate that the customer is not in your checkout flow during this payment attempt, and therefore is unable to authenticate. This parameter is intended for scenarios where you collect card details and [charge them later](https://stripe.com/docs/payments/cards/charging-saved-cards)."
                   },
                   "payment_method": {
                     "description": "ID of the payment method (a PaymentMethod, Card, BankAccount, or saved Source object) to attach to this PaymentIntent.",
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "payment_method_options": {
+                    "description": "Payment-method-specific configuration for this PaymentIntent.",
+                    "properties": {
+                      "card": {
+                        "description": "Configuration for any card payments attempted on this PaymentIntent.",
+                        "properties": {
+                          "moto": {
+                            "description": "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
+                            "type": "boolean"
+                          },
+                          "request_three_d_secure": {
+                            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+                            "enum": [
+                              "any",
+                              "automatic"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "payment_intent_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "payment_method_options_param",
+                    "type": "object"
+                  },
                   "receipt_email": {
-                    "description": "Email address that the receipt for the resulting payment will be sent to.",
-                    "maxLength": 5000,
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Email address that the receipt for the resulting payment will be sent to."
                   },
                   "return_url": {
                     "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site.\nIf you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.\nThis parameter is only used for cards and other redirect-based payment methods.",
@@ -50265,6 +50839,16 @@
                   "save_payment_method": {
                     "description": "If the PaymentIntent has a `payment_method` and a `customer` or if you're attaching a payment method to the PaymentIntent in this request, you can pass `save_payment_method=true` to save the payment method to the customer. Defaults to `false`.\n\nIf the payment method is already saved to a customer, this does nothing. If this type of payment method cannot be saved to a customer, the request will error.",
                     "type": "boolean"
+                  },
+                  "setup_future_usage": {
+                    "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.\n\nIf `setup_future_usage` is already set and you are performing a request using a publishable key, you may only update the value from `on_session` to `off_session`.",
+                    "enum": [
+                      "",
+                      "off_session",
+                      "on_session"
+                    ],
+                    "maxLength": 5000,
+                    "type": "string"
                   },
                   "shipping": {
                     "anyOf": [
@@ -50687,12 +51271,11 @@
                     "type": "string"
                   },
                   "type": {
-                    "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Shared PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#shared-paymentmethods) guide)",
+                    "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Shared PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#shared-payment-methods) guide)",
                     "enum": [
                       "card",
                       "card_present"
                     ],
-                    "maxLength": 5000,
                     "type": "string",
                     "x-stripeBypassValidation": true
                   }
@@ -51944,12 +52527,25 @@
                             "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
                             "type": "object"
                           },
+                          "name": {
+                            "description": "The product's name, meant to be displayable to the customer. Applicable to both `service` and `good` types.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "statement_descriptor": {
+                            "description": "An arbitrary string to be displayed on your customer's credit card statement. This may be up to 22 characters. The statement description may not include <>\"' characters, and will appear on your customer's statement in capital letters. Non-ASCII characters are automatically stripped. While most banks display this information consistently, some may display it incorrectly or not at all.",
+                            "maxLength": 22,
+                            "type": "string"
+                          },
                           "unit_label": {
                             "description": "A label that represents units of this product, such as seat(s), in Stripe and on customers’ receipts and invoices. Only available on products of type=`service`.",
                             "maxLength": 12,
                             "type": "string"
                           }
                         },
+                        "required": [
+                          "name"
+                        ],
                         "title": "inline_product_params",
                         "type": "object"
                       },
@@ -56009,6 +56605,17 @@
             "style": "form"
           },
           {
+            "description": "Only return SetupIntents associated with the specified payment method.",
+            "in": "query",
+            "name": "payment_method",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
             "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
             "in": "query",
             "name": "starting_after",
@@ -56108,7 +56715,15 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "payment_method_options": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "payment_method_types": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "usage": {
                   "explode": true,
                   "style": "deepObject"
                 }
@@ -56116,8 +56731,12 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "confirm": {
+                    "description": "Set to `true` to attempt to confirm this SetupIntent immediately. This parameter defaults to `false`. If the payment method attached is a card, a return_url may be provided in case additional authentication is required.",
+                    "type": "boolean"
+                  },
                   "customer": {
-                    "description": "ID of the customer this SetupIntent is for if one exists.",
+                    "description": "ID of the Customer this SetupIntent belongs to, if one exists.\n\nIf present, payment methods used with this SetupIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this SetupIntent.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -56150,6 +56769,34 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "payment_method_options": {
+                    "description": "Payment-method-specific configuration for this SetupIntent.",
+                    "properties": {
+                      "card": {
+                        "description": "Configuration for any card setup attempted on this SetupIntent.",
+                        "properties": {
+                          "moto": {
+                            "description": "When specified, this parameter signals that a card has been collected\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
+                            "type": "boolean"
+                          },
+                          "request_three_d_secure": {
+                            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+                            "enum": [
+                              "any",
+                              "automatic"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "setup_intent_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "payment_method_options_param",
+                    "type": "object"
+                  },
                   "payment_method_types": {
                     "description": "The list of payment method types (e.g. card) that this SetupIntent is allowed to use. If this is not provided, defaults to [\"card\"].",
                     "items": {
@@ -56161,15 +56808,25 @@
                       "containee_entity_name": "payment_method_type"
                     }
                   },
-                  "usage": {
-                    "description": "Indicates how the payment method is intended to be used in the future.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow.",
-                    "enum": [
-                      "off_session",
-                      "on_session",
-                      "one_time"
-                    ],
-                    "maxLength": 5000,
+                  "return_url": {
+                    "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm).",
                     "type": "string"
+                  },
+                  "usage": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "off_session",
+                          "on_session"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Indicates how the payment method is intended to be used in the future.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. If not provided, this value defaults to `off_session`."
                   }
                 },
                 "type": "object"
@@ -56319,7 +56976,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "customer": {
-                    "description": "ID of the customer this SetupIntent is for if one exists.",
+                    "description": "ID of the Customer this SetupIntent belongs to, if one exists.\n\nIf present, payment methods used with this SetupIntent can only be attached to this Customer, and payment methods attached to other Customers cannot be used with this SetupIntent.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -56420,11 +57077,10 @@
                 "additionalProperties": false,
                 "properties": {
                   "cancellation_reason": {
-                    "description": "Reason for canceling this SetupIntent. Possible values are `duplicate`, `fraudulent`, `requested_by_customer`, or `abandoned`",
+                    "description": "Reason for canceling this SetupIntent. Possible values are `abandoned`, `requested_by_customer`, or `duplicate`",
                     "enum": [
                       "abandoned",
                       "duplicate",
-                      "fraudulent",
                       "requested_by_customer"
                     ],
                     "maxLength": 5000,
@@ -56493,6 +57149,10 @@
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "payment_method_options": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -56510,6 +57170,34 @@
                     "description": "ID of the payment method (a PaymentMethod, Card, BankAccount, or saved Source object) to attach to this SetupIntent.",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "payment_method_options": {
+                    "description": "Payment-method-specific configuration for this SetupIntent.",
+                    "properties": {
+                      "card": {
+                        "description": "Configuration for any card setup attempted on this SetupIntent.",
+                        "properties": {
+                          "moto": {
+                            "description": "When specified, this parameter signals that a card has been collected\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
+                            "type": "boolean"
+                          },
+                          "request_three_d_secure": {
+                            "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+                            "enum": [
+                              "any",
+                              "automatic"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "setup_intent_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "payment_method_options_param",
+                    "type": "object"
                   },
                   "return_url": {
                     "description": "The URL to redirect your customer back to after they authenticate on the payment method's app or site.\nIf you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.\nThis parameter is only used for cards and other redirect-based payment methods.",
@@ -57445,6 +58133,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -57458,6 +58150,10 @@
                   "style": "deepObject"
                 },
                 "redirect": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "source_order": {
                   "explode": true,
                   "style": "deepObject"
                 }
@@ -57496,6 +58192,137 @@
                     ],
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "mandate": {
+                    "description": "Information about a mandate possibility attached to a source object (generally for bank debits) as well as its acceptance status.",
+                    "properties": {
+                      "acceptance": {
+                        "description": "The parameters required to notify Stripe of a mandate acceptance or refusal by the customer.",
+                        "properties": {
+                          "date": {
+                            "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "ip": {
+                            "description": "The IP address from which the mandate was accepted or refused by the customer.",
+                            "type": "string"
+                          },
+                          "offline": {
+                            "description": "The parameters required to store a mandate accepted offline. Should only be set if `mandate[type]` is `offline`",
+                            "properties": {
+                              "contact_email": {
+                                "description": "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "contact_email"
+                            ],
+                            "title": "mandate_offline_acceptance_params",
+                            "type": "object"
+                          },
+                          "online": {
+                            "description": "The parameters required to store a mandate accepted online. Should only be set if `mandate[type]` is `online`",
+                            "properties": {
+                              "date": {
+                                "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "ip": {
+                                "description": "The IP address from which the mandate was accepted or refused by the customer.",
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the mandate was accepted or refused by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "ip",
+                              "user_agent"
+                            ],
+                            "title": "mandate_online_acceptance_params",
+                            "type": "object"
+                          },
+                          "status": {
+                            "description": "The status of the mandate acceptance. Either `accepted` (the mandate was accepted) or `refused` (the mandate was refused).",
+                            "enum": [
+                              "accepted",
+                              "pending",
+                              "refused",
+                              "revoked"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "type": {
+                            "description": "The type of acceptance information included with the mandate. Either `online` or `offline`",
+                            "enum": [
+                              "offline",
+                              "online"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "user_agent": {
+                            "description": "The user agent of the browser from which the mandate was accepted or refused by the customer.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status"
+                        ],
+                        "title": "mandate_acceptance_params",
+                        "type": "object"
+                      },
+                      "amount": {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "The amount specified by the mandate. (Leave null for a mandate covering all amounts)"
+                      },
+                      "currency": {
+                        "description": "The currency specified by the mandate. (Must match `currency` of the source)",
+                        "type": "string"
+                      },
+                      "interval": {
+                        "description": "The interval of debits permitted by the mandate. Either `one_time` (just permitting a single debit), `scheduled` (with debits on an agreed schedule or for clearly-defined events), or `variable`(for debits with any frequency)",
+                        "enum": [
+                          "one_time",
+                          "scheduled",
+                          "variable"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "notification_method": {
+                        "description": "The method Stripe should use to notify the customer of upcoming debit instructions and/or mandate confirmation as required by the underlying debit network. Either `email` (an email is sent directly to the customer), `manual` (a `source.mandate_notification` event is sent to your webhooks endpoint and you should handle the notification) or `none` (the underlying debit network does not require any notification).",
+                        "enum": [
+                          "deprecated_none",
+                          "email",
+                          "manual",
+                          "none",
+                          "stripe_email"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "title": "mandate_params",
+                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -57590,6 +58417,119 @@
                       "return_url"
                     ],
                     "title": "redirect_params",
+                    "type": "object"
+                  },
+                  "source_order": {
+                    "description": "Information about the items and shipping associated with the source. Required for transactional credit (for example Klarna) sources before you can charge it.",
+                    "properties": {
+                      "items": {
+                        "description": "List of items constituting the order.",
+                        "items": {
+                          "properties": {
+                            "amount": {
+                              "type": "integer"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "maxLength": 1000,
+                              "type": "string"
+                            },
+                            "parent": {
+                              "description": "The ID of the SKU being ordered.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "quantity": {
+                              "description": "The quantity of this order item. When type is `sku`, this is the number of instances of the SKU to be ordered.",
+                              "type": "integer"
+                            },
+                            "type": {
+                              "enum": [
+                                "discount",
+                                "shipping",
+                                "sku",
+                                "tax"
+                              ],
+                              "maxLength": 5000,
+                              "type": "string"
+                            }
+                          },
+                          "title": "order_item_specs",
+                          "type": "object"
+                        },
+                        "type": "array",
+                        "x-stripeParam": {
+                          "containee_entity_name": "item"
+                        }
+                      },
+                      "shipping": {
+                        "description": "Shipping address for the order. Required if any of the SKUs are for products that have `shippable` set to true.",
+                        "properties": {
+                          "address": {
+                            "description": "Shipping address.",
+                            "properties": {
+                              "city": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "country": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "line1": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "line2": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "postal_code": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "state": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "line1"
+                            ],
+                            "title": "address",
+                            "type": "object"
+                          },
+                          "carrier": {
+                            "description": "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Recipient name.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "phone": {
+                            "description": "Recipient phone (including extension).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "tracking_number": {
+                            "description": "The tracking number for a physical product, obtained from the delivery service. If multiple tracking numbers were generated for this purchase, please separate them with commas.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "address"
+                        ],
+                        "title": "order_shipping",
+                        "type": "object"
+                      }
+                    },
+                    "title": "shallow_order_specs",
                     "type": "object"
                   },
                   "statement_descriptor": {
@@ -57750,6 +58690,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -57757,11 +58701,19 @@
                 "owner": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "source_order": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "amount": {
+                    "description": "Amount associated with the source.",
+                    "type": "integer"
+                  },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
                     "items": {
@@ -57769,6 +58721,137 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "mandate": {
+                    "description": "Information about a mandate possibility attached to a source object (generally for bank debits) as well as its acceptance status.",
+                    "properties": {
+                      "acceptance": {
+                        "description": "The parameters required to notify Stripe of a mandate acceptance or refusal by the customer.",
+                        "properties": {
+                          "date": {
+                            "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "ip": {
+                            "description": "The IP address from which the mandate was accepted or refused by the customer.",
+                            "type": "string"
+                          },
+                          "offline": {
+                            "description": "The parameters required to store a mandate accepted offline. Should only be set if `mandate[type]` is `offline`",
+                            "properties": {
+                              "contact_email": {
+                                "description": "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`.",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "contact_email"
+                            ],
+                            "title": "mandate_offline_acceptance_params",
+                            "type": "object"
+                          },
+                          "online": {
+                            "description": "The parameters required to store a mandate accepted online. Should only be set if `mandate[type]` is `online`",
+                            "properties": {
+                              "date": {
+                                "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "ip": {
+                                "description": "The IP address from which the mandate was accepted or refused by the customer.",
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the mandate was accepted or refused by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date",
+                              "ip",
+                              "user_agent"
+                            ],
+                            "title": "mandate_online_acceptance_params",
+                            "type": "object"
+                          },
+                          "status": {
+                            "description": "The status of the mandate acceptance. Either `accepted` (the mandate was accepted) or `refused` (the mandate was refused).",
+                            "enum": [
+                              "accepted",
+                              "pending",
+                              "refused",
+                              "revoked"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "type": {
+                            "description": "The type of acceptance information included with the mandate. Either `online` or `offline`",
+                            "enum": [
+                              "offline",
+                              "online"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "user_agent": {
+                            "description": "The user agent of the browser from which the mandate was accepted or refused by the customer.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status"
+                        ],
+                        "title": "mandate_acceptance_params",
+                        "type": "object"
+                      },
+                      "amount": {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "The amount specified by the mandate. (Leave null for a mandate covering all amounts)"
+                      },
+                      "currency": {
+                        "description": "The currency specified by the mandate. (Must match `currency` of the source)",
+                        "type": "string"
+                      },
+                      "interval": {
+                        "description": "The interval of debits permitted by the mandate. Either `one_time` (just permitting a single debit), `scheduled` (with debits on an agreed schedule or for clearly-defined events), or `variable`(for debits with any frequency)",
+                        "enum": [
+                          "one_time",
+                          "scheduled",
+                          "variable"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "notification_method": {
+                        "description": "The method Stripe should use to notify the customer of upcoming debit instructions and/or mandate confirmation as required by the underlying debit network. Either `email` (an email is sent directly to the customer), `manual` (a `source.mandate_notification` event is sent to your webhooks endpoint and you should handle the notification) or `none` (the underlying debit network does not require any notification).",
+                        "enum": [
+                          "deprecated_none",
+                          "email",
+                          "manual",
+                          "none",
+                          "stripe_email"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "title": "mandate_params",
+                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -57827,6 +58910,119 @@
                       }
                     },
                     "title": "owner",
+                    "type": "object"
+                  },
+                  "source_order": {
+                    "description": "Information about the items and shipping associated with the source. Required for transactional credit (for example Klarna) sources before you can charge it.",
+                    "properties": {
+                      "items": {
+                        "description": "List of items constituting the order.",
+                        "items": {
+                          "properties": {
+                            "amount": {
+                              "type": "integer"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "maxLength": 1000,
+                              "type": "string"
+                            },
+                            "parent": {
+                              "description": "The ID of the SKU being ordered.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "quantity": {
+                              "description": "The quantity of this order item. When type is `sku`, this is the number of instances of the SKU to be ordered.",
+                              "type": "integer"
+                            },
+                            "type": {
+                              "enum": [
+                                "discount",
+                                "shipping",
+                                "sku",
+                                "tax"
+                              ],
+                              "maxLength": 5000,
+                              "type": "string"
+                            }
+                          },
+                          "title": "order_item_specs",
+                          "type": "object"
+                        },
+                        "type": "array",
+                        "x-stripeParam": {
+                          "containee_entity_name": "item"
+                        }
+                      },
+                      "shipping": {
+                        "description": "Shipping address for the order. Required if any of the SKUs are for products that have `shippable` set to true.",
+                        "properties": {
+                          "address": {
+                            "description": "Shipping address.",
+                            "properties": {
+                              "city": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "country": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "line1": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "line2": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "postal_code": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "state": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "line1"
+                            ],
+                            "title": "address",
+                            "type": "object"
+                          },
+                          "carrier": {
+                            "description": "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "Recipient name.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "phone": {
+                            "description": "Recipient phone (including extension).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "tracking_number": {
+                            "description": "The tracking number for a physical product, obtained from the delivery service. If multiple tracking numbers were generated for this purchase, please separate them with commas.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "address"
+                        ],
+                        "title": "order_shipping",
+                        "type": "object"
+                      }
+                    },
+                    "title": "order_params",
                     "type": "object"
                   }
                 },
@@ -58577,6 +59773,16 @@
                     },
                     "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
                     "type": "object"
+                  },
+                  "off_session": {
+                    "type": "boolean"
+                  },
+                  "payment_behavior": {
+                    "enum": [
+                      "allow_incomplete",
+                      "error_if_incomplete"
+                    ],
+                    "type": "string"
                   },
                   "plan": {
                     "description": "The identifier of the new plan for this subscription item.",
@@ -60091,225 +61297,6 @@
         }
       }
     },
-    "/v1/subscription_schedules/{schedule}/revisions": {
-      "get": {
-        "description": "<p>Retrieves the list of subscription schedule revisions for a subscription schedule.</p>",
-        "operationId": "GetSubscriptionSchedulesScheduleRevisions",
-        "parameters": [
-          {
-            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-            "in": "query",
-            "name": "ending_before",
-            "required": false,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "form"
-          },
-          {
-            "description": "Specifies which fields in the response should be expanded.",
-            "explode": true,
-            "in": "query",
-            "name": "expand",
-            "required": false,
-            "schema": {
-              "items": {
-                "maxLength": 5000,
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "style": "deepObject"
-          },
-          {
-            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            },
-            "style": "form"
-          },
-          {
-            "description": "The identifier of the subscription schedule to retrieve revisions for.",
-            "in": "path",
-            "name": "schedule",
-            "required": true,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "simple"
-          },
-          {
-            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-            "in": "query",
-            "name": "starting_after",
-            "required": false,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "form"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "encoding": {
-              },
-              "schema": {
-                "additionalProperties": false,
-                "properties": {
-                },
-                "type": "object"
-              }
-            }
-          },
-          "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "items": {
-                        "$ref": "#/components/schemas/subscription_schedule_revision"
-                      },
-                      "type": "array"
-                    },
-                    "has_more": {
-                      "description": "True if this list has another page of items after this one that can be fetched.",
-                      "type": "boolean"
-                    },
-                    "object": {
-                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
-                      "enum": [
-                        "list"
-                      ],
-                      "type": "string"
-                    },
-                    "url": {
-                      "description": "The URL where this list can be accessed.",
-                      "maxLength": 5000,
-                      "pattern": "^/v1/subscription_schedules/:schedule/revisions",
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "data",
-                    "has_more",
-                    "object",
-                    "url"
-                  ],
-                  "type": "object",
-                  "x-expandableFields": [
-                    "data"
-                  ]
-                }
-              }
-            },
-            "description": "Successful response."
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            },
-            "description": "Error response."
-          }
-        }
-      }
-    },
-    "/v1/subscription_schedules/{schedule}/revisions/{revision}": {
-      "get": {
-        "description": "<p>Retrieves the details of an existing subscription schedule revision. You only need to supply the unique subscription schedule revision identifier that was returned upon subscription schedule creation or retrieval.</p>",
-        "operationId": "GetSubscriptionSchedulesScheduleRevisionsRevision",
-        "parameters": [
-          {
-            "description": "Specifies which fields in the response should be expanded.",
-            "explode": true,
-            "in": "query",
-            "name": "expand",
-            "required": false,
-            "schema": {
-              "items": {
-                "maxLength": 5000,
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "style": "deepObject"
-          },
-          {
-            "description": "The identifier of the subscription schedule revision to be retrieved.",
-            "in": "path",
-            "name": "revision",
-            "required": true,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "simple"
-          },
-          {
-            "description": "The identifier of the subscription schedule the revision is associated with.",
-            "in": "path",
-            "name": "schedule",
-            "required": true,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "simple"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "encoding": {
-              },
-              "schema": {
-                "additionalProperties": false,
-                "properties": {
-                },
-                "type": "object"
-              }
-            }
-          },
-          "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/subscription_schedule_revision"
-                }
-              }
-            },
-            "description": "Successful response."
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            },
-            "description": "Error response."
-          }
-        }
-      }
-    },
     "/v1/subscriptions": {
       "get": {
         "description": "<p>By default, returns a list of subscriptions that have not been canceled. In order to list canceled subscriptions, specify <code>status=canceled</code>.</p>",
@@ -60864,6 +61851,18 @@
                     "description": "A set of key-value pairs that you can attach to a `Subscription` object. It can be useful for storing additional information about the subscription in a structured format.",
                     "type": "object"
                   },
+                  "off_session": {
+                    "description": "Indicates if a customer is on or off-session while an invoice payment is attempted.",
+                    "type": "boolean"
+                  },
+                  "payment_behavior": {
+                    "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if its first invoice cannot be paid.\nCreating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay\na subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the\n[SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the\ndefault behavior.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice\ncannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further\nuser action is needed, this parameter does not create a subscription and returns an error instead. This was the default\nbehavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
+                    "enum": [
+                      "allow_incomplete",
+                      "error_if_incomplete"
+                    ],
+                    "type": "string"
+                  },
                   "prorate": {
                     "description": "Boolean (defaults to `true`) telling us whether to [credit for unused time](https://stripe.com/docs/subscriptions/billing-cycle#prorations) when the billing cycle changes (e.g. when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes. If `false`, the anchor period will be free (similar to a trial) and no proration adjustments will be created.",
                     "type": "boolean"
@@ -61361,6 +62360,18 @@
                     },
                     "description": "A set of key-value pairs that you can attach to a subscription object. This can be useful for storing additional information about the subscription in a structured format.",
                     "type": "object"
+                  },
+                  "off_session": {
+                    "description": "Indicates if a customer is on or off-session while an invoice payment is attempted.",
+                    "type": "boolean"
+                  },
+                  "payment_behavior": {
+                    "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if its first invoice cannot be paid.\nCreating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay\na subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the\n[SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the\ndefault behavior.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice\ncannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further\nuser action is needed, this parameter does not create a subscription and returns an error instead. This was the default\nbehavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
+                    "enum": [
+                      "allow_incomplete",
+                      "error_if_incomplete"
+                    ],
+                    "type": "string"
                   },
                   "prorate": {
                     "description": "Boolean (defaults to `true`) telling us whether to [credit for unused time](https://stripe.com/docs/subscriptions/billing-cycle#prorations) when the billing cycle changes (e.g. when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes. If `false`, the anchor period will be free (similar to a trial) and no proration adjustments will be created.",
@@ -64893,7 +65904,8 @@
                       "2019-02-11",
                       "2019-02-19",
                       "2019-03-14",
-                      "2019-05-16"
+                      "2019-05-16",
+                      "2019-08-14"
                     ],
                     "maxLength": 5000,
                     "type": "string",

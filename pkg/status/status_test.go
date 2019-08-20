@@ -3,7 +3,7 @@ package status
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func buildResponse() Response {
@@ -26,25 +26,25 @@ func TestGetMap(t *testing.T) {
 	response := buildResponse()
 
 	responseMap := response.getMap(false)
-	assert.Equal(t, responseMap["status"], "up")
-	assert.Equal(t, responseMap["message"], "All systems operational")
-	assert.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
-	assert.Nil(t, responseMap["statuses"])
+	require.Equal(t, responseMap["status"], "up")
+	require.Equal(t, responseMap["message"], "All systems operational")
+	require.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
+	require.Nil(t, responseMap["statuses"])
 }
 
 func TestGetMapVerbose(t *testing.T) {
 	response := buildResponse()
 
 	responseMap := response.getMap(true)
-	assert.Equal(t, responseMap["status"], "up")
-	assert.Equal(t, responseMap["message"], "All systems operational")
-	assert.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
+	require.Equal(t, responseMap["status"], "up")
+	require.Equal(t, responseMap["message"], "All systems operational")
+	require.Equal(t, responseMap["time"], "July 21, 4:00 +0:00")
 
 	statuses := responseMap["statuses"].(map[string]string)
-	assert.Equal(t, statuses["api"], "up")
-	assert.Equal(t, statuses["dashboard"], "up")
-	assert.Equal(t, statuses["stripejs"], "up")
-	assert.Equal(t, statuses["checkoutjs"], "up")
+	require.Equal(t, statuses["api"], "up")
+	require.Equal(t, statuses["dashboard"], "up")
+	require.Equal(t, statuses["stripejs"], "up")
+	require.Equal(t, statuses["checkoutjs"], "up")
 }
 
 func TestFormatJSON(t *testing.T) {
@@ -57,7 +57,7 @@ func TestFormatJSON(t *testing.T) {
 }`
 
 	formatted, _ := response.FormattedMessage("json", false)
-	assert.Equal(t, formatted, expected)
+	require.Equal(t, formatted, expected)
 }
 
 func TestFormatJSONVerbose(t *testing.T) {
@@ -76,7 +76,7 @@ func TestFormatJSONVerbose(t *testing.T) {
 }`
 
 	formatted, _ := response.FormattedMessage("json", true)
-	assert.Equal(t, formatted, expected)
+	require.Equal(t, formatted, expected)
 }
 
 func TestFormatDefault(t *testing.T) {
@@ -86,7 +86,7 @@ func TestFormatDefault(t *testing.T) {
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", false)
-	assert.Equal(t, formatted, expected)
+	require.Equal(t, formatted, expected)
 }
 
 func TestFormatDefaultVerbose(t *testing.T) {
@@ -100,12 +100,12 @@ func TestFormatDefaultVerbose(t *testing.T) {
 As of: July 21, 4:00 +0:00`
 
 	formatted, _ := response.FormattedMessage("default", true)
-	assert.Equal(t, formatted, expected)
+	require.Equal(t, formatted, expected)
 }
 
 func TestEmojification(t *testing.T) {
-	assert.Equal(t, "✔", emojifiedStatus("up"))
-	assert.Equal(t, "!", emojifiedStatus("degraded"))
-	assert.Equal(t, "✘", emojifiedStatus("down"))
-	assert.Equal(t, "", emojifiedStatus("foo"))
+	require.Equal(t, "✔", emojifiedStatus("up"))
+	require.Equal(t, "!", emojifiedStatus("degraded"))
+	require.Equal(t, "✘", emojifiedStatus("down"))
+	require.Equal(t, "", emojifiedStatus("foo"))
 }

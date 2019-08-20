@@ -4,21 +4,21 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadSpec(t *testing.T) {
-	data, err := LoadSpec("")
-	assert.NoError(t, err)
-	assert.NotEmpty(t, data)
+	data, err := LoadSpec("../../api/openapi-spec/spec3.sdk.json")
+	require.NoError(t, err)
+	require.NotEmpty(t, data)
 }
 
 func TestUnmarshal_Simple(t *testing.T) {
 	data := []byte(`{"type": "string"}`)
 	var schema Schema
 	err := json.Unmarshal(data, &schema)
-	assert.NoError(t, err)
-	assert.Equal(t, "string", schema.Type)
+	require.NoError(t, err)
+	require.Equal(t, "string", schema.Type)
 }
 
 func TestUnmarshal_UnsupportedField(t *testing.T) {
@@ -26,5 +26,5 @@ func TestUnmarshal_UnsupportedField(t *testing.T) {
 	data := []byte(`{const: "hello"}`)
 	var schema Schema
 	err := json.Unmarshal(data, &schema)
-	assert.Error(t, err)
+	require.Error(t, err)
 }

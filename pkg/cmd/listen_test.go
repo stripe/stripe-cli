@@ -3,20 +3,20 @@ package cmd
 import (
 	"testing"
 
-	assert "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestParseUrl(t *testing.T) {
-	assert.Equal(t, "http://example.com/foo", parseURL("http://example.com/foo"))
-	assert.Equal(t, "https://example.com/foo", parseURL("https://example.com/foo"))
+	require.Equal(t, "http://example.com/foo", parseURL("http://example.com/foo"))
+	require.Equal(t, "https://example.com/foo", parseURL("https://example.com/foo"))
 
-	assert.Equal(t, "http://example.com/foo", parseURL("example.com/foo"))
+	require.Equal(t, "http://example.com/foo", parseURL("example.com/foo"))
 
-	assert.Equal(t, "http://localhost/foo", parseURL("/foo"))
+	require.Equal(t, "http://localhost/foo", parseURL("/foo"))
 
-	assert.Equal(t, "http://localhost:3000", parseURL("3000"))
+	require.Equal(t, "http://localhost:3000", parseURL("3000"))
 }
 
 func TestBuildEndpointRoutes(t *testing.T) {
@@ -39,11 +39,11 @@ func TestBuildEndpointRoutes(t *testing.T) {
 	}
 
 	output := buildEndpointRoutes(endpointList, localURL, localURL)
-	assert.Equal(t, 2, len(output))
-	assert.Equal(t, "http://localhost/hooks", output[0].URL)
-	assert.Equal(t, false, output[0].Connect)
-	assert.Equal(t, []string{"*"}, output[0].EventTypes)
-	assert.Equal(t, "http://localhost/connect-hooks", output[1].URL)
-	assert.Equal(t, true, output[1].Connect)
-	assert.Equal(t, []string{"*"}, output[1].EventTypes)
+	require.Equal(t, 2, len(output))
+	require.Equal(t, "http://localhost/hooks", output[0].URL)
+	require.Equal(t, false, output[0].Connect)
+	require.Equal(t, []string{"*"}, output[0].EventTypes)
+	require.Equal(t, "http://localhost/connect-hooks", output[1].URL)
+	require.Equal(t, true, output[1].Connect)
+	require.Equal(t, []string{"*"}, output[1].EventTypes)
 }

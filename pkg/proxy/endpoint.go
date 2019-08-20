@@ -22,12 +22,12 @@ type EndpointConfig struct {
 	ResponseHandler EndpointResponseHandler
 }
 
-// ResponseHandler handles a response from the endpoint.
+// EndpointResponseHandler handles a response from the endpoint.
 type EndpointResponseHandler interface {
 	ProcessResponse(string, *http.Response)
 }
 
-// ResponseHandlerFunc is an adapter to allow the use of ordinary
+// EndpointResponseHandlerFunc is an adapter to allow the use of ordinary
 // functions as response handlers. If f is a function with the
 // appropriate signature, ResponseHandler(f) is a
 // ResponseHandler that calls f.

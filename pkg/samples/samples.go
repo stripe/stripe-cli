@@ -235,6 +235,8 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
+// ConfigureDotEnv takes the .env.example from the provided location and
+// modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	// .env.example file will always be at the project root
 	exFile := filepath.Join(sampleLocation, ".env.example")

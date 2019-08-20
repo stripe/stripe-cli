@@ -9,11 +9,17 @@ addons:
     packages:
     - rpm
 
+services:
+  - docker
+
 install:
   - make setup
 
 script:
   - make ci
+
+after_success:
+  - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
 deploy:
 - provider: script

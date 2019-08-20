@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,9 +20,9 @@ func newGetCmd() *getCmd {
 	gc.reqs.Method = http.MethodGet
 	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
-		Use:   "get",
+		Use:   "get <path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Make GET requests to the Stripe API using your test mode key.",
+		Short: "Make a GET request to the Stripe API",
 		Long: fmt.Sprintf(`%s
 
 Make GET requests to the Stripe API using your test mode key.
@@ -41,13 +40,13 @@ To get a charge:
 To get 50 charges:
 
   $ stripe get --limit 50 /charges`,
-			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			getBanner(),
 		),
 
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	gc.reqs.InitFlags(true)
 
 	return gc
 }

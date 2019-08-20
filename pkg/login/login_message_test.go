@@ -6,18 +6,20 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+const testDisplayName = "test_disp_name"
 
 func TestSuccessMessage(t *testing.T) {
 	account := &Account{
 		ID: "acct_123",
 	}
-	account.Settings.Dashboard.DisplayName = "test_disp_name"
+	account.Settings.Dashboard.DisplayName = testDisplayName
 
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	assert.Nil(t, err)
-	assert.Equal(
+	require.Nil(t, err)
+	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
 		msg,
@@ -30,8 +32,8 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 	}
 
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	assert.Nil(t, err)
-	assert.Equal(
+	require.Nil(t, err)
+	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
 		msg,
@@ -41,8 +43,8 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &Account{}
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	assert.Nil(t, err)
-	assert.Equal(
+	require.Nil(t, err)
+	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured\n",
 		msg,
@@ -51,12 +53,12 @@ func TestSuccessMessageBasicMessage(t *testing.T) {
 
 func TestSuccessMessageGetAccount(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		require.Equal(t, "GET", r.Method)
 
 		account := &Account{
 			ID: "acct_123",
 		}
-		account.Settings.Dashboard.DisplayName = "test_disp_name"
+		account.Settings.Dashboard.DisplayName = testDisplayName
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -65,8 +67,8 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	defer ts.Close()
 
 	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
-	assert.Nil(t, err)
-	assert.Equal(
+	require.Nil(t, err)
+	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
 		msg,
@@ -75,7 +77,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 
 func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method)
+		require.Equal(t, "GET", r.Method)
 
 		account := &Account{
 			ID: "acct_123",
@@ -88,8 +90,8 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	defer ts.Close()
 
 	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
-	assert.Nil(t, err)
-	assert.Equal(
+	require.Nil(t, err)
+	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
 		msg,

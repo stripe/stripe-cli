@@ -6,16 +6,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+// SampleData stores the information needed for Stripe Samples to operate in
+// the CLI
 type SampleData struct {
 	Name        string
 	URL         string
 	Description string
 }
 
+// BoldName returns an ansi bold string for the name
 func (sd *SampleData) BoldName() string {
 	return ansi.Bold(sd.Name)
 }
 
+// GitRepo returns a string of the repo with the .git prefix
 func (sd *SampleData) GitRepo() string {
 	return fmt.Sprintf("%s.git", sd.URL)
 }
@@ -37,11 +41,13 @@ var placingAHold = &SampleData{
 	Description: "Learn how to place a hold on a credit card (split auth / capture)",
 	URL:         "https://github.com/stripe-samples/placing-a-hold",
 }
+
 var paymentFormModal = &SampleData{
 	Name:        "payment-form-modal",
 	Description: "How to implement Stripe Elements within a modal dialog",
 	URL:         "https://github.com/stripe-samples/payment-form-modal",
 }
+
 var savingCardWithoutPayment = &SampleData{
 	Name:        "saving-card-without-payment",
 	Description: "How to build a form to save a credit card without taking a payment",
@@ -59,6 +65,7 @@ var List = map[string]*SampleData{
 	"saving-card-without-payment":      savingCardWithoutPayment,
 }
 
+// Names returns a list of all the sample's names
 func Names() []string {
 	keys := make([]string, 0, len(List))
 	for k := range List {

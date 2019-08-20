@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -21,9 +20,9 @@ func newPostCmd() *postCmd {
 	gc.reqs.Method = http.MethodPost
 	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
-		Use:   "post",
+		Use:   "post <path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Make POST requests to the Stripe API using your test mode key.",
+		Short: "Make a POST request to the Stripe API",
 		Long: fmt.Sprintf(`%s
 
 Make POST requests to the Stripe API using your test mode key.
@@ -33,17 +32,18 @@ Currently, you can only POST data in test mode.
 
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api
+`,
 
-Example:
-
-  $ stripe post /payment_intents -d amount=2000 -d currency=usd -d "payment_method_types[]=card"`,
-
-			ansi.Italic("⚠️  The Stripe CLI is in beta! Have feedback? Let us know, run: 'stripe feedback'. ⚠️"),
+			getBanner(),
 		),
+		Example: `stripe post /payment_intents \
+    -d amount=2000 \
+    -d currency=usd \
+    -d "payment_method_types[]=card"`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags()
+	gc.reqs.InitFlags(true)
 
 	return gc
 }

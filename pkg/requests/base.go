@@ -28,6 +28,11 @@ type RequestParameters struct {
 	stripeAccount string
 }
 
+// AppendData appends data to the request parameters.
+func (r *RequestParameters) AppendData(data []string) {
+	r.data = append(r.data, data...)
+}
+
 // Base does stuff
 type Base struct {
 	Cmd *cobra.Command
@@ -75,8 +80,10 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 }
 
 // InitFlags initialize shared flags for all requests commands
-func (rb *Base) InitFlags() {
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
+func (rb *Base) InitFlags(includeData bool) {
+	if includeData {
+		rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
+	}
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "api-version", "v", "", "Set the Stripe API version to use for your request")

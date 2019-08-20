@@ -6,19 +6,24 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
+
 	"gopkg.in/src-d/go-git.v4"
 )
 
+// CreateCmd wraps the `create` command for samples which generates a new
+// project
 type CreateCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 }
 
+// NewCreateCmd creates and returns a create command for samples
 func NewCreateCmd(config *config.Config) *CreateCmd {
 	createCmd := &CreateCmd{
 		cfg: config,
