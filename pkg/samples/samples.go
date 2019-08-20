@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/manifoldco/promptui"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
@@ -13,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
 // Samples stores the information for the selected sample in addition to the
@@ -207,7 +209,7 @@ func (s *Samples) Copy(target string) error {
 
 		// This copies all top-level files specific to integrations
 		for _, file := range filesSource {
-			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(target, integration, file))
+			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(s.destinationPath(target, integration, ""), file))
 			if err != nil {
 				return err
 			}
@@ -228,6 +230,50 @@ func (s *Samples) Copy(target string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// ConfigureDotEnv takes the .env.example from the provided location and
+// modifies it to automatically configure it for the users settings
+func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
+	// .env.example file will always be at the project root
+	exFile := filepath.Join(sampleLocation, ".env.example")
+
+	file, err := s.Fs.Open(exFile)
+	if err != nil {
+		return err
+	}
+
+	dotenv, err := godotenv.Parse(file)
+	if err != nil {
+		return err
+	}
+
+	apiKey, err := s.Config.Profile.GetAPIKey()
+	if err != nil {
+		return err
+	}
+	deviceName, err := s.Config.Profile.GetDeviceName()
+	if err != nil {
+		return err
+	}
+
+	authClient := stripeauth.NewClient(apiKey, nil)
+	authSession, err := authClient.Authorize(deviceName, "webhooks", nil)
+	if err != nil {
+		return err
+	}
+
+	dotenv["STRIPE_SECRET_KEY"] = apiKey
+	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
+	dotenv["STATIC_DIR"] = "../client"
+
+	envFile := filepath.Join(sampleLocation, ".env")
+	err = godotenv.Write(dotenv, envFile)
+	if err != nil {
+		return err
 	}
 
 	return nil
