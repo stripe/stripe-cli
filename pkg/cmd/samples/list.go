@@ -9,25 +9,25 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-type listCmd struct {
+type ListCmd struct {
 	Cmd *cobra.Command
 }
 
 // NewListCmd defines a new samples command that lists all samples
-func NewListCmd() *cobra.Command {
-	listCmd := &listCmd{}
-	listCmd.Cmd = &cobra.Command{
+func NewListCmd() *ListCmd {
+	ListCmd := &ListCmd{}
+	ListCmd.Cmd = &cobra.Command{
 		Use:   "list",
 		Args:  validators.NoArgs,
 		Short: "list available Stripe samples",
 		Long:  `A list of available Stripe Sample integrations`,
-		Run:   listCmd.runListCmd,
+		Run:   ListCmd.runListCmd,
 	}
 
-	return listCmd.Cmd
+	return ListCmd
 }
 
-func (lc *listCmd) runListCmd(cmd *cobra.Command, args []string) {
+func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
 	fmt.Println("A list of available Stripe Sample integrations:")
 	fmt.Println()
 

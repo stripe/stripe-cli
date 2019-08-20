@@ -7,12 +7,12 @@ import (
 )
 
 type samplesCmd struct {
-	Cmd *cobra.Command
+	cmd *cobra.Command
 }
 
-func newSamplesCmd() *cobra.Command {
+func newSamplesCmd() *samplesCmd {
 	samplesCmd := &samplesCmd{
-		Cmd: &cobra.Command{
+		cmd: &cobra.Command{
 			// TODO: fixtures subcommand
 			Use:   "samples",
 			Short: `Sample integrations built by Stripe`,
@@ -20,8 +20,8 @@ func newSamplesCmd() *cobra.Command {
 		},
 	}
 
-	samplesCmd.Cmd.AddCommand(samples.NewCreateCmd(&Config))
-	samplesCmd.Cmd.AddCommand(samples.NewListCmd())
+	samplesCmd.cmd.AddCommand(samples.NewCreateCmd(&Config).Cmd)
+	samplesCmd.cmd.AddCommand(samples.NewListCmd().Cmd)
 
-	return samplesCmd.Cmd
+	return samplesCmd
 }

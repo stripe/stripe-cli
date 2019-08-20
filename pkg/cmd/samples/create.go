@@ -16,28 +16,28 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 )
 
-type createCmd struct {
+type CreateCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 }
 
 // NewCreateCmd returns a create command for samples
-func NewCreateCmd(config *config.Config) *cobra.Command {
-	createCmd := &createCmd{
+func NewCreateCmd(config *config.Config) *CreateCmd {
+	CreateCmd := &CreateCmd{
 		cfg: config,
 	}
-	createCmd.Cmd = &cobra.Command{
+	CreateCmd.Cmd = &cobra.Command{
 		Use:       "create",
 		Args:      validators.ExactArgs(1),
 		ValidArgs: samples.Names(),
 		Short:     "create a Stripe sample",
-		RunE:      createCmd.runCreateCmd,
+		RunE:      CreateCmd.runCreateCmd,
 	}
 
-	return createCmd.Cmd
+	return CreateCmd
 }
 
-func (cc *createCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
+func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
