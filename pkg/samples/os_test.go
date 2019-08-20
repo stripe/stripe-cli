@@ -37,7 +37,7 @@ func TestCacheFolder(t *testing.T) {
 
 	expectedPath := filepath.Join(home(), ".config", "stripe", "samples-cache")
 
-	path, err := sample.cacheFolder()
+	path, _ := sample.cacheFolder()
 	pathExists, err := afero.Exists(fs, path)
 
 	assert.Equal(t, expectedPath, path)
