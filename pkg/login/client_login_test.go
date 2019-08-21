@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/open"
 )
 
 func TestLogin(t *testing.T) {
@@ -22,12 +22,10 @@ func TestLogin(t *testing.T) {
 		return
 	}
 
-	execCommand = func(string, ...string) *exec.Cmd {
-		cmd := exec.Command(os.Args[0], "-test.run=TestLogin")
-		cmd.Env = []string{"OPEN_URL=1"}
-		return cmd
+	openBrowser = func(string) error {
+		return nil
 	}
-	defer func() { execCommand = exec.Command }()
+	defer func() { openBrowser = open.Browser }()
 
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
 

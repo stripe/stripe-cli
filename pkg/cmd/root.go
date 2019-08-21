@@ -90,6 +90,7 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
+	rootCmd.AddCommand(newOpenCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 }
