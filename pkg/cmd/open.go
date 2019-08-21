@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -73,9 +75,13 @@ func newOpenCmd() *openCmd {
 }
 
 func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
-	err := open.Browser(nameURLmap[args[0]])
-	if err != nil {
-		return err
+	if url, ok := nameURLmap[args[0]]; ok {
+		err := open.Browser(url)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Unsupported open command, given: %s", args[0])
 	}
 
 	return nil
