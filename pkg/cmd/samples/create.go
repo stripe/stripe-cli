@@ -10,7 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
-	"github.com/stripe/stripe-cli/pkg/samples"
+	s "github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	"gopkg.in/src-d/go-git.v4"
@@ -31,7 +31,7 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 	createCmd.Cmd = &cobra.Command{
 		Use:       "create",
 		Args:      validators.ExactArgs(1),
-		ValidArgs: samples.Names(),
+		ValidArgs: s.Names(),
 		Short:     "create a Stripe sample",
 		RunE:      createCmd.runCreateCmd,
 	}
@@ -40,7 +40,7 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 }
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
-	sample := samples.Samples{
+	sample := s.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
 		Git:    gitpkg.Operations{},
