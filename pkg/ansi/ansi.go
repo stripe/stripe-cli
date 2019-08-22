@@ -120,6 +120,12 @@ func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 	s.Stop()
 }
 
+// StrikeThrough returns struck though text if the writer supports colors
+func StrikeThrough(text string) string {
+	color := Color(os.Stdout)
+	return color.Sprintf(color.StrikeThrough(text))
+}
+
 //
 // Private functions
 //
