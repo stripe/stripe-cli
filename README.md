@@ -174,6 +174,12 @@ $ stripe listen --load-from-webhooks-api --forward-to https://example.com/hooks
 
 > **Note:** You will receive events for all interactions on your Stripe account. There is currently no way to limit events to only those that a specific user created.
 
+Should you need to also listen to connect events for all connected accounts, you can use the separate `--forward-connect-to` flag:
+
+```sh
+$ stripe listen --forward-to localhost:3000/webhook --forward-connect-to localhost:3000/connect_webhook
+```
+
 ### Resource commands
 
 You can easily make API requests using the CLI:
