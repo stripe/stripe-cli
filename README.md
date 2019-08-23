@@ -51,7 +51,7 @@ _Without homebrew:_
 
 2. Unzip the file: `tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz`
 
-3. (optional) Move the binary to somewhere you can execute it globally, like `~/usr/local/bin`
+3. (optional) Move the binary to somewhere you can execute it globally, like `/usr/local/bin`
 
 ### Linux
 
