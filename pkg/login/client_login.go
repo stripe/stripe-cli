@@ -8,16 +8,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
-	"runtime"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-var execCommand = exec.Command
+var openBrowser = open.Browser
 
 const stripeCLIAuthPath = "/stripecli/auth"
 
@@ -79,27 +78,6 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	} else {
 		ansi.StopSpinner(s, message, os.Stdout)
 		fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
-	}
-
-	return nil
-}
-
-func openBrowser(url string) error {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = execCommand("xdg-open", url).Start()
-	case "windows":
-		err = execCommand("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = execCommand("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-
-	if err != nil {
-		return err
 	}
 
 	return nil
