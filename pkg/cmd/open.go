@@ -108,7 +108,8 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 	if list || len(args) == 0 {
 
 		fmt.Println("open quickly opens Stripe pages. To use, run 'stripe open <shortcut>'.")
-		fmt.Println("open supports the following shortcuts:\n")
+		fmt.Println("open supports the following shortcuts:")
+		fmt.Println()
 		shortcuts := openNames()
 		sort.Strings(shortcuts)
 		longest := getLongestShortcut(shortcuts)
