@@ -343,6 +343,11 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 		return err
 	}
 
+	publishableKey := s.Config.Profile.GetPublishableKey()
+	if publishableKey == "" {
+		fmt.Println("We could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time.")
+	}
+
 	apiKey, err := s.Config.Profile.GetAPIKey()
 	if err != nil {
 		return err
@@ -358,6 +363,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 		return err
 	}
 
+	dotenv["STRIPE_PUBLIC_KEY"] = publishableKey
 	dotenv["STRIPE_SECRET_KEY"] = apiKey
 	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
 	dotenv["STATIC_DIR"] = "../client"
