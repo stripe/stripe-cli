@@ -20,6 +20,15 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+// ColorOn represnets the on-state for colors
+const ColorOn = "on"
+
+// ColorOff represents the off-state for colors
+const ColorOff = "off"
+
+// ColorAuto represents the auto-state for colors
+const ColorAuto = "auto"
+
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color        string
@@ -58,35 +67,6 @@ func (c *Config) InitConfig() {
 		TimestampFormat: time.RFC1123,
 	}
 
-	switch c.Color {
-	case "on":
-		ansi.ForceColors = true
-		logFormatter.ForceColors = true
-	case "off":
-		ansi.DisableColors = true
-		logFormatter.DisableColors = true
-	case "auto":
-		// Nothing to do
-	default:
-		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
-	}
-
-	log.SetFormatter(logFormatter)
-
-	// Set log level
-	switch c.LogLevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
-	}
-
 	if c.ProfilesFile != "" {
 		viper.SetConfigFile(c.ProfilesFile)
 	} else {
@@ -111,6 +91,39 @@ func (c *Config) InitConfig() {
 			deviceName = "unknown"
 		}
 		c.Profile.DeviceName = deviceName
+	}
+
+	color, err := c.Profile.GetColor()
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+	switch color {
+	case ColorOn:
+		ansi.ForceColors = true
+		logFormatter.ForceColors = true
+	case ColorOff:
+		ansi.DisableColors = true
+		logFormatter.DisableColors = true
+	case ColorAuto:
+		// Nothing to do
+	default:
+		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
+	}
+
+	log.SetFormatter(logFormatter)
+
+	// Set log level
+	switch c.LogLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
 	}
 }
 

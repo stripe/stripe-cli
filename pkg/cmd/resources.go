@@ -19,7 +19,7 @@ func newResourcesCmd() *resourcesCmd {
 	rc.cmd = &cobra.Command{
 		Use:   "resources",
 		Args:  validators.NoArgs,
-		Short: "list namespace and resource subcommands",
+		Short: "List namespace and resource subcommands",
 	}
 	rc.cmd.SetHelpTemplate(getResourcesHelpTemplate())
 

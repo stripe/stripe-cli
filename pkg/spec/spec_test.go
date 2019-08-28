@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoadSpec(t *testing.T) {
-	data, err := LoadSpec("../../api/openapi-spec/spec3.sdk.json")
+	data, err := LoadSpec("")
 	require.NoError(t, err)
 	require.NotEmpty(t, data)
 }

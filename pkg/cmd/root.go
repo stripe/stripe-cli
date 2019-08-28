@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 		"listen":    "webhooks",
 		"logs":      "stripe",
 		"status":    "stripe",
-		"resources": "help",
+		"resources": "resources",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
@@ -66,7 +66,7 @@ func init() {
 	cobra.OnInitialize(Config.InitConfig)
 
 	rootCmd.PersistentFlags().String("api-key", "", "Your test mode API secret key to use for the command")
-	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "auto", "turn on/off color output (on, off, auto)")
+	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
 
@@ -92,6 +92,7 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
+	rootCmd.AddCommand(newOpenCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 }
