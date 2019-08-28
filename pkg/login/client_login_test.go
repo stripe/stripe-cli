@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -28,6 +29,8 @@ func TestLogin(t *testing.T) {
 	defer func() { openBrowser = open.Browser }()
 
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	v := viper.GetViper()
+	v.SetConfigFile(profilesFile)
 
 	p := config.Profile{
 		DeviceName:  "st-testing",

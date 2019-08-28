@@ -155,6 +155,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	runtimeViper.SetConfigFile(profilesFile)
+
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
 	err = runtimeViper.WriteConfig()
