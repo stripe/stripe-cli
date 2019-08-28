@@ -27,6 +27,7 @@ func TestRedeemed(t *testing.T) {
 			response.AccountID = "acct_123"
 			response.AccountDisplayName = "test_disp_name"
 			response.APIKey = "sk_test_123"
+			response.PublishableKey = "pk_test_123"
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -34,9 +35,10 @@ func TestRedeemed(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, publishableKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.NoError(t, err)
 	require.Equal(t, "sk_test_123", apiKey)
+	require.Equal(t, "pk_test_123", publishableKey)
 	require.Equal(t, "acct_123", account.ID)
 	require.Equal(t, "test_disp_name", account.Settings.Dashboard.DisplayName)
 	require.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
@@ -57,6 +59,7 @@ func TestRedeemedNoDisplayName(t *testing.T) {
 			response.Redeemed = true
 			response.AccountID = "acct_123"
 			response.APIKey = "sk_test_123"
+			response.PublishableKey = "pk_test_123"
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -64,9 +67,10 @@ func TestRedeemedNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, publishableKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.NoError(t, err)
 	require.Equal(t, "sk_test_123", apiKey)
+	require.Equal(t, "pk_test_123", publishableKey)
 	require.Equal(t, "acct_123", account.ID)
 	require.Equal(t, "", account.Settings.Dashboard.DisplayName)
 	require.Equal(t, uint64(2), atomic.LoadUint64(&attempts))
@@ -89,9 +93,10 @@ func TestExceedMaxAttempts(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, publishableKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "exceeded max attempts")
 	require.Empty(t, apiKey)
+	require.Empty(t, publishableKey)
 	require.Empty(t, account)
 	require.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
 }
@@ -108,9 +113,10 @@ func TestHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, publishableKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "unexpected http status code: 500 ")
 	require.Empty(t, apiKey)
+	require.Empty(t, publishableKey)
 	require.Nil(t, account)
 	require.Equal(t, uint64(1), atomic.LoadUint64(&attempts))
 }
@@ -120,9 +126,10 @@ func TestHTTPRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	apiKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
+	apiKey, publishableKey, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connect: connection refused")
 	require.Empty(t, apiKey)
+	require.Empty(t, publishableKey)
 	require.Nil(t, account)
 }

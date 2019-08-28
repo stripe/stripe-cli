@@ -56,7 +56,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	}
 
 	//Call poll function
-	apiKey, account, err := PollForKey(links.PollURL, 0, 0)
+	apiKey, publishableKey, account, err := PollForKey(links.PollURL, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -67,6 +67,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	}
 
 	config.Profile.APIKey = apiKey
+	config.Profile.PublishableKey = publishableKey
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr

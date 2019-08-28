@@ -13,9 +13,10 @@ import (
 
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
-	DeviceName  string
-	ProfileName string
-	APIKey      string
+	DeviceName     string
+	ProfileName    string
+	APIKey         string
+	PublishableKey string
 }
 
 // CreateProfile creates a profile when logging in
@@ -135,11 +136,28 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	if p.APIKey != "" {
 		runtimeViper.Set(p.GetConfigField("api_key"), strings.TrimSpace(p.APIKey))
 	}
+	if p.PublishableKey != "" {
+		runtimeViper.Set(p.GetConfigField("publishable_key"), strings.TrimSpace(p.PublishableKey))
+	}
+
+	runtimeViper.MergeInConfig()
+
+	// Do this after we merge the old configs in
+	if p.APIKey != "" {
+		if runtimeViper.IsSet(p.GetConfigField("secret_key")) {
+			newViper, err := removeKey(runtimeViper, p.GetConfigField("secret_key"))
+			if err == nil {
+				// I don't want to fail the entire login process on not being able to remove
+				// the old secret_key field so if there's no error
+				runtimeViper = newViper
+			} else {
+				fmt.Println(err)
+			}
+		}
+	}
 
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	runtimeViper.MergeInConfig()
 	runtimeViper.WriteConfig()
 
 	return nil
