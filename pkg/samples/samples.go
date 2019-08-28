@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -16,6 +17,37 @@ import (
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
+
+var fileEnvRegexp = map[string]*regexp.Regexp{
+	".java": regexp.MustCompile(`String ENV_PATH = "(.*)";`),
+	".js":   regexp.MustCompile(`const envPath = resolve\(__dirname, "(.*)\.env"\);`),
+	".php":  regexp.MustCompile(`\$ENV_PATH = '(.*)';`),
+	".rb":   regexp.MustCompile(`ENV_PATH = '(.*)\.env'\.freeze`),
+}
+
+var fileEnvTemplate = map[string]func(string) string{
+	".java": javaPath,
+	".js":   jsPath,
+	".php":  phpPath,
+	".rb":   rbPath,
+}
+
+func javaPath(path string) string {
+	return fmt.Sprintf(`String ENV_PATH = "%s/";`, path)
+}
+
+func jsPath(path string) string {
+	return fmt.Sprintf(`const envPath = resolve(__dirname, "%s/.env");`, path)
+}
+
+func phpPath(path string) string {
+	// Need $$ here because otherwise $FOO is treated as an interpretted variable
+	return fmt.Sprintf(`$$ENV_PATH = '%s';`, path)
+}
+
+func rbPath(path string) string {
+	return fmt.Sprintf(`ENV_PATH = '%s/.env'.freeze`, path)
+}
 
 // Samples stores the information for the selected sample in addition to the
 // selected configuration option to copy over
@@ -235,6 +267,66 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
+func (s *Samples) findServerFiles(target string) ([]string, error) {
+	var files []string
+	err := afero.Walk(s.Fs, target, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.Contains(path, "server") {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return []string{}, err
+	}
+
+	return files, nil
+}
+
+// PointToDotEnv searches through the recently copied files for references to
+// `../../..` and changes it to be one (or two) levels removed. Reason for this
+// is that as part of configuring the sample, we'll remove 1-2 levels of the
+// folder hierarchy so we need to adjust the references we point to.
+func (s *Samples) PointToDotEnv(target string) error {
+	serverFiles, err := s.findServerFiles(target)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range serverFiles {
+		// There are a bunch of files we don't want to process so skip them
+		if !fileWhitelist(file) {
+			continue
+		}
+
+		data, err := afero.ReadFile(s.Fs, file)
+		if err != nil {
+			return err
+		}
+
+		content := string(data)
+
+		dotPath := ".."
+		if s.isIntegration && len(s.integration) >= 2 {
+			dotPath = "../.."
+		}
+
+		regex := fileEnvRegexp[filepath.Ext(file)]
+		tmpl := fileEnvTemplate[filepath.Ext(file)]
+		updated := regex.ReplaceAllString(content, tmpl(dotPath))
+
+		err = afero.WriteFile(s.Fs, file, []byte(updated), 0)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
@@ -326,4 +418,14 @@ func integrationSelectPrompt(integrations []string) []string {
 	}
 
 	return []string{selected}
+}
+
+func fileWhitelist(path string) bool {
+	// NOTE: we're not changing `.py` files because the Python dotenv library
+	// is able to recursively search up directory trees, so it'll correctly
+	// find our .env file
+	return strings.HasSuffix(path, ".java") ||
+		strings.HasSuffix(path, ".php") ||
+		strings.HasSuffix(path, ".js") ||
+		strings.HasSuffix(path, ".rb")
 }
