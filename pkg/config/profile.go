@@ -128,8 +128,6 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		return err
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
 	if p.DeviceName != "" {
 		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
 	}
@@ -156,9 +154,13 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		}
 	}
 
+	runtimeViper.SetConfigFile(profilesFile)
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-	runtimeViper.WriteConfig()
+	err = runtimeViper.WriteConfig()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
