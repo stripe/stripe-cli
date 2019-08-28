@@ -29,8 +29,7 @@ func TestLogin(t *testing.T) {
 	defer func() { openBrowser = open.Browser }()
 
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
-	v := viper.GetViper()
-	v.SetConfigFile(profilesFile)
+	viper.SetConfigFile(profilesFile)
 
 	p := config.Profile{
 		DeviceName:  "st-testing",
@@ -76,6 +75,8 @@ func TestLogin(t *testing.T) {
 	input := strings.NewReader("\n")
 	err := Login(ts.URL, c, input)
 	require.NoError(t, err)
+
+	viper.Reset()
 }
 
 func TestGetLinks(t *testing.T) {
