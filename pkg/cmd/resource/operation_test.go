@@ -43,9 +43,13 @@ func TestRunOperationCmd(t *testing.T) {
 	defer ts.Close()
 
 	viper.Reset()
-	viper.Set("api_key", "sk_test_1234")
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "post", &config.Config{})
+	profile := config.Profile{
+		APIKey: "sk_test_1234",
+	}
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "post", &config.Config{
+		Profile: profile,
+	})
 	oc.APIBaseURL = ts.URL
 
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
