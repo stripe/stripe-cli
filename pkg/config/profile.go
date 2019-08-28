@@ -52,9 +52,8 @@ func (p *Profile) GetColor() (string, error) {
 
 // GetDeviceName returns the configured device name
 func (p *Profile) GetDeviceName() (string, error) {
-	deviceName := viper.GetString("device_name")
-	if deviceName != "" {
-		return deviceName, nil
+	if p.DeviceName != "" {
+		return p.DeviceName, nil
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
@@ -66,19 +65,18 @@ func (p *Profile) GetDeviceName() (string, error) {
 
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey() (string, error) {
+	if p.APIKey != "" {
+		err := validators.APIKey(p.APIKey)
+		if err != nil {
+			return "", err
+		}
+		return p.APIKey, nil
+	}
+
 	// If the user doesn't have an api_key field set, they might be using an
 	// old configuration so try to read from secret_key
 	if !viper.IsSet(p.GetConfigField("api_key")) {
 		p.RegisterAlias("api_key", "secret_key")
-	}
-
-	key := viper.GetString("api_key")
-	if key != "" {
-		err := validators.APIKey(key)
-		if err != nil {
-			return "", err
-		}
-		return key, nil
 	}
 
 	// Try to fetch the API key from the configuration file

@@ -65,13 +65,12 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(Config.InitConfig)
 
-	rootCmd.PersistentFlags().String("api-key", "", "Your test mode API secret key to use for the command")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your test mode API secret key to use for the command")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
-	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
-
-	rootCmd.PersistentFlags().StringVar(&Config.Profile.ProfileName, "project-name", "default", "the project name to read from for config")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
+	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&Config.Profile.ProfileName, "project-name", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
 	viper.SetEnvPrefix("stripe")
