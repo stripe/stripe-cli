@@ -45,7 +45,7 @@ func TestRunOperationCmd(t *testing.T) {
 	viper.Reset()
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	profile := config.Profile{
-		TestModeAPIKey: "sk_test_1234",
+		APIKey: "sk_test_1234",
 	}
 	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "post", &config.Config{
 		Profile: profile,
