@@ -90,7 +90,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
-	key, err := Config.Profile.GetAPIKey()
+	key, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}

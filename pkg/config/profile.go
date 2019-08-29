@@ -13,10 +13,12 @@ import (
 
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
-	DeviceName     string
-	ProfileName    string
-	APIKey         string
-	PublishableKey string
+	DeviceName             string
+	ProfileName            string
+	LiveModeAPIKey         string
+	LiveModePublishableKey string
+	TestModeAPIKey         string
+	TestModePublishableKey string
 }
 
 // CreateProfile creates a profile when logging in
@@ -64,24 +66,28 @@ func (p *Profile) GetDeviceName() (string, error) {
 }
 
 // GetAPIKey will return the existing key for the given profile
-func (p *Profile) GetAPIKey() (string, error) {
-	if p.APIKey != "" {
-		err := validators.APIKey(p.APIKey)
+func (p *Profile) GetAPIKey(livemode bool) (string, error) {
+	if p.TestModeAPIKey != "" {
+		err := validators.APIKey(p.TestModeAPIKey)
 		if err != nil {
 			return "", err
 		}
-		return p.APIKey, nil
+		return p.TestModeAPIKey, nil
 	}
 
 	// If the user doesn't have an api_key field set, they might be using an
 	// old configuration so try to read from secret_key
-	if !viper.IsSet(p.GetConfigField("api_key")) {
-		p.RegisterAlias("api_key", "secret_key")
+	if !livemode {
+		if !viper.IsSet(p.GetConfigField("api_key")) {
+			p.RegisterAlias("api_key", "secret_key")
+		} else {
+			p.RegisterAlias("test_mode_api_key", "api_key")
+		}
 	}
 
 	// Try to fetch the API key from the configuration file
 	if err := viper.ReadInConfig(); err == nil {
-		key := viper.GetString(p.GetConfigField("api_key"))
+		key := viper.GetString(p.GetConfigField(livemodeKeyField(livemode)))
 		err := validators.APIKey(key)
 		if err != nil {
 			return "", err
@@ -129,27 +135,28 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	if p.DeviceName != "" {
 		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
 	}
-	if p.APIKey != "" {
-		runtimeViper.Set(p.GetConfigField("api_key"), strings.TrimSpace(p.APIKey))
+	if p.LiveModeAPIKey != "" {
+		runtimeViper.Set(p.GetConfigField("live_mode_api_key"), strings.TrimSpace(p.LiveModeAPIKey))
 	}
-	if p.PublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField("publishable_key"), strings.TrimSpace(p.PublishableKey))
+	if p.LiveModePublishableKey != "" {
+		runtimeViper.Set(p.GetConfigField("live_mode_publishable_key"), strings.TrimSpace(p.LiveModePublishableKey))
+	}
+	if p.TestModeAPIKey != "" {
+		runtimeViper.Set(p.GetConfigField("test_mode_api_key"), strings.TrimSpace(p.TestModeAPIKey))
+	}
+	if p.TestModePublishableKey != "" {
+		runtimeViper.Set(p.GetConfigField("test_mode_publishable_key"), strings.TrimSpace(p.TestModePublishableKey))
 	}
 
 	runtimeViper.MergeInConfig()
 
 	// Do this after we merge the old configs in
-	if p.APIKey != "" {
-		if runtimeViper.IsSet(p.GetConfigField("secret_key")) {
-			newViper, err := removeKey(runtimeViper, p.GetConfigField("secret_key"))
-			if err == nil {
-				// I don't want to fail the entire login process on not being able to remove
-				// the old secret_key field so if there's no error
-				runtimeViper = newViper
-			} else {
-				fmt.Println(err)
-			}
-		}
+	if p.TestModeAPIKey != "" {
+		runtimeViper = p.safeRemove(runtimeViper, "secret_key")
+		runtimeViper = p.safeRemove(runtimeViper, "api_key")
+	}
+	if p.TestModePublishableKey != "" {
+		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
 	runtimeViper.SetConfigFile(profilesFile)
@@ -162,4 +169,25 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	return nil
+}
+
+func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
+	if v.IsSet(p.GetConfigField(key)) {
+		newViper, err := removeKey(v, p.GetConfigField(key))
+		if err == nil {
+			// I don't want to fail the entire login process on not being able to remove
+			// the old secret_key field so if there's no error
+			return newViper
+		}
+	}
+
+	return v
+}
+
+func livemodeKeyField(livemode bool) string {
+	if livemode {
+		return "live_mode_api_key"
+	}
+
+	return "test_mode_api_key"
 }
