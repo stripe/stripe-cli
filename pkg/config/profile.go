@@ -15,6 +15,7 @@ import (
 type Profile struct {
 	DeviceName             string
 	ProfileName            string
+	APIKey                 string
 	LiveModeAPIKey         string
 	LiveModePublishableKey string
 	TestModeAPIKey         string
@@ -67,12 +68,12 @@ func (p *Profile) GetDeviceName() (string, error) {
 
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
-	if p.TestModeAPIKey != "" {
-		err := validators.APIKey(p.TestModeAPIKey)
+	if p.APIKey != "" {
+		err := validators.APIKey(p.APIKey)
 		if err != nil {
 			return "", err
 		}
-		return p.TestModeAPIKey, nil
+		return p.APIKey, nil
 	}
 
 	// If the user doesn't have an api_key field set, they might be using an
