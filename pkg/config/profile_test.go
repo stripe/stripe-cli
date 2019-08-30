@@ -14,9 +14,9 @@ import (
 func TestWriteProfile(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
 	p := Profile{
-		DeviceName:  "st-testing",
-		ProfileName: "tests",
-		APIKey:      "sk_test_123",
+		DeviceName:     "st-testing",
+		ProfileName:    "tests",
+		TestModeAPIKey: "sk_test_123",
 	}
 
 	c := &Config{
@@ -38,8 +38,8 @@ func TestWriteProfile(t *testing.T) {
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
 [tests]
-  api_key = "sk_test_123"
   device_name = "st-testing"
+  test_mode_api_key = "sk_test_123"
 `
 	require.EqualValues(t, expectedConfig, string(configValues))
 
@@ -49,9 +49,9 @@ func TestWriteProfile(t *testing.T) {
 func TestWriteProfilesMerge(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
 	p := Profile{
-		ProfileName: "tests",
-		DeviceName:  "st-testing",
-		APIKey:      "sk_test_123",
+		ProfileName:    "tests",
+		DeviceName:     "st-testing",
+		TestModeAPIKey: "sk_test_123",
 	}
 
 	c := &Config{
@@ -76,12 +76,12 @@ func TestWriteProfilesMerge(t *testing.T) {
 	configValues := helperLoadBytes(t, c.ProfilesFile)
 	expectedConfig := `
 [tests]
-  api_key = "sk_test_123"
   device_name = "st-testing"
+  test_mode_api_key = "sk_test_123"
 
 [tests-merge]
-  api_key = "sk_test_123"
   device_name = "st-testing"
+  test_mode_api_key = "sk_test_123"
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))

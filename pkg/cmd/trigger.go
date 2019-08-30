@@ -81,7 +81,7 @@ needed to create the triggered event.
 }
 
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
-	apiKey, err := Config.Profile.GetAPIKey()
+	apiKey, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}

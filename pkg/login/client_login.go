@@ -56,24 +56,24 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	}
 
 	//Call poll function
-	apiKey, publishableKey, account, err := PollForKey(links.PollURL, 0, 0)
+	response, account, err := PollForKey(links.PollURL, 0, 0)
 	if err != nil {
 		return err
 	}
 
-	validateErr := validators.APIKey(apiKey)
+	validateErr := validators.APIKey(response.TestModeAPIKey)
 	if validateErr != nil {
 		return validateErr
 	}
 
-	config.Profile.APIKey = apiKey
-	config.Profile.PublishableKey = publishableKey
+	config.Profile.TestModeAPIKey = response.TestModeAPIKey
+	config.Profile.TestModePublishableKey = response.TestModePublishableKey
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr
 	}
 
-	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, apiKey)
+	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("> Error verifying the CLI was set up successfully: %s", err))
 	} else {

@@ -67,7 +67,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	secretKey, err := rb.Profile.GetAPIKey()
+	secretKey, err := rb.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}

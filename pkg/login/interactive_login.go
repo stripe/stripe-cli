@@ -26,7 +26,7 @@ func InteractiveLogin(config *config.Config) error {
 	}
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
-	config.Profile.APIKey = apiKey
+	config.Profile.TestModeAPIKey = apiKey
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
