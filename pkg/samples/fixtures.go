@@ -13,6 +13,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
+type fixtureFile struct {
+	meta     map[string]string `json:"_meta"`
+	fixtures []fixture         `json:"fixtures"`
+}
+
 type fixture struct {
 	Name string            `json:"name"`
 	HTTP map[string]string `json:"http"`
@@ -28,7 +33,7 @@ type Fixture struct {
 
 // NewFixture foo
 func (fxt *Fixture) NewFixture(file string) (Fixture, error) {
-	var list []fixture
+	var fixture fixtureFile
 	fxt.responses = make(map[string]*gojsonq.JSONQ)
 
 	filedata, err := afero.ReadFile(fxt.Fs, file)
@@ -36,12 +41,12 @@ func (fxt *Fixture) NewFixture(file string) (Fixture, error) {
 		return Fixture{}, err
 	}
 
-	err = json.Unmarshal(filedata, &list)
+	err = json.Unmarshal(filedata, &fixture)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	for _, data := range list {
+	for _, data := range fixture.fixtures {
 		fmt.Println(fmt.Sprintf("Setting up fixture for: %s", data.Name))
 
 		resp, err := fxt.makeRequest(data)
