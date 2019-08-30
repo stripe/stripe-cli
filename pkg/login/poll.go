@@ -25,7 +25,7 @@ type PollAPIKeyResponse struct {
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
-func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (PollAPIKeyResponse, *Account, error) {
+func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollAPIKeyResponse, *Account, error) {
 	var response PollAPIKeyResponse
 
 	if maxAttempts == 0 {
@@ -38,7 +38,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (PollAP
 
 	parsedURL, err := url.Parse(pollURL)
 	if err != nil {
-		return response, nil, err
+		return nil, nil, err
 	}
 
 	baseURL := &url.URL{Scheme: parsedURL.Scheme, Host: parsedURL.Host}
@@ -51,22 +51,22 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (PollAP
 	for count < maxAttempts {
 		res, err := client.PerformRequest(http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
 		if err != nil {
-			return response, nil, err
+			return nil, nil, err
 		}
 		defer res.Body.Close()
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			return response, nil, err
+			return nil, nil, err
 		}
 
 		if res.StatusCode != http.StatusOK {
-			return response, nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
+			return nil, nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
 		}
 
 		jsonErr := json.Unmarshal(bodyBytes, &response)
 		if jsonErr != nil {
-			return response, nil, jsonErr
+			return nil, nil, jsonErr
 		}
 
 		if response.Redeemed {
@@ -76,7 +76,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (PollAP
 
 			account.Settings.Dashboard.DisplayName = response.AccountDisplayName
 
-			return response, account, nil
+			return &response, account, nil
 		}
 
 		count++
@@ -84,5 +84,5 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (PollAP
 
 	}
 
-	return response, nil, errors.New("exceeded max attempts")
+	return nil, nil, errors.New("exceeded max attempts")
 }

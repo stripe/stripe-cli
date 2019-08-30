@@ -95,8 +95,7 @@ func TestExceedMaxAttempts(t *testing.T) {
 
 	response, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "exceeded max attempts")
-	require.Empty(t, response.TestModeAPIKey)
-	require.Empty(t, response.TestModePublishableKey)
+	require.Nil(t, response)
 	require.Empty(t, account)
 	require.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
 }
@@ -115,8 +114,7 @@ func TestHTTPStatusError(t *testing.T) {
 
 	response, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "unexpected http status code: 500 ")
-	require.Empty(t, response.TestModeAPIKey)
-	require.Empty(t, response.TestModePublishableKey)
+	require.Nil(t, response)
 	require.Nil(t, account)
 	require.Equal(t, uint64(1), atomic.LoadUint64(&attempts))
 }
@@ -129,7 +127,6 @@ func TestHTTPRequestError(t *testing.T) {
 	response, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "connect: connection refused")
-	require.Empty(t, response.TestModeAPIKey)
-	require.Empty(t, response.TestModeAPIKey)
+	require.Nil(t, response)
 	require.Nil(t, account)
 }
