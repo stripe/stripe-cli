@@ -345,10 +345,10 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 	publishableKey := s.Config.Profile.GetPublishableKey()
 	if publishableKey == "" {
-		fmt.Println("We could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time.")
+		return fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
 	}
 
-	apiKey, err := s.Config.Profile.GetAPIKey()
+	apiKey, err := s.Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}
