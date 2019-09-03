@@ -102,7 +102,11 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 // GetPublishableKey returns the publishable key for the user
 func (p *Profile) GetPublishableKey() string {
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("publishable_key"))
+		if viper.IsSet(p.GetConfigField("publishable_key")) {
+			p.RegisterAlias("publishable_key", "test_mode_publishable_key")
+		}
+
+		return viper.GetString(p.GetConfigField("test_mode_publishable_key"))
 	}
 
 	return ""
