@@ -10,12 +10,18 @@ import (
 	"github.com/thedevsaddam/gojsonq"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
+// SupportedVersions is the version number of the fixture template the CLI supports
+const SupportedVersions = 0
+
+type metaFixture struct {
+	Version int `json:"_version"`
+}
+
 type fixtureFile struct {
-	meta     map[string]string `json:"_meta"`
-	fixtures []fixture         `json:"fixtures"`
+	Meta     metaFixture `json:"_meta"`
+	Fixtures []fixture   `json:"fixtures"`
 }
 
 type fixture struct {
@@ -28,44 +34,48 @@ type fixture struct {
 type Fixture struct {
 	Fs        afero.Fs
 	APIKey    string
+	BaseURL   string
 	responses map[string]*gojsonq.JSONQ
 }
 
 // NewFixture foo
-func (fxt *Fixture) NewFixture(file string) (Fixture, error) {
+func (fxt *Fixture) NewFixture(file string) error {
 	var fixture fixtureFile
 	fxt.responses = make(map[string]*gojsonq.JSONQ)
 
 	filedata, err := afero.ReadFile(fxt.Fs, file)
 	if err != nil {
-		return Fixture{}, err
+		return err
 	}
 
 	err = json.Unmarshal(filedata, &fixture)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
-	for _, data := range fixture.fixtures {
+	if fixture.Meta.Version > SupportedVersions {
+		return fmt.Errorf("Fixture version not supported: %s", string(fixture.Meta.Version))
+	}
+
+	for _, data := range fixture.Fixtures {
 		fmt.Println(fmt.Sprintf("Setting up fixture for: %s", data.Name))
 
 		resp, err := fxt.makeRequest(data)
 		if err != nil {
-			fmt.Println(err)
-			return Fixture{}, err
+			return err
 		}
 
-		fxt.responses[data.Name] = gojsonq.New().JSONString(string(resp))
+		fxt.responses[data.Name] = gojsonq.New().FromString(string(resp))
 	}
 
-	return Fixture{}, nil
+	return nil
 }
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 	req := requests.Base{
 		Method:         strings.ToUpper(data.HTTP["method"]),
 		SuppressOutput: true,
-		APIBaseURL:     stripe.DefaultAPIBaseURL,
+		APIBaseURL:     fxt.BaseURL,
 	}
 	return req.MakeRequest(fxt.APIKey, data.HTTP["path"], fxt.createParams(data.Data))
 }

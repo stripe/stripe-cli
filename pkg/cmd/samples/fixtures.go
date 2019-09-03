@@ -6,6 +6,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	s "github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // FixturesCmd prints a list of all the available sample projects that users can
@@ -38,8 +39,9 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	fixture := s.Fixture{
-		Fs:     afero.NewOsFs(),
-		APIKey: apiKey,
+		Fs:      afero.NewOsFs(),
+		APIKey:  apiKey,
+		BaseURL: stripe.DefaultAPIBaseURL,
 	}
 	fixture.NewFixture(args[0])
 
