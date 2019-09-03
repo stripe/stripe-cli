@@ -99,6 +99,15 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	return "", errors.New("your API key has not been configured. Use `stripe login` to set your API key")
 }
 
+// GetPublishableKey returns the publishable key for the user
+func (p *Profile) GetPublishableKey() string {
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetString(p.GetConfigField("publishable_key"))
+	}
+
+	return ""
+}
+
 // GetConfigField returns the configuration field for the specific profile
 func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field
