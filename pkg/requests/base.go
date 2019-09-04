@@ -33,7 +33,7 @@ func (r *RequestParameters) AppendData(data []string) {
 	r.data = append(r.data, data...)
 }
 
-// Base does stuff
+// Base encapsulates the required information needed to make requests to the API
 type Base struct {
 	Cmd *cobra.Command
 
@@ -49,6 +49,8 @@ type Base struct {
 
 	autoConfirm bool
 	showHeaders bool
+
+	livemode bool
 }
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
@@ -67,14 +69,14 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	secretKey, err := rb.Profile.GetAPIKey(false)
+	apiKey, err := rb.Profile.GetAPIKey(rb.livemode)
 	if err != nil {
 		return err
 	}
 
 	path := normalizePath(args[0])
 
-	_, err = rb.MakeRequest(secretKey, path, &rb.Parameters)
+	_, err = rb.MakeRequest(apiKey, path, &rb.Parameters)
 
 	return err
 }
@@ -90,6 +92,7 @@ func (rb *Base) InitFlags(includeData bool) {
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
+	rb.Cmd.Flags().BoolVar(&rb.livemode, "livemode", false, "Make a request against live mode instead of test mode")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
@@ -104,7 +107,7 @@ func (rb *Base) InitFlags(includeData bool) {
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) ([]byte, error) {
+func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -112,7 +115,7 @@ func (rb *Base) MakeRequest(secretKey, path string, params *RequestParameters) (
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey:  secretKey,
+		APIKey:  apiKey,
 		Verbose: rb.showHeaders,
 	}
 
