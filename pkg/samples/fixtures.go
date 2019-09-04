@@ -3,7 +3,9 @@ package samples
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/afero"
@@ -19,18 +21,24 @@ type metaFixture struct {
 	Version int `json:"_version"`
 }
 
+type fixtureHTTP struct {
+	Path   string            `json:"path"`
+	Method string            `json:"method"`
+	Params map[string]string `json:"params"`
+}
+
 type fixtureFile struct {
 	Meta     metaFixture `json:"_meta"`
 	Fixtures []fixture   `json:"fixtures"`
 }
 
 type fixture struct {
-	Name string            `json:"name"`
-	HTTP map[string]string `json:"http"`
-	Data interface{}       `json:"data"`
+	Name string      `json:"name"`
+	HTTP fixtureHTTP `json:"http"`
+	Data interface{} `json:"data"`
 }
 
-// Fixture foo
+// Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
 	Fs        afero.Fs
 	APIKey    string
@@ -38,7 +46,7 @@ type Fixture struct {
 	responses map[string]*gojsonq.JSONQ
 }
 
-// NewFixture foo
+// NewFixture creates and executes a fixtures steps for populating test data
 func (fxt *Fixture) NewFixture(file string) error {
 	var fixture fixtureFile
 	fxt.responses = make(map[string]*gojsonq.JSONQ)
@@ -73,11 +81,39 @@ func (fxt *Fixture) NewFixture(file string) error {
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 	req := requests.Base{
-		Method:         strings.ToUpper(data.HTTP["method"]),
+		Method:         strings.ToUpper(data.HTTP.Method),
 		SuppressOutput: true,
 		APIBaseURL:     fxt.BaseURL,
 	}
-	return req.MakeRequest(fxt.APIKey, data.HTTP["path"], fxt.createParams(data.Data))
+
+	path := fxt.parsePath(data.HTTP)
+
+	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Data))
+}
+
+func (fxt *Fixture) parsePath(http fixtureHTTP) string {
+	if strings.Contains(http.Path, ":") {
+		var newPath []string
+
+		r := regexp.MustCompile(`(:[a-z0-9]+)`)
+		matches := r.FindAllStringSubmatch(http.Path, -1)
+		pathParts := r.Split(http.Path, -1)
+
+		for i, match := range matches {
+			query := http.Params[match[0]]
+			value := fxt.parseQuery(query)
+			newPath = append(newPath, pathParts[i])
+			newPath = append(newPath, value)
+		}
+
+		if len(pathParts)%2 == 0 {
+			newPath = append(newPath, pathParts[len(pathParts)-1])
+		}
+
+		return path.Join(newPath...)
+	}
+
+	return http.Path
 }
 
 func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters {
@@ -175,6 +211,10 @@ func (fxt *Fixture) parseQuery(value string) string {
 	if strings.HasPrefix(value, "#$") && strings.Contains(value, ":") {
 		nameAndQuery := strings.SplitN(value, ":", 2)
 		name := strings.TrimLeft(nameAndQuery[0], "#$")
+
+		// Reset just in case someone else called a query here
+		fxt.responses[name].Reset()
+
 		query := nameAndQuery[1]
 		return fxt.responses[name].Find(query).(string)
 	}
