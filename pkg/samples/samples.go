@@ -397,10 +397,11 @@ func (s *Samples) destinationName(i int) string {
 	return ""
 }
 
+// Cleanup performs cleanup for the recently created sample
 func (s *Samples) Cleanup(name string) error {
 	fmt.Println("Cleaning up...")
 
-	return s.Delete(name)
+	return s.delete(name)
 }
 
 func (s *Samples) destinationPath(target string, integration string, folder string) string {

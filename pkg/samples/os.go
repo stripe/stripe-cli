@@ -92,8 +92,7 @@ func (s *Samples) GetFiles(path string) ([]string, error) {
 	return file, nil
 }
 
-// Delete performs cleanup for the recently created sample
-func (s *Samples) Delete(name string) error {
+func (s *Samples) delete(name string) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
