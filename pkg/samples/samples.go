@@ -32,6 +32,22 @@ var fileEnvTemplate = map[string]func(string) string{
 	".rb":   rbPath,
 }
 
+var languageDisplayNames = map[string]string{
+	"java":   "Java",
+	"node":   "Node",
+	"python": "Python",
+	"php":    "PHP",
+	"ruby":   "Ruby",
+}
+
+var displayNameLanguages = map[string]string{
+	"Java":   "java",
+	"Node":   "node",
+	"Python": "python",
+	"PHP":    "php",
+	"Ruby":   "ruby",
+}
+
 func javaPath(path string) string {
 	return fmt.Sprintf(`String ENV_PATH = "%s/";`, path)
 }
@@ -428,11 +444,29 @@ func selectOptions(label string, options []string) (string, error) {
 }
 
 func languageSelectPrompt(languages []string) (string, error) {
-	return selectOptions("What language would you like to use?", languages)
+	var displayLangs []string
+	for _, lang := range languages {
+		if val, ok := languageDisplayNames[lang]; ok {
+			displayLangs = append(displayLangs, val)
+		} else {
+			displayLangs = append(displayLangs, lang)
+		}
+	}
+
+	selected, err := selectOptions("What language would you like to use", displayLangs)
+	if err != nil {
+		return "", err
+	}
+
+	if val, ok := displayNameLanguages[selected]; ok {
+		return val, nil
+	}
+
+	return selected, nil
 }
 
 func integrationSelectPrompt(integrations []string) ([]string, error) {
-	selected, err := selectOptions("What type of integration would you like to use?", append(integrations, "all"))
+	selected, err := selectOptions("What type of integration would you like to use", append(integrations, "all"))
 	if err != nil {
 		return []string{}, err
 	}
