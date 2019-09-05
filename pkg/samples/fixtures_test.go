@@ -23,11 +23,9 @@ const testFixture = `
 	"fixtures": [
 		{
 			"name": "cust_bender",
-			"http": {
-				"path": "/v1/customers",
-				"method": "post"
-			},
-			"data": {
+			"path": "/v1/customers",
+			"method": "post",
+			"params": {
 				"name": "Bender Bending Rodriguez",
 				"email": "bender@planex.com",
 				"address": {
@@ -38,12 +36,10 @@ const testFixture = `
 		},
 		{
 			"name": "char_bender",
-			"http": {
-				"path": "/v1/charges",
-				"method": "post"
-			},
-			"data": {
-				"customer": "#$cust_bender:id",
+			"path": "/v1/charges",
+			"method": "post",
+			"params": {
+				"customer": "${cust_bender:id}",
 				"source": "tok_visa",
 				"amount": "100",
 				"currency": "usd",
@@ -52,13 +48,8 @@ const testFixture = `
 		},
 		{
 			"name": "capt_bender",
-			"http": {
-				"path": "/v1/charges/:charge/capture",
-				"method": "post",
-				"params": {
-					":charge": "#$char_bender:id"
-				}
-			}
+			"path": "/v1/charges/${char_bender:id}/capture",
+			"method": "post"
 		}
 	]
 }`
@@ -93,7 +84,7 @@ func TestParseWithQuery(t *testing.T) {
 	fxt.responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
-	data["customer"] = "#$cust_bender:id"
+	data["customer"] = "${cust_bender:id}"
 	data["source"] = "tok_visa"
 	data["amount"] = "100"
 	data["currency"] = "usd"
@@ -102,10 +93,10 @@ func TestParseWithQuery(t *testing.T) {
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
-	require.Equal(t, output[0], "amount=100")
-	require.Equal(t, output[1], "currency=usd")
-	require.Equal(t, output[2], "customer=cust_bend123456789")
-	require.Equal(t, output[3], "source=tok_visa")
+	require.Equal(t, "amount=100", output[0])
+	require.Equal(t, "currency=usd", output[1])
+	require.Equal(t, "customer=cust_bend123456789", output[2])
+	require.Equal(t, "source=tok_visa", output[3])
 }
 
 func TestMakeRequest(t *testing.T) {
@@ -152,7 +143,7 @@ func TestMakeRequest(t *testing.T) {
 
 func TestParsePathDoNothing(t *testing.T) {
 	fxt := Fixture{}
-	http := fixtureHTTP{
+	http := fixture{
 		Path: "/v1/charges",
 	}
 
@@ -166,11 +157,8 @@ func TestParseOneParam(t *testing.T) {
 			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixtureHTTP{
-		Path: "/v1/charges/:charge",
-		Params: map[string]string{
-			":charge": "#$char_bender:id",
-		},
+	http := fixture{
+		Path: "/v1/charges/${char_bender:id}",
 	}
 
 	path := fxt.parsePath(http)
@@ -183,11 +171,8 @@ func TestParseOneParamWithTrailing(t *testing.T) {
 			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
 		},
 	}
-	http := fixtureHTTP{
-		Path: "/v1/charges/:charge/capture",
-		Params: map[string]string{
-			":charge": "#$char_bender:id",
-		},
+	http := fixture{
+		Path: "/v1/charges/${char_bender:id}/capture",
 	}
 
 	path := fxt.parsePath(http)
@@ -201,12 +186,8 @@ func TestParseTwoParam(t *testing.T) {
 			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixtureHTTP{
-		Path: "/v1/charges/:charge/capture/:cust",
-		Params: map[string]string{
-			":charge": "#$char_bender:id",
-			":cust":   "#$cust_bender:id",
-		},
+	http := fixture{
+		Path: "/v1/charges/${char_bender:id}/capture/${cust_bender:id}",
 	}
 
 	path := fxt.parsePath(http)
@@ -228,8 +209,8 @@ func TestUpdateEnv(t *testing.T) {
 	afero.WriteFile(fs, filepath.Join(wd, ".env"), []byte(``), os.ModePerm)
 
 	envMapping := map[string]string{
-		"CHAR_ID": "#$char_bender:id",
-		"CUST_ID": "#$char_bender:id",
+		"CHAR_ID": "${char_bender:id}",
+		"CUST_ID": "${char_bender:id}",
 	}
 
 	err := fxt.updateEnv(envMapping)

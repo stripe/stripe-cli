@@ -25,12 +25,6 @@ type metaFixture struct {
 	Version int `json:"_version"`
 }
 
-type fixtureHTTP struct {
-	Path   string            `json:"path"`
-	Method string            `json:"method"`
-	Params map[string]string `json:"params"`
-}
-
 type fixtureFile struct {
 	Meta     metaFixture       `json:"_meta"`
 	Fixtures []fixture         `json:"fixtures"`
@@ -38,9 +32,10 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name string      `json:"name"`
-	HTTP fixtureHTTP `json:"http"`
-	Data interface{} `json:"data"`
+	Name   string      `json:"name"`
+	Path   string      `json:"path"`
+	Method string      `json:"method"`
+	Params interface{} `json:"params"`
 }
 
 // Fixture contains a mapping of an individual fixtures responses for querying
@@ -90,35 +85,34 @@ func (fxt *Fixture) NewFixture(file string) error {
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 	var rp requests.RequestParameters
-	if data.HTTP.Method == "post" {
+	if data.Method == "post" {
 		now := time.Now().String()
 		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
 		rp.AppendData([]string{metadata})
 	}
 
 	req := requests.Base{
-		Method:         strings.ToUpper(data.HTTP.Method),
+		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,
 		APIBaseURL:     fxt.BaseURL,
 		Parameters:     rp,
 	}
 
-	path := fxt.parsePath(data.HTTP)
+	path := fxt.parsePath(data)
 
-	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Data))
+	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params))
 }
 
-func (fxt *Fixture) parsePath(http fixtureHTTP) string {
-	if strings.Contains(http.Path, ":") {
+func (fxt *Fixture) parsePath(http fixture) string {
+	r := regexp.MustCompile(`(\${[\w-]+:[\w-\.]+})`)
+	if r.Match([]byte(http.Path)) {
 		var newPath []string
 
-		r := regexp.MustCompile(`(:[a-z0-9]+)`)
 		matches := r.FindAllStringSubmatch(http.Path, -1)
 		pathParts := r.Split(http.Path, -1)
 
 		for i, match := range matches {
-			query := http.Params[match[0]]
-			value := fxt.parseQuery(query)
+			value := fxt.parseQuery(match[0])
 			newPath = append(newPath, pathParts[i])
 			newPath = append(newPath, value)
 		}
@@ -225,14 +219,15 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string) []string {
 func (fxt *Fixture) parseQuery(value string) string {
 	// Queries to fill data will start with #$ and contain a : -- search for both
 	// to make sure that we're trying to parse a query
-	if strings.HasPrefix(value, "#$") && strings.Contains(value, ":") {
-		nameAndQuery := strings.SplitN(value, ":", 2)
-		name := strings.TrimLeft(nameAndQuery[0], "#$")
+	r := regexp.MustCompile(`\${(.+):(.+)}`)
+	if r.Match([]byte(value)) {
+		nameAndQuery := r.FindStringSubmatch(value)
+		name := nameAndQuery[1]
 
 		// Reset just in case someone else called a query here
 		fxt.responses[name].Reset()
 
-		query := nameAndQuery[1]
+		query := nameAndQuery[2]
 		return fxt.responses[name].Find(query).(string)
 	}
 
