@@ -38,13 +38,12 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fixture := s.Fixture{
-		Fs:      afero.NewOsFs(),
-		APIKey:  apiKey,
-		BaseURL: stripe.DefaultAPIBaseURL,
-	}
-
-	err = fixture.NewFixture(args[0])
+	fixture, err := s.NewFixture(
+		afero.NewOsFs(),
+		apiKey,
+		stripe.DefaultAPIBaseURL,
+		args[0],
+	)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ import (
 const testFixture = `
 {
 	"_meta": {
-		"template_version": "0"
+		"template_version": 0
 	},
 	"fixtures": [
 		{
@@ -117,13 +117,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt := Fixture{
-		Fs:      fs,
-		BaseURL: ts.URL,
-		APIKey:  "sk_test_1234",
-	}
-
-	err := fxt.NewFixture("test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", ts.URL, "test_fixture.json")
 	require.Nil(t, err)
 
 	err = fxt.Execute()

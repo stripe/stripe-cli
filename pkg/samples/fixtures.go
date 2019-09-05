@@ -22,7 +22,8 @@ import (
 const SupportedVersions = 0
 
 type metaFixture struct {
-	Version int `json:"_version"`
+	Version         int  `json:"template_version"`
+	ExcludeMetadata bool `json:"exclude_metadata"`
 }
 
 type fixtureFile struct {
@@ -47,25 +48,30 @@ type Fixture struct {
 	fixture   fixtureFile
 }
 
-// NewFixture creates and executes a fixtures steps for populating test data
-func (fxt *Fixture) NewFixture(file string) error {
-	fxt.responses = make(map[string]*gojsonq.JSONQ)
+// NewFixture creates a to later run steps for populating test data
+func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
+	fxt := Fixture{
+		Fs:        fs,
+		APIKey:    apiKey,
+		BaseURL:   baseURL,
+		responses: make(map[string]*gojsonq.JSONQ),
+	}
 
 	filedata, err := afero.ReadFile(fxt.Fs, file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = json.Unmarshal(filedata, &fxt.fixture)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if fxt.fixture.Meta.Version > SupportedVersions {
-		return fmt.Errorf("Fixture version not supported: %s", string(fxt.fixture.Meta.Version))
+		return nil, fmt.Errorf("Fixture version not supported: %s", string(fxt.fixture.Meta.Version))
 	}
 
-	return nil
+	return &fxt, nil
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
@@ -97,7 +103,7 @@ func (fxt *Fixture) UpdateEnv() error {
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 	var rp requests.RequestParameters
-	if data.Method == "post" {
+	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
 		now := time.Now().String()
 		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
 		rp.AppendData([]string{metadata})
