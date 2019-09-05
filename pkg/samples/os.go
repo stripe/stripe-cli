@@ -92,6 +92,20 @@ func (s *Samples) GetFiles(path string) ([]string, error) {
 	return file, nil
 }
 
+func (s *Samples) delete(name string) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	appFolder := filepath.Join(dir, name)
+	if exists, _ := afero.Exists(s.Fs, appFolder); exists {
+		return s.Fs.RemoveAll(appFolder)
+	}
+
+	return nil
+}
+
 func folderSearch(folders []string, name string) bool {
 	for _, folder := range folders {
 		if folder == name {

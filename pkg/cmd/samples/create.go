@@ -3,6 +3,7 @@ package samples
 import (
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -47,7 +48,13 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	}
 	selectedSample := args[0]
 
+	exists, _ := afero.DirExists(sample.Fs, selectedSample)
+	if exists {
+		return fmt.Errorf("Path already exists for: %s", selectedSample)
+	}
+
 	spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
+
 	// Initialize the selected sample in the local cache directory.
 	// This will either clone or update the specified sample,
 	// depending on whether or not it's. Additionally, this
@@ -81,8 +88,18 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Setup to intercept ctrl+c
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		<-c
+		sample.Cleanup(selectedSample)
+		os.Exit(1)
+	}()
+
 	// Create the target folder to copy the sample in to. We do
-	/// this here in case any of the steps above fail, minimizing
+	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
 	targetPath, err := sample.MakeFolder(selectedSample)
 	if err != nil {

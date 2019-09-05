@@ -179,11 +179,19 @@ func (s *Samples) loadLanguages() error {
 // SelectOptions prompts the user to select the integration they want to use
 // (if available) and the language they want the integration to be.
 func (s *Samples) SelectOptions() error {
+	var err error
+
 	if s.isIntegration {
-		s.integration = integrationSelectPrompt(s.integrations)
+		s.integration, err = integrationSelectPrompt(s.integrations)
+		if err != nil {
+			return err
+		}
 	}
 
-	s.language = languageSelectPrompt(s.languages)
+	s.language, err = languageSelectPrompt(s.languages)
+	if err != nil {
+		return err
+	}
 
 	if s.isIntegration {
 		fmt.Println("Setting up", ansi.Bold(s.language), "for", ansi.Bold(strings.Join(s.integration, ",")))
@@ -389,6 +397,13 @@ func (s *Samples) destinationName(i int) string {
 	return ""
 }
 
+// Cleanup performs cleanup for the recently created sample
+func (s *Samples) Cleanup(name string) error {
+	fmt.Println("Cleaning up...")
+
+	return s.delete(name)
+}
+
 func (s *Samples) destinationPath(target string, integration string, folder string) string {
 	if len(s.integration) <= 1 {
 		return filepath.Join(target, folder)
@@ -397,7 +412,7 @@ func (s *Samples) destinationPath(target string, integration string, folder stri
 	return filepath.Join(target, integration, folder)
 }
 
-func selectOptions(label string, options []string) string {
+func selectOptions(label string, options []string) (string, error) {
 	prompt := promptui.Select{
 		Label: label,
 		Items: options,
@@ -406,24 +421,27 @@ func selectOptions(label string, options []string) string {
 	_, result, err := prompt.Run()
 
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return ""
+		return "", err
 	}
 
-	return result
+	return result, nil
 }
 
-func languageSelectPrompt(languages []string) string {
+func languageSelectPrompt(languages []string) (string, error) {
 	return selectOptions("What language would you like to use?", languages)
 }
 
-func integrationSelectPrompt(integrations []string) []string {
-	selected := selectOptions("What type of integration would you like to use?", append(integrations, "all"))
-	if selected == "all" {
-		return integrations
+func integrationSelectPrompt(integrations []string) ([]string, error) {
+	selected, err := selectOptions("What type of integration would you like to use?", append(integrations, "all"))
+	if err != nil {
+		return []string{}, err
 	}
 
-	return []string{selected}
+	if selected == "all" {
+		return integrations, nil
+	}
+
+	return []string{selected}, nil
 }
 
 func fileWhitelist(path string) bool {
