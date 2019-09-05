@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -210,4 +211,32 @@ func TestParseTwoParam(t *testing.T) {
 
 	path := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
+}
+
+func TestUpdateEnv(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	fxt := Fixture{
+		Fs: fs,
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
+			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+
+	wd, _ := os.Getwd()
+	fs.MkdirAll(wd, os.ModePerm)
+	afero.WriteFile(fs, filepath.Join(wd, ".env"), []byte(``), os.ModePerm)
+
+	envMapping := map[string]string{
+		"CHAR_ID": "#$char_bender:id",
+		"CUST_ID": "#$char_bender:id",
+	}
+
+	err := fxt.updateEnv(envMapping)
+	assert.Nil(t, err)
+
+	expected := `CHAR_ID="char_12345"
+CUST_ID="char_12345"`
+	output, _ := afero.ReadFile(fs, filepath.Join(wd, ".env"))
+	assert.Equal(t, expected, string(output))
 }

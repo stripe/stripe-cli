@@ -3,11 +3,14 @@ package samples
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/afero"
 	"github.com/thedevsaddam/gojsonq"
 
@@ -28,8 +31,9 @@ type fixtureHTTP struct {
 }
 
 type fixtureFile struct {
-	Meta     metaFixture `json:"_meta"`
-	Fixtures []fixture   `json:"fixtures"`
+	Meta     metaFixture       `json:"_meta"`
+	Fixtures []fixture         `json:"fixtures"`
+	Env      map[string]string `json:"env"`
 }
 
 type fixture struct {
@@ -74,6 +78,10 @@ func (fxt *Fixture) NewFixture(file string) error {
 		}
 
 		fxt.responses[data.Name] = gojsonq.New().FromString(string(resp))
+	}
+
+	if len(fixture.Env) > 0 {
+		fxt.updateEnv(fixture.Env)
 	}
 
 	return nil
@@ -220,4 +228,40 @@ func (fxt *Fixture) parseQuery(value string) string {
 	}
 
 	return value
+}
+
+func (fxt *Fixture) updateEnv(env map[string]string) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	envFile := filepath.Join(dir, ".env")
+	exists, _ := afero.Exists(fxt.Fs, envFile)
+	if !exists {
+		// If there is no .env in the current directory, return and do nothing
+		return nil
+	}
+
+	file, err := fxt.Fs.Open(envFile)
+	if err != nil {
+		return err
+	}
+
+	dotenv, err := godotenv.Parse(file)
+	if err != nil {
+		return err
+	}
+
+	for key, value := range env {
+		dotenv[key] = fxt.parseQuery(value)
+	}
+
+	content, err := godotenv.Marshal(dotenv)
+	if err != nil {
+		return err
+	}
+	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
+
+	return nil
 }
