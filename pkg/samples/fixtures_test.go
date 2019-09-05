@@ -126,6 +126,9 @@ func TestMakeRequest(t *testing.T) {
 	err := fxt.NewFixture("test_fixture.json")
 	require.Nil(t, err)
 
+	err = fxt.Execute()
+	require.Nil(t, err)
+
 	require.NotNil(t, fxt.responses["cust_bender"])
 	require.NotNil(t, fxt.responses["char_bender"])
 	require.NotNil(t, fxt.responses["capt_bender"])

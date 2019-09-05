@@ -43,7 +43,21 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		APIKey:  apiKey,
 		BaseURL: stripe.DefaultAPIBaseURL,
 	}
-	fixture.NewFixture(args[0])
+
+	err = fixture.NewFixture(args[0])
+	if err != nil {
+		return err
+	}
+
+	err = fixture.Execute()
+	if err != nil {
+		return err
+	}
+
+	err = fixture.UpdateEnv()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

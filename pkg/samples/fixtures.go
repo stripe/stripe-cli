@@ -44,11 +44,11 @@ type Fixture struct {
 	APIKey    string
 	BaseURL   string
 	responses map[string]*gojsonq.JSONQ
+	fixture   fixtureFile
 }
 
 // NewFixture creates and executes a fixtures steps for populating test data
 func (fxt *Fixture) NewFixture(file string) error {
-	var fixture fixtureFile
 	fxt.responses = make(map[string]*gojsonq.JSONQ)
 
 	filedata, err := afero.ReadFile(fxt.Fs, file)
@@ -56,16 +56,22 @@ func (fxt *Fixture) NewFixture(file string) error {
 		return err
 	}
 
-	err = json.Unmarshal(filedata, &fixture)
+	err = json.Unmarshal(filedata, &fxt.fixture)
 	if err != nil {
 		return err
 	}
 
-	if fixture.Meta.Version > SupportedVersions {
-		return fmt.Errorf("Fixture version not supported: %s", string(fixture.Meta.Version))
+	if fxt.fixture.Meta.Version > SupportedVersions {
+		return fmt.Errorf("Fixture version not supported: %s", string(fxt.fixture.Meta.Version))
 	}
 
-	for _, data := range fixture.Fixtures {
+	return nil
+}
+
+// Execute takes the parsed fixture file and runs through all the requests
+// defined to populate the user's account
+func (fxt *Fixture) Execute() error {
+	for _, data := range fxt.fixture.Fixtures {
 		fmt.Println(fmt.Sprintf("Setting up fixture for: %s", data.Name))
 
 		resp, err := fxt.makeRequest(data)
@@ -76,8 +82,14 @@ func (fxt *Fixture) NewFixture(file string) error {
 		fxt.responses[data.Name] = gojsonq.New().FromString(string(resp))
 	}
 
-	if len(fixture.Env) > 0 {
-		fxt.updateEnv(fixture.Env)
+	return nil
+}
+
+// UpdateEnv uses the results of the fixtures command just executed and
+// updates a local .env with the resulting data
+func (fxt *Fixture) UpdateEnv() error {
+	if len(fxt.fixture.Env) > 0 {
+		return fxt.updateEnv(fxt.fixture.Env)
 	}
 
 	return nil
