@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/afero"
@@ -88,10 +89,18 @@ func (fxt *Fixture) NewFixture(file string) error {
 }
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
+	var rp requests.RequestParameters
+	if data.HTTP.Method == "post" {
+		now := time.Now().String()
+		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
+		rp.AppendData([]string{metadata})
+	}
+
 	req := requests.Base{
 		Method:         strings.ToUpper(data.HTTP.Method),
 		SuppressOutput: true,
 		APIBaseURL:     fxt.BaseURL,
+		Parameters:     rp,
 	}
 
 	path := fxt.parsePath(data.HTTP)
