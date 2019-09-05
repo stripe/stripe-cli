@@ -40,13 +40,7 @@ var languageDisplayNames = map[string]string{
 	"ruby":   "Ruby",
 }
 
-var displayNameLanguages = map[string]string{
-	"Java":   "java",
-	"Node":   "node",
-	"Python": "python",
-	"PHP":    "php",
-	"Ruby":   "ruby",
-}
+var displayNameLanguages = reverseStringMap(languageDisplayNames)
 
 func javaPath(path string) string {
 	return fmt.Sprintf(`String ENV_PATH = "%s/";`, path)
@@ -63,6 +57,16 @@ func phpPath(path string) string {
 
 func rbPath(path string) string {
 	return fmt.Sprintf(`ENV_PATH = '%s/.env'.freeze`, path)
+}
+
+func reverseStringMap(m map[string]string) map[string]string {
+	rm := make(map[string]string, len(m))
+
+	for key, value := range m {
+		rm[value] = key
+	}
+
+	return rm
 }
 
 // Samples stores the information for the selected sample in addition to the
