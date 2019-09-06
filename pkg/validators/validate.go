@@ -54,10 +54,6 @@ func APIKey(input string) error {
 		return errors.New("the CLI only supports using a secret or restricted key")
 	}
 
-	if keyParts[1] != "test" {
-		return errors.New("the CLI only supports using a test mode key")
-	}
-
 	return nil
 }
 

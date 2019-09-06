@@ -20,6 +20,8 @@ type PollAPIKeyResponse struct {
 	Redeemed               bool   `json:"redeemed"`
 	AccountID              string `json:"account_id"`
 	AccountDisplayName     string `json:"account_display_name"`
+	LiveModeAPIKey         string `json:"livemode_key_secret"`
+	LiveModePublishableKey string `json:"livemode_key_publishable"`
 	TestModeAPIKey         string `json:"testmode_key_secret"`
 	TestModePublishableKey string `json:"testmode_key_publishable"`
 }

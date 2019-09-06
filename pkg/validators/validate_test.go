@@ -19,7 +19,7 @@ func TestPublishableAPIKey(t *testing.T) {
 
 func TestLivemodeAPIKey(t *testing.T) {
 	err := APIKey("sk_live_12345")
-	require.EqualError(t, err, "the CLI only supports using a test mode key")
+	require.Nil(t, err)
 }
 
 func TestTestmodeAPIKey(t *testing.T) {

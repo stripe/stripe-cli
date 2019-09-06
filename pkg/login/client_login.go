@@ -66,6 +66,8 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 		return validateErr
 	}
 
+	config.Profile.LiveModeAPIKey = response.LiveModeAPIKey
+	config.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 	config.Profile.TestModeAPIKey = response.TestModeAPIKey
 	config.Profile.TestModePublishableKey = response.TestModePublishableKey
 	profileErr := config.Profile.CreateProfile()
