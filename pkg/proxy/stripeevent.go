@@ -9,9 +9,10 @@ import "fmt"
 // stripeEvent is a minimal representation of a Stripe `event` object, used
 // to extract the event's ID and type for logging purposes.
 type stripeEvent struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Account string `json:"account"`
+	Account  string `json:"account"`
+	ID       string `json:"id"`
+	Livemode bool   `json:"livemode"`
+	Type     string `json:"type"`
 }
 
 func (e *stripeEvent) isConnect() bool {
@@ -19,21 +20,23 @@ func (e *stripeEvent) isConnect() bool {
 }
 
 func (e *stripeEvent) urlForEventID() string {
-	url := ""
-	if e.isConnect() {
-		url = fmt.Sprintf("https://dashboard.stripe.com/%s/test/events/%s", e.Account, e.ID)
-	} else {
-		url = fmt.Sprintf("https://dashboard.stripe.com/test/events/%s", e.ID)
-	}
-	return url
+	return fmt.Sprintf("%s/events/%s", baseDashboardURL(e.Livemode, e.Account), e.ID)
 }
 
 func (e *stripeEvent) urlForEventType() string {
-	url := ""
-	if e.isConnect() {
-		url = fmt.Sprintf("https://dashboard.stripe.com/%s/test/events?type=%s", e.Account, e.Type)
-	} else {
-		url = fmt.Sprintf("https://dashboard.stripe.com/test/events?type=%s", e.Type)
+	return fmt.Sprintf("%s/events?type=%s", baseDashboardURL(e.Livemode, e.Account), e.Type)
+}
+
+func baseDashboardURL(livemode bool, account string) string {
+	maybeTest := ""
+	if !livemode {
+		maybeTest = "/test"
 	}
-	return url
+
+	maybeAccount := ""
+	if account != "" {
+		maybeAccount = fmt.Sprintf("/%s", account)
+	}
+
+	return fmt.Sprintf("https://dashboard.stripe.com%s%s", maybeAccount, maybeTest)
 }

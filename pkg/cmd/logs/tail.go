@@ -20,6 +20,7 @@ type TailCmd struct {
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
+	livemode   bool
 	LogFilters *logTailing.LogFilters
 	noWSS      bool
 }
@@ -51,6 +52,13 @@ Watch for all request logs sent from Stripe:
 		`Specifies the output format of request logs
 Acceptable values:
 	'JSON' - Output logs in JSON format`,
+	)
+
+	tailCmd.Cmd.Flags().BoolVar(
+		&tailCmd.livemode,
+		"livemode",
+		false,
+		"Tail live mode logs (default: test mode)",
 	)
 
 	// Log filters
@@ -132,7 +140,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	key, err := tailCmd.cfg.Profile.GetAPIKey(false)
+	key, err := tailCmd.cfg.Profile.GetAPIKey(tailCmd.livemode)
 	if err != nil {
 		return err
 	}
