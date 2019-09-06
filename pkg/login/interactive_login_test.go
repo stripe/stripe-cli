@@ -30,19 +30,6 @@ func TestAPIKeyInputEmpty(t *testing.T) {
 	require.EqualError(t, err, expectedErrorString)
 }
 
-func TestAPIKeyInputLivemode(t *testing.T) {
-	expectedKey := ""
-	livemodeKey := "sk_live_foo123"
-	expectedErrorString := "the CLI only supports using a test mode key"
-
-	keyInput := strings.NewReader(livemodeKey + "\n")
-	actualKey, err := getConfigureAPIKey(keyInput)
-
-	require.Equal(t, expectedKey, actualKey)
-	require.NotNil(t, err)
-	require.EqualError(t, err, expectedErrorString)
-}
-
 func TestDeviceNameInput(t *testing.T) {
 	expectedDeviceName := "Bender's Laptop"
 	deviceNameInput := strings.NewReader(expectedDeviceName)

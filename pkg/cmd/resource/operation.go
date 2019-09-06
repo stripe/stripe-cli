@@ -32,7 +32,7 @@ type OperationCmd struct {
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
-	apiKey, err := oc.Profile.GetAPIKey(false)
+	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
 	if err != nil {
 		return err
 	}
