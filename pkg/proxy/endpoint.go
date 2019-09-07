@@ -2,11 +2,14 @@ package proxy
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 //
@@ -82,7 +85,16 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 
 	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
-		c.cfg.Log.Errorf("Failed to POST event to local endpoint, error = %v\n", err)
+		color := ansi.Color(os.Stdout)
+		localTime := time.Now().Format(timeLayout)
+
+		errStr := fmt.Sprintf("%s            ╚═ > [%s] Failed to POST: %v\n",
+			color.Faint(localTime),
+			color.Red("ERROR"),
+			err,
+		)
+		fmt.Println(errStr)
+
 		return err
 	}
 	defer resp.Body.Close()

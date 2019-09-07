@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/briandowns/spinner v1.6.1
+	github.com/fatih/color v1.7.0
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/gorilla/websocket v1.4.0
@@ -15,7 +16,7 @@ require (
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/manifoldco/promptui v0.3.2
 	github.com/mattn/go-isatty v0.0.9 // indirect
-	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect

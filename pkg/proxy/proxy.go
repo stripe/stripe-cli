@@ -18,6 +18,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
+const timeLayout = "2006-01-02 15:04:05"
+
 //
 // Public types
 //
@@ -86,9 +88,23 @@ func (p *Proxy) Run() error {
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	session, err := p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
+	var session *stripeauth.StripeCLISession
+	var err error
+
+	// Try to authorize at least 5 times before failing. Sometimes we have random
+	// transient errors that we just need to retry for.
+	for i := 0; i <= 5; i++ {
+		session, err = p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
+
+		if err == nil {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
-		// TODO: better error handling / retries
+		ansi.StopSpinner(s, "", p.cfg.Log.Out)
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
 
@@ -105,8 +121,7 @@ func (p *Proxy) Run() error {
 	)
 	go p.webSocketClient.Run()
 
-	color := ansi.Color(p.cfg.Log.Out)
-	ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", color.Bold(session.Secret)), p.cfg.Log.Out)
+	ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
 
 	// Block until Ctrl+C is received
 	<-p.interruptCh
@@ -169,19 +184,30 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	maybeConnect := ""
-	if evt.isConnect() {
-		maybeConnect = "Connect "
-	}
-	p.cfg.Log.Infof(
-		"Received %sevent: %s [type: %s]",
-		maybeConnect,
-		ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
-		ansi.Linkify(evt.Type, evt.urlForEventType(), p.cfg.Log.Out),
-	)
-
 	if p.cfg.PrintJSON {
 		fmt.Println(webhookEvent.EventPayload)
+	} else {
+		maybeConnect := ""
+		if evt.isConnect() {
+			maybeConnect = "connect "
+		}
+
+		pipes := ""
+		if len(p.endpointClients) > 0 {
+			pipes = "╔═ "
+		}
+
+		localTime := time.Now().Format(timeLayout)
+
+		color := ansi.Color(os.Stdout)
+		outputStr := fmt.Sprintf("%s  Received: %s%s%s [%s]",
+			color.Faint(localTime),
+			pipes,
+			maybeConnect,
+			ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
+			ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
+		)
+		fmt.Println(outputStr)
 	}
 
 	for _, endpoint := range p.endpointClients {
@@ -195,11 +221,25 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 }
 
 func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
-	p.cfg.Log.Infof("Got response from local endpoint, status=%d", resp.StatusCode)
+	localTime := time.Now().Format(timeLayout)
+
+	color := ansi.Color(os.Stdout)
+	outputStr := fmt.Sprintf("%s            ╚═ > [%d] %s %s",
+		color.Faint(localTime),
+		ansi.ColorizeStatus(resp.StatusCode),
+		resp.Request.Method,
+		resp.Request.URL,
+	)
+	fmt.Println(outputStr)
 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("Failed to read response from endpoint, error = %v\n", err)
+		errStr := fmt.Sprintf("%s            ╚═ > [%s] Failed to read response from endpoint, error = %v\n",
+			color.Faint(localTime),
+			color.Red("ERROR"),
+			err,
+		)
+		log.Errorf(errStr)
 		return
 	}
 

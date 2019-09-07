@@ -13,6 +13,7 @@ type stripeEvent struct {
 	ID       string `json:"id"`
 	Livemode bool   `json:"livemode"`
 	Type     string `json:"type"`
+	Created  int    `json:"created"`
 }
 
 func (e *stripeEvent) isConnect() bool {
