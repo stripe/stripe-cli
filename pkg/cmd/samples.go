@@ -21,6 +21,7 @@ func newSamplesCmd() *samplesCmd {
 	}
 
 	samplesCmd.cmd.AddCommand(samples.NewCreateCmd(&Config).Cmd)
+	samplesCmd.cmd.AddCommand(samples.NewFixturesCmd(&Config).Cmd)
 	samplesCmd.cmd.AddCommand(samples.NewListCmd().Cmd)
 
 	return samplesCmd
