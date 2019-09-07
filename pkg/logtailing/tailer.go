@@ -70,6 +70,7 @@ type Tailer struct {
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
 	CreatedAt int    `json:"created_at"`
+	Livemode  bool   `json:"livemode"`
 	Method    string `json:"method"`
 	RequestID string `json:"request_id"`
 	Status    int    `json:"status"`
@@ -177,7 +178,7 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 
 	coloredStatus := colorizeStatus(payload.Status)
 
-	url := fmt.Sprintf("https://dashboard.stripe.com/test/logs/%s", payload.RequestID)
+	url := urlForRequestID(&payload)
 	requestLink := ansi.Linkify(payload.RequestID, url, os.Stdout)
 
 	if payload.URL == "" {
@@ -212,4 +213,13 @@ func jsonifyFilters(logFilters *LogFilters) (string, error) {
 
 	jsonStr := string(bytes)
 	return jsonStr, nil
+}
+
+func urlForRequestID(payload *EventPayload) string {
+	maybeTest := ""
+	if !payload.Livemode {
+		maybeTest = "/test"
+	}
+
+	return fmt.Sprintf("https://dashboard.stripe.com%s/logs/%s", maybeTest, payload.RequestID)
 }
