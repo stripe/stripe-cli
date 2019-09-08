@@ -139,6 +139,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	p := proxy.New(&proxy.Config{
 		DeviceName:          deviceName,
 		Key:                 key,
+		Events:              lc.events,
 		EndpointRoutes:      endpointRoutes,
 		APIBaseURL:          lc.apiBaseURL,
 		WebSocketFeature:    webhooksWebSocketFeature,

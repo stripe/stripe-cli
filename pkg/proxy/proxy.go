@@ -47,6 +47,9 @@ type Config struct {
 	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
 	EndpointRoutes []EndpointRoute
 
+	// Events is the supported event types for the command
+	Events []string
+
 	APIBaseURL string
 
 	// WebSocketFeature is the feature specified for the websocket connection
@@ -65,6 +68,8 @@ type Config struct {
 
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+
+	supportedEvents map[string]bool
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -84,6 +89,10 @@ type Proxy struct {
 // incoming events to the local endpoint.
 func (p *Proxy) Run() error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
+
+	if len(p.cfg.Events) > 0 {
+		p.cfg.supportedEvents = convertToMap(p.cfg.Events)
+	}
 
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
@@ -184,29 +193,31 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	if p.cfg.PrintJSON {
-		fmt.Println(webhookEvent.EventPayload)
-	} else {
-		maybeConnect := ""
-		if evt.isConnect() {
-			maybeConnect = "connect "
+	if p.cfg.supportedEvents[evt.Type] {
+		if p.cfg.PrintJSON {
+			fmt.Println(webhookEvent.EventPayload)
+		} else {
+			maybeConnect := ""
+			if evt.isConnect() {
+				maybeConnect = "connect "
+			}
+
+			localTime := time.Now().Format(timeLayout)
+
+			color := ansi.Color(os.Stdout)
+			outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
+				color.Faint(localTime),
+				maybeConnect,
+				ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
+				ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
+			)
+			fmt.Println(outputStr)
 		}
 
-		localTime := time.Now().Format(timeLayout)
-
-		color := ansi.Color(os.Stdout)
-		outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
-			color.Faint(localTime),
-			maybeConnect,
-			ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
-			ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
-		)
-		fmt.Println(outputStr)
-	}
-
-	for _, endpoint := range p.endpointClients {
-		if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
-			go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
+		for _, endpoint := range p.endpointClients {
+			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
+				go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
+			}
 		}
 	}
 	// TODO: handle errors returned by endpointClients
