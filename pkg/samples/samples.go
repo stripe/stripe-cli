@@ -76,6 +76,8 @@ type Samples struct {
 	Fs     afero.Fs
 	Git    git.Interface
 
+	name string
+
 	// source repository to clone from
 	repo string
 
@@ -102,6 +104,8 @@ type Samples struct {
 // 5. see if there are different integrations available for the sample
 // 6. see what languages the sample is available in
 func (s *Samples) Initialize(app string) error {
+	s.name = app
+
 	appPath, err := s.appCacheFolder(app)
 	if err != nil {
 		return err
@@ -213,11 +217,7 @@ func (s *Samples) SelectOptions() error {
 		return err
 	}
 
-	if s.isIntegration {
-		fmt.Println("Setting up", ansi.Bold(s.language), "for", ansi.Bold(strings.Join(s.integration, ",")))
-	} else {
-		fmt.Println("Setting up", ansi.Bold(s.language))
-	}
+	fmt.Println("Setting up", ansi.Bold(s.name))
 
 	return nil
 }
@@ -432,10 +432,15 @@ func (s *Samples) destinationPath(target string, integration string, folder stri
 	return filepath.Join(target, integration, folder)
 }
 
-func selectOptions(label string, options []string) (string, error) {
+func selectOptions(template, label string, options []string) (string, error) {
+	templates := &promptui.SelectTemplates{
+		Selected: ansi.Faint(fmt.Sprintf("Selected %s: {{ . | bold }} ", template)),
+	}
+
 	prompt := promptui.Select{
-		Label: label,
-		Items: options,
+		Label:     label,
+		Items:     options,
+		Templates: templates,
 	}
 
 	_, result, err := prompt.Run()
@@ -457,7 +462,7 @@ func languageSelectPrompt(languages []string) (string, error) {
 		}
 	}
 
-	selected, err := selectOptions("What language would you like to use", displayLangs)
+	selected, err := selectOptions("language", "What language would you like to use", displayLangs)
 	if err != nil {
 		return "", err
 	}
@@ -470,7 +475,7 @@ func languageSelectPrompt(languages []string) (string, error) {
 }
 
 func integrationSelectPrompt(integrations []string) ([]string, error) {
-	selected, err := selectOptions("What type of integration would you like to use", append(integrations, "all"))
+	selected, err := selectOptions("integration", "What type of integration would you like to use", append(integrations, "all"))
 	if err != nil {
 		return []string{}, err
 	}
