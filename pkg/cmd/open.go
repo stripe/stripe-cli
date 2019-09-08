@@ -50,8 +50,6 @@ var nameURLmap = map[string]string{
 	"docs":                               "https://stripe.com/docs",
 }
 
-var dashboardNameURLMap = map[string]string{}
-
 func openNames() []string {
 	keys := make([]string, 0, len(nameURLmap))
 	for k := range nameURLmap {
