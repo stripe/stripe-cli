@@ -47,6 +47,7 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		Git:    gitpkg.Operations{},
 	}
 	selectedSample := args[0]
+	color := ansi.Color(os.Stdout)
 
 	exists, _ := afero.DirExists(sample.Fs, selectedSample)
 	if exists {
@@ -77,7 +78,8 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
-	ansi.StopSpinner(spinner, "Finished downloading.", os.Stdout)
+	ansi.StopSpinner(spinner, "", os.Stdout)
+	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Finished downloading")))
 
 	// Once we've initialized the sample in the local cache
 	// directory, the user needs to select which integration they
@@ -98,6 +100,7 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}()
 
+	spinner = ansi.StartSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
@@ -112,7 +115,10 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ansi.StopSpinner(spinner, "", os.Stdout)
+	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Files copied")))
 
+	spinner = ansi.StartSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
 	err = sample.ConfigureDotEnv(targetPath)
 	if err != nil {
 		return err
@@ -122,6 +128,9 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	ansi.StopSpinner(spinner, "", os.Stdout)
+	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Project configured")))
+	fmt.Println("You're all set. To get started: cd", selectedSample)
 
 	return nil
 }
