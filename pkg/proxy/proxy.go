@@ -192,17 +192,11 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 			maybeConnect = "connect "
 		}
 
-		pipes := ""
-		if len(p.endpointClients) > 0 {
-			pipes = "╔═ "
-		}
-
 		localTime := time.Now().Format(timeLayout)
 
 		color := ansi.Color(os.Stdout)
-		outputStr := fmt.Sprintf("%s  Received: %s%s%s [%s]",
+		outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
 			color.Faint(localTime),
-			pipes,
 			maybeConnect,
 			ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
 			ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
@@ -224,7 +218,7 @@ func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 	localTime := time.Now().Format(timeLayout)
 
 	color := ansi.Color(os.Stdout)
-	outputStr := fmt.Sprintf("%s            ╚═ > [%d] %s %s",
+	outputStr := fmt.Sprintf("%s            [%d] %s %s",
 		color.Faint(localTime),
 		ansi.ColorizeStatus(resp.StatusCode),
 		resp.Request.Method,
@@ -234,7 +228,7 @@ func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errStr := fmt.Sprintf("%s            ╚═ > [%s] Failed to read response from endpoint, error = %v\n",
+		errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
 			color.Faint(localTime),
 			color.Red("ERROR"),
 			err,

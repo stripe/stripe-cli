@@ -89,7 +89,7 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 		color := ansi.Color(os.Stdout)
 		localTime := time.Now().Format(timeLayout)
 
-		errStr := fmt.Sprintf("%s            ╚═ > [%s] Failed to POST: %v\n",
+		errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
 			color.Faint(localTime),
 			color.Red("ERROR"),
 			err,
