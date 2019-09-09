@@ -12,7 +12,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
-	"github.com/stripe/stripe-cli/pkg/validators"
 
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -31,7 +30,6 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 	}
 	createCmd.Cmd = &cobra.Command{
 		Use:       "create",
-		Args:      validators.ExactArgs(1),
 		ValidArgs: samples.Names(),
 		Short:     "create a Stripe sample",
 		RunE:      createCmd.runCreateCmd,
@@ -41,6 +39,10 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 }
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("Creating a sample requires at least 1 argument, received 0")
+	}
+
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
@@ -49,9 +51,14 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	selectedSample := args[0]
 	color := ansi.Color(os.Stdout)
 
-	exists, _ := afero.DirExists(sample.Fs, selectedSample)
+	destination := selectedSample
+	if len(args) > 1 {
+		destination = args[1]
+	}
+
+	exists, _ := afero.DirExists(sample.Fs, destination)
 	if exists {
-		return fmt.Errorf("Path already exists for: %s", selectedSample)
+		return fmt.Errorf("Path already exists for: %s", destination)
 	}
 
 	spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
@@ -104,7 +111,7 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
-	targetPath, err := sample.MakeFolder(selectedSample)
+	targetPath, err := sample.MakeFolder(destination)
 	if err != nil {
 		return err
 	}
