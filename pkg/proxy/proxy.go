@@ -47,9 +47,6 @@ type Config struct {
 	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
 	EndpointRoutes []EndpointRoute
 
-	// Events is the supported event types for the command
-	Events []string
-
 	APIBaseURL string
 
 	// WebSocketFeature is the feature specified for the websocket connection
@@ -68,8 +65,6 @@ type Config struct {
 
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
-
-	supportedEvents map[string]bool
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -82,6 +77,9 @@ type Proxy struct {
 	stripeAuthClient *stripeauth.Client
 	webSocketClient  *websocket.Client
 
+	// Events is the supported event types for the command
+	events map[string]bool
+
 	interruptCh chan os.Signal
 }
 
@@ -89,10 +87,6 @@ type Proxy struct {
 // incoming events to the local endpoint.
 func (p *Proxy) Run() error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
-
-	if len(p.cfg.Events) > 0 {
-		p.cfg.supportedEvents = convertToMap(p.cfg.Events)
-	}
 
 	// Intercept Ctrl+c so we can do some clean up
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
@@ -193,7 +187,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	if p.cfg.supportedEvents[evt.Type] {
+	if p.events["*"] || p.events[evt.Type] {
 		if p.cfg.PrintJSON {
 			fmt.Println(webhookEvent.EventPayload)
 		} else {
@@ -271,7 +265,7 @@ func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 //
 
 // New creates a new Proxy
-func New(cfg *Config) *Proxy {
+func New(cfg *Config, events []string) *Proxy {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
@@ -282,6 +276,10 @@ func New(cfg *Config) *Proxy {
 			APIBaseURL: cfg.APIBaseURL,
 		}),
 		interruptCh: make(chan os.Signal, 1),
+	}
+
+	if len(events) > 0 {
+		p.events = convertToMap(events)
 	}
 
 	for _, route := range cfg.EndpointRoutes {
