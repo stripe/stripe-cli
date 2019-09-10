@@ -12,6 +12,7 @@ linters:
     - maligned
     - unparam
     - stylecheck
+    - funlen
 
 linters-settings:
   goimports:
