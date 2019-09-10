@@ -147,7 +147,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		SkipVerify:          lc.skipVerify,
 		Log:                 log.StandardLogger(),
 		NoWSS:               lc.noWSS,
-	})
+	}, lc.events)
 
 	err = p.Run()
 	if err != nil {

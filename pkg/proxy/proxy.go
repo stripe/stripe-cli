@@ -77,6 +77,9 @@ type Proxy struct {
 	stripeAuthClient *stripeauth.Client
 	webSocketClient  *websocket.Client
 
+	// Events is the supported event types for the command
+	events map[string]bool
+
 	interruptCh chan os.Signal
 }
 
@@ -184,29 +187,31 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	if p.cfg.PrintJSON {
-		fmt.Println(webhookEvent.EventPayload)
-	} else {
-		maybeConnect := ""
-		if evt.isConnect() {
-			maybeConnect = "connect "
+	if p.events["*"] || p.events[evt.Type] {
+		if p.cfg.PrintJSON {
+			fmt.Println(webhookEvent.EventPayload)
+		} else {
+			maybeConnect := ""
+			if evt.isConnect() {
+				maybeConnect = "connect "
+			}
+
+			localTime := time.Now().Format(timeLayout)
+
+			color := ansi.Color(os.Stdout)
+			outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
+				color.Faint(localTime),
+				maybeConnect,
+				ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
+				ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
+			)
+			fmt.Println(outputStr)
 		}
 
-		localTime := time.Now().Format(timeLayout)
-
-		color := ansi.Color(os.Stdout)
-		outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
-			color.Faint(localTime),
-			maybeConnect,
-			ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
-			ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
-		)
-		fmt.Println(outputStr)
-	}
-
-	for _, endpoint := range p.endpointClients {
-		if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
-			go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
+		for _, endpoint := range p.endpointClients {
+			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
+				go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
+			}
 		}
 	}
 	// TODO: handle errors returned by endpointClients
@@ -260,7 +265,7 @@ func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 //
 
 // New creates a new Proxy
-func New(cfg *Config) *Proxy {
+func New(cfg *Config, events []string) *Proxy {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
@@ -271,6 +276,10 @@ func New(cfg *Config) *Proxy {
 			APIBaseURL: cfg.APIBaseURL,
 		}),
 		interruptCh: make(chan os.Signal, 1),
+	}
+
+	if len(events) > 0 {
+		p.events = convertToMap(events)
 	}
 
 	for _, route := range cfg.EndpointRoutes {
