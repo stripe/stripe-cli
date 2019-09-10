@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/logrusorgru/aurora"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -176,7 +175,7 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	coloredStatus := colorizeStatus(payload.Status)
+	coloredStatus := ansi.ColorizeStatus(payload.Status)
 
 	url := urlForRequestID(&payload)
 	requestLink := ansi.Linkify(payload.RequestID, url, os.Stdout)
@@ -188,21 +187,9 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	exampleLayout := "2006-01-02 15:04:05"
 	localTime := time.Unix(int64(payload.CreatedAt), 0).Format(exampleLayout)
 
-	outputStr := fmt.Sprintf("%s [%d] %s %s %s", localTime, coloredStatus, payload.Method, payload.URL, requestLink)
-	fmt.Println(outputStr)
-}
-
-func colorizeStatus(status int) aurora.Value {
 	color := ansi.Color(os.Stdout)
-
-	switch {
-	case status >= 500:
-		return color.Red(status).Bold()
-	case status >= 400:
-		return color.Yellow(status).Bold()
-	default:
-		return color.Green(status).Bold()
-	}
+	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
+	fmt.Println(outputStr)
 }
 
 func jsonifyFilters(logFilters *LogFilters) (string, error) {

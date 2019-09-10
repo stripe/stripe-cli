@@ -53,6 +53,20 @@ func ColorizeJSON(json string, w io.Writer) string {
 	return string(pretty.Color([]byte(json), nil))
 }
 
+// ColorizeStatus returns a colorized number for HTTP status code
+func ColorizeStatus(status int) aurora.Value {
+	color := Color(os.Stdout)
+
+	switch {
+	case status >= 500:
+		return color.Red(status).Bold()
+	case status >= 400:
+		return color.Yellow(status).Bold()
+	default:
+		return color.Green(status).Bold()
+	}
+}
+
 // Faint returns slightly offset color text if the writer supports it
 func Faint(text string) string {
 	color := Color(os.Stdout)
