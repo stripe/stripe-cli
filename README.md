@@ -31,11 +31,15 @@ The main focus for this initial release is to improve the developer experience w
     * [get, post, and delete](#get-post-and-delete)
     * [trigger](#trigger)
     * [logs tail](#logs-tail)
+    * [samples](#samples)
     * [status](#status)
     * [config](#config)
+    * [open](#open)
   * [Developing the Stripe CLI](#developing-the-stripe-cli)
     * [Installation](#installation-1)
+    * [Linting](#linting)
     * [Tests](#tests)
+    * [Releasing](#releasing)
 
 ## Installation
 
@@ -376,6 +380,25 @@ Multiple values for a single filter can also be specified as a comma-separated l
 $ stripe logs tail --filter-http-method GET,POST
 ```
 
+
+### `samples`
+
+With [Stripe Samples](https://stripe.dev/samples), you can experience fully-functional sample Stripe integrations covering different integration styles, languages, and frameworks. The CLI supports downloading and configuring specific samples locally, letting you quickly get up-and-running with a sample.
+
+To see a list of samples supported by your version of the CLI, run:
+
+```sh
+$ stripe samples list
+```
+
+To create a new sample locally, select one of the samples from the list and run:
+
+```sh
+$ stripe samples create <name>
+```
+
+The CLI will configure the sample with the API key used after logging in as well the webhook signing secret from running the `listen` command.
+
 ### `status`
 
 You can load Stripe status from the CLI instead of going to status.stripe.com. The CLI status loads from the status site, which is the canonical source of truth.
@@ -429,13 +452,63 @@ To open your editor at the config file, using `--edit` or `-e`:
 $ stripe config -e
 ```
 
+### `open`
+
+The `open` command is a shortcut available for users to quickly open up different parts of the Stripe docs website and dashboard. To run it, invoke:
+
+```sh
+$ stripe open <shortcut>
+```
+
+Where `<shortcut>` is one of:
+
+```sh
+shortcut                              url
+--------                              ---------
+api                                => https://stripe.com/docs/api
+apiref                             => https://stripe.com/docs/api
+dashboard                          => https://dashboard.stripe.com/test
+dashboard/apikeys                  => https://dashboard.stripe.com/test/apikeys
+dashboard/atlas                    => https://dashboard.stripe.com/test/atlas
+dashboard/balance                  => https://dashboard.stripe.com/test/balance/overview
+dashboard/billing                  => https://dashboard.stripe.com/test/billing
+dashboard/connect                  => https://dashboard.stripe.com/test/connect/overview
+dashboard/connect/accounts         => https://dashboard.stripe.com/test/connect/accounts/overview
+dashboard/connect/collected-fees   => https://dashboard.stripe.com/test/connect/application_fees
+dashboard/connect/transfers        => https://dashboard.stripe.com/test/connect/transfers
+dashboard/coupons                  => https://dashboard.stripe.com/test/coupons
+dashboard/customers                => https://dashboard.stripe.com/test/customers
+dashboard/developers               => https://dashboard.stripe.com/test/developers
+dashboard/disputes                 => https://dashboard.stripe.com/test/disputes
+dashboard/events                   => https://dashboard.stripe.com/test/events
+dashboard/invoices                 => https://dashboard.stripe.com/test/invoices
+dashboard/logs                     => https://dashboard.stripe.com/test/logs
+dashboard/orders                   => https://dashboard.stripe.com/test/orders
+dashboard/orders/products          => https://dashboard.stripe.com/test/orders/products
+dashboard/payments                 => https://dashboard.stripe.com/test/payments
+dashboard/payouts                  => https://dashboard.stripe.com/test/payouts
+dashboard/radar                    => https://dashboard.stripe.com/test/radar
+dashboard/radar/list               => https://dashboard.stripe.com/test/radar/list
+dashboard/radar/reviews            => https://dashboard.stripe.com/test/radar/reviews
+dashboard/radar/rules              => https://dashboard.stripe.com/test/radar/rules
+dashboard/settings                 => https://dashboard.stripe.com/test/settings
+dashboard/subscriptions            => https://dashboard.stripe.com/test/subscriptions
+dashboard/subscriptions/products   => https://dashboard.stripe.com/test/subscriptions/products
+dashboard/tax-rates                => https://dashboard.stripe.com/test/tax-rates
+dashboard/terminal                 => https://dashboard.stripe.com/test/terminal
+dashboard/terminal/hardware_orders => https://dashboard.stripe.com/test/terminal/hardware_orders
+dashboard/terminal/locations       => https://dashboard.stripe.com/test/terminal/locations
+dashboard/topups                   => https://dashboard.stripe.com/test/topups
+dashboard/transactions             => https://dashboard.stripe.com/test/balance
+dashboard/webhooks                 => https://dashboard.stripe.com/test/webhooks
+docs                               => https://stripe.com/docs
+```
+
+For dashboard pages, you can also add the `--livemode` flag to open the page directly in live mode.
+
 ## Developing the Stripe CLI
 
 If you're working on developing the CLI, it's recommended that you alias the go command to run the dev version. Place this in your shell rc file (such as `.bashrc` or `.zshrc`)
-
-```sh
-alias stripe-dev='go run cmd/stripe/main.go'
-```
 
 ### Installation
 
@@ -445,9 +518,29 @@ The Stripe CLI is built using Go. To download and compile the source code, run:
 $ go get -u github.com/stripe/stripe-cli/...
 ```
 
-### Releasing
+After installing, `cd` into the directory and setup the dependencies:
 
-To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.
+```sh
+$ cd go/src/github.com/stripe/stripe-cli
+$ make setup
+```
+
+Once setup, run the test suite to make sure everything works as expected:
+
+```sh
+$ make test
+```
+
+You can invoke the local version of the CLI by running:
+
+```sh
+$ go run cmd/stripe/main.go
+```
+
+Optionally, you can add this to your shell profile to make running the local version a little easier.
+```sh
+alias stripe-dev='go run cmd/stripe/main.go'
+```
 
 ### Linting
 
@@ -462,3 +555,7 @@ You can run tests with:
 ```sh
 $ make test
 ```
+
+### Releasing
+
+To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.
