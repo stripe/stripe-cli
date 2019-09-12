@@ -380,7 +380,6 @@ Multiple values for a single filter can also be specified as a comma-separated l
 $ stripe logs tail --filter-http-method GET,POST
 ```
 
-
 ### `samples`
 
 With [Stripe Samples](https://stripe.dev/samples), you can experience fully-functional sample Stripe integrations covering different integration styles, languages, and frameworks. The CLI supports downloading and configuring specific samples locally, letting you quickly get up-and-running with a sample.
