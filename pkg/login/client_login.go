@@ -50,9 +50,11 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	s := ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
 
-	urlErr := openBrowser(links.BrowserURL)
-	if urlErr != nil {
-		return urlErr
+	err = openBrowser(links.BrowserURL)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
+		ansi.StopSpinner(s, msg, os.Stdout)
+		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
 	}
 
 	//Call poll function
