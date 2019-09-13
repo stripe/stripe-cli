@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -15,6 +16,8 @@ import (
 
 // Config is the cli configuration for the user
 var Config config.Config
+
+var fs = afero.NewOsFs()
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -38,16 +41,9 @@ var rootCmd = &cobra.Command{
 The Stripe CLI gives you tools to help build with Stripe. You can do things like
 connect to a Stripe webhook tunnel and test webhooks locally, make test mode
 requests to the API, and trigger certain webhook events.
-
-Before using the CLI, you'll need to login:
-
-  $ stripe login
-
-If you're working on multiple projects, you can run the login command with the
---project-name flag:
-
-  $ stripe login --project-name rocket-rides`,
+%s`,
 		getBanner(),
+		getLogin(&fs, &Config),
 	),
 }
 
