@@ -1,7 +1,12 @@
 package version
 
 import (
+	"context"
 	"fmt"
+	"os"
+
+	"github.com/google/go-github/v28/github"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
@@ -14,3 +19,34 @@ var Version = "master"
 
 // Template for the version string.
 var Template = fmt.Sprintf("stripe version %s %s\n", Version, ansi.Bold("(beta)"))
+
+// CheckLatestVersion makes a request to the GitHub API to pull the latest
+// release of the CLI
+func CheckLatestVersion() {
+	// master is the dev version, we don't want to check against that every time
+	if Version != "master" {
+		s := ansi.StartSpinner("Checking for new versions...", os.Stdout)
+		latest := getLatestVersion()
+		ansi.StopSpinner(s, "", os.Stdout)
+
+		if latest != "" && latest != Version {
+			fmt.Println(ansi.Italic("A newer version of the Stripe CLI is available, please update to:"), ansi.Italic(latest))
+		}
+	}
+}
+
+func getLatestVersion() string {
+	client := github.NewClient(nil)
+	rep, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
+
+	l := log.StandardLogger()
+
+	if err != nil {
+		// We don't want to fail any functionality or display errors for this
+		// so fail silently and output to debug log
+		l.Debug(err)
+		return ""
+	}
+
+	return *rep.TagName
+}

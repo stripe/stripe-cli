@@ -21,6 +21,8 @@ func newVersionCmd() *versionCmd {
 			Short: "Get the version of the Stripe CLI",
 			Run: func(cmd *cobra.Command, args []string) {
 				fmt.Print(version.Template)
+
+				version.CheckLatestVersion()
 			},
 		},
 	}

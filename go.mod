@@ -7,6 +7,7 @@ require (
 	github.com/briandowns/spinner v1.6.1
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/google/go-github/v28 v28.1.1
 	github.com/gorilla/websocket v1.4.0
 	github.com/iancoleman/strcase v0.0.0-20190422225806-e506e3ef7365
 	github.com/joho/godotenv v1.3.0
@@ -35,7 +36,7 @@ require (
 	github.com/tidwall/gjson v1.3.2
 	github.com/tidwall/pretty v1.0.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
-	golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4
+	golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
 	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
 	golang.org/x/tools v0.0.0-20190809145639-6d4652c779c4 // indirect
