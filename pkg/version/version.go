@@ -23,12 +23,15 @@ var Template = fmt.Sprintf("stripe version %s %s\n", Version, ansi.Bold("(beta)"
 // CheckLatestVersion makes a request to the GitHub API to pull the latest
 // release of the CLI
 func CheckLatestVersion() {
-	s := ansi.StartSpinner("Checking for new versions...", os.Stdout)
-	latest := getLatestVersion()
-	ansi.StopSpinner(s, "", os.Stdout)
+	// master is the dev version, we don't want to check against that every time
+	if Version != "master" {
+		s := ansi.StartSpinner("Checking for new versions...", os.Stdout)
+		latest := getLatestVersion()
+		ansi.StopSpinner(s, "", os.Stdout)
 
-	if latest != "" && latest != Version {
-		fmt.Println(ansi.Italic("A newer version of the Stripe CLI is available, please update to:"), ansi.Italic(latest))
+		if latest != "" && latest != Version {
+			fmt.Println(ansi.Italic("A newer version of the Stripe CLI is available, please update to:"), ansi.Italic(latest))
+		}
 	}
 }
 
