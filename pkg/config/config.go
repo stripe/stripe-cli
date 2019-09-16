@@ -135,7 +135,12 @@ func (c *Config) EditConfig() error {
 
 	switch runtime.GOOS {
 	case "darwin", "linux":
-		cmd := exec.Command(os.Getenv("EDITOR"), c.ProfilesFile)
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			err = fmt.Errorf("no editor (e.g. vim) set in EDITOR environment variable")
+			return err
+		}
+		cmd := exec.Command(editor, c.ProfilesFile)
 		// Some editors detect whether they have control of stdin/out and will
 		// fail if they do not.
 		cmd.Stdin = os.Stdin
