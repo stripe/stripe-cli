@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNoKey(t *testing.T) {
+	err := APIKey("")
+	require.EqualError(t, err, "you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
+}
+
+func TestKeyTooShort(t *testing.T) {
+	err := APIKey("123")
+	require.EqualError(t, err, "the API key provided is too short, it must be at least 12 characters long")
+}
+
 func TestLegacyAPIKeys(t *testing.T) {
 	err := APIKey("sk_123457890abcdef")
 	require.EqualError(t, err, "you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
