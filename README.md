@@ -152,7 +152,7 @@ The `listen` command establishes a direct connection with Stripe, delivering web
 
 By default, `listen` accepts all webhook events displays them in your terminal. To forward events to your local app, use the `--forward-to` flag with the location:
 
-* `--forward-to localhost:9000`
+* `--forward-to localhost:3000`
 * `--forward-to https://example.com/hooks`
 
 Using `--forward-to` will return a [webhook signing secret](https://stripe.com/docs/webhooks/signatures), which you can add to your application's configuration:
