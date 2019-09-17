@@ -46,6 +46,9 @@ func (cc *configCmd) runConfigCmd(cmd *cobra.Command, args []string) error {
 		return cc.config.PrintConfig()
 	case cc.edit:
 		return cc.config.EditConfig()
+	default:
+		// no flags set or unrecognized flags/args
+		return cc.cmd.Help()
 	}
 
 	return nil
