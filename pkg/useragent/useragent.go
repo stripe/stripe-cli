@@ -1,10 +1,11 @@
 package useragent
 
 import (
-	"bytes"
 	"encoding/json"
-	"os/exec"
+	"fmt"
 	"runtime"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -24,16 +25,6 @@ func GetEncodedStripeUserAgent() string {
 func GetEncodedUserAgent() string {
 	return encodedUserAgent
 }
-
-//
-// Private constants
-//
-
-const (
-	// UnknownPlatform is the string returned as the system name if we couldn't
-	// get one from `uname`.
-	unknownPlatform string = "unknown platform"
-)
 
 //
 // Private types
@@ -61,25 +52,21 @@ var encodedUserAgent string
 // Private functions
 //
 
-// getUname tries to get a uname from the system, but not that hard. It tries
-// to execute `uname -a`, but swallows any errors in case that didn't work
-// (i.e. non-Unix non-Mac system or some other reason).
 func getUname() string {
-	path, err := exec.LookPath("uname")
-	if err != nil {
-		return unknownPlatform
+	// TODO: if there is appetite for it in the community
+	// add support for Windows GetSystemInfo
+
+	if runtime.GOOS != "windows" {
+		u := new(unix.Utsname)
+		err := unix.Uname(u)
+		if err != nil {
+			panic(err)
+		}
+
+		return fmt.Sprintf("%s %s %s %s %s", u.Sysname, u.Nodename, u.Release, u.Version, u.Machine)
 	}
 
-	cmd := exec.Command(path, "-a") // #nosec G204
-	var out bytes.Buffer
-	cmd.Stderr = nil // goes to os.DevNull
-	cmd.Stdout = &out
-	err = cmd.Run()
-	if err != nil {
-		return unknownPlatform
-	}
-
-	return out.String()
+	return ""
 }
 
 func init() {
