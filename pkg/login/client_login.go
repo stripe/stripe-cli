@@ -45,7 +45,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
 
-	fmt.Printf("Press Enter to open up the browser (^C to quit)")
+	fmt.Printf("Press Enter to open the browser (^C to quit)")
 	fmt.Fscanln(input)
 
 	s := ansi.StartSpinner("Waiting for confirmation...", os.Stdout)

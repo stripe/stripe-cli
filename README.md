@@ -47,13 +47,21 @@ The main focus for this initial release is to improve the developer experience w
 
 _With homebrew:_
 
-Run `brew install stripe/stripe-cli/stripe`
+Run:
+
+```sh
+$ brew install stripe/stripe-cli/stripe
+```
 
 _Without homebrew:_
 
 1. Download the latest `mac-os` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
 
-2. Unzip the file: `tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz`
+2. Unzip the file:
+
+```sh
+$ tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz
+```
 
 3. (optional) Move the binary to somewhere you can execute it globally, like `/usr/local/bin`
 
@@ -63,37 +71,81 @@ _With a package manager:_
 
 **Debian/Ubuntu-based distributions**:
 
-1. Add Bintray's GPG key to the apt sources keyring: `sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net --recv-keys 379CE192D401AB61`
+1. Add Bintray's GPG key to the apt sources keyring:
 
-2. Add stripe-cli's apt repository to the apt sources list: `echo "deb https://dl.bintray.com/stripe/stripe-cli-deb stable main" | sudo tee -a /etc/apt/sources.list`
+```sh
+$ sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net --recv-keys 379CE192D401AB61
+```
 
-3. Update the package list: `sudo apt-get update`
+2. Add stripe-cli's apt repository to the apt sources list:
 
-4. Install the CLI: `sudo apt-get install stripe`
+```sh
+$ echo "deb https://dl.bintray.com/stripe/stripe-cli-deb stable main" | sudo tee -a /etc/apt/sources.list
+```
+
+3. Update the package list:
+
+```sh
+$ sudo apt-get update
+```
+
+4. Install the CLI:
+
+```sh
+$ sudo apt-get install stripe
+```
 
 **RedHat/CentOS-based distributions:**
 
-1. Add stripe-cli's yum repository to the yum sources list: `wget https://bintray.com/stripe/stripe-cli-rpm/rpm -O bintray-stripe-stripe-cli-rpm.repo && sudo mv bintray-stripe-stripe-cli-rpm.repo /etc/yum.repos.d/`
+1. Add stripe-cli's yum repository to the yum sources list:
 
-2. Update the package list: `sudo yum update`
+```sh
+$ wget https://bintray.com/stripe/stripe-cli-rpm/rpm -O bintray-stripe-stripe-cli-rpm.repo && sudo mv bintray-stripe-stripe-cli-rpm.repo /etc/yum.repos.d/
+```
 
-3. Install the CLI: `sudo yum install stripe`
+2. Update the package list:
+
+```sh
+$ sudo yum update
+```
+
+3. Install the CLI:
+
+```sh
+$ sudo yum install stripe
+```
 
 _Without a package manager:_
 
 1. Download the latest `linux` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
 
-2. Unzip the file: `tar -xvf stripe_X.X.X_linux_x86_64.tar.gz`
+2. Unzip the file:
 
-3. Run the executable: `./stripe`
+```sh
+$ tar -xvf stripe_X.X.X_linux_x86_64.tar.gz
+```
+
+3. Run the executable:
+
+```sh
+$ ./stripe
+```
 
 ### Windows
 
 _With scoop:_
 
-1. Run `scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git`
+1. Run:
 
-2. Run `scoop install stripe`
+```sh
+$ scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
+```
+
+2. Run
+
+```sh
+$ scoop install stripe
+```
 
 _Without scoop:_
 
