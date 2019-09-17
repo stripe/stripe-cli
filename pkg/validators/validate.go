@@ -41,8 +41,10 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 
 // APIKey validates that a string looks like an API key.
 func APIKey(input string) error {
-	if len(input) < 12 {
-		return errors.New("API key is too short, must be at least 12 characters long")
+	if len(input) == 0 {
+		return errors.New("you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
+	} else if len(input) < 12 {
+		return errors.New("the API key provided is too short, it must be at least 12 characters long")
 	}
 
 	keyParts := strings.Split(input, "_")
