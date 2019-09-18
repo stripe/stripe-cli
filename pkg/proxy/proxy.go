@@ -29,6 +29,9 @@ type EndpointRoute struct {
 	// URL is the endpoint's URL.
 	URL string
 
+	// Headers to forward to endpoints
+	ForwardHeaders []string
+
 	// Connect indicates whether the endpoint should receive normal (when false) or Connect (when true) events.
 	Connect bool
 
@@ -286,6 +289,7 @@ func New(cfg *Config, events []string) *Proxy {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
+			route.ForwardHeaders,
 			route.Connect,
 			route.EventTypes,
 			&EndpointConfig{

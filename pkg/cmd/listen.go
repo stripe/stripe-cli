@@ -23,6 +23,8 @@ type listenCmd struct {
 	cmd *cobra.Command
 
 	forwardURL          string
+	forwardHeaders		[]string
+	forwardConnectHeaders []string
 	forwardConnectURL   string
 	events              []string
 	latestAPIVersion    bool
@@ -65,6 +67,8 @@ to your localhost:
 
 	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of which webhook events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
+	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "h", []string{}, "A comma-separated list of custom headers to forward.")
+	lc.cmd.Flags().StringSliceVarP(&lc.forwardConnectHeaders, "connect-headers", "", []string{}, "A comma-separated list of custom headers to forward for connect.")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "livemode", false, "Receive live mode events (default: test mode)")
@@ -85,6 +89,9 @@ to your localhost:
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	
+	print("running listen command")
+	
 	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -105,14 +112,24 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		lc.forwardConnectURL = lc.forwardURL
 	}
 
+	// default to non connect headers if no forward connect headers
+	if len(lc.forwardConnectHeaders) == 0 {
+		lc.forwardConnectHeaders = lc.forwardHeaders
+	}
+
 	if len(lc.forwardURL) > 0 {
+
+		// add custom headers to endpoint routes
+
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 			URL:        parseURL(lc.forwardURL),
+			ForwardHeaders:	lc.forwardHeaders,
 			Connect:    false,
 			EventTypes: lc.events,
 		})
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 			URL:        parseURL(lc.forwardConnectURL),
+			ForwardHeaders:	lc.forwardConnectHeaders,
 			Connect:    true,
 			EventTypes: lc.events,
 		})
@@ -131,7 +148,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 			return errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 
-		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL))
+		// pass in connect and non connect custom headers to build endpoint routes
+		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL), lc.forwardHeaders, lc.forwardConnectHeaders)
 	} else if lc.loadFromWebhooksAPI && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
@@ -172,7 +190,9 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	return examples.WebhookEndpointsList()
 }
 
-func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string) []proxy.EndpointRoute {
+// add custom host as arg
+// TODO: check if forward headers exist
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 	for _, endpoint := range endpoints.Data {
 		u, err := url.Parse(endpoint.URL)
@@ -183,12 +203,14 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			if endpoint.Application == "" {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 					URL:        buildForwardURL(forwardURL, u),
+					ForwardHeaders:	forwardHeaders,
 					Connect:    false,
 					EventTypes: endpoint.EnabledEvents,
 				})
 			} else {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 					URL:        buildForwardURL(forwardConnectURL, u),
+					ForwardHeaders: 	forwardConnectHeaders,
 					Connect:    true,
 					EventTypes: endpoint.EnabledEvents,
 				})

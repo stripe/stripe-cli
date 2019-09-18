@@ -32,6 +32,7 @@ func TestClientHandler(t *testing.T) {
 	rcvWebhookID := ""
 	client := NewEndpointClient(
 		ts.URL,
+		[]string{"Host: hostname"}, // custom headers
 		false,
 		[]string{"*"},
 		&EndpointConfig{

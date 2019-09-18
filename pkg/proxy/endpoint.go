@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -47,6 +48,8 @@ type EndpointClient struct {
 	// URL the client sends POST requests to
 	URL string
 
+	headers []string
+
 	connect bool
 
 	events map[string]bool
@@ -84,6 +87,21 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 		req.Header.Add(k, v)
 	}
 
+	// split and add custom headers
+	for _, header := range c.headers {
+		splitHeader := strings.Split(header, ":")
+
+		// TODO: sanitization and safety checks
+		
+		
+		// check if header is host
+		if strings.ToLower(splitHeader[0]) == "host" {
+			req.Host = splitHeader[1]
+		} else {
+			req.Header.Add(splitHeader[0], splitHeader[1])
+		}
+	}
+
 	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
 		color := ansi.Color(os.Stdout)
@@ -109,8 +127,10 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 // Public functions
 //
 
+
+// add custom headers as args
 // NewEndpointClient returns a new EndpointClient.
-func NewEndpointClient(url string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -128,6 +148,7 @@ func NewEndpointClient(url string, connect bool, events []string, cfg *EndpointC
 
 	return &EndpointClient{
 		URL:     url,
+		headers: headers,
 		connect: connect,
 		events:  convertToMap(events),
 		cfg:     cfg,
