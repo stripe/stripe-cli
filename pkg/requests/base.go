@@ -45,6 +45,8 @@ type Base struct {
 	// SuppressOutput is used by `trigger` to hide output
 	SuppressOutput bool
 
+	DarkStyle bool
+
 	APIBaseURL string
 
 	Livemode bool
@@ -93,6 +95,7 @@ func (rb *Base) InitFlags(includeData bool) {
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "livemode", false, "Make a request against live mode instead of test mode")
+	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter terminals")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
@@ -142,7 +145,7 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters) ([]b
 			return []byte{}, err
 		}
 
-		result := ansi.ColorizeJSON(string(body), os.Stdout)
+		result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
 		fmt.Println(result)
 	}
 
