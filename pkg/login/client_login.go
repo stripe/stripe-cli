@@ -44,6 +44,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	color := ansi.Color(os.Stdout)
 	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
+	fmt.Println(ansi.Faint("This pairing code confirms you’re originating the authentication with Stripe."))
 
 	fmt.Printf("Press Enter to open the browser (^C to quit)")
 	fmt.Fscanln(input)
