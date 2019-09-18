@@ -13,7 +13,7 @@ type configCmd struct {
 	list  bool
 	edit  bool
 	unset string
-	set bool
+	set   bool
 }
 
 func newConfigCmd() *configCmd {
@@ -50,6 +50,4 @@ func (cc *configCmd) runConfigCmd(cmd *cobra.Command, args []string) error {
 		// no flags set or unrecognized flags/args
 		return cc.cmd.Help()
 	}
-
-	return nil
 }
