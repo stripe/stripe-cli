@@ -73,9 +73,6 @@ func getUsageTemplate() string {
 %s
   {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
 
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "http")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
-
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
@@ -102,7 +99,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Usage:"),
 		ansi.Bold("Aliases:"),
 		ansi.Bold("Examples:"),
-		ansi.Bold("HTTP commands:"),
 		ansi.Bold("Webhook commands:"),
 		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Resource commands:"),
