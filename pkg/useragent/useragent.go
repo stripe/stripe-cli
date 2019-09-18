@@ -2,10 +2,7 @@ package useragent
 
 import (
 	"encoding/json"
-	"fmt"
 	"runtime"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -51,23 +48,6 @@ var encodedUserAgent string
 //
 // Private functions
 //
-
-func getUname() string {
-	// TODO: if there is appetite for it in the community
-	// add support for Windows GetSystemInfo
-
-	if runtime.GOOS != "windows" {
-		u := new(unix.Utsname)
-		err := unix.Uname(u)
-		if err != nil {
-			panic(err)
-		}
-
-		return fmt.Sprintf("%s %s %s %s %s", u.Sysname, u.Nodename, u.Release, u.Version, u.Machine)
-	}
-
-	return ""
-}
 
 func init() {
 	initUserAgent()
