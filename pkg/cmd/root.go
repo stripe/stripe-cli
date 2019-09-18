@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -53,6 +54,9 @@ func Execute() {
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
 	if err := rootCmd.Execute(); err != nil {
+		if strings.Contains(err.Error(), "unknown command") {
+			rootCmd.Help()
+		}
 		fmt.Println(err)
 		os.Exit(1)
 	}
