@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/briandowns/spinner"
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/open"
@@ -45,16 +46,22 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
 
-	fmt.Printf("Press Enter to open the browser (^C to quit)")
-	fmt.Fscanln(input)
-
-	s := ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
-
-	err = openBrowser(links.BrowserURL)
-	if err != nil {
-		msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
-		ansi.StopSpinner(s, msg, os.Stdout)
+	var s *spinner.Spinner
+	if isSSH() {
+		fmt.Println(fmt.Sprintf("To authenticate with Stripe, please go to: %s", links.BrowserURL))
 		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+	} else {
+		fmt.Printf("Press Enter to open the browser (^C to quit)")
+		fmt.Fscanln(input)
+
+		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+
+		err = openBrowser(links.BrowserURL)
+		if err != nil {
+			msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
+			ansi.StopSpinner(s, msg, os.Stdout)
+			s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+		}
 	}
 
 	//Call poll function
@@ -124,4 +131,12 @@ func getLinks(baseURL string, deviceName string) (*Links, error) {
 	}
 
 	return &links, nil
+}
+
+func isSSH() bool {
+	if os.Getenv("SSH_TTY") != "" || os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != "" {
+		return true
+	}
+
+	return false
 }
