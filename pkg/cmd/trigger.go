@@ -17,13 +17,14 @@ type triggerCmd struct {
 	cmd *cobra.Command
 
 	apiBaseURL string
+	eventID    string
 }
 
 func newTriggerCmd() *triggerCmd {
 	tc := &triggerCmd{}
 	tc.cmd = &cobra.Command{
 		Use:  "trigger <event>",
-		Args: validators.ExactArgs(1),
+		Args: validators.MaximumNArgs(1),
 		ValidArgs: []string{
 			"charge.captured",
 			"charge.failed",
@@ -65,7 +66,9 @@ needed to create the triggered event.
   payment_intent.created
   payment_intent.payment_failed
   payment_intent.succeeded
-  payment_method.attached`,
+  payment_method.attached
+
+  --event <evt_id>`,
 			getBanner(),
 			ansi.Bold("Supported events:"),
 		),
@@ -76,6 +79,7 @@ needed to create the triggered event.
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	tc.cmd.Flags().MarkHidden("api-base") // #nosec G104
+	tc.cmd.Flags().StringVar(&tc.eventID, "event", "", "event-id to resend")
 
 	return tc
 }
@@ -91,6 +95,15 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		APIBaseURL: tc.apiBaseURL,
 		APIVersion: apiVersion,
 		APIKey:     apiKey,
+	}
+
+	if len(args) == 0 {
+		if tc.eventID != "" {
+			return examples.ResendEvent(tc.eventID)
+		}
+
+		cmd.Usage()
+		return nil
 	}
 
 	event := args[0]
