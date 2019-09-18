@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/briandowns/spinner"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/open"
