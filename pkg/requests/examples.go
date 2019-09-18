@@ -8,6 +8,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
+const (
+	validToken    = "tok_visa"
+	declinedToken = "tok_chargeDeclined"
+)
+
 func parseResponse(response []byte) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	err := json.Unmarshal(response, &result)
@@ -61,22 +66,8 @@ func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *Req
 	return parseResponse(resp)
 }
 
-func (ex *Examples) tokenCreated(card string) (map[string]interface{}, error) {
-	req, params := ex.buildRequest(http.MethodPost, []string{
-		fmt.Sprintf("card[number]=%s", card),
-		"card[exp_month]=12",
-		"card[exp_year]=2020",
-		"card[cvc]=123",
-	})
-	return ex.performStripeRequest(req, "/v1/tokens", params)
-}
-
-func (ex *Examples) chargeCreated(card string, data []string) (map[string]interface{}, error) {
-	paymentToken, err := ex.tokenCreated(card)
-	if err != nil {
-		return nil, err
-	}
-	paymentSource := fmt.Sprintf("source=%s", paymentToken["id"])
+func (ex *Examples) chargeCreated(token string, data []string) (map[string]interface{}, error) {
+	paymentSource := fmt.Sprintf("source=%s", token)
 
 	req, params := ex.buildRequest(http.MethodPost, append(data, paymentSource))
 	return ex.performStripeRequest(req, "/v1/charges", params)
@@ -86,25 +77,25 @@ func (ex *Examples) chargeCreated(card string, data []string) (map[string]interf
 // sends another request to specifically capture it to trigger the
 // captured event
 func (ex *Examples) ChargeCaptured() error {
-	charge, err := ex.chargeCreated("4242424242424242", []string{
+	charge, err := ex.chargeCreated(validToken, []string{
 		"amount=2000",
 		"currency=usd",
 		"capture=false",
 	})
+
 	if err != nil {
 		return err
 	}
 
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/charges/%s/capture", charge["id"])
-
 	_, err = ex.performStripeRequest(req, reqURL, params)
 	return err
 }
 
 // ChargeFailed fails to create a charge
 func (ex *Examples) ChargeFailed() error {
-	_, err := ex.chargeCreated("4000000000000002", []string{
+	_, err := ex.chargeCreated(declinedToken, []string{
 		"amount=2000",
 		"currency=usd",
 	})
@@ -113,7 +104,7 @@ func (ex *Examples) ChargeFailed() error {
 
 // ChargeSucceeded successfully creates a charge
 func (ex *Examples) ChargeSucceeded() error {
-	_, err := ex.chargeCreated("4242424242424242", []string{
+	_, err := ex.chargeCreated(validToken, []string{
 		"amount=2000",
 		"currency=usd",
 	})
@@ -154,13 +145,8 @@ func (ex *Examples) CustomerSourceCreated() error {
 		return err
 	}
 
-	token, err := ex.tokenCreated("4242424242424242")
-	if err != nil {
-		return err
-	}
-
 	req, params := ex.buildRequest(http.MethodPost, []string{
-		fmt.Sprintf("source=%s", token["id"]),
+		fmt.Sprintf("source=%s", validToken),
 	})
 
 	reqURL := fmt.Sprintf("/v1/customers/%s/sources", customer["id"])
@@ -176,13 +162,8 @@ func (ex *Examples) CustomerSourceUpdated() error {
 		return err
 	}
 
-	token, err := ex.tokenCreated("4242424242424242")
-	if err != nil {
-		return err
-	}
-
 	req, params := ex.buildRequest(http.MethodPost, []string{
-		fmt.Sprintf("source=%s", token["id"]),
+		fmt.Sprintf("source=%s", validToken),
 	})
 
 	reqURL := fmt.Sprintf("/v1/customers/%s/sources", customer["id"])
@@ -202,13 +183,8 @@ func (ex *Examples) CustomerSourceUpdated() error {
 // CustomerSubscriptionUpdated creates a customer with a card, creates a plan,
 // adds the customer to the plan, then updates the new subscription
 func (ex *Examples) CustomerSubscriptionUpdated() error {
-	token, err := ex.tokenCreated("4242424242424242")
-	if err != nil {
-		return err
-	}
-
 	customer, err := ex.customerCreated([]string{
-		fmt.Sprintf("source=%s", token["id"]),
+		fmt.Sprintf("source=%s", validToken),
 	})
 	if err != nil {
 		return err
@@ -312,13 +288,8 @@ func (ex *Examples) InvoiceFinalized() error {
 // InvoicePaymentSucceeded first creates a customer, adds an invoice item,
 // creates the invoice, and then pays the invoice
 func (ex *Examples) InvoicePaymentSucceeded() error {
-	token, err := ex.tokenCreated("4242424242424242")
-	if err != nil {
-		return err
-	}
-
 	customer, err := ex.customerCreated([]string{
-		fmt.Sprintf("source=%s", token["id"]),
+		fmt.Sprintf("source=%s", validToken),
 	})
 	if err != nil {
 		return err

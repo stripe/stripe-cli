@@ -2,6 +2,7 @@ package requests
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,7 +39,21 @@ func TestBuildRequest(t *testing.T) {
 }
 
 func TestChargeCaptured(t *testing.T) {
+	count := 0
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		require.Nil(t, err)
+
+		// Because it's 2 calls to server for this
+		if count == 0 {
+			require.NotEmpty(t, body)
+			require.EqualValues(t, "amount=2000&currency=usd&capture=false&source=tok_visa", string(body))
+			count++
+		} else {
+			require.Empty(t, body)
+		}
+
 		w.WriteHeader(http.StatusOK)
 		data := jsonBytes()
 		w.Write(data)
@@ -52,11 +67,16 @@ func TestChargeCaptured(t *testing.T) {
 	}
 
 	err := ex.ChargeCaptured()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestChargeFailed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		require.Nil(t, err)
+		require.NotEmpty(t, body)
+		require.EqualValues(t, "amount=2000&currency=usd&source=tok_chargeDeclined", string(body))
+
 		w.WriteHeader(http.StatusOK)
 		data := jsonBytes()
 		w.Write(data)
@@ -75,6 +95,10 @@ func TestChargeFailed(t *testing.T) {
 
 func TestChargeSucceeded(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		require.Nil(t, err)
+		require.EqualValues(t, "amount=2000&currency=usd&source=tok_visa", string(body))
+
 		w.WriteHeader(http.StatusOK)
 		data := jsonBytes()
 		w.Write(data)
@@ -93,6 +117,10 @@ func TestChargeSucceeded(t *testing.T) {
 
 func TestCustomerCreated(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := ioutil.ReadAll(r.Body)
+		require.Nil(t, err)
+		require.Empty(t, body)
+
 		w.WriteHeader(http.StatusOK)
 		data := jsonBytes()
 		w.Write(data)
