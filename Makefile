@@ -44,13 +44,21 @@ go-mod-tidy:
 .PHONY: go-mod-tidy
 
 # Run all the tests and code checks
-ci: build test lint go-mod-tidy
+ci: build-all-platforms test lint go-mod-tidy
 .PHONY: ci
 
 # Build a beta version of stripe
 build:
 	go generate ./...
 	go build -o stripe cmd/stripe/main.go
+.PHONY: build
+
+# Build a beta version of stripe for all support platforms
+build-all-platforms:
+	go generate ./...
+	env GOOS=darwin go build -o stripe-darwin cmd/stripe/main.go
+	env GOOS=linux go build -o stripe-linux cmd/stripe/main.go
+	env GOOS=windows go build -o stripe-windows.exe cmd/stripe/main.go
 .PHONY: build
 
 # Show to-do items per file
