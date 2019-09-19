@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 	"strings"
+	"regexp"
 
 	log "github.com/sirupsen/logrus"
 
@@ -48,7 +49,7 @@ type EndpointClient struct {
 	// URL the client sends POST requests to
 	URL string
 
-	headers []string
+	headers map[string]string
 
 	connect bool
 
@@ -87,18 +88,11 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 		req.Header.Add(k, v)
 	}
 
-	// split and add custom headers
-	for _, header := range c.headers {
-		splitHeader := strings.Split(header, ":")
-
-		// TODO: sanitization and safety checks
-		
-		
-		// check if header is host
-		if strings.ToLower(splitHeader[0]) == "host" {
-			req.Host = splitHeader[1]
+	for k, v := range c.headers {
+		if strings.ToLower(k) == "host" {
+			req.Host = v
 		} else {
-			req.Header.Add(splitHeader[0], splitHeader[1])
+			req.Header.Add(k, v)
 		}
 	}
 
@@ -128,9 +122,9 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 //
 
 
-// add custom headers as args
 // NewEndpointClient returns a new EndpointClient.
 func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+	
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -146,9 +140,39 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, *http.Response) {})
 	}
 
+	// TODO: do sanitization here
+
+	reg, err := regexp.Compile("[\x00-\x1f]+")
+
+	headerMap := make(map[string]string)
+
+	if err != nil {
+		fmt.Println("error with regex")
+	}
+
+	for _, header := range headers {
+
+		// check for sub 0x20 ascii values
+		// cleanString := ""
+		// for _, runeValue := range header {
+		// 	if int(runeValue) >= 32 {
+		// 		cleanString += string(runeValue)
+		// 	}
+		// }
+
+		header = reg.ReplaceAllString(header, "")
+
+		splitHeader := strings.Split(header, ":")
+		headerKey := strings.TrimSpace(splitHeader[0])
+		headerVal := strings.TrimSpace(splitHeader[1])
+		if headerKey != "" {
+			headerMap[headerKey] = headerVal
+		}
+	}
+
 	return &EndpointClient{
 		URL:     url,
-		headers: headers,
+		headers: headerMap,
 		connect: connect,
 		events:  convertToMap(events),
 		cfg:     cfg,
