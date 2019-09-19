@@ -55,9 +55,17 @@ func Execute() {
 	rootCmd.SetVersionTemplate(version.Template)
 	if err := rootCmd.Execute(); err != nil {
 		if strings.Contains(err.Error(), "unknown command") {
-			rootCmd.Help()
+			suggestions := rootCmd.SuggestionsFor(os.Args[1])
+			sugg_str := ""
+			if len(suggestions) > 0 {
+				sugg_str = fmt.Sprintf(" Did you mean \"%s\"?", suggestions[0])
+			}
+			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s\n" +
+				"If not, see \"stripe --help\" for a list of available commands.",
+				os.Args[1], rootCmd.CommandPath(), sugg_str))
+		} else {
+			fmt.Println(err)
 		}
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
