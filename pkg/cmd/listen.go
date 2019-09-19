@@ -90,8 +90,6 @@ to your localhost:
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
-	print("running listen command")
-
 	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -189,8 +187,6 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	return examples.WebhookEndpointsList()
 }
 
-// add custom host as arg
-// TODO: check if forward headers exist
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 	for _, endpoint := range endpoints.Data {
