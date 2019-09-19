@@ -24,11 +24,7 @@ func TestClientHandler(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "TestAgent/v1", r.UserAgent())
 		require.Equal(t, "t=123,v1=hunter2", r.Header.Get("Stripe-Signature"))
-
-		// t.Error("!!!!!!!!!!!!!!!!!!!!")
-		// t.Error(r.Host)
 		
-		// test custom headers
 		require.Equal(t, "hostname", r.Host)
 		require.Equal(t, "customHeaderValue", r.Header.Get("customHeader"))
 		require.Equal(t, "customHeaderValue 2", r.Header.Get("customHeader2"))

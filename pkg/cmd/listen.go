@@ -202,17 +202,17 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
 			if endpoint.Application == "" {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        buildForwardURL(forwardURL, u),
+					URL:        	buildForwardURL(forwardURL, u),
 					ForwardHeaders:	forwardHeaders,
-					Connect:    false,
-					EventTypes: endpoint.EnabledEvents,
+					Connect:    	false,
+					EventTypes: 	endpoint.EnabledEvents,
 				})
 			} else {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        buildForwardURL(forwardConnectURL, u),
-					ForwardHeaders: 	forwardConnectHeaders,
-					Connect:    true,
-					EventTypes: endpoint.EnabledEvents,
+					URL:        	buildForwardURL(forwardConnectURL, u),
+					ForwardHeaders: forwardConnectHeaders,
+					Connect:    	true,
+					EventTypes: 	endpoint.EnabledEvents,
 				})
 			}
 		}
