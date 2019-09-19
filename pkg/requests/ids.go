@@ -5,6 +5,7 @@ import "regexp"
 var idURLMap = map[string]string{
 	"txn":   "/v1/balance_transactions/",
 	"ch":    "/v1/charges/",
+	"py":    "/v1/charges/",
 	"cus":   "/v1/customers/",
 	"dp":    "/v1/disputes/",
 	"evt":   "/v1/events/",
