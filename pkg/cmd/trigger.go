@@ -117,5 +117,12 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 	}
 	err = function.(func() error)()
+
+	if err == nil {
+		fmt.Println("Trigger succeeded! Check dashboard for event details.")
+	} else {
+		fmt.Println(fmt.Sprintf("Trigger failed: %s", err))
+	}
+
 	return err
 }
