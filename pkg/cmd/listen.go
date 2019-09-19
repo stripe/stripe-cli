@@ -22,16 +22,16 @@ const webhooksWebSocketFeature = "webhooks"
 type listenCmd struct {
 	cmd *cobra.Command
 
-	forwardURL          string
-	forwardHeaders		[]string
+	forwardURL            string
+	forwardHeaders        []string
 	forwardConnectHeaders []string
-	forwardConnectURL   string
-	events              []string
-	latestAPIVersion    bool
-	livemode            bool
-	loadFromWebhooksAPI bool
-	printJSON           bool
-	skipVerify          bool
+	forwardConnectURL     string
+	events                []string
+	latestAPIVersion      bool
+	livemode              bool
+	loadFromWebhooksAPI   bool
+	printJSON             bool
+	skipVerify            bool
 
 	apiBaseURL string
 	noWSS      bool
@@ -89,9 +89,9 @@ to your localhost:
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
-	
+
 	print("running listen command")
-	
+
 	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -122,16 +122,16 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		// add custom headers to endpoint routes
 
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-			URL:        parseURL(lc.forwardURL),
-			ForwardHeaders:	lc.forwardHeaders,
-			Connect:    false,
-			EventTypes: lc.events,
+			URL:            parseURL(lc.forwardURL),
+			ForwardHeaders: lc.forwardHeaders,
+			Connect:        false,
+			EventTypes:     lc.events,
 		})
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-			URL:        parseURL(lc.forwardConnectURL),
-			ForwardHeaders:	lc.forwardConnectHeaders,
-			Connect:    true,
-			EventTypes: lc.events,
+			URL:            parseURL(lc.forwardConnectURL),
+			ForwardHeaders: lc.forwardConnectHeaders,
+			Connect:        true,
+			EventTypes:     lc.events,
 		})
 	}
 
@@ -148,7 +148,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 			return errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 
-		// pass in connect and non connect custom headers to build endpoint routes
 		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL), lc.forwardHeaders, lc.forwardConnectHeaders)
 	} else if lc.loadFromWebhooksAPI && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
@@ -202,17 +201,17 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
 			if endpoint.Application == "" {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        	buildForwardURL(forwardURL, u),
-					ForwardHeaders:	forwardHeaders,
-					Connect:    	false,
-					EventTypes: 	endpoint.EnabledEvents,
+					URL:            buildForwardURL(forwardURL, u),
+					ForwardHeaders: forwardHeaders,
+					Connect:        false,
+					EventTypes:     endpoint.EnabledEvents,
 				})
 			} else {
 				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:        	buildForwardURL(forwardConnectURL, u),
+					URL:            buildForwardURL(forwardConnectURL, u),
 					ForwardHeaders: forwardConnectHeaders,
-					Connect:    	true,
-					EventTypes: 	endpoint.EnabledEvents,
+					Connect:        true,
+					EventTypes:     endpoint.EnabledEvents,
 				})
 			}
 		}

@@ -6,9 +6,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"time"
-	"strings"
 	"regexp"
+	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -122,10 +122,9 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 // Public functions
 //
 
-
 // NewEndpointClient returns a new EndpointClient.
 func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
-	
+
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -172,15 +171,9 @@ func convertToMap(events []string) map[string]bool {
 }
 
 func convertToMapAndSanitize(headers []string) map[string]string {
-	reg, err := regexp.Compile("[\x00-\x1f]+")
+	reg := regexp.MustCompile("[\x00-\x1f]+")
 
 	headerMap := make(map[string]string)
-
-	if err != nil {
-		// what to do if regex fails to compile?
-		fmt.Println("error with regex")
-		return headerMap
-	}
 
 	for _, header := range headers {
 
