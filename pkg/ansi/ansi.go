@@ -13,6 +13,15 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+var darkTerminalStyle = &pretty.Style{
+	Key:    [2]string{"\x1B[34m", "\x1B[0m"},
+	String: [2]string{"\x1B[30m", "\x1B[0m"},
+	Number: [2]string{"\x1B[94m", "\x1B[0m"},
+	True:   [2]string{"\x1B[35m", "\x1B[0m"},
+	False:  [2]string{"\x1B[35m", "\x1B[0m"},
+	Null:   [2]string{"\x1B[31m", "\x1B[0m"},
+}
+
 //
 // Public variables
 //
@@ -45,12 +54,17 @@ func Color(w io.Writer) aurora.Aurora {
 
 // ColorizeJSON returns a colorized version of the input JSON, if the writer
 // supports colors.
-func ColorizeJSON(json string, w io.Writer) string {
+func ColorizeJSON(json string, darkStyle bool, w io.Writer) string {
 	if !shouldUseColors(w) {
 		return json
 	}
 
-	return string(pretty.Color([]byte(json), nil))
+	style := (*pretty.Style)(nil)
+	if darkStyle {
+		style = darkTerminalStyle
+	}
+
+	return string(pretty.Color([]byte(json), style))
 }
 
 // ColorizeStatus returns a colorized number for HTTP status code

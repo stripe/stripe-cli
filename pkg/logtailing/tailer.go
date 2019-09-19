@@ -171,7 +171,7 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	}
 
 	if tailer.cfg.OutputFormat == outputFormatJSON {
-		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, os.Stdout))
+		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, false, os.Stdout))
 		return
 	}
 
