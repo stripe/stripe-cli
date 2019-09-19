@@ -56,13 +56,13 @@ func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		if strings.Contains(err.Error(), "unknown command") {
 			suggestions := rootCmd.SuggestionsFor(os.Args[1])
-			sugg_str := "\nS"
+			suggStr := "\nS"
 			if len(suggestions) > 0 {
-				sugg_str = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
+				suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
 			}
-			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s" +
+			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 				"ee \"stripe --help\" for a list of available commands.",
-				os.Args[1], rootCmd.CommandPath(), sugg_str))
+				os.Args[1], rootCmd.CommandPath(), suggStr))
 		} else {
 			fmt.Println(err)
 		}
