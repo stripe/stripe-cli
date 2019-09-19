@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# for this to work either manually copy to .git/hooks/pre-commit
+# or run `make githooks-init`
+
+# run linters before committing to give faster feedback to our developers 
+make lint
