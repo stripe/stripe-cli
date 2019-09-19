@@ -186,7 +186,7 @@ func convertToMapAndSanitize(headers []string) map[string]string {
 
 		header = reg.ReplaceAllString(header, "")
 
-		splitHeader := strings.Split(header, ":")
+		splitHeader := strings.SplitN(header, ":", 2)
 		headerKey := strings.TrimSpace(splitHeader[0])
 		headerVal := strings.TrimSpace(splitHeader[1])
 		if headerKey != "" {
