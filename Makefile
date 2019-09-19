@@ -14,6 +14,10 @@ setup:
 	go mod download
 .PHONY: setup
 
+githooks-init:
+	cp .pre-commit .git/hooks/pre-commit
+.PHONY: githooks-init
+
 # Run all the tests
 test:
 	go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m

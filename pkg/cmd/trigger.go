@@ -68,7 +68,8 @@ needed to create the triggered event.
   payment_intent.succeeded
   payment_method.attached
 
-  --event <evt_id>`,
+  You can also resend a past event using the --event flag:
+  e.g. stripe trigger --event evt_123`,
 			getBanner(),
 			ansi.Bold("Supported events:"),
 		),
@@ -79,7 +80,7 @@ needed to create the triggered event.
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	tc.cmd.Flags().MarkHidden("api-base") // #nosec G104
-	tc.cmd.Flags().StringVar(&tc.eventID, "event", "", "event-id to resend")
+	tc.cmd.Flags().StringVar(&tc.eventID, "event", "", "ID of the event to resend")
 
 	return tc
 }
