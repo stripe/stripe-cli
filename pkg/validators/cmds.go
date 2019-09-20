@@ -44,3 +44,27 @@ func ExactArgs(num int) cobra.PositionalArgs {
 		return nil
 	}
 }
+
+// MaximumNArgs is a validator for commands to print an error when the provided
+// args are greater than the maximum amount
+func MaximumNArgs(num int) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		argument := "argument"
+		if num > 1 {
+			argument = "arguments"
+		}
+
+		errorMessage := fmt.Sprintf(
+			"%s only takes %d %s (or less). See `stripe %s --help` for supported flags and usage",
+			cmd.Name(),
+			num,
+			argument,
+			cmd.Name(),
+		)
+
+		if len(args) > num {
+			return errors.New(errorMessage)
+		}
+		return nil
+	}
+}
