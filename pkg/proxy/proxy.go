@@ -138,6 +138,8 @@ func (p *Proxy) Run() error {
 		p.cfg.Log.Fatalf("Aborting")
 	}
 
+	p.printOptions()
+
 	// Block until context is done (i.e. Ctrl+C is pressed)
 	<-p.ctx.Done()
 
@@ -411,4 +413,29 @@ func truncate(str string, maxByteLength int, ellipsis bool) string {
 
 func isUTF8ContinuationByte(b byte) bool {
 	return (b & 0xC0) == 0x80
+}
+
+func (p *Proxy) printOptions() {
+	if !p.cfg.PrintJSON {
+		if p.cfg.UseLatestAPIVersion {
+			fmt.Println("Using Latest API Version")
+		} else {
+			fmt.Println("Using your account's default API version")
+		}
+
+		for i, endpoint := range p.cfg.EndpointRoutes {
+			fmt.Printf("Endpoint %d\n", i)
+
+			if endpoint.EventTypes[0] == "*" {
+				fmt.Printf("\tForwarding all events -> %s\n", endpoint.URL)
+			} else {
+				fmt.Printf("\tForwarding %s events -> %s\n", endpoint.EventTypes, endpoint.URL)
+			}
+
+			fmt.Printf("\tHeaders: %s\n", endpoint.ForwardHeaders)
+			fmt.Printf("\tConnect: %t\n", endpoint.Connect)
+		}
+
+		fmt.Println("--")
+	}
 }
