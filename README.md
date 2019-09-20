@@ -51,6 +51,7 @@ Run:
 
 ```sh
 $ brew install stripe/stripe-cli/stripe
+```
 
 ### Linux
 
