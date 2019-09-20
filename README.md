@@ -45,31 +45,16 @@ The main focus for this initial release is to improve the developer experience w
 
 ### macOS
 
-_With homebrew:_
+_homebrew:_
 
 Run:
 
 ```sh
 $ brew install stripe/stripe-cli/stripe
-```
-
-_Without homebrew:_
-
-1. Download the latest `mac-os` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
-
-2. Unzip the file:
-
-```sh
-$ tar -xvf stripe_X.X.X_mac-os_x86_64.tar.gz
-```
-
-3. (optional) Move the binary to somewhere you can execute it globally, like `/usr/local/bin`
 
 ### Linux
 
-_With a package manager:_
-
-**Debian/Ubuntu-based distributions**:
+_Debian/Ubuntu-based distributions_:
 
 1. Add Bintray's GPG key to the apt sources keyring:
 
@@ -95,7 +80,7 @@ $ sudo apt-get update
 $ sudo apt-get install stripe
 ```
 
-**RedHat/CentOS-based distributions:**
+_RedHat/CentOS-based distributions:_
 
 1. Add stripe-cli's yum repository to the yum sources list:
 
@@ -115,25 +100,9 @@ $ sudo yum update
 $ sudo yum install stripe
 ```
 
-_Without a package manager:_
-
-1. Download the latest `linux` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
-
-2. Unzip the file:
-
-```sh
-$ tar -xvf stripe_X.X.X_linux_x86_64.tar.gz
-```
-
-3. Run the executable:
-
-```sh
-$ ./stripe
-```
-
 ### Windows
 
-_With scoop:_
+_scoop:_
 
 1. Run:
 
@@ -147,14 +116,6 @@ $ scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
 $ scoop install stripe
 ```
 
-_Without scoop:_
-
-1. Download the latest `windows` tar.gz file from https://github.com/stripe/stripe-cli/releases/latest
-
-2. Unzip the `stripe_X.X.X_windows_x86_64.tar.gz` file
-
-3. Run the unzipped `.exe` file!
-
 ### Docker
 
 The CLI is also available as a Docker image: [`stripe/stripe-cli`](https://hub.docker.com/r/stripe/stripe-cli).
@@ -163,6 +124,10 @@ The CLI is also available as a Docker image: [`stripe/stripe-cli`](https://hub.d
 $ docker run --rm -it stripe/stripe-cli version
 stripe version x.y.z (beta)
 ```
+
+### Without package managers
+
+Instructions are also available for installing and using the CLI [without a package manager](https://github.com/stripe/stripe-cli/wiki/Installing-and-updating#without-a-package-manager).
 
 ## Commands
 
@@ -245,93 +210,7 @@ $ stripe charges retrieve ch_123
 $ stripe charges create amount=100 currency=usd source=tok_visa
 ```
 
-For a full list of available resources, type `stripe resources`. The list of supported commands are:
-
-```sh
-$ stripe resources
-Available Namespaces:
-  checkout
-  issuing
-  radar
-  reporting
-  terminal
-
-Available Resources:
-  3d_secure
-  account_links
-  accounts
-  apple_pay_domains
-  application_fees
-  balance
-  balance_transactions
-  bank_accounts
-  bitcoin_receivers
-  bitcoin_transactions
-  capabilities
-  cards
-  charges
-  country_specs
-  coupons
-  credit_notes
-  customer_balance_transactions
-  customers
-  disputes
-  ephemeral_keys
-  events
-  exchange_rates
-  external_accounts
-  fee_refunds
-  file_links
-  files
-  invoiceitems
-  invoices
-  issuer_fraud_records
-  line_items
-  login_links
-  order_returns
-  orders
-  payment_intents
-  payment_methods
-  payment_sources
-  payouts
-  persons
-  plans
-  products
-  recipients
-  refunds
-  reviews
-  scheduled_query_runs
-  setup_intents
-  skus
-  sources
-  subscription_items
-  subscription_schedules
-  subscriptions
-  tax_ids
-  tax_rates
-  tokens
-  topups
-  transfer_reversals
-  transfers
-  usage_records
-  webhook_endpoints
-```
-
-To find out which API operations are available for a given resource, simply enter the resource names with no other arguments:
-
-```sh
-$ stripe charges
-Usage:
-  stripe charges <operation> [parameters...]
-
-Available Operations:
-  capture
-  create
-  list
-  retrieve
-  update
-...
-```
+For a full list of available resources, type `stripe resources` or the [wiki page](https://github.com/stripe/stripe-cli/wiki/resources:-available-commands#available-commands).
 
 ### `get`, `post`, and `delete`
 
@@ -349,20 +228,7 @@ You can also pass data in using the `-d` flag:
 $ stripe post /charges -d amount=100 -d source=tok_visa -d currency=usd
 ```
 
-These commands support many of the features on the Stripe API (e.g. selecting a version, pagination, and expansion) through command-line flags, so you won't need to provide specific headers.
-
-| Command | Flag | Description| Example|
-|---------|------|------------|--------|
-| get, post, delete | `-d`, `--data` | Data to pass for the API request | `--data id=cust_123abc` |
-| get, post, delete | `-e`, `--expand` | Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion | `--expand customer,charges` |
-| get, post, delete | `-i`, `--idempotency` | Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period. | `--idempotency foobar123456` |
-| get, post, delete | `-v`, `--api-version` | Set the Stripe API version to use for your request | `--api-version 2019-03-14` |
-| get, post, delete | `--stripe-account` | Set a header identifying the connected account for which the request is being made | `--stripe-account m_1234acbd` |
-| get, post, delete | `-s`, `--show-headers` | Show headers on responses to GET, POST, and DELETE requests | `--show-headers` |
-| delete | `-c`, `--confirm` | Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands | `--confirm` |
-| get | `-l`, `--limit` | A limit on the number of objects to be returned, between 1 and 100 (default is 10) | `--limit 50` |
-| get | `-a`, `--starting-after` | Retrieve the next page in the list. This is a cursor for pagination and should be an object ID | `--starting-after cust_1234abc` |
-| get | `-b`, `--ending-before` | Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID | `--ending-before cust_1234abc` |
+These commands support many of the features on the Stripe API (e.g. selecting a version, pagination, and expansion) through command-line flags, so you won't need to provide specific headers. For a full list of supported flags, see the [wiki page](https://github.com/stripe/stripe-cli/wiki/http-commands:-advanced-options).
 
 You can pipe the output of these commands to other tools. For example, you could use [jq](https://stedolan.github.io/jq/) to extract information from JSON the API returns, and then use that information to trigger other API requests.
 
@@ -376,24 +242,7 @@ $ stripe get /subscriptions -d status=past_due | jq ".data[].id" | xargs -I % -p
 
 The CLI will allow you to trigger a few test webhook events to conduct local testing. These test webhook events are real objects on the API and may trigger other webhook events as part of the test (e.g. triggering `payment_intent.succeeded` will also trigger `payment_intent.created`).
 
-The webhook events we currently support are:
-
-* `charge.captured`
-* `charge.failed`
-* `charge.succeeded`
-* `customer.created`
-* `customer.updated`
-* `customer.source.created`
-* `customer.source.updated`
-* `customer.subscription.updated`
-* `invoice.created`
-* `invoice.finalized`
-* `invoice.payment_succeeded`
-* `invoice.updated`
-* `payment_intent.created`
-* `payment_intent.payment_failed`
-* `payment_intent.succeeded`
-* `payment_method.attached`
+The webhook events we currently support are listed in the CLI help or on the [wiki page](https://github.com/stripe/stripe-cli/wiki/trigger:-supported-events).
 
 To trigger an event, run:
 
@@ -511,49 +360,7 @@ The `open` command is a shortcut available for users to quickly open up differen
 $ stripe open <shortcut>
 ```
 
-Where `<shortcut>` is one of:
-
-```sh
-shortcut                              url
---------                              ---------
-api                                => https://stripe.com/docs/api
-apiref                             => https://stripe.com/docs/api
-dashboard                          => https://dashboard.stripe.com/test
-dashboard/apikeys                  => https://dashboard.stripe.com/test/apikeys
-dashboard/atlas                    => https://dashboard.stripe.com/test/atlas
-dashboard/balance                  => https://dashboard.stripe.com/test/balance/overview
-dashboard/billing                  => https://dashboard.stripe.com/test/billing
-dashboard/connect                  => https://dashboard.stripe.com/test/connect/overview
-dashboard/connect/accounts         => https://dashboard.stripe.com/test/connect/accounts/overview
-dashboard/connect/collected-fees   => https://dashboard.stripe.com/test/connect/application_fees
-dashboard/connect/transfers        => https://dashboard.stripe.com/test/connect/transfers
-dashboard/coupons                  => https://dashboard.stripe.com/test/coupons
-dashboard/customers                => https://dashboard.stripe.com/test/customers
-dashboard/developers               => https://dashboard.stripe.com/test/developers
-dashboard/disputes                 => https://dashboard.stripe.com/test/disputes
-dashboard/events                   => https://dashboard.stripe.com/test/events
-dashboard/invoices                 => https://dashboard.stripe.com/test/invoices
-dashboard/logs                     => https://dashboard.stripe.com/test/logs
-dashboard/orders                   => https://dashboard.stripe.com/test/orders
-dashboard/orders/products          => https://dashboard.stripe.com/test/orders/products
-dashboard/payments                 => https://dashboard.stripe.com/test/payments
-dashboard/payouts                  => https://dashboard.stripe.com/test/payouts
-dashboard/radar                    => https://dashboard.stripe.com/test/radar
-dashboard/radar/list               => https://dashboard.stripe.com/test/radar/list
-dashboard/radar/reviews            => https://dashboard.stripe.com/test/radar/reviews
-dashboard/radar/rules              => https://dashboard.stripe.com/test/radar/rules
-dashboard/settings                 => https://dashboard.stripe.com/test/settings
-dashboard/subscriptions            => https://dashboard.stripe.com/test/subscriptions
-dashboard/subscriptions/products   => https://dashboard.stripe.com/test/subscriptions/products
-dashboard/tax-rates                => https://dashboard.stripe.com/test/tax-rates
-dashboard/terminal                 => https://dashboard.stripe.com/test/terminal
-dashboard/terminal/hardware_orders => https://dashboard.stripe.com/test/terminal/hardware_orders
-dashboard/terminal/locations       => https://dashboard.stripe.com/test/terminal/locations
-dashboard/topups                   => https://dashboard.stripe.com/test/topups
-dashboard/transactions             => https://dashboard.stripe.com/test/balance
-dashboard/webhooks                 => https://dashboard.stripe.com/test/webhooks
-docs                               => https://stripe.com/docs
-```
+All of the available shortcuts are listed in the [wiki page](https://github.com/stripe/stripe-cli/wiki/open:-supported-shortcuts).
 
 For dashboard pages, you can also add the `--livemode` flag to open the page directly in live mode.
 
