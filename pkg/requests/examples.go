@@ -140,6 +140,24 @@ func (ex *Examples) ChargeSucceeded() error {
 	return err
 }
 
+// SessionCreated creates a checkout session
+// https://stripe.com/docs/api/checkout/sessions/create?lang=curl
+func (ex *Examples) SessionCreated() error {
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		"success_url='https://httpbin.org/post'",
+		"cancel_url='https://httpbin.org/post'",
+		"payment_method_types[]=card",
+		"line_items[][name]=T-shirt",
+		"line_items[][description]=Comfortable cotton t-shirt",
+		"line_items[][amount]=1500",
+		"line_items[][currency]=usd",
+		"line_items[][quantity]=2",
+	})
+
+	_, err := ex.performStripeRequest(req, "/v1/checkout/sessions", params)
+	return err
+}
+
 func (ex *Examples) customerCreated(data []string) (map[string]interface{}, error) {
 	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/customers", params)
