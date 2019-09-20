@@ -38,9 +38,9 @@ var rootCmd = &cobra.Command{
 	Short:   "A CLI to help you integrate Stripe with your application",
 	Long: fmt.Sprintf(`%s
 
-The Stripe CLI gives you tools to help build with Stripe. Easily test your
-webhook integration, tail your logs to monitor requests coming in, or create
-samples to learn about different Stripe integrations.
+Use the Stripe API from the command line, debug your Stripe integration with
+real-time logs, forward webhook events to your local application, and quickly
+get started with pre-built samples (https://stripe.dev/samples).
 %s`,
 		getBanner(),
 		getLogin(&fs, &Config),
