@@ -7,6 +7,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	s "github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // FixturesCmd prints a list of all the available sample projects that users can
@@ -24,6 +25,7 @@ func NewFixturesCmd(cfg *config.Config) *FixturesCmd {
 
 	fixturesCmd.Cmd = &cobra.Command{
 		Use:   "fixtures",
+		Args:  validators.ExactArgs(1),
 		Short: "Run fixtures to populate your account with data",
 		Long:  `Run fixtures to populate your account with data`,
 		RunE:  fixturesCmd.runFixturesCmd,

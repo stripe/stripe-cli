@@ -12,6 +12,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/validators"
 
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -31,6 +32,7 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 	createCmd.Cmd = &cobra.Command{
 		Use:       "create",
 		ValidArgs: samples.Names(),
+		Args:      validators.MaximumNArgs(2),
 		Short:     "create a Stripe sample",
 		RunE:      createCmd.runCreateCmd,
 	}
