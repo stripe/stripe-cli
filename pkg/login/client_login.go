@@ -46,6 +46,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	color := ansi.Color(os.Stdout)
 	fmt.Printf("Your pairing code is: %s\n", color.Bold(links.VerificationCode))
+	fmt.Println(ansi.Faint("This pairing code verifies your authentication with Stripe."))
 
 	var s *spinner.Spinner
 	if isSSH() {
