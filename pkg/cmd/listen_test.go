@@ -38,12 +38,14 @@ func TestBuildEndpointRoutes(t *testing.T) {
 		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect},
 	}
 
-	output := buildEndpointRoutes(endpointList, localURL, localURL)
+	output := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})
 	require.Equal(t, 2, len(output))
 	require.Equal(t, "http://localhost/hooks", output[0].URL)
+	require.Equal(t, []string{"Host: hostname"}, output[0].ForwardHeaders)
 	require.Equal(t, false, output[0].Connect)
 	require.Equal(t, []string{"*"}, output[0].EventTypes)
 	require.Equal(t, "http://localhost/connect-hooks", output[1].URL)
+	require.Equal(t, []string{"Host: connecthostname"}, output[1].ForwardHeaders)
 	require.Equal(t, true, output[1].Connect)
 	require.Equal(t, []string{"*"}, output[1].EventTypes)
 }

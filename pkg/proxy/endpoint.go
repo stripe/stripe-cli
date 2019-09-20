@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -47,6 +49,8 @@ type EndpointClient struct {
 	// URL the client sends POST requests to
 	URL string
 
+	headers map[string]string
+
 	connect bool
 
 	events map[string]bool
@@ -84,6 +88,15 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 		req.Header.Add(k, v)
 	}
 
+	// add custom headers
+	for k, v := range c.headers {
+		if strings.ToLower(k) == "host" {
+			req.Host = v
+		} else {
+			req.Header.Add(k, v)
+		}
+	}
+
 	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
 		color := ansi.Color(os.Stdout)
@@ -110,7 +123,8 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 //
 
 // NewEndpointClient returns a new EndpointClient.
-func NewEndpointClient(url string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -128,6 +142,7 @@ func NewEndpointClient(url string, connect bool, events []string, cfg *EndpointC
 
 	return &EndpointClient{
 		URL:     url,
+		headers: convertToMapAndSanitize(headers),
 		connect: connect,
 		events:  convertToMap(events),
 		cfg:     cfg,
@@ -153,4 +168,24 @@ func convertToMap(events []string) map[string]bool {
 	}
 
 	return eventsMap
+}
+
+func convertToMapAndSanitize(headers []string) map[string]string {
+	reg := regexp.MustCompile("[\x00-\x1f]+")
+
+	headerMap := make(map[string]string)
+
+	for _, header := range headers {
+
+		header = reg.ReplaceAllString(header, "")
+
+		splitHeader := strings.SplitN(header, ":", 2)
+		headerKey := strings.TrimSpace(splitHeader[0])
+		headerVal := strings.TrimSpace(splitHeader[1])
+		if headerKey != "" {
+			headerMap[headerKey] = headerVal
+		}
+	}
+
+	return headerMap
 }
