@@ -164,3 +164,23 @@ func TestNormalizePath(t *testing.T) {
 	require.Equal(t, "/v1/charges", normalizePath("/charges"))
 	require.Equal(t, "/v1/charges", normalizePath("charges"))
 }
+
+func TestCreateOrNormalizePath(t *testing.T) {
+	result, _ := createOrNormalizePath("ch_12345")
+	require.Equal(t, "/v1/charges/ch_12345", result)
+
+	result, _ = createOrNormalizePath("cs_test_12345")
+	require.Equal(t, "/v1/checkout/sessions/cs_test_12345", result)
+
+	result, _ = createOrNormalizePath("/v1/charges")
+	require.Equal(t, "/v1/charges", result)
+
+	result, _ = createOrNormalizePath("v1/charges")
+	require.Equal(t, "/v1/charges", result)
+
+	result, _ = createOrNormalizePath("/charges")
+	require.Equal(t, "/v1/charges", result)
+
+	result, _ = createOrNormalizePath("charges")
+	require.Equal(t, "/v1/charges", result)
+}

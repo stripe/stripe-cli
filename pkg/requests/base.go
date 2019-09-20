@@ -76,7 +76,10 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	path := normalizePath(args[0])
+	path, err := createOrNormalizePath(args[0])
+	if err != nil {
+		return err
+	}
 
 	_, err = rb.MakeRequest(apiKey, path, &rb.Parameters)
 
@@ -268,6 +271,19 @@ func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 
 	// Always confirm the command if it does not require explicit user confirmation
 	return true, nil
+}
+
+func createOrNormalizePath(arg string) (string, error) {
+	if idRegex.Match([]byte(arg)) {
+		matches := idRegex.FindStringSubmatch(arg)
+		if path, ok := idURLMap[matches[1]]; ok {
+			return path + arg, nil
+		}
+
+		return "", fmt.Errorf("Unrecogized object id: %s", arg)
+	}
+
+	return normalizePath(arg), nil
 }
 
 func normalizePath(path string) string {
