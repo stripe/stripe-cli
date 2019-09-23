@@ -35,6 +35,8 @@ type listenCmd struct {
 
 	apiBaseURL string
 	noWSS      bool
+
+	validEvents			[]string
 }
 
 func newListenCmd() *listenCmd {
@@ -82,6 +84,8 @@ to your localhost:
 
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
+
+	addEventsToListenCmd(lc)
 
 	return lc
 }
