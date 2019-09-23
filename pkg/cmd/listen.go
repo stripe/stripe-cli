@@ -106,6 +106,12 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	for _, event := range lc.events {
+		if _, found := lc.validEvents[event]; !found {
+			fmt.Println(fmt.Sprintf("Warning: You're attempting to listen for \"%s\", which isn't a valid event", event))
+		}
+	}
+
 	if len(lc.events) == 0 {
 		lc.events = []string{"*"}
 	}
