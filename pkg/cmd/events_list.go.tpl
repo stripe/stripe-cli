@@ -5,7 +5,7 @@ package cmd
 
 func addEventsToListenCmd(cmd *listenCmd) {
 	{{ range $_, $nsName := .Events }}
-	cmd.validEvents = append(cmd.validEvents, "{{ $nsName }}") {{end}}
+	cmd.validEvents["{{ $nsName }}"] = true {{end}}
 }
 
 
