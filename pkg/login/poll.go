@@ -83,7 +83,6 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollA
 
 		count++
 		time.Sleep(interval)
-
 	}
 
 	return nil, nil, errors.New("exceeded max attempts")

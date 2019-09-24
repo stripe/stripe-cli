@@ -97,7 +97,6 @@ func redactAPIKey(apiKey string) string {
 
 func securePrompt(input io.Reader) (string, error) {
 	if input == os.Stdin {
-
 		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
 		// this results in the terminal input staying hidden after program exit.
 		// We need to manually catch the interrupt and restore terminal state before exiting.
