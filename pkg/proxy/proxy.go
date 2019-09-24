@@ -222,7 +222,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	// to pass back to Stripe
 }
 
-func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
+func (p *Proxy) processEndpointResponse(webhookID, forwardURL string, resp *http.Response) {
 	localTime := time.Now().Format(timeLayout)
 
 	color := ansi.Color(os.Stdout)
@@ -258,7 +258,7 @@ func (p *Proxy) processEndpointResponse(webhookID string, resp *http.Response) {
 	}
 
 	if p.webSocketClient != nil {
-		msg := websocket.NewWebhookResponse(webhookID, resp.StatusCode, body, headers)
+		msg := websocket.NewWebhookResponse(webhookID, forwardURL, resp.StatusCode, body, headers)
 		p.webSocketClient.SendMessage(msg)
 	}
 }

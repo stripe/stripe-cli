@@ -18,6 +18,7 @@ type WebhookEvent struct {
 // WebhookResponse represents outgoing webhook response messages sent to
 // Stripe.
 type WebhookResponse struct {
+	ForwardURL  string            `json:"forward_url"`
 	Status      int               `json:"status"`
 	HTTPHeaders map[string]string `json:"http_headers"`
 	Body        string            `json:"body"`
@@ -26,10 +27,11 @@ type WebhookResponse struct {
 }
 
 // NewWebhookResponse returns a new webhookResponse message.
-func NewWebhookResponse(webhookID string, status int, body string, headers map[string]string) *OutgoingMessage {
+func NewWebhookResponse(webhookID string, forwardURL string, status int, body string, headers map[string]string) *OutgoingMessage {
 	return &OutgoingMessage{
 		WebhookResponse: &WebhookResponse{
 			WebhookID:   webhookID,
+			ForwardURL:  forwardURL,
 			Status:      status,
 			Body:        body,
 			HTTPHeaders: headers,

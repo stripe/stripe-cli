@@ -36,6 +36,7 @@ func TestClientHandler(t *testing.T) {
 	defer ts.Close()
 
 	rcvBody := ""
+	rcvForwardURL := ""
 	rcvWebhookID := ""
 	client := NewEndpointClient(
 		ts.URL,
@@ -44,11 +45,12 @@ func TestClientHandler(t *testing.T) {
 		false,
 		[]string{"*"},
 		&EndpointConfig{
-			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID string, resp *http.Response) {
+			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID, forwardURL string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
 				require.Nil(t, err)
 
 				rcvBody = string(buf)
+				rcvForwardURL = forwardURL
 				rcvWebhookID = webhookID
 
 				wg.Done()
@@ -69,5 +71,6 @@ func TestClientHandler(t *testing.T) {
 
 	require.Nil(t, err)
 	require.Equal(t, "OK!", rcvBody)
+	require.Equal(t, ts.URL, rcvForwardURL)
 	require.Equal(t, "wh_123", rcvWebhookID)
 }

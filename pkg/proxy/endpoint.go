@@ -30,18 +30,18 @@ type EndpointConfig struct {
 
 // EndpointResponseHandler handles a response from the endpoint.
 type EndpointResponseHandler interface {
-	ProcessResponse(string, *http.Response)
+	ProcessResponse(string, string, *http.Response)
 }
 
 // EndpointResponseHandlerFunc is an adapter to allow the use of ordinary
 // functions as response handlers. If f is a function with the
 // appropriate signature, ResponseHandler(f) is a
 // ResponseHandler that calls f.
-type EndpointResponseHandlerFunc func(string, *http.Response)
+type EndpointResponseHandlerFunc func(string, string, *http.Response)
 
 // ProcessResponse calls f(webhookID, resp).
-func (f EndpointResponseHandlerFunc) ProcessResponse(webhookID string, resp *http.Response) {
-	f(webhookID, resp)
+func (f EndpointResponseHandlerFunc) ProcessResponse(webhookID, forwardURL string, resp *http.Response) {
+	f(webhookID, forwardURL, resp)
 }
 
 // EndpointClient is the client used to POST webhook requests to the local endpoint.
@@ -113,7 +113,7 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 	}
 	defer resp.Body.Close()
 
-	c.cfg.ResponseHandler.ProcessResponse(webhookID, resp)
+	c.cfg.ResponseHandler.ProcessResponse(webhookID, c.URL, resp)
 
 	return nil
 }
@@ -137,7 +137,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 		}
 	}
 	if cfg.ResponseHandler == nil {
-		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, *http.Response) {})
+		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, string, *http.Response) {})
 	}
 
 	return &EndpointClient{
