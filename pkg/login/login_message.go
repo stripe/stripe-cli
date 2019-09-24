@@ -28,7 +28,6 @@ type Dashboard struct {
 
 // SuccessMessage returns the display message for a successfully authenticated user
 func SuccessMessage(account *Account, baseURL string, apiKey string) (string, error) {
-
 	// Account will be nil if user did interactive login
 	if account == nil {
 		acc, err := getUserAccount(baseURL, apiKey)

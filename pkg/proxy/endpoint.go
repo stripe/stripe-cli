@@ -124,7 +124,6 @@ func (c *EndpointClient) Post(webhookID string, body string, headers map[string]
 
 // NewEndpointClient returns a new EndpointClient.
 func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
-
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -176,7 +175,6 @@ func convertToMapAndSanitize(headers []string) map[string]string {
 	headerMap := make(map[string]string)
 
 	for _, header := range headers {
-
 		header = reg.ReplaceAllString(header, "")
 
 		splitHeader := strings.SplitN(header, ":", 2)

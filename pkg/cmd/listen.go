@@ -89,7 +89,6 @@ to your localhost:
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
-
 	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
@@ -116,9 +115,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(lc.forwardURL) > 0 {
-
-		// add custom headers to endpoint routes
-
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 			URL:            parseURL(lc.forwardURL),
 			ForwardHeaders: lc.forwardHeaders,
