@@ -40,7 +40,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := formatURL(oc.Path, args[:len(oc.URLParams)]) 	// @@ todo validate # of params
+	path := formatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
 	for stringProp, stringVal := range oc.stringPropFlags {
@@ -88,7 +88,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Use:         name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
-		Args:        cobra.MinimumNArgs(len(urlParams)),
+		Args:        cobra.ExactArgs(len(urlParams)),
 	}
 
 	for prop, propType := range propFlags {
