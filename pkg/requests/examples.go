@@ -259,7 +259,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 	return err
 }
 
-// CustomerSubscriptionUpdated creates a customer with a card, creates a plan,
+// CustomerSubscriptionDeleted creates a customer with a card, creates a plan,
 // adds the customer to the plan, then deletes it
 func (ex *Examples) CustomerSubscriptionDeleted() error {
 	customer, err := ex.customerCreated([]string{
