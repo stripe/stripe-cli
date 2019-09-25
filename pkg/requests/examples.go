@@ -230,6 +230,40 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 	return err
 }
 
+func (ex *Examples) CustomerSubscriptionDeleted() error {
+	customer, err := ex.customerCreated([]string{
+		fmt.Sprintf("source=%s", validToken),
+	})
+	if err != nil {
+		return err
+	}
+
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		"currency=usd",
+		"interval=month",
+		"amount=2000",
+		"product[name]=myproduct",
+	})
+	plan, err := ex.performStripeRequest(req, "/v1/plans", params)
+	if err != nil {
+		return err
+	}
+
+	req, params = ex.buildRequest(http.MethodPost, []string{
+		fmt.Sprintf("items[0][plan]=%s", plan["id"]),
+		fmt.Sprintf("customer=%s", customer["id"]),
+	})
+	subscription, err := ex.performStripeRequest(req, "/v1/subscriptions", params)
+	if err != nil {
+		return err
+	}
+
+	req, params = ex.buildRequest(http.MethodDelete, []string{})
+	reqURL := fmt.Sprintf("/v1/subscriptions/%s", subscription["id"])
+	_, err = ex.performStripeRequest(req, reqURL, params)
+	return err
+}
+
 func (ex *Examples) createInvoiceItem(data []string) (map[string]interface{}, error) {
 	req, params := ex.buildRequest(http.MethodPost, data)
 	return ex.performStripeRequest(req, "/v1/invoiceitems", params)
