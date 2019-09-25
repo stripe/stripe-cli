@@ -32,7 +32,7 @@ func newTriggerCmd() *triggerCmd {
 			"charge.refunded",
 			"charge.succeeded",
 			"customer.created",
-			"customer.delete",
+			"customer.deleted",
 			"customer.updated",
 			"customer.source.created",
 			"customer.source.updated",
@@ -62,7 +62,7 @@ needed to create the triggered event.
   charge.refunded
   charge.succeeded
   customer.created
-  customer.delete
+  customer.deleted
   customer.updated
   customer.source.created
   customer.source.updated
