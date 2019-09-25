@@ -96,7 +96,7 @@ func (ex *Examples) ChargeCaptured() error {
 	return err
 }
 
-// ChargeFailed fails to create a charge
+// ChargeDisputed creates a charge that becomes disputed
 func (ex *Examples) ChargeDisputed() error {
 	_, err := ex.chargeCreated(disputeToken, []string{
 		"amount=2000",
@@ -394,7 +394,8 @@ func (ex *Examples) InvoicePaymentSucceeded() error {
 	return err
 }
 
-// InvoicePaymentFailed creates
+// InvoicePaymentFailed first creates a customer, adds an invoice item,
+// creates the invoice, and then fails the payment
 func (ex *Examples) InvoicePaymentFailed() error {
 	customer, err := ex.customerCreated([]string{
 		fmt.Sprintf("source=%s", chargeFailedToken),
