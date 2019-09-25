@@ -30,7 +30,8 @@ type OperationCmd struct {
 	Path      string
 	URLParams []string
 
-	PropFlags map[string]string 			// @@ probably expand val type to incl desc etc
+	stringPropFlags  map[string]*string
+	intPropFlags     map[string]*int
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -65,7 +66,9 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		HTTPVerb:  httpVerb,
 		Path:      path,
 		URLParams: urlParams,
-		PropFlags: propFlags,
+
+		stringPropFlags: make(map[string]*string),
+		intPropFlags: make(map[string]*int),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -73,6 +76,16 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		RunE:        operationCmd.runOperationCmd,
 		Args:        cobra.MinimumNArgs(len(urlParams)),
 	}
+
+	for prop, propType := range propFlags {
+		switch propType {
+		case "string":
+			operationCmd.stringPropFlags[prop] = cmd.Flags().String(prop, "", "@@ todo usage")
+		case "integer":
+			operationCmd.intPropFlags[prop] = cmd.Flags().Int(prop, 0, "@@ todo usage")
+		}
+	}
+
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
