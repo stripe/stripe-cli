@@ -16,7 +16,7 @@ import (
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "get", &config.Config{})
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{})
 
 	require.Equal(t, "foo", oc.Name)
 	require.Equal(t, "/v1/bars/{id}", oc.Path)
@@ -38,7 +38,7 @@ func TestRunOperationCmd(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
-		require.Equal(t, "param1=value1&param2=value2", string(body))
+		require.True(t, string(body) == "param1=value1&param2=value2" || string(body) == "param2=value2&param1=value1")
 	}))
 	defer ts.Close()
 
@@ -47,20 +47,28 @@ func TestRunOperationCmd(t *testing.T) {
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
 	}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "post", &config.Config{
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
+		"param1": "string",
+		"param2": "string",
+	}, &config.Config{
 		Profile: profile,
 	})
 	oc.APIBaseURL = ts.URL
 
-	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
+	oc.Cmd.Flags().Set("param1", "value1")
+	oc.Cmd.Flags().Set("param2", "value2")
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
 
 	require.NoError(t, err)
 }
 
 func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
-	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", "post", &config.Config{})
+	parentCmd := &cobra.Command{Annotations:  make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
+		"param1": "string",
+		"param2": "string",
+	}, &config.Config{})
 
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
