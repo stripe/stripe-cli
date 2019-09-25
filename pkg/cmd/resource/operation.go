@@ -46,7 +46,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	for stringProp, stringVal := range oc.stringPropFlags {
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
-			flagParams = append(flagParams, fmt.Sprintf("%s=\"%s\"", stringProp, *stringVal))
+			flagParams = append(flagParams, fmt.Sprintf("%s=%s", stringProp, *stringVal))
 		}
 	}
 	for intProp, intVal := range oc.intPropFlags {
