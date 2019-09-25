@@ -74,6 +74,17 @@ type EventPayload struct {
 	RequestID string `json:"request_id"`
 	Status    int    `json:"status"`
 	URL       string `json:"url"`
+	Error     string `json:"error"`
+}
+
+// RedactedError is the mapping for fields in error from an EventPayload
+type RedactedError struct {
+	Type        string `json:"type"`
+	Charge      string `json:"charge"`
+	Code        string `json:"code"`
+	DeclineCode string `json:"decline_code"`
+	Message     string `json:"message"`
+	Param       string `json:"param"`
 }
 
 // New creates a new Tailer
@@ -189,6 +200,15 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 
 	color := ansi.Color(os.Stdout)
 	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
+	fmt.Println(outputStr)
+
+	var payloadError RedactedError
+	if err := json.Unmarshal([]byte(payload.Error), &payloadError); err != nil {
+		tailer.cfg.Log.Warn("Received malformed error from payload: ", err)
+	}
+
+	outputStr = fmt.Sprintf("Type: %s\nCharge: %s\nCode: %s\nDecline Code: %s\nMessage: %s\nParam: %s\n",
+		payloadError.Type, payloadError.Charge, payloadError.Code, payloadError.DeclineCode, payloadError.Message, payloadError.Param)
 	fmt.Println(outputStr)
 }
 
