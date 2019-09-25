@@ -29,6 +29,8 @@ type OperationCmd struct {
 	HTTPVerb  string
 	Path      string
 	URLParams []string
+
+	PropFlags map[string]string 			// @@ probably expand val type to incl desc etc
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -39,7 +41,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	path := formatURL(oc.Path, args[:len(oc.URLParams)])
 
-	oc.Parameters.AppendData(args[len(oc.URLParams):])
+	oc.Parameters.AppendData(args[len(oc.URLParams):]) 	// @@ todo this
 
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters)
 
@@ -51,7 +53,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 //
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg *config.Config) *OperationCmd {
+func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, propFlags map[string]string, cfg *config.Config) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
@@ -63,6 +65,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg 
 		HTTPVerb:  httpVerb,
 		Path:      path,
 		URLParams: urlParams,
+		PropFlags: propFlags,
 	}
 	cmd := &cobra.Command{
 		Use:         name,
