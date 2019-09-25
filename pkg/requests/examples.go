@@ -329,6 +329,36 @@ func (ex *Examples) InvoicePaymentSucceeded() error {
 	return err
 }
 
+func (ex *Examples) InvoicePaymentFailed() error {
+	customer, err := ex.customerCreated([]string{
+		fmt.Sprintf("source=%s", declinedToken),
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = ex.createInvoiceItem([]string{
+		"currency=usd",
+		fmt.Sprintf("customer=%s", customer["id"]),
+		"amount=2000",
+	})
+	if err != nil {
+		return err
+	}
+
+	invoice, err := ex.invoiceCreated([]string{
+		fmt.Sprintf("customer=%s", customer["id"]),
+	})
+	if err != nil {
+		return err
+	}
+
+	req, params := ex.buildRequest(http.MethodPost, []string{})
+	reqURL := fmt.Sprintf("/v1/invoices/%s/pay", invoice["id"])
+	_, err = ex.performStripeRequest(req, reqURL, params)
+	return err
+}
+
 // InvoiceUpdated first creates a customer, adds an invoice item,
 // creates the invoice, then adds metadata to the invoice to trigger an update
 func (ex *Examples) InvoiceUpdated() error {

@@ -37,6 +37,7 @@ func newTriggerCmd() *triggerCmd {
 			"customer.subscription.updated",
 			"invoice.created",
 			"invoice.finalized",
+			"invoice.payment_failed",
 			"invoice.payment_succeeded",
 			"invoice.updated",
 			"payment_intent.created",
@@ -63,6 +64,7 @@ needed to create the triggered event.
   customer.subscription.updated
   invoice.created
   invoice.finalized
+  invoice.payment_failed
   invoice.payment_succeeded
   invoice.updated
   payment_intent.created
@@ -122,6 +124,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		"customer.subscription.updated": examples.CustomerSubscriptionUpdated,
 		"invoice.created":               examples.InvoiceCreated,
 		"invoice.finalized":             examples.InvoiceFinalized,
+		"invoice.payment_failed":        examples.InvoicePaymentFailed,
 		"invoice.payment_succeeded":     examples.InvoicePaymentSucceeded,
 		"invoice.updated":               examples.InvoiceUpdated,
 		"payment_intent.created":        examples.PaymentIntentCreated,
