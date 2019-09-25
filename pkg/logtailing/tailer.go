@@ -68,17 +68,17 @@ type Tailer struct {
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
-	CreatedAt int             `json:"created_at"`
-	Livemode  bool            `json:"livemode"`
-	Method    string          `json:"method"`
-	RequestID string          `json:"request_id"`
-	Status    int             `json:"status"`
-	URL       string          `json:"url"`
-	Error     RequestLogError `json:"error"`
+	CreatedAt int    `json:"created_at"`
+	Livemode  bool   `json:"livemode"`
+	Method    string `json:"method"`
+	RequestID string `json:"request_id"`
+	Status    int    `json:"status"`
+	URL       string `json:"url"`
+	Error     string `json:"error"`
 }
 
-// RequestLogError is the mapping for fields in error from an EventPayload
-type RequestLogError struct {
+// RedactedError is the mapping for fields in error from an EventPayload
+type RedactedError struct {
 	Type        string `json:"type"`
 	Charge      string `json:"charge"`
 	Code        string `json:"code"`
@@ -202,8 +202,13 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
 
+	var payloadError RedactedError
+	if err := json.Unmarshal([]byte(payload.Error), &payloadError); err != nil {
+		tailer.cfg.Log.Warn("Received malformed error from payload: ", err)
+	}
+
 	outputStr = fmt.Sprintf("Type: %s\nCharge: %s\nCode: %s\nDecline Code: %s\nMessage: %s\nParam: %s\n",
-		payload.Error.Type, payload.Error.Charge, payload.Error.Code, payload.Error.DeclineCode, payload.Error.Message, payload.Error.Param)
+		payloadError.Type, payloadError.Charge, payloadError.Code, payloadError.DeclineCode, payloadError.Message, payloadError.Param)
 	fmt.Println(outputStr)
 }
 
