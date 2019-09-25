@@ -27,15 +27,20 @@ func newTriggerCmd() *triggerCmd {
 		Args: validators.MaximumNArgs(1),
 		ValidArgs: []string{
 			"charge.captured",
+			"charge.dispute.created",
 			"charge.failed",
+			"charge.refunded",
 			"charge.succeeded",
 			"customer.created",
+			"customer.deleted",
 			"customer.updated",
 			"customer.source.created",
 			"customer.source.updated",
+			"customer.subscription.deleted",
 			"customer.subscription.updated",
 			"invoice.created",
 			"invoice.finalized",
+			"invoice.payment_failed",
 			"invoice.payment_succeeded",
 			"invoice.updated",
 			"payment_intent.created",
@@ -52,15 +57,20 @@ needed to create the triggered event.
 
 %s
   charge.captured
+  charge.dispute.created
   charge.failed
+  charge.refunded
   charge.succeeded
   customer.created
+  customer.deleted
   customer.updated
   customer.source.created
   customer.source.updated
+  customer.subscription.deleted
   customer.subscription.updated
   invoice.created
   invoice.finalized
+  invoice.payment_failed
   invoice.payment_succeeded
   invoice.updated
   payment_intent.created
@@ -110,15 +120,20 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	event := args[0]
 	supportedEvents := map[string]interface{}{
 		"charge.captured":               examples.ChargeCaptured,
+		"charge.dispute.created":        examples.ChargeDisputed,
 		"charge.failed":                 examples.ChargeFailed,
+		"charge.refunded":               examples.ChargeRefunded,
 		"charge.succeeded":              examples.ChargeSucceeded,
 		"customer.created":              examples.CustomerCreated,
+		"customer.deleted":              examples.CustomerDeleted,
 		"customer.updated":              examples.CustomerUpdated,
 		"customer.source.created":       examples.CustomerSourceCreated,
 		"customer.source.updated":       examples.CustomerSourceUpdated,
+		"customer.subscription.deleted": examples.CustomerSubscriptionDeleted,
 		"customer.subscription.updated": examples.CustomerSubscriptionUpdated,
 		"invoice.created":               examples.InvoiceCreated,
 		"invoice.finalized":             examples.InvoiceFinalized,
+		"invoice.payment_failed":        examples.InvoicePaymentFailed,
 		"invoice.payment_succeeded":     examples.InvoicePaymentSucceeded,
 		"invoice.updated":               examples.InvoiceUpdated,
 		"payment_intent.created":        examples.PaymentIntentCreated,
