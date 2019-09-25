@@ -40,9 +40,23 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := formatURL(oc.Path, args[:len(oc.URLParams)])
+	path := formatURL(oc.Path, args[:len(oc.URLParams)]) 	// @@ todo validate # of params
 
-	oc.Parameters.AppendData(args[len(oc.URLParams):]) 	// @@ todo this
+	flagParams := make([]string, 0)
+	for stringProp, stringVal := range oc.stringPropFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(stringProp) {
+			flagParams = append(flagParams, fmt.Sprintf("%s=\"%s\"", stringProp, *stringVal))
+		}
+	}
+	for intProp, intVal := range oc.intPropFlags {
+		// only include fields explicitly set by the user
+		if oc.Cmd.Flags().Changed(intProp) {
+			flagParams = append(flagParams, fmt.Sprintf("%s=%d", intProp, *intVal))
+		}
+	}
+
+	oc.Parameters.AppendData(flagParams)
 
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters)
 
