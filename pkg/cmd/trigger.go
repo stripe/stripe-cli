@@ -27,6 +27,7 @@ func newTriggerCmd() *triggerCmd {
 		Args: validators.MaximumNArgs(1),
 		ValidArgs: []string{
 			"charge.captured",
+			"charge.dispute.created",
 			"charge.failed",
 			"charge.refunded",
 			"charge.succeeded",
@@ -56,6 +57,7 @@ needed to create the triggered event.
 
 %s
   charge.captured
+  charge.dispute.created
   charge.failed
   charge.refunded
   charge.succeeded
@@ -118,6 +120,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	event := args[0]
 	supportedEvents := map[string]interface{}{
 		"charge.captured":               examples.ChargeCaptured,
+		"charge.dispute.created":        examples.ChargeDisputed,
 		"charge.failed":                 examples.ChargeFailed,
 		"charge.refunded":               examples.ChargeRefunded,
 		"charge.succeeded":              examples.ChargeSucceeded,

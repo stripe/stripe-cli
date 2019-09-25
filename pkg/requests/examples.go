@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	validToken    = "tok_visa"
-	declinedToken = "tok_chargeDeclined"
+	validToken        = "tok_visa"
+	declinedToken     = "tok_chargeDeclined"
+	disputeToken      = "tok_createDisputeInquiry"
+	chargeFailedToken = "tok_chargeCustomerFail"
 )
 
 func parseResponse(response []byte) (map[string]interface{}, error) {
@@ -95,6 +97,15 @@ func (ex *Examples) ChargeCaptured() error {
 }
 
 // ChargeFailed fails to create a charge
+func (ex *Examples) ChargeDisputed() error {
+	_, err := ex.chargeCreated(disputeToken, []string{
+		"amount=2000",
+		"currency=usd",
+	})
+	return err
+}
+
+// ChargeFailed fails to create a charge
 func (ex *Examples) ChargeFailed() error {
 	_, err := ex.chargeCreated(declinedToken, []string{
 		"amount=2000",
@@ -103,6 +114,7 @@ func (ex *Examples) ChargeFailed() error {
 	return err
 }
 
+// ChargeRefunded creates a charge, then refunds it
 func (ex *Examples) ChargeRefunded() error {
 	charge, err := ex.chargeCreated(validToken, []string{
 		"amount=2000",
@@ -154,6 +166,7 @@ func (ex *Examples) CustomerUpdated() error {
 	return err
 }
 
+// CustomerDeleted creates a customer, then deletes it
 func (ex *Examples) CustomerDeleted() error {
 	customer, err := ex.customerCreated([]string{})
 	if err != nil {
@@ -246,6 +259,8 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 	return err
 }
 
+// CustomerSubscriptionUpdated creates a customer with a card, creates a plan,
+// adds the customer to the plan, then deletes it
 func (ex *Examples) CustomerSubscriptionDeleted() error {
 	customer, err := ex.customerCreated([]string{
 		fmt.Sprintf("source=%s", validToken),
@@ -379,9 +394,10 @@ func (ex *Examples) InvoicePaymentSucceeded() error {
 	return err
 }
 
+// InvoicePaymentFailed creates
 func (ex *Examples) InvoicePaymentFailed() error {
 	customer, err := ex.customerCreated([]string{
-		fmt.Sprintf("source=%s", declinedToken),
+		fmt.Sprintf("source=%s", chargeFailedToken),
 	})
 	if err != nil {
 		return err
@@ -403,6 +419,7 @@ func (ex *Examples) InvoicePaymentFailed() error {
 		return err
 	}
 
+	fmt.Println("hello")
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/pay", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
