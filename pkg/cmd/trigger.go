@@ -30,6 +30,7 @@ func newTriggerCmd() *triggerCmd {
 			"charge.failed",
 			"charge.succeeded",
 			"customer.created",
+			"customer.delete",
 			"customer.updated",
 			"customer.source.created",
 			"customer.source.updated",
@@ -55,6 +56,7 @@ needed to create the triggered event.
   charge.failed
   charge.succeeded
   customer.created
+  customer.delete
   customer.updated
   customer.source.created
   customer.source.updated
@@ -113,6 +115,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		"charge.failed":                 examples.ChargeFailed,
 		"charge.succeeded":              examples.ChargeSucceeded,
 		"customer.created":              examples.CustomerCreated,
+		"customer.deleted":              examples.CustomerDeleted,
 		"customer.updated":              examples.CustomerUpdated,
 		"customer.source.created":       examples.CustomerSourceCreated,
 		"customer.source.updated":       examples.CustomerSourceUpdated,

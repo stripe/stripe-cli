@@ -138,6 +138,17 @@ func (ex *Examples) CustomerUpdated() error {
 	return err
 }
 
+func (ex *Examples) CustomerDeleted() error {
+	customer, err := ex.customerCreated([]string{})
+	if err != nil {
+		return err
+	}
+	req, params := ex.buildRequest(http.MethodDelete, []string{})
+	reqURL := fmt.Sprintf("/v1/customers/%s", customer["id"])
+	_, err = ex.performStripeRequest(req, reqURL, params)
+	return err
+}
+
 // CustomerSourceCreated creates a customer and a token then attaches
 // the card to the customer
 func (ex *Examples) CustomerSourceCreated() error {
