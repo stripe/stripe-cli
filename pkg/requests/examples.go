@@ -103,6 +103,22 @@ func (ex *Examples) ChargeFailed() error {
 	return err
 }
 
+func (ex *Examples) ChargeRefunded() error {
+	charge, err := ex.chargeCreated(validToken, []string{
+		"amount=2000",
+		"currency=usd",
+	})
+	if err != nil {
+		return err
+	}
+
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		fmt.Sprintf("charge=%s", charge["id"]),
+	})
+	_, err = ex.performStripeRequest(req, "/v1/refunds", params)
+	return err
+}
+
 // ChargeSucceeded successfully creates a charge
 func (ex *Examples) ChargeSucceeded() error {
 	_, err := ex.chargeCreated(validToken, []string{

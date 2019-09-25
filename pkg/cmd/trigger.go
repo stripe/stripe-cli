@@ -28,6 +28,7 @@ func newTriggerCmd() *triggerCmd {
 		ValidArgs: []string{
 			"charge.captured",
 			"charge.failed",
+			"charge.refunded",
 			"charge.succeeded",
 			"customer.created",
 			"customer.delete",
@@ -56,6 +57,7 @@ needed to create the triggered event.
 %s
   charge.captured
   charge.failed
+  charge.refunded
   charge.succeeded
   customer.created
   customer.delete
@@ -117,6 +119,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	supportedEvents := map[string]interface{}{
 		"charge.captured":               examples.ChargeCaptured,
 		"charge.failed":                 examples.ChargeFailed,
+		"charge.refunded":               examples.ChargeRefunded,
 		"charge.succeeded":              examples.ChargeSucceeded,
 		"customer.created":              examples.CustomerCreated,
 		"customer.deleted":              examples.CustomerDeleted,
