@@ -57,10 +57,10 @@ Watch for all events sent from Stripe:
 
   $ stripe listen
 
-Start listening for 'charge.created' and 'charge.updated' events and forward
+Start listening for 'charge.captured' and 'charge.updated' events and forward
 to your localhost:
 
-  $ stripe listen --events charge.created,charge.updated --forward-to localhost:3000/events`,
+  $ stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events`,
 			getBanner(),
 		),
 		RunE: lc.runListenCmd,
