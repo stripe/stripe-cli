@@ -2,6 +2,7 @@ package samples
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -33,10 +34,13 @@ func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
 	fmt.Println("A list of available Stripe Sample integrations:")
 	fmt.Println()
 
-	for _, sample := range samples.List {
-		fmt.Println(sample.BoldName())
-		fmt.Println(sample.Description)
-		fmt.Println(fmt.Sprintf("Repo: %s", sample.URL))
+	names := samples.Names()
+	sort.Strings(names)
+
+	for _, name := range names {
+		fmt.Println(samples.List[name].BoldName())
+		fmt.Println(samples.List[name].Description)
+		fmt.Println(fmt.Sprintf("Repo: %s", samples.List[name].URL))
 		fmt.Println()
 	}
 }
