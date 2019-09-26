@@ -35,7 +35,6 @@ type listenCmd struct {
 
 	apiBaseURL string
 	noWSS      bool
-
 }
 
 func newListenCmd() *listenCmd {
