@@ -45,6 +45,12 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Creating a sample requires at least 1 argument, received 0")
 	}
 
+	if _, ok := samples.List[args[0]]; !ok {
+		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
+To see supported samples, run 'stripe samples list'`, args[0])
+		return fmt.Errorf(errorMessage)
+	}
+
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
