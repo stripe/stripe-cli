@@ -97,7 +97,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 
 func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
-	parentCmd := &cobra.Command{Annotations:  make(map[string]string)}
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
 		"param1": "string",
 		"param2": "string",

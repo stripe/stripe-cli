@@ -30,10 +30,10 @@ type OperationCmd struct {
 	Path      string
 	URLParams []string
 
-	stringFlags  map[string]*string
-	intFlags     map[string]*int
+	stringFlags map[string]*string
+	intFlags    map[string]*int
 
-	data  []string
+	data []string
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -100,7 +100,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		URLParams: urlParams,
 
 		stringFlags: make(map[string]*string),
-		intFlags: make(map[string]*int),
+		intFlags:    make(map[string]*int),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
