@@ -54,6 +54,36 @@ var savingCardWithoutPayment = &SampleData{
 	URL:         "https://github.com/stripe-samples/saving-card-without-payment",
 }
 
+var checkoutOneTimePayments = &SampleData{
+	Name:        "checkout-one-time-payments",
+	Description: "Use Checkout to quickly collect one-time payments",
+	URL:         "https://github.com/stripe-samples/checkout-one-time-payments",
+}
+
+var checkoutSingleSubscription = &SampleData{
+	Name:        "checkout-single-subscription",
+	Description: "Learn how to combine Checkout and Billing for fast subscription pages",
+	URL:         "https://github.com/stripe-samples/checkout-single-subscription",
+}
+
+var webElementsCardPayment = &SampleData{
+	Name:        "web-elements-card-payment",
+	Description: "Learn how to accept a basic card payment on the web",
+	URL:         "https://github.com/stripe-samples/web-elements-card-payment",
+}
+
+var savingCardAfterPayment = &SampleData{
+	Name:        "saving-card-after-payment",
+	Description: "Learn how to save a card for later reuse after making a payment",
+	URL:         "https://github.com/stripe-samples/saving-card-after-payment",
+}
+
+var reactElementsCardPayment = &SampleData{
+	Name:        "react-elements-card-payment",
+	Description: "Learn how to build a checkout form with React",
+	URL:         "https://github.com/stripe-samples/react-elements-card-payment",
+}
+
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
@@ -63,6 +93,11 @@ var List = map[string]*SampleData{
 	"placing-a-hold":                   placingAHold,
 	"payment-form-modal":               paymentFormModal,
 	"saving-card-without-payment":      savingCardWithoutPayment,
+	"checkout-one-time-payments":       checkoutOneTimePayments,
+	"checkout-single-subscription":     checkoutSingleSubscription,
+	"web-elements-card-payment":        webElementsCardPayment,
+	"saving-card-after-payment":        savingCardAfterPayment,
+	"react-elements-card-payment":      reactElementsCardPayment,
 }
 
 // Names returns a list of all the sample's names
