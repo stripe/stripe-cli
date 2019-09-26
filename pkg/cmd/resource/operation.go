@@ -30,8 +30,10 @@ type OperationCmd struct {
 	Path      string
 	URLParams []string
 
-	stringPropFlags  map[string]*string
-	intPropFlags     map[string]*int
+	stringFlags  map[string]*string
+	intFlags     map[string]*int
+
+	data  []string
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -43,17 +45,33 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	path := formatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
-	for stringProp, stringVal := range oc.stringPropFlags {
+	for stringProp, stringVal := range oc.stringFlags {
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
 			flagParams = append(flagParams, fmt.Sprintf("%s=%s", stringProp, *stringVal))
 		}
 	}
-	for intProp, intVal := range oc.intPropFlags {
+	for intProp, intVal := range oc.intFlags {
 		// only include fields explicitly set by the user
 		if oc.Cmd.Flags().Changed(intProp) {
 			flagParams = append(flagParams, fmt.Sprintf("%s=%d", intProp, *intVal))
 		}
+	}
+
+	for _, datum := range oc.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return fmt.Errorf("Invalid data argument: %s", datum)
+		}
+
+		if _, ok := oc.stringFlags[split[0]]; ok {
+			return fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+		if _, ok := oc.intFlags[split[0]]; ok {
+			return fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+
+		flagParams = append(flagParams, datum)
 	}
 
 	oc.Parameters.AppendData(flagParams)
@@ -81,8 +99,8 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Path:      path,
 		URLParams: urlParams,
 
-		stringPropFlags: make(map[string]*string),
-		intPropFlags: make(map[string]*int),
+		stringFlags: make(map[string]*string),
+		intFlags: make(map[string]*int),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -94,11 +112,15 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	for prop, propType := range propFlags {
 		switch propType {
 		case "string":
-			operationCmd.stringPropFlags[prop] = cmd.Flags().String(prop, "", "@@ todo usage")
+			operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "@@ todo usage")
 		case "integer":
-			operationCmd.intPropFlags[prop] = cmd.Flags().Int(prop, 0, "@@ todo usage")
+			operationCmd.intFlags[prop] = cmd.Flags().Int(prop, 0, "@@ todo usage")
 		}
 	}
+
+	// non-scalar fields handled in general '-d a=b' format
+	// e.g. '-d "shipping[address][line1]=123 Main St" -d shipping[address][postal_code]=12345'
+	cmd.Flags().StringArrayVarP(&operationCmd.data, "data", "d", []string{}, "Other data to pass to the API request")
 
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
