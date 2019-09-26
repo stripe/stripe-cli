@@ -31,7 +31,6 @@ type OperationCmd struct {
 	URLParams []string
 
 	stringFlags map[string]*string
-	intFlags    map[string]*int
 
 	data []string
 }
@@ -51,12 +50,6 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 			flagParams = append(flagParams, fmt.Sprintf("%s=%s", stringProp, *stringVal))
 		}
 	}
-	for intProp, intVal := range oc.intFlags {
-		// only include fields explicitly set by the user
-		if oc.Cmd.Flags().Changed(intProp) {
-			flagParams = append(flagParams, fmt.Sprintf("%s=%d", intProp, *intVal))
-		}
-	}
 
 	for _, datum := range oc.data {
 		split := strings.SplitN(datum, "=", 2)
@@ -65,9 +58,6 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		if _, ok := oc.stringFlags[split[0]]; ok {
-			return fmt.Errorf("Flag \"%s\" already set", split[0])
-		}
-		if _, ok := oc.intFlags[split[0]]; ok {
 			return fmt.Errorf("Flag \"%s\" already set", split[0])
 		}
 
@@ -100,7 +90,6 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		URLParams: urlParams,
 
 		stringFlags: make(map[string]*string),
-		intFlags:    make(map[string]*int),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -109,13 +98,10 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Args:        cobra.ExactArgs(len(urlParams)),
 	}
 
-	for prop, propType := range propFlags {
-		switch propType {
-		case "string":
-			operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
-		case "integer":
-			operationCmd.intFlags[prop] = cmd.Flags().Int(prop, 0, "")
-		}
+	for prop, _ := range propFlags {
+		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
+		// i.e. "account_balance" default is "" not 0 but this is ok
+		operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
 	}
 
 	// non-scalar fields handled in general '-d a=b' format
