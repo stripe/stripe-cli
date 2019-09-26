@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,10 @@ func TestRunOperationCmd(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
-		require.True(t, string(body) == "param1=value1&param2=value2" || string(body) == "param2=value2&param1=value1")
+		vals, err := url.ParseQuery(string(body))
+		require.NoError(t, err)
+		require.Equal(t, vals["param1"][0], "value1")
+		require.Equal(t, vals["param2"][0], "value2")
 	}))
 	defer ts.Close()
 
@@ -71,7 +75,11 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
-		require.Equal(t, string(body), "param1=value1&shipping[address][line1]=123+Main+St&shipping[name]=name")
+		vals, err := url.ParseQuery(string(body))
+		require.NoError(t, err)
+		require.Equal(t, vals["param1"][0], "value1")
+		require.Equal(t, vals["shipping[address][line1]"][0], "123 Main St")
+		require.Equal(t, vals["shipping[name]"][0], "name")
 	}))
 	defer ts.Close()
 
