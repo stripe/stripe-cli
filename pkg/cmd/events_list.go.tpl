@@ -2,11 +2,8 @@
 
 package cmd
 
-
-func addEventsToListenCmd(cmd *listenCmd) {
-	{{ range $_, $nsName := .Events }}
-	cmd.validEvents["{{ $nsName }}"] = true {{end}}
+var validEvents = map[string]bool{ {{ range $_, $nsName := .Events }}
+"{{ $nsName }}": true, {{end}}
 }
-
 
 

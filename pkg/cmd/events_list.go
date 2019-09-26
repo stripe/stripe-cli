@@ -2,146 +2,145 @@
 
 package cmd
 
-func addEventsToListenCmd(cmd *listenCmd) {
-
-	cmd.validEvents["*"] = true
-	cmd.validEvents["account.application.authorized"] = true
-	cmd.validEvents["account.application.deauthorized"] = true
-	cmd.validEvents["account.external_account.created"] = true
-	cmd.validEvents["account.external_account.deleted"] = true
-	cmd.validEvents["account.external_account.updated"] = true
-	cmd.validEvents["account.updated"] = true
-	cmd.validEvents["application_fee.created"] = true
-	cmd.validEvents["application_fee.refund.updated"] = true
-	cmd.validEvents["application_fee.refunded"] = true
-	cmd.validEvents["balance.available"] = true
-	cmd.validEvents["capability.updated"] = true
-	cmd.validEvents["charge.captured"] = true
-	cmd.validEvents["charge.dispute.closed"] = true
-	cmd.validEvents["charge.dispute.created"] = true
-	cmd.validEvents["charge.dispute.funds_reinstated"] = true
-	cmd.validEvents["charge.dispute.funds_withdrawn"] = true
-	cmd.validEvents["charge.dispute.updated"] = true
-	cmd.validEvents["charge.expired"] = true
-	cmd.validEvents["charge.failed"] = true
-	cmd.validEvents["charge.pending"] = true
-	cmd.validEvents["charge.refund.updated"] = true
-	cmd.validEvents["charge.refunded"] = true
-	cmd.validEvents["charge.succeeded"] = true
-	cmd.validEvents["charge.updated"] = true
-	cmd.validEvents["checkout.session.completed"] = true
-	cmd.validEvents["coupon.created"] = true
-	cmd.validEvents["coupon.deleted"] = true
-	cmd.validEvents["coupon.updated"] = true
-	cmd.validEvents["credit_note.created"] = true
-	cmd.validEvents["credit_note.updated"] = true
-	cmd.validEvents["credit_note.voided"] = true
-	cmd.validEvents["customer.created"] = true
-	cmd.validEvents["customer.deleted"] = true
-	cmd.validEvents["customer.discount.created"] = true
-	cmd.validEvents["customer.discount.deleted"] = true
-	cmd.validEvents["customer.discount.updated"] = true
-	cmd.validEvents["customer.source.created"] = true
-	cmd.validEvents["customer.source.deleted"] = true
-	cmd.validEvents["customer.source.expiring"] = true
-	cmd.validEvents["customer.source.updated"] = true
-	cmd.validEvents["customer.subscription.created"] = true
-	cmd.validEvents["customer.subscription.deleted"] = true
-	cmd.validEvents["customer.subscription.trial_will_end"] = true
-	cmd.validEvents["customer.subscription.updated"] = true
-	cmd.validEvents["customer.tax_id.created"] = true
-	cmd.validEvents["customer.tax_id.deleted"] = true
-	cmd.validEvents["customer.tax_id.updated"] = true
-	cmd.validEvents["customer.updated"] = true
-	cmd.validEvents["file.created"] = true
-	cmd.validEvents["invoice.created"] = true
-	cmd.validEvents["invoice.deleted"] = true
-	cmd.validEvents["invoice.finalized"] = true
-	cmd.validEvents["invoice.marked_uncollectible"] = true
-	cmd.validEvents["invoice.payment_action_required"] = true
-	cmd.validEvents["invoice.payment_failed"] = true
-	cmd.validEvents["invoice.payment_succeeded"] = true
-	cmd.validEvents["invoice.sent"] = true
-	cmd.validEvents["invoice.upcoming"] = true
-	cmd.validEvents["invoice.updated"] = true
-	cmd.validEvents["invoice.voided"] = true
-	cmd.validEvents["invoiceitem.created"] = true
-	cmd.validEvents["invoiceitem.deleted"] = true
-	cmd.validEvents["invoiceitem.updated"] = true
-	cmd.validEvents["issuing_authorization.created"] = true
-	cmd.validEvents["issuing_authorization.request"] = true
-	cmd.validEvents["issuing_authorization.updated"] = true
-	cmd.validEvents["issuing_card.created"] = true
-	cmd.validEvents["issuing_card.updated"] = true
-	cmd.validEvents["issuing_cardholder.created"] = true
-	cmd.validEvents["issuing_cardholder.updated"] = true
-	cmd.validEvents["issuing_dispute.created"] = true
-	cmd.validEvents["issuing_dispute.updated"] = true
-	cmd.validEvents["issuing_settlement.created"] = true
-	cmd.validEvents["issuing_settlement.updated"] = true
-	cmd.validEvents["issuing_transaction.created"] = true
-	cmd.validEvents["issuing_transaction.updated"] = true
-	cmd.validEvents["order.created"] = true
-	cmd.validEvents["order.payment_failed"] = true
-	cmd.validEvents["order.payment_succeeded"] = true
-	cmd.validEvents["order.updated"] = true
-	cmd.validEvents["order_return.created"] = true
-	cmd.validEvents["payment_intent.amount_capturable_updated"] = true
-	cmd.validEvents["payment_intent.created"] = true
-	cmd.validEvents["payment_intent.payment_failed"] = true
-	cmd.validEvents["payment_intent.succeeded"] = true
-	cmd.validEvents["payment_method.attached"] = true
-	cmd.validEvents["payment_method.card_automatically_updated"] = true
-	cmd.validEvents["payment_method.detached"] = true
-	cmd.validEvents["payment_method.updated"] = true
-	cmd.validEvents["payout.canceled"] = true
-	cmd.validEvents["payout.created"] = true
-	cmd.validEvents["payout.failed"] = true
-	cmd.validEvents["payout.paid"] = true
-	cmd.validEvents["payout.updated"] = true
-	cmd.validEvents["person.created"] = true
-	cmd.validEvents["person.deleted"] = true
-	cmd.validEvents["person.updated"] = true
-	cmd.validEvents["plan.created"] = true
-	cmd.validEvents["plan.deleted"] = true
-	cmd.validEvents["plan.updated"] = true
-	cmd.validEvents["product.created"] = true
-	cmd.validEvents["product.deleted"] = true
-	cmd.validEvents["product.updated"] = true
-	cmd.validEvents["radar.early_fraud_warning.created"] = true
-	cmd.validEvents["radar.early_fraud_warning.updated"] = true
-	cmd.validEvents["recipient.created"] = true
-	cmd.validEvents["recipient.deleted"] = true
-	cmd.validEvents["recipient.updated"] = true
-	cmd.validEvents["reporting.report_run.failed"] = true
-	cmd.validEvents["reporting.report_run.succeeded"] = true
-	cmd.validEvents["reporting.report_type.updated"] = true
-	cmd.validEvents["review.closed"] = true
-	cmd.validEvents["review.opened"] = true
-	cmd.validEvents["setup_intent.created"] = true
-	cmd.validEvents["setup_intent.setup_failed"] = true
-	cmd.validEvents["setup_intent.succeeded"] = true
-	cmd.validEvents["sigma.scheduled_query_run.created"] = true
-	cmd.validEvents["sku.created"] = true
-	cmd.validEvents["sku.deleted"] = true
-	cmd.validEvents["sku.updated"] = true
-	cmd.validEvents["source.canceled"] = true
-	cmd.validEvents["source.chargeable"] = true
-	cmd.validEvents["source.failed"] = true
-	cmd.validEvents["source.mandate_notification"] = true
-	cmd.validEvents["source.refund_attributes_required"] = true
-	cmd.validEvents["source.transaction.created"] = true
-	cmd.validEvents["source.transaction.updated"] = true
-	cmd.validEvents["tax_rate.created"] = true
-	cmd.validEvents["tax_rate.updated"] = true
-	cmd.validEvents["topup.canceled"] = true
-	cmd.validEvents["topup.created"] = true
-	cmd.validEvents["topup.failed"] = true
-	cmd.validEvents["topup.reversed"] = true
-	cmd.validEvents["topup.succeeded"] = true
-	cmd.validEvents["transfer.created"] = true
-	cmd.validEvents["transfer.failed"] = true
-	cmd.validEvents["transfer.paid"] = true
-	cmd.validEvents["transfer.reversed"] = true
-	cmd.validEvents["transfer.updated"] = true
+var validEvents = map[string]bool{
+	"*":                                         true,
+	"account.application.authorized":            true,
+	"account.application.deauthorized":          true,
+	"account.external_account.created":          true,
+	"account.external_account.deleted":          true,
+	"account.external_account.updated":          true,
+	"account.updated":                           true,
+	"application_fee.created":                   true,
+	"application_fee.refund.updated":            true,
+	"application_fee.refunded":                  true,
+	"balance.available":                         true,
+	"capability.updated":                        true,
+	"charge.captured":                           true,
+	"charge.dispute.closed":                     true,
+	"charge.dispute.created":                    true,
+	"charge.dispute.funds_reinstated":           true,
+	"charge.dispute.funds_withdrawn":            true,
+	"charge.dispute.updated":                    true,
+	"charge.expired":                            true,
+	"charge.failed":                             true,
+	"charge.pending":                            true,
+	"charge.refund.updated":                     true,
+	"charge.refunded":                           true,
+	"charge.succeeded":                          true,
+	"charge.updated":                            true,
+	"checkout.session.completed":                true,
+	"coupon.created":                            true,
+	"coupon.deleted":                            true,
+	"coupon.updated":                            true,
+	"credit_note.created":                       true,
+	"credit_note.updated":                       true,
+	"credit_note.voided":                        true,
+	"customer.created":                          true,
+	"customer.deleted":                          true,
+	"customer.discount.created":                 true,
+	"customer.discount.deleted":                 true,
+	"customer.discount.updated":                 true,
+	"customer.source.created":                   true,
+	"customer.source.deleted":                   true,
+	"customer.source.expiring":                  true,
+	"customer.source.updated":                   true,
+	"customer.subscription.created":             true,
+	"customer.subscription.deleted":             true,
+	"customer.subscription.trial_will_end":      true,
+	"customer.subscription.updated":             true,
+	"customer.tax_id.created":                   true,
+	"customer.tax_id.deleted":                   true,
+	"customer.tax_id.updated":                   true,
+	"customer.updated":                          true,
+	"file.created":                              true,
+	"invoice.created":                           true,
+	"invoice.deleted":                           true,
+	"invoice.finalized":                         true,
+	"invoice.marked_uncollectible":              true,
+	"invoice.payment_action_required":           true,
+	"invoice.payment_failed":                    true,
+	"invoice.payment_succeeded":                 true,
+	"invoice.sent":                              true,
+	"invoice.upcoming":                          true,
+	"invoice.updated":                           true,
+	"invoice.voided":                            true,
+	"invoiceitem.created":                       true,
+	"invoiceitem.deleted":                       true,
+	"invoiceitem.updated":                       true,
+	"issuing_authorization.created":             true,
+	"issuing_authorization.request":             true,
+	"issuing_authorization.updated":             true,
+	"issuing_card.created":                      true,
+	"issuing_card.updated":                      true,
+	"issuing_cardholder.created":                true,
+	"issuing_cardholder.updated":                true,
+	"issuing_dispute.created":                   true,
+	"issuing_dispute.updated":                   true,
+	"issuing_settlement.created":                true,
+	"issuing_settlement.updated":                true,
+	"issuing_transaction.created":               true,
+	"issuing_transaction.updated":               true,
+	"order.created":                             true,
+	"order.payment_failed":                      true,
+	"order.payment_succeeded":                   true,
+	"order.updated":                             true,
+	"order_return.created":                      true,
+	"payment_intent.amount_capturable_updated":  true,
+	"payment_intent.created":                    true,
+	"payment_intent.payment_failed":             true,
+	"payment_intent.succeeded":                  true,
+	"payment_method.attached":                   true,
+	"payment_method.card_automatically_updated": true,
+	"payment_method.detached":                   true,
+	"payment_method.updated":                    true,
+	"payout.canceled":                           true,
+	"payout.created":                            true,
+	"payout.failed":                             true,
+	"payout.paid":                               true,
+	"payout.updated":                            true,
+	"person.created":                            true,
+	"person.deleted":                            true,
+	"person.updated":                            true,
+	"plan.created":                              true,
+	"plan.deleted":                              true,
+	"plan.updated":                              true,
+	"product.created":                           true,
+	"product.deleted":                           true,
+	"product.updated":                           true,
+	"radar.early_fraud_warning.created":         true,
+	"radar.early_fraud_warning.updated":         true,
+	"recipient.created":                         true,
+	"recipient.deleted":                         true,
+	"recipient.updated":                         true,
+	"reporting.report_run.failed":               true,
+	"reporting.report_run.succeeded":            true,
+	"reporting.report_type.updated":             true,
+	"review.closed":                             true,
+	"review.opened":                             true,
+	"setup_intent.created":                      true,
+	"setup_intent.setup_failed":                 true,
+	"setup_intent.succeeded":                    true,
+	"sigma.scheduled_query_run.created":         true,
+	"sku.created":                               true,
+	"sku.deleted":                               true,
+	"sku.updated":                               true,
+	"source.canceled":                           true,
+	"source.chargeable":                         true,
+	"source.failed":                             true,
+	"source.mandate_notification":               true,
+	"source.refund_attributes_required":         true,
+	"source.transaction.created":                true,
+	"source.transaction.updated":                true,
+	"tax_rate.created":                          true,
+	"tax_rate.updated":                          true,
+	"topup.canceled":                            true,
+	"topup.created":                             true,
+	"topup.failed":                              true,
+	"topup.reversed":                            true,
+	"topup.succeeded":                           true,
+	"transfer.created":                          true,
+	"transfer.failed":                           true,
+	"transfer.paid":                             true,
+	"transfer.reversed":                         true,
+	"transfer.updated":                          true,
 }

@@ -36,7 +36,6 @@ type listenCmd struct {
 	apiBaseURL string
 	noWSS      bool
 
-	validEvents map[string]bool
 }
 
 func newListenCmd() *listenCmd {
@@ -85,9 +84,6 @@ to your localhost:
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
 
-	lc.validEvents = make(map[string]bool)
-	addEventsToListenCmd(lc)
-
 	return lc
 }
 
@@ -107,7 +103,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, event := range lc.events {
-		if _, found := lc.validEvents[event]; !found {
+		if _, found := validEvents[event]; !found {
 			fmt.Println(fmt.Sprintf("Warning: You're attempting to listen for \"%s\", which isn't a valid event", event))
 		}
 	}
