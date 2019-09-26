@@ -62,6 +62,39 @@ func TestRunOperationCmd(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestRunOperationCmd_ExtraParams(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		body, err := ioutil.ReadAll(r.Body)
+		require.Nil(t, err)
+
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.Equal(t, string(body), "param1=value1&shipping[address][line1]=123+Main+St&shipping[name]=name")
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	profile := config.Profile{
+		APIKey: "sk_test_1234",
+	}
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
+		"param1": "string",
+	}, &config.Config{
+		Profile: profile,
+	})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("param1", "value1")
+	oc.Cmd.Flags().Set("data", "shipping[address][line1]=123 Main St")
+	oc.Cmd.Flags().Set("data", "shipping[name]=name")
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	require.NoError(t, err)
+}
+
 func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
 	parentCmd := &cobra.Command{Annotations:  make(map[string]string)}
