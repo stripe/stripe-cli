@@ -1,4 +1,5 @@
 //go:generate go run gen_resources_cmds.go
+//go:generate go run gen_events_list.go
 
 package cmd
 
