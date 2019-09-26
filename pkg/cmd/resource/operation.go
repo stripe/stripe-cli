@@ -112,9 +112,9 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	for prop, propType := range propFlags {
 		switch propType {
 		case "string":
-			operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "@@ todo usage")
+			operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
 		case "integer":
-			operationCmd.intFlags[prop] = cmd.Flags().Int(prop, 0, "@@ todo usage")
+			operationCmd.intFlags[prop] = cmd.Flags().Int(prop, 0, "")
 		}
 	}
 
