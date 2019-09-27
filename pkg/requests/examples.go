@@ -2,6 +2,7 @@ package requests
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -66,6 +67,7 @@ func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *Req
 	if err != nil {
 		return nil, err
 	}
+
 	return parseResponse(resp)
 }
 
@@ -137,6 +139,63 @@ func (ex *Examples) ChargeSucceeded() error {
 		"amount=2000",
 		"currency=usd",
 	})
+	return err
+}
+
+// CheckoutSessionCompleted creates a checkout session
+// https://stripe.com/docs/api/checkout/sessions/create?lang=curl
+func (ex *Examples) CheckoutSessionCompleted() error {
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		"success_url=https://httpbin.org/post",
+		"cancel_url=https://httpbin.org/post",
+		"payment_method_types[]=card",
+		"line_items[][name]=T-shirt",
+		"line_items[][description]=Comfortable cotton t-shirt",
+		"line_items[][amount]=1500",
+		"line_items[][currency]=usd",
+		"line_items[][quantity]=2",
+	})
+
+	paymentSession, err := ex.performStripeRequest(req, "/v1/checkout/sessions", params)
+	if err != nil {
+		return err
+	}
+
+	sessID, ok := paymentSession["id"]
+	if !ok {
+		return errors.New("Unable to retrieve PaymentSession ID")
+	}
+
+	// Undocumented API GET /v1/payment_pages
+	req, params = ex.buildRequest(http.MethodGet, []string{
+		fmt.Sprintf("session_id=%s", sessID),
+	})
+
+	paymentPage, err := ex.performStripeRequest(req, "/v1/payment_pages", params)
+	if err != nil {
+		return err
+	}
+
+	paymentPageID, ok := paymentPage["id"]
+	if !ok {
+		return errors.New("Unable to retrieve PaymentPage ID")
+	}
+
+	paymentMethod, err := ex.paymentMethodCreatedWithToken(validToken)
+	if err != nil {
+		return err
+	}
+
+	pmID, ok := paymentMethod["id"]
+	if !ok {
+		return errors.New("Unable to retrieve PaymentMethod ID")
+	}
+
+	// Undocumented API POST /v1/payment_pages/<ID>/confirm
+	req, params = ex.buildRequest(http.MethodPost, []string{
+		fmt.Sprintf("payment_method=%s", pmID),
+	})
+	_, err = ex.performStripeRequest(req, fmt.Sprintf("/v1/payment_pages/%s/confirm", paymentPageID), params)
 	return err
 }
 
@@ -520,6 +579,15 @@ func (ex *Examples) paymentMethodCreated(card string) (map[string]interface{}, e
 		"card[exp_month]=12",
 		"card[exp_year]=2020",
 		"card[cvc]=123",
+	})
+	return ex.performStripeRequest(req, "/v1/payment_methods", params)
+}
+
+func (ex *Examples) paymentMethodCreatedWithToken(token string) (map[string]interface{}, error) {
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		"type=card",
+		fmt.Sprintf("card[token]=%s", token),
+		"billing_details[email]=stripe@example.com",
 	})
 	return ex.performStripeRequest(req, "/v1/payment_methods", params)
 }
