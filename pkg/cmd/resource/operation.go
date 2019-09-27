@@ -29,6 +29,10 @@ type OperationCmd struct {
 	HTTPVerb  string
 	Path      string
 	URLParams []string
+
+	stringFlags map[string]*string
+
+	data []string
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -37,9 +41,30 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := formatURL(oc.Path, args[:len(oc.URLParams)])
+	path := formatURL(oc.Path, args)
 
-	oc.Parameters.AppendData(args[len(oc.URLParams):])
+	flagParams := make([]string, 0)
+	for stringProp, stringVal := range oc.stringFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(stringProp) {
+			flagParams = append(flagParams, fmt.Sprintf("%s=%s", stringProp, *stringVal))
+		}
+	}
+
+	for _, datum := range oc.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return fmt.Errorf("Invalid data argument: %s", datum)
+		}
+
+		if _, ok := oc.stringFlags[split[0]]; ok {
+			return fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+
+		flagParams = append(flagParams, datum)
+	}
+
+	oc.Parameters.AppendData(flagParams)
 
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
 
@@ -51,7 +76,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 //
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg *config.Config) *OperationCmd {
+func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, propFlags map[string]string, cfg *config.Config) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
@@ -63,13 +88,26 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg 
 		HTTPVerb:  httpVerb,
 		Path:      path,
 		URLParams: urlParams,
+
+		stringFlags: make(map[string]*string),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
-		Args:        cobra.MinimumNArgs(len(urlParams)),
+		Args:        cobra.ExactArgs(len(urlParams)),
 	}
+
+	for prop, _ := range propFlags {
+		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
+		// i.e. "account_balance" default is "" not 0 but this is ok
+		operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
+	}
+
+	// non-scalar fields handled in general '-d a=b' format
+	// e.g. '-d "shipping[address][line1]=123 Main St" -d shipping[address][postal_code]=12345'
+	cmd.Flags().StringArrayVarP(&operationCmd.data, "data", "d", []string{}, "Other data to pass to the API request")
+
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
