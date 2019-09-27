@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -74,7 +75,7 @@ type EventPayload struct {
 	RequestID string `json:"request_id"`
 	Status    int    `json:"status"`
 	URL       string `json:"url"`
-	Error     string `json:"error"`
+	Error     RedactedError `json:"error"`
 }
 
 // RedactedError is the mapping for fields in error from an EventPayload
@@ -202,14 +203,14 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
 
-	var payloadError RedactedError
-	if err := json.Unmarshal([]byte(payload.Error), &payloadError); err != nil {
-		tailer.cfg.Log.Warn("Received malformed error from payload: ", err)
+	errorValues := reflect.ValueOf(&payload.Error).Elem()
+	errType := errorValues.Type()
+	for i := 0; i < errorValues.NumField(); i++ {
+		fieldValue := errorValues.Field(i).Interface()
+		if fieldValue != "" {
+			fmt.Printf("%s: %s\n", errType.Field(i).Name, fieldValue)
+		}
 	}
-
-	outputStr = fmt.Sprintf("Type: %s\nCharge: %s\nCode: %s\nDecline Code: %s\nMessage: %s\nParam: %s\n",
-		payloadError.Type, payloadError.Charge, payloadError.Code, payloadError.DeclineCode, payloadError.Message, payloadError.Param)
-	fmt.Println(outputStr)
 }
 
 func jsonifyFilters(logFilters *LogFilters) (string, error) {
