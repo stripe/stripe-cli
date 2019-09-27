@@ -31,7 +31,7 @@ func newTriggerCmd() *triggerCmd {
 			"charge.failed",
 			"charge.refunded",
 			"charge.succeeded",
-			"checkout.session.created",
+			"checkout.session.completed",
 			"customer.created",
 			"customer.deleted",
 			"customer.updated",
@@ -62,7 +62,7 @@ needed to create the triggered event.
   charge.failed
   charge.refunded
   charge.succeeded
-  checkout.session.created
+  checkout.session.completed
   customer.created
   customer.deleted
   customer.updated
@@ -126,7 +126,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		"charge.failed":                 examples.ChargeFailed,
 		"charge.refunded":               examples.ChargeRefunded,
 		"charge.succeeded":              examples.ChargeSucceeded,
-		"checkout.session.created":      examples.SessionCreated,
+		"checkout.session.completed":    examples.CheckoutSessionCompleted,
 		"customer.created":              examples.CustomerCreated,
 		"customer.deleted":              examples.CustomerDeleted,
 		"customer.updated":              examples.CustomerUpdated,

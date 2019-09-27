@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -379,6 +380,66 @@ func TestResendEventDoesNotErrorWithValidEventID(t *testing.T) {
 	}
 
 	err := ex.ResendEvent("evt_123")
+	t.Log(err)
+	require.Nil(t, err)
+}
+
+func TestSessionCompleted(t *testing.T) {
+	i := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch i {
+		case 0: // /v1/checkout/sessions
+			i++
+			w.WriteHeader(http.StatusOK)
+			data := jsonBytes()
+			w.Write(data)
+		case 1: // /v1/payment_pages
+			i++
+			q := r.URL.Query()
+			require.EqualValues(t, "test-id", q.Get("session_id"))
+
+			w.WriteHeader(http.StatusOK)
+			data := jsonBytes()
+			w.Write(data)
+		case 2: // /v1/payment_methods
+			i++
+			body, err := ioutil.ReadAll(r.Body)
+			require.Nil(t, err)
+
+			require.NotEmpty(t, body)
+			require.EqualValues(t, "type=card&card[token]=tok_visa&billing_details[email]=stripe%40example.com", string(body))
+
+			w.WriteHeader(http.StatusOK)
+			data := jsonBytes()
+			w.Write(data)
+		case 3: // /v1/payment_pages/<ID>/confirm
+			i++
+			path := r.URL.EscapedPath()
+			t.Log(path)
+			require.True(t, strings.Contains(path, "test-id"))
+
+			body, err := ioutil.ReadAll(r.Body)
+			require.Nil(t, err)
+
+			require.NotEmpty(t, body)
+			require.EqualValues(t, "payment_method=test-id", string(body))
+
+			w.WriteHeader(http.StatusOK)
+			data := jsonBytes()
+			w.Write(data)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer ts.Close()
+
+	ex := Examples{
+		APIBaseURL: ts.URL,
+		APIVersion: "v1",
+		APIKey:     "secret-key",
+	}
+
+	err := ex.CheckoutSessionCompleted()
 	t.Log(err)
 	require.Nil(t, err)
 }
