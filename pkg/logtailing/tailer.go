@@ -69,12 +69,12 @@ type Tailer struct {
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
-	CreatedAt int    `json:"created_at"`
-	Livemode  bool   `json:"livemode"`
-	Method    string `json:"method"`
-	RequestID string `json:"request_id"`
-	Status    int    `json:"status"`
-	URL       string `json:"url"`
+	CreatedAt int           `json:"created_at"`
+	Livemode  bool          `json:"livemode"`
+	Method    string        `json:"method"`
+	RequestID string        `json:"request_id"`
+	Status    int           `json:"status"`
+	URL       string        `json:"url"`
 	Error     RedactedError `json:"error"`
 }
 
