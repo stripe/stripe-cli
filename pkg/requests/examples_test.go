@@ -384,7 +384,7 @@ func TestResendEventDoesNotErrorWithValidEventID(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestSessionCompleted(t *testing.T) {
+func TestCheckoutSessionCompleted(t *testing.T) {
 	i := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch i {
