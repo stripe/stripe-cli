@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 	"time"
 
@@ -68,12 +69,23 @@ type Tailer struct {
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
 type EventPayload struct {
-	CreatedAt int    `json:"created_at"`
-	Livemode  bool   `json:"livemode"`
-	Method    string `json:"method"`
-	RequestID string `json:"request_id"`
-	Status    int    `json:"status"`
-	URL       string `json:"url"`
+	CreatedAt int           `json:"created_at"`
+	Livemode  bool          `json:"livemode"`
+	Method    string        `json:"method"`
+	RequestID string        `json:"request_id"`
+	Status    int           `json:"status"`
+	URL       string        `json:"url"`
+	Error     RedactedError `json:"error"`
+}
+
+// RedactedError is the mapping for fields in error from an EventPayload
+type RedactedError struct {
+	Type        string `json:"type"`
+	Charge      string `json:"charge"`
+	Code        string `json:"code"`
+	DeclineCode string `json:"decline_code"`
+	Message     string `json:"message"`
+	Param       string `json:"param"`
 }
 
 // New creates a new Tailer
@@ -190,6 +202,15 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	color := ansi.Color(os.Stdout)
 	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
 	fmt.Println(outputStr)
+
+	errorValues := reflect.ValueOf(&payload.Error).Elem()
+	errType := errorValues.Type()
+	for i := 0; i < errorValues.NumField(); i++ {
+		fieldValue := errorValues.Field(i).Interface()
+		if fieldValue != "" {
+			fmt.Printf("%s: %s\n", errType.Field(i).Name, fieldValue)
+		}
+	}
 }
 
 func jsonifyFilters(logFilters *LogFilters) (string, error) {
