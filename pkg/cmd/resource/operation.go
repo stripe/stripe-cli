@@ -98,7 +98,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Args:        cobra.ExactArgs(len(urlParams)),
 	}
 
-	for prop, _ := range propFlags {
+	for prop := range propFlags {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
