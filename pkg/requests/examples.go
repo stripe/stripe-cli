@@ -142,7 +142,7 @@ func (ex *Examples) ChargeSucceeded() error {
 	return err
 }
 
-// CheckoutSessionCompleted creates a checkout session
+// CheckoutSessionCompleted creates and completes a Checkout session
 // https://stripe.com/docs/api/checkout/sessions/create?lang=curl
 func (ex *Examples) CheckoutSessionCompleted() error {
 	req, params := ex.buildRequest(http.MethodPost, []string{
@@ -156,14 +156,14 @@ func (ex *Examples) CheckoutSessionCompleted() error {
 		"line_items[][quantity]=2",
 	})
 
-	paymentSession, err := ex.performStripeRequest(req, "/v1/checkout/sessions", params)
+	checkoutSession, err := ex.performStripeRequest(req, "/v1/checkout/sessions", params)
 	if err != nil {
 		return err
 	}
 
-	sessID, ok := paymentSession["id"]
+	sessID, ok := checkoutSession["id"]
 	if !ok {
-		return errors.New("Unable to retrieve PaymentSession ID")
+		return errors.New("Unable to retrieve CheckoutSession ID")
 	}
 
 	// Undocumented API GET /v1/payment_pages
