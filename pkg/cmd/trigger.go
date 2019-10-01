@@ -9,6 +9,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 const apiVersion = "2019-03-14"
@@ -98,6 +99,8 @@ needed to create the triggered event.
 }
 
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
+	version.CheckLatestVersion()
+
 	apiKey, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err

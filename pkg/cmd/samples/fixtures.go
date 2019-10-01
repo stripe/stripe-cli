@@ -8,6 +8,7 @@ import (
 	s "github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // FixturesCmd prints a list of all the available sample projects that users can
@@ -35,6 +36,8 @@ func NewFixturesCmd(cfg *config.Config) *FixturesCmd {
 }
 
 func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
+	version.CheckLatestVersion()
+
 	apiKey, err := fc.Cfg.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
