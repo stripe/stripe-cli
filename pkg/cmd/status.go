@@ -10,6 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/status"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 type statusCmd struct {
@@ -41,6 +42,10 @@ func newStatusCmd() *statusCmd {
 }
 
 func (sc *statusCmd) runStatusCmd(cmd *cobra.Command, args []string) error {
+	if sc.format != "json" {
+		version.CheckLatestVersion()
+	}
+
 	if sc.pollRate < 5 {
 		return fmt.Errorf("poll-rate must be at least 5 seconds, received %d", sc.pollRate)
 	}

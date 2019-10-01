@@ -8,6 +8,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // ListCmd prints a list of all the available sample projects that users can
@@ -31,6 +32,8 @@ func NewListCmd() *ListCmd {
 }
 
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
+	version.CheckLatestVersion()
+
 	fmt.Println("A list of available Stripe Sample integrations:")
 	fmt.Println()
 

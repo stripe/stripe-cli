@@ -13,6 +13,7 @@ import (
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -41,6 +42,8 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 }
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
+	version.CheckLatestVersion()
+
 	if len(args) == 0 {
 		return fmt.Errorf("Creating a sample requires at least 1 argument, received 0")
 	}

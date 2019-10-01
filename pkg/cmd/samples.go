@@ -13,7 +13,6 @@ type samplesCmd struct {
 func newSamplesCmd() *samplesCmd {
 	samplesCmd := &samplesCmd{
 		cmd: &cobra.Command{
-			// TODO: fixtures subcommand
 			Use:   "samples",
 			Short: `Sample integrations built by Stripe`,
 			Long:  ``,

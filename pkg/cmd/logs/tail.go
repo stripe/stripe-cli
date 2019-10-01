@@ -10,6 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 const requestLogsWebSocketFeature = "request_logs"
@@ -144,6 +145,8 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	version.CheckLatestVersion()
 
 	tailer := logTailing.New(&logTailing.Config{
 		APIBaseURL:       tailCmd.apiBaseURL,

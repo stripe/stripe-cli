@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/open"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 var nameURLmap = map[string]string{
@@ -137,6 +138,8 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 
 		return nil
 	}
+
+	version.CheckLatestVersion()
 
 	if url, ok := nameURLmap[args[0]]; ok {
 		livemode, err := cmd.Flags().GetBool("livemode")

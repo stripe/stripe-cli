@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 const webhooksWebSocketFeature = "webhooks"
@@ -99,6 +100,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	key, err := Config.Profile.GetAPIKey(lc.livemode)
 	if err != nil {
 		return err
+	}
+
+	if !lc.printJSON {
+		version.CheckLatestVersion()
 	}
 
 	for _, event := range lc.events {
