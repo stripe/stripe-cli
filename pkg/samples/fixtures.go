@@ -118,7 +118,7 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 
 	path := fxt.parsePath(data)
 
-	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params))
+	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params), true)
 }
 
 func (fxt *Fixture) parsePath(http fixture) string {

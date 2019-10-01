@@ -81,7 +81,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = rb.MakeRequest(apiKey, path, &rb.Parameters)
+	_, err = rb.MakeRequest(apiKey, path, &rb.Parameters, false)
 
 	return err
 }
@@ -113,7 +113,7 @@ func (rb *Base) InitFlags(includeData bool) {
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters) ([]byte, error) {
+func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -142,6 +142,10 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters) ([]b
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+
+	if errOnStatus && resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("Request failed, status=%d, body=%s", resp.StatusCode, string(body))
+	}
 
 	if !rb.SuppressOutput {
 		if err != nil {

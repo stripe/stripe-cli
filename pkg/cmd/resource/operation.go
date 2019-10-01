@@ -41,7 +41,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	oc.Parameters.AppendData(args[len(oc.URLParams):])
 
-	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters)
+	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
 
 	return err
 }
