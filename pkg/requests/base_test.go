@@ -106,8 +106,25 @@ func TestMakeRequest(t *testing.T) {
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
-	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params)
-	require.Nil(t, err)
+	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params, true)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_ErrOnStatus(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(":("))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{}
+
+	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params, true)
+	require.Error(t, err)
+	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }
 
 func TestGetUserConfirmationRequired(t *testing.T) {

@@ -63,7 +63,7 @@ func (ex *Examples) buildRequest(method string, data []string) (*Base, *RequestP
 }
 
 func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *RequestParameters) (map[string]interface{}, error) {
-	resp, err := req.MakeRequest(ex.APIKey, endpoint, params)
+	resp, err := req.MakeRequest(ex.APIKey, endpoint, params, true)
 	if err != nil {
 		return nil, err
 	}
@@ -626,7 +626,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 		SuppressOutput: true,
 		APIBaseURL:     ex.APIBaseURL,
 	}
-	resp, _ := base.MakeRequest(ex.APIKey, "/v1/webhook_endpoints", params)
+	resp, _ := base.MakeRequest(ex.APIKey, "/v1/webhook_endpoints", params, true)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
