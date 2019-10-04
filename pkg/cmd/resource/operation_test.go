@@ -41,8 +41,10 @@ func TestRunOperationCmd(t *testing.T) {
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		vals, err := url.ParseQuery(string(body))
 		require.NoError(t, err)
+		require.Equal(t, 3, len(vals))
 		require.Equal(t, vals["param1"][0], "value1")
 		require.Equal(t, vals["param2"][0], "value2")
+		require.Equal(t, vals["param_with_underscores"][0], "some_value")
 	}))
 	defer ts.Close()
 
@@ -52,8 +54,9 @@ func TestRunOperationCmd(t *testing.T) {
 		APIKey: "sk_test_1234",
 	}
 	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-		"param2": "string",
+		"param1":                 "string",
+		"param2":                 "string",
+		"param_with_underscores": "string",
 	}, &config.Config{
 		Profile: profile,
 	})
@@ -61,6 +64,7 @@ func TestRunOperationCmd(t *testing.T) {
 
 	oc.Cmd.Flags().Set("param1", "value1")
 	oc.Cmd.Flags().Set("param2", "value2")
+	oc.Cmd.Flags().Set("param-with-underscores", "some_value")
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
 
 	require.NoError(t, err)

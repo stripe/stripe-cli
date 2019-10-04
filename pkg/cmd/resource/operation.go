@@ -47,7 +47,8 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	for stringProp, stringVal := range oc.stringFlags {
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
-			flagParams = append(flagParams, fmt.Sprintf("%s=%s", stringProp, *stringVal))
+			paramName := strings.ReplaceAll(stringProp, "-", "_")
+			flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
 		}
 	}
 
@@ -101,18 +102,15 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	for prop := range propFlags {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
-		operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
-		cmd.Flags().SetAnnotation(prop, "request", []string{"true"})
+		flagName := strings.ReplaceAll(prop, "_", "-")
+		operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 	}
-
-	// non-scalar fields handled in general '-d a=b' format
-	// e.g. '-d "shipping[address][line1]=123 Main St" -d shipping[address][postal_code]=12345'
-	cmd.Flags().StringArrayVarP(&operationCmd.data, "data", "d", []string{}, "Other data to pass to the API request")
 
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
-	operationCmd.InitFlags(false)
+	operationCmd.InitFlags()
 
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[name] = "operation"
