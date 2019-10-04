@@ -102,6 +102,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		operationCmd.stringFlags[prop] = cmd.Flags().String(prop, "", "")
+		cmd.Flags().SetAnnotation(prop, "request", []string{"true"})
 	}
 
 	// non-scalar fields handled in general '-d a=b' format
@@ -148,7 +149,10 @@ func operationUsageTemplate(urlParams []string) string {
 		}
 		return r
 	}, strings.Join(urlParams, " "))
-	args += " [param1=value1] [param2=value2] ..."
+	if args != "" {
+		args += " "
+	}
+	args += "[--param=value] [-d \"nested[param]=value\"]"
 
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}} %s{{end}}{{if .HasAvailableSubCommands}}
@@ -164,7 +168,10 @@ func operationUsageTemplate(urlParams []string) string {
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 %s
-{{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+{{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
+
+%s
+{{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
 {{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
@@ -179,6 +186,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Aliases:"),
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
+		ansi.Bold("Request Parameters:"),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),

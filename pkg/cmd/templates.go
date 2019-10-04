@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -29,6 +31,46 @@ func WrappedInheritedFlagUsages(cmd *cobra.Command) string {
 // terminal's width.
 func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
+}
+
+// WrappedRequestParamsFlagUsages returns a string containing the usage
+// information for all request parameters flags, i.e. flags used in operation
+// commands to set values for request parameters. The string is wrapped to the
+// terminal's width.
+func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
+	var sb strings.Builder
+
+	// We're cheating a little bit in thie method: we're not actually wrapping
+	// anything, just printing out the flag names and assuming that no name
+	// will be long enough to go over the terminal's width.
+	// We do this instead of using pflag's `FlagUsagesWrapped` function because
+	// we don't want to print the types (all request parameters flags are
+	// defined as strings in the CLI, but it would be confusing to print that
+	// out as a lot of them are not strings in the API).
+	// If/when we do add help strings for request parameters flags, we'll have
+	// to do actual wrapping.
+	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
+		if _, ok := flag.Annotations["request"]; ok {
+			sb.WriteString(fmt.Sprintf("      --%s\n", flag.Name))
+		}
+	})
+
+	return sb.String()
+}
+
+// WrappedNonRequestParamsFlagUsages returns a string containing the usage
+// information for all non-request parameters flags. The string is wrapped to
+// the terminal's width.
+func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
+	nonRequestParamsFlags := pflag.NewFlagSet("request", pflag.ExitOnError)
+
+	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
+		if _, ok := flag.Annotations["request"]; !ok {
+			nonRequestParamsFlags.AddFlag(flag)
+		}
+	})
+
+	return nonRequestParamsFlags.FlagUsagesWrapped(getTerminalWidth())
 }
 
 //
@@ -121,4 +163,6 @@ func getTerminalWidth() int {
 func init() {
 	cobra.AddTemplateFunc("WrappedInheritedFlagUsages", WrappedInheritedFlagUsages)
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
+	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
+	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
 }
