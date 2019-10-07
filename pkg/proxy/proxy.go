@@ -168,7 +168,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 
 func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	if msg.WebhookEvent == nil {
-		p.cfg.Log.Warn("WebSocket specified for Webhooks received non-webhook event")
+		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	var evt stripeEvent
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
-		p.cfg.Log.Warn("Received malformed event from Stripe, ignoring")
+		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return
 	}
 
