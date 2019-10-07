@@ -208,7 +208,8 @@ You can easily make API requests using the CLI:
 
 ```sh
 $ stripe charges retrieve ch_123
-$ stripe charges create amount=100 currency=usd source=tok_visa
+$ stripe charges create --amount=100 --currency=usd --source=tok_visa
+$ stripe charges update ch_123 -d "metadata[key]=value"
 ```
 
 For a full list of available resources, type `stripe resources` or the [wiki page](https://github.com/stripe/stripe-cli/wiki/resources:-available-commands#available-commands).
