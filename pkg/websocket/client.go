@@ -203,7 +203,7 @@ func (c *Client) readPump() {
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 	if err != nil {
-		c.cfg.Log.Warn("SetReadDeadline error: ", err)
+		c.cfg.Log.Debug("SetReadDeadline error: ", err)
 	}
 	c.conn.SetPongHandler(func(string) error {
 		c.cfg.Log.WithFields(log.Fields{
@@ -211,7 +211,7 @@ func (c *Client) readPump() {
 		}).Debug("Received pong message")
 		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 		if err != nil {
-			c.cfg.Log.Warn("SetReadDeadline error: ", err)
+			c.cfg.Log.Debug("SetReadDeadline error: ", err)
 		}
 		return nil
 	})
@@ -242,7 +242,7 @@ func (c *Client) readPump() {
 
 		var msg IncomingMessage
 		if err = json.Unmarshal(data, &msg); err != nil {
-			c.cfg.Log.Warn("Received malformed message: ", err)
+			c.cfg.Log.Debug("Received malformed message: ", err)
 			continue
 		}
 
@@ -268,7 +268,7 @@ func (c *Client) writePump() {
 		case whResp, ok := <-c.send:
 			err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteWait))
 			if err != nil {
-				c.cfg.Log.Warn("SetWriteDeadline error: ", err)
+				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
 			}
 			if !ok {
 				c.cfg.Log.WithFields(log.Fields{
@@ -276,7 +276,7 @@ func (c *Client) writePump() {
 				}).Debug("Sending close message")
 				err = c.conn.WriteMessage(ws.CloseMessage, ws.FormatCloseMessage(ws.CloseNormalClosure, ""))
 				if err != nil {
-					c.cfg.Log.Warn("WriteMessage error: ", err)
+					c.cfg.Log.Debug("WriteMessage error: ", err)
 				}
 				return
 			}
@@ -298,7 +298,7 @@ func (c *Client) writePump() {
 		case <-ticker.C:
 			err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteWait))
 			if err != nil {
-				c.cfg.Log.Warn("SetWriteDeadline error: ", err)
+				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
 			}
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.writePump",
