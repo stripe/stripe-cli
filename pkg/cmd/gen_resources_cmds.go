@@ -31,6 +31,7 @@ type ResourceData struct {
 type OperationData struct {
 	Path     string
 	HTTPVerb string
+	PropFlags map[string]string
 }
 
 const (
@@ -128,9 +129,28 @@ func getTemplateData() (*TemplateData, error) {
 
 			// If we haven't seen the operation before, initialize it
 			if _, ok := data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]; !ok {
+				httpString := string(op.Operation)
+				properties := make(map[string]string)
+
+				specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
+				requestContent := specOp.RequestBody.Content
+
+				if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
+					for propName, schema := range media.Schema.Properties {
+						// only deal with scalar types for now
+						if schema.Type != "string" && schema.Type != "integer" {
+							continue
+						}
+
+						properties[propName] = schema.Type
+
+					}
+				}
+
 				data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
 					Path:     op.Path,
-					HTTPVerb: string(op.Operation),
+					HTTPVerb: httpString, 
+					PropFlags: properties,
 				}
 			}
 		}

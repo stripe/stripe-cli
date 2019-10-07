@@ -87,13 +87,11 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 }
 
 // InitFlags initialize shared flags for all requests commands
-func (rb *Base) InitFlags(includeData bool) {
-	if includeData {
-		rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
-	}
+func (rb *Base) InitFlags() {
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "api-version", "v", "", "Set the Stripe API version to use for your request")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
 	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")

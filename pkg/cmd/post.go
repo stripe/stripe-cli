@@ -43,7 +43,7 @@ https://stripe.com/docs/api
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
-	gc.reqs.InitFlags(true)
+	gc.reqs.InitFlags()
 
 	return gc
 }

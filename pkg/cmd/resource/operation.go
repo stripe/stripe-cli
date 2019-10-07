@@ -29,6 +29,10 @@ type OperationCmd struct {
 	HTTPVerb  string
 	Path      string
 	URLParams []string
+
+	stringFlags map[string]*string
+
+	data []string
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -37,9 +41,31 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := formatURL(oc.Path, args[:len(oc.URLParams)])
+	path := formatURL(oc.Path, args)
 
-	oc.Parameters.AppendData(args[len(oc.URLParams):])
+	flagParams := make([]string, 0)
+	for stringProp, stringVal := range oc.stringFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(stringProp) {
+			paramName := strings.ReplaceAll(stringProp, "-", "_")
+			flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+		}
+	}
+
+	for _, datum := range oc.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return fmt.Errorf("Invalid data argument: %s", datum)
+		}
+
+		if _, ok := oc.stringFlags[split[0]]; ok {
+			return fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+
+		flagParams = append(flagParams, datum)
+	}
+
+	oc.Parameters.AppendData(flagParams)
 
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
 
@@ -51,7 +77,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 //
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg *config.Config) *OperationCmd {
+func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, propFlags map[string]string, cfg *config.Config) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
@@ -63,17 +89,28 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, cfg 
 		HTTPVerb:  httpVerb,
 		Path:      path,
 		URLParams: urlParams,
+
+		stringFlags: make(map[string]*string),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
-		Args:        cobra.MinimumNArgs(len(urlParams)),
+		Args:        cobra.ExactArgs(len(urlParams)),
 	}
+
+	for prop := range propFlags {
+		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
+		// i.e. "account_balance" default is "" not 0 but this is ok
+		flagName := strings.ReplaceAll(prop, "_", "-")
+		operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
+	}
+
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
-	operationCmd.InitFlags(false)
+	operationCmd.InitFlags()
 
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[name] = "operation"
@@ -110,7 +147,10 @@ func operationUsageTemplate(urlParams []string) string {
 		}
 		return r
 	}, strings.Join(urlParams, " "))
-	args += " [param1=value1] [param2=value2] ..."
+	if args != "" {
+		args += " "
+	}
+	args += "[--param=value] [-d \"nested[param]=value\"]"
 
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}} %s{{end}}{{if .HasAvailableSubCommands}}
@@ -126,7 +166,10 @@ func operationUsageTemplate(urlParams []string) string {
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 %s
-{{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+{{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
+
+%s
+{{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
 {{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
@@ -141,6 +184,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Aliases:"),
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
+		ansi.Bold("Request Parameters:"),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
