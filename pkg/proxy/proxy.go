@@ -175,8 +175,9 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	webhookEvent := msg.WebhookEvent
 
 	p.cfg.Log.WithFields(log.Fields{
-		"prefix":     "proxy.Proxy.processWebhookEvent",
-		"webhook_id": webhookEvent.WebhookID,
+		"prefix":                   "proxy.Proxy.processWebhookEvent",
+		"webhook_id":               webhookEvent.WebhookID,
+		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
 	if p.filterWebhookEvent(webhookEvent) {
@@ -213,7 +214,12 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 
 		for _, endpoint := range p.endpointClients {
 			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
-				go endpoint.Post(webhookEvent.WebhookID, webhookEvent.EventPayload, webhookEvent.HTTPHeaders)
+				go endpoint.Post(
+					webhookEvent.WebhookID,
+					webhookEvent.WebhookConversationID,
+					webhookEvent.EventPayload,
+					webhookEvent.HTTPHeaders,
+				)
 			}
 		}
 	}
@@ -222,7 +228,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	// to pass back to Stripe
 }
 
-func (p *Proxy) processEndpointResponse(webhookID, forwardURL string, resp *http.Response) {
+func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
 	localTime := time.Now().Format(timeLayout)
 
 	color := ansi.Color(os.Stdout)
@@ -258,7 +264,14 @@ func (p *Proxy) processEndpointResponse(webhookID, forwardURL string, resp *http
 	}
 
 	if p.webSocketClient != nil {
-		msg := websocket.NewWebhookResponse(webhookID, forwardURL, resp.StatusCode, body, headers)
+		msg := websocket.NewWebhookResponse(
+			webhookID,
+			webhookConversationID,
+			forwardURL,
+			resp.StatusCode,
+			body,
+			headers,
+		)
 		p.webSocketClient.SendMessage(msg)
 	}
 }
