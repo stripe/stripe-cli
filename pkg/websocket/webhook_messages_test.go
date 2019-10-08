@@ -9,7 +9,7 @@ import (
 )
 
 func TestUnmarshalWebhookEvent(t *testing.T) {
-	var data = `{"type": "webhook_event", "event_payload": "foo", "http_headers": {"Request-Header": "bar"}, "webhook_id": "wh_123"}`
+	var data = `{"type": "webhook_event", "event_payload": "foo", "http_headers": {"Request-Header": "bar"}, "webhook_id": "wh_123", "webhook_conversation_id": "wc_123"}`
 
 	var msg IncomingMessage
 	err := json.Unmarshal([]byte(data), &msg)
@@ -22,11 +22,13 @@ func TestUnmarshalWebhookEvent(t *testing.T) {
 	require.Equal(t, "bar", msg.WebhookEvent.HTTPHeaders["Request-Header"])
 	require.Equal(t, "webhook_event", msg.WebhookEvent.Type)
 	require.Equal(t, "wh_123", msg.WebhookEvent.WebhookID)
+	require.Equal(t, "wc_123", msg.WebhookEvent.WebhookConversationID)
 }
 
 func TestMarshalWebhookResponse(t *testing.T) {
 	msg := NewWebhookResponse(
 		"wh_123",
+		"wc_123",
 		"http://localhost:5000/webhooks",
 		200,
 		"foo",
@@ -38,6 +40,7 @@ func TestMarshalWebhookResponse(t *testing.T) {
 
 	json := string(buf)
 	require.Equal(t, "wh_123", gjson.Get(json, "webhook_id").String())
+	require.Equal(t, "wc_123", gjson.Get(json, "webhook_conversation_id").String())
 	require.Equal(t, "http://localhost:5000/webhooks", gjson.Get(json, "forward_url").String())
 	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
 	require.Equal(t, "foo", gjson.Get(json, "body").String())
@@ -47,6 +50,7 @@ func TestMarshalWebhookResponse(t *testing.T) {
 func TestNewWebhookResponse(t *testing.T) {
 	msg := NewWebhookResponse(
 		"wh_123",
+		"wc_123",
 		"http://localhost:5000/webhooks",
 		200,
 		"foo",
@@ -56,6 +60,7 @@ func TestNewWebhookResponse(t *testing.T) {
 	require.NotNil(t, msg.WebhookResponse)
 	require.Equal(t, "webhook_response", msg.Type)
 	require.Equal(t, "wh_123", msg.WebhookID)
+	require.Equal(t, "wc_123", msg.WebhookConversationID)
 	require.Equal(t, "http://localhost:5000/webhooks", msg.ForwardURL)
 	require.Equal(t, 200, msg.Status)
 	require.Equal(t, "foo", msg.Body)

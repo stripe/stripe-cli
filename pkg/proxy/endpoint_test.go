@@ -38,6 +38,7 @@ func TestClientHandler(t *testing.T) {
 	rcvBody := ""
 	rcvForwardURL := ""
 	rcvWebhookID := ""
+	rcvWebhookConversationID := ""
 	client := NewEndpointClient(
 		ts.URL,
 		[]string{" Host:       hostname", "customHeader:customHeaderValue", "customHeader2:       customHeaderValue 2",
@@ -45,13 +46,14 @@ func TestClientHandler(t *testing.T) {
 		false,
 		[]string{"*"},
 		&EndpointConfig{
-			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID, forwardURL string, resp *http.Response) {
+			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
 				require.Nil(t, err)
 
 				rcvBody = string(buf)
 				rcvForwardURL = forwardURL
 				rcvWebhookID = webhookID
+				rcvWebhookConversationID = webhookConversationID
 
 				wg.Done()
 			}),
@@ -59,13 +61,14 @@ func TestClientHandler(t *testing.T) {
 	)
 
 	webhookID := "wh_123"
+	webhookConversationID := "wc_123"
 	payload := "{}"
 	headers := map[string]string{
 		"User-Agent":       "TestAgent/v1",
 		"Stripe-Signature": "t=123,v1=hunter2",
 	}
 
-	err := client.Post(webhookID, payload, headers)
+	err := client.Post(webhookID, webhookConversationID, payload, headers)
 
 	wg.Wait()
 
@@ -73,4 +76,5 @@ func TestClientHandler(t *testing.T) {
 	require.Equal(t, "OK!", rcvBody)
 	require.Equal(t, ts.URL, rcvForwardURL)
 	require.Equal(t, "wh_123", rcvWebhookID)
+	require.Equal(t, "wc_123", rcvWebhookConversationID)
 }
