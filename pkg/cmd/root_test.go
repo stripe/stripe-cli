@@ -42,6 +42,7 @@ func TestGetPathXDG(t *testing.T) {
 
 func TestHelpFlag(t *testing.T) {
 	Execute()
+
 	output, err := executeCommand(rootCmd, "--help")
 
 	require.Contains(t, output, "Stripe commands:")

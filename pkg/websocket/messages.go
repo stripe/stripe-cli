@@ -27,12 +27,14 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(data, &evt); err != nil {
 			return err
 		}
+
 		m.WebhookEvent = &evt
 	case "request_log_event":
 		var evt RequestLogEvent
 		if err := json.Unmarshal(data, &evt); err != nil {
 			return err
 		}
+
 		m.RequestLogEvent = &evt
 	default:
 		return fmt.Errorf("Unexpected message type: %s", incomingMessageTypeOnly.Type)

@@ -44,6 +44,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	path := formatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
+
 	for stringProp, stringVal := range oc.stringFlags {
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
@@ -132,8 +133,10 @@ func formatURL(path string, urlParams []string) string {
 	for i, v := range urlParams {
 		s[i] = v
 	}
+
 	re := regexp.MustCompile(`{\w+}`)
 	format := re.ReplaceAllString(path, "%s")
+
 	return fmt.Sprintf(format, s...)
 }
 
@@ -150,6 +153,7 @@ func operationUsageTemplate(urlParams []string) string {
 	if args != "" {
 		args += " "
 	}
+
 	args += "[--param=value] [-d \"nested[param]=value\"]"
 
 	return fmt.Sprintf(`%s{{if .Runnable}}

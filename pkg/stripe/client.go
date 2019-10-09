@@ -44,6 +44,7 @@ func (c *Client) PerformRequest(method, path string, params string, configure fu
 	if err != nil {
 		return nil, err
 	}
+
 	url = c.BaseURL.ResolveReference(url)
 
 	var body io.Reader
@@ -85,6 +86,7 @@ func (c *Client) PerformRequest(method, path string, params string, configure fu
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {
 	var httpTransport *http.Transport
+
 	if unixSocket != "" {
 		dialFunc := func(network, addr string) (net.Conn, error) {
 			return net.Dial("unix", unixSocket)

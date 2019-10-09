@@ -84,6 +84,7 @@ func (c *EndpointClient) Post(webhookID, webhookConversationID, body string, hea
 	if err != nil {
 		return err
 	}
+
 	for k, v := range headers {
 		req.Header.Add(k, v)
 	}
@@ -111,6 +112,7 @@ func (c *EndpointClient) Post(webhookID, webhookConversationID, body string, hea
 
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	c.cfg.ResponseHandler.ProcessResponse(webhookID, webhookConversationID, c.URL, resp)
@@ -127,14 +129,17 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
+
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
+
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{
 			Timeout: defaultTimeout,
 		}
 	}
+
 	if cfg.ResponseHandler == nil {
 		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, string, string, *http.Response) {})
 	}
@@ -180,6 +185,7 @@ func convertToMapAndSanitize(headers []string) map[string]string {
 		splitHeader := strings.SplitN(header, ":", 2)
 		headerKey := strings.TrimSpace(splitHeader[0])
 		headerVal := strings.TrimSpace(splitHeader[1])
+
 		if headerKey != "" {
 			headerMap[headerKey] = headerVal
 		}

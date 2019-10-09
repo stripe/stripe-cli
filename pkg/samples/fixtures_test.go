@@ -113,6 +113,7 @@ func TestMakeRequest(t *testing.T) {
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
 	}))
+
 	defer func() { ts.Close() }()
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)

@@ -60,6 +60,7 @@ func (t *verboseTransport) dumpHeaders(header http.Header, indent string) {
 			if !strings.EqualFold(name, listed) {
 				continue
 			}
+
 			for _, v := range vv {
 				if v != "" {
 					r := regexp.MustCompile("(?i)^(basic|bearer) (.+)")

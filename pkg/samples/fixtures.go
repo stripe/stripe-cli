@@ -103,6 +103,7 @@ func (fxt *Fixture) UpdateEnv() error {
 
 func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 	var rp requests.RequestParameters
+
 	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
 		now := time.Now().String()
 		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
@@ -131,6 +132,7 @@ func (fxt *Fixture) parsePath(http fixture) string {
 
 		for i, match := range matches {
 			value := fxt.parseQuery(match[0])
+
 			newPath = append(newPath, pathParts[i])
 			newPath = append(newPath, value)
 		}
@@ -154,6 +156,7 @@ func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters
 
 func (fxt *Fixture) parseInterface(params interface{}) []string {
 	var data []string
+
 	var cleanData []string
 
 	switch v := reflect.ValueOf(params); v.Kind() {
@@ -177,6 +180,7 @@ func (fxt *Fixture) parseInterface(params interface{}) []string {
 
 func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []string {
 	data := make([]string, len(params))
+
 	var keyname string
 
 	for key, value := range params {
@@ -193,12 +197,14 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []str
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
+
 			result := fxt.parseMap(m, keyname)
 			if len(result) > 0 {
 				data = append(data, result...)
 			}
 		case reflect.Array:
 			a := value.([]interface{})
+
 			result := fxt.parseArray(a, keyname)
 			if len(result) > 0 {
 				data = append(data, result...)
@@ -246,6 +252,7 @@ func (fxt *Fixture) parseQuery(value string) string {
 		fxt.responses[name].Reset()
 
 		query := nameAndQuery[2]
+
 		return fxt.responses[name].Find(query).(string)
 	}
 
@@ -259,6 +266,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	}
 
 	envFile := filepath.Join(dir, ".env")
+
 	exists, _ := afero.Exists(fxt.Fs, envFile)
 	if !exists {
 		// If there is no .env in the current directory, return and do nothing
@@ -283,6 +291,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	if err != nil {
 		return err
 	}
+
 	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
 
 	return nil

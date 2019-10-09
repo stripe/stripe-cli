@@ -49,6 +49,7 @@ func TestRunOperationCmd(t *testing.T) {
 	defer ts.Close()
 
 	viper.Reset()
+
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
@@ -88,6 +89,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	defer ts.Close()
 
 	viper.Reset()
+
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
@@ -109,6 +111,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 
 func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
+
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
 		"param1": "string",

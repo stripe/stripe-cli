@@ -167,10 +167,12 @@ func (s *Samples) checkForIntegrations() error {
 	if !folderSearch(folders, "server") {
 		s.integrations = folders
 		s.isIntegration = true
+
 		return nil
 	}
 
 	s.isIntegration = false
+
 	return nil
 }
 
@@ -250,6 +252,7 @@ func (s *Samples) Copy(target string) error {
 
 		serverSource := filepath.Join(s.repo, integration, "server", s.language)
 		clientSource := filepath.Join(s.repo, integration, "client")
+
 		filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
 		if err != nil {
 			return err
@@ -262,6 +265,7 @@ func (s *Samples) Copy(target string) error {
 		if err != nil {
 			return err
 		}
+
 		err = copy.Copy(clientSource, clientDestination)
 		if err != nil {
 			return err
@@ -285,6 +289,7 @@ func (s *Samples) Copy(target string) error {
 	if err != nil {
 		return err
 	}
+
 	for _, file := range filesSource {
 		err = copy.Copy(filepath.Join(s.repo, file), filepath.Join(target, file))
 		if err != nil {
@@ -297,13 +302,16 @@ func (s *Samples) Copy(target string) error {
 
 func (s *Samples) findServerFiles(target string) ([]string, error) {
 	var files []string
+
 	err := afero.Walk(s.Fs, target, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+
 		if !info.IsDir() && strings.Contains(path, "server") {
 			files = append(files, path)
 		}
+
 		return nil
 	})
 
@@ -380,12 +388,14 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	if err != nil {
 		return err
 	}
+
 	deviceName, err := s.Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
 
 	authClient := stripeauth.NewClient(apiKey, nil)
+
 	authSession, err := authClient.Authorize(deviceName, "webhooks", nil)
 	if err != nil {
 		return err
@@ -397,6 +407,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	dotenv["STATIC_DIR"] = "../client"
 
 	envFile := filepath.Join(sampleLocation, ".env")
+
 	err = godotenv.Write(dotenv, envFile)
 	if err != nil {
 		return err
@@ -454,6 +465,7 @@ func selectOptions(template, label string, options []string) (string, error) {
 
 func languageSelectPrompt(languages []string) (string, error) {
 	var displayLangs []string
+
 	for _, lang := range languages {
 		if val, ok := languageDisplayNames[lang]; ok {
 			displayLangs = append(displayLangs, val)

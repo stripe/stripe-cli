@@ -39,6 +39,7 @@ func GetStatus() (Response, error) {
 	if err != nil {
 		return status, err
 	}
+
 	defer resp.Body.Close()
 
 	respBytes, err := ioutil.ReadAll(resp.Body)
@@ -47,6 +48,7 @@ func GetStatus() (Response, error) {
 	}
 
 	json.Unmarshal(respBytes, &status)
+
 	return status, nil
 }
 
@@ -74,6 +76,7 @@ func (r *Response) getMap(verbose bool) map[string]interface{} {
 // populated with extra data depending on verbosity
 func (r *Response) FormattedMessage(format string, verbose bool) (string, error) {
 	statusData := r.getMap(verbose)
+
 	if format == "json" {
 		data, err := json.MarshalIndent(statusData, "", "  ")
 		if err != nil {
@@ -102,7 +105,9 @@ As of: %s`,
 	if err != nil {
 		return "", err
 	}
+
 	var output bytes.Buffer
+
 	err = tmpl.Execute(&output, statusData)
 	if err != nil {
 		return "", nil
@@ -113,6 +118,7 @@ As of: %s`,
 
 func emojifiedStatus(status string) string {
 	color := ansi.Color(os.Stdout)
+
 	switch status {
 	case "up":
 		return color.Green("✔").String()

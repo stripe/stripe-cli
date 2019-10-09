@@ -49,8 +49,10 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	fmt.Println(ansi.Faint("This pairing code verifies your authentication with Stripe."))
 
 	var s *spinner.Spinner
+
 	if isSSH() {
 		fmt.Println(fmt.Sprintf("To authenticate with Stripe, please go to: %s", links.BrowserURL))
+
 		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
 	} else {
 		fmt.Printf("Press Enter to open the browser (^C to quit)")
@@ -81,6 +83,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	config.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 	config.Profile.TestModeAPIKey = response.TestModeAPIKey
 	config.Profile.TestModePublishableKey = response.TestModePublishableKey
+
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
 		return profileErr
@@ -127,6 +130,7 @@ func getLinks(baseURL string, deviceName string) (*Links, error) {
 	}
 
 	var links Links
+
 	err = json.Unmarshal(bodyBytes, &links)
 	if err != nil {
 		return nil, err

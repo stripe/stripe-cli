@@ -34,6 +34,7 @@ func SuccessMessage(account *Account, baseURL string, apiKey string) (string, er
 		if err != nil {
 			return "", err
 		}
+
 		account = acc
 	}
 
@@ -80,6 +81,7 @@ func getUserAccount(baseURL string, apiKey string) (*Account, error) {
 	defer resp.Body.Close()
 
 	account := &Account{}
+
 	err = json.NewDecoder(resp.Body).Decode(account)
 	if err != nil {
 		return nil, err

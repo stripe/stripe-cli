@@ -153,10 +153,10 @@ func TestPointToDotEnvWithOneIntegrationRb(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
+	require.Nil(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../.env'.freeze`)
-	require.Nil(t, err)
 	assert.Equal(t, string(expected), string(data))
 }
 
@@ -175,10 +175,11 @@ func TestPointToDotEnvWithNoIntegrationRb(t *testing.T) {
 		isIntegration: false,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
+	require.Nil(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../.env'.freeze`)
-	require.Nil(t, err)
+
 	assert.Equal(t, expected, data)
 }
 
@@ -200,6 +201,7 @@ func TestPointToDotEnvWithMultipleIntegrationRb(t *testing.T) {
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../../.env'.freeze`)
+
 	require.Nil(t, err)
 	assert.Equal(t, expected, data)
 }
@@ -222,6 +224,7 @@ func TestPointToDotEnvWithMultipleIntegrationJava(t *testing.T) {
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.java")
 	expected := []byte(`String ENV_PATH = "../../";`)
+
 	require.Nil(t, err)
 	assert.Equal(t, expected, data)
 }
@@ -241,10 +244,11 @@ func TestPointToDotEnvWithMultipleIntegrationPhp(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
+	require.Nil(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.php")
 	expected := []byte(`$ENV_PATH = '../..';`)
-	require.Nil(t, err)
+
 	assert.Equal(t, expected, data)
 }
 
@@ -263,9 +267,10 @@ func TestPointToDotEnvWithMultipleIntegrationJs(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
+	require.Nil(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.js")
 	expected := []byte(`const envPath = resolve(__dirname, "../../.env");`)
-	require.Nil(t, err)
+
 	assert.Equal(t, string(expected), string(data))
 }

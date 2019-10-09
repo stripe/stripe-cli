@@ -27,6 +27,7 @@ func CheckLatestVersion() {
 	if Version != "master" {
 		s := ansi.StartSpinner("Checking for new versions...", os.Stdout)
 		latest := getLatestVersion()
+
 		ansi.StopSpinner(s, "", os.Stdout)
 
 		if latest != "" && latest != Version {

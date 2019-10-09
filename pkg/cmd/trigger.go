@@ -119,6 +119,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		cmd.Usage()
+
 		return nil
 	}
 
@@ -147,12 +148,13 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		"payment_intent.succeeded":      examples.PaymentIntentSucceeded,
 		"payment_method.attached":       examples.PaymentMethodAttached,
 	}
+
 	function, ok := supportedEvents[event]
 	if !ok {
 		return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 	}
-	err = function.(func() error)()
 
+	err = function.(func() error)()
 	if err == nil {
 		fmt.Println("Trigger succeeded! Check dashboard for event details.")
 	} else {

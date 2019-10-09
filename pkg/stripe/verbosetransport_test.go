@@ -19,6 +19,7 @@ func TestVerboseTransport_Verbose(t *testing.T) {
 	defer ts.Close()
 
 	var b bytes.Buffer
+
 	httpTransport := &http.Transport{}
 	tr := &verboseTransport{
 		Transport: httpTransport,
@@ -30,8 +31,10 @@ func TestVerboseTransport_Verbose(t *testing.T) {
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer token")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	resp, err := client.Do(req)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 
 	out := b.String()

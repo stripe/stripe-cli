@@ -95,6 +95,7 @@ func (p *Proxy) Run() error {
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
 	var session *stripeauth.StripeCLISession
+
 	var err error
 
 	// Try to authorize at least 5 times before failing. Sometimes we have random
@@ -153,6 +154,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 			"prefix":      "proxy.Proxy.filterWebhookEvent",
 			"api_version": msg.Endpoint.APIVersion,
 		}).Debugf("Received event with non-default API version, ignoring")
+
 		return true
 	}
 
@@ -160,6 +162,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 		p.cfg.Log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.filterWebhookEvent",
 		}).Debugf("Received event with default API version, ignoring")
+
 		return true
 	}
 
@@ -185,6 +188,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	var evt stripeEvent
+
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
@@ -214,6 +218,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 
 		for _, endpoint := range p.endpointClients {
 			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
+				// TODO: handle errors returned by endpointClients
 				go endpoint.Post(
 					webhookEvent.WebhookID,
 					webhookEvent.WebhookConversationID,
@@ -223,9 +228,6 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 			}
 		}
 	}
-	// TODO: handle errors returned by endpointClients
-	// TODO: if no forwarding, prepare a dummy response directly in the CLI
-	// to pass back to Stripe
 }
 
 func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
@@ -248,6 +250,7 @@ func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwar
 			err,
 		)
 		log.Errorf(errStr)
+
 		return
 	}
 
@@ -255,9 +258,11 @@ func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwar
 
 	idx := 0
 	headers := make(map[string]string)
+
 	for k, v := range resp.Header {
 		headers[truncate(k, maxHeaderKeySize, false)] = truncate(v[0], maxHeaderValueSize, true)
 		idx++
+
 		if idx > maxNumHeaders {
 			break
 		}
@@ -285,6 +290,7 @@ func New(cfg *Config, events []string) *Proxy {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
+
 	p := &Proxy{
 		cfg: cfg,
 		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
@@ -362,6 +368,7 @@ func truncate(str string, maxByteLength int, ellipsis bool) string {
 	if ellipsis {
 		result += "..."
 	}
+
 	return result
 }
 

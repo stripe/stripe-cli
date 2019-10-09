@@ -107,6 +107,7 @@ func (c *Client) Run() {
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
+
 			return
 		case <-c.notifyClose:
 			c.cfg.Log.WithFields(log.Fields{
@@ -121,9 +122,11 @@ func (c *Client) Run() {
 			}).Debug("Resetting the connection")
 			close(c.stopReadPump)
 			close(c.stopWritePump)
+
 			if c.conn != nil {
 				c.conn.Close() // #nosec G104
 			}
+
 			c.wg.Wait()
 		}
 	}
@@ -167,20 +170,26 @@ func (c *Client) connect() bool {
 			"prefix": "websocket.Client.connect",
 			"error":  err,
 		}).Debug("Websocket connection error")
+
 		return false
 	}
+
 	defer resp.Body.Close()
+
 	c.changeConnection(conn)
 	c.isConnected = true
 
 	c.wg = &sync.WaitGroup{}
 	c.wg.Add(2)
+
 	go c.readPump()
+
 	go c.writePump()
 
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "websocket.client.connect",
 	}).Debug("Connected!")
+
 	return true
 }
 
@@ -205,14 +214,17 @@ func (c *Client) readPump() {
 	if err != nil {
 		c.cfg.Log.Debug("SetReadDeadline error: ", err)
 	}
+
 	c.conn.SetPongHandler(func(string) error {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.readPump",
 		}).Debug("Received pong message")
+
 		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 		if err != nil {
 			c.cfg.Log.Debug("SetReadDeadline error: ", err)
 		}
+
 		return nil
 	})
 
@@ -232,6 +244,7 @@ func (c *Client) readPump() {
 				}
 				c.notifyClose <- err
 			}
+
 			return
 		}
 
@@ -243,6 +256,7 @@ func (c *Client) readPump() {
 		var msg IncomingMessage
 		if err = json.Unmarshal(data, &msg); err != nil {
 			c.cfg.Log.Debug("Received malformed message: ", err)
+
 			continue
 		}
 
@@ -258,6 +272,7 @@ func (c *Client) readPump() {
 // executing all writes from this goroutine.
 func (c *Client) writePump() {
 	ticker := time.NewTicker(c.cfg.PingPeriod)
+
 	defer func() {
 		ticker.Stop()
 		c.wg.Done()
@@ -270,14 +285,17 @@ func (c *Client) writePump() {
 			if err != nil {
 				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
 			}
+
 			if !ok {
 				c.cfg.Log.WithFields(log.Fields{
 					"prefix": "websocket.Client.writePump",
 				}).Debug("Sending close message")
+
 				err = c.conn.WriteMessage(ws.CloseMessage, ws.FormatCloseMessage(ws.CloseNormalClosure, ""))
 				if err != nil {
 					c.cfg.Log.Debug("WriteMessage error: ", err)
 				}
+
 				return
 			}
 
@@ -293,6 +311,7 @@ func (c *Client) writePump() {
 				// Requeue the message to be processed when writePump restarts
 				c.send <- whResp
 				c.notifyClose <- err
+
 				return
 			}
 		case <-ticker.C:
@@ -300,20 +319,24 @@ func (c *Client) writePump() {
 			if err != nil {
 				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
 			}
+
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.writePump",
 			}).Debug("Sending ping message")
+
 			if err = c.conn.WriteMessage(ws.PingMessage, nil); err != nil {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
 					c.cfg.Log.Error("write error: ", err)
 				}
 				c.notifyClose <- err
+
 				return
 			}
 		case <-c.stopWritePump:
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.writePump",
 			}).Debug("stopWritePump")
+
 			return
 		}
 	}
@@ -328,27 +351,35 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 	if cfg == nil {
 		cfg = &Config{}
 	}
+
 	if cfg.ConnectAttemptWait == 0 {
 		cfg.ConnectAttemptWait = defaultConnectAttemptWait
 	}
+
 	if cfg.Dialer == nil {
 		cfg.Dialer = newWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	}
+
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
+
 	if cfg.PongWait == 0 {
 		cfg.PongWait = defaultPongWait
 	}
+
 	if cfg.PingPeriod == 0 {
 		cfg.PingPeriod = (cfg.PongWait * 9) / 10
 	}
+
 	if cfg.ReconnectInterval == 0 {
 		cfg.ReconnectInterval = defaultReconnectInterval
 	}
+
 	if cfg.WriteWait == 0 {
 		cfg.WriteWait = defaultWriteWait
 	}
+
 	if cfg.EventHandler == nil {
 		cfg.EventHandler = nullEventHandler
 	}
@@ -391,6 +422,7 @@ var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
 
 func newWebSocketDialer(unixSocket string) *ws.Dialer {
 	var dialer *ws.Dialer
+
 	if unixSocket != "" {
 		dialFunc := func(network, addr string) (net.Conn, error) {
 			return net.Dial("unix", unixSocket)
@@ -407,5 +439,6 @@ func newWebSocketDialer(unixSocket string) *ws.Dialer {
 			Subprotocols:     subprotocols[:],
 		}
 	}
+
 	return dialer
 }

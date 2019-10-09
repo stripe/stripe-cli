@@ -144,6 +144,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		if strings.HasPrefix(lc.forwardURL, "/") {
 			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
 		}
+
 		if strings.HasPrefix(lc.forwardConnectURL, "/") {
 			return errors.New("--forward-connect-to cannot be a relative path when loading webhook endpoints from the API")
 		}
@@ -191,11 +192,13 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 		APIKey:     secretKey,
 		APIBaseURL: apiBaseURL,
 	}
+
 	return examples.WebhookEndpointsList()
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
+
 	for _, endpoint := range endpoints.Data {
 		u, err := url.Parse(endpoint.URL)
 		// Silently skip over invalid paths
@@ -219,6 +222,7 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			}
 		}
 	}
+
 	return endpointRoutes
 }
 

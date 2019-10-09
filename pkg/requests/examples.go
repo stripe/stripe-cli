@@ -19,10 +19,12 @@ const (
 
 func parseResponse(response []byte) (map[string]interface{}, error) {
 	var result map[string]interface{}
+
 	err := json.Unmarshal(response, &result)
 	if err != nil {
 		return nil, err
 	}
+
 	return result, nil
 }
 
@@ -75,6 +77,7 @@ func (ex *Examples) chargeCreated(token string, data []string) (map[string]inter
 	paymentSource := fmt.Sprintf("source=%s", token)
 
 	req, params := ex.buildRequest(http.MethodPost, append(data, paymentSource))
+
 	return ex.performStripeRequest(req, "/v1/charges", params)
 }
 
@@ -95,6 +98,7 @@ func (ex *Examples) ChargeCaptured() error {
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/charges/%s/capture", charge["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -104,6 +108,7 @@ func (ex *Examples) ChargeDisputed() error {
 		"amount=2000",
 		"currency=usd",
 	})
+
 	return err
 }
 
@@ -113,6 +118,7 @@ func (ex *Examples) ChargeFailed() error {
 		"amount=2000",
 		"currency=usd",
 	})
+
 	return err
 }
 
@@ -130,6 +136,7 @@ func (ex *Examples) ChargeRefunded() error {
 		fmt.Sprintf("charge=%s", charge["id"]),
 	})
 	_, err = ex.performStripeRequest(req, "/v1/refunds", params)
+
 	return err
 }
 
@@ -139,6 +146,7 @@ func (ex *Examples) ChargeSucceeded() error {
 		"amount=2000",
 		"currency=usd",
 	})
+
 	return err
 }
 
@@ -196,6 +204,7 @@ func (ex *Examples) CheckoutSessionCompleted() error {
 		fmt.Sprintf("payment_method=%s", pmID),
 	})
 	_, err = ex.performStripeRequest(req, fmt.Sprintf("/v1/payment_pages/%s/confirm", paymentPageID), params)
+
 	return err
 }
 
@@ -217,11 +226,14 @@ func (ex *Examples) CustomerUpdated() error {
 	if err != nil {
 		return err
 	}
+
 	req, params := ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
+
 	reqURL := fmt.Sprintf("/v1/customers/%s", customer["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -231,9 +243,11 @@ func (ex *Examples) CustomerDeleted() error {
 	if err != nil {
 		return err
 	}
+
 	req, params := ex.buildRequest(http.MethodDelete, []string{})
 	reqURL := fmt.Sprintf("/v1/customers/%s", customer["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -251,6 +265,7 @@ func (ex *Examples) CustomerSourceCreated() error {
 
 	reqURL := fmt.Sprintf("/v1/customers/%s/sources", customer["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -267,6 +282,7 @@ func (ex *Examples) CustomerSourceUpdated() error {
 	})
 
 	reqURL := fmt.Sprintf("/v1/customers/%s/sources", customer["id"])
+
 	card, err := ex.performStripeRequest(req, reqURL, params)
 	if err != nil {
 		return err
@@ -277,6 +293,7 @@ func (ex *Examples) CustomerSourceUpdated() error {
 	})
 	reqURL = fmt.Sprintf("/v1/customers/%s/sources/%s", customer["id"], card["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -296,6 +313,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 		"amount=2000",
 		"product[name]=myproduct",
 	})
+
 	plan, err := ex.performStripeRequest(req, "/v1/plans", params)
 	if err != nil {
 		return err
@@ -305,6 +323,7 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 		fmt.Sprintf("items[0][plan]=%s", plan["id"]),
 		fmt.Sprintf("customer=%s", customer["id"]),
 	})
+
 	subscription, err := ex.performStripeRequest(req, "/v1/subscriptions", params)
 	if err != nil {
 		return err
@@ -313,8 +332,10 @@ func (ex *Examples) CustomerSubscriptionUpdated() error {
 	req, params = ex.buildRequest(http.MethodPost, []string{
 		"metadata[foo]=bar",
 	})
+
 	reqURL := fmt.Sprintf("/v1/subscriptions/%s", subscription["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -334,6 +355,7 @@ func (ex *Examples) CustomerSubscriptionDeleted() error {
 		"amount=2000",
 		"product[name]=myproduct",
 	})
+
 	plan, err := ex.performStripeRequest(req, "/v1/plans", params)
 	if err != nil {
 		return err
@@ -343,6 +365,7 @@ func (ex *Examples) CustomerSubscriptionDeleted() error {
 		fmt.Sprintf("items[0][plan]=%s", plan["id"]),
 		fmt.Sprintf("customer=%s", customer["id"]),
 	})
+
 	subscription, err := ex.performStripeRequest(req, "/v1/subscriptions", params)
 	if err != nil {
 		return err
@@ -351,6 +374,7 @@ func (ex *Examples) CustomerSubscriptionDeleted() error {
 	req, params = ex.buildRequest(http.MethodDelete, []string{})
 	reqURL := fmt.Sprintf("/v1/subscriptions/%s", subscription["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -418,6 +442,7 @@ func (ex *Examples) InvoiceFinalized() error {
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/finalize", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -450,6 +475,7 @@ func (ex *Examples) InvoicePaymentSucceeded() error {
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/pay", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -479,10 +505,10 @@ func (ex *Examples) InvoicePaymentFailed() error {
 		return err
 	}
 
-	fmt.Println("hello")
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/invoices/%s/pay", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -516,6 +542,7 @@ func (ex *Examples) InvoiceUpdated() error {
 
 	reqURL := fmt.Sprintf("/v1/invoices/%s", invoice["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -532,6 +559,7 @@ func (ex *Examples) PaymentIntentCreated() error {
 		"currency=usd",
 		"payment_method_types[]=card",
 	})
+
 	return err
 }
 
@@ -541,6 +569,7 @@ func (ex *Examples) PaymentIntentSucceeded() error {
 	if err != nil {
 		return err
 	}
+
 	paymentMethodID := fmt.Sprintf("payment_method=%s", paymentMethod["id"])
 
 	_, err = ex.paymentIntentCreated([]string{
@@ -580,6 +609,7 @@ func (ex *Examples) paymentMethodCreated(card string) (map[string]interface{}, e
 		"card[exp_year]=2020",
 		"card[cvc]=123",
 	})
+
 	return ex.performStripeRequest(req, "/v1/payment_methods", params)
 }
 
@@ -589,6 +619,7 @@ func (ex *Examples) paymentMethodCreatedWithToken(token string) (map[string]inte
 		fmt.Sprintf("card[token]=%s", token),
 		"billing_details[email]=stripe@example.com",
 	})
+
 	return ex.performStripeRequest(req, "/v1/payment_methods", params)
 }
 
@@ -610,6 +641,7 @@ func (ex *Examples) PaymentMethodAttached() error {
 	})
 	reqURL := fmt.Sprintf("/v1/payment_methods/%s/attach", paymentMethod["id"])
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }
 
@@ -636,6 +668,7 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 // ResendEvent resends a webhook event using it's event-id "evt_<id>"
 func (ex *Examples) ResendEvent(id string) error {
 	pattern := `^evt_[A-Za-z0-9]{3,255}$`
+
 	match, err := regexp.MatchString(pattern, id)
 	if err != nil {
 		return err
@@ -648,5 +681,6 @@ func (ex *Examples) ResendEvent(id string) error {
 	req, params := ex.buildRequest(http.MethodPost, []string{})
 	reqURL := fmt.Sprintf("/v1/events/%s/retry", id)
 	_, err = ex.performStripeRequest(req, reqURL, params)
+
 	return err
 }

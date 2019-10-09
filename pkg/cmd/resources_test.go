@@ -8,6 +8,7 @@ import (
 
 func TestResources(t *testing.T) {
 	Execute()
+
 	output, err := executeCommand(rootCmd, "resources")
 
 	require.Contains(t, output, "Available Namespaces:")

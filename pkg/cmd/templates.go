@@ -153,10 +153,12 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 
 func getTerminalWidth() int {
 	var width int
+
 	width, _, err := terminal.GetSize(0)
 	if err != nil {
 		width = 80
 	}
+
 	return width
 }
 

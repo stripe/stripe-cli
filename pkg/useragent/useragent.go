@@ -69,5 +69,6 @@ func initUserAgent() {
 	if err != nil {
 		panic(err)
 	}
+
 	encodedStripeUserAgent = string(marshaled)
 }

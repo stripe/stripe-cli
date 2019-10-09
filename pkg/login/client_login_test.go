@@ -26,6 +26,7 @@ func TestLogin(t *testing.T) {
 	openBrowser = func(string) error {
 		return nil
 	}
+
 	defer func() { openBrowser = open.Browser }()
 
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")

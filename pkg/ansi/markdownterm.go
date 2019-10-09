@@ -57,6 +57,7 @@ func (options *MarkdownTerm) Header(out *bytes.Buffer, text func() bool, level i
 		out.Truncate(marker)
 		return
 	}
+
 	out.WriteString("\n")
 }
 
@@ -74,10 +75,12 @@ func (options *MarkdownTerm) ListItem(out *bytes.Buffer, text []byte, flags int)
 func (options *MarkdownTerm) Paragraph(out *bytes.Buffer, text func() bool) {
 	marker := out.Len()
 	out.WriteString("\n")
+
 	if !text() {
 		out.Truncate(marker)
 		return
 	}
+
 	out.WriteString("\n")
 }
 

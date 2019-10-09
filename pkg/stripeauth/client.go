@@ -63,6 +63,7 @@ func (c *Client) Authorize(deviceName string, websocketFeature string, filters *
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -97,9 +98,11 @@ func NewClient(key string, cfg *Config) *Client {
 	if cfg == nil {
 		cfg = &Config{}
 	}
+
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
+
 	if cfg.APIBaseURL == "" {
 		cfg.APIBaseURL = stripe.DefaultAPIBaseURL
 	}
