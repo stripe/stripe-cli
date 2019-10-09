@@ -15,6 +15,7 @@ func trimNulls(input []byte) []byte {
 
 func getUname() string {
 	u := new(unix.Utsname)
+
 	err := unix.Uname(u)
 	if err != nil {
 		panic(err)

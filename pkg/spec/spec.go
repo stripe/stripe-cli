@@ -139,6 +139,7 @@ func (s *Schema) String() string {
 	if err != nil {
 		panic(err)
 	}
+
 	return string(js)
 }
 
@@ -146,6 +147,7 @@ func (s *Schema) String() string {
 // provides better error messages instead of silently ignoring fields.
 func (s *Schema) UnmarshalJSON(data []byte) error {
 	var rawFields map[string]interface{}
+
 	err := json.Unmarshal(data, &rawFields)
 	if err != nil {
 		return err
@@ -154,6 +156,7 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	for _, supportedField := range supportedSchemaFields {
 		delete(rawFields, supportedField)
 	}
+
 	for unsupportedField := range rawFields {
 		return fmt.Errorf(
 			"unsupported field in JSON schema: '%s'", unsupportedField)
@@ -164,11 +167,14 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	// unmarshalling a Schema object instead of recursively calling this
 	// UnmarshalJSON function again.
 	type schemaAlias Schema
+
 	var inner schemaAlias
+
 	err = json.Unmarshal(data, &inner)
 	if err != nil {
 		return err
 	}
+
 	*s = Schema(inner)
 
 	return nil
@@ -244,6 +250,7 @@ func LoadSpec(specPath string) (*Spec, error) {
 	}
 
 	var stripeSpec Spec
+
 	err = json.Unmarshal(data, &stripeSpec)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding spec: %v", err)
@@ -265,5 +272,6 @@ func readSpecData(specPath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return ioutil.ReadAll(file)
 }

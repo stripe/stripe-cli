@@ -15,8 +15,10 @@ func jsonBytes() []byte {
 	type TestJSON struct {
 		ID string `json:"id"`
 	}
+
 	data := TestJSON{"test-id"}
 	bytes, _ := json.Marshal(data)
+
 	return bytes
 }
 
@@ -431,6 +433,7 @@ func TestCheckoutSessionCompleted(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}
 	}))
+
 	defer ts.Close()
 
 	ex := Examples{

@@ -58,8 +58,9 @@ func (s *Samples) MakeFolder(name string) (string, error) {
 
 // GetFolders returns a list of all folders for a given path
 func (s *Samples) GetFolders(path string) ([]string, error) {
-	files, err := afero.ReadDir(s.Fs, path)
 	var dir []string
+
+	files, err := afero.ReadDir(s.Fs, path)
 	if err != nil {
 		return []string{}, err
 	}
@@ -76,8 +77,9 @@ func (s *Samples) GetFolders(path string) ([]string, error) {
 
 // GetFiles returns a list of files for a given path
 func (s *Samples) GetFiles(path string) ([]string, error) {
-	files, err := afero.ReadDir(s.Fs, path)
 	var file []string
+
+	files, err := afero.ReadDir(s.Fs, path)
 	if err != nil {
 		return []string{}, err
 	}

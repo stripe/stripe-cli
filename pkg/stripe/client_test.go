@@ -32,6 +32,7 @@ func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {
 
 	resp, err := client.PerformRequest(http.MethodDelete, "/delete", params.Encode(), nil)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }
 
@@ -57,6 +58,7 @@ func TestPerformRequest_ParamsEncoding_Get(t *testing.T) {
 
 	resp, err := client.PerformRequest(http.MethodGet, "/get", params.Encode(), nil)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }
 
@@ -82,6 +84,7 @@ func TestPerformRequest_ParamsEncoding_Post(t *testing.T) {
 
 	resp, err := client.PerformRequest(http.MethodPost, "/post", params.Encode(), nil)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }
 
@@ -99,6 +102,7 @@ func TestPerformRequest_ApiKey_Provided(t *testing.T) {
 
 	resp, err := client.PerformRequest(http.MethodGet, "/get", "", nil)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }
 
@@ -115,6 +119,7 @@ func TestPerformRequest_ApiKey_Omitted(t *testing.T) {
 
 	resp, err := client.PerformRequest(http.MethodGet, "/get", "", nil)
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }
 
@@ -133,5 +138,6 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 		r.Header.Add("Stripe-Version", "2019-07-10")
 	})
 	require.NoError(t, err)
+
 	defer resp.Body.Close()
 }

@@ -18,6 +18,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return errors.New(errorMessage)
 	}
+
 	return nil
 }
 

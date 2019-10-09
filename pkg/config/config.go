@@ -54,6 +54,7 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
 		configPath = filepath.Join(home, ".config")
 	}
 
@@ -90,6 +91,7 @@ func (c *Config) InitConfig() {
 		if err != nil {
 			deviceName = "unknown"
 		}
+
 		c.Profile.DeviceName = deviceName
 	}
 
@@ -97,6 +99,7 @@ func (c *Config) InitConfig() {
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
+
 	switch color {
 	case ColorOn:
 		ansi.ForceColors = true
@@ -139,11 +142,13 @@ func (c *Config) EditConfig() error {
 		if editor == "" {
 			editor = "vi"
 		}
+
 		cmd := exec.Command(editor, c.ProfilesFile)
 		// Some editors detect whether they have control of stdin/out and will
 		// fail if they do not.
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
+
 		return cmd.Run()
 	case "windows":
 		// As far as I can tell, Windows doesn't have an easily accesible or
@@ -163,6 +168,7 @@ func (c *Config) PrintConfig() error {
 		if err != nil {
 			return err
 		}
+
 		fmt.Print(string(configFile))
 	} else {
 		configs := viper.GetStringMapString(c.Profile.ProfileName)
@@ -187,6 +193,7 @@ func removeKey(v *viper.Viper, key string) (*viper.Viper, error) {
 	delete(deepestMap, lastKey)
 
 	buf := new(bytes.Buffer)
+
 	encodeErr := toml.NewEncoder(buf).Encode(configMap)
 	if encodeErr != nil {
 		return nil, encodeErr
@@ -212,6 +219,7 @@ func makePath(path string) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -226,8 +234,10 @@ func deepSearch(m map[string]interface{}, path []string) map[string]interface{} 
 			m3 := make(map[string]interface{})
 			m[k] = m3
 			m = m3
+
 			continue
 		}
+
 		m3, ok := m2.(map[string]interface{})
 		if !ok {
 			// intermediate key is a value
@@ -235,8 +245,10 @@ func deepSearch(m map[string]interface{}, path []string) map[string]interface{} 
 			m3 = make(map[string]interface{})
 			m[k] = m3
 		}
+
 		// continue search from here
 		m = m3
 	}
+
 	return m
 }

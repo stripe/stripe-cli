@@ -44,11 +44,13 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		err = c.WriteMessage(ws.TextMessage, msg)
 		require.Nil(t, err)
 	}))
+
 	defer ts.Close()
 
 	url := "ws" + strings.TrimPrefix(ts.URL, "http")
 
 	var rcvMsg *WebhookEvent
+
 	client := NewClient(
 		url,
 		"websocket-random-id",
@@ -60,10 +62,13 @@ func TestClientWebhookEventHandler(t *testing.T) {
 			}),
 		},
 	)
+
 	go client.Run()
+
 	defer client.Stop()
 
 	done := make(chan struct{})
+
 	go func() {
 		wg.Wait()
 		close(done)
@@ -108,11 +113,13 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		err = c.WriteMessage(ws.TextMessage, msg)
 		require.Nil(t, err)
 	}))
+
 	defer ts.Close()
 
 	url := "ws" + strings.TrimPrefix(ts.URL, "http")
 
 	var rcvMsg *RequestLogEvent
+
 	client := NewClient(
 		url,
 		"websocket-random-id",
@@ -124,10 +131,13 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 			}),
 		},
 	)
+
 	go client.Run()
+
 	defer client.Stop()
 
 	done := make(chan struct{})
+
 	go func() {
 		wg.Wait()
 		close(done)

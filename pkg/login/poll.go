@@ -55,6 +55,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollA
 		if err != nil {
 			return nil, nil, err
 		}
+
 		defer res.Body.Close()
 
 		bodyBytes, err := ioutil.ReadAll(res.Body)

@@ -93,6 +93,7 @@ func New(cfg *Config) *Tailer {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
+
 	return &Tailer{
 		cfg: cfg,
 		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
@@ -205,6 +206,7 @@ func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 
 	errorValues := reflect.ValueOf(&payload.Error).Elem()
 	errType := errorValues.Type()
+
 	for i := 0; i < errorValues.NumField(); i++ {
 		fieldValue := errorValues.Field(i).Interface()
 		if fieldValue != "" {
@@ -220,6 +222,7 @@ func jsonifyFilters(logFilters *LogFilters) (string, error) {
 	}
 
 	jsonStr := string(bytes)
+
 	return jsonStr, nil
 }
 

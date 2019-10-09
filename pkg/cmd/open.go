@@ -73,8 +73,11 @@ func getLongestShortcut(shortcuts []string) int {
 
 func padName(name string, length int) string {
 	difference := length - len(name)
+
 	var b strings.Builder
+
 	fmt.Fprint(&b, name)
+
 	for i := 0; i < difference; i++ {
 		fmt.Fprint(&b, " ")
 	}
@@ -106,6 +109,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	livemode, err := cmd.Flags().GetBool("livemode")
 	if err != nil {
 		return err
@@ -115,12 +119,15 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println("open quickly opens Stripe pages. To use, run 'stripe open <shortcut>'.")
 		fmt.Println("open supports the following shortcuts:")
 		fmt.Println()
+
 		shortcuts := openNames()
 		sort.Strings(shortcuts)
+
 		longest := getLongestShortcut(shortcuts)
 
 		fmt.Println(fmt.Sprintf("%s%s", padName("shortcut", longest), "    url"))
 		fmt.Println(fmt.Sprintf("%s%s", padName("--------", longest), "    ---------"))
+
 		for _, shortcut := range shortcuts {
 			maybeTestMode := ""
 			if !livemode {

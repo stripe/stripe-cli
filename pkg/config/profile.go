@@ -73,6 +73,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		return p.APIKey, nil
 	}
 
@@ -89,10 +90,12 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	// Try to fetch the API key from the configuration file
 	if err := viper.ReadInConfig(); err == nil {
 		key := viper.GetString(p.GetConfigField(livemodeKeyField(livemode)))
+
 		err := validators.APIKey(key)
 		if err != nil {
 			return "", err
 		}
+
 		return key, nil
 	}
 
@@ -135,6 +138,7 @@ func (p *Profile) DeleteConfigField(field string) error {
 	if err != nil {
 		return err
 	}
+
 	return p.writeProfile(v)
 }
 
@@ -149,15 +153,19 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	if p.DeviceName != "" {
 		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
 	}
+
 	if p.LiveModeAPIKey != "" {
 		runtimeViper.Set(p.GetConfigField("live_mode_api_key"), strings.TrimSpace(p.LiveModeAPIKey))
 	}
+
 	if p.LiveModePublishableKey != "" {
 		runtimeViper.Set(p.GetConfigField("live_mode_publishable_key"), strings.TrimSpace(p.LiveModePublishableKey))
 	}
+
 	if p.TestModeAPIKey != "" {
 		runtimeViper.Set(p.GetConfigField("test_mode_api_key"), strings.TrimSpace(p.TestModeAPIKey))
 	}
+
 	if p.TestModePublishableKey != "" {
 		runtimeViper.Set(p.GetConfigField("test_mode_publishable_key"), strings.TrimSpace(p.TestModePublishableKey))
 	}
@@ -169,6 +177,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "secret_key")
 		runtimeViper = p.safeRemove(runtimeViper, "api_key")
 	}
+
 	if p.TestModePublishableKey != "" {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
@@ -177,6 +186,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
+
 	err = runtimeViper.WriteConfig()
 	if err != nil {
 		return err

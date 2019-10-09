@@ -138,7 +138,9 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	if err != nil {
 		return []byte{}, err
 	}
+
 	defer resp.Body.Close()
+
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if errOnStatus && resp.StatusCode >= 300 {
@@ -178,6 +180,7 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 			keys = append(keys, splitDatum[0])
 			values = append(values, splitDatum[1])
 		}
+
 		for _, datum := range params.expand {
 			keys = append(keys, "expand[]")
 			values = append(values, datum)
@@ -189,10 +192,12 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 			keys = append(keys, "limit")
 			values = append(values, params.limit)
 		}
+
 		if params.startingAfter != "" {
 			keys = append(keys, "starting_after")
 			values = append(values, params.startingAfter)
 		}
+
 		if params.endingBefore != "" {
 			keys = append(keys, "ending_before")
 			values = append(values, params.endingBefore)
@@ -205,6 +210,7 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 // encode creates a url encoded string with the request parameters
 func encode(keys []string, values []string) string {
 	var buf strings.Builder
+
 	for i := range keys {
 		key := keys[i]
 		value := values[i]
@@ -220,16 +226,19 @@ func encode(keys []string, values []string) string {
 		if buf.Len() > 0 {
 			buf.WriteByte('&')
 		}
+
 		buf.WriteString(keyEscaped)
 		buf.WriteByte('=')
 		buf.WriteString(url.QueryEscape(value))
 	}
+
 	return buf.String()
 }
 
 func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParameters) {
 	if params.idempotency != "" {
 		request.Header.Set("Idempotency-Key", params.idempotency)
+
 		if rb.Method == http.MethodGet || rb.Method == http.MethodDelete {
 			warning := fmt.Sprintf(
 				"Warning: sending an idempotency key with a %s request has no effect and should be avoided, as %s requests are idempotent by definition.",
@@ -278,6 +287,7 @@ func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 func createOrNormalizePath(arg string) (string, error) {
 	if idRegex.Match([]byte(arg)) {
 		matches := idRegex.FindStringSubmatch(arg)
+
 		if path, ok := idURLMap[matches[1]]; ok {
 			return path + arg, nil
 		}
@@ -292,11 +302,14 @@ func normalizePath(path string) string {
 	if strings.HasPrefix(path, "/v1/") {
 		return path
 	}
+
 	if strings.HasPrefix(path, "v1/") {
 		return "/" + path
 	}
+
 	if strings.HasPrefix(path, "/") {
 		return "/v1" + path
 	}
+
 	return "/v1/" + path
 }

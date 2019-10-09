@@ -54,19 +54,23 @@ get started with pre-built samples (https://stripe.dev/samples).
 func Execute() {
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
+
 	if err := rootCmd.Execute(); err != nil {
 		if strings.Contains(err.Error(), "unknown command") {
-			suggestions := rootCmd.SuggestionsFor(os.Args[1])
 			suggStr := "\nS"
+
+			suggestions := rootCmd.SuggestionsFor(os.Args[1])
 			if len(suggestions) > 0 {
 				suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
 			}
+
 			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 				"ee \"stripe --help\" for a list of available commands.",
 				os.Args[1], rootCmd.CommandPath(), suggStr))
 		} else {
 			fmt.Println(err)
 		}
+
 		os.Exit(1)
 	}
 }

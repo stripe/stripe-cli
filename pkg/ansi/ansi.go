@@ -130,6 +130,7 @@ func StartSpinner(msg string, w io.Writer) *spinner.Spinner {
 	}
 
 	s.Start()
+
 	return s
 }
 

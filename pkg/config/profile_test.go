@@ -30,6 +30,7 @@ func TestWriteProfile(t *testing.T) {
 	v := viper.New()
 
 	fmt.Println(profilesFile)
+
 	err := p.writeProfile(v)
 	require.NoError(t, err)
 
@@ -94,6 +95,7 @@ func helperLoadBytes(t *testing.T, name string) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	return bytes
 }
 

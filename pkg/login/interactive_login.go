@@ -48,14 +48,17 @@ func InteractiveLogin(config *config.Config) error {
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
 	fmt.Print("Enter your API key: ")
+
 	apiKey, err := securePrompt(input)
 	if err != nil {
 		return "", err
 	}
+
 	apiKey = strings.TrimSpace(apiKey)
 	if apiKey == "" {
 		return "", errors.New("API key is required, please provide your API key")
 	}
+
 	err = validators.APIKey(apiKey)
 	if err != nil {
 		return "", err
@@ -113,10 +116,12 @@ func securePrompt(input io.Reader) (string, error) {
 		signal.Stop(signalChan)
 
 		fmt.Print("\n")
+
 		return string(buf), nil
 	}
 
 	reader := bufio.NewReader(input)
+
 	return reader.ReadString('\n')
 }
 
@@ -128,6 +133,7 @@ func protectTerminalState() (chan os.Signal, error) {
 
 	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan, os.Interrupt)
+
 	go func() {
 		<-signalChan
 		terminal.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert

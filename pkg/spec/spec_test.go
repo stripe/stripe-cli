@@ -14,17 +14,19 @@ func TestLoadSpec(t *testing.T) {
 }
 
 func TestUnmarshal_Simple(t *testing.T) {
-	data := []byte(`{"type": "string"}`)
 	var schema Schema
+
+	data := []byte(`{"type": "string"}`)
 	err := json.Unmarshal(data, &schema)
 	require.NoError(t, err)
 	require.Equal(t, "string", schema.Type)
 }
 
 func TestUnmarshal_UnsupportedField(t *testing.T) {
+	var schema Schema
+
 	// We don't support 'const'
 	data := []byte(`{const: "hello"}`)
-	var schema Schema
 	err := json.Unmarshal(data, &schema)
 	require.Error(t, err)
 }

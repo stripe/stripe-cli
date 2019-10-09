@@ -14,7 +14,9 @@ func render(s string, useAnsi bool) string {
 	if useAnsi {
 		flags |= MDTERM_USE_ANSI
 	}
+
 	r := MarkdownTermRenderer(flags)
+
 	return string(blackfriday.Markdown([]byte(s), r, blackfriday.EXTENSION_STRIKETHROUGH))
 }
 
@@ -22,6 +24,7 @@ func TestMain(m *testing.M) {
 	ForceColors = true
 	code := m.Run()
 	ForceColors = false
+
 	os.Exit(code)
 }
 
