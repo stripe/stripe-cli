@@ -48,6 +48,7 @@ func newTriggerCmd() *triggerCmd {
 			"payment_intent.created",
 			"payment_intent.payment_failed",
 			"payment_intent.succeeded",
+			"payment_intent.canceled",
 			"payment_method.attached",
 		},
 		Short: "Trigger test webhook events to fire",
@@ -79,6 +80,7 @@ needed to create the triggered event.
   payment_intent.created
   payment_intent.payment_failed
   payment_intent.succeeded
+  payment_intent.canceled
   payment_method.attached
 
   You can also resend a past event using the --event flag:
@@ -146,6 +148,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		"payment_intent.created":        examples.PaymentIntentCreated,
 		"payment_intent.payment_failed": examples.PaymentIntentFailed,
 		"payment_intent.succeeded":      examples.PaymentIntentSucceeded,
+		"payment_intent.canceled":       examples.PaymentIntentCanceled,
 		"payment_method.attached":       examples.PaymentMethodAttached,
 	}
 
