@@ -320,6 +320,24 @@ func TestPaymentIntentSucceeded(t *testing.T) {
 	require.Nil(t, err)
 }
 
+func TestPaymentIntentCanceled(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		data := jsonBytes()
+		w.Write(data)
+	}))
+	defer ts.Close()
+
+	ex := Examples{
+		APIBaseURL: ts.URL,
+		APIVersion: "v1",
+		APIKey:     "secret-key",
+	}
+
+	err := ex.PaymentIntentCanceled()
+	require.Nil(t, err)
+}
+
 func TestPaymentIntentFailed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

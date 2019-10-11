@@ -601,6 +601,26 @@ func (ex *Examples) PaymentIntentFailed() error {
 	return err
 }
 
+// PaymentIntentCanceled creates a canceled payment intent
+func (ex *Examples) PaymentIntentCanceled() error {
+	paymentIntent, err := ex.paymentIntentCreated([]string{
+		"amount=2000",
+		"currency=usd",
+	})
+
+	if err != nil {
+		return err
+	}
+
+	req, params := ex.buildRequest(http.MethodPost, []string{
+		"cancellation_reason=requested_by_customer",
+	})
+	reqURL := fmt.Sprintf("/v1/payment_intents/%v/cancel", paymentIntent["id"])
+	_, err = ex.performStripeRequest(req, reqURL, params)
+
+	return err
+}
+
 func (ex *Examples) paymentMethodCreated(card string) (map[string]interface{}, error) {
 	req, params := ex.buildRequest(http.MethodPost, []string{
 		"type=card",
