@@ -60,7 +60,7 @@ _Debian/Ubuntu-based distributions_:
 1. Add Bintray's GPG key to the apt sources keyring:
 
 ```sh
-$ sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net --recv-keys 379CE192D401AB61
+$ sudo apt-key adv --keyserver hkp://pool.sks-keyservers.net:80 --recv-keys 379CE192D401AB61
 ```
 
 2. Add stripe-cli's apt repository to the apt sources list:
