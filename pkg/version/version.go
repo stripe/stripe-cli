@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/google/go-github/v28/github"
 	log "github.com/sirupsen/logrus"
@@ -30,10 +31,14 @@ func CheckLatestVersion() {
 
 		ansi.StopSpinner(s, "", os.Stdout)
 
-		if latest != "" && latest != Version {
+		if needsToUpgrade(Version, latest) {
 			fmt.Println(ansi.Italic("A newer version of the Stripe CLI is available, please update to:"), ansi.Italic(latest))
 		}
 	}
+}
+
+func needsToUpgrade(version, latest string) bool {
+	return latest != "" && (strings.TrimPrefix(latest, "v") != strings.TrimPrefix(version, "v"))
 }
 
 func getLatestVersion() string {
