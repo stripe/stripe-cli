@@ -374,36 +374,6 @@ func TestPaymentMethodAttached(t *testing.T) {
 	require.Nil(t, err)
 }
 
-func TestResendEventThrowsErrorWithInvalidEventID(t *testing.T) {
-	ex := Examples{
-		APIBaseURL: "",
-		APIVersion: "v1",
-		APIKey:     "secret-key",
-	}
-
-	err := ex.ResendEvent("asdf")
-	require.NotNil(t, err)
-}
-
-func TestResendEventDoesNotErrorWithValidEventID(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		data := jsonBytes()
-		w.Write(data)
-	}))
-	defer ts.Close()
-
-	ex := Examples{
-		APIBaseURL: ts.URL,
-		APIVersion: "v1",
-		APIKey:     "secret-key",
-	}
-
-	err := ex.ResendEvent("evt_123")
-	t.Log(err)
-	require.Nil(t, err)
-}
-
 func TestCheckoutSessionCompleted(t *testing.T) {
 	i := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

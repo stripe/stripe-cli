@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -683,24 +682,4 @@ func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
 	json.Unmarshal(resp, &data)
 
 	return data
-}
-
-// ResendEvent resends a webhook event using it's event-id "evt_<id>"
-func (ex *Examples) ResendEvent(id string) error {
-	pattern := `^evt_[A-Za-z0-9]{3,255}$`
-
-	match, err := regexp.MatchString(pattern, id)
-	if err != nil {
-		return err
-	}
-
-	if !match {
-		return fmt.Errorf("Invalid event-id provided, should be of the form '%s'", pattern)
-	}
-
-	req, params := ex.buildRequest(http.MethodPost, []string{})
-	reqURL := fmt.Sprintf("/v1/events/%s/retry", id)
-	_, err = ex.performStripeRequest(req, reqURL, params)
-
-	return err
 }
