@@ -97,4 +97,11 @@ release:
 	git push --tags
 .PHONY: release
 
+clean:
+	go clean ./...
+	rm -f stripe stripe-darwin stripe-linux stripe-windows.exe
+	rm -f coverage.txt
+	rm -rf dist/
+.PHONY: clean
+
 .DEFAULT_GOAL := build
