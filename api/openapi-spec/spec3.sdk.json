@@ -143,7 +143,11 @@
           },
           "type": {
             "description": "The Stripe account type. Can be `standard`, `express`, or `custom`.",
-            "maxLength": 5000,
+            "enum": [
+              "custom",
+              "express",
+              "standard"
+            ],
             "type": "string"
           }
         },
@@ -501,6 +505,15 @@
       },
       "account_capabilities": {
         "properties": {
+          "card_issuing": {
+            "description": "The status of the card issuing capability of the account, or whether you can use Issuing to distribute funds on cards",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "card_payments": {
             "description": "The status of the card payments capability of the account, or whether the account can directly process credit and debit card charges.",
             "enum": [
@@ -576,12 +589,21 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
           "currently_due",
           "eventually_due",
-          "past_due"
+          "past_due",
+          "pending_verification"
         ],
         "title": "AccountCapabilityRequirements",
         "type": "object",
@@ -818,6 +840,15 @@
           },
           "past_due": {
             "description": "The fields that weren't collected by the `current_deadline`. These fields need to be collected to re-enable the account.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1927,6 +1958,9 @@
             "$ref": "#/components/schemas/reserve_transaction"
           },
           {
+            "$ref": "#/components/schemas/tax_deducted_at_source"
+          },
+          {
             "$ref": "#/components/schemas/topup"
           },
           {
@@ -2631,7 +2665,7 @@
             }
           },
           "id": {
-            "description": "Unique identifier for the object.",
+            "description": "The identifier for the capability.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -3998,7 +4032,7 @@
                 "$ref": "#/components/schemas/customer"
               }
             ],
-            "description": "The ID of the customer for this session. A new customer will be created\nunless an existing customer was provided in when the session was\ncreated.",
+            "description": "The ID of the customer for this session.\nFor Checkout Sessions in `payment` or `subscription` mode, Checkout\nwill create a new customer object based on information provided\nduring the session unless an existing customer was provided when\nthe session was created.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -4053,6 +4087,16 @@
             "nullable": true,
             "type": "string"
           },
+          "mode": {
+            "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`.",
+            "enum": [
+              "payment",
+              "setup",
+              "subscription"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
           "object": {
             "description": "String representing the object's type. Objects of the same type share the same value.",
             "enum": [
@@ -4070,7 +4114,7 @@
                 "$ref": "#/components/schemas/payment_intent"
               }
             ],
-            "description": "The ID of the PaymentIntent created if SKUs or line items were provided.",
+            "description": "The ID of the PaymentIntent for Checkout Sessions in `payment` mode.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -4088,8 +4132,28 @@
             },
             "type": "array"
           },
+          "setup_intent": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/setup_intent"
+              }
+            ],
+            "description": "The ID of the SetupIntent for Checkout Sessions in `setup` mode.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/setup_intent"
+                }
+              ]
+            }
+          },
           "submit_type": {
-            "description": "Describes the type of transaction being performed by Checkout in order\nto customize relevant text on the page, such as the submit button.\n`submit_type` can only be specified on Checkout Sessions using line\nitems or a SKU, but not Checkout Sessions for subscriptions. Supported\nvalues are\n`auto`, `book`, `donate`, or `pay`.",
+            "description": "Describes the type of transaction being performed by Checkout in order to customize\nrelevant text on the page, such as the submit button. `submit_type` can only be\nspecified on Checkout Sessions in `payment` mode, but not Checkout Sessions\nin `subscription` or `setup` mode.\nSupported values are `auto`, `book`, `donate`, or `pay`.",
             "enum": [
               "auto",
               "book",
@@ -4109,7 +4173,7 @@
                 "$ref": "#/components/schemas/subscription"
               }
             ],
-            "description": "The ID of the subscription created if one or more plans were provided.",
+            "description": "The ID of the subscription for Checkout Sessions in `subscription` mode.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -4139,6 +4203,7 @@
           "customer",
           "display_items",
           "payment_intent",
+          "setup_intent",
           "subscription"
         ],
         "x-resourceId": "checkout.session",
@@ -8719,6 +8784,7 @@
             }
           },
           "date": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
             "format": "unix-time",
             "type": "integer"
           },
@@ -8824,6 +8890,7 @@
             }
           },
           "subscription_item": {
+            "description": "The subscription item that this invoice item has been created for, if any.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -8843,6 +8910,12 @@
             "description": "Unit Amount (in the `currency` specified) of the invoice item.",
             "nullable": true,
             "type": "integer"
+          },
+          "unit_amount_decimal": {
+            "description": "Same as `unit_amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -9875,7 +9948,10 @@
           },
           "type": {
             "description": "One of `individual` or `business_entity`.",
-            "maxLength": 5000,
+            "enum": [
+              "business_entity",
+              "individual"
+            ],
             "type": "string"
           }
         },
@@ -10059,8 +10135,13 @@
             "type": "string"
           },
           "status": {
-            "description": "Current status of dispute. One of `unsubmitted`, `under_review`, `won`, or `lost`.",
-            "maxLength": 5000,
+            "description": "Current status of dispute. One of `lost`, `under_review`, `unsubmitted`, or `won`.",
+            "enum": [
+              "lost",
+              "under_review",
+              "unsubmitted",
+              "won"
+            ],
             "type": "string"
           }
         },
@@ -10472,6 +10553,12 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "url": {
+            "description": "The url an online purchase was made from",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
           }
         },
         "required": [
@@ -10554,6 +10641,11 @@
             "maxLength": 5000,
             "type": "string"
           },
+          "authentication": {
+            "description": "One of `success`, `failure`, `exempt`, or `none`.",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "cvc_check": {
             "description": "One of `match`, `mismatch`, or `not_provided`.",
             "maxLength": 5000,
@@ -10563,6 +10655,7 @@
         "required": [
           "address_line1_check",
           "address_zip_check",
+          "authentication",
           "cvc_check"
         ],
         "title": "IssuingAuthorizationVerificationData",
@@ -10631,8 +10724,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -10926,8 +11019,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -11356,8 +11449,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -11704,8 +11797,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -11999,8 +12092,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -12325,8 +12418,8 @@
                 "caterers",
                 "charitable_and_social_service_organizations_fundraising",
                 "chemicals_and_allied_products",
-                "chidrens_and_infants_wear_stores",
                 "child_care_services",
+                "childrens_and_infants_wear_stores",
                 "chiropodists_podiatrists",
                 "chiropractors",
                 "cigar_stores_and_stands",
@@ -12739,7 +12832,7 @@
             "type": "string"
           },
           "name_kana": {
-            "description": "The Kana variation of the company's legal name Japan only).",
+            "description": "The Kana variation of the company's legal name (Japan only).",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -12772,6 +12865,15 @@
           "vat_id_provided": {
             "description": "Whether the company's business VAT number was provided.",
             "type": "boolean"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/legal_entity_company_verification"
+              }
+            ],
+            "description": "Information on the verification state of the company.",
+            "nullable": true
           }
         },
         "required": [
@@ -12783,11 +12885,103 @@
         "x-expandableFields": [
           "address",
           "address_kana",
-          "address_kanji"
+          "address_kanji",
+          "verification"
         ],
         "x-stripeResource": {
           "class_name": "Company",
-          "in_class": "account"
+          "in_class": "account",
+          "inner_classes": [
+            "legal_entity_company_verification"
+          ]
+        }
+      },
+      "legal_entity_company_verification": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/legal_entity_company_verification_document"
+          }
+        },
+        "required": [
+          "document"
+        ],
+        "title": "LegalEntityCompanyVerification",
+        "type": "object",
+        "x-expandableFields": [
+          "document"
+        ],
+        "x-stripeResource": {
+          "class_name": "Verification",
+          "in_class": "legal_entity_company",
+          "inner_classes": [
+            "legal_entity_company_verification_document"
+          ]
+        }
+      },
+      "legal_entity_company_verification_document": {
+        "properties": {
+          "back": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/file"
+              }
+            ],
+            "description": "The back of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/file"
+                }
+              ]
+            }
+          },
+          "details": {
+            "description": "A user-displayable string describing the verification state of this document.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "details_code": {
+            "description": "One of `document_corrupt`, `document_expired`, `document_failed_copy`, `document_failed_greyscale`, `document_failed_other`, `document_failed_test_mode`, `document_fraudulent`, `document_incomplete`, `document_invalid`, `document_manipulated`, `document_not_readable`, `document_not_uploaded`, `document_type_not_supported`, or `document_too_large`. A machine-readable code specifying the verification state for this document.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "front": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/file"
+              }
+            ],
+            "description": "The front of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/file"
+                }
+              ]
+            }
+          }
+        },
+        "title": "LegalEntityCompanyVerificationDocument",
+        "type": "object",
+        "x-expandableFields": [
+          "back",
+          "front"
+        ],
+        "x-stripeResource": {
+          "class_name": "VerificationDocument",
+          "in_class": "legal_entity_company_verification"
         }
       },
       "legal_entity_dob": {
@@ -12875,6 +13069,15 @@
       },
       "legal_entity_person_verification": {
         "properties": {
+          "additional_document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/legal_entity_person_verification_document"
+              }
+            ],
+            "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
+            "nullable": true
+          },
           "details": {
             "description": "A user-displayable string describing the verification state for the person. For example, this may say \"Provided identity information could not be verified\".",
             "maxLength": 5000,
@@ -12882,7 +13085,7 @@
             "type": "string"
           },
           "details_code": {
-            "description": "One of `scan_name_mismatch`, `failed_keyed_identity`, or `failed_other`. A machine-readable code specifying the verification state for the person.",
+            "description": "One of `document_address_mismatch`, `document_dob_mismatch`, `document_duplicate_type`, `document_id_number_mismatch`, `document_name_mismatch`, `failed_keyed_identity`, or `failed_other`. A machine-readable code specifying the verification state for the person.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -12902,6 +13105,7 @@
         "title": "LegalEntityPersonVerification",
         "type": "object",
         "x-expandableFields": [
+          "additional_document",
           "document"
         ],
         "x-stripeResource": {
@@ -12938,7 +13142,7 @@
             "type": "string"
           },
           "details_code": {
-            "description": "One of `document_corrupt`, `document_failed_copy`, `document_not_readable`, `document_failed_greyscale`, `document_not_uploaded`, `document_id_type_not_supported`, `document_id_country_not_supported`, `document_failed_other`, `document_fraudulent`, `document_invalid`, `document_manipulated`, `document_missing_back`, `document_missing_front`, `document_photo_mismatch`, `document_too_large`, or `document_failed_test_mode`. A machine-readable code specifying the verification state for this document.",
+            "description": "One of `document_corrupt`, `document_country_not_supported`, `document_expired`, `document_failed_copy`, `document_failed_other`, `document_failed_test_mode`, `document_fraudulent`, `document_failed_greyscale`, `document_incomplete`, `document_invalid`, `document_manipulated`, `document_missing_back`, `document_missing_front`, `document_not_readable`, `document_not_uploaded`, `document_photo_mismatch`, `document_too_large`, or `document_type_not_supported`. A machine-readable code specifying the verification state for this document.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -14061,13 +14265,13 @@
             ]
           },
           "client_secret": {
-            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. \n\nThe client secret can be used to complete a payment from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.\n\nPlease refer to our [automatic confirmation quickstart guide](https://stripe.com/docs/payments/payment-intents/quickstart#automatic-confirmation-flow) to learn about how `client_secret` should be handled.",
+            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. \n\nThe client secret can be used to complete a payment from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.\n\nPlease refer to our [quickstart guide](https://stripe.com/docs/payments/payment-intents/web) to learn about how `client_secret` should be handled.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "confirmation_method": {
-            "description": "One of `automatic` (default) or `manual`.\n\nWhen the confirmation method is `automatic`, a PaymentIntent can be confirmed using a publishable key. After `next_action`s are handled, no additional confirmation is required to complete the payment.\n\nWhen the confirmation method is `manual`, all payment attempts must be made using a secret key. The PaymentIntent returns to the `requires_confirmation` state after handling `next_action`s, and requires your server to initiate each payment attempt with an explicit confirmation.\n\nLearn more about the different [confirmation flows](https://stripe.com/docs/payments/payment-intents#one-time-payments).",
+            "description": "One of `automatic` (default) or `manual`.\n\nWhen the confirmation method is `automatic`, a PaymentIntent can be confirmed using a publishable key. After `next_action`s are handled, no additional confirmation is required to complete the payment.\n\nWhen the confirmation method is `manual`, all payment attempts must be made using a secret key. The PaymentIntent returns to the `requires_confirmation` state after handling `next_action`s, and requires your server to initiate each payment attempt with an explicit confirmation.\n\nLearn more about the different [confirmation flows](https://stripe.com/docs/payments/payment-intents/use-cases#one-time-payments).",
             "enum": [
               "automatic",
               "manual"
@@ -14256,7 +14460,7 @@
             }
           },
           "setup_future_usage": {
-            "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
+            "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -16335,6 +16539,12 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "mandate": {
+            "description": "ID of the mandate used to make this payment.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
           }
         },
         "title": "payment_method_details_sepa_debit",
@@ -17195,11 +17405,6 @@
       },
       "person_relationship": {
         "properties": {
-          "account_opener": {
-            "description": "Whether the person opened the account. This person provides information about themselves, and general information about the account.",
-            "nullable": true,
-            "type": "boolean"
-          },
           "director": {
             "description": "Whether the person is a director of the account's legal entity. Currently only required for accounts in the EU. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
             "nullable": true,
@@ -17219,6 +17424,11 @@
             "description": "The percent owned by the person of the account's legal entity.",
             "nullable": true,
             "type": "number"
+          },
+          "representative": {
+            "description": "Whether the person is authorized as the primary representative of the account. This is the person nominated by the business to provide information about themselves, and general information about the account. There can only be one representative at any given time. At the time the account is created, this person should be set to the person responsible for opening the account.",
+            "nullable": true,
+            "type": "boolean"
           },
           "title": {
             "description": "The person's title (e.g., CEO, Support Engineer).",
@@ -17240,7 +17450,7 @@
       "person_requirements": {
         "properties": {
           "currently_due": {
-            "description": "Fields that need to be collected to keep the person's account enabled. If not collected by the account's `current_deadline`, these fields are moved to `past_due` and the account is disabled.",
+            "description": "Fields that need to be collected to keep the person's account enabled. If not collected by the account's `current_deadline`, these fields appear in `past_due` as well, and the account is disabled.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -17262,12 +17472,21 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
           }
         },
         "required": [
           "currently_due",
           "eventually_due",
-          "past_due"
+          "past_due",
+          "pending_verification"
         ],
         "title": "PersonRequirements",
         "type": "object",
@@ -17300,6 +17519,12 @@
             "description": "The amount in %s to be charged on the interval specified.",
             "nullable": true,
             "type": "integer"
+          },
+          "amount_decimal": {
+            "description": "Same as `amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
           },
           "billing_scheme": {
             "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `amount`) will be charged per unit in `quantity` (for plans with `usage_type=licensed`), or per unit of total usage (for plans with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
@@ -17568,10 +17793,22 @@
             "nullable": true,
             "type": "integer"
           },
+          "flat_amount_decimal": {
+            "description": "Same as `flat_amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
+          },
           "unit_amount": {
             "description": "Per unit price for units relevant to the tier.",
             "nullable": true,
             "type": "integer"
+          },
+          "unit_amount_decimal": {
+            "description": "Same as `unit_amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
           },
           "up_to": {
             "description": "Up to and including to this quantity will be contained in the tier.",
@@ -21508,6 +21745,11 @@
             "maxLength": 5000,
             "type": "string"
           },
+          "reference": {
+            "description": "Sender entered arbitrary information about the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "sender_name": {
             "description": "Sender name associated with the transfer.",
             "maxLength": 5000,
@@ -21800,6 +22042,9 @@
             "nullable": true,
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "dynamic_last4": {
             "nullable": true,
             "type": "string"
@@ -21817,6 +22062,12 @@
           },
           "funding": {
             "nullable": true,
+            "type": "string"
+          },
+          "iin": {
+            "type": "string"
+          },
+          "issuer": {
             "type": "string"
           },
           "last4": {
@@ -21874,6 +22125,9 @@
           "dedicated_file_name": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "emv_auth_data": {
             "type": "string"
           },
@@ -21898,6 +22152,12 @@
           },
           "funding": {
             "nullable": true,
+            "type": "string"
+          },
+          "iin": {
+            "type": "string"
+          },
+          "issuer": {
             "type": "string"
           },
           "last4": {
@@ -22307,6 +22567,9 @@
             "nullable": true,
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "dynamic_last4": {
             "nullable": true,
             "type": "string"
@@ -22324,6 +22587,12 @@
           },
           "funding": {
             "nullable": true,
+            "type": "string"
+          },
+          "iin": {
+            "type": "string"
+          },
+          "issuer": {
             "type": "string"
           },
           "last4": {
@@ -22673,6 +22942,26 @@
             "nullable": true,
             "type": "integer"
           },
+          "schedule": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/subscription_schedule"
+              }
+            ],
+            "description": "The schedule attached to the subscription",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/subscription_schedule"
+                }
+              ]
+            }
+          },
           "start": {
             "description": "Date of the last substantial change to this subscription. For example, a change to the items array, or a change of status, will reset this timestamp.",
             "format": "unix-time",
@@ -22752,6 +23041,7 @@
           "latest_invoice",
           "pending_setup_intent",
           "plan",
+          "schedule",
           "transfer_data"
         ],
         "x-resourceId": "subscription",
@@ -23271,6 +23561,17 @@
               ]
             }
           },
+          "end_behavior": {
+            "description": "Behavior of the subscription schedule and underlying subscription when it ends.",
+            "enum": [
+              "cancel",
+              "none",
+              "release",
+              "renew"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "description": "Unique identifier for the object.",
             "maxLength": 5000,
@@ -23325,12 +23626,14 @@
             "type": "string"
           },
           "renewal_behavior": {
-            "description": "Behavior of the subscription schedule and underlying subscription when it ends.",
+            "description": "This field has been deprecated and will be replaced with `end_behavior` in future API versions. Behavior of the subscription schedule and underlying subscription when it ends.",
             "enum": [
+              "cancel",
               "none",
               "release",
               "renew"
             ],
+            "nullable": true,
             "type": "string"
           },
           "renewal_interval": {
@@ -23339,7 +23642,7 @@
                 "$ref": "#/components/schemas/subscription_schedule_renewal_interval"
               }
             ],
-            "description": "Interval and duration at which the subscription schedule renews for when it ends if `renewal_behavior` is `renew`.",
+            "description": "This field has been deprecated. Interval and duration at which the subscription schedule renews for when it ends if `renewal_behavior` is `renew`.",
             "nullable": true
           },
           "status": {
@@ -23381,7 +23684,6 @@
           "livemode",
           "object",
           "phases",
-          "renewal_behavior",
           "status"
         ],
         "title": "SubscriptionSchedule",
@@ -23636,6 +23938,24 @@
             "nullable": true,
             "type": "number"
           },
+          "billing_thresholds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/subscription_billing_thresholds"
+              }
+            ],
+            "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period",
+            "nullable": true
+          },
+          "collection_method": {
+            "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions.",
+            "enum": [
+              "charge_automatically",
+              "send_invoice"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
           "coupon": {
             "anyOf": [
               {
@@ -23656,6 +23976,26 @@
               ]
             }
           },
+          "default_payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
           "default_tax_rates": {
             "items": {
               "$ref": "#/components/schemas/tax_rate"
@@ -23667,6 +24007,15 @@
             "description": "The end of this phase of the subscription schedule.",
             "format": "unix-time",
             "type": "integer"
+          },
+          "invoice_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/invoice_setting_subscription_schedule_setting"
+              }
+            ],
+            "description": "The subscription schedule's default invoice settings.",
+            "nullable": true
           },
           "plans": {
             "description": "Plans to subscribe during this phase of the subscription schedule.",
@@ -23700,8 +24049,11 @@
         "title": "SubscriptionSchedulePhaseConfiguration",
         "type": "object",
         "x-expandableFields": [
+          "billing_thresholds",
           "coupon",
+          "default_payment_method",
           "default_tax_rates",
+          "invoice_settings",
           "plans"
         ],
         "x-stripeResource": {
@@ -23738,6 +24090,56 @@
         "x-stripeResource": {
           "class_name": "RenewalInterval",
           "in_class": "subscription_schedule"
+        }
+      },
+      "tax_deducted_at_source": {
+        "properties": {
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "tax_deducted_at_source"
+            ],
+            "type": "string"
+          },
+          "period_end": {
+            "description": "The end of the invoicing period. This TDS applies to Stripe fees collected during this invoicing period.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "period_start": {
+            "description": "The start of the invoicing period. This TDS applies to Stripe fees collected during this invoicing period.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "tax_deduction_account_number": {
+            "description": "The TAN that was supplied to Stripe when TDS was assessed",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "object",
+          "period_end",
+          "period_start",
+          "tax_deduction_account_number"
+        ],
+        "title": "TaxDeductedAtSource",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "TaxDeductedAtSource",
+          "in_package": "",
+          "polymorphic_groups": [
+            "balance_transaction_source"
+          ]
         }
       },
       "tax_id": {
@@ -26145,7 +26547,7 @@
     "description": "The Stripe REST API. Please see https://stripe.com/docs/api for more details.",
     "termsOfService": "https://stripe.com/us/terms/",
     "title": "Stripe API",
-    "version": "2019-08-14",
+    "version": "2019-10-08",
     "x-stripeSpecFilename": "spec3.sdk"
   },
   "openapi": "3.0.0",
@@ -26389,7 +26791,6 @@
                       "currently_due",
                       "eventually_due"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "expand": {
@@ -26868,6 +27269,30 @@
                         "description": "The VAT number of the company.",
                         "maxLength": 5000,
                         "type": "string"
+                      },
+                      "verification": {
+                        "description": "Information on the verification state of the company.",
+                        "properties": {
+                          "document": {
+                            "description": "A document verifying the business.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "verification_document_specs",
+                            "type": "object"
+                          }
+                        },
+                        "title": "verification_specs",
+                        "type": "object"
                       }
                     },
                     "title": "company_specs",
@@ -27125,16 +27550,33 @@
                       "verification": {
                         "description": "The individual's verification document information.",
                         "properties": {
-                          "document": {
-                            "description": "An identifying document, either a passport or local ID card.",
+                          "additional_document": {
+                            "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
                             "properties": {
                               "back": {
-                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                                 "maxLength": 500,
                                 "type": "string"
                               },
                               "front": {
-                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "person_verification_document_specs",
+                            "type": "object"
+                          },
+                          "document": {
+                            "description": "An identifying document, either a passport or local ID card.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                                 "maxLength": 500,
                                 "type": "string"
                               }
@@ -27353,7 +27795,6 @@
                       "express",
                       "standard"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   }
                 },
@@ -27389,7 +27830,7 @@
     },
     "/v1/accounts/{account}": {
       "delete": {
-        "description": "<p>With <a href=\"/docs/connect\">Connect</a>, you may delete Custom accounts you manage.</p>\n\n<p>Custom accounts created using test-mode keys can be deleted at any time. Custom accounts created using live-mode keys may only be deleted once all balances are zero.</p>\n\n<p>If you are looking to close your own account, use the <a href=\"https://dashboard.stripe.com/account/data\">data tab in your account settings</a> instead.</p>",
+        "description": "<p>With <a href=\"/docs/connect\">Connect</a>, you can delete Custom or Express accounts you manage.</p>\n\n<p>Accounts created using test-mode keys can be deleted at any time. Accounts created using live-mode keys can only be deleted once all balances are zero.</p>\n\n<p>If you want to delete your own account, use the <a href=\"https://dashboard.stripe.com/account/data\">data tab in your account settings</a> instead.</p>",
         "operationId": "DeleteAccountsAccount",
         "parameters": [
           {
@@ -27782,6 +28223,30 @@
                         "description": "The VAT number of the company.",
                         "maxLength": 5000,
                         "type": "string"
+                      },
+                      "verification": {
+                        "description": "Information on the verification state of the company.",
+                        "properties": {
+                          "document": {
+                            "description": "A document verifying the business.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of a document returned by a [file upload](#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "verification_document_specs",
+                            "type": "object"
+                          }
+                        },
+                        "title": "verification_specs",
+                        "type": "object"
                       }
                     },
                     "title": "company_specs",
@@ -28034,16 +28499,33 @@
                       "verification": {
                         "description": "The individual's verification document information.",
                         "properties": {
-                          "document": {
-                            "description": "An identifying document, either a passport or local ID card.",
+                          "additional_document": {
+                            "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
                             "properties": {
                               "back": {
-                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                                 "maxLength": 500,
                                 "type": "string"
                               },
                               "front": {
-                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "person_verification_document_specs",
+                            "type": "object"
+                          },
+                          "document": {
+                            "description": "An identifying document, either a passport or local ID card.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                                 "maxLength": 500,
                                 "type": "string"
                               }
@@ -28367,6 +28849,7 @@
                     "object",
                     "url"
                   ],
+                  "title": "ListAccountCapability",
                   "type": "object",
                   "x-expandableFields": [
                     "data"
@@ -29194,16 +29677,20 @@
             "required": false,
             "schema": {
               "properties": {
-                "account_opener": {
-                  "description": "A filter on the list of people returned based on whether these people are the account opener of the account's company.",
-                  "type": "boolean"
-                },
                 "director": {
                   "description": "A filter on the list of people returned based on whether these people are directors of the account's company.",
                   "type": "boolean"
                 },
+                "executive": {
+                  "description": "A filter on the list of people returned based on whether these people are executives of the account's company.",
+                  "type": "boolean"
+                },
                 "owner": {
                   "description": "A filter on the list of people returned based on whether these people are owners of the account's company.",
+                  "type": "boolean"
+                },
+                "representative": {
+                  "description": "A filter on the list of people returned based on whether these people are the representative of the account's company.",
                   "type": "boolean"
                 }
               },
@@ -29582,12 +30069,12 @@
                   "relationship": {
                     "description": "The relationship that this person has with the account's legal entity.",
                     "properties": {
-                      "account_opener": {
-                        "description": "Whether the person opened the account. This person provides information about themselves, and general information about the account.",
-                        "type": "boolean"
-                      },
                       "director": {
                         "description": "Whether the person is a director of the account's legal entity. Currently only required for accounts in the EU. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
+                        "type": "boolean"
+                      },
+                      "executive": {
+                        "description": "Whether the person has significant responsibility to control, manage, or direct the organization.",
                         "type": "boolean"
                       },
                       "owner": {
@@ -29608,6 +30095,10 @@
                         ],
                         "description": "The percent owned by the person of the account's legal entity."
                       },
+                      "representative": {
+                        "description": "Whether the person is authorized as the primary representative of the account. This is the person nominated by the business to provide information about themselves, and general information about the account. There can only be one representative at any given time. At the time the account is created, this person should be set to the person responsible for opening the account.",
+                        "type": "boolean"
+                      },
                       "title": {
                         "description": "The person's title (e.g., CEO, Support Engineer).",
                         "maxLength": 5000,
@@ -29624,16 +30115,33 @@
                   "verification": {
                     "description": "The person's verification status.",
                     "properties": {
-                      "document": {
-                        "description": "An identifying document, either a passport or local ID card.",
+                      "additional_document": {
+                        "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
                         "properties": {
                           "back": {
-                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                             "maxLength": 500,
                             "type": "string"
                           },
                           "front": {
-                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                            "maxLength": 500,
+                            "type": "string"
+                          }
+                        },
+                        "title": "person_verification_document_specs",
+                        "type": "object"
+                      },
+                      "document": {
+                        "description": "An identifying document, either a passport or local ID card.",
+                        "properties": {
+                          "back": {
+                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                            "maxLength": 500,
+                            "type": "string"
+                          },
+                          "front": {
+                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                             "maxLength": 500,
                             "type": "string"
                           }
@@ -30118,12 +30626,12 @@
                   "relationship": {
                     "description": "The relationship that this person has with the account's legal entity.",
                     "properties": {
-                      "account_opener": {
-                        "description": "Whether the person opened the account. This person provides information about themselves, and general information about the account.",
-                        "type": "boolean"
-                      },
                       "director": {
                         "description": "Whether the person is a director of the account's legal entity. Currently only required for accounts in the EU. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
+                        "type": "boolean"
+                      },
+                      "executive": {
+                        "description": "Whether the person has significant responsibility to control, manage, or direct the organization.",
                         "type": "boolean"
                       },
                       "owner": {
@@ -30144,6 +30652,10 @@
                         ],
                         "description": "The percent owned by the person of the account's legal entity."
                       },
+                      "representative": {
+                        "description": "Whether the person is authorized as the primary representative of the account. This is the person nominated by the business to provide information about themselves, and general information about the account. There can only be one representative at any given time. At the time the account is created, this person should be set to the person responsible for opening the account.",
+                        "type": "boolean"
+                      },
                       "title": {
                         "description": "The person's title (e.g., CEO, Support Engineer).",
                         "maxLength": 5000,
@@ -30160,16 +30672,33 @@
                   "verification": {
                     "description": "The person's verification status.",
                     "properties": {
-                      "document": {
-                        "description": "An identifying document, either a passport or local ID card.",
+                      "additional_document": {
+                        "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
                         "properties": {
                           "back": {
-                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                             "maxLength": 500,
                             "type": "string"
                           },
                           "front": {
-                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`.",
+                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                            "maxLength": 500,
+                            "type": "string"
+                          }
+                        },
+                        "title": "person_verification_document_specs",
+                        "type": "object"
+                      },
+                      "document": {
+                        "description": "An identifying document, either a passport or local ID card.",
+                        "properties": {
+                          "back": {
+                            "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                            "maxLength": 500,
+                            "type": "string"
+                          },
+                          "front": {
+                            "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
                             "maxLength": 500,
                             "type": "string"
                           }
@@ -33265,6 +33794,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "setup_intent_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "subscription_data": {
                   "explode": true,
                   "style": "deepObject"
@@ -33274,7 +33807,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "billing_address_collection": {
-                    "description": "Specify whether Checkout should collect the customer's billing address. If set to `required`, Checkout will always collect the customer's billing address. If left blank or set to `auto` Checkout will only collect the billing address when necessary.",
+                    "description": "Specify whether Checkout should collect the customer's billing address. If set to `required`, Checkout will always collect the customer's billing address. If not set or set to `auto` Checkout will only collect the billing address when necessary.",
                     "enum": [
                       "auto",
                       "required"
@@ -33292,7 +33825,7 @@
                     "type": "string"
                   },
                   "customer": {
-                    "description": "ID of an existing customer, if one exists. If blank, Checkout will\ncreate a new customer object based on information provided during the\nsession. The email stored on the customer will be used to prefill the\nemail field on the Checkout page. If the customer changes their email\non the Checkout page, the Customer object will be updated with the new\nemail.",
+                    "description": "ID of an existing customer, if one exists. Only supported for Checkout\nSessions in `payment` or `subscription` mode, but not Checkout Sessions\nin `setup` mode. The email stored on the customer will be used to prefill\nthe email field on the Checkout page. If the customer changes their email\non the Checkout page, the Customer object will be updated with the new\nemail.\nIf blank for Checkout Sessions in `payment` or `subscription` mode,\nCheckout will create a new customer object based on information\nprovided during the session.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -33381,8 +33914,17 @@
                     ],
                     "type": "string"
                   },
+                  "mode": {
+                    "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`.",
+                    "enum": [
+                      "payment",
+                      "setup",
+                      "subscription"
+                    ],
+                    "type": "string"
+                  },
                   "payment_intent_data": {
-                    "description": "A subset of parameters to be passed to PaymentIntent creation.",
+                    "description": "A subset of parameters to be passed to PaymentIntent creation for Checkout Sessions in `payment` mode.",
                     "properties": {
                       "application_fee_amount": {
                         "description": "The amount of the application fee (if any) that will be applied to the payment and transferred to the\napplication owner's Stripe account. To use an application fee, the request must be made on\nbehalf of another account, using the `Stripe-Account` header or an OAuth key. For more\ninformation, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts).",
@@ -33419,7 +33961,7 @@
                         "type": "string"
                       },
                       "setup_future_usage": {
-                        "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
+                        "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
                         "enum": [
                           "off_session",
                           "on_session"
@@ -33529,8 +34071,31 @@
                       "containee_entity_name": "payment_method_type"
                     }
                   },
+                  "setup_intent_data": {
+                    "description": "A subset of parameters to be passed to SetupIntent creation for Checkout Sessions in `setup` mode.",
+                    "properties": {
+                      "description": {
+                        "description": "An arbitrary string attached to the object. Often useful for displaying to users.",
+                        "maxLength": 1000,
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
+                        "type": "object"
+                      },
+                      "on_behalf_of": {
+                        "description": "The Stripe account for which the setup is intended.",
+                        "type": "string"
+                      }
+                    },
+                    "title": "setup_intent_data_param",
+                    "type": "object"
+                  },
                   "submit_type": {
-                    "description": "Describes the type of transaction being performed by Checkout in order to customize relevant text on the page, such as the submit button. `submit_type` can only be specified on Checkout Sessions using line items or a SKU, but not Checkout Sessions for subscriptions. Supported values are `auto`, `book`, `donate`, or `pay`.",
+                    "description": "Describes the type of transaction being performed by Checkout in order to customize\nrelevant text on the page, such as the submit button. `submit_type` can only be\nspecified on Checkout Sessions in `payment` mode, but not Checkout Sessions\nin `subscription` or `setup` mode.\nSupported values are `auto`, `book`, `donate`, or `pay`.",
                     "enum": [
                       "auto",
                       "book",
@@ -33540,7 +34105,7 @@
                     "type": "string"
                   },
                   "subscription_data": {
-                    "description": "A subset of parameters to be passed to subscription creation.",
+                    "description": "A subset of parameters to be passed to subscription creation for Checkout Sessions in `subscription` mode.",
                     "properties": {
                       "application_fee_percent": {
                         "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. To use an application fee percent, the request must be made on behalf of another account, using the `Stripe-Account` header or an OAuth key. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
@@ -33595,7 +34160,7 @@
                     "type": "object"
                   },
                   "success_url": {
-                    "description": "The URL to which Stripe should send customers when payment is complete.\nIf you’d like access to the Checkout Session for the successful\npayment, read more about it in our guide on [fulfilling your payments\nwith webhooks](/docs/payments/checkout/fulfillment#webhooks).",
+                    "description": "The URL to which Stripe should send customers when payment or setup\nis complete.\nIf you’d like access to the Checkout Session for the successful\npayment, read more about it in our guide on [fulfilling your payments\nwith webhooks](/docs/payments/checkout/fulfillment#webhooks).",
                     "maxLength": 5000,
                     "type": "string"
                   }
@@ -36510,7 +37075,7 @@
         }
       },
       "post": {
-        "description": "<p>When you create a new credit card, you must specify a customer or recipient on which to create it.</p>\n\n<p>If the card’s owner has no default card, then the new card will become the default.\nHowever, if the owner already has a default, then it will not change.\nTo change the default, you should either <a href=\"/docs/api#update_customer\">update the customer</a> to have a new <code>default_source</code>,\nor <a href=\"/docs/api#update_recipient\">update the recipient</a> to have a new <code>default_card</code>.</p>",
+        "description": "<p>When you create a new credit card, you must specify a customer or recipient on which to create it.</p>\n\n<p>If the card’s owner has no default card, then the new card will become the default.\nHowever, if the owner already has a default, then it will not change.\nTo change the default, you should <a href=\"/docs/api#update_customer\">update the customer</a> to have a new <code>default_source</code>.</p>",
         "operationId": "PostCustomersCustomerSources",
         "parameters": [
           {
@@ -39753,7 +40318,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** of the charge to be applied to the upcoming invoice. If you want to apply a credit to the customer's account, pass a negative amount.",
+                    "description": "The integer amount in **%s** of the charge to be applied to the upcoming invoice. Passing in a negative `amount` will reduce the `amount_due` on the invoice.",
                     "type": "integer"
                   },
                   "currency": {
@@ -39836,8 +40401,13 @@
                     }
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
+                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This `unit_amount` will be multiplied by the quantity to get the full amount. Passing in a negative `unit_amount` will reduce the `amount_due` on the invoice.",
                     "type": "integer"
+                  },
+                  "unit_amount_decimal": {
+                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "format": "decimal",
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -40114,6 +40684,11 @@
                   "unit_amount": {
                     "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
                     "type": "integer"
+                  },
+                  "unit_amount_decimal": {
+                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "format": "decimal",
+                    "type": "string"
                   }
                 },
                 "type": "object"
@@ -40755,6 +41330,11 @@
                   "unit_amount": {
                     "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
                     "type": "integer"
+                  },
+                  "unit_amount_decimal": {
+                    "description": "Same as `unit_amount`, but accepts a decimal string with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "format": "decimal",
+                    "type": "string"
                   }
                 },
                 "title": "invoice_item_preview_params",
@@ -40766,6 +41346,17 @@
               }
             },
             "style": "deepObject"
+          },
+          {
+            "description": "The identifier of the unstarted schedule whose upcoming invoice you'd like to retrieve. Cannot be used with subscription or subscription fields.",
+            "in": "query",
+            "name": "schedule",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
           },
           {
             "description": "The identifier of the subscription for which you'd like to retrieve the upcoming invoice. If not provided, but a `subscription_items` is provided, you will preview creating a subscription with those items. If neither `subscription` nor `subscription_items` is provided, you will retrieve the next upcoming invoice from among the customer's subscriptions.",
@@ -40803,6 +41394,28 @@
             "style": "deepObject"
           },
           {
+            "description": "Timestamp indicating when the subscription should be scheduled to cancel. Will prorate if within the current period if `prorate=true`",
+            "explode": true,
+            "in": "query",
+            "name": "subscription_cancel_at",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "unix-time",
+                  "type": "integer"
+                },
+                {
+                  "enum": [
+                    ""
+                  ],
+                  "type": "string"
+                }
+              ]
+            },
+            "style": "deepObject"
+          },
+          {
             "description": "Boolean indicating whether this subscription should cancel at the end of the current period.",
             "in": "query",
             "name": "subscription_cancel_at_period_end",
@@ -40813,6 +41426,7 @@
             "style": "form"
           },
           {
+            "description": "This simulates the subscription being canceled or expired immediately.",
             "in": "query",
             "name": "subscription_cancel_now",
             "required": false,
@@ -42446,10 +43060,21 @@
                     "type": "array"
                   },
                   "metadata": {
-                    "additionalProperties": {
-                      "type": "string"
-                    },
-                    "type": "object"
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                   }
                 },
                 "type": "object"
@@ -42506,6 +43131,10 @@
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -42522,6 +43151,23 @@
                   "held_amount": {
                     "description": "If the authorization's `is_held_amount_controllable` property is `true`, you may provide this value to control how much to hold for the authorization. Must be positive (use [`decline`](https://stripe.com/docs/api/issuing/authorizations/decline) to decline an authorization request).",
                     "type": "integer"
+                  },
+                  "metadata": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                   }
                 },
                 "type": "object"
@@ -42578,6 +43224,10 @@
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -42590,6 +43240,23 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "metadata": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                   }
                 },
                 "type": "object"
@@ -42929,8 +43596,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -43227,8 +43894,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -43533,8 +44200,8 @@
                                   "caterers",
                                   "charitable_and_social_service_organizations_fundraising",
                                   "chemicals_and_allied_products",
-                                  "chidrens_and_infants_wear_stores",
                                   "child_care_services",
+                                  "childrens_and_infants_wear_stores",
                                   "chiropodists_podiatrists",
                                   "chiropractors",
                                   "cigar_stores_and_stands",
@@ -44113,8 +44780,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -44411,8 +45078,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -44717,8 +45384,8 @@
                                   "caterers",
                                   "charitable_and_social_service_organizations_fundraising",
                                   "chemicals_and_allied_products",
-                                  "chidrens_and_infants_wear_stores",
                                   "child_care_services",
+                                  "childrens_and_infants_wear_stores",
                                   "chiropodists_podiatrists",
                                   "chiropractors",
                                   "cigar_stores_and_stands",
@@ -45456,8 +46123,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -45754,8 +46421,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -46068,8 +46735,8 @@
                                   "caterers",
                                   "charitable_and_social_service_organizations_fundraising",
                                   "chemicals_and_allied_products",
-                                  "chidrens_and_infants_wear_stores",
                                   "child_care_services",
+                                  "childrens_and_infants_wear_stores",
                                   "chiropodists_podiatrists",
                                   "chiropractors",
                                   "cigar_stores_and_stands",
@@ -46657,8 +47324,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -46955,8 +47622,8 @@
                             "caterers",
                             "charitable_and_social_service_organizations_fundraising",
                             "chemicals_and_allied_products",
-                            "chidrens_and_infants_wear_stores",
                             "child_care_services",
+                            "childrens_and_infants_wear_stores",
                             "chiropodists_podiatrists",
                             "chiropractors",
                             "cigar_stores_and_stands",
@@ -47269,8 +47936,8 @@
                                   "caterers",
                                   "charitable_and_social_service_organizations_fundraising",
                                   "chemicals_and_allied_products",
-                                  "chidrens_and_infants_wear_stores",
                                   "child_care_services",
+                                  "childrens_and_infants_wear_stores",
                                   "chiropodists_podiatrists",
                                   "chiropractors",
                                   "cigar_stores_and_stands",
@@ -47557,10 +48224,20 @@
                     "type": "array"
                   },
                   "metadata": {
-                    "additionalProperties": {
-                      "type": "string"
-                    },
-                    "type": "object"
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ]
                   },
                   "status": {
                     "description": "Specifies whether to permit authorizations on this card. Possible values are `active`, `inactive`, or the terminal states: `canceled`, `lost`, `stolen`.",
@@ -47607,7 +48284,7 @@
     },
     "/v1/issuing/cards/{card}/details": {
       "get": {
-        "description": "<p>For virtual cards only. Retrieves an Issuing <code>Card_details</code> object that contains <a href=\"/docs/issuing/cards/management#virtual-card-info\">the sensitive details</a> of a virtual card.</p>",
+        "description": "<p>For virtual cards only. Retrieves an Issuing <code>card_details</code> object that contains <a href=\"/docs/issuing/cards/management#virtual-card-info\">the sensitive details</a> of a virtual card.</p>",
         "operationId": "GetIssuingCardsCardDetails",
         "parameters": [
           {
@@ -48441,10 +49118,20 @@
                     "type": "array"
                   },
                   "metadata": {
-                    "additionalProperties": {
-                      "type": "string"
-                    },
-                    "type": "object"
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ]
                   }
                 },
                 "type": "object"
@@ -49917,7 +50604,7 @@
                     "type": "boolean"
                   },
                   "confirmation_method": {
-                    "description": "One of `automatic` (default) or `manual`.\n\nWhen the confirmation method is `automatic`, a PaymentIntent can be confirmed using a publishable key. After `next_action`s are handled, no additional confirmation is required to complete the payment.\n\nWhen the confirmation method is `manual`, all payment attempts must be made using a secret key. The PaymentIntent returns to the `requires_confirmation` state after handling `next_action`s, and requires your server to initiate each payment attempt with an explicit confirmation.\n\nLearn more about the different [confirmation flows](https://stripe.com/docs/payments/payment-intents#one-time-payments).",
+                    "description": "One of `automatic` (default) or `manual`.\n\nWhen the confirmation method is `automatic`, a PaymentIntent can be confirmed using a publishable key. After `next_action`s are handled, no additional confirmation is required to complete the payment.\n\nWhen the confirmation method is `manual`, all payment attempts must be made using a secret key. The PaymentIntent returns to the `requires_confirmation` state after handling `next_action`s, and requires your server to initiate each payment attempt with an explicit confirmation.\n\nLearn more about the different [confirmation flows](https://stripe.com/docs/payments/payment-intents/use-cases#one-time-payments).",
                     "enum": [
                       "automatic",
                       "manual"
@@ -50031,7 +50718,7 @@
                     "type": "boolean"
                   },
                   "setup_future_usage": {
-                    "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards#saving-card-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
+                    "description": "Indicates that you intend to make future payments with this PaymentIntent's payment method.\n\nIf present, the payment method used with this PaymentIntent can be [attached](https://stripe.com/docs/api/payment_methods/attach) to a Customer, even after the transaction completes.\n\nUse `on_session` if you intend to only reuse the payment method when your customer is present in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. See [Saving card details after a payment](https://stripe.com/docs/payments/cards/saving-cards-after-payment) to learn more.\n\nStripe uses `setup_future_usage` to dynamically optimize your payment flow and comply with regional legislation and network rules. For example, if your customer is impacted by [SCA](https://stripe.com/docs/strong-customer-authentication), using `off_session` will ensure that they are authenticated while processing this PaymentIntent. You will then be able to collect [off-session payments](https://stripe.com/docs/payments/cards/charging-saved-cards#off-session-payments-with-saved-cards) for this customer.",
                     "enum": [
                       "off_session",
                       "on_session"
@@ -50106,7 +50793,6 @@
                   },
                   "source": {
                     "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "statement_descriptor": {
@@ -50476,7 +51162,6 @@
                   },
                   "source": {
                     "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "statement_descriptor": {
@@ -50718,7 +51403,7 @@
     },
     "/v1/payment_intents/{intent}/confirm": {
       "post": {
-        "description": "<p>Confirm that your customer intends to pay with current or provided\npayment method. Upon confirmation, the PaymentIntent will attempt to initiate\na payment.</p>\n\n<p>If the selected payment method requires additional authentication steps, the\nPaymentIntent will transition to the <code>requires_action</code> status and\nsuggest additional actions via <code>next_action</code>. If payment fails,\nthe PaymentIntent will transition to the <code>requires_payment_method</code> status. If\npayment succeeds, the PaymentIntent will transition to the <code>succeeded</code>\nstatus (or <code>requires_capture</code>, if <code>capture_method</code> is set to <code>manual</code>).</p>\n\n<p>If the <code>confirmation_method</code> is <code>automatic</code>, payment may be attempted\nusing our <a href=\"/docs/stripe-js/reference#stripe-handle-card-payment\">client SDKs</a>\nand the PaymentIntent’s <a href=\"#payment_intent_object-client_secret\">client_secret</a>.\nAfter <code>next_action</code>s are handled by the client, no additional\nconfirmation is required to complete the payment.</p>\n\n<p>If the <code>confirmation_method</code> is <code>manual</code>, all payment attempts must be\ninitiated using a secret key.\nIf any actions are required for the payment, the PaymentIntent will\nreturn to the <code>requires_confirmation</code> state\nafter those actions are completed. Your server needs to then\nexplicitly re-confirm the PaymentIntent to initiate the next payment\nattempt. Read the <a href=\"/docs/payments/payment-intents/quickstart#manual-confirmation-flow\">expanded documentation</a>\nto learn more about manual confirmation.</p>",
+        "description": "<p>Confirm that your customer intends to pay with current or provided\npayment method. Upon confirmation, the PaymentIntent will attempt to initiate\na payment.</p>\n\n<p>If the selected payment method requires additional authentication steps, the\nPaymentIntent will transition to the <code>requires_action</code> status and\nsuggest additional actions via <code>next_action</code>. If payment fails,\nthe PaymentIntent will transition to the <code>requires_payment_method</code> status. If\npayment succeeds, the PaymentIntent will transition to the <code>succeeded</code>\nstatus (or <code>requires_capture</code>, if <code>capture_method</code> is set to <code>manual</code>).</p>\n\n<p>If the <code>confirmation_method</code> is <code>automatic</code>, payment may be attempted\nusing our <a href=\"/docs/stripe-js/reference#stripe-handle-card-payment\">client SDKs</a>\nand the PaymentIntent’s <a href=\"#payment_intent_object-client_secret\">client_secret</a>.\nAfter <code>next_action</code>s are handled by the client, no additional\nconfirmation is required to complete the payment.</p>\n\n<p>If the <code>confirmation_method</code> is <code>manual</code>, all payment attempts must be\ninitiated using a secret key.\nIf any actions are required for the payment, the PaymentIntent will\nreturn to the <code>requires_confirmation</code> state\nafter those actions are completed. Your server needs to then\nexplicitly re-confirm the PaymentIntent to initiate the next payment\nattempt. Read the <a href=\"/docs/payments/payment-intents/web-manual\">expanded documentation</a>\nto learn more about manual confirmation.</p>",
         "operationId": "PostPaymentIntentsIntentConfirm",
         "parameters": [
           {
@@ -50927,7 +51612,6 @@
                   },
                   "source": {
                     "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
-                    "maxLength": 5000,
                     "type": "string"
                   }
                 },
@@ -51271,7 +51955,7 @@
                     "type": "string"
                   },
                   "type": {
-                    "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Shared PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#shared-payment-methods) guide)",
+                    "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Cloning PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#cloning-payment-methods) guide)",
                     "enum": [
                       "card",
                       "card_present"
@@ -51954,7 +52638,7 @@
                     "x-stripeBypassValidation": true
                   },
                   "source_type": {
-                    "description": "The source balance to draw this payout from. Balances for different payment sources are kept separately. You can find the amounts with the balances API. One of `bank_account` or `card`.",
+                    "description": "The balance type of your Stripe balance to draw this payout from. Balances for different payment sources are kept separately. You can find the amounts with the balances API. One of `bank_account` or `card`.",
                     "enum": [
                       "bank_account",
                       "card"
@@ -52453,6 +53137,11 @@
                     "description": "A positive integer in %s (or 0 for a free plan) representing how much to charge on a recurring basis.",
                     "type": "integer"
                   },
+                  "amount_decimal": {
+                    "description": "Same as `amount`, but accepts a decimal value with at most 12 decimal places. Only one of `amount` and `amount_decimal` can be set.",
+                    "format": "decimal",
+                    "type": "string"
+                  },
                   "billing_scheme": {
                     "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `amount`) will be charged per unit in `quantity` (for plans with `usage_type=licensed`), or per unit of total usage (for plans with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
                     "enum": [
@@ -52564,9 +53253,19 @@
                           "description": "The flat billing amount for an entire tier, regardless of the number of units in the tier.",
                           "type": "integer"
                         },
+                        "flat_amount_decimal": {
+                          "description": "Same as `flat_amount`, but accepts a decimal value representing an integer in the minor units of the currency. Only one of `flat_amount` and `flat_amount_decimal` can be set.",
+                          "format": "decimal",
+                          "type": "string"
+                        },
                         "unit_amount": {
                           "description": "The per unit billing amount for each individual unit for which this tier applies.",
                           "type": "integer"
+                        },
+                        "unit_amount_decimal": {
+                          "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                          "format": "decimal",
+                          "type": "string"
                         },
                         "up_to": {
                           "anyOf": [
@@ -56809,7 +57508,7 @@
                     }
                   },
                   "return_url": {
-                    "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm).",
+                    "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/setup_intents/create#create_setup_intent-confirm).",
                     "type": "string"
                   },
                   "usage": {
@@ -56826,7 +57525,7 @@
                         "type": "string"
                       }
                     ],
-                    "description": "Indicates how the payment method is intended to be used in the future.\n\nUse `on_session` if you intend to only reuse the payment method when the customer is in your checkout flow. Use `off_session` if your customer may or may not be in your checkout flow. If not provided, this value defaults to `off_session`."
+                    "description": "Indicates how the payment method is intended to be used in the future. If not provided, this value defaults to `off_session`."
                   }
                 },
                 "type": "object"
@@ -58240,11 +58939,6 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "date",
-                              "ip",
-                              "user_agent"
-                            ],
                             "title": "mandate_online_acceptance_params",
                             "type": "object"
                           },
@@ -58543,7 +59237,7 @@
                     "type": "string"
                   },
                   "type": {
-                    "description": "The `type` of the source to create. Required unless `customer` and `original_source` are specified (see the [Shared card Sources](https://stripe.com/docs/sources/connect#shared-card-sources) guide)",
+                    "description": "The `type` of the source to create. Required unless `customer` and `original_source` are specified (see the [Cloning card Sources](https://stripe.com/docs/sources/connect#cloning-card-sources) guide)",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -58769,11 +59463,6 @@
                                 "type": "string"
                               }
                             },
-                            "required": [
-                              "date",
-                              "ip",
-                              "user_agent"
-                            ],
                             "title": "mandate_online_acceptance_params",
                             "type": "object"
                           },
@@ -60466,6 +61155,16 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "end_behavior": {
+                    "description": "Configures how the subscription schedule behaves when it ends. Possible values are `release` or `cancel` with the default being `release`. `release` will end the subscription schedule and keep the underlying subscription running.`cancel` will end the subscription schedule and cancel the underlying subscription.",
+                    "enum": [
+                      "cancel",
+                      "none",
+                      "release",
+                      "renew"
+                    ],
+                    "type": "string"
+                  },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
                     "items": {
@@ -60501,11 +61200,49 @@
                     "items": {
                       "properties": {
                         "application_fee_percent": {
-                          "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made with an OAuth key in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
+                          "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                           "type": "number"
+                        },
+                        "billing_thresholds": {
+                          "anyOf": [
+                            {
+                              "properties": {
+                                "amount_gte": {
+                                  "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
+                                  "type": "integer"
+                                },
+                                "reset_billing_cycle_anchor": {
+                                  "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
+                                  "type": "boolean"
+                                }
+                              },
+                              "title": "billing_thresholds_param",
+                              "type": "object"
+                            },
+                            {
+                              "enum": [
+                                ""
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
+                        },
+                        "collection_method": {
+                          "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
+                          "enum": [
+                            "charge_automatically",
+                            "send_invoice"
+                          ],
+                          "type": "string"
                         },
                         "coupon": {
                           "description": "The identifier of the coupon to apply to this phase of the subscription schedule.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "default_payment_method": {
+                          "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
                           "maxLength": 5000,
                           "type": "string"
                         },
@@ -60534,6 +61271,16 @@
                           "description": "The date at which this phase of the subscription schedule ends. If set, `iterations` must not be set.",
                           "format": "unix-time",
                           "type": "integer"
+                        },
+                        "invoice_settings": {
+                          "description": "All invoices will be billed using the specified settings.",
+                          "properties": {
+                            "days_until_due": {
+                              "type": "integer"
+                            }
+                          },
+                          "title": "invoice_settings_params",
+                          "type": "object"
                         },
                         "iterations": {
                           "description": "Integer representing the multiplier applied to the plan interval. For example, `iterations=2` applied to a plan with `interval=month` and `interval_count=3` results in a phase of duration `2 * 3 months = 6 months`. If set, `end_date` must not be set.",
@@ -60635,8 +61382,9 @@
                     }
                   },
                   "renewal_behavior": {
-                    "description": "Configures how the subscription schedule behaves when it ends. Possible values are `none`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `release` will stop the subscription schedule, but keep the underlying subscription running.",
+                    "description": "This parameter has been replaced with `end_behavior` and will be removed in future API versions. Configures how the subscription schedule behaves when it ends. Possible values are `none`, `cancel`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `cancel` is semantically the same as `none`. `release` will stop the subscription schedule, but keep the underlying subscription running.",
                     "enum": [
+                      "cancel",
                       "none",
                       "release",
                       "renew"
@@ -60644,7 +61392,7 @@
                     "type": "string"
                   },
                   "renewal_interval": {
-                    "description": "Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
+                    "description": "This parameter has been deprecated and will be removed in future API versions. Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
                     "properties": {
                       "interval": {
                         "description": "Interval at which to renew the subscription schedule for when it ends. Possible values are `day`, `week`, `month`, or `year`.",
@@ -60882,6 +61630,16 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "end_behavior": {
+                    "description": "Configures how the subscription schedule behaves when it ends. Possible values are `release` or `cancel` with the default being `release`. `release` will end the subscription schedule and keep the underlying subscription running.`cancel` will end the subscription schedule and cancel the underlying subscription.",
+                    "enum": [
+                      "cancel",
+                      "none",
+                      "release",
+                      "renew"
+                    ],
+                    "type": "string"
+                  },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
                     "items": {
@@ -60912,11 +61670,49 @@
                     "items": {
                       "properties": {
                         "application_fee_percent": {
-                          "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made with an OAuth key in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
+                          "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                           "type": "number"
+                        },
+                        "billing_thresholds": {
+                          "anyOf": [
+                            {
+                              "properties": {
+                                "amount_gte": {
+                                  "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
+                                  "type": "integer"
+                                },
+                                "reset_billing_cycle_anchor": {
+                                  "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
+                                  "type": "boolean"
+                                }
+                              },
+                              "title": "billing_thresholds_param",
+                              "type": "object"
+                            },
+                            {
+                              "enum": [
+                                ""
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
+                        },
+                        "collection_method": {
+                          "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
+                          "enum": [
+                            "charge_automatically",
+                            "send_invoice"
+                          ],
+                          "type": "string"
                         },
                         "coupon": {
                           "description": "The identifier of the coupon to apply to this phase of the subscription schedule.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "default_payment_method": {
+                          "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
                           "maxLength": 5000,
                           "type": "string"
                         },
@@ -60955,6 +61751,16 @@
                             }
                           ],
                           "description": "The date at which this phase of the subscription schedule ends. If set, `iterations` must not be set."
+                        },
+                        "invoice_settings": {
+                          "description": "All invoices will be billed using the specified settings.",
+                          "properties": {
+                            "days_until_due": {
+                              "type": "integer"
+                            }
+                          },
+                          "title": "invoice_settings_params",
+                          "type": "object"
                         },
                         "iterations": {
                           "description": "Integer representing the multiplier applied to the plan interval. For example, `iterations=2` applied to a plan with `interval=month` and `interval_count=3` results in a phase of duration `2 * 3 months = 6 months`. If set, `end_date` must not be set.",
@@ -61085,8 +61891,9 @@
                     "type": "boolean"
                   },
                   "renewal_behavior": {
-                    "description": "Configures how the subscription schedule behaves when it ends. Possible values are `none`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `release` will stop the subscription schedule, but keep the underlying subscription running.",
+                    "description": "This parameter has been replaced with `end_behavior` and will be removed in future API versions. Configures how the subscription schedule behaves when it ends. Possible values are `none`, `cancel`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `cancel` is semantically the same as `none`. `release` will stop the subscription schedule, but keep the underlying subscription running.",
                     "enum": [
+                      "cancel",
                       "none",
                       "release",
                       "renew"
@@ -61094,7 +61901,7 @@
                     "type": "string"
                   },
                   "renewal_interval": {
-                    "description": "Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
+                    "description": "This parameter has been deprecated and will be removed in future API versions. Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
                     "properties": {
                       "interval": {
                         "description": "Interval at which to renew the subscription schedule for when it ends. Possible values are `day`, `week`, `month`, or `year`.",
@@ -61648,7 +62455,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "application_fee_percent": {
-                    "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made with an OAuth key in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
+                    "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                     "type": "number"
                   },
                   "backdate_start_date": {
@@ -62144,7 +62951,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "application_fee_percent": {
-                    "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made with an OAuth key in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
+                    "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                     "type": "number"
                   },
                   "billing": {
@@ -63573,6 +64380,30 @@
         "operationId": "GetTerminalReaders",
         "parameters": [
           {
+            "description": "Filters readers by device type",
+            "explode": true,
+            "in": "query",
+            "name": "device_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "bbpos_chipper2x",
+                    "verifone_P400"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "maxLength": 5000,
+                  "type": "string"
+                }
+              ],
+              "x-stripeBypassValidation": true
+            },
+            "style": "deepObject"
+          },
+          {
             "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
             "in": "query",
             "name": "ending_before",
@@ -64047,6 +64878,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "person": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "pii": {
                   "explode": true,
                   "style": "deepObject"
@@ -64172,7 +65007,7 @@
                     "x-stripeBypassValidation": true
                   },
                   "customer": {
-                    "description": "The customer (owned by the application's account) for which to create a token. For use only with [Stripe Connect](https://stripe.com/docs/connect). Also, this can be used only with an [OAuth access token](https://stripe.com/docs/connect/standard-accounts) or [Stripe-Account header](https://stripe.com/docs/connect/authentication). For more details, see [Shared Customers](https://stripe.com/docs/connect/shared-customers).",
+                    "description": "The customer (owned by the application's account) for which to create a token. For use only with [Stripe Connect](https://stripe.com/docs/connect). Also, this can be used only with an [OAuth access token](https://stripe.com/docs/connect/standard-accounts) or [Stripe-Account header](https://stripe.com/docs/connect/authentication). For more details, see [Cloning Saved Payment Methods](https://stripe.com/docs/connect/cloning-saved-payment-methods).",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -64183,6 +65018,315 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "person": {
+                    "description": "Information for the person this token will represent.",
+                    "properties": {
+                      "address": {
+                        "description": "The person's address.",
+                        "properties": {
+                          "city": {
+                            "description": "City, district, suburb, town, or village.",
+                            "maxLength": 100,
+                            "type": "string"
+                          },
+                          "country": {
+                            "description": "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "line1": {
+                            "description": "Address line 1 (e.g., street, PO Box, or company name).",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "line2": {
+                            "description": "Address line 2 (e.g., apartment, suite, unit, or building).",
+                            "maxLength": 200,
+                            "type": "string"
+                          },
+                          "postal_code": {
+                            "description": "ZIP or postal code.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "state": {
+                            "description": "State, county, province, or region.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "address_specs",
+                        "type": "object"
+                      },
+                      "address_kana": {
+                        "description": "The Kana variation of the person's address (Japan only).",
+                        "properties": {
+                          "city": {
+                            "description": "City or ward.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "country": {
+                            "description": "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "line1": {
+                            "description": "Block or building number.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "line2": {
+                            "description": "Building details.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "postal_code": {
+                            "description": "Postal code.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "state": {
+                            "description": "Prefecture.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "town": {
+                            "description": "Town or cho-me.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "japan_address_kana_specs",
+                        "type": "object"
+                      },
+                      "address_kanji": {
+                        "description": "The Kanji variation of the person's address (Japan only).",
+                        "properties": {
+                          "city": {
+                            "description": "City or ward.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "country": {
+                            "description": "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "line1": {
+                            "description": "Block or building number.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "line2": {
+                            "description": "Building details.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "postal_code": {
+                            "description": "Postal code.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "state": {
+                            "description": "Prefecture.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "town": {
+                            "description": "Town or cho-me.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "japan_address_kanji_specs",
+                        "type": "object"
+                      },
+                      "dob": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "day": {
+                                "description": "The day of birth, between 1 and 31.",
+                                "type": "integer"
+                              },
+                              "month": {
+                                "description": "The month of birth, between 1 and 12.",
+                                "type": "integer"
+                              },
+                              "year": {
+                                "description": "The four-digit year of birth.",
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month",
+                              "year"
+                            ],
+                            "title": "date_of_birth_specs",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "The person's date of birth."
+                      },
+                      "email": {
+                        "description": "The person's email address.",
+                        "type": "string"
+                      },
+                      "first_name": {
+                        "description": "The person's first name.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "first_name_kana": {
+                        "description": "The Kana variation of the person's first name (Japan only).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "first_name_kanji": {
+                        "description": "The Kanji variation of the person's first name (Japan only).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "gender": {
+                        "description": "The person's gender (International regulations require either \"male\" or \"female\").",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "id_number": {
+                        "description": "The person's ID number, as appropriate for their country. For example, a social security number in the U.S., social insurance number in Canada, etc. Instead of the number itself, you can also provide a [PII token provided by Stripe.js](https://stripe.com/docs/stripe.js#collecting-pii-data).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "last_name": {
+                        "description": "The person's last name.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "last_name_kana": {
+                        "description": "The Kana variation of the person's last name (Japan only).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "last_name_kanji": {
+                        "description": "The Kanji variation of the person's last name (Japan only).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "maiden_name": {
+                        "description": "The person's maiden name.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                        "type": "object"
+                      },
+                      "phone": {
+                        "description": "The person's phone number.",
+                        "type": "string"
+                      },
+                      "relationship": {
+                        "description": "The relationship that this person has with the account's legal entity.",
+                        "properties": {
+                          "director": {
+                            "description": "Whether the person is a director of the account's legal entity. Currently only required for accounts in the EU. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
+                            "type": "boolean"
+                          },
+                          "executive": {
+                            "description": "Whether the person has significant responsibility to control, manage, or direct the organization.",
+                            "type": "boolean"
+                          },
+                          "owner": {
+                            "description": "Whether the person is an owner of the account’s legal entity.",
+                            "type": "boolean"
+                          },
+                          "percent_ownership": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "The percent owned by the person of the account's legal entity."
+                          },
+                          "representative": {
+                            "description": "Whether the person is authorized as the primary representative of the account. This is the person nominated by the business to provide information about themselves, and general information about the account. There can only be one representative at any given time. At the time the account is created, this person should be set to the person responsible for opening the account.",
+                            "type": "boolean"
+                          },
+                          "title": {
+                            "description": "The person's title (e.g., CEO, Support Engineer).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "relationship_specs",
+                        "type": "object"
+                      },
+                      "ssn_last_4": {
+                        "description": "The last 4 digits of the person's social security number.",
+                        "type": "string"
+                      },
+                      "verification": {
+                        "description": "The person's verification status.",
+                        "properties": {
+                          "additional_document": {
+                            "description": "A document showing address, either a passport, local ID card, or utility bill from a well-known utility company.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "person_verification_document_specs",
+                            "type": "object"
+                          },
+                          "document": {
+                            "description": "An identifying document, either a passport or local ID card.",
+                            "properties": {
+                              "back": {
+                                "description": "The back of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "front": {
+                                "description": "The front of an ID returned by a [file upload](#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG or PNG format, and less than 10 MB in size.",
+                                "maxLength": 500,
+                                "type": "string"
+                              }
+                            },
+                            "title": "person_verification_document_specs",
+                            "type": "object"
+                          }
+                        },
+                        "title": "person_verification_specs",
+                        "type": "object"
+                      }
+                    },
+                    "title": "person_token_specs",
+                    "type": "object"
                   },
                   "pii": {
                     "description": "The PII this token will represent.",
@@ -65905,7 +67049,9 @@
                       "2019-02-19",
                       "2019-03-14",
                       "2019-05-16",
-                      "2019-08-14"
+                      "2019-08-14",
+                      "2019-09-09",
+                      "2019-10-08"
                     ],
                     "maxLength": 5000,
                     "type": "string",
@@ -66002,6 +67148,7 @@
                         "order.updated",
                         "order_return.created",
                         "payment_intent.amount_capturable_updated",
+                        "payment_intent.canceled",
                         "payment_intent.created",
                         "payment_intent.payment_failed",
                         "payment_intent.succeeded",
@@ -66033,6 +67180,7 @@
                         "reporting.report_type.updated",
                         "review.closed",
                         "review.opened",
+                        "setup_intent.canceled",
                         "setup_intent.created",
                         "setup_intent.setup_failed",
                         "setup_intent.succeeded",
@@ -66047,6 +67195,13 @@
                         "source.refund_attributes_required",
                         "source.transaction.created",
                         "source.transaction.updated",
+                        "subscription_schedule.aborted",
+                        "subscription_schedule.canceled",
+                        "subscription_schedule.completed",
+                        "subscription_schedule.created",
+                        "subscription_schedule.expiring",
+                        "subscription_schedule.released",
+                        "subscription_schedule.updated",
                         "tax_rate.created",
                         "tax_rate.updated",
                         "topup.canceled",
@@ -66362,6 +67517,7 @@
                         "order.updated",
                         "order_return.created",
                         "payment_intent.amount_capturable_updated",
+                        "payment_intent.canceled",
                         "payment_intent.created",
                         "payment_intent.payment_failed",
                         "payment_intent.succeeded",
@@ -66393,6 +67549,7 @@
                         "reporting.report_type.updated",
                         "review.closed",
                         "review.opened",
+                        "setup_intent.canceled",
                         "setup_intent.created",
                         "setup_intent.setup_failed",
                         "setup_intent.succeeded",
@@ -66407,6 +67564,13 @@
                         "source.refund_attributes_required",
                         "source.transaction.created",
                         "source.transaction.updated",
+                        "subscription_schedule.aborted",
+                        "subscription_schedule.canceled",
+                        "subscription_schedule.completed",
+                        "subscription_schedule.created",
+                        "subscription_schedule.expiring",
+                        "subscription_schedule.released",
+                        "subscription_schedule.updated",
                         "tax_rate.created",
                         "tax_rate.updated",
                         "topup.canceled",
