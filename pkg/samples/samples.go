@@ -2,11 +2,10 @@ package samples
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/manifoldco/promptui"
@@ -19,18 +18,38 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-var fileEnvRegexp = map[string]*regexp.Regexp{
-	".java": regexp.MustCompile(`String ENV_PATH = "(.*)";`),
-	".js":   regexp.MustCompile(`const envPath = resolve\(__dirname, "(.*)\.env"\);`),
-	".php":  regexp.MustCompile(`\$ENV_PATH = '(.*)';`),
-	".rb":   regexp.MustCompile(`ENV_PATH = '(.*)\.env'\.freeze`),
+type sampleConfig struct {
+	Name            string            `json:"name"`
+	ConfigureDotEnv bool              `json:"configureDotEnv"`
+	PostInstall     map[string]string `json:"postInstall"`
+	Integrations    []integration     `json:"integrations"`
 }
 
-var fileEnvTemplate = map[string]func(string) string{
-	".java": javaPath,
-	".js":   jsPath,
-	".php":  phpPath,
-	".rb":   rbPath,
+func (sc *sampleConfig) hasIntegrations() bool {
+	return len(sc.Integrations) > 1
+}
+
+func (sc *sampleConfig) integrationNames() []string {
+	names := []string{}
+	for _, integration := range sc.Integrations {
+		names = append(names, integration.Name)
+	}
+	return names
+}
+
+func (sc *sampleConfig) integrationServers(name string) []string {
+	for _, integration := range sc.Integrations {
+		if integration.Name == name {
+			return integration.Servers
+		}
+	}
+	return []string{}
+}
+
+type integration struct {
+	Name    string   `json:"name"`
+	Clients []string `json:"clients"`
+	Servers []string `json:"servers"`
 }
 
 var languageDisplayNames = map[string]string{
@@ -42,23 +61,6 @@ var languageDisplayNames = map[string]string{
 }
 
 var displayNameLanguages = reverseStringMap(languageDisplayNames)
-
-func javaPath(path string) string {
-	return fmt.Sprintf(`String ENV_PATH = "%s/";`, path)
-}
-
-func jsPath(path string) string {
-	return fmt.Sprintf(`const envPath = resolve(__dirname, "%s/.env");`, path)
-}
-
-func phpPath(path string) string {
-	// Need $$ here because otherwise $FOO is treated as an interpretted variable
-	return fmt.Sprintf(`$$ENV_PATH = '%s';`, path)
-}
-
-func rbPath(path string) string {
-	return fmt.Sprintf(`ENV_PATH = '%s/.env'.freeze`, path)
-}
 
 func reverseStringMap(m map[string]string) map[string]string {
 	rm := make(map[string]string, len(m))
@@ -82,12 +84,7 @@ type Samples struct {
 	// source repository to clone from
 	repo string
 
-	// Available integrations
-	integrations  []string
-	isIntegration bool
-
-	// Available languages
-	languages []string
+	sampleConfig sampleConfig
 
 	//selected integrations. We store selected integration as an array
 	// in case they pick more than one
@@ -128,74 +125,11 @@ func (s *Samples) Initialize(app string) error {
 		}
 	}
 
-	// Samples can have multiple integration types, each of which will have its
-	// own client/server implementation. For example, the adding sales tax
-	// sample, has a manual confirmation and automatic confirmation integration.
-	// These integrations are stored as folders in the top-level of the sample.
-	// Since much of the sample setup logic is going to be dependent on the
-	// structure of the sample, we want to check for whether there are
-	// integrations upfront.
-	err = s.checkForIntegrations()
+	configFile, err := afero.ReadFile(s.Fs, filepath.Join(appPath, ".cli.json"))
 	if err != nil {
 		return err
 	}
-
-	// Once we've pulled the integration, we want to check what languages are
-	// supported so that we can ask the user which language they want to copy.
-	err = s.loadLanguages()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// checkForIntegrations scans the sample to see if there are different
-// integration option available. Integratios are the different ways to build
-// the specific sample, for example if it uses charges or payment intents
-// would be two separate integrations.
-//
-// A sample's folder structure will either contain "client" and "server"
-// folders in its top-level or it'll have folders that each contain a different
-// integration. This function scans to see if there is a "server" folder in the
-// top level and uses that to determine if there are integrations.
-func (s *Samples) checkForIntegrations() error {
-	folders, err := s.GetFolders(s.repo)
-	if err != nil {
-		return err
-	}
-
-	if !folderSearch(folders, "server") {
-		s.integrations = folders
-		s.isIntegration = true
-
-		return nil
-	}
-
-	s.isIntegration = false
-
-	return nil
-}
-
-// Each sample will have specific languages that it supports. Right now, there
-// is a goal to support java, node, php, python, and ruby for all our samples.
-// We did not hard code those to avoid having to release a CLI update if we
-// ever add new language support.
-//
-// Samples do not release until all integrations have all supported languages
-// built out. With that, we can simply check the languages supported in any
-// folder and assume that all will have the same languages.
-func (s *Samples) loadLanguages() error {
-	var err error
-
-	if s.isIntegration {
-		// The same languages will be supported by all integrations in a repo so we can
-		// rely on only checking the first
-		s.languages, err = s.GetFolders(filepath.Join(s.repo, s.integrations[0], "server"))
-	} else {
-		s.languages, err = s.GetFolders(filepath.Join(s.repo, "server"))
-	}
-
+	err = json.Unmarshal(configFile, &s.sampleConfig)
 	if err != nil {
 		return err
 	}
@@ -208,14 +142,17 @@ func (s *Samples) loadLanguages() error {
 func (s *Samples) SelectOptions() error {
 	var err error
 
-	if s.isIntegration {
-		s.integration, err = integrationSelectPrompt(s.integrations)
+	if s.sampleConfig.hasIntegrations() {
+		s.integration, err = integrationSelectPrompt(s.sampleConfig.integrationNames())
 		if err != nil {
 			return err
 		}
+	} else {
+		s.integration = []string{s.sampleConfig.Integrations[0].Name}
 	}
 
-	s.language, err = languageSelectPrompt(s.languages)
+	// TODO handle this better
+	s.language, err = languageSelectPrompt(s.sampleConfig.integrationServers(s.integration[0]))
 	if err != nil {
 		return err
 	}
@@ -301,69 +238,6 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
-func (s *Samples) findServerFiles(target string) ([]string, error) {
-	var files []string
-
-	err := afero.Walk(s.Fs, target, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() && strings.Contains(path, "server") {
-			files = append(files, path)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return []string{}, err
-	}
-
-	return files, nil
-}
-
-// PointToDotEnv searches through the recently copied files for references to
-// `../../..` and changes it to be one (or two) levels removed. Reason for this
-// is that as part of configuring the sample, we'll remove 1-2 levels of the
-// folder hierarchy so we need to adjust the references we point to.
-func (s *Samples) PointToDotEnv(target string) error {
-	serverFiles, err := s.findServerFiles(target)
-	if err != nil {
-		return err
-	}
-
-	for _, file := range serverFiles {
-		// There are a bunch of files we don't want to process so skip them
-		if !fileWhitelist(file) {
-			continue
-		}
-
-		data, err := afero.ReadFile(s.Fs, file)
-		if err != nil {
-			return err
-		}
-
-		content := string(data)
-
-		dotPath := ".."
-		if s.isIntegration && len(s.integration) >= 2 {
-			dotPath = "../.."
-		}
-
-		regex := fileEnvRegexp[filepath.Ext(file)]
-		tmpl := fileEnvTemplate[filepath.Ext(file)]
-		updated := regex.ReplaceAllString(content, tmpl(dotPath))
-
-		err = afero.WriteFile(s.Fs, file, []byte(updated), 0)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
@@ -418,9 +292,9 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 }
 
 func (s *Samples) destinationName(i int) string {
-	if len(s.integration) > 0 && s.isIntegration {
+	if len(s.integration) > 0 && s.sampleConfig.hasIntegrations() {
 		if s.integration[0] == "all" {
-			return s.integrations[i]
+			return s.sampleConfig.Integrations[i].Name
 		}
 
 		return s.integration[i]
@@ -498,14 +372,4 @@ func integrationSelectPrompt(integrations []string) ([]string, error) {
 	}
 
 	return []string{selected}, nil
-}
-
-func fileWhitelist(path string) bool {
-	// NOTE: we're not changing `.py` files because the Python dotenv library
-	// is able to recursively search up directory trees, so it'll correctly
-	// find our .env file
-	return strings.HasSuffix(path, ".java") ||
-		strings.HasSuffix(path, ".php") ||
-		strings.HasSuffix(path, ".js") ||
-		strings.HasSuffix(path, ".rb")
 }

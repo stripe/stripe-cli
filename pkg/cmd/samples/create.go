@@ -145,11 +145,6 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		return err
 	}
 
-	err = sample.PointToDotEnv(targetPath)
-	if err != nil {
-		return err
-	}
-
 	ansi.StopSpinner(spinner, "", os.Stdout)
 	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Project configured")))
 	fmt.Println("You're all set. To get started: cd", selectedSample)

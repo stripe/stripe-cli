@@ -24,14 +24,13 @@ const (
 	pathOutput = "events_list.go"
 )
 
-
 func main() {
 	// generate `events_list.go` from OpenAPI spec file
 	// code for this func from gen_resources_cmds.go
 
 	// load spec
 	templateData, err := getTemplateData()
-	if (err != nil) {
+	if err != nil {
 		panic(err)
 	}
 
@@ -62,7 +61,6 @@ func main() {
 
 }
 
-
 func getTemplateData() (*TemplateData, error) {
 	data := &TemplateData{
 		Events: make([]string, 0),
@@ -84,4 +82,3 @@ func getTemplateData() (*TemplateData, error) {
 	return data, nil
 
 }
-
