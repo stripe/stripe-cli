@@ -18,7 +18,6 @@ type triggerCmd struct {
 	cmd *cobra.Command
 
 	apiBaseURL string
-	eventID    string
 }
 
 func newTriggerCmd() *triggerCmd {
@@ -82,9 +81,7 @@ needed to create the triggered event.
   payment_intent.succeeded
   payment_intent.canceled
   payment_method.attached
-
-  You can also resend a past event using the --event flag:
-  e.g. stripe trigger --event evt_123`,
+`,
 			getBanner(),
 			ansi.Bold("Supported events:"),
 		),
@@ -95,7 +92,6 @@ needed to create the triggered event.
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	tc.cmd.Flags().MarkHidden("api-base") // #nosec G104
-	tc.cmd.Flags().StringVar(&tc.eventID, "event", "", "ID of the event to resend")
 
 	return tc
 }
@@ -116,10 +112,6 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		if tc.eventID != "" {
-			return examples.ResendEvent(tc.eventID)
-		}
-
 		cmd.Usage()
 
 		return nil

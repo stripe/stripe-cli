@@ -8,10 +8,12 @@ import (
 	"os"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -106,4 +108,9 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
+
+	err := resource.AddEventsSubCmds(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
