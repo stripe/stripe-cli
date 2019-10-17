@@ -99,8 +99,7 @@ type Samples struct {
 // 2. store the path of the locale cache folder for later use
 // 3. if the selected app does not exist in the local cache folder, clone it
 // 4. if the selected app does exist in the local cache folder, pull changes
-// 5. see if there are different integrations available for the sample
-// 6. see what languages the sample is available in
+// 5. parse the sample cli config file
 func (s *Samples) Initialize(app string) error {
 	s.name = app
 
@@ -151,7 +150,6 @@ func (s *Samples) SelectOptions() error {
 		s.integration = []string{s.sampleConfig.Integrations[0].Name}
 	}
 
-	// TODO handle this better
 	s.language, err = languageSelectPrompt(s.sampleConfig.integrationServers(s.integration[0]))
 	if err != nil {
 		return err
@@ -241,6 +239,10 @@ func (s *Samples) Copy(target string) error {
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
+	if !s.sampleConfig.ConfigureDotEnv {
+		return nil
+	}
+
 	// .env.example file will always be at the project root
 	exFile := filepath.Join(sampleLocation, ".env.example")
 
@@ -276,7 +278,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 		return err
 	}
 
-	dotenv["STRIPE_PUBLIC_KEY"] = publishableKey
+	dotenv["STRIPE_PUBLISHABLE_KEY"] = publishableKey
 	dotenv["STRIPE_SECRET_KEY"] = apiKey
 	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
 	dotenv["STATIC_DIR"] = "../client"
@@ -289,6 +291,12 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	}
 
 	return nil
+}
+
+// PostInstall returns any installation for post installation instructions
+func (s *Samples) PostInstall() string {
+	message := s.sampleConfig.PostInstall["message"]
+	return message
 }
 
 func (s *Samples) destinationName(i int) string {

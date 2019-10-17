@@ -148,6 +148,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	ansi.StopSpinner(spinner, "", os.Stdout)
 	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Project configured")))
 	fmt.Println("You're all set. To get started: cd", selectedSample)
+	fmt.Println(sample.PostInstall())
 
 	return nil
 }
