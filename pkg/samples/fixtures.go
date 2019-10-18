@@ -156,7 +156,6 @@ func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters
 
 func (fxt *Fixture) parseInterface(params interface{}) []string {
 	var data []string
-
 	var cleanData []string
 
 	switch v := reflect.ValueOf(params); v.Kind() {
@@ -195,6 +194,8 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []str
 			data = append(data, fmt.Sprintf("%s=%s", keyname, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
+		case reflect.Float32, reflect.Float64:
+			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Float()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
 

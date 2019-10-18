@@ -3,10 +3,12 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	s "github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -118,38 +120,38 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	event := args[0]
-	supportedEvents := map[string]interface{}{
-		"charge.captured":               examples.ChargeCaptured,
-		"charge.dispute.created":        examples.ChargeDisputed,
-		"charge.failed":                 examples.ChargeFailed,
-		"charge.refunded":               examples.ChargeRefunded,
-		"charge.succeeded":              examples.ChargeSucceeded,
-		"checkout.session.completed":    examples.CheckoutSessionCompleted,
-		"customer.created":              examples.CustomerCreated,
-		"customer.deleted":              examples.CustomerDeleted,
-		"customer.updated":              examples.CustomerUpdated,
-		"customer.source.created":       examples.CustomerSourceCreated,
-		"customer.source.updated":       examples.CustomerSourceUpdated,
-		"customer.subscription.deleted": examples.CustomerSubscriptionDeleted,
-		"customer.subscription.updated": examples.CustomerSubscriptionUpdated,
-		"invoice.created":               examples.InvoiceCreated,
-		"invoice.finalized":             examples.InvoiceFinalized,
-		"invoice.payment_failed":        examples.InvoicePaymentFailed,
-		"invoice.payment_succeeded":     examples.InvoicePaymentSucceeded,
-		"invoice.updated":               examples.InvoiceUpdated,
-		"payment_intent.created":        examples.PaymentIntentCreated,
-		"payment_intent.payment_failed": examples.PaymentIntentFailed,
-		"payment_intent.succeeded":      examples.PaymentIntentSucceeded,
-		"payment_intent.canceled":       examples.PaymentIntentCanceled,
-		"payment_method.attached":       examples.PaymentMethodAttached,
+	supportedEvents := map[string]*s.Fixture{
+		"charge.captured":               buildFromFixture(apiKey, "triggers/charge.captured.json"),
+		"charge.dispute.created":        buildFromFixture(apiKey, "triggers/charge.disputed.created.json"),
+		"charge.failed":                 buildFromFixture(apiKey, "triggers/charge.failed.json"),
+		"charge.refunded":               buildFromFixture(apiKey, "triggers/charge.refunded.json"),
+		"charge.succeeded":              buildFromFixture(apiKey, "triggers/charge.succeeded.json"),
+		"checkout.session.completed":    buildFromFixture(apiKey, "triggers/checkout.session.completed.json"),
+		"customer.created":              buildFromFixture(apiKey, "triggers/customer.created.json"),
+		"customer.deleted":              buildFromFixture(apiKey, "triggers/customer.deleted.json"),
+		"customer.updated":              buildFromFixture(apiKey, "triggers/customer.updated.json"),
+		"customer.source.created":       buildFromFixture(apiKey, "triggers/customer.source.created.json"),
+		"customer.source.updated":       buildFromFixture(apiKey, "triggers/customer.source.updated.json"),
+		"customer.subscription.deleted": buildFromFixture(apiKey, "triggers/customer.subscription.deleted.json"),
+		"customer.subscription.updated": buildFromFixture(apiKey, "triggers/customer.subscription.updated.json"),
+		"invoice.created":               buildFromFixture(apiKey, "triggers/invoice.created.json"),
+		"invoice.finalized":             buildFromFixture(apiKey, "triggers/invoice.finalized.json"),
+		"invoice.payment_failed":        buildFromFixture(apiKey, "triggers/invoice.payment_failed.json"),
+		"invoice.payment_succeeded":     buildFromFixture(apiKey, "triggers/invoice.payment_succeeded.json"),
+		"invoice.updated":               buildFromFixture(apiKey, "triggers/invoice.updated.json"),
+		"payment_intent.created":        buildFromFixture(apiKey, "triggers/payment_intent.created.json"),
+		"payment_intent.payment_failed": buildFromFixture(apiKey, "triggers/payment_intent.payment_failed.json"),
+		"payment_intent.succeeded":      buildFromFixture(apiKey, "triggers/payment_intent.succeeded.json"),
+		"payment_intent.canceled":       buildFromFixture(apiKey, "triggers/payment_intent.canceled.json"),
+		"payment_method.attached":       buildFromFixture(apiKey, "triggers/payment_method.attached.json"),
 	}
 
-	function, ok := supportedEvents[event]
+	fixture, ok := supportedEvents[event]
 	if !ok {
 		return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 	}
 
-	err = function.(func() error)()
+	err = fixture.Execute()
 	if err == nil {
 		fmt.Println("Trigger succeeded! Check dashboard for event details.")
 	} else {
@@ -157,4 +159,15 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return err
+}
+
+func buildFromFixture(apiKey, jsonFile string) *s.Fixture {
+	fixture, _ := s.NewFixture(
+		afero.NewOsFs(),
+		apiKey,
+		stripe.DefaultAPIBaseURL,
+		jsonFile,
+	)
+
+	return fixture
 }

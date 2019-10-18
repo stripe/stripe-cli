@@ -1,0 +1,56 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "checkout_session",
+      "path": "/v1/checkout/sessions",
+      "method": "post",
+      "params": {
+        "success_url": "https://httpbin.org/post",
+        "cancel_url": "https://httpbin.org/post",
+        "payment_method_types": ["card"],
+        "line_items": [
+          {
+            "name": "t-shirt",
+            "description": "comfortable cotton t-shirt",
+            "amount": "1500",
+            "currency": "usd",
+            "quantity": 2
+          }
+        ]
+      }
+    },
+    {
+      "name": "payment_page",
+      "path": "/v1/payment_pages",
+      "method": "get",
+      "params": {
+        "session_id": "${checkout_session.id}"
+      }
+    },
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods",
+      "method": "post",
+      "params": {
+        "type": "card",
+        "card": {
+          "token": "tok_visa"
+        },
+        "billing_details": {
+          "email": "stripe@example.com"
+        }
+      }
+    },
+    {
+      "name": "payment_page_confirm",
+      "path": "/v1/payment_pages/${payment_page.id}/confirm",
+      "method": "post",
+      "params": {
+        "payment_method": "${payment_method.id}"
+      }
+    }
+  ]
+}
