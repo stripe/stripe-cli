@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -24,18 +25,6 @@ func parseResponse(response []byte) (map[string]interface{}, error) {
 	}
 
 	return result, nil
-}
-
-// WebhookEndpointList contains the list of webhook endpoints for the account
-type WebhookEndpointList struct {
-	Data []WebhookEndpoint `json:"data"`
-}
-
-// WebhookEndpoint contains the data for each webhook endpoint
-type WebhookEndpoint struct {
-	Application   string   `json:"application"`
-	EnabledEvents []string `json:"enabled_events"`
-	URL           string   `json:"url"`
 }
 
 // Examples stores possible webhook test events to trigger for the CLI
@@ -71,22 +60,22 @@ func (ex *Examples) performStripeRequest(req *Base, endpoint string, params *Req
 	return parseResponse(resp)
 }
 
-// WebhookEndpointsList returns all the webhook endpoints on a users' account
-func (ex *Examples) WebhookEndpointsList() WebhookEndpointList {
-	params := &RequestParameters{
-		version: ex.APIVersion,
-		data:    []string{"limit=30"},
+// ResendEvent resends a webhook event using it's event-id "evt_<id>"
+func (ex *Examples) ResendEvent(id string) error {
+	pattern := `^evt_[A-Za-z0-9]{3,255}$`
+
+	match, err := regexp.MatchString(pattern, id)
+	if err != nil {
+		return err
 	}
 
-	base := &Base{
-		Profile:        &ex.Profile,
-		Method:         http.MethodGet,
-		SuppressOutput: true,
-		APIBaseURL:     ex.APIBaseURL,
+	if !match {
+		return fmt.Errorf("Invalid event-id provided, should be of the form '%s'", pattern)
 	}
-	resp, _ := base.MakeRequest(ex.APIKey, "/v1/webhook_endpoints", params, true)
-	data := WebhookEndpointList{}
-	json.Unmarshal(resp, &data)
 
-	return data
+	req, params := ex.buildRequest(http.MethodPost, []string{})
+	reqURL := fmt.Sprintf("/v1/events/%s/retry", id)
+	_, err = ex.performStripeRequest(req, reqURL, params)
+
+	return err
 }
