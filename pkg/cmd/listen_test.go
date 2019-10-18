@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestParseUrl(t *testing.T) {
@@ -22,20 +22,20 @@ func TestParseUrl(t *testing.T) {
 func TestBuildEndpointRoutes(t *testing.T) {
 	localURL := "http://localhost"
 
-	endpointNormal := stripe.WebhookEndpoint{
+	endpointNormal := requests.WebhookEndpoint{
 		URL:           "https://planetexpress.com/hooks",
 		Application:   "",
 		EnabledEvents: []string{"*"},
 	}
 
-	endpointConnect := stripe.WebhookEndpoint{
+	endpointConnect := requests.WebhookEndpoint{
 		URL:           "https://planetexpress.com/connect-hooks",
 		Application:   "ca_123",
 		EnabledEvents: []string{"*"},
 	}
 
-	endpointList := stripe.WebhookEndpointList{
-		Data: []stripe.WebhookEndpoint{endpointNormal, endpointConnect},
+	endpointList := requests.WebhookEndpointList{
+		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect},
 	}
 
 	output := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})

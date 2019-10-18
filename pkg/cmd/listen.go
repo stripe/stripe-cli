@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
+	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -182,17 +183,16 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (lc *listenCmd) getEndpointsFromAPI(secretKey string) stripe.WebhookEndpointList {
+func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
 	apiBaseURL := lc.apiBaseURL
 	if apiBaseURL == "" {
 		apiBaseURL = stripe.DefaultAPIBaseURL
 	}
 
-	return stripe.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &Config.Profile)
-
+	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &Config.Profile)
 }
 
-func buildEndpointRoutes(endpoints stripe.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
 	for _, endpoint := range endpoints.Data {

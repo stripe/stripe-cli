@@ -34,10 +34,6 @@ func (r *RequestParameters) AppendData(data []string) {
 	r.data = append(r.data, data...)
 }
 
-func (r *RequestParameters) SetVersion(version string) {
-	r.version = version
-}
-
 // Base encapsulates the required information needed to make requests to the API
 type Base struct {
 	Cmd *cobra.Command

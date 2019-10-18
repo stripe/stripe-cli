@@ -1,11 +1,10 @@
-package stripe
+package requests
 
 import (
 	"encoding/json"
 	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 // WebhookEndpointList contains the list of webhook endpoints for the account
@@ -22,11 +21,12 @@ type WebhookEndpoint struct {
 
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
 func WebhookEndpointsList(baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
-	params := &requests.RequestParameters{}
-	params.AppendData([]string{"limit=30"})
-	params.SetVersion(apiVersion)
+	params := &RequestParameters{
+		data:    []string{"limit=30"},
+		version: apiVersion,
+	}
 
-	base := &requests.Base{
+	base := &Base{
 		Profile:        profile,
 		Method:         http.MethodGet,
 		SuppressOutput: true,

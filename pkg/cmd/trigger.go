@@ -13,8 +13,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
-const apiVersion = "2019-03-14"
-
 type triggerCmd struct {
 	cmd *cobra.Command
 
