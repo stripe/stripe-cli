@@ -156,6 +156,7 @@ func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters
 
 func (fxt *Fixture) parseInterface(params interface{}) []string {
 	var data []string
+
 	var cleanData []string
 
 	switch v := reflect.ValueOf(params); v.Kind() {
