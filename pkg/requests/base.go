@@ -2,6 +2,7 @@ package requests
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -134,7 +135,7 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 		rb.setVersionHeader(req, params)
 	}
 
-	resp, err := client.PerformRequest(rb.Method, path, data, configureReq)
+	resp, err := client.PerformRequest(context.TODO(), rb.Method, path, data, configureReq)
 	if err != nil {
 		return []byte{}, err
 	}

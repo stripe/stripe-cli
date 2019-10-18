@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -84,6 +85,8 @@ type Proxy struct {
 	events map[string]bool
 
 	interruptCh chan os.Signal
+
+	ctx context.Context
 }
 
 // Run sets the websocket connection and starts the Goroutines to forward
@@ -91,30 +94,28 @@ type Proxy struct {
 func (p *Proxy) Run() error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
 
-	// Intercept Ctrl+c so we can do some clean up
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(context.Background())
+	p.ctx = ctx
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	var session *stripeauth.StripeCLISession
+	go func() {
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
 
-	var err error
+		<-p.interruptCh
+		cancel()
+	}()
 
-	// Try to authorize at least 5 times before failing. Sometimes we have random
-	// transient errors that we just need to retry for.
-	for i := 0; i <= 5; i++ {
-		session, err = p.stripeAuthClient.Authorize(p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
-
-		if err == nil {
-			break
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-
+	// Create the CLI session
+	session, err := p.createSession()
 	if err != nil {
 		ansi.StopSpinner(s, "", p.cfg.Log.Out)
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
 
+	// Create and start the websocket client
 	p.webSocketClient = websocket.NewClient(
 		session.WebSocketURL,
 		session.WebSocketID,
@@ -124,18 +125,21 @@ func (p *Proxy) Run() error {
 			NoWSS:             p.cfg.NoWSS,
 			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 			EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
+			Ctx:               p.ctx,
 		},
 	)
 	go p.webSocketClient.Run()
 
-	ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+	select {
+	case <-p.webSocketClient.Connected():
+		ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+	case <-p.ctx.Done():
+		ansi.StopSpinner(s, "", p.cfg.Log.Out)
+		p.cfg.Log.Fatalf("Aborting")
+	}
 
-	// Block until Ctrl+C is received
-	<-p.interruptCh
-
-	log.WithFields(log.Fields{
-		"prefix": "proxy.Proxy.Run",
-	}).Debug("Ctrl+C received, cleaning up...")
+	// Block until context is done (i.e. Ctrl+C is pressed)
+	<-p.ctx.Done()
 
 	if p.webSocketClient != nil {
 		p.webSocketClient.Stop()
@@ -146,6 +150,39 @@ func (p *Proxy) Run() error {
 	}).Debug("Bye!")
 
 	return nil
+}
+
+func (p *Proxy) createSession() (*stripeauth.StripeCLISession, error) {
+	var session *stripeauth.StripeCLISession
+
+	var err error
+
+	exitCh := make(chan struct{})
+
+	go func() {
+		// Try to authorize at least 5 times before failing. Sometimes we have random
+		// transient errors that we just need to retry for.
+		for i := 0; i <= 5; i++ {
+			session, err = p.stripeAuthClient.Authorize(p.ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
+
+			if err == nil {
+				exitCh <- struct{}{}
+				return
+			}
+
+			select {
+			case <-p.ctx.Done():
+				exitCh <- struct{}{}
+				return
+			case <-time.After(1 * time.Second):
+			}
+		}
+
+		exitCh <- struct{}{}
+	}()
+	<-exitCh
+
+	return session, err
 }
 
 func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {

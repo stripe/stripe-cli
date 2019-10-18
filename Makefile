@@ -6,10 +6,11 @@ export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
 export GOPROXY := https://gocenter.io
+export GOLANGCI_LINT_VERSION := v1.21.0
 
 # Install all the build and lint dependencies
 setup:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
 	curl -L https://git.io/misspell | sh
 	go mod download
 .PHONY: setup
