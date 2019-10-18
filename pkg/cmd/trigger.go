@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/requests"
 	s "github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -104,13 +103,6 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	apiKey, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
-	}
-
-	examples := requests.Examples{
-		Profile:    Config.Profile,
-		APIBaseURL: tc.apiBaseURL,
-		APIVersion: apiVersion,
-		APIKey:     apiKey,
 	}
 
 	if len(args) == 0 {
