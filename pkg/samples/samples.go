@@ -34,6 +34,7 @@ func (sc *sampleConfig) integrationNames() []string {
 	for _, integration := range sc.Integrations {
 		names = append(names, integration.Name)
 	}
+
 	return names
 }
 
@@ -43,6 +44,7 @@ func (sc *sampleConfig) integrationServers(name string) []string {
 			return integration.Servers
 		}
 	}
+
 	return []string{}
 }
 
@@ -128,6 +130,7 @@ func (s *Samples) Initialize(app string) error {
 	if err != nil {
 		return err
 	}
+
 	err = json.Unmarshal(configFile, &s.sampleConfig)
 	if err != nil {
 		return err

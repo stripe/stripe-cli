@@ -15,6 +15,7 @@ type mockGit struct {
 
 func (mg mockGit) Clone(appCachePath, _ string) error {
 	makeRecipe(mg.fs, appCachePath, []string{"webhooks", "no-webhooks"}, []string{"node", "python", "ruby"})
+
 	json := `{
   "name": "foo",
   "integrations": [
@@ -82,8 +83,8 @@ func TestDestinationNameAll(t *testing.T) {
 		integration: []string{"all"},
 		sampleConfig: sampleConfig{
 			Integrations: []integration{
-				integration{Name: "webhooks"},
-				integration{Name: "non-webhooks"},
+				{Name: "webhooks"},
+				{Name: "non-webhooks"},
 			},
 		},
 	}
@@ -97,8 +98,8 @@ func TestDestinationName(t *testing.T) {
 		integration: []string{"webhooks"},
 		sampleConfig: sampleConfig{
 			Integrations: []integration{
-				integration{Name: "webhooks"},
-				integration{Name: "non-webhooks"},
+				{Name: "webhooks"},
+				{Name: "non-webhooks"},
 			},
 		},
 	}
