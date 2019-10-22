@@ -116,19 +116,23 @@ func getUsageTemplate() string {
   {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "stripe")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
 
-%s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "resources")}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+%s
+  {{rpad "get" 29}} Quickly retrieve resources from Stripe
+  {{rpad "charges" 29}} Make requests (capture, create, list, etc) on charges
+  {{rpad "customers" 29}} Make requests (create, delete, list, etc) on customers
+  {{rpad "payment_intents" 29}} Make requests (cancel, capture, confirm, etc) on payment intents
+  {{rpad "..." 29}} %s
 
 %s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}{{else}}
+  {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
 
 %s
 {{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -144,6 +148,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Webhook commands:"),
 		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Resource commands:"),
+		ansi.Italic("To see more resource commands, run `stripe resources help`"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
