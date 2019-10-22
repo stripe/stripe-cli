@@ -232,6 +232,12 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
+	evtCtx := eventContext{
+		webhookID:             webhookEvent.WebhookID,
+		webhookConversationID: webhookEvent.WebhookConversationID,
+		event:                 &evt,
+	}
+
 	if p.events["*"] || p.events[evt.Type] {
 		if p.cfg.PrintJSON {
 			fmt.Println(webhookEvent.EventPayload)
@@ -244,7 +250,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 			localTime := time.Now().Format(timeLayout)
 
 			color := ansi.Color(os.Stdout)
-			outputStr := fmt.Sprintf("%s  Received: %s%s [%s]",
+			outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 				color.Faint(localTime),
 				maybeConnect,
 				ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
@@ -257,8 +263,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
 				// TODO: handle errors returned by endpointClients
 				go endpoint.Post(
-					webhookEvent.WebhookID,
-					webhookEvent.WebhookConversationID,
+					evtCtx,
 					webhookEvent.EventPayload,
 					webhookEvent.HTTPHeaders,
 				)
@@ -267,15 +272,16 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 }
 
-func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
+func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
 	localTime := time.Now().Format(timeLayout)
 
 	color := ansi.Color(os.Stdout)
-	outputStr := fmt.Sprintf("%s            [%d] %s %s",
+	outputStr := fmt.Sprintf("%s  <--  [%d] %s %s [%s]",
 		color.Faint(localTime),
 		ansi.ColorizeStatus(resp.StatusCode),
 		resp.Request.Method,
 		resp.Request.URL,
+		ansi.Linkify(evtCtx.event.ID, evtCtx.event.urlForEventID(), p.cfg.Log.Out),
 	)
 	fmt.Println(outputStr)
 
@@ -307,8 +313,8 @@ func (p *Proxy) processEndpointResponse(webhookID, webhookConversationID, forwar
 
 	if p.webSocketClient != nil {
 		msg := websocket.NewWebhookResponse(
-			webhookID,
-			webhookConversationID,
+			evtCtx.webhookID,
+			evtCtx.webhookConversationID,
 			forwardURL,
 			resp.StatusCode,
 			body,
@@ -362,6 +368,16 @@ func New(cfg *Config, events []string) *Proxy {
 	}
 
 	return p
+}
+
+//
+// Private types
+//
+
+type eventContext struct {
+	webhookID             string
+	webhookConversationID string
+	event                 *stripeEvent
 }
 
 //

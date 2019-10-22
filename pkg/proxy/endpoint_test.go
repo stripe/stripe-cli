@@ -35,10 +35,9 @@ func TestClientHandler(t *testing.T) {
 	}))
 	defer ts.Close()
 
+	rcvCtx := eventContext{}
 	rcvBody := ""
 	rcvForwardURL := ""
-	rcvWebhookID := ""
-	rcvWebhookConversationID := ""
 	client := NewEndpointClient(
 		ts.URL,
 		[]string{" Host:       hostname", "customHeader:customHeaderValue", "customHeader2:       customHeaderValue 2",
@@ -46,35 +45,41 @@ func TestClientHandler(t *testing.T) {
 		false,
 		[]string{"*"},
 		&EndpointConfig{
-			ResponseHandler: EndpointResponseHandlerFunc(func(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
+			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
 				require.Nil(t, err)
 
+				rcvCtx = evtCtx
 				rcvBody = string(buf)
 				rcvForwardURL = forwardURL
-				rcvWebhookID = webhookID
-				rcvWebhookConversationID = webhookConversationID
 
 				wg.Done()
 			}),
 		},
 	)
 
-	webhookID := "wh_123"
-	webhookConversationID := "wc_123"
+	evt := &stripeEvent{
+		ID: "evt_123",
+	}
+	evtCtx := eventContext{
+		webhookID:             "wh_123",
+		webhookConversationID: "wc_123",
+		event:                 evt,
+	}
 	payload := "{}"
 	headers := map[string]string{
 		"User-Agent":       "TestAgent/v1",
 		"Stripe-Signature": "t=123,v1=hunter2",
 	}
 
-	err := client.Post(webhookID, webhookConversationID, payload, headers)
+	err := client.Post(evtCtx, payload, headers)
 
 	wg.Wait()
 
 	require.Nil(t, err)
 	require.Equal(t, "OK!", rcvBody)
 	require.Equal(t, ts.URL, rcvForwardURL)
-	require.Equal(t, "wh_123", rcvWebhookID)
-	require.Equal(t, "wc_123", rcvWebhookConversationID)
+	require.Equal(t, "wh_123", rcvCtx.webhookID)
+	require.Equal(t, "wc_123", rcvCtx.webhookConversationID)
+	require.Equal(t, "evt_123", rcvCtx.event.ID)
 }

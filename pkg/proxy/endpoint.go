@@ -30,18 +30,18 @@ type EndpointConfig struct {
 
 // EndpointResponseHandler handles a response from the endpoint.
 type EndpointResponseHandler interface {
-	ProcessResponse(string, string, string, *http.Response)
+	ProcessResponse(eventContext, string, *http.Response)
 }
 
 // EndpointResponseHandlerFunc is an adapter to allow the use of ordinary
 // functions as response handlers. If f is a function with the
 // appropriate signature, ResponseHandler(f) is a
 // ResponseHandler that calls f.
-type EndpointResponseHandlerFunc func(string, string, string, *http.Response)
+type EndpointResponseHandlerFunc func(eventContext, string, *http.Response)
 
-// ProcessResponse calls f(webhookID, webhookConversationID, resp).
-func (f EndpointResponseHandlerFunc) ProcessResponse(webhookID, webhookConversationID, forwardURL string, resp *http.Response) {
-	f(webhookID, webhookConversationID, forwardURL, resp)
+// ProcessResponse calls f(evtCtx, forwardURL, resp).
+func (f EndpointResponseHandlerFunc) ProcessResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
+	f(evtCtx, forwardURL, resp)
 }
 
 // EndpointClient is the client used to POST webhook requests to the local endpoint.
@@ -75,7 +75,7 @@ func (c *EndpointClient) SupportsEventType(connect bool, eventType string) bool 
 }
 
 // Post sends a message to the local endpoint.
-func (c *EndpointClient) Post(webhookID, webhookConversationID, body string, headers map[string]string) error {
+func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[string]string) error {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "proxy.EndpointClient.Post",
 	}).Debug("Forwarding event to local endpoint")
@@ -115,7 +115,7 @@ func (c *EndpointClient) Post(webhookID, webhookConversationID, body string, hea
 
 	defer resp.Body.Close()
 
-	c.cfg.ResponseHandler.ProcessResponse(webhookID, webhookConversationID, c.URL, resp)
+	c.cfg.ResponseHandler.ProcessResponse(evtCtx, c.URL, resp)
 
 	return nil
 }
@@ -141,7 +141,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 	}
 
 	if cfg.ResponseHandler == nil {
-		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(string, string, string, *http.Response) {})
+		cfg.ResponseHandler = EndpointResponseHandlerFunc(func(eventContext, string, *http.Response) {})
 	}
 
 	return &EndpointClient{
