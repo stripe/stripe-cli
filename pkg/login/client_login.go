@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -113,7 +114,7 @@ func getLinks(baseURL string, deviceName string) (*Links, error) {
 	data := url.Values{}
 	data.Set("device_name", deviceName)
 
-	res, err := client.PerformRequest(http.MethodPost, stripeCLIAuthPath, data.Encode(), nil)
+	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCLIAuthPath, data.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}

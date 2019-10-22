@@ -1,6 +1,7 @@
 package logtailing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -65,6 +66,8 @@ type Tailer struct {
 	webSocketClient  *websocket.Client
 
 	interruptCh chan os.Signal
+
+	ctx context.Context
 }
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
@@ -105,85 +108,134 @@ func New(cfg *Config) *Tailer {
 }
 
 // Run sets the websocket connection
-func (tailer *Tailer) Run() error {
-	s := ansi.StartSpinner("Getting ready...", tailer.cfg.Log.Out)
+func (t *Tailer) Run() error {
+	s := ansi.StartSpinner("Getting ready...", t.cfg.Log.Out)
 
-	// Intercept Ctrl+c so we can do some clean up
-	signal.Notify(tailer.interruptCh, os.Interrupt, syscall.SIGTERM)
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(context.Background())
+	t.ctx = ctx
+	signal.Notify(t.interruptCh, os.Interrupt, syscall.SIGTERM)
 
-	filters, err := jsonifyFilters(tailer.cfg.Filters)
+	go func() {
+		log.WithFields(log.Fields{
+			"prefix": "logtailing.Tailer.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+
+		<-t.interruptCh
+		cancel()
+	}()
+
+	// Create the CLI session
+	session, err := t.createSession()
 	if err != nil {
-		tailer.cfg.Log.Fatalf("Error while converting log filters to JSON encoding: %v", err)
+		ansi.StopSpinner(s, "", t.cfg.Log.Out)
+		t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
 
-	session, err := tailer.stripeAuthClient.Authorize(tailer.cfg.DeviceName, tailer.cfg.WebSocketFeature, &filters)
-	if err != nil {
-		tailer.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
-	}
-
-	tailer.webSocketClient = websocket.NewClient(
+	// Create and start the websocket client
+	t.webSocketClient = websocket.NewClient(
 		session.WebSocketURL,
 		session.WebSocketID,
 		session.WebSocketAuthorizedFeature,
 		&websocket.Config{
-			EventHandler:      websocket.EventHandlerFunc(tailer.processRequestLogEvent),
-			Log:               tailer.cfg.Log,
-			NoWSS:             tailer.cfg.NoWSS,
+			EventHandler:      websocket.EventHandlerFunc(t.processRequestLogEvent),
+			Log:               t.cfg.Log,
+			NoWSS:             t.cfg.NoWSS,
 			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 		},
 	)
-	go tailer.webSocketClient.Run()
+	go t.webSocketClient.Run()
 
-	ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", tailer.cfg.Log.Out)
+	select {
+	case <-t.webSocketClient.Connected():
+		ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
+	case <-t.ctx.Done():
+		ansi.StopSpinner(s, "", t.cfg.Log.Out)
+		t.cfg.Log.Fatalf("Aborting")
+	}
 
 	if session.DisplayConnectFilterWarning {
 		color := ansi.Color(os.Stdout)
-		fmt.Println(fmt.Sprintf("%s you specified the 'account' filter for connect accounts but are not a connect merchant, so the filter will not be applied.", color.Yellow("Warning")))
+		fmt.Println(fmt.Sprintf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.", color.Yellow("Warning")))
 	}
 
-	// Block until Ctrl+C is received
-	<-tailer.interruptCh
+	// Block until context is done (i.e. Ctrl+C is pressed)
+	<-t.ctx.Done()
 
-	log.WithFields(log.Fields{
-		"prefix": "logs.Tailer.Run",
-	}).Debug("Ctrl+C received, cleaning up...")
-
-	if tailer.webSocketClient != nil {
-		tailer.webSocketClient.Stop()
+	if t.webSocketClient != nil {
+		t.webSocketClient.Stop()
 	}
 
 	log.WithFields(log.Fields{
-		"prefix": "logs.Tailer.Run",
+		"prefix": "logtailing.Tailer.Run",
 	}).Debug("Bye!")
 
 	return nil
 }
 
-func (tailer *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
+func (t *Tailer) createSession() (*stripeauth.StripeCLISession, error) {
+	var session *stripeauth.StripeCLISession
+
+	var err error
+
+	exitCh := make(chan struct{})
+
+	filters, err := jsonifyFilters(t.cfg.Filters)
+	if err != nil {
+		t.cfg.Log.Fatalf("Error while converting log filters to JSON encoding: %v", err)
+	}
+
+	go func() {
+		// Try to authorize at least 5 times before failing. Sometimes we have random
+		// transient errors that we just need to retry for.
+		for i := 0; i <= 5; i++ {
+			session, err = t.stripeAuthClient.Authorize(t.ctx, t.cfg.DeviceName, t.cfg.WebSocketFeature, &filters)
+
+			if err == nil {
+				exitCh <- struct{}{}
+				return
+			}
+
+			select {
+			case <-t.ctx.Done():
+				exitCh <- struct{}{}
+				return
+			case <-time.After(1 * time.Second):
+			}
+		}
+
+		exitCh <- struct{}{}
+	}()
+	<-exitCh
+
+	return session, err
+}
+
+func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 	if msg.RequestLogEvent == nil {
-		tailer.cfg.Log.Debug("WebSocket specified for request logs received non-request-logs event")
+		t.cfg.Log.Debug("WebSocket specified for request logs received non-request-logs event")
 		return
 	}
 
 	requestLogEvent := msg.RequestLogEvent
 
-	tailer.cfg.Log.WithFields(log.Fields{
-		"prefix":     "logs.Tailer.processRequestLogEvent",
+	t.cfg.Log.WithFields(log.Fields{
+		"prefix":     "logtailing.Tailer.processRequestLogEvent",
 		"webhook_id": requestLogEvent.RequestLogID,
 	}).Debugf("Processing request log event")
 
 	var payload EventPayload
 	if err := json.Unmarshal([]byte(requestLogEvent.EventPayload), &payload); err != nil {
-		tailer.cfg.Log.Debug("Received malformed payload: ", err)
+		t.cfg.Log.Debug("Received malformed payload: ", err)
 	}
 
 	// Don't show stripecli/sessions logs since they're generated by the CLI
 	if payload.URL == "/v1/stripecli/sessions" {
-		tailer.cfg.Log.Debug("Filtering out /v1/stripecli/sessions from logs")
+		t.cfg.Log.Debug("Filtering out /v1/stripecli/sessions from logs")
 		return
 	}
 
-	if tailer.cfg.OutputFormat == outputFormatJSON {
+	if t.cfg.OutputFormat == outputFormatJSON {
 		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, false, os.Stdout))
 		return
 	}

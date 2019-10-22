@@ -1,6 +1,7 @@
 package stripeauth
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -36,7 +37,7 @@ type Client struct {
 }
 
 // Authorize sends a request to Stripe to initiate a new CLI session.
-func (c *Client) Authorize(deviceName string, websocketFeature string, filters *string) (*StripeCLISession, error) {
+func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeature string, filters *string) (*StripeCLISession, error) {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
@@ -59,7 +60,7 @@ func (c *Client) Authorize(deviceName string, websocketFeature string, filters *
 		APIKey:  c.apiKey,
 	}
 
-	resp, err := client.PerformRequest(http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
+	resp, err := client.PerformRequest(ctx, http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}

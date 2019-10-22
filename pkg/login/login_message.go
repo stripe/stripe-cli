@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -72,7 +73,7 @@ func getUserAccount(baseURL string, apiKey string) (*Account, error) {
 		APIKey:  apiKey,
 	}
 
-	resp, err := client.PerformRequest("GET", "/v1/account", "", nil)
+	resp, err := client.PerformRequest(context.TODO(), "GET", "/v1/account", "", nil)
 
 	if err != nil {
 		return nil, err

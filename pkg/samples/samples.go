@@ -1,6 +1,7 @@
 package samples
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -396,7 +397,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 	authClient := stripeauth.NewClient(apiKey, nil)
 
-	authSession, err := authClient.Authorize(deviceName, "webhooks", nil)
+	authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil)
 	if err != nil {
 		return err
 	}

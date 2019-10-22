@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,7 +52,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollA
 
 	var count = 0
 	for count < maxAttempts {
-		res, err := client.PerformRequest(http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
+		res, err := client.PerformRequest(context.TODO(), http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
 		if err != nil {
 			return nil, nil, err
 		}

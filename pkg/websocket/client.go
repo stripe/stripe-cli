@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net"
@@ -45,6 +46,8 @@ type Config struct {
 	WriteWait time.Duration
 
 	EventHandler EventHandler
+
+	Ctx context.Context
 }
 
 // EventHandler handles an event.
@@ -88,6 +91,21 @@ type Client struct {
 	wg            *sync.WaitGroup
 }
 
+// Connected returns a channel that's closed when the client has finished
+// establishing the websocket connection.
+func (c *Client) Connected() <-chan struct{} {
+	d := make(chan struct{})
+
+	go func() {
+		for !c.isConnected {
+			time.Sleep(100 * time.Millisecond)
+		}
+		close(d)
+	}()
+
+	return d
+}
+
 // Run starts listening for incoming webhook requests from Stripe.
 func (c *Client) Run() {
 	for {
@@ -100,9 +118,21 @@ func (c *Client) Run() {
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.client.Run",
 			}).Debug("Failed to connect to Stripe. Retrying...")
-			time.Sleep(c.cfg.ConnectAttemptWait)
+
+			select {
+			case <-c.cfg.Ctx.Done():
+				return
+			case <-time.After(c.cfg.ConnectAttemptWait):
+			}
 		}
+
 		select {
+		case <-c.cfg.Ctx.Done():
+			close(c.send)
+			close(c.stopReadPump)
+			close(c.stopWritePump)
+
+			return
 		case <-c.done:
 			close(c.send)
 			close(c.stopReadPump)
@@ -164,7 +194,7 @@ func (c *Client) connect() bool {
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, resp, err := c.cfg.Dialer.Dial(url, header)
+	conn, resp, err := c.cfg.Dialer.DialContext(c.cfg.Ctx, url, header)
 	if err != nil {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.connect",
@@ -382,6 +412,10 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 
 	if cfg.EventHandler == nil {
 		cfg.EventHandler = nullEventHandler
+	}
+
+	if cfg.Ctx == nil {
+		cfg.Ctx = context.Background()
 	}
 
 	return &Client{

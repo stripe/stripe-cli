@@ -1,6 +1,7 @@
 package stripeauth
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -36,7 +37,7 @@ func TestAuthorize(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	session, err := client.Authorize("my-device", "webhooks", nil)
+	session, err := client.Authorize(context.TODO(), "my-device", "webhooks", nil)
 	require.NoError(t, err)
 	require.Equal(t, "some-id", session.WebSocketID)
 	require.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
@@ -54,7 +55,7 @@ func TestUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device", "webhooks", nil)
+	client.Authorize(context.TODO(), "my-device", "webhooks", nil)
 }
 
 func TestStripeClientUserAgent(t *testing.T) {
@@ -77,5 +78,5 @@ func TestStripeClientUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize("my-device", "webhooks", nil)
+	client.Authorize(context.TODO(), "my-device", "webhooks", nil)
 }
