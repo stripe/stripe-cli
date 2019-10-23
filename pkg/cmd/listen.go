@@ -132,6 +132,9 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 			Connect:        false,
 			EventTypes:     lc.events,
 		})
+	}
+
+	if len(lc.forwardConnectURL) > 0 {
 		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
 			URL:            parseURL(lc.forwardConnectURL),
 			ForwardHeaders: lc.forwardConnectHeaders,
