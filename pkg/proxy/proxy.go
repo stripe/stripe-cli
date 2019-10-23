@@ -100,11 +100,12 @@ func (p *Proxy) Run() error {
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
+		<-p.interruptCh
+
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
 
-		<-p.interruptCh
 		cancel()
 	}()
 
