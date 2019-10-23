@@ -64,6 +64,13 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
+	if !telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
+		telemetryHdr, err := getTelemetryHeader()
+		if err == nil {
+			req.Header.Set("Stripe-CLI-Telemetry", telemetryHdr)
+		}
+	}
+
 	if c.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 	}

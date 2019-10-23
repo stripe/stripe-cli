@@ -366,6 +366,10 @@ All of the available shortcuts are listed in the [wiki page](https://github.com/
 
 For dashboard pages, you can also add the `--livemode` flag to open the page directly in live mode.
 
+## Telemetry
+
+The Stripe CLI includes a telemetry feature that collects some usage data. This feature is enabled by default. To opt out of the telemetry feature, set the `STRIPE_CLI_TELEMETRY_OPTOUT` environment variable to `1` or `true`.
+
 ## Developing the Stripe CLI
 
 If you're working on developing the CLI, it's recommended that you alias the go command to run the dev version. Place this in your shell rc file (such as `.bashrc` or `.zshrc`)

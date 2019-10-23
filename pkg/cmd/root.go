@@ -15,6 +15,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -49,6 +50,9 @@ get started with pre-built samples (https://stripe.dev/samples).
 		getBanner(),
 		getLogin(&fs, &Config),
 	),
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		stripe.GetTelemetryInstance().SetCommandContext(cmd)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
