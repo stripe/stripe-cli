@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	s "github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -110,7 +110,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	event := args[0]
-	supportedEvents := map[string]*s.Fixture{
+	supportedEvents := map[string]*fixtures.Fixture{
 		"charge.captured":               buildFromFixture(apiKey, "triggers/charge.captured.json"),
 		"charge.dispute.created":        buildFromFixture(apiKey, "triggers/charge.disputed.created.json"),
 		"charge.failed":                 buildFromFixture(apiKey, "triggers/charge.failed.json"),
@@ -156,8 +156,8 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-func buildFromFixture(apiKey, jsonFile string) *s.Fixture {
-	fixture, _ := s.NewFixture(
+func buildFromFixture(apiKey, jsonFile string) *fixtures.Fixture {
+	fixture, _ := fixtures.NewFixture(
 		afero.NewOsFs(),
 		apiKey,
 		stripe.DefaultAPIBaseURL,

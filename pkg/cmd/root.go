@@ -95,6 +95,7 @@ func init() {
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
+	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)

@@ -1,4 +1,6 @@
-package samples
+//go:generate go run vfsgen.go
+
+package fixtures
 
 import (
 	"encoding/json"

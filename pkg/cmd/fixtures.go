@@ -1,11 +1,11 @@
-package samples
+package cmd
 
 import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	s "github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -18,8 +18,7 @@ type FixturesCmd struct {
 	Cfg *config.Config
 }
 
-// NewFixturesCmd creates and returns a list command for samples
-func NewFixturesCmd(cfg *config.Config) *FixturesCmd {
+func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	fixturesCmd := &FixturesCmd{
 		Cfg: cfg,
 	}
@@ -43,7 +42,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fixture, err := s.NewFixture(
+	fixture, err := fixtures.NewFixture(
 		afero.NewOsFs(),
 		apiKey,
 		stripe.DefaultAPIBaseURL,

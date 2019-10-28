@@ -1,4 +1,4 @@
-package samples
+package fixtures
 
 import (
 	"net/http"
