@@ -10,7 +10,7 @@ import (
 
 	"github.com/shurcooL/vfsgen"
 
-	"github.com/stripe/stripe-cli/pkg/spec"
+	"github.com/stripe/stripe-cli/pkg/fixtures"
 )
 
 func main() {
@@ -20,11 +20,11 @@ func main() {
 	// be different depending on the developer's machine. Overriding them to a
 	// fixed value ensures that the generated output will only change when the
 	// contents of the embedded files change.
-	var specInputFS http.FileSystem = modTimeFS{
-		fs: spec.FS,
+	var fixturesInputFS http.FileSystem = modTimeFS{
+		fs: fixtures.FS,
 	}
-	err := vfsgen.Generate(specInputFS, vfsgen.Options{
-		PackageName:  "spec",
+	err := vfsgen.Generate(fixturesInputFS, vfsgen.Options{
+		PackageName:  "fixtures",
 		BuildTags:    "!dev",
 		VariableName: "FS",
 	})

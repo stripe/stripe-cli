@@ -138,7 +138,12 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	fixture, ok := supportedEvents[event]
 	if !ok {
-		return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
+		exists, _ := afero.Exists(afero.NewOsFs(), event)
+		if !exists {
+			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
+		}
+
+		fixture = buildFromFixture(apiKey, args[0])
 	}
 
 	err = fixture.Execute()
