@@ -5,6 +5,7 @@ package fixtures
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -59,9 +60,25 @@ func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
 		responses: make(map[string]*gojsonq.JSONQ),
 	}
 
-	filedata, err := afero.ReadFile(fxt.Fs, file)
-	if err != nil {
-		return nil, err
+	var filedata []byte
+
+	var err error
+
+	if _, ok := reverseMap()[file]; ok {
+		f, err := FS.Open(file)
+		if err != nil {
+			return nil, err
+		}
+
+		filedata, err = ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		filedata, err = afero.ReadFile(fxt.Fs, file)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = json.Unmarshal(filedata, &fxt.fixture)

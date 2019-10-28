@@ -16,40 +16,18 @@ import (
 type triggerCmd struct {
 	cmd *cobra.Command
 
+	fs         afero.Fs
 	apiBaseURL string
 }
 
 func newTriggerCmd() *triggerCmd {
 	tc := &triggerCmd{}
+	tc.fs = afero.NewOsFs()
 	tc.cmd = &cobra.Command{
-		Use:  "trigger <event>",
-		Args: validators.MaximumNArgs(1),
-		ValidArgs: []string{
-			"charge.captured",
-			"charge.dispute.created",
-			"charge.failed",
-			"charge.refunded",
-			"charge.succeeded",
-			"checkout.session.completed",
-			"customer.created",
-			"customer.deleted",
-			"customer.updated",
-			"customer.source.created",
-			"customer.source.updated",
-			"customer.subscription.deleted",
-			"customer.subscription.updated",
-			"invoice.created",
-			"invoice.finalized",
-			"invoice.payment_failed",
-			"invoice.payment_succeeded",
-			"invoice.updated",
-			"payment_intent.created",
-			"payment_intent.payment_failed",
-			"payment_intent.succeeded",
-			"payment_intent.canceled",
-			"payment_method.attached",
-		},
-		Short: "Trigger test webhook events to fire",
+		Use:       "trigger <event>",
+		Args:      validators.MaximumNArgs(1),
+		ValidArgs: fixtures.EventNames(),
+		Short:     "Trigger test webhook events to fire",
 		Long: fmt.Sprintf(`%s
 
 Cause a specific webhook event to be created and sent. Webhooks tested through
@@ -57,32 +35,11 @@ the trigger command will also create all necessary side-effect events that are
 needed to create the triggered event.
 
 %s
-  charge.captured
-  charge.dispute.created
-  charge.failed
-  charge.refunded
-  charge.succeeded
-  checkout.session.completed
-  customer.created
-  customer.deleted
-  customer.updated
-  customer.source.created
-  customer.source.updated
-  customer.subscription.deleted
-  customer.subscription.updated
-  invoice.created
-  invoice.finalized
-  invoice.payment_failed
-  invoice.payment_succeeded
-  invoice.updated
-  payment_intent.created
-  payment_intent.payment_failed
-  payment_intent.succeeded
-  payment_intent.canceled
-  payment_method.attached
+%s
 `,
 			getBanner(),
 			ansi.Bold("Supported events:"),
+			fixtures.EventList(),
 		),
 		Example: `stripe trigger payment_intent.created`,
 		RunE:    tc.runTriggerCmd,
@@ -110,40 +67,16 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	event := args[0]
-	supportedEvents := map[string]*fixtures.Fixture{
-		"charge.captured":               buildFromFixture(apiKey, "triggers/charge.captured.json"),
-		"charge.dispute.created":        buildFromFixture(apiKey, "triggers/charge.disputed.created.json"),
-		"charge.failed":                 buildFromFixture(apiKey, "triggers/charge.failed.json"),
-		"charge.refunded":               buildFromFixture(apiKey, "triggers/charge.refunded.json"),
-		"charge.succeeded":              buildFromFixture(apiKey, "triggers/charge.succeeded.json"),
-		"checkout.session.completed":    buildFromFixture(apiKey, "triggers/checkout.session.completed.json"),
-		"customer.created":              buildFromFixture(apiKey, "triggers/customer.created.json"),
-		"customer.deleted":              buildFromFixture(apiKey, "triggers/customer.deleted.json"),
-		"customer.updated":              buildFromFixture(apiKey, "triggers/customer.updated.json"),
-		"customer.source.created":       buildFromFixture(apiKey, "triggers/customer.source.created.json"),
-		"customer.source.updated":       buildFromFixture(apiKey, "triggers/customer.source.updated.json"),
-		"customer.subscription.deleted": buildFromFixture(apiKey, "triggers/customer.subscription.deleted.json"),
-		"customer.subscription.updated": buildFromFixture(apiKey, "triggers/customer.subscription.updated.json"),
-		"invoice.created":               buildFromFixture(apiKey, "triggers/invoice.created.json"),
-		"invoice.finalized":             buildFromFixture(apiKey, "triggers/invoice.finalized.json"),
-		"invoice.payment_failed":        buildFromFixture(apiKey, "triggers/invoice.payment_failed.json"),
-		"invoice.payment_succeeded":     buildFromFixture(apiKey, "triggers/invoice.payment_succeeded.json"),
-		"invoice.updated":               buildFromFixture(apiKey, "triggers/invoice.updated.json"),
-		"payment_intent.created":        buildFromFixture(apiKey, "triggers/payment_intent.created.json"),
-		"payment_intent.payment_failed": buildFromFixture(apiKey, "triggers/payment_intent.payment_failed.json"),
-		"payment_intent.succeeded":      buildFromFixture(apiKey, "triggers/payment_intent.succeeded.json"),
-		"payment_intent.canceled":       buildFromFixture(apiKey, "triggers/payment_intent.canceled.json"),
-		"payment_method.attached":       buildFromFixture(apiKey, "triggers/payment_method.attached.json"),
-	}
+	supportedEvents := fixtures.SupportedEvents(tc.fs, apiKey)
 
 	fixture, ok := supportedEvents[event]
 	if !ok {
-		exists, _ := afero.Exists(afero.NewOsFs(), event)
+		exists, _ := afero.Exists(tc.fs, event)
 		if !exists {
 			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 		}
 
-		fixture = buildFromFixture(apiKey, args[0])
+		fixture = fixtures.BuildFromFixture(tc.fs, apiKey, args[0])
 	}
 
 	err = fixture.Execute()
@@ -154,15 +87,4 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return err
-}
-
-func buildFromFixture(apiKey, jsonFile string) *fixtures.Fixture {
-	fixture, _ := fixtures.NewFixture(
-		afero.NewOsFs(),
-		apiKey,
-		stripe.DefaultAPIBaseURL,
-		jsonFile,
-	)
-
-	return fixture
 }
