@@ -73,8 +73,14 @@ func (p *Profile) GetDeviceName() (string, error) {
 
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
-	if os.Getenv("STRIPE_API_KEY") != "" {
-		return os.Getenv("STRIPE_API_KEY"), nil
+	envKey := os.Getenv("STRIPE_API_KEY")
+	if envKey != "" {
+		err := validators.APIKey(envKey)
+		if err != nil {
+			return "", err
+		}
+
+		return envKey, nil
 	}
 
 	if p.APIKey != "" {
