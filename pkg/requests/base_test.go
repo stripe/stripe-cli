@@ -86,7 +86,7 @@ func TestMakeRequest(t *testing.T) {
 		w.Write([]byte("OK!"))
 
 		reqBody, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/foo/bar", r.URL.Path)
@@ -136,7 +136,7 @@ func TestGetUserConfirmationRequired(t *testing.T) {
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetUserConfirmationNotRequired(t *testing.T) {
@@ -148,7 +148,7 @@ func TestGetUserConfirmationNotRequired(t *testing.T) {
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetUserConfirmationAutoConfirm(t *testing.T) {
@@ -160,7 +160,7 @@ func TestGetUserConfirmationAutoConfirm(t *testing.T) {
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestGetUserConfirmationNoConfirm(t *testing.T) {
@@ -172,7 +172,7 @@ func TestGetUserConfirmationNoConfirm(t *testing.T) {
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.False(t, confirmed)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestNormalizePath(t *testing.T) {

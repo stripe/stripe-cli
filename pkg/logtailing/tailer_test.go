@@ -20,7 +20,7 @@ func TestJsonifyFiltersAll(t *testing.T) {
 	}
 	expected := fmt.Sprintf(`{"filter_account":["my-account"],"filter_ip_address":["my-ip-address"],"filter_http_method":["my-http-method"],"filter_request_path":["my-request-path"],"filter_request_status":["my-request-status"],"filter_source":["my-source"],"filter_status_code":["my-status-code"],"filter_status_code_type":["my-status-code-type"]}`)
 	filtersStr, err := jsonifyFilters(filters)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, expected, filtersStr)
 }
 
@@ -31,7 +31,7 @@ func TestJsonifyFiltersSome(t *testing.T) {
 	}
 	expected := fmt.Sprintf(`{"filter_http_method":["my-http-method"],"filter_status_code":["my-status-code"]}`)
 	filtersStr, err := jsonifyFilters(filters)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, expected, filtersStr)
 }
 
@@ -47,7 +47,7 @@ func TestJsonifyFiltersEmpty(t *testing.T) {
 		FilterStatusCodeType: []string{},
 	}
 	filtersStr, err := jsonifyFilters(filters)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "{}", filtersStr)
 }
 

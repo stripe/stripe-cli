@@ -118,7 +118,7 @@ func TestFindServerFiles(t *testing.T) {
 		Fs: fs,
 	}
 	files, err := sample.findServerFiles("/user/bender/adding-sales-tax")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, expected, files)
 }
 
@@ -153,7 +153,7 @@ func TestPointToDotEnvWithOneIntegrationRb(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../.env'.freeze`)
@@ -175,7 +175,7 @@ func TestPointToDotEnvWithNoIntegrationRb(t *testing.T) {
 		isIntegration: false,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../.env'.freeze`)
@@ -202,7 +202,7 @@ func TestPointToDotEnvWithMultipleIntegrationRb(t *testing.T) {
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.rb")
 	expected := []byte(`ENV_PATH = '../../.env'.freeze`)
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, data)
 }
 
@@ -225,7 +225,7 @@ func TestPointToDotEnvWithMultipleIntegrationJava(t *testing.T) {
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.java")
 	expected := []byte(`String ENV_PATH = "../../";`)
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, data)
 }
 
@@ -244,7 +244,7 @@ func TestPointToDotEnvWithMultipleIntegrationPhp(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.php")
 	expected := []byte(`$ENV_PATH = '../..';`)
@@ -267,7 +267,7 @@ func TestPointToDotEnvWithMultipleIntegrationJs(t *testing.T) {
 		isIntegration: true,
 	}
 	err := sample.PointToDotEnv("/user/bender/adding-sales-tax")
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	data, _ := afero.ReadFile(fs, "/user/bender/adding-sales-tax/server/app.js")
 	expected := []byte(`const envPath = resolve(__dirname, "../../.env");`)

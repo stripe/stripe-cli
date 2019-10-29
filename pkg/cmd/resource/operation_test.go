@@ -34,7 +34,7 @@ func TestRunOperationCmd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
@@ -75,7 +75,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)

@@ -29,7 +29,7 @@ func TestGetPathNoXDG(t *testing.T) {
 	expected, err := homedir.Dir()
 	expected += "/.config/stripe"
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, actual, expected)
 }
 
