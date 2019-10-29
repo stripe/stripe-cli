@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"go/format"
 	"io/ioutil"
+	"net/http"
 	"strings"
 	"text/template"
 
@@ -29,8 +30,8 @@ type ResourceData struct {
 }
 
 type OperationData struct {
-	Path     string
-	HTTPVerb string
+	Path      string
+	HTTPVerb  string
 	PropFlags map[string]string
 }
 
@@ -133,23 +134,41 @@ func getTemplateData() (*TemplateData, error) {
 				properties := make(map[string]string)
 
 				specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
-				requestContent := specOp.RequestBody.Content
 
-				if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
-					for propName, schema := range media.Schema.Properties {
+				if strings.ToUpper(httpString) == http.MethodPost {
+					requestContent := specOp.RequestBody.Content
+
+					if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
+						for propName, schema := range media.Schema.Properties {
+							// only deal with scalar types for now
+							if schema.Type != "string" && schema.Type != "integer" {
+								continue
+							}
+
+							properties[propName] = schema.Type
+						}
+					}
+				} else {
+					for _, param := range specOp.Parameters {
+						// Only create flags for query string parameters
+						if param.In != "query" {
+							continue
+						}
+
+						schema := param.Schema
+
 						// only deal with scalar types for now
 						if schema.Type != "string" && schema.Type != "integer" {
 							continue
 						}
 
-						properties[propName] = schema.Type
-
+						properties[param.Name] = schema.Type
 					}
 				}
 
 				data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
-					Path:     op.Path,
-					HTTPVerb: httpString, 
+					Path:      op.Path,
+					HTTPVerb:  httpString,
 					PropFlags: properties,
 				}
 			}
