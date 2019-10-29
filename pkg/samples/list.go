@@ -66,10 +66,10 @@ var checkoutSingleSubscription = &SampleData{
 	URL:         "https://github.com/stripe-samples/checkout-single-subscription",
 }
 
-var webElementsCardPayment = &SampleData{
-	Name:        "web-elements-card-payment",
-	Description: "Learn how to accept a basic card payment on the web",
-	URL:         "https://github.com/stripe-samples/web-elements-card-payment",
+var cardPayment = &SampleData{
+	Name:        "accept-a-card-payment",
+	Description: "Learn how to accept a basic card payment",
+	URL:         "https://github.com/stripe-samples/accept-a-card-payment",
 }
 
 var savingCardAfterPayment = &SampleData{
@@ -84,6 +84,25 @@ var reactElementsCardPayment = &SampleData{
 	URL:         "https://github.com/stripe-samples/react-elements-card-payment",
 }
 
+var cardPaymentCharges = &SampleData{
+	Name:        "card-payment-charges-api",
+	Description: "Learn how to accept a basic card payment with the Charges API",
+	URL:         "https://github.com/stripe-samples/card-payment-charges-api",
+}
+
+var multiPlanSubscriptions = &SampleData{
+	Name:        "multiple-plan-subscriptions",
+	Description: "Learn how to create a multi-plan subscription model",
+	URL:         "https://github.com/stripe-samples/charging-for-multiple-plan-subscriptions",
+}
+
+var singleSubscription = &SampleData{
+	Name:        "creating-subscriptions",
+	Description: "Learn how to create a simple subscription with Stripe Billing",
+	URL:         "https://github.com/stripe-samples/creating-subscriptions",
+}
+
+
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
@@ -95,9 +114,12 @@ var List = map[string]*SampleData{
 	"saving-card-without-payment":      savingCardWithoutPayment,
 	"checkout-one-time-payments":       checkoutOneTimePayments,
 	"checkout-single-subscription":     checkoutSingleSubscription,
-	"web-elements-card-payment":        webElementsCardPayment,
+	"accept-a-card-payment":        	cardPayment,
 	"saving-card-after-payment":        savingCardAfterPayment,
 	"react-elements-card-payment":      reactElementsCardPayment,
+	"card-payment-charges-api":      	cardPaymentCharges,
+	"multiple-plan-subscriptions":      multiPlanSubscriptions,
+	"creating-subscriptions":      		singleSubscription,
 }
 
 // Names returns a list of all the sample's names
