@@ -25,7 +25,7 @@ func jsonBytes() []byte {
 func TestParseResponse(t *testing.T) {
 	bytes := jsonBytes()
 	resp, err := parseResponse(bytes)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "test-id", resp["id"])
 }
 
@@ -46,7 +46,7 @@ func TestChargeCaptured(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		// Because it's 2 calls to server for this
 		if count == 0 {
@@ -76,7 +76,7 @@ func TestChargeCaptured(t *testing.T) {
 func TestChargeFailed(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.NotEmpty(t, body)
 		require.EqualValues(t, "amount=2000&currency=usd&source=tok_chargeDeclined", string(body))
 
@@ -93,13 +93,13 @@ func TestChargeFailed(t *testing.T) {
 	}
 
 	err := ex.ChargeFailed()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestChargeSucceeded(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, "amount=2000&currency=usd&source=tok_visa", string(body))
 
 		w.WriteHeader(http.StatusOK)
@@ -115,13 +115,13 @@ func TestChargeSucceeded(t *testing.T) {
 	}
 
 	err := ex.ChargeSucceeded()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCustomerCreated(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 		require.Empty(t, body)
 
 		w.WriteHeader(http.StatusOK)
@@ -137,7 +137,7 @@ func TestCustomerCreated(t *testing.T) {
 	}
 
 	err := ex.CustomerCreated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCustomerUpdated(t *testing.T) {
@@ -155,7 +155,7 @@ func TestCustomerUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerUpdated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCustomerSourceCreated(t *testing.T) {
@@ -173,7 +173,7 @@ func TestCustomerSourceCreated(t *testing.T) {
 	}
 
 	err := ex.CustomerSourceCreated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCustomerSourceUpdated(t *testing.T) {
@@ -191,7 +191,7 @@ func TestCustomerSourceUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerSourceUpdated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCustomerSubscriptionUpdated(t *testing.T) {
@@ -209,7 +209,7 @@ func TestCustomerSubscriptionUpdated(t *testing.T) {
 	}
 
 	err := ex.CustomerSubscriptionUpdated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoiceCreated(t *testing.T) {
@@ -227,7 +227,7 @@ func TestInvoiceCreated(t *testing.T) {
 	}
 
 	err := ex.InvoiceCreated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoiceFinalized(t *testing.T) {
@@ -245,7 +245,7 @@ func TestInvoiceFinalized(t *testing.T) {
 	}
 
 	err := ex.InvoiceFinalized()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoicePaymentSucceeded(t *testing.T) {
@@ -263,7 +263,7 @@ func TestInvoicePaymentSucceeded(t *testing.T) {
 	}
 
 	err := ex.InvoicePaymentSucceeded()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvoiceUpdated(t *testing.T) {
@@ -281,7 +281,7 @@ func TestInvoiceUpdated(t *testing.T) {
 	}
 
 	err := ex.InvoiceUpdated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestPaymentIntentCreated(t *testing.T) {
@@ -299,7 +299,7 @@ func TestPaymentIntentCreated(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentCreated()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestPaymentIntentSucceeded(t *testing.T) {
@@ -317,7 +317,7 @@ func TestPaymentIntentSucceeded(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentSucceeded()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestPaymentIntentCanceled(t *testing.T) {
@@ -335,7 +335,7 @@ func TestPaymentIntentCanceled(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentCanceled()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestPaymentIntentFailed(t *testing.T) {
@@ -353,7 +353,7 @@ func TestPaymentIntentFailed(t *testing.T) {
 	}
 
 	err := ex.PaymentIntentFailed()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestPaymentMethodAttached(t *testing.T) {
@@ -371,7 +371,7 @@ func TestPaymentMethodAttached(t *testing.T) {
 	}
 
 	err := ex.PaymentMethodAttached()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestCheckoutSessionCompleted(t *testing.T) {
@@ -394,7 +394,7 @@ func TestCheckoutSessionCompleted(t *testing.T) {
 		case 2: // /v1/payment_methods
 			i++
 			body, err := ioutil.ReadAll(r.Body)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			require.NotEmpty(t, body)
 			require.EqualValues(t, "type=card&card[token]=tok_visa&billing_details[email]=stripe%40example.com", string(body))
@@ -409,7 +409,7 @@ func TestCheckoutSessionCompleted(t *testing.T) {
 			require.True(t, strings.Contains(path, "test-id"))
 
 			body, err := ioutil.ReadAll(r.Body)
-			require.Nil(t, err)
+			require.NoError(t, err)
 
 			require.NotEmpty(t, body)
 			require.EqualValues(t, "payment_method=test-id", string(body))
@@ -432,5 +432,5 @@ func TestCheckoutSessionCompleted(t *testing.T) {
 
 	err := ex.CheckoutSessionCompleted()
 	t.Log(err)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }

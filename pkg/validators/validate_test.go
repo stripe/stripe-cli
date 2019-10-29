@@ -29,22 +29,22 @@ func TestPublishableAPIKey(t *testing.T) {
 
 func TestLivemodeAPIKey(t *testing.T) {
 	err := APIKey("sk_live_12345")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestTestmodeAPIKey(t *testing.T) {
 	err := APIKey("sk_test_12345")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestTestmodeRestrictedAPIKey(t *testing.T) {
 	err := APIKey("rk_test_12345")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestHTTPMethod(t *testing.T) {
 	err := HTTPMethod("GET")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestHTTPMethodInvalid(t *testing.T) {
@@ -54,27 +54,27 @@ func TestHTTPMethodInvalid(t *testing.T) {
 
 func TestHTTPMethodLowercase(t *testing.T) {
 	err := HTTPMethod("post")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRequestSourceAPI(t *testing.T) {
 	err := RequestSource("API")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRequestSourceDashboard(t *testing.T) {
 	err := RequestSource("dashboard")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRequestStatusSucceeded(t *testing.T) {
 	err := RequestStatus("succeeded")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRequestStatusFailed(t *testing.T) {
 	err := RequestStatus("failed")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestRequestStatusInvalid(t *testing.T) {
@@ -89,7 +89,7 @@ func TestRequestSourceInvalid(t *testing.T) {
 
 func TestStatusCode(t *testing.T) {
 	err := StatusCode("200")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestStatusCodeUnusedInStripe(t *testing.T) {
@@ -99,7 +99,7 @@ func TestStatusCodeUnusedInStripe(t *testing.T) {
 
 func TestStatusCodeType(t *testing.T) {
 	err := StatusCodeType("2Xx")
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestStatusCodeTypeUnusedInStripe(t *testing.T) {

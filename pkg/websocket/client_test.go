@@ -23,7 +23,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
 		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
 
@@ -39,10 +39,10 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		}
 
 		msg, err := json.Marshal(evt)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err = c.WriteMessage(ws.TextMessage, msg)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}))
 
 	defer ts.Close()
@@ -95,7 +95,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
 		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, "websocket_feature=request-log-payloads", r.URL.RawQuery)
 
@@ -108,10 +108,10 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		}
 
 		msg, err := json.Marshal(evt)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		err = c.WriteMessage(ws.TextMessage, msg)
-		require.Nil(t, err)
+		require.NoError(t, err)
 	}))
 
 	defer ts.Close()

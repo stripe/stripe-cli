@@ -15,7 +15,7 @@ func TestAPIKeyInput(t *testing.T) {
 	actualKey, err := getConfigureAPIKey(keyInput)
 
 	require.Equal(t, expectedKey, actualKey)
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func TestAPIKeyInputEmpty(t *testing.T) {

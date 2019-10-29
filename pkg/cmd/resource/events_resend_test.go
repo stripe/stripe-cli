@@ -18,7 +18,7 @@ func TestRunEventsResendCmd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/events/evt_123/retry", r.URL.Path)
@@ -48,7 +48,7 @@ func TestRunEventsResendCmd_WithWebhookEndpoint(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/events/evt_123/retry", r.URL.Path)

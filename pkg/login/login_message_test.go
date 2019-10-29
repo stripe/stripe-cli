@@ -18,7 +18,7 @@ func TestSuccessMessage(t *testing.T) {
 	account.Settings.Dashboard.DisplayName = testDisplayName
 
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
@@ -32,7 +32,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 	}
 
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
@@ -43,7 +43,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &Account{}
 	msg, err := SuccessMessage(account, "", "sk_test_123")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured\n",
@@ -67,7 +67,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	defer ts.Close()
 
 	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
@@ -90,7 +90,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	defer ts.Close()
 
 	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(
 		t,
 		"Done! The Stripe CLI is configured for your account with account id acct_123\n",

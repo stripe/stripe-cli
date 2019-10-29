@@ -19,7 +19,7 @@ func TestClientHandler(t *testing.T) {
 		w.Write([]byte("OK!"))
 
 		reqBody, err := ioutil.ReadAll(r.Body)
-		require.Nil(t, err)
+		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "TestAgent/v1", r.UserAgent())
@@ -47,7 +47,7 @@ func TestClientHandler(t *testing.T) {
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
 				buf, err := ioutil.ReadAll(resp.Body)
-				require.Nil(t, err)
+				require.NoError(t, err)
 
 				rcvCtx = evtCtx
 				rcvBody = string(buf)
@@ -76,7 +76,7 @@ func TestClientHandler(t *testing.T) {
 
 	wg.Wait()
 
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "OK!", rcvBody)
 	require.Equal(t, ts.URL, rcvForwardURL)
 	require.Equal(t, "wh_123", rcvCtx.webhookID)
