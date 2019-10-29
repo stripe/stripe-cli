@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -55,6 +56,10 @@ func (p *Profile) GetColor() (string, error) {
 
 // GetDeviceName returns the configured device name
 func (p *Profile) GetDeviceName() (string, error) {
+	if os.Getenv("STRIPE_DEVICE_NAME") != "" {
+		return os.Getenv("STRIPE_DEVICE_NAME"), nil
+	}
+
 	if p.DeviceName != "" {
 		return p.DeviceName, nil
 	}
@@ -68,6 +73,10 @@ func (p *Profile) GetDeviceName() (string, error) {
 
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
+	if os.Getenv("STRIPE_API_KEY") != "" {
+		return os.Getenv("STRIPE_API_KEY"), nil
+	}
+
 	if p.APIKey != "" {
 		err := validators.APIKey(p.APIKey)
 		if err != nil {
