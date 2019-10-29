@@ -314,17 +314,16 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description": "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create", "/v1/customers", http.MethodPost, map[string]string{
-		"account_balance": "integer",
-		"balance":         "integer",
-		"coupon":          "string",
-		"description":     "string",
-		"email":           "string",
-		"invoice_prefix":  "string",
-		"name":            "string",
-		"payment_method":  "string",
-		"phone":           "string",
-		"source":          "string",
-		"tax_exempt":      "string",
+		"balance":        "integer",
+		"coupon":         "string",
+		"description":    "string",
+		"email":          "string",
+		"invoice_prefix": "string",
+		"name":           "string",
+		"payment_method": "string",
+		"phone":          "string",
+		"source":         "string",
+		"tax_exempt":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete", "/v1/customers/{customer}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete_discount", "/v1/customers/{customer}/discount", http.MethodDelete, map[string]string{}, &Config)
@@ -336,17 +335,16 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "update", "/v1/customers/{customer}", http.MethodPost, map[string]string{
-		"account_balance": "integer",
-		"balance":         "integer",
-		"coupon":          "string",
-		"default_source":  "string",
-		"description":     "string",
-		"email":           "string",
-		"invoice_prefix":  "string",
-		"name":            "string",
-		"phone":           "string",
-		"source":          "string",
-		"tax_exempt":      "string",
+		"balance":        "integer",
+		"coupon":         "string",
+		"default_source": "string",
+		"description":    "string",
+		"email":          "string",
+		"invoice_prefix": "string",
+		"name":           "string",
+		"phone":          "string",
+		"source":         "string",
+		"tax_exempt":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "close", "/v1/disputes/{dispute}/close", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "list", "/v1/disputes", http.MethodGet, map[string]string{
@@ -456,7 +454,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create", "/v1/invoices", http.MethodPost, map[string]string{
 		"application_fee_amount": "integer",
-		"billing":                "string",
 		"collection_method":      "string",
 		"customer":               "string",
 		"days_until_due":         "integer",
@@ -471,7 +468,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "delete", "/v1/invoices/{invoice}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "finalize_invoice", "/v1/invoices/{invoice}/finalize", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "list", "/v1/invoices", http.MethodGet, map[string]string{
-		"billing":           "string",
 		"collection_method": "string",
 		"customer":          "string",
 		"ending_before":     "string",
@@ -874,10 +870,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "verify", "/v1/sources/{source}/verify", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "create", "/v1/subscription_items", http.MethodPost, map[string]string{
-		"plan":           "string",
-		"proration_date": "integer",
-		"quantity":       "integer",
-		"subscription":   "string",
+		"payment_behavior": "string",
+		"plan":             "string",
+		"proration_date":   "integer",
+		"quantity":         "integer",
+		"subscription":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "delete", "/v1/subscription_items/{item}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "list", "/v1/subscription_items", http.MethodGet, map[string]string{
@@ -900,14 +897,12 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "cancel", "/v1/subscription_schedules/{schedule}/cancel", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "create", "/v1/subscription_schedules", http.MethodPost, map[string]string{
-		"billing":                "string",
 		"collection_method":      "string",
 		"customer":               "string",
 		"default_payment_method": "string",
 		"default_source":         "string",
 		"end_behavior":           "string",
 		"from_subscription":      "string",
-		"renewal_behavior":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "list", "/v1/subscription_schedules", http.MethodGet, map[string]string{
 		"customer":       "string",
@@ -918,17 +913,14 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "release", "/v1/subscription_schedules/{schedule}/release", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "retrieve", "/v1/subscription_schedules/{schedule}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "update", "/v1/subscription_schedules/{schedule}", http.MethodPost, map[string]string{
-		"billing":                "string",
 		"collection_method":      "string",
 		"default_payment_method": "string",
 		"default_source":         "string",
 		"end_behavior":           "string",
-		"renewal_behavior":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "cancel", "/v1/subscriptions/{subscription_exposed_id}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "create", "/v1/subscriptions", http.MethodPost, map[string]string{
 		"backdate_start_date":    "integer",
-		"billing":                "string",
 		"billing_cycle_anchor":   "integer",
 		"cancel_at":              "integer",
 		"collection_method":      "string",
@@ -942,7 +934,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "delete_discount", "/v1/subscriptions/{subscription_exposed_id}/discount", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "list", "/v1/subscriptions", http.MethodGet, map[string]string{
-		"billing":           "string",
 		"collection_method": "string",
 		"customer":          "string",
 		"ending_before":     "string",
@@ -953,7 +944,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "retrieve", "/v1/subscriptions/{subscription_exposed_id}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "update", "/v1/subscriptions/{subscription_exposed_id}", http.MethodPost, map[string]string{
-		"billing":                "string",
 		"billing_cycle_anchor":   "string",
 		"collection_method":      "string",
 		"coupon":                 "string",
