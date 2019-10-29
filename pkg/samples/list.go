@@ -102,7 +102,6 @@ var singleSubscription = &SampleData{
 	URL:         "https://github.com/stripe-samples/creating-subscriptions",
 }
 
-
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
@@ -114,12 +113,12 @@ var List = map[string]*SampleData{
 	"saving-card-without-payment":      savingCardWithoutPayment,
 	"checkout-one-time-payments":       checkoutOneTimePayments,
 	"checkout-single-subscription":     checkoutSingleSubscription,
-	"accept-a-card-payment":        	cardPayment,
+	"accept-a-card-payment":            cardPayment,
 	"saving-card-after-payment":        savingCardAfterPayment,
 	"react-elements-card-payment":      reactElementsCardPayment,
-	"card-payment-charges-api":      	cardPaymentCharges,
+	"card-payment-charges-api":         cardPaymentCharges,
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
-	"creating-subscriptions":      		singleSubscription,
+	"creating-subscriptions":           singleSubscription,
 }
 
 // Names returns a list of all the sample's names
