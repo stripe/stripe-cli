@@ -101,9 +101,17 @@ func (rb *Base) InitFlags() {
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
-		rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
-		rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
-		rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+		if rb.Cmd.Flags().Lookup("limit") == nil {
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
+		}
+
+		if rb.Cmd.Flags().Lookup("starting-after") == nil {
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
+		}
+
+		if rb.Cmd.Flags().Lookup("ending-before") == nil {
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+		}
 	}
 
 	// Hidden configuration flags, useful for dev/debugging
