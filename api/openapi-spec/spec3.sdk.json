@@ -5117,10 +5117,6 @@
       },
       "customer": {
         "properties": {
-          "account_balance": {
-            "description": "This field has been renamed to `balance` and will be removed in a future API version.",
-            "type": "integer"
-          },
           "address": {
             "anyOf": [
               {
@@ -5132,7 +5128,6 @@
           },
           "balance": {
             "description": "Current balance, if any, being stored on the customer. If negative, the customer has credit to apply to their next invoice. If positive, the customer has an amount owed that will be added to their next invoice. The balance does not refer to any unpaid invoices; it solely takes into account amounts that have yet to be successfully applied to any invoice. This balance is only taken into account as invoices are finalized.",
-            "nullable": true,
             "type": "integer"
           },
           "created": {
@@ -5694,7 +5689,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Transaction type: `adjustment`, `applied_to_invoice`, `credit_note`, `initial`, `invoice_too_large`, `invoice_too_small`, or `unspent_receiver_credit`. See the [Customer Balance page](https://stripe.com/docs/billing/customer/balance#types) to learn more about transaction types.",
+            "description": "Transaction type: `adjustment`, `applied_to_invoice`, `credit_note`, `initial`, `invoice_too_large`, `invoice_too_small`, `unapplied_from_invoice`, or `unspent_receiver_credit`. See the [Customer Balance page](https://stripe.com/docs/billing/customer/balance#types) to learn more about transaction types.",
             "enum": [
               "adjustment",
               "applied_to_invoice",
@@ -5703,6 +5698,7 @@
               "invoice_too_large",
               "invoice_too_small",
               "migration",
+              "unapplied_from_invoice",
               "unspent_receiver_credit"
             ],
             "type": "string"
@@ -6653,6 +6649,11 @@
       },
       "event": {
         "properties": {
+          "account": {
+            "description": "The connected account that originated the event.",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "api_version": {
             "description": "The Stripe API version used to render `data`. *Note: This property is populated only for events on or after October 31, 2014*.",
             "maxLength": 5000,
@@ -7746,15 +7747,6 @@
           "auto_advance": {
             "description": "Controls whether Stripe will perform [automatic collection](https://stripe.com/docs/billing/invoices/workflow/#auto_advance) of the invoice. When `false`, the invoice's state will not automatically advance without an explicit action.",
             "type": "boolean"
-          },
-          "billing": {
-            "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-            "enum": [
-              "charge_automatically",
-              "send_invoice"
-            ],
-            "nullable": true,
-            "type": "string"
           },
           "billing_reason": {
             "description": "Indicates the reason why the invoice was created. `subscription_cycle` indicates an invoice created by a subscription advancing into a new period. `subscription_create` indicates an invoice created due to creating a subscription. `subscription_update` indicates an invoice created due to updating a subscription. `subscription` is set for all old invoices to indicate either a change to a subscription or a period advancement. `manual` is set for all invoices unrelated to a subscription (for example: created via the invoice editor). The `upcoming` value is reserved for simulated invoices per the upcoming invoice endpoint. `subscription_threshold` indicates an invoice created due to a billing threshold being reached.",
@@ -9050,14 +9042,17 @@
       "invoices_resource_invoice_tax_id": {
         "properties": {
           "type": {
-            "description": "The type of the tax ID, one of `au_abn`, `eu_vat`, `in_gst`, `no_vat`, `nz_gst`, or `unknown`",
+            "description": "The type of the tax ID, one of `au_abn`, `ch_vat`, `eu_vat`, `in_gst`, `mx_rfc`, `no_vat`, `nz_gst`, `unknown`, or `za_vat`",
             "enum": [
               "au_abn",
+              "ch_vat",
               "eu_vat",
               "in_gst",
+              "mx_rfc",
               "no_vat",
               "nz_gst",
-              "unknown"
+              "unknown",
+              "za_vat"
             ],
             "type": "string"
           },
@@ -9351,7 +9346,7 @@
             "type": "array"
           },
           "status": {
-            "description": "One of `pending`, `reversed`, or `closed`.",
+            "description": "One of `closed`, `pending`, or `reversed`.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -9660,7 +9655,7 @@
             "nullable": true
           },
           "status": {
-            "description": "One of `active`, `inactive`, `canceled`, `lost`, `stolen`, or `pending`.",
+            "description": "One of `active`, `inactive`, `canceled`, `lost`, or `stolen`.",
             "enum": [
               "active",
               "canceled",
@@ -9936,8 +9931,11 @@
             "nullable": true,
             "type": "string"
           },
+          "requirements": {
+            "$ref": "#/components/schemas/issuing_cardholder_requirements"
+          },
           "status": {
-            "description": "One of `active`, `inactive`, `blocked`, or `pending`.",
+            "description": "One of `active`, `inactive`, or `blocked`.",
             "enum": [
               "active",
               "blocked",
@@ -9964,6 +9962,7 @@
           "metadata",
           "name",
           "object",
+          "requirements",
           "status",
           "type"
         ],
@@ -9971,7 +9970,8 @@
         "type": "object",
         "x-expandableFields": [
           "authorization_controls",
-          "billing"
+          "billing",
+          "requirements"
         ],
         "x-resourceId": "issuing.cardholder",
         "x-stripeOperations": [
@@ -10063,6 +10063,7 @@
           "inner_classes": [
             "issuing_cardholder_address",
             "issuing_cardholder_authorization_controls",
+            "issuing_cardholder_requirements",
             "issuing_cardholder_spending_limit"
           ]
         }
@@ -10642,7 +10643,7 @@
             "type": "string"
           },
           "authentication": {
-            "description": "One of `success`, `failure`, `exempt`, or `none`.",
+            "description": "One of `exempt`, `failure`, `none`, or `success`.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -11265,11 +11266,6 @@
             "maxLength": 3,
             "nullable": true,
             "type": "string"
-          },
-          "max_amount": {
-            "description": "Maximum amount allowed per authorization on this card, in the currency of the card. Authorization amounts in a different currency will be converted to the card's currency when evaluating this control.",
-            "nullable": true,
-            "type": "integer"
           },
           "max_approvals": {
             "description": "Maximum count of approved authorizations on this card. Counts all authorizations retroactively.",
@@ -12358,6 +12354,45 @@
           "in_class": "issuing.cardholder"
         }
       },
+      "issuing_cardholder_requirements": {
+        "properties": {
+          "disabled_reason": {
+            "description": "If the cardholder is disabled, this string describes why. Can be one of `listed`, `rejected.listed`, or `under_review`.",
+            "enum": [
+              "listed",
+              "rejected.listed",
+              "under_review"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "past_due": {
+            "description": "If not empty, this field contains the list of fields that need to be collected in order to verify and re-enabled the cardholder.",
+            "items": {
+              "enum": [
+                "individual.dob.day",
+                "individual.dob.month",
+                "individual.dob.year",
+                "individual.first_name",
+                "individual.last_name",
+                "individual.verification.document"
+              ],
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "title": "IssuingCardholderRequirements",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Requirements",
+          "in_class": "issuing.cardholder"
+        }
+      },
       "issuing_cardholder_spending_limit": {
         "properties": {
           "amount": {
@@ -13085,7 +13120,7 @@
             "type": "string"
           },
           "details_code": {
-            "description": "One of `document_address_mismatch`, `document_dob_mismatch`, `document_duplicate_type`, `document_id_number_mismatch`, `document_name_mismatch`, `failed_keyed_identity`, or `failed_other`. A machine-readable code specifying the verification state for the person.",
+            "description": "One of `document_address_mismatch`, `document_dob_mismatch`, `document_duplicate_type`, `document_id_number_mismatch`, `document_name_mismatch`, `document_nationality_mismatch`, `failed_keyed_identity`, or `failed_other`. A machine-readable code specifying the verification state for the person.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -14811,6 +14846,15 @@
       },
       "payment_intent_payment_method_options_card": {
         "properties": {
+          "installments": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_method_options_card_installments"
+              }
+            ],
+            "description": "Installment details for this payment (Mexico only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
+            "nullable": true
+          },
           "request_three_d_secure": {
             "description": "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://stripe.com/docs/strong-customer-authentication). However, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option. Permitted values include: `automatic` or `any`. If not provided, defaults to `automatic`. Read our guide on [manually requesting 3D Secure](https://stripe.com/docs/payments/3d-secure#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
             "enum": [
@@ -14825,11 +14869,14 @@
         "title": "payment_intent_payment_method_options_card",
         "type": "object",
         "x-expandableFields": [
-
+          "installments"
         ],
         "x-stripeResource": {
           "class_name": "Card",
-          "in_class": "payment_intent_payment_method_options"
+          "in_class": "payment_intent_payment_method_options",
+          "inner_classes": [
+            "payment_method_options_card_installments"
+          ]
         }
       },
       "payment_method": {
@@ -15700,6 +15747,11 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "mandate": {
+            "description": "ID of the mandate used to make this payment.",
+            "maxLength": 5000,
+            "type": "string"
           }
         },
         "title": "payment_method_details_au_becs_debit",
@@ -15862,6 +15914,15 @@
             "nullable": true,
             "type": "string"
           },
+          "installments": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_method_details_card_installments"
+              }
+            ],
+            "description": "Installment details for this payment (Mexico only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
+            "nullable": true
+          },
           "issuer": {
             "description": "Issuer bank name of the card. (Only for internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
@@ -15902,6 +15963,7 @@
         "type": "object",
         "x-expandableFields": [
           "checks",
+          "installments",
           "three_d_secure",
           "wallet"
         ],
@@ -15910,6 +15972,7 @@
           "in_class": "payment_method_details",
           "inner_classes": [
             "payment_method_details_card_checks",
+            "payment_method_details_card_installments",
             "payment_method_details_card_wallet",
             "three_d_secure_details"
           ]
@@ -15944,6 +16007,64 @@
         "x-stripeResource": {
           "class_name": "Checks",
           "in_class": "payment_method_details_card"
+        }
+      },
+      "payment_method_details_card_installments": {
+        "properties": {
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_method_details_card_installments_plan"
+              }
+            ],
+            "description": "Installment plan selected for the payment.",
+            "nullable": true
+          }
+        },
+        "title": "payment_method_details_card_installments",
+        "type": "object",
+        "x-expandableFields": [
+          "plan"
+        ],
+        "x-stripeResource": {
+          "class_name": "Installments",
+          "in_class": "payment_method_details_card"
+        }
+      },
+      "payment_method_details_card_installments_plan": {
+        "properties": {
+          "count": {
+            "description": "For `fixed_count` installment plans, this is the number of installment payments your customer will make to their credit card.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "interval": {
+            "description": "For `fixed_count` installment plans, this is the interval between installment payments your customer will make to their credit card.\nOne of `month`.",
+            "enum": [
+              "month"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "type": {
+            "description": "Type of installment plan, one of `fixed_count`.",
+            "enum": [
+              "fixed_count"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "payment_method_details_card_installments_plan",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Plan",
+          "in_class": "payment_method_options_card_installments"
         }
       },
       "payment_method_details_card_present": {
@@ -16630,6 +16751,47 @@
         "x-stripeResource": {
           "class_name": "Wechat",
           "in_class": "payment_method_details"
+        }
+      },
+      "payment_method_options_card_installments": {
+        "properties": {
+          "available_plans": {
+            "description": "Installment plans that may be selected for this PaymentIntent.",
+            "items": {
+              "$ref": "#/components/schemas/payment_method_details_card_installments_plan"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "enabled": {
+            "description": "Whether Installments are enabled for this PaymentIntent.",
+            "type": "boolean"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_method_details_card_installments_plan"
+              }
+            ],
+            "description": "Installment plan selected for this PaymentIntent.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "payment_method_options_card_installments",
+        "type": "object",
+        "x-expandableFields": [
+          "available_plans",
+          "plan"
+        ],
+        "x-stripeResource": {
+          "class_name": "Installments",
+          "in_class": "payment_intent_payment_method_options_card",
+          "inner_classes": [
+            "payment_method_details_card_installments_plan"
+          ]
         }
       },
       "payment_source": {
@@ -22676,15 +22838,6 @@
             "nullable": true,
             "type": "number"
           },
-          "billing": {
-            "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-            "enum": [
-              "charge_automatically",
-              "send_invoice"
-            ],
-            "nullable": true,
-            "type": "string"
-          },
           "billing_cycle_anchor": {
             "description": "Determines the date of the first full invoice, and, for plans with `month` or `year` intervals, the day of the month for subsequent invoices.",
             "format": "unix-time",
@@ -22901,12 +23054,27 @@
             "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
             "type": "object"
           },
+          "next_pending_invoice_item_invoice": {
+            "description": "Specifies the approximate timestamp on which any pending invoice items will be billed according to the schedule provided at `pending_invoice_item_interval`.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
           "object": {
             "description": "String representing the object's type. Objects of the same type share the same value.",
             "enum": [
               "subscription"
             ],
             "type": "string"
+          },
+          "pending_invoice_item_interval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/subscription_pending_invoice_item_interval"
+              }
+            ],
+            "description": "Specifies an interval for how often to bill for any pending invoice items. It is analogous to calling [Create an invoice](https://stripe.com/docs/api#create_invoice) for the given subscription at the specified interval.",
+            "nullable": true
           },
           "pending_setup_intent": {
             "anyOf": [
@@ -22961,11 +23129,6 @@
                 }
               ]
             }
-          },
-          "start": {
-            "description": "Date of the last substantial change to this subscription. For example, a change to the items array, or a change of status, will reset this timestamp.",
-            "format": "unix-time",
-            "type": "integer"
           },
           "start_date": {
             "description": "Date when the subscription was first created. The date might differ from the `created` date due to backdating.",
@@ -23024,7 +23187,6 @@
           "livemode",
           "metadata",
           "object",
-          "start",
           "start_date",
           "status"
         ],
@@ -23039,6 +23201,7 @@
           "discount",
           "items",
           "latest_invoice",
+          "pending_invoice_item_interval",
           "pending_setup_intent",
           "plan",
           "schedule",
@@ -23184,7 +23347,8 @@
           "has_collection_class": true,
           "in_package": "",
           "inner_classes": [
-            "subscription_billing_thresholds"
+            "subscription_billing_thresholds",
+            "subscription_pending_invoice_item_interval"
           ]
         }
       },
@@ -23447,17 +23611,39 @@
           "in_class": "subscription_item"
         }
       },
-      "subscription_schedule": {
+      "subscription_pending_invoice_item_interval": {
         "properties": {
-          "billing": {
-            "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
+          "interval": {
+            "description": "Specifies invoicing frequency. Either `day`, `week`, `month` or `year`.",
             "enum": [
-              "charge_automatically",
-              "send_invoice"
+              "day",
+              "month",
+              "week",
+              "year"
             ],
-            "nullable": true,
             "type": "string"
           },
+          "interval_count": {
+            "description": "The number of intervals between invoices. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "interval",
+          "interval_count"
+        ],
+        "title": "SubscriptionPendingInvoiceItemInterval",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "PendingInvoiceItemInterval",
+          "in_class": "subscription"
+        }
+      },
+      "subscription_schedule": {
+        "properties": {
           "billing_thresholds": {
             "anyOf": [
               {
@@ -23531,7 +23717,7 @@
                 "$ref": "#/components/schemas/payment_method"
               }
             ],
-            "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
+            "description": "ID of the default payment method for the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -23551,7 +23737,7 @@
                 "$ref": "#/components/schemas/payment_source"
               }
             ],
-            "description": "ID of the default payment source for the subscription schedule. It must belong to the customer associated with the subscription schedule and be in a chargeable state. If not set, defaults to the customer's default source.",
+            "description": "ID of the default payment source for the subscription schedule. If not set, defaults to the customer's default source.",
             "nullable": true,
             "x-expansionResources": {
               "oneOf": [
@@ -23569,7 +23755,6 @@
               "release",
               "renew"
             ],
-            "nullable": true,
             "type": "string"
           },
           "id": {
@@ -23625,17 +23810,6 @@
             "nullable": true,
             "type": "string"
           },
-          "renewal_behavior": {
-            "description": "This field has been deprecated and will be replaced with `end_behavior` in future API versions. Behavior of the subscription schedule and underlying subscription when it ends.",
-            "enum": [
-              "cancel",
-              "none",
-              "release",
-              "renew"
-            ],
-            "nullable": true,
-            "type": "string"
-          },
           "renewal_interval": {
             "anyOf": [
               {
@@ -23680,6 +23854,7 @@
         "required": [
           "created",
           "customer",
+          "end_behavior",
           "id",
           "livemode",
           "object",
@@ -24198,14 +24373,17 @@
             "type": "string"
           },
           "type": {
-            "description": "Type of the tax ID, one of `au_abn`, `eu_vat`, `in_gst`, `no_vat`, `nz_gst`, or `unknown`",
+            "description": "Type of the tax ID, one of `au_abn`, `ch_vat`, `eu_vat`, `in_gst`, `mx_rfc`, `no_vat`, `nz_gst`, `za_vat`, or `unknown`",
             "enum": [
               "au_abn",
+              "ch_vat",
               "eu_vat",
               "in_gst",
+              "mx_rfc",
               "no_vat",
               "nz_gst",
-              "unknown"
+              "unknown",
+              "za_vat"
             ],
             "type": "string"
           },
@@ -26360,7 +26538,7 @@
             "type": "boolean"
           },
           "enabled_events": {
-            "description": "The list of events to enable for this endpoint. You may specify `['*']` to enable all events.",
+            "description": "The list of events to enable for this endpoint. `['*']` indicates that all events are enabled, except those that require explicit selection.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -26547,7 +26725,7 @@
     "description": "The Stripe REST API. Please see https://stripe.com/docs/api for more details.",
     "termsOfService": "https://stripe.com/us/terms/",
     "title": "Stripe API",
-    "version": "2019-10-08",
+    "version": "2019-10-17",
     "x-stripeSpecFilename": "spec3.sdk"
   },
   "openapi": "3.0.0",
@@ -26766,7 +26944,7 @@
     },
     "/v1/account_links": {
       "post": {
-        "description": "<p>Creates an AccountLink object that returns a Stripe URL that the user can redirect their user to in order to take them through the hosted onboarding flow.</p>",
+        "description": "<p>Creates an AccountLink object that returns a single-use Stripe URL that the user can redirect their user to in order to take them through the Connect Onboarding flow.</p>",
         "operationId": "PostAccountLinks",
         "requestBody": {
           "content": {
@@ -26806,7 +26984,7 @@
                     "type": "string"
                   },
                   "success_url": {
-                    "description": "The URL that the user will be redirected to upon completing the linked flow successfully.",
+                    "description": "The URL that the user will be redirected to upon leaving or completing the linked flow successfully.",
                     "type": "string"
                   },
                   "type": {
@@ -27729,7 +27907,7 @@
                                 "x-stripeBypassValidation": true
                               },
                               "monthly_anchor": {
-                                "description": "The day of the month when available funds are paid out. Required and applicable only if `interval` is `monthly`.",
+                                "description": "The day of the month when available funds are paid out, specified as a number between 1--31. Payouts nominally scheduled between the 29th and 31st of the month are instead sent on the last day of a shorter month. Required and applicable only if `interval` is `monthly`.",
                                 "type": "integer"
                               },
                               "weekly_anchor": {
@@ -28678,7 +28856,7 @@
                                 "x-stripeBypassValidation": true
                               },
                               "monthly_anchor": {
-                                "description": "The day of the month when available funds are paid out. Required and applicable only if `interval` is `monthly`.",
+                                "description": "The day of the month when available funds are paid out, specified as a number between 1--31. Payouts nominally scheduled between the 29th and 31st of the month are instead sent on the last day of a shorter month. Required and applicable only if `interval` is `monthly`.",
                                 "type": "integer"
                               },
                               "weekly_anchor": {
@@ -34148,6 +34326,10 @@
                         "format": "unix-time",
                         "type": "integer"
                       },
+                      "trial_from_plan": {
+                        "description": "Indicates if a plan’s `trial_period_days` should be applied to the\nsubscription. Setting `trial_end` on `subscription_data` is preferred.\nDefaults to `false`.",
+                        "type": "boolean"
+                      },
                       "trial_period_days": {
                         "description": "Integer representing the number of trial period days before the\ncustomer is charged for the first time. Has to be at least 1.",
                         "type": "integer"
@@ -35637,10 +35819,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "account_balance": {
-                    "description": "This field has been renamed to `balance` and will be removed in a future API version.",
-                    "type": "integer"
-                  },
                   "address": {
                     "anyOf": [
                       {
@@ -35887,13 +36065,16 @@
                     "items": {
                       "properties": {
                         "type": {
-                          "description": "Type of the tax ID, one of `au_abn`, `eu_vat`, `in_gst`, `no_vat`, or `nz_gst`",
+                          "description": "Type of the tax ID, one of `au_abn`, `ch_vat`, `eu_vat`, `in_gst`, `mx_rfc`, `no_vat`, `nz_gst`, or `za_vat`",
                           "enum": [
                             "au_abn",
+                            "ch_vat",
                             "eu_vat",
                             "in_gst",
+                            "mx_rfc",
                             "no_vat",
-                            "nz_gst"
+                            "nz_gst",
+                            "za_vat"
                           ],
                           "maxLength": 5000,
                           "type": "string"
@@ -36150,10 +36331,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "account_balance": {
-                    "description": "This field has been renamed to `balance` and will be removed in a future API version.",
-                    "type": "integer"
-                  },
                   "address": {
                     "anyOf": [
                       {
@@ -37778,13 +37955,16 @@
                     "type": "array"
                   },
                   "type": {
-                    "description": "Type of the tax ID, one of `au_abn`, `eu_vat`, `in_gst`, `no_vat`, or `nz_gst`",
+                    "description": "Type of the tax ID, one of `au_abn`, `ch_vat`, `eu_vat`, `in_gst`, `mx_rfc`, `no_vat`, `nz_gst`, or `za_vat`",
                     "enum": [
                       "au_abn",
+                      "ch_vat",
                       "eu_vat",
                       "in_gst",
+                      "mx_rfc",
                       "no_vat",
-                      "nz_gst"
+                      "nz_gst",
+                      "za_vat"
                     ],
                     "maxLength": 5000,
                     "type": "string"
@@ -40727,21 +40907,6 @@
         "operationId": "GetInvoices",
         "parameters": [
           {
-            "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-            "in": "query",
-            "name": "billing",
-            "required": false,
-            "schema": {
-              "enum": [
-                "charge_automatically",
-                "send_invoice"
-              ],
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "form"
-          },
-          {
             "description": "The collection method of the invoice to retrieve. Either `charge_automatically` or `send_invoice`.",
             "in": "query",
             "name": "collection_method",
@@ -41026,15 +41191,6 @@
                   "auto_advance": {
                     "description": "Controls whether Stripe will perform [automatic collection](https://stripe.com/docs/billing/invoices/workflow/#auto_advance) of the invoice. When `false`, the invoice's state will not automatically advance without an explicit action.",
                     "type": "boolean"
-                  },
-                  "billing": {
-                    "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "maxLength": 5000,
-                    "type": "string"
                   },
                   "collection_method": {
                     "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay this invoice using the default source attached to the customer. When sending an invoice, Stripe will email this invoice to the customer with payment instructions. Defaults to `charge_automatically`.",
@@ -46665,10 +46821,6 @@
                           "containee_entity_name": "blocked_category"
                         }
                       },
-                      "max_amount": {
-                        "description": "Maximum amount allowed per authorization on this card, in the currency of the card. Authorization amounts in a different currency will be converted to the card's currency when evaluating this control.",
-                        "type": "integer"
-                      },
                       "max_approvals": {
                         "description": "Maximum count of approved authorizations on this card. Counts all authorizations retroactively.",
                         "type": "integer"
@@ -47865,10 +48017,6 @@
                         "x-stripeParam": {
                           "containee_entity_name": "blocked_category"
                         }
-                      },
-                      "max_amount": {
-                        "description": "Maximum amount allowed per authorization on this card, in the currency of the card. Authorization amounts in a different currency will be converted to the card's currency when evaluating this control.",
-                        "type": "integer"
                       },
                       "max_approvals": {
                         "description": "Maximum count of approved authorizations on this card. Counts all authorizations retroactively.",
@@ -50672,6 +50820,57 @@
                       "card": {
                         "description": "Configuration for any card payments attempted on this PaymentIntent.",
                         "properties": {
+                          "installments": {
+                            "description": "Installment configuration for payments attempted on this PaymentIntent (Mexico Only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
+                            "properties": {
+                              "enabled": {
+                                "description": "Setting to true enables installments for this PaymentIntent.\nThis will cause the response to contain a list of available installment plans.\nSetting to false will prevent any selected plan from applying to a charge.",
+                                "type": "boolean"
+                              },
+                              "plan": {
+                                "anyOf": [
+                                  {
+                                    "properties": {
+                                      "count": {
+                                        "description": "For `fixed_count` installment plans, this is the number of installment payments your customer will make to their credit card.",
+                                        "type": "integer"
+                                      },
+                                      "interval": {
+                                        "description": "For `fixed_count` installment plans, this is the interval between installment payments your customer will make to their credit card.\nOne of `month`.",
+                                        "enum": [
+                                          "month"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "type": {
+                                        "description": "Type of installment plan, one of `fixed_count`.",
+                                        "enum": [
+                                          "fixed_count"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "count",
+                                      "interval",
+                                      "type"
+                                    ],
+                                    "title": "installment_plan",
+                                    "type": "object"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "The selected installment plan to use for this payment attempt.\nThis parameter can only be provided during confirmation."
+                              }
+                            },
+                            "title": "installments_param",
+                            "type": "object"
+                          },
                           "moto": {
                             "description": "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
                             "type": "boolean"
@@ -51481,6 +51680,57 @@
                       "card": {
                         "description": "Configuration for any card payments attempted on this PaymentIntent.",
                         "properties": {
+                          "installments": {
+                            "description": "Installment configuration for payments attempted on this PaymentIntent (Mexico Only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
+                            "properties": {
+                              "enabled": {
+                                "description": "Setting to true enables installments for this PaymentIntent.\nThis will cause the response to contain a list of available installment plans.\nSetting to false will prevent any selected plan from applying to a charge.",
+                                "type": "boolean"
+                              },
+                              "plan": {
+                                "anyOf": [
+                                  {
+                                    "properties": {
+                                      "count": {
+                                        "description": "For `fixed_count` installment plans, this is the number of installment payments your customer will make to their credit card.",
+                                        "type": "integer"
+                                      },
+                                      "interval": {
+                                        "description": "For `fixed_count` installment plans, this is the interval between installment payments your customer will make to their credit card.\nOne of `month`.",
+                                        "enum": [
+                                          "month"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "type": {
+                                        "description": "Type of installment plan, one of `fixed_count`.",
+                                        "enum": [
+                                          "fixed_count"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "count",
+                                      "interval",
+                                      "type"
+                                    ],
+                                    "title": "installment_plan",
+                                    "type": "object"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "The selected installment plan to use for this payment attempt.\nThis parameter can only be provided during confirmation."
+                              }
+                            },
+                            "title": "installments_param",
+                            "type": "object"
+                          },
                           "moto": {
                             "description": "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA. This\nparameter can only be provided during confirmation.",
                             "type": "boolean"
@@ -56595,7 +56845,6 @@
                       },
                       "payout": {
                         "description": "Payout ID by which to filter the report run.",
-                        "maxLength": 5000,
                         "type": "string"
                       },
                       "reporting_category": {
@@ -58899,7 +59148,7 @@
                         "description": "The parameters required to notify Stripe of a mandate acceptance or refusal by the customer.",
                         "properties": {
                           "date": {
-                            "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                            "description": "The Unix timestamp (in seconds) when the mandate was accepted or refused by the customer.",
                             "format": "unix-time",
                             "type": "integer"
                           },
@@ -58925,7 +59174,7 @@
                             "description": "The parameters required to store a mandate accepted online. Should only be set if `mandate[type]` is `online`",
                             "properties": {
                               "date": {
-                                "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                                "description": "The Unix timestamp (in seconds) when the mandate was accepted or refused by the customer.",
                                 "format": "unix-time",
                                 "type": "integer"
                               },
@@ -59423,7 +59672,7 @@
                         "description": "The parameters required to notify Stripe of a mandate acceptance or refusal by the customer.",
                         "properties": {
                           "date": {
-                            "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                            "description": "The Unix timestamp (in seconds) when the mandate was accepted or refused by the customer.",
                             "format": "unix-time",
                             "type": "integer"
                           },
@@ -59449,7 +59698,7 @@
                             "description": "The parameters required to store a mandate accepted online. Should only be set if `mandate[type]` is `online`",
                             "properties": {
                               "date": {
-                                "description": "The unix timestamp the mandate was accepted or refused at by the customer.",
+                                "description": "The Unix timestamp (in seconds) when the mandate was accepted or refused by the customer.",
                                 "format": "unix-time",
                                 "type": "integer"
                               },
@@ -60168,6 +60417,14 @@
                     "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
                     "type": "object"
                   },
+                  "payment_behavior": {
+                    "enum": [
+                      "allow_incomplete",
+                      "error_if_incomplete",
+                      "pending_if_incomplete"
+                    ],
+                    "type": "string"
+                  },
                   "plan": {
                     "description": "The identifier of the plan to add to the subscription.",
                     "maxLength": 5000,
@@ -60469,7 +60726,8 @@
                   "payment_behavior": {
                     "enum": [
                       "allow_incomplete",
-                      "error_if_incomplete"
+                      "error_if_incomplete",
+                      "pending_if_incomplete"
                     ],
                     "type": "string"
                   },
@@ -61087,10 +61345,6 @@
                   "explode": true,
                   "style": "deepObject"
                 },
-                "renewal_interval": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
                 "start_date": {
                   "explode": true,
                   "style": "deepObject"
@@ -61099,14 +61353,6 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "billing": {
-                    "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "type": "string"
-                  },
                   "billing_thresholds": {
                     "anyOf": [
                       {
@@ -61381,41 +61627,6 @@
                       "containee_entity_name": "phase"
                     }
                   },
-                  "renewal_behavior": {
-                    "description": "This parameter has been replaced with `end_behavior` and will be removed in future API versions. Configures how the subscription schedule behaves when it ends. Possible values are `none`, `cancel`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `cancel` is semantically the same as `none`. `release` will stop the subscription schedule, but keep the underlying subscription running.",
-                    "enum": [
-                      "cancel",
-                      "none",
-                      "release",
-                      "renew"
-                    ],
-                    "type": "string"
-                  },
-                  "renewal_interval": {
-                    "description": "This parameter has been deprecated and will be removed in future API versions. Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
-                    "properties": {
-                      "interval": {
-                        "description": "Interval at which to renew the subscription schedule for when it ends. Possible values are `day`, `week`, `month`, or `year`.",
-                        "enum": [
-                          "day",
-                          "month",
-                          "week",
-                          "year"
-                        ],
-                        "type": "string"
-                      },
-                      "length": {
-                        "description": "Number of intervals to renew the subscription schedule for when it ends.",
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "interval",
-                      "length"
-                    ],
-                    "title": "renewal_interval_params",
-                    "type": "object"
-                  },
                   "start_date": {
                     "anyOf": [
                       {
@@ -61570,23 +61781,11 @@
                 "phases": {
                   "explode": true,
                   "style": "deepObject"
-                },
-                "renewal_interval": {
-                  "explode": true,
-                  "style": "deepObject"
                 }
               },
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "billing": {
-                    "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "type": "string"
-                  },
                   "billing_thresholds": {
                     "anyOf": [
                       {
@@ -61889,41 +62088,6 @@
                   "prorate": {
                     "description": "If the update changes the current phase, indicates if the changes should be prorated. Defaults to `true`.",
                     "type": "boolean"
-                  },
-                  "renewal_behavior": {
-                    "description": "This parameter has been replaced with `end_behavior` and will be removed in future API versions. Configures how the subscription schedule behaves when it ends. Possible values are `none`, `cancel`, `renew`, or `release`. `renew` will create a new subscription schedule revision by adding a new phase using the most recent phase's `plans` applied to a duration set by `renewal_interval`. `none` will stop the subscription schedule and cancel the underlying subscription. `cancel` is semantically the same as `none`. `release` will stop the subscription schedule, but keep the underlying subscription running.",
-                    "enum": [
-                      "cancel",
-                      "none",
-                      "release",
-                      "renew"
-                    ],
-                    "type": "string"
-                  },
-                  "renewal_interval": {
-                    "description": "This parameter has been deprecated and will be removed in future API versions. Configuration for renewing the subscription schedule when it ends. Must be set if `renewal_behavior` is `renew`. Otherwise, must not be set.",
-                    "properties": {
-                      "interval": {
-                        "description": "Interval at which to renew the subscription schedule for when it ends. Possible values are `day`, `week`, `month`, or `year`.",
-                        "enum": [
-                          "day",
-                          "month",
-                          "week",
-                          "year"
-                        ],
-                        "type": "string"
-                      },
-                      "length": {
-                        "description": "Number of intervals to renew the subscription schedule for when it ends.",
-                        "type": "integer"
-                      }
-                    },
-                    "required": [
-                      "interval",
-                      "length"
-                    ],
-                    "title": "renewal_interval_params",
-                    "type": "object"
                   }
                 },
                 "type": "object"
@@ -62109,21 +62273,6 @@
         "description": "<p>By default, returns a list of subscriptions that have not been canceled. In order to list canceled subscriptions, specify <code>status=canceled</code>.</p>",
         "operationId": "GetSubscriptions",
         "parameters": [
-          {
-            "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-            "in": "query",
-            "name": "billing",
-            "required": false,
-            "schema": {
-              "enum": [
-                "charge_automatically",
-                "send_invoice"
-              ],
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "form"
-          },
           {
             "description": "The collection method of the subscriptions to retrieve. Either `charge_automatically` or `send_invoice`.",
             "in": "query",
@@ -62438,6 +62587,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "pending_invoice_item_interval": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_percent": {
                   "explode": true,
                   "style": "deepObject"
@@ -62462,15 +62615,6 @@
                     "description": "For new subscriptions, a past timestamp to backdate the subscription's start date to. If set, the first invoice will contain a proration for the timespan between the start date and the current time. Can be combined with trials and the billing cycle anchor.",
                     "format": "unix-time",
                     "type": "integer"
-                  },
-                  "billing": {
-                    "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "maxLength": 5000,
-                    "type": "string"
                   },
                   "billing_cycle_anchor": {
                     "description": "A future timestamp to anchor the subscription's [billing cycle](https://stripe.com/docs/subscriptions/billing-cycle). This is used to determine the date of the first full invoice, and, for plans with `month` or `year` intervals, the day of the month for subsequent invoices.",
@@ -62666,9 +62810,45 @@
                     "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if its first invoice cannot be paid.\nCreating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay\na subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the\n[SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the\ndefault behavior.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice\ncannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further\nuser action is needed, this parameter does not create a subscription and returns an error instead. This was the default\nbehavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
                     "enum": [
                       "allow_incomplete",
-                      "error_if_incomplete"
+                      "error_if_incomplete",
+                      "pending_if_incomplete"
                     ],
                     "type": "string"
+                  },
+                  "pending_invoice_item_interval": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "interval": {
+                            "description": "Specifies invoicing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between invoices. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "pending_invoice_item_interval_params",
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Specifies an interval for how often to bill for any pending invoice items. It is analogous to calling [Create an invoice](https://stripe.com/docs/api#create_invoice) for the given subscription at the specified interval."
                   },
                   "prorate": {
                     "description": "Boolean (defaults to `true`) telling us whether to [credit for unused time](https://stripe.com/docs/subscriptions/billing-cycle#prorations) when the billing cycle changes (e.g. when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes. If `false`, the anchor period will be free (similar to a trial) and no proration adjustments will be created.",
@@ -62934,6 +63114,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "pending_invoice_item_interval": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_percent": {
                   "explode": true,
                   "style": "deepObject"
@@ -62953,15 +63137,6 @@
                   "application_fee_percent": {
                     "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                     "type": "number"
-                  },
-                  "billing": {
-                    "description": "This field has been renamed to `collection_method` and will be removed in a future API version.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "maxLength": 5000,
-                    "type": "string"
                   },
                   "billing_cycle_anchor": {
                     "description": "Either `now` or `unchanged`. Setting the value to `now` resets the subscription's billing cycle anchor to the current time. For more information, see the billing cycle [documentation](https://stripe.com/docs/billing/subscriptions/billing-cycle).",
@@ -63176,9 +63351,45 @@
                     "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if its first invoice cannot be paid.\nCreating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay\na subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the\n[SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the\ndefault behavior.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice\ncannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further\nuser action is needed, this parameter does not create a subscription and returns an error instead. This was the default\nbehavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
                     "enum": [
                       "allow_incomplete",
-                      "error_if_incomplete"
+                      "error_if_incomplete",
+                      "pending_if_incomplete"
                     ],
                     "type": "string"
+                  },
+                  "pending_invoice_item_interval": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "interval": {
+                            "description": "Specifies invoicing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between invoices. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "pending_invoice_item_interval_params",
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Specifies an interval for how often to bill for any pending invoice items. It is analogous to calling [Create an invoice](https://stripe.com/docs/api#create_invoice) for the given subscription at the specified interval."
                   },
                   "prorate": {
                     "description": "Boolean (defaults to `true`) telling us whether to [credit for unused time](https://stripe.com/docs/subscriptions/billing-cycle#prorations) when the billing cycle changes (e.g. when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes. If `false`, the anchor period will be free (similar to a trial) and no proration adjustments will be created.",
@@ -67051,7 +67262,8 @@
                       "2019-05-16",
                       "2019-08-14",
                       "2019-09-09",
-                      "2019-10-08"
+                      "2019-10-08",
+                      "2019-10-17"
                     ],
                     "maxLength": 5000,
                     "type": "string",
@@ -67062,7 +67274,7 @@
                     "type": "boolean"
                   },
                   "enabled_events": {
-                    "description": "The list of events to enable for this endpoint. You may specify `['*']` to enable all events.",
+                    "description": "The list of events to enable for this endpoint. You may specify `['*']` to enable all events, except those that require explicit selection.",
                     "items": {
                       "enum": [
                         "*",
@@ -67431,7 +67643,7 @@
                     "type": "boolean"
                   },
                   "enabled_events": {
-                    "description": "The list of events to enable for this endpoint. You may specify `['*']` to enable all events.",
+                    "description": "The list of events to enable for this endpoint. You may specify `['*']` to enable all events, except those that require explicit selection.",
                     "items": {
                       "enum": [
                         "*",
