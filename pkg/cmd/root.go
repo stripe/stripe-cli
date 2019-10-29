@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -91,9 +90,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
-
-	viper.SetEnvPrefix("stripe")
-	viper.AutomaticEnv() // read in environment variables that match
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
