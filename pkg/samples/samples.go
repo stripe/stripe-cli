@@ -12,7 +12,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
 
-	ansi "github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
