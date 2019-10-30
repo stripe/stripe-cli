@@ -12,7 +12,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
+	ansi "github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
@@ -54,24 +54,20 @@ type integration struct {
 	Servers []string `json:"servers"`
 }
 
-var languageDisplayNames = map[string]string{
-	"java":   "Java",
-	"node":   "Node",
-	"python": "Python",
-	"php":    "PHP",
-	"ruby":   "Ruby",
+func (i *integration) hasClients() bool {
+	return len(i.Clients) > 1
 }
 
-var displayNameLanguages = reverseStringMap(languageDisplayNames)
+func (i *integration) hasServers() bool {
+	return len(i.Servers) > 1
+}
 
-func reverseStringMap(m map[string]string) map[string]string {
-	rm := make(map[string]string, len(m))
-
-	for key, value := range m {
-		rm[value] = key
+func (i *integration) name() string {
+	if i.Name == "main" {
+		return ""
 	}
 
-	return rm
+	return i.Name
 }
 
 // Samples stores the information for the selected sample in addition to the
@@ -88,12 +84,10 @@ type Samples struct {
 
 	sampleConfig sampleConfig
 
-	//selected integrations. We store selected integration as an array
-	// in case they pick more than one
-	integration []string
+	integration *integration
 
-	// selected language
-	language string
+	client string
+	server string
 }
 
 // Initialize get the sample ready for the user to copy. It:
@@ -145,20 +139,31 @@ func (s *Samples) SelectOptions() error {
 	var err error
 
 	if s.sampleConfig.hasIntegrations() {
-		s.integration, err = integrationSelectPrompt(s.sampleConfig.integrationNames())
+		s.integration, err = integrationSelectPrompt(&s.sampleConfig)
 		if err != nil {
 			return err
 		}
 	} else {
-		s.integration = []string{s.sampleConfig.Integrations[0].Name}
+		s.integration = &s.sampleConfig.Integrations[0]
 	}
 
-	s.language, err = languageSelectPrompt(s.sampleConfig.integrationServers(s.integration[0]))
-	if err != nil {
-		return err
+	if s.integration.hasClients() {
+		s.client, err = clientSelectPrompt(s.integration.Clients)
+		if err != nil {
+			return nil
+		}
+	} else {
+		s.client = ""
 	}
 
-	fmt.Println("Setting up", ansi.Bold(s.name))
+	if s.integration.hasServers() {
+		s.server, err = serverSelectPrompt(s.integration.Servers)
+		if err != nil {
+			return err
+		}
+	} else {
+		s.server = ""
+	}
 
 	return nil
 }
@@ -179,52 +184,41 @@ func (s *Samples) SelectOptions() error {
 // * If there are no integrations available, copy the top-level files, the
 //   client folder, and the selected language inside of the server folder to
 //   the server top-level (example above)
-// * If the user selects 1 integration, mirror the structure above for the
+// * If the user selects an integration, mirror the structure above for the
 //   selected integration (example above)
-// * If they selected >1 integration, we want the same structure above but
-//   replicated once per selected in integration.
 func (s *Samples) Copy(target string) error {
-	// The condition for the loop starts as true since we will always want to
-	// process at least once.
-	for i := 0; true; i++ {
-		integration := s.destinationName(i)
+	integration := s.integration.name()
 
-		serverSource := filepath.Join(s.repo, integration, "server", s.language)
-		clientSource := filepath.Join(s.repo, integration, "client")
+	serverSource := filepath.Join(s.repo, integration, "server", s.server)
+	clientSource := filepath.Join(s.repo, integration, "client", s.client)
 
-		filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
+	serverDestination := filepath.Join(target, "server")
+	clientDestination := filepath.Join(target, "client")
+
+	err := copy.Copy(serverSource, serverDestination)
+	if err != nil {
+		return err
+	}
+
+	err = copy.Copy(clientSource, clientDestination)
+	if err != nil {
+		return err
+	}
+
+	filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
+	if err != nil {
+		return err
+	}
+
+	for _, file := range filesSource {
+		err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(target, file))
 		if err != nil {
 			return err
-		}
-
-		serverDestination := s.destinationPath(target, integration, "server")
-		clientDestination := s.destinationPath(target, integration, "client")
-
-		err = copy.Copy(serverSource, serverDestination)
-		if err != nil {
-			return err
-		}
-
-		err = copy.Copy(clientSource, clientDestination)
-		if err != nil {
-			return err
-		}
-
-		// This copies all top-level files specific to integrations
-		for _, file := range filesSource {
-			err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(s.destinationPath(target, integration, ""), file))
-			if err != nil {
-				return err
-			}
-		}
-
-		if i >= len(s.integration)-1 {
-			break
 		}
 	}
 
 	// This copies all top-level files specific to the entire sample repo
-	filesSource, err := s.GetFiles(s.repo)
+	filesSource, err = s.GetFiles(s.repo)
 	if err != nil {
 		return err
 	}
@@ -286,7 +280,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
 	dotenv["STATIC_DIR"] = "../client"
 
-	envFile := filepath.Join(sampleLocation, ".env")
+	envFile := filepath.Join(sampleLocation, "server", ".env")
 
 	err = godotenv.Write(dotenv, envFile)
 	if err != nil {
@@ -302,18 +296,6 @@ func (s *Samples) PostInstall() string {
 	return message
 }
 
-func (s *Samples) destinationName(i int) string {
-	if len(s.integration) > 0 && s.sampleConfig.hasIntegrations() {
-		if s.integration[0] == "all" {
-			return s.sampleConfig.Integrations[i].Name
-		}
-
-		return s.integration[i]
-	}
-
-	return ""
-}
-
 // Cleanup performs cleanup for the recently created sample
 func (s *Samples) Cleanup(name string) error {
 	fmt.Println("Cleaning up...")
@@ -321,17 +303,11 @@ func (s *Samples) Cleanup(name string) error {
 	return s.delete(name)
 }
 
-func (s *Samples) destinationPath(target string, integration string, folder string) string {
-	if len(s.integration) <= 1 {
-		return filepath.Join(target, folder)
-	}
-
-	return filepath.Join(target, integration, folder)
-}
-
 func selectOptions(template, label string, options []string) (string, error) {
+	color := ansi.Color(os.Stdout)
+
 	templates := &promptui.SelectTemplates{
-		Selected: ansi.Faint(fmt.Sprintf("Selected %s: {{ . | bold }} ", template)),
+		Selected: ansi.Faint(fmt.Sprintf("%s Selected %s: {{ . | bold }} ", color.Green("✔"), template)),
 	}
 
 	prompt := promptui.Select{
@@ -349,38 +325,37 @@ func selectOptions(template, label string, options []string) (string, error) {
 	return result, nil
 }
 
-func languageSelectPrompt(languages []string) (string, error) {
-	var displayLangs []string
-
-	for _, lang := range languages {
-		if val, ok := languageDisplayNames[lang]; ok {
-			displayLangs = append(displayLangs, val)
-		} else {
-			displayLangs = append(displayLangs, lang)
-		}
-	}
-
-	selected, err := selectOptions("language", "What language would you like to use", displayLangs)
+func clientSelectPrompt(clients []string) (string, error) {
+	selected, err := selectOptions("client", "Which client would you like to use", clients)
 	if err != nil {
 		return "", err
-	}
-
-	if val, ok := displayNameLanguages[selected]; ok {
-		return val, nil
 	}
 
 	return selected, nil
 }
 
-func integrationSelectPrompt(integrations []string) ([]string, error) {
-	selected, err := selectOptions("integration", "What type of integration would you like to use", append(integrations, "all"))
+func integrationSelectPrompt(sc *sampleConfig) (*integration, error) {
+	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.integrationNames())
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 
-	if selected == "all" {
-		return integrations, nil
+	var selectedIntegration *integration
+
+	for i, integration := range sc.Integrations {
+		if integration.Name == selected {
+			selectedIntegration = &sc.Integrations[i]
+		}
 	}
 
-	return []string{selected}, nil
+	return selectedIntegration, nil
+}
+
+func serverSelectPrompt(servers []string) (string, error) {
+	selected, err := selectOptions("server", "What server would you like to use", servers)
+	if err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
