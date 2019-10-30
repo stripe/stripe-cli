@@ -189,6 +189,7 @@ type MediaType struct {
 // Operation is a struct representing a possible HTTP operation in an OpenAPI
 // specification.
 type Operation struct {
+	Deprecated  *bool                   `json:"deprecated"`
 	Description string                  `json:"description"`
 	OperationID string                  `json:"operation_id"`
 	Parameters  []*Parameter            `json:"parameters"`
