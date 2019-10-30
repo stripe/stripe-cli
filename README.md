@@ -36,10 +36,6 @@ The main focus for this initial release is to improve the developer experience w
     * [config](#config)
     * [open](#open)
   * [Developing the Stripe CLI](#developing-the-stripe-cli)
-    * [Installation](#installation-1)
-    * [Linting](#linting)
-    * [Tests](#tests)
-    * [Releasing](#releasing)
 
 ## Installation
 
@@ -372,54 +368,5 @@ The Stripe CLI includes a telemetry feature that collects some usage data. This 
 
 ## Developing the Stripe CLI
 
-If you're working on developing the CLI, it's recommended that you alias the go command to run the dev version. Place this in your shell rc file (such as `.bashrc` or `.zshrc`)
+See [Developing the Stripe CLI](/wiki/Developing-the-Stripe-CLI).
 
-### Installation
-
-The Stripe CLI is built using Go. To download and compile the source code, run:
-
-```sh
-$ go get -u github.com/stripe/stripe-cli/...
-```
-
-After installing, `cd` into the directory and setup the dependencies:
-
-```sh
-$ cd go/src/github.com/stripe/stripe-cli
-$ make setup
-```
-
-Once setup, run the test suite to make sure everything works as expected:
-
-```sh
-$ make test
-```
-
-You can invoke the local version of the CLI by running:
-
-```sh
-$ go run cmd/stripe/main.go
-```
-
-Optionally, you can add this to your shell profile to make running the local version a little easier.
-```sh
-alias stripe-dev='go run cmd/stripe/main.go'
-```
-
-### Linting
-
-To run the linter, run `make lint`.
-
-Make sure `golangci-lint` is installed: `brew install golangci/tap/golangci-lint`
-
-### Tests
-
-You can run tests with:
-
-```sh
-$ make test
-```
-
-### Releasing
-
-To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.
