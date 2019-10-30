@@ -28,8 +28,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rBalanceCmd := resource.NewResourceCmd(rootCmd, "balance")
 	rBalanceTransactionsCmd := resource.NewResourceCmd(rootCmd, "balance_transactions")
 	rBankAccountsCmd := resource.NewResourceCmd(rootCmd, "bank_accounts")
-	rBitcoinReceiversCmd := resource.NewResourceCmd(rootCmd, "bitcoin_receivers")
-	rBitcoinTransactionsCmd := resource.NewResourceCmd(rootCmd, "bitcoin_transactions")
 	rCapabilitiesCmd := resource.NewResourceCmd(rootCmd, "capabilities")
 	rCardsCmd := resource.NewResourceCmd(rootCmd, "cards")
 	rChargesCmd := resource.NewResourceCmd(rootCmd, "charges")
@@ -48,7 +46,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rFilesCmd := resource.NewResourceCmd(rootCmd, "files")
 	rInvoiceitemsCmd := resource.NewResourceCmd(rootCmd, "invoiceitems")
 	rInvoicesCmd := resource.NewResourceCmd(rootCmd, "invoices")
-	rIssuerFraudRecordsCmd := resource.NewResourceCmd(rootCmd, "issuer_fraud_records")
 	rLineItemsCmd := resource.NewResourceCmd(rootCmd, "line_items")
 	rLoginLinksCmd := resource.NewResourceCmd(rootCmd, "login_links")
 	rOrderReturnsCmd := resource.NewResourceCmd(rootCmd, "order_returns")
@@ -60,7 +57,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rPersonsCmd := resource.NewResourceCmd(rootCmd, "persons")
 	rPlansCmd := resource.NewResourceCmd(rootCmd, "plans")
 	rProductsCmd := resource.NewResourceCmd(rootCmd, "products")
-	rRecipientsCmd := resource.NewResourceCmd(rootCmd, "recipients")
 	rRefundsCmd := resource.NewResourceCmd(rootCmd, "refunds")
 	rReviewsCmd := resource.NewResourceCmd(rootCmd, "reviews")
 	rScheduledQueryRunsCmd := resource.NewResourceCmd(rootCmd, "scheduled_query_runs")
@@ -185,18 +181,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"name":                "string",
 	}, &Config)
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "verify", "/v1/customers/{customer}/sources/{id}/verify", http.MethodPost, map[string]string{}, &Config)
-	resource.NewOperationCmd(rBitcoinReceiversCmd.Cmd, "list", "/v1/bitcoin/receivers", http.MethodGet, map[string]string{
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-	}, &Config)
-	resource.NewOperationCmd(rBitcoinReceiversCmd.Cmd, "retrieve", "/v1/bitcoin/receivers/{id}", http.MethodGet, map[string]string{}, &Config)
-	resource.NewOperationCmd(rBitcoinTransactionsCmd.Cmd, "list", "/v1/bitcoin/receivers/{receiver}/transactions", http.MethodGet, map[string]string{
-		"customer":       "string",
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-	}, &Config)
 	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "list", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "retrieve", "/v1/accounts/{account}/capabilities/{capability}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "update", "/v1/accounts/{account}/capabilities/{capability}", http.MethodPost, map[string]string{}, &Config)
@@ -503,13 +487,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor":   "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, &Config)
-	resource.NewOperationCmd(rIssuerFraudRecordsCmd.Cmd, "list", "/v1/issuer_fraud_records", http.MethodGet, map[string]string{
-		"charge":         "string",
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-	}, &Config)
-	resource.NewOperationCmd(rIssuerFraudRecordsCmd.Cmd, "retrieve", "/v1/issuer_fraud_records/{issuer_fraud_record}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
@@ -742,32 +719,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor": "string",
 		"unit_label":           "string",
 		"url":                  "string",
-	}, &Config)
-	resource.NewOperationCmd(rRecipientsCmd.Cmd, "create", "/v1/recipients", http.MethodPost, map[string]string{
-		"bank_account": "string",
-		"card":         "string",
-		"description":  "string",
-		"email":        "string",
-		"name":         "string",
-		"tax_id":       "string",
-		"type":         "string",
-	}, &Config)
-	resource.NewOperationCmd(rRecipientsCmd.Cmd, "delete", "/v1/recipients/{id}", http.MethodDelete, map[string]string{}, &Config)
-	resource.NewOperationCmd(rRecipientsCmd.Cmd, "list", "/v1/recipients", http.MethodGet, map[string]string{
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-		"type":           "string",
-	}, &Config)
-	resource.NewOperationCmd(rRecipientsCmd.Cmd, "retrieve", "/v1/recipients/{id}", http.MethodGet, map[string]string{}, &Config)
-	resource.NewOperationCmd(rRecipientsCmd.Cmd, "update", "/v1/recipients/{id}", http.MethodPost, map[string]string{
-		"bank_account": "string",
-		"card":         "string",
-		"default_card": "string",
-		"description":  "string",
-		"email":        "string",
-		"name":         "string",
-		"tax_id":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "create", "/v1/refunds", http.MethodPost, map[string]string{
 		"amount": "integer",

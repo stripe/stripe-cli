@@ -135,6 +135,11 @@ func getTemplateData() (*TemplateData, error) {
 
 				specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
 
+				// Skip deprecated methods
+				if specOp.Deprecated != nil && *specOp.Deprecated == true {
+					continue
+				}
+
 				if strings.ToUpper(httpString) == http.MethodPost {
 					requestContent := specOp.RequestBody.Content
 
@@ -173,7 +178,6 @@ func getTemplateData() (*TemplateData, error) {
 				}
 			}
 		}
-
 	}
 
 	return data, nil
