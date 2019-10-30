@@ -40,6 +40,8 @@ The main focus for this initial release is to improve the developer experience w
     * [Linting](#linting)
     * [Tests](#tests)
     * [Releasing](#releasing)
+  * [License](#license)  
+    
 
 ## Installation
 
@@ -423,3 +425,9 @@ $ make test
 ### Releasing
 
 To release a new version, checkout `master` and then run `make release`. It'll prompt you for a version and will then push a new tag.
+
+## License
+Copyright (c) Stripe. All rights reserved.
+
+Licensed under the [Apache License 2.0 license](blob/master/LICENSE).
+
