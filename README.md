@@ -14,6 +14,8 @@ The Stripe CLI is a command-line interface for Stripe that integrates seamlessly
 1. Tail your test mode API request logs
 1. Pull Stripe status from status.stripe.com
 
+![demo](docs/demo.gif)
+
 ## Installation
 
 Stripe CLI is available for MacOS, Windows, and Linux for Debian, Ubuntu, RedHat and CentOS.
