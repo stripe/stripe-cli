@@ -24,6 +24,9 @@ archives:
       linux: linux
       windows: windows
       amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
     files:
     - none*
 checksum:
