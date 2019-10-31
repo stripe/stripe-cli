@@ -2,9 +2,9 @@
 
 [![Build Status](https://travis-ci.com/stripe/stripe-cli.svg?token=eQWDVpt1sJR63TxbC1KA&branch=master)](https://travis-ci.com/stripe/stripe-cli)
 
-Welcome to the Stripe CLI! The Stripe CLI is a command-line interface for Stripe that integrates seamlessly with your Stripe account and allows you to forward webhook events to your server, make API requests directly, tail logs, and much more.
+The Stripe CLI is a command-line interface for Stripe that integrates seamlessly with your Stripe account and allows you to forward webhook events to your server, make API requests directly, tail logs, and much more.
 
-**Highlights**:
+**Feature highlights**:
 
 1. `login` to your Stripe account and authenticate the CLI
 1. `listen` for webhooks and forward them to a local server
@@ -13,7 +13,6 @@ Welcome to the Stripe CLI! The Stripe CLI is a command-line interface for Stripe
 1. `trigger` a limited set of webhook events
 1. Tail your test mode API request logs
 1. Pull Stripe status from status.stripe.com
-
 
 ## Installation
 
@@ -66,7 +65,7 @@ stripe [command] help
 
 ## Commands
 
-The Stripe CLI supports a range of commands, and below is highlighted some of the most used ones:
+The Stripe CLI supports a broad range of commands. Below is some of the most used ones:
 - [`login`](wiki/login-command#)
 - [`listen`](wiki/listen-command#)
 - [`trigger`](wiki/trigger-command#)
