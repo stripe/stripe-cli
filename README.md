@@ -80,6 +80,10 @@ The Stripe CLI supports a broad range of commands. Below is some of the most use
 
 Please see [commands](wiki/commands) for a full overview.
 
+## Documentation
+
+Please see our [documentation in the wiki](/wiki).
+
 ## Telemetry
 
 The Stripe CLI includes a telemetry feature that collects some usage data. See our [telemetry wiki](wiki/telemetry) for details.
