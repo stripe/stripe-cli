@@ -1,6 +1,8 @@
 # Stripe CLI
 
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/stripe/stripe-cli)
 [![Build Status](https://travis-ci.com/stripe/stripe-cli.svg?token=eQWDVpt1sJR63TxbC1KA&branch=master)](https://travis-ci.com/stripe/stripe-cli)
+![GitHub](https://img.shields.io/github/license/stripe/stripe-cli)
 
 The Stripe Command-line interface (CLI) makes it easy for you to build, test and manage your Stripe integration right from the terminal by integrating seamlessly with your Stripe account.
 
