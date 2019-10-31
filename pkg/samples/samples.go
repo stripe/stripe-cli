@@ -49,8 +49,10 @@ func (sc *sampleConfig) integrationServers(name string) []string {
 }
 
 type sampleConfigIntegration struct {
-	Name    string   `json:"name"`
+	Name string `json:"name"`
+	// Clients are the frontend clients built for each sample
 	Clients []string `json:"clients"`
+	// Servers are the backend server implementations available for a sample
 	Servers []string `json:"servers"`
 }
 
