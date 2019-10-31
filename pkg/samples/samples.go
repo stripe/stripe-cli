@@ -19,10 +19,10 @@ import (
 )
 
 type sampleConfig struct {
-	Name            string            `json:"name"`
-	ConfigureDotEnv bool              `json:"configureDotEnv"`
-	PostInstall     map[string]string `json:"postInstall"`
-	Integrations    []integration     `json:"integrations"`
+	Name            string                    `json:"name"`
+	ConfigureDotEnv bool                      `json:"configureDotEnv"`
+	PostInstall     map[string]string         `json:"postInstall"`
+	Integrations    []sampleConfigIntegration `json:"integrations"`
 }
 
 func (sc *sampleConfig) hasIntegrations() bool {
@@ -48,21 +48,21 @@ func (sc *sampleConfig) integrationServers(name string) []string {
 	return []string{}
 }
 
-type integration struct {
+type sampleConfigIntegration struct {
 	Name    string   `json:"name"`
 	Clients []string `json:"clients"`
 	Servers []string `json:"servers"`
 }
 
-func (i *integration) hasClients() bool {
+func (i *sampleConfigIntegration) hasClients() bool {
 	return len(i.Clients) > 1
 }
 
-func (i *integration) hasServers() bool {
+func (i *sampleConfigIntegration) hasServers() bool {
 	return len(i.Servers) > 1
 }
 
-func (i *integration) name() string {
+func (i *sampleConfigIntegration) name() string {
 	if i.Name == "main" {
 		return ""
 	}
@@ -84,7 +84,7 @@ type Samples struct {
 
 	sampleConfig sampleConfig
 
-	integration *integration
+	integration *sampleConfigIntegration
 
 	client string
 	server string
@@ -334,13 +334,13 @@ func clientSelectPrompt(clients []string) (string, error) {
 	return selected, nil
 }
 
-func integrationSelectPrompt(sc *sampleConfig) (*integration, error) {
+func integrationSelectPrompt(sc *sampleConfig) (*sampleConfigIntegration, error) {
 	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.integrationNames())
 	if err != nil {
 		return nil, err
 	}
 
-	var selectedIntegration *integration
+	var selectedIntegration *sampleConfigIntegration
 
 	for i, integration := range sc.Integrations {
 		if integration.Name == selected {
