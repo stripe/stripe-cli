@@ -57,10 +57,18 @@ type sampleConfigIntegration struct {
 }
 
 func (i *sampleConfigIntegration) hasClients() bool {
-	return len(i.Clients) > 1
+	return len(i.Clients) > 0
 }
 
 func (i *sampleConfigIntegration) hasServers() bool {
+	return len(i.Servers) > 0
+}
+
+func (i *sampleConfigIntegration) hasMultipleClients() bool {
+	return len(i.Clients) > 1
+}
+
+func (i *sampleConfigIntegration) hasMultipleServers() bool {
 	return len(i.Servers) > 1
 }
 
@@ -149,7 +157,7 @@ func (s *Samples) SelectOptions() error {
 		s.integration = &s.sampleConfig.Integrations[0]
 	}
 
-	if s.integration.hasClients() {
+	if s.integration.hasMultipleClients() {
 		s.client, err = clientSelectPrompt(s.integration.Clients)
 		if err != nil {
 			return nil
@@ -158,7 +166,7 @@ func (s *Samples) SelectOptions() error {
 		s.client = ""
 	}
 
-	if s.integration.hasServers() {
+	if s.integration.hasMultipleServers() {
 		s.server, err = serverSelectPrompt(s.integration.Servers)
 		if err != nil {
 			return err
@@ -191,20 +199,24 @@ func (s *Samples) SelectOptions() error {
 func (s *Samples) Copy(target string) error {
 	integration := s.integration.name()
 
-	serverSource := filepath.Join(s.repo, integration, "server", s.server)
-	clientSource := filepath.Join(s.repo, integration, "client", s.client)
+	if s.integration.hasServers() {
+		serverSource := filepath.Join(s.repo, integration, "server", s.server)
+		serverDestination := filepath.Join(target, "server")
 
-	serverDestination := filepath.Join(target, "server")
-	clientDestination := filepath.Join(target, "client")
-
-	err := copy.Copy(serverSource, serverDestination)
-	if err != nil {
-		return err
+		err := copy.Copy(serverSource, serverDestination)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = copy.Copy(clientSource, clientDestination)
-	if err != nil {
-		return err
+	if s.integration.hasClients() {
+		clientSource := filepath.Join(s.repo, integration, "client", s.client)
+		clientDestination := filepath.Join(target, "client")
+
+		err := copy.Copy(clientSource, clientDestination)
+		if err != nil {
+			return err
+		}
 	}
 
 	filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
@@ -238,55 +250,57 @@ func (s *Samples) Copy(target string) error {
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
-	if !s.sampleConfig.ConfigureDotEnv {
-		return nil
-	}
+	if s.integration.hasServers() {
+		if !s.sampleConfig.ConfigureDotEnv {
+			return nil
+		}
 
-	// .env.example file will always be at the project root
-	exFile := filepath.Join(sampleLocation, ".env.example")
+		// .env.example file will always be at the project root
+		exFile := filepath.Join(sampleLocation, ".env.example")
 
-	file, err := s.Fs.Open(exFile)
-	if err != nil {
-		return err
-	}
+		file, err := s.Fs.Open(exFile)
+		if err != nil {
+			return err
+		}
 
-	dotenv, err := godotenv.Parse(file)
-	if err != nil {
-		return err
-	}
+		dotenv, err := godotenv.Parse(file)
+		if err != nil {
+			return err
+		}
 
-	publishableKey := s.Config.Profile.GetPublishableKey()
-	if publishableKey == "" {
-		return fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
-	}
+		publishableKey := s.Config.Profile.GetPublishableKey()
+		if publishableKey == "" {
+			return fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
+		}
 
-	apiKey, err := s.Config.Profile.GetAPIKey(false)
-	if err != nil {
-		return err
-	}
+		apiKey, err := s.Config.Profile.GetAPIKey(false)
+		if err != nil {
+			return err
+		}
 
-	deviceName, err := s.Config.Profile.GetDeviceName()
-	if err != nil {
-		return err
-	}
+		deviceName, err := s.Config.Profile.GetDeviceName()
+		if err != nil {
+			return err
+		}
 
-	authClient := stripeauth.NewClient(apiKey, nil)
+		authClient := stripeauth.NewClient(apiKey, nil)
 
-	authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil)
-	if err != nil {
-		return err
-	}
+		authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil)
+		if err != nil {
+			return err
+		}
 
-	dotenv["STRIPE_PUBLISHABLE_KEY"] = publishableKey
-	dotenv["STRIPE_SECRET_KEY"] = apiKey
-	dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
-	dotenv["STATIC_DIR"] = "../client"
+		dotenv["STRIPE_PUBLISHABLE_KEY"] = publishableKey
+		dotenv["STRIPE_SECRET_KEY"] = apiKey
+		dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
+		dotenv["STATIC_DIR"] = "../client"
 
-	envFile := filepath.Join(sampleLocation, "server", ".env")
+		envFile := filepath.Join(sampleLocation, "server", ".env")
 
-	err = godotenv.Write(dotenv, envFile)
-	if err != nil {
-		return err
+		err = godotenv.Write(dotenv, envFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -309,9 +323,8 @@ func selectOptions(template, label string, options []string) (string, error) {
 	color := ansi.Color(os.Stdout)
 
 	templates := &promptui.SelectTemplates{
-		Selected: ansi.Faint(fmt.Sprintf("%s Selected %s: {{ . | bold }} ", color.Green("✔"), template)),
+		Selected: color.Green("✔").String() + ansi.Faint(fmt.Sprintf(" Selected %s: {{ . | bold }} ", template)),
 	}
-
 	prompt := promptui.Select{
 		Label:     label,
 		Items:     options,
