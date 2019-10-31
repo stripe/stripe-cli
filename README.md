@@ -75,8 +75,7 @@ The Stripe CLI supports a broad range of commands. Below is some of the most use
 - [`status`](wiki/status-command#)
 - [`config`](wiki/config-command#)
 - [`open`](wiki/open-command#)
-- [`fixtures`](wiki/fixtures-command)
-- [HTTP (`get`, `post` & `delete`) commands](wiki/http-(get,-post-&-delete)-commands#)
+- [`get`, `post` & `delete` commands](wiki/http-(get,-post-&-delete)-commands#)
 - [`resource` commands](wiki/resource-commands#)
 
 Please see [commands](wiki/commands) for a full overview.
