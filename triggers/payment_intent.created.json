@@ -5,7 +5,7 @@
   "fixtures": [
     {
       "name": "payment_intent",
-      "path": "/v1/payment_itents",
+      "path": "/v1/payment_intents",
       "method": "post",
       "params": {
         "amount": 2000,

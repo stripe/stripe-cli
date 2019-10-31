@@ -5,7 +5,7 @@
   "fixtures": [
     {
       "name": "payment_intent",
-      "path": "/v1/payment_itents",
+      "path": "/v1/payment_intents",
       "method": "post",
       "params": {
         "amount": 2000,
@@ -14,7 +14,7 @@
     },
     {
       "name": "payment_intent_canceled",
-      "path": "/v1/payment_itents/${payment_intent.id}/cancel",
+      "path": "/v1/payment_intents/${payment_intent.id}/cancel",
       "method": "post",
       "params": {
         "cancellation_reason": "requested_by_customer"
