@@ -28,16 +28,13 @@ func newTriggerCmd() *triggerCmd {
 		Args:      validators.MaximumNArgs(1),
 		ValidArgs: fixtures.EventNames(),
 		Short:     "Trigger test webhook events",
-		Long: fmt.Sprintf(`%s
-
-Trigger specific webhook events to be sent. Webhooks events created through
+		Long: fmt.Sprintf(`Trigger specific webhook events to be sent. Webhooks events created through
 the trigger command will also create all necessary side-effect events that are
 needed to create the triggered event as well as the corresponding API objects.
 
 %s
 %s
 `,
-			getBanner(),
 			ansi.Bold("Supported events:"),
 			fixtures.EventList(),
 		),

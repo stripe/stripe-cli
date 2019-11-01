@@ -45,14 +45,10 @@ func newListenCmd() *listenCmd {
 		Use:   "listen",
 		Args:  validators.NoArgs,
 		Short: "Listen for webhook events",
-		Long: fmt.Sprintf(`%s
-
-The listen command watches and forwards webhook events from Stripe to your
+		Long: `The listen command watches and forwards webhook events from Stripe to your
 local machine by connecting directly to Stripe's API. You can test the latest
 API version, filter events, or even load your saved webhook endpoints from your
 Stripe account.`,
-			getBanner(),
-		),
 		Example: `stripe listen
   stripe listen --events charge.captured,charge.updated \
     --forward-to localhost:3000/events`,

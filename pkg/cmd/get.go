@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -22,14 +21,10 @@ func newGetCmd() *getCmd {
 	gc.reqs.Cmd = &cobra.Command{
 		Use:   "get <id or path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Retrieve resources by their id or make GET requests",
-		Long: fmt.Sprintf(`%s
-
-With the get command, you can load API resources by providing just the resource
+		Short: "Retrieve resources by their ID or make GET requests",
+		Long: `With the get command, you can load API resources by providing just the resource
 id. You can also make normal HTTP GET requests to the Stripe API by providing
 the API path.`,
-			getBanner(),
-		),
 		Example: `stripe get ch_1EGYgUByst5pquEtjb0EkYha
   stripe get cus_G6GQwbr1dWXt9O
   stripe get /v1/charges --limit 50`,

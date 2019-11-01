@@ -40,11 +40,8 @@ var rootCmd = &cobra.Command{
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",
-	Long: fmt.Sprintf(`%s
-
-The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
+	Long: fmt.Sprintf(`The official command-line tool to interact with Stripe.
 %s`,
-		getBanner(),
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {

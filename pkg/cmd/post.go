@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -23,9 +22,7 @@ func newPostCmd() *postCmd {
 		Use:   "post <path>",
 		Args:  validators.ExactArgs(1),
 		Short: "Make a POST request to the Stripe API",
-		Long: fmt.Sprintf(`%s
-
-Make POST requests to the Stripe API using your test mode key.
+		Long: `Make POST requests to the Stripe API using your test mode key.
 
 The post command supports API features like idempotency keys and expand flags.
 Currently, you can only POST data in test mode.
@@ -33,9 +30,6 @@ Currently, you can only POST data in test mode.
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api
 `,
-
-			getBanner(),
-		),
 		Example: `stripe post /payment_intents \
     -d amount=2000 \
     -d currency=usd \
