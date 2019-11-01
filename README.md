@@ -21,7 +21,7 @@ Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, D
 
 ### macOS
 
-Stripe CLI is avilable on macOS via the [Homebrew](https://brew.sh/):
+Stripe CLI is avilable on macOS via [Homebrew](https://brew.sh/):
 
 ```sh
 brew install stripe/stripe-cli/stripe
@@ -55,7 +55,7 @@ Instructions are also available for installing and using the CLI [without a pack
 
 ## Usage
 
-Installing the CLI globally provides access to the `stripe` command.
+Installing the CLI provides access to the `stripe` command.
 
 ```sh-session
 stripe [command]
