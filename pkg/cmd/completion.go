@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -21,13 +23,15 @@ func newCompletionCmd() *completionCmd {
 		Args:  validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cc.shell == "zsh" {
+				fmt.Println("Generated zsh completion file: stripe-completion.zsh")
 				return rootCmd.GenZshCompletionFile("stripe-completion.zsh")
 			}
+			fmt.Println("Generated bash completion file: stripe-completion.bash")
 			return rootCmd.GenBashCompletionFile("stripe-completion.bash")
 		},
 	}
 
-	cc.cmd.Flags().StringVar(&cc.shell, "shell", "bash", "The shell to generate completion commands for. This only supports \"bash\" or \"zsh\"")
+	cc.cmd.Flags().StringVar(&cc.shell, "shell", "bash", "The shell to generate completion commands for. Supports \"bash\" or \"zsh\"")
 
 	return cc
 }

@@ -36,13 +36,13 @@ func NewTailCmd(config *config.Config) *TailCmd {
 	tailCmd.Cmd = &cobra.Command{
 		Use:   "tail",
 		Args:  validators.NoArgs,
-		Short: "Tails request logs created by making API requests to Stripe.",
-		Long: fmt.Sprintf(`The tail command lets you tail API request logs from Stripe.
-The command establishes a direct connection with Stripe to send the request logs to your local machine.
-
-Watch for all request logs sent from Stripe:
-
-  $ stripe logs tail`),
+		Short: "Tail API request logs from your Stripe requests.",
+		Long: fmt.Sprintf(`View API request logs in real-time as they are made to your Stripe account.
+Log tailing allows you to filter data similarly to the Stripe Dashboard; filter
+HTTP methods, IP addresses, paths, response status, and more.`),
+		Example: `stripe logs tail
+  stripe logs tail --filter-http-methods GET
+  stripe logs tail --filter-status-code-type 4XX`,
 		RunE: tailCmd.runTailCmd,
 	}
 
@@ -57,9 +57,9 @@ Acceptable values:
 
 	tailCmd.Cmd.Flags().BoolVar(
 		&tailCmd.livemode,
-		"livemode",
+		"live",
 		false,
-		"Tail live mode logs (default: test mode)",
+		"[WARNING: experimental] Tail live logs (default: test)",
 	)
 
 	// Log filters

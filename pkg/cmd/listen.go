@@ -47,32 +47,25 @@ func newListenCmd() *listenCmd {
 		Short: "Listen for webhook events",
 		Long: fmt.Sprintf(`%s
 
-The listen command lets you watch for and forward webhook events from Stripe.
-The command establishes a direct connection with Stripe to send the webhook
-events to your local machine. With that, you can either leave it open to see
-webhooks come in, filter on specific events, or forward the events to a local
-instance of your application.
-
-Watch for all events sent from Stripe:
-
-  $ stripe listen
-
-Start listening for 'charge.captured' and 'charge.updated' events and forward
-to your localhost:
-
-  $ stripe listen --events charge.captured,charge.updated --forward-to localhost:3000/events`,
+The listen command watches and forwards webhook events from Stripe to your
+local machine by connecting directly to Stripe's API. You can test the latest
+API version, filter events, or even load your saved webhook endpoints from your
+Stripe account.`,
 			getBanner(),
 		),
+		Example: `stripe listen
+  stripe listen --events charge.captured,charge.updated \
+    --forward-to localhost:3000/events`,
 		RunE: lc.runListenCmd,
 	}
 
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of which webhook events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
+	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward")
-	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
-	lc.cmd.Flags().BoolVar(&lc.livemode, "livemode", false, "Receive live mode events (default: test mode)")
+	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout")
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")

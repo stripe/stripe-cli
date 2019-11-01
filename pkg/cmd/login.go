@@ -23,10 +23,10 @@ func newLoginCmd() *loginCmd {
 		Use:   "login",
 		Args:  validators.NoArgs,
 		Short: "Login to your Stripe account",
-		Long:  `Login to your Stripe account to write your configuration file`,
+		Long:  `Login to your Stripe account to setup the CLI`,
 		RunE:  lc.runLoginCmd,
 	}
-	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "interactive configuration mode")
+	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")

@@ -23,13 +23,18 @@ func newConfigCmd() *configCmd {
 	cc.cmd = &cobra.Command{
 		Use:   "config",
 		Short: "Manually change the config values for the CLI",
-		RunE:  cc.runConfigCmd,
+		Long: `config let's you set and unset specific configuration values for your profile if
+you need more granular control over the configuration.`,
+		Example: `stripe config list
+  stripe set color off
+  stripe unset color`,
+		RunE: cc.runConfigCmd,
 	}
 
-	cc.cmd.Flags().BoolVar(&cc.list, "list", false, "list configs")
-	cc.cmd.Flags().BoolVarP(&cc.edit, "edit", "e", false, "open editor to the config file")
-	cc.cmd.Flags().StringVar(&cc.unset, "unset", "", "unset a specific config field")
-	cc.cmd.Flags().BoolVar(&cc.set, "set string string", false, "set a config field to some value")
+	cc.cmd.Flags().BoolVar(&cc.list, "list", false, "List configs")
+	cc.cmd.Flags().BoolVarP(&cc.edit, "edit", "e", false, "Open an editor to the config file")
+	cc.cmd.Flags().StringVar(&cc.unset, "unset", "", "Unset a specific config field")
+	cc.cmd.Flags().BoolVar(&cc.set, "set string string", false, "Set a config field to some value")
 
 	cc.cmd.Flags().SetInterspersed(false) // allow args to happen after flags to enable 2 arguments to --set
 

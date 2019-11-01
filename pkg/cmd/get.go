@@ -20,29 +20,19 @@ func newGetCmd() *getCmd {
 	gc.reqs.Method = http.MethodGet
 	gc.reqs.Profile = &Config.Profile
 	gc.reqs.Cmd = &cobra.Command{
-		Use:   "get <path>",
+		Use:   "get <id or path>",
 		Args:  validators.ExactArgs(1),
-		Short: "Make a GET request to the Stripe API",
+		Short: "Retrieve resources by their id or make GET requests",
 		Long: fmt.Sprintf(`%s
 
-Make GET requests to the Stripe API using your test mode key.
-
-The command supports common API features like pagination and limits. Currently,
-you can only get data in test mode.
-
-For a full list of supported paths, see the API reference:
-https://stripe.com/docs/api
-
-To get a charge:
-
-  $ stripe get /charges/ch_1EGYgUByst5pquEtjb0EkYha
-
-To get 50 charges:
-
-  $ stripe get --limit 50 /charges`,
+With the get command, you can load API resources by providing just the resource
+id. You can also make normal HTTP GET requests to the Stripe API by providing
+the API path.`,
 			getBanner(),
 		),
-
+		Example: `stripe get ch_1EGYgUByst5pquEtjb0EkYha
+  stripe get cus_G6GQwbr1dWXt9O
+  stripe get /v1/charges --limit 50`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
