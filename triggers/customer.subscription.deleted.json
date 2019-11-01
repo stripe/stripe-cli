@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "source": "tok_visa"
+      }
+    },
+    {
+      "name": "plan",
+      "path": "/v1/plans",
+      "method": "post",
+      "params": {
+        "currency": "usd",
+        "interval": "month",
+        "amount": 2000,
+        "product": {
+          "name": "myproduct"
+        }
+      }
+    },
+    {
+      "name": "subscription",
+      "path": "/v1/subscriptions",
+      "method": "post",
+      "params": {
+        "customer": "${customer.id}",
+        "items": [
+          {
+            "plan": "${plan.id}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "subscription_deleted",
+      "path": "/v1/subscriptions/${subscription.id}",
+      "method": "delete"
+    }
+  ]
+}

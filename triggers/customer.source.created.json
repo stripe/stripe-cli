@@ -1,0 +1,20 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post"
+    },
+    {
+      "name": "customer_source",
+      "path": "/v1/customers/${customer.id}/sources",
+      "method": "post",
+      "params": {
+        "source": "tok_visa"
+      }
+    }
+  ]
+}

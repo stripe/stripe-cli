@@ -3,54 +3,31 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
-const apiVersion = "2019-03-14"
-
 type triggerCmd struct {
 	cmd *cobra.Command
 
+	fs         afero.Fs
 	apiBaseURL string
 }
 
 func newTriggerCmd() *triggerCmd {
 	tc := &triggerCmd{}
+	tc.fs = afero.NewOsFs()
 	tc.cmd = &cobra.Command{
-		Use:  "trigger <event>",
-		Args: validators.MaximumNArgs(1),
-		ValidArgs: []string{
-			"charge.captured",
-			"charge.dispute.created",
-			"charge.failed",
-			"charge.refunded",
-			"charge.succeeded",
-			"checkout.session.completed",
-			"customer.created",
-			"customer.deleted",
-			"customer.updated",
-			"customer.source.created",
-			"customer.source.updated",
-			"customer.subscription.deleted",
-			"customer.subscription.updated",
-			"invoice.created",
-			"invoice.finalized",
-			"invoice.payment_failed",
-			"invoice.payment_succeeded",
-			"invoice.updated",
-			"payment_intent.created",
-			"payment_intent.payment_failed",
-			"payment_intent.succeeded",
-			"payment_intent.canceled",
-			"payment_method.attached",
-		},
-		Short: "Trigger test webhook events to fire",
+		Use:       "trigger <event>",
+		Args:      validators.MaximumNArgs(1),
+		ValidArgs: fixtures.EventNames(),
+		Short:     "Trigger test webhook events to fire",
 		Long: fmt.Sprintf(`%s
 
 Cause a specific webhook event to be created and sent. Webhooks tested through
@@ -58,32 +35,11 @@ the trigger command will also create all necessary side-effect events that are
 needed to create the triggered event.
 
 %s
-  charge.captured
-  charge.dispute.created
-  charge.failed
-  charge.refunded
-  charge.succeeded
-  checkout.session.completed
-  customer.created
-  customer.deleted
-  customer.updated
-  customer.source.created
-  customer.source.updated
-  customer.subscription.deleted
-  customer.subscription.updated
-  invoice.created
-  invoice.finalized
-  invoice.payment_failed
-  invoice.payment_succeeded
-  invoice.updated
-  payment_intent.created
-  payment_intent.payment_failed
-  payment_intent.succeeded
-  payment_intent.canceled
-  payment_method.attached
+%s
 `,
 			getBanner(),
 			ansi.Bold("Supported events:"),
+			fixtures.EventList(),
 		),
 		Example: `stripe trigger payment_intent.created`,
 		RunE:    tc.runTriggerCmd,
@@ -104,13 +60,6 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	examples := requests.Examples{
-		Profile:    Config.Profile,
-		APIBaseURL: tc.apiBaseURL,
-		APIVersion: apiVersion,
-		APIKey:     apiKey,
-	}
-
 	if len(args) == 0 {
 		cmd.Usage()
 
@@ -118,38 +67,19 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	event := args[0]
-	supportedEvents := map[string]interface{}{
-		"charge.captured":               examples.ChargeCaptured,
-		"charge.dispute.created":        examples.ChargeDisputed,
-		"charge.failed":                 examples.ChargeFailed,
-		"charge.refunded":               examples.ChargeRefunded,
-		"charge.succeeded":              examples.ChargeSucceeded,
-		"checkout.session.completed":    examples.CheckoutSessionCompleted,
-		"customer.created":              examples.CustomerCreated,
-		"customer.deleted":              examples.CustomerDeleted,
-		"customer.updated":              examples.CustomerUpdated,
-		"customer.source.created":       examples.CustomerSourceCreated,
-		"customer.source.updated":       examples.CustomerSourceUpdated,
-		"customer.subscription.deleted": examples.CustomerSubscriptionDeleted,
-		"customer.subscription.updated": examples.CustomerSubscriptionUpdated,
-		"invoice.created":               examples.InvoiceCreated,
-		"invoice.finalized":             examples.InvoiceFinalized,
-		"invoice.payment_failed":        examples.InvoicePaymentFailed,
-		"invoice.payment_succeeded":     examples.InvoicePaymentSucceeded,
-		"invoice.updated":               examples.InvoiceUpdated,
-		"payment_intent.created":        examples.PaymentIntentCreated,
-		"payment_intent.payment_failed": examples.PaymentIntentFailed,
-		"payment_intent.succeeded":      examples.PaymentIntentSucceeded,
-		"payment_intent.canceled":       examples.PaymentIntentCanceled,
-		"payment_method.attached":       examples.PaymentMethodAttached,
-	}
+	supportedEvents := fixtures.SupportedEvents(tc.fs, apiKey)
 
-	function, ok := supportedEvents[event]
+	fixture, ok := supportedEvents[event]
 	if !ok {
-		return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
+		exists, _ := afero.Exists(tc.fs, event)
+		if !exists {
+			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
+		}
+
+		fixture = fixtures.BuildFromFixture(tc.fs, apiKey, args[0])
 	}
 
-	err = function.(func() error)()
+	err = fixture.Execute()
 	if err == nil {
 		fmt.Println("Trigger succeeded! Check dashboard for event details.")
 	} else {

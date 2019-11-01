@@ -1,8 +1,11 @@
-package samples
+//go:generate go run vfsgen.go
+
+package fixtures
 
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -57,9 +60,25 @@ func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
 		responses: make(map[string]*gojsonq.JSONQ),
 	}
 
-	filedata, err := afero.ReadFile(fxt.Fs, file)
-	if err != nil {
-		return nil, err
+	var filedata []byte
+
+	var err error
+
+	if _, ok := reverseMap()[file]; ok {
+		f, err := FS.Open(file)
+		if err != nil {
+			return nil, err
+		}
+
+		filedata, err = ioutil.ReadAll(f)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		filedata, err = afero.ReadFile(fxt.Fs, file)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = json.Unmarshal(filedata, &fxt.fixture)
@@ -195,6 +214,8 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []str
 			data = append(data, fmt.Sprintf("%s=%s", keyname, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
+		case reflect.Float32, reflect.Float64:
+			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Float()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
 

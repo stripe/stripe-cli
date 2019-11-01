@@ -1,5 +1,5 @@
-//go:generate go run gen_resources_cmds.go
-//go:generate go run gen_events_list.go
+//go:generate go run ../gen/gen_resources_cmds.go
+//go:generate go run ../gen/gen_events_list.go
 
 package cmd
 
@@ -95,6 +95,7 @@ func init() {
 	rootCmd.AddCommand(newConfigCmd().cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
+	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)

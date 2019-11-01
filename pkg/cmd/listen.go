@@ -189,14 +189,7 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 		apiBaseURL = stripe.DefaultAPIBaseURL
 	}
 
-	examples := requests.Examples{
-		Profile:    Config.Profile,
-		APIVersion: "2019-03-14",
-		APIKey:     secretKey,
-		APIBaseURL: apiBaseURL,
-	}
-
-	return examples.WebhookEndpointsList()
+	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &Config.Profile)
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {

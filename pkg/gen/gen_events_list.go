@@ -19,7 +19,9 @@ type TemplateData struct {
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
 
-	pathTemplate = "events_list.go.tpl"
+	pathTemplate = "../gen/events_list.go.tpl"
+
+	pathName = "events_list.go.tpl"
 
 	pathOutput = "events_list.go"
 )
@@ -36,7 +38,7 @@ func main() {
 
 	// load template
 	tmpl := template.Must(template.
-		New(pathTemplate).
+		New(pathName).
 		ParseFiles(pathTemplate))
 
 	// execute template
