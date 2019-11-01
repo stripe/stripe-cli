@@ -33,7 +33,7 @@ Please refer to the [installation wiki](wiki/installation#linux) for detailed Li
 
 ### Windows
 
-Stripe CLI is avilable on Windows via the [Scoop]https://scoop.sh]/) package manager:
+Stripe CLI is avilable on Windows via the [Scoop](https://scoop.sh]/) package manager:
 
 ```sh
 scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
