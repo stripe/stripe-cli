@@ -11,7 +11,7 @@ The Stripe Command-line interface (CLI) makes it easy for you to build, test and
 - Securely test webhooks without relying on 3rd party software.
 - Trigger webhook events for easy testing
 - Tail your API request logs in real-time
-- Manage resources by interacting directly with the API to `post`, `get`, `update` or `delete` any Stripe object
+- Manage resources by interacting directly with the API to `create`, `retrieve`, `update` or `delete` any Stripe object
 
 ![demo](docs/demo.gif)
 
@@ -90,7 +90,7 @@ The Stripe CLI includes a telemetry feature that collects some usage data. See o
 
 ## Feedback
 
-Got feedback for us? Please don't hersitate to tell us on [feedback](https://stri.pe/cli-feedback).
+Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri.pe/cli-feedback).
 
 ## Contributing
 
