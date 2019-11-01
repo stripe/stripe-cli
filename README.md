@@ -11,13 +11,13 @@ The Stripe CLI helps you build, test, and manage your Stripe integration right f
 - Securely test webhooks without relying on 3rd party software
 - Trigger webhook events for easy testing
 - Tail your API request logs in real-time
-- Manage resources by interacting directly with the API to `create`, `retrieve`, `update` or `delete` any Stripe object
+- Manage resources by interacting directly with the API.
 
 ![demo](docs/demo.gif)
 
 ## Installation
 
-Stripe CLI is available for macOS, Windows, and Linux for distros like Debian, Ubuntu, RedHat and CentOS.
+Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, Debian, RedHat and CentOS.
 
 ### macOS
 
