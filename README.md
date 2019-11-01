@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.com/stripe/stripe-cli.svg?token=eQWDVpt1sJR63TxbC1KA&branch=master)](https://travis-ci.com/stripe/stripe-cli)
 ![GitHub](https://img.shields.io/github/license/stripe/stripe-cli)
 
-The Stripe Command-line interface (CLI) makes it easy for you to build, test and manage your Stripe integration right from the terminal by integrating seamlessly with your Stripe account.
+The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
 
 **Feature highlights**:
 
@@ -17,7 +17,7 @@ The Stripe Command-line interface (CLI) makes it easy for you to build, test and
 
 ## Installation
 
-Stripe CLI is available for MacOS, Windows, and Linux for Debian, Ubuntu, RedHat and CentOS.
+Stripe CLI is available for macOS, Windows, and Linux for distros like Debian, Ubuntu, RedHat and CentOS.
 
 ### macOS
 
