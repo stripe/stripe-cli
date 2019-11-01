@@ -23,9 +23,10 @@ func NewListCmd() *ListCmd {
 	listCmd.Cmd = &cobra.Command{
 		Use:   "list",
 		Args:  validators.NoArgs,
-		Short: "list available Stripe samples",
-		Long:  `A list of available Stripe Sample integrations`,
-		Run:   listCmd.runListCmd,
+		Short: "List Stripe Samples supported by the CLI",
+		Long: `A list of available Stripe Sample integrations that can be setup and bootstrap by
+the CLI.`,
+		Run: listCmd.runListCmd,
 	}
 
 	return listCmd
@@ -34,7 +35,7 @@ func NewListCmd() *ListCmd {
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
 	version.CheckLatestVersion()
 
-	fmt.Println("A list of available Stripe Sample integrations:")
+	fmt.Println("A list of available Stripe Samples:")
 	fmt.Println()
 
 	names := samples.Names()

@@ -31,11 +31,16 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 		cfg: config,
 	}
 	createCmd.Cmd = &cobra.Command{
-		Use:       "create",
+		Use:       "create <sample> [destination]",
 		ValidArgs: samples.Names(),
 		Args:      validators.MaximumNArgs(2),
-		Short:     "create a Stripe sample",
-		RunE:      createCmd.runCreateCmd,
+		Short:     "Setup and bootstrap a Stripe Sample",
+		Long: `The create command will locally clone a sample, let you select which integration,
+client, and server you want to run. It then automatically bootstraps the
+local configuration to let you get started faster.`,
+		Example: `stripe samples create adding-sales-tax
+  stripe samples create react-elements-card-payment my-payments-form`,
+		RunE: createCmd.runCreateCmd,
 	}
 
 	return createCmd

@@ -29,7 +29,10 @@ func newStatusCmd() *statusCmd {
 		Use:   "status",
 		Args:  validators.NoArgs,
 		Short: "Check the status of the Stripe API",
-		RunE:  sc.runStatusCmd,
+		Example: `stripe status
+  stripe status --poll
+  stripe status --poll --verbose`,
+		RunE: sc.runStatusCmd,
 	}
 
 	sc.cmd.Flags().StringVar(&sc.format, "format", "default", "The format to print the status as (either 'default' or 'json')")

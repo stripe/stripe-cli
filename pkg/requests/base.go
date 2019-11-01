@@ -89,20 +89,20 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 
 // InitFlags initialize shared flags for all requests commands
 func (rb *Base) InitFlags() {
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data to pass for the API request")
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline. Available on all API requests, see the documentation for specific objects that support expansion")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Sets the idempotency key for your request, preventing replaying the same requests within a 24 hour period")
+	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
-	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account for which the request is being made")
-	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show headers on responses to GET, POST, and DELETE requests")
-	rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Automatically confirm the command being entered. WARNING: This will result in NOT being prompted for confirmation for certain commands")
-	rb.Cmd.Flags().BoolVar(&rb.Livemode, "livemode", false, "Make a request against live mode instead of test mode")
-	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter terminals")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
+	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
+	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
 		if rb.Cmd.Flags().Lookup("limit") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "A limit on the number of objects to be returned, between 1 and 100 (default is 10)")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "How many objects to be return, between 1 and 100 (default is 10)")
 		}
 
 		if rb.Cmd.Flags().Lookup("starting-after") == nil {

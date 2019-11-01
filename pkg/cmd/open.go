@@ -95,11 +95,18 @@ func newOpenCmd() *openCmd {
 		Use:       "open",
 		ValidArgs: openNames(),
 		Short:     "Quickly open Stripe pages",
-		RunE:      oc.runOpenCmd,
+		Long: `The open command provices shortcuts to quickly let you open pages to Stripe with
+in your browser. A full list of support shortcuts can be seen with 'stripe open --list'`,
+		Example: `stripe open --list
+  stripe open api
+  stripe open docs
+  stripe open dashboard/webhooks
+  stripe open dashboard/billing --live`,
+		RunE: oc.runOpenCmd,
 	}
 
 	oc.cmd.Flags().Bool("list", false, "List all supported short cuts")
-	oc.cmd.Flags().Bool("livemode", false, "Open the dashboard in live mode")
+	oc.cmd.Flags().Bool("live", false, "Open the Stripe Dashboard for your live integration")
 
 	return oc
 }
@@ -110,7 +117,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	livemode, err := cmd.Flags().GetBool("livemode")
+	livemode, err := cmd.Flags().GetBool("live")
 	if err != nil {
 		return err
 	}
@@ -149,7 +156,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
 	if url, ok := nameURLmap[args[0]]; ok {
-		livemode, err := cmd.Flags().GetBool("livemode")
+		livemode, err := cmd.Flags().GetBool("live")
 		if err != nil {
 			return err
 		}
