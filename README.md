@@ -67,26 +67,26 @@ stripe [command] help
 ## Commands
 
 The Stripe CLI supports a broad range of commands. Below is some of the most used ones:
-- [`login`](wiki/login-command#)
-- [`listen`](wiki/listen-command#)
-- [`trigger`](wiki/trigger-command#)
-- [`logs tail`](wiki/logs-tail-command#)
-- [`samples`](wiki/samples-command#)
-- [`status`](wiki/status-command#)
-- [`config`](wiki/config-command#)
-- [`open`](wiki/open-command#)
-- [`get`, `post` & `delete` commands](wiki/http-(get,-post-&-delete)-commands#)
-- [`resource` commands](wiki/resource-commands#)
+- [`login`](../..//wiki/login-command#)
+- [`listen`](../..//wiki/listen-command#)
+- [`trigger`](../..//wiki/trigger-command#)
+- [`logs tail`](../..//wiki/logs-tail-command#)
+- [`samples`](../..//wiki/samples-command#)
+- [`status`](../..//wiki/status-command#)
+- [`config`](../../wiki/config-command#)
+- [`open`](../../wiki/open-command#)
+- [`get`, `post` & `delete` commands](../../wiki/http-(get,-post-&-delete)-commands#)
+- [`resource` commands](../../wiki/resource-commands#)
 
-Please see [commands](wiki/commands) for a full overview.
+Please see [commands](../../wiki/commands) for a full overview.
 
 ## Documentation
 
-Please see our [documentation in the wiki](/wiki).
+Please see our [documentation in the wiki](../../wiki).
 
 ## Telemetry
 
-The Stripe CLI includes a telemetry feature that collects some usage data. See our [telemetry wiki](wiki/telemetry) for details.
+The Stripe CLI includes a telemetry feature that collects some usage data. See our [telemetry wiki](../../wiki/telemetry) for details.
 
 ## Feedback
 
@@ -94,7 +94,7 @@ Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri
 
 ## Contributing
 
-See [Developing the Stripe CLI](wiki/developing-the-stripe-cli#) for more info on how to make contributions to this project.
+See [Developing the Stripe CLI](../../wiki/developing-the-stripe-cli#) for more info on how to make contributions to this project.
 
 ## License
 Copyright (c) Stripe. All rights reserved.
