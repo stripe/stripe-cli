@@ -231,9 +231,6 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 
 			result := fxt.parseArray(a, keyname, index)
 			data = append(data, result...)
-
-			//cleanValue := strings.Trim(strings.Join(result, ","), ",")
-			//data = append(data, fmt.Sprintf("%s=%s", keyname, cleanValue))
 		default:
 			continue
 		}
