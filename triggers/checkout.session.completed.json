@@ -27,7 +27,7 @@
       "path": "/v1/payment_pages",
       "method": "get",
       "params": {
-        "session_id": "${checkout_session.id}"
+        "session_id": "${checkout_session:id}"
       }
     },
     {
@@ -46,10 +46,10 @@
     },
     {
       "name": "payment_page_confirm",
-      "path": "/v1/payment_pages/${payment_page.id}/confirm",
+      "path": "/v1/payment_pages/${payment_page:id}/confirm",
       "method": "post",
       "params": {
-        "payment_method": "${payment_method.id}"
+        "payment_method": "${payment_method:id}"
       }
     }
   ]

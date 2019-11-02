@@ -10,7 +10,7 @@
     },
     {
       "name": "customer_source",
-      "path": "/v1/customers/${customer.id}/sources",
+      "path": "/v1/customers/${customer:id}/sources",
       "method": "post",
       "params": {
         "source": "tok_visa"
@@ -18,7 +18,7 @@
     },
     {
       "name": "customer_source_updated",
-      "path": "/v1/customers/${customer.id}/sources/${customer_source.id}",
+      "path": "/v1/customers/${customer:id}/sources/${customer_source:id}",
       "method": "post",
       "params": {
         "metadata": {

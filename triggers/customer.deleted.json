@@ -9,8 +9,8 @@
       "method": "post"
     },
     {
-      "name": "customer_updated",
-      "path": "/v1/customers/${customer.id}",
+      "name": "customer_deleted",
+      "path": "/v1/customers/${customer:id}",
       "method": "delete"
     }
   ]

@@ -181,10 +181,10 @@ func (fxt *Fixture) parseInterface(params interface{}) []string {
 	switch v := reflect.ValueOf(params); v.Kind() {
 	case reflect.Map:
 		m := params.(map[string]interface{})
-		data = append(data, fxt.parseMap(m, "")...)
+		data = append(data, fxt.parseMap(m, "", -1)...)
 	case reflect.Array:
 		a := params.([]interface{})
-		data = append(data, fxt.parseArray(a, "")...)
+		data = append(data, fxt.parseArray(a, "", -1)...)
 	default:
 	}
 
@@ -197,15 +197,18 @@ func (fxt *Fixture) parseInterface(params interface{}) []string {
 	return cleanData
 }
 
-func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []string {
+func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index int) []string {
 	data := make([]string, len(params))
 
 	var keyname string
 
 	for key, value := range params {
-		if parent != "" {
+		switch {
+		case parent != "" && index >= 0:
+			keyname = fmt.Sprintf("%s[%d][%s]", parent, index, key)
+		case parent != "":
 			keyname = fmt.Sprintf("%s[%s]", parent, key)
-		} else {
+		default:
 			keyname = key
 		}
 
@@ -216,20 +219,21 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []str
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
 		case reflect.Float32, reflect.Float64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Float()))
+		case reflect.Bool:
+			data = append(data, fmt.Sprintf("%s=%t", keyname, v.Bool()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
 
-			result := fxt.parseMap(m, keyname)
-			if len(result) > 0 {
-				data = append(data, result...)
-			}
-		case reflect.Array:
+			result := fxt.parseMap(m, keyname, index)
+			data = append(data, result...)
+		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
 
-			result := fxt.parseArray(a, keyname)
-			if len(result) > 0 {
-				data = append(data, result...)
-			}
+			result := fxt.parseArray(a, keyname, index)
+			data = append(data, result...)
+
+			//cleanValue := strings.Trim(strings.Join(result, ","), ",")
+			//data = append(data, fmt.Sprintf("%s=%s", keyname, cleanValue))
 		default:
 			continue
 		}
@@ -238,21 +242,22 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string) []str
 	return data
 }
 
-func (fxt *Fixture) parseArray(params []interface{}, parent string) []string {
+func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) []string {
 	data := make([]string, len(params))
 
 	for _, value := range params {
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
-			data = append(data, fxt.parseQuery(v.String()))
+			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			data = append(data, string(v.Int()))
+			data = append(data, fmt.Sprintf("%s=%v", parent, v.Int()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
-			data = append(data, fxt.parseMap(m, parent)...)
-		case reflect.Array:
+			// When we parse arrays of maps, we want to track an index for the request
+			data = append(data, fxt.parseMap(m, parent, index+1)...)
+		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
-			data = append(data, fxt.parseArray(a, parent)...)
+			data = append(data, fxt.parseArray(a, parent, index)...)
 		default:
 			continue
 		}

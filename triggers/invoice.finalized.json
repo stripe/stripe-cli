@@ -17,7 +17,7 @@
       "method": "post",
       "params": {
         "currency": "usd",
-        "customer": "${customer.id}",
+        "customer": "${customer:id}",
         "amount": 2000
       }
     },
@@ -26,12 +26,12 @@
       "path": "/v1/invoices",
       "method": "post",
       "params": {
-        "customer": "${customer.id}"
+        "customer": "${customer:id}"
       }
     },
     {
       "name": "invoice_finalized",
-      "path": "/v1/invoices/${invoice.id}/finalized",
+      "path": "/v1/invoices/${invoice:id}/finalize",
       "method": "post"
     }
   ]
