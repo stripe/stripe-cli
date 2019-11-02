@@ -247,7 +247,7 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 		case reflect.String:
 			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			data = append(data, fmt.Sprintf("%s=%v", parent, v.Int()))
+			data = append(data, fmt.Sprintf("%s[]=%v", parent, v.Int()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
 			// When we parse arrays of maps, we want to track an index for the request
