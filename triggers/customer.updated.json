@@ -10,7 +10,7 @@
     },
     {
       "name": "customer_updated",
-      "path": "/v1/customers/${customer.id}",
+      "path": "/v1/customers/${customer:id}",
       "method": "post",
       "params": {
         "metadata": {

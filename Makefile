@@ -58,6 +58,10 @@ build:
 	go build -o stripe cmd/stripe/main.go
 .PHONY: build
 
+build-dev:
+	go generate -tags dev ./...
+	go build -o stripe cmd/stripe/main.go
+
 # Build a beta version of stripe for all support platforms
 build-all-platforms:
 	go generate ./...

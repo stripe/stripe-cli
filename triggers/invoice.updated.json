@@ -14,7 +14,7 @@
       "method": "post",
       "params": {
         "currency": "usd",
-        "customer": "${customer.id}",
+        "customer": "${customer:id}",
         "amount": 2000
       }
     },
@@ -23,12 +23,12 @@
       "path": "/v1/invoices",
       "method": "post",
       "params": {
-        "customer": "${customer.id}"
+        "customer": "${customer:id}"
       }
     },
     {
       "name": "invoice_updated",
-      "path": "/v1/invoices/${invoice.id}",
+      "path": "/v1/invoices/${invoice:id}",
       "method": "post",
       "params": {
         "metadata": {

@@ -37,15 +37,18 @@ var Events = map[string]string{
 }
 
 // BuildFromFixture creates a new fixture struct for a file
-func BuildFromFixture(fs afero.Fs, apiKey, jsonFile string) *Fixture {
-	fixture, _ := NewFixture(
+func BuildFromFixture(fs afero.Fs, apiKey, jsonFile string) (*Fixture, error) {
+	fixture, err := NewFixture(
 		fs,
 		apiKey,
 		stripe.DefaultAPIBaseURL,
 		jsonFile,
 	)
+	if err != nil {
+		return nil, err
+	}
 
-	return fixture
+	return fixture, nil
 }
 
 // EventList prints out a padded list of supported trigger events for printing the help file
@@ -68,16 +71,6 @@ func EventNames() []string {
 	sort.Strings(names)
 
 	return names
-}
-
-// SupportedEvents returns a map of trigger names to the built fixture for execution
-func SupportedEvents(fs afero.Fs, apiKey string) map[string]*Fixture {
-	events := make(map[string]*Fixture)
-	for event, file := range Events {
-		events[event] = BuildFromFixture(fs, apiKey, file)
-	}
-
-	return events
 }
 
 func reverseMap() map[string]string {

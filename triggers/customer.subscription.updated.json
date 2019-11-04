@@ -29,17 +29,17 @@
       "path": "/v1/subscriptions",
       "method": "post",
       "params": {
-        "customer": "${customer.id}",
+        "customer": "${customer:id}",
         "items": [
           {
-            "plan": "${plan.id}"
+            "plan": "${plan:id}"
           }
         ]
       }
     },
     {
       "name": "subscription_updated",
-      "path": "/v1/subscriptions/${subscription.id}",
+      "path": "/v1/subscriptions/${subscription:id}",
       "method": "post",
       "params": {
         "metadata": {

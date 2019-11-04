@@ -16,7 +16,7 @@
     },
     {
       "name": "capture",
-      "path": "/v1/charges/${charge.id}/capture",
+      "path": "/v1/charges/${charge:id}/capture",
       "method": "post"
     }
   ]

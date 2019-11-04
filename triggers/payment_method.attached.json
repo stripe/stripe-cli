@@ -24,7 +24,7 @@
     },
     {
       "name": "payment_method_attach",
-      "path": "/v1/payment_methods/${payment_method.id}/attach",
+      "path": "/v1/payment_methods/${payment_method:id}/attach",
       "method": "post"
     }
   ]

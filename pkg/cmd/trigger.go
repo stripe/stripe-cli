@@ -67,16 +67,23 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	event := args[0]
-	supportedEvents := fixtures.SupportedEvents(tc.fs, apiKey)
 
-	fixture, ok := supportedEvents[event]
-	if !ok {
+	var fixture *fixtures.Fixture
+	if file, ok := fixtures.Events[event]; ok {
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, file)
+		if err != nil {
+			return err
+		}
+	} else {
 		exists, _ := afero.Exists(tc.fs, event)
 		if !exists {
 			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 		}
 
-		fixture = fixtures.BuildFromFixture(tc.fs, apiKey, args[0])
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, event)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = fixture.Execute()
