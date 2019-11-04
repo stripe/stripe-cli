@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"os/exec"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -36,8 +36,6 @@ func newCompletionCmd() *completionCmd {
 func selectShell(shell string) error {
 	selected := shell
 	if selected == "" {
-		fmt.Println("Trying to automatically detect your shell.")
-
 		selected = detectShell()
 	}
 
@@ -54,17 +52,12 @@ func selectShell(shell string) error {
 }
 
 func detectShell() string {
-	cmd := exec.Command("echo", "$0")
-
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
+	shell := os.Getenv("SHELL")
 
 	switch {
-	case strings.Contains(string(out), "zsh"):
+	case strings.Contains(shell, "zsh"):
 		return "zsh"
-	case strings.Contains(string(out), "bash"):
+	case strings.Contains(shell, "bash"):
 		return "bash"
 	default:
 		return ""
