@@ -77,10 +77,6 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 // Private functions
 //
 
-func getBanner() string {
-	return ansi.Italic("⚠️  The Stripe CLI is in beta! Share your feedback with `stripe feedback` ⚠️")
-}
-
 func getLogin(fs *afero.Fs, cfg *config.Config) string {
 	// We're checking against the path because we don't initialize the config
 	// at this point of execution.

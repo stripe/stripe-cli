@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -23,9 +22,7 @@ func newDeleteCmd() *deleteCmd {
 		Use:   "delete <path>",
 		Args:  validators.ExactArgs(1),
 		Short: "Make a DELETE request to the Stripe API",
-		Long: fmt.Sprintf(`%s
-
-Make DELETE requests to the Stripe API using your test mode key.
+		Long: `Make DELETE requests to the Stripe API using your test mode key.
 
 You can only delete data in test mode, the delete command does not work for
 live mode.
@@ -36,8 +33,6 @@ https://stripe.com/docs/api
 To delete a charge:
 
   $ stripe delete /customers/cus_FROPkgsHVRRspg`,
-			getBanner(),
-		),
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
