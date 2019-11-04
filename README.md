@@ -6,12 +6,12 @@
 
 The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
 
-**Feature highlights**:
+**With the CLI, you can:**
 
 - Securely test webhooks without relying on 3rd party software
 - Trigger webhook events for easy testing
 - Tail your API request logs in real-time
-- Manage resources by interacting directly with the API
+- Create, retrieve, update, or delete API objects.
 
 ![demo](docs/demo.gif)
 
