@@ -9,7 +9,7 @@ The Stripe CLI helps you build, test, and manage your Stripe integration right f
 **With the CLI, you can:**
 
 - Securely test webhooks without relying on 3rd party software
-- Trigger webhook events for easy testing
+- Trigger webhook events or resend events for easy testing
 - Tail your API request logs in real-time
 - Create, retrieve, update, or delete API objects.
 
@@ -71,6 +71,7 @@ The Stripe CLI supports a broad range of commands. Below is some of the most use
 - [`listen`](../../wiki/listen-command)
 - [`trigger`](../../wiki/trigger-command)
 - [`logs tail`](../../wiki/logs-tail-command)
+- [`events resend`](../../wiki/events-resend-command)
 - [`samples`](../../wiki/samples-command)
 - [`status`](../../wiki/status-command)
 - [`config`](../../wiki/config-command)
