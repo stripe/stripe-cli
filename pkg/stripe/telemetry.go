@@ -63,9 +63,6 @@ func getTelemetryHeader() (string, error) {
 // false otherwise.
 func telemetryOptedOut(optoutVar string) bool {
 	optoutVar = strings.ToLower(optoutVar)
-	if optoutVar == "1" || optoutVar == "true" {
-		return true
-	}
 
-	return false
+	return optoutVar == "1" || optoutVar == "true"
 }
