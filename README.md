@@ -21,7 +21,7 @@ Stripe CLI is available for macOS, Windows, and Linux for distros like Ubuntu, D
 
 ### macOS
 
-Stripe CLI is avilable on macOS via [Homebrew](https://brew.sh/):
+Stripe CLI is available on macOS via [Homebrew](https://brew.sh/):
 
 ```sh
 brew install stripe/stripe-cli/stripe
@@ -29,11 +29,11 @@ brew install stripe/stripe-cli/stripe
 
 ### Linux
 
-Please refer to the [installation wiki](wiki/installation#linux) for detailed Linux instructions.
+Please refer to the [installation wiki](../../wiki/installation#linux) for detailed Linux instructions.
 
 ### Windows
 
-Stripe CLI is avilable on Windows via the [Scoop](https://scoop.sh]/) package manager:
+Stripe CLI is available on Windows via the [Scoop](https://scoop.sh]/) package manager:
 
 ```sh
 scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
@@ -67,16 +67,16 @@ stripe [command] help
 ## Commands
 
 The Stripe CLI supports a broad range of commands. Below is some of the most used ones:
-- [`login`](../..//wiki/login-command#)
-- [`listen`](../..//wiki/listen-command#)
-- [`trigger`](../..//wiki/trigger-command#)
-- [`logs tail`](../..//wiki/logs-tail-command#)
-- [`samples`](../..//wiki/samples-command#)
-- [`status`](../..//wiki/status-command#)
-- [`config`](../../wiki/config-command#)
-- [`open`](../../wiki/open-command#)
-- [`get`, `post` & `delete` commands](../../wiki/http-(get,-post-&-delete)-commands#)
-- [`resource` commands](../../wiki/resource-commands#)
+- [`login`](../../wiki/login-command)
+- [`listen`](../../wiki/listen-command)
+- [`trigger`](../../wiki/trigger-command)
+- [`logs tail`](../../wiki/logs-tail-command)
+- [`samples`](../../wiki/samples-command)
+- [`status`](../../wiki/status-command)
+- [`config`](../../wiki/config-command)
+- [`open`](../../wiki/open-command)
+- [`get`, `post` & `delete` commands](../../wiki/http-(get,-post-&-delete)-commands)
+- [`resource` commands](../../wiki/resource-commands)
 
 Please see [commands](../../wiki/commands) for a full overview.
 
@@ -94,7 +94,7 @@ Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri
 
 ## Contributing
 
-See [Developing the Stripe CLI](../../wiki/developing-the-stripe-cli#) for more info on how to make contributions to this project.
+See [Developing the Stripe CLI](../../wiki/developing-the-stripe-cli) for more info on how to make contributions to this project.
 
 ## License
 Copyright (c) Stripe. All rights reserved.
