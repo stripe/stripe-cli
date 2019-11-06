@@ -45,6 +45,13 @@ const (
 	pathOutput = "resources_cmds.go"
 )
 
+var scalarTypes = map[string]bool{
+	"boolean": true,
+	"integer": true,
+	"number":  true,
+	"string":  true,
+}
+
 func main() {
 	// This is the script that generates the `resources.go` file from the
 	// OpenAPI spec file.
@@ -148,7 +155,7 @@ func getTemplateData() (*TemplateData, error) {
 					if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
 						for propName, schema := range media.Schema.Properties {
 							// only deal with scalar types for now
-							if schema.Type != "string" && schema.Type != "integer" {
+							if !scalarTypes[schema.Type] {
 								continue
 							}
 
@@ -165,7 +172,7 @@ func getTemplateData() (*TemplateData, error) {
 						schema := param.Schema
 
 						// only deal with scalar types for now
-						if schema.Type != "string" && schema.Type != "integer" {
+						if !scalarTypes[schema.Type] {
 							continue
 						}
 
