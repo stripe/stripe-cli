@@ -80,6 +80,7 @@ var validEvents = map[string]bool{
 	"issuing_settlement.updated":                true,
 	"issuing_transaction.created":               true,
 	"issuing_transaction.updated":               true,
+	"mandate.updated":                           true,
 	"order.created":                             true,
 	"order.payment_failed":                      true,
 	"order.payment_succeeded":                   true,

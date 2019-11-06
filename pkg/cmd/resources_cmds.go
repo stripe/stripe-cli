@@ -48,6 +48,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rInvoicesCmd := resource.NewResourceCmd(rootCmd, "invoices")
 	rLineItemsCmd := resource.NewResourceCmd(rootCmd, "line_items")
 	rLoginLinksCmd := resource.NewResourceCmd(rootCmd, "login_links")
+	rMandatesCmd := resource.NewResourceCmd(rootCmd, "mandates")
 	rOrderReturnsCmd := resource.NewResourceCmd(rootCmd, "order_returns")
 	rOrdersCmd := resource.NewResourceCmd(rootCmd, "orders")
 	rPaymentIntentsCmd := resource.NewResourceCmd(rootCmd, "payment_intents")
@@ -332,6 +333,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "close", "/v1/disputes/{dispute}/close", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "list", "/v1/disputes", http.MethodGet, map[string]string{
+		"charge":         "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
@@ -495,6 +497,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{
 		"redirect_url": "string",
 	}, &Config)
+	resource.NewOperationCmd(rMandatesCmd.Cmd, "retrieve", "/v1/mandates/{mandate}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rOrderReturnsCmd.Cmd, "list", "/v1/order_returns", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
@@ -538,6 +541,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "confirm", "/v1/payment_intents/{intent}/confirm", http.MethodPost, map[string]string{
+		"mandate":            "string",
 		"payment_method":     "string",
 		"return_url":         "string",
 		"setup_future_usage": "string",
@@ -551,6 +555,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"currency":                    "string",
 		"customer":                    "string",
 		"description":                 "string",
+		"mandate":                     "string",
 		"on_behalf_of":                "string",
 		"payment_method":              "string",
 		"receipt_email":               "string",
@@ -848,12 +853,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "cancel", "/v1/subscription_schedules/{schedule}/cancel", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "create", "/v1/subscription_schedules", http.MethodPost, map[string]string{
-		"collection_method":      "string",
-		"customer":               "string",
-		"default_payment_method": "string",
-		"default_source":         "string",
-		"end_behavior":           "string",
-		"from_subscription":      "string",
+		"customer":          "string",
+		"end_behavior":      "string",
+		"from_subscription": "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "list", "/v1/subscription_schedules", http.MethodGet, map[string]string{
 		"customer":       "string",
@@ -864,10 +866,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "release", "/v1/subscription_schedules/{schedule}/release", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "retrieve", "/v1/subscription_schedules/{schedule}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "update", "/v1/subscription_schedules/{schedule}", http.MethodPost, map[string]string{
-		"collection_method":      "string",
-		"default_payment_method": "string",
-		"default_source":         "string",
-		"end_behavior":           "string",
+		"end_behavior": "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "cancel", "/v1/subscriptions/{subscription_exposed_id}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "create", "/v1/subscriptions", http.MethodPost, map[string]string{

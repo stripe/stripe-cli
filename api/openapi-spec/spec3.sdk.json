@@ -3227,6 +3227,19 @@
           ]
         }
       },
+      "card_mandate_payment_method_details": {
+        "properties": {
+        },
+        "title": "card_mandate_payment_method_details",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Card",
+          "in_class": "mandate_payment_method_details"
+        }
+      },
       "charge": {
         "properties": {
           "alternate_statement_descriptors": {
@@ -5575,6 +5588,47 @@
             "invoice_setting_customer_setting",
             "tax_info",
             "tax_info_verification"
+          ]
+        }
+      },
+      "customer_acceptance": {
+        "properties": {
+          "accepted_at": {
+            "description": "The time at which the customer accepted the Mandate.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "offline": {
+            "$ref": "#/components/schemas/offline_acceptance"
+          },
+          "online": {
+            "$ref": "#/components/schemas/online_acceptance"
+          },
+          "type": {
+            "description": "The type of customer acceptance information included with the Mandate. One of `online` or `offline`.",
+            "enum": [
+              "offline",
+              "online"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "customer_acceptance",
+        "type": "object",
+        "x-expandableFields": [
+          "offline",
+          "online"
+        ],
+        "x-stripeResource": {
+          "class_name": "CustomerAcceptance",
+          "in_class": "mandate",
+          "inner_classes": [
+            "offline_acceptance",
+            "online_acceptance"
           ]
         }
       },
@@ -13529,6 +13583,230 @@
           "in_package": ""
         }
       },
+      "mandate": {
+        "properties": {
+          "customer_acceptance": {
+            "$ref": "#/components/schemas/customer_acceptance"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "multi_use": {
+            "$ref": "#/components/schemas/mandate_multi_use"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "mandate"
+            ],
+            "type": "string"
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "ID of the payment method associated with this mandate.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "payment_method_details": {
+            "$ref": "#/components/schemas/mandate_payment_method_details"
+          },
+          "single_use": {
+            "$ref": "#/components/schemas/mandate_single_use"
+          },
+          "status": {
+            "description": "The status of the Mandate, one of `active`, `inactive`, or `pending`. The Mandate can be used to initiate a payment only if status=active.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of the mandate, one of `multi_use` or `single_use`",
+            "enum": [
+              "multi_use",
+              "single_use"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_acceptance",
+          "id",
+          "livemode",
+          "object",
+          "payment_method",
+          "payment_method_details",
+          "status",
+          "type"
+        ],
+        "title": "Mandate",
+        "type": "object",
+        "x-expandableFields": [
+          "customer_acceptance",
+          "multi_use",
+          "payment_method",
+          "payment_method_details",
+          "single_use"
+        ],
+        "x-resourceId": "mandate",
+        "x-stripeOperations": [
+          {
+            "method_name": "retrieve",
+            "method_on": "class",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/mandates/{mandate}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "mandate",
+                "name": "mandate"
+              }
+            ]
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "service",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/mandates/{mandate}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "mandate",
+                "name": "mandate"
+              }
+            ]
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "Mandate",
+          "in_package": "",
+          "inner_classes": [
+            "customer_acceptance",
+            "mandate_multi_use",
+            "mandate_payment_method_details",
+            "mandate_single_use"
+          ]
+        }
+      },
+      "mandate_multi_use": {
+        "properties": {
+        },
+        "title": "mandate_multi_use",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "MultiUse",
+          "in_class": "mandate"
+        }
+      },
+      "mandate_payment_method_details": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/card_mandate_payment_method_details"
+          },
+          "sepa_debit": {
+            "$ref": "#/components/schemas/mandate_sepa_debit"
+          },
+          "type": {
+            "description": "The type of the payment method associated with this mandate. An additional hash is included on `payment_method_details` with a name matching this value. It contains mandate information specific to the payment method.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "mandate_payment_method_details",
+        "type": "object",
+        "x-expandableFields": [
+          "card",
+          "sepa_debit"
+        ],
+        "x-stripeResource": {
+          "class_name": "PaymentMethodDetails",
+          "in_class": "mandate",
+          "inner_classes": [
+            "card_mandate_payment_method_details",
+            "mandate_sepa_debit"
+          ]
+        }
+      },
+      "mandate_sepa_debit": {
+        "properties": {
+          "reference": {
+            "description": "The unique reference of the mandate.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "url": {
+            "description": "The URL of the mandate. This URL generally contains sensitive information about the customer and should be shared with them exclusively.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "url"
+        ],
+        "title": "mandate_sepa_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SepaDebit",
+          "in_class": "mandate_payment_method_details"
+        }
+      },
+      "mandate_single_use": {
+        "properties": {
+          "amount": {
+            "description": "On a single use mandate, the amount of the payment.",
+            "type": "integer"
+          },
+          "currency": {
+            "description": "On a single use mandate, the currency of the payment.",
+            "maxLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency"
+        ],
+        "title": "mandate_single_use",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SingleUse",
+          "in_class": "mandate"
+        }
+      },
       "notification_event_data": {
         "properties": {
           "object": {
@@ -13576,6 +13854,44 @@
         "x-stripeResource": {
           "class_name": "EventRequest",
           "in_package": ""
+        }
+      },
+      "offline_acceptance": {
+        "properties": {
+        },
+        "title": "offline_acceptance",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Offline",
+          "in_class": "customer_acceptance"
+        }
+      },
+      "online_acceptance": {
+        "properties": {
+          "ip_address": {
+            "description": "The IP address from which the Mandate was accepted by the customer.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "user_agent": {
+            "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "online_acceptance",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Online",
+          "in_class": "customer_acceptance"
         }
       },
       "order": {
@@ -14920,6 +15236,9 @@
             "maxLength": 5000,
             "type": "string"
           },
+          "ideal": {
+            "$ref": "#/components/schemas/payment_method_ideal"
+          },
           "livemode": {
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
             "type": "boolean"
@@ -14939,11 +15258,16 @@
             ],
             "type": "string"
           },
+          "sepa_debit": {
+            "$ref": "#/components/schemas/payment_method_sepa_debit"
+          },
           "type": {
             "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
             "enum": [
               "card",
-              "card_present"
+              "card_present",
+              "ideal",
+              "sepa_debit"
             ],
             "type": "string"
           }
@@ -14963,7 +15287,9 @@
           "billing_details",
           "card",
           "card_present",
-          "customer"
+          "customer",
+          "ideal",
+          "sepa_debit"
         ],
         "x-resourceId": "payment_method",
         "x-stripeOperations": [
@@ -15107,7 +15433,9 @@
           "inner_classes": [
             "billing_details",
             "payment_method_card",
-            "payment_method_card_present"
+            "payment_method_card_present",
+            "payment_method_ideal",
+            "payment_method_sepa_debit"
           ]
         }
       },
@@ -16753,6 +17081,57 @@
           "in_class": "payment_method_details"
         }
       },
+      "payment_method_ideal": {
+        "properties": {
+          "bank": {
+            "description": "The customer's bank, if provided. Can be one of `abn_amro`, `asn_bank`, `bunq`, `handelsbanken`, `ing`, `knab`, `moneyou`, `rabobank`, `regiobank`, `sns_bank`, `triodos_bank`, or `van_lanschot`.",
+            "enum": [
+              "abn_amro",
+              "asn_bank",
+              "bunq",
+              "handelsbanken",
+              "ing",
+              "knab",
+              "moneyou",
+              "rabobank",
+              "regiobank",
+              "sns_bank",
+              "triodos_bank",
+              "van_lanschot"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "bic": {
+            "description": "The Bank Identifier Code of the customer's bank, if the bank was provided.",
+            "enum": [
+              "ABNANL2A",
+              "ASNBNL21",
+              "BUNQNL2A",
+              "FVLBNL22",
+              "HANDNL2A",
+              "INGBNL2A",
+              "KNABNL2H",
+              "MOYONL21",
+              "RABONL2U",
+              "RBRBNL21",
+              "SNSBNL2A",
+              "TRIONL2U"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "payment_method_ideal",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Ideal",
+          "in_class": "payment_method"
+        }
+      },
       "payment_method_options_card_installments": {
         "properties": {
           "available_plans": {
@@ -16792,6 +17171,49 @@
           "inner_classes": [
             "payment_method_details_card_installments_plan"
           ]
+        }
+      },
+      "payment_method_sepa_debit": {
+        "properties": {
+          "bank_code": {
+            "description": "Bank code of bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "branch_code": {
+            "description": "Branch code of bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "country": {
+            "description": "Two-letter ISO code representing the country the bank account is located in.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "Uniquely identifies this particular bank account. You can use this attribute to check whether two bank accounts are the same.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "last4": {
+            "description": "Last four characters of the IBAN.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "payment_method_sepa_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SepaDebit",
+          "in_class": "payment_method"
         }
       },
       "payment_source": {
@@ -20231,6 +20653,26 @@
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
             "type": "boolean"
           },
+          "mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "ID of the multi use Mandate generated by the SetupIntent.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
           "metadata": {
             "additionalProperties": {
               "maxLength": 500,
@@ -20312,6 +20754,26 @@
             },
             "type": "array"
           },
+          "single_use_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "ID of the single_use Mandate generated by the SetupIntent.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
           "status": {
             "description": "[Status](https://stripe.com/docs/payments/intents#intent-statuses) of this SetupIntent, one of `requires_payment_method`, `requires_confirmation`, `requires_action`, `processing`, `canceled`, or `succeeded`.",
             "enum": [
@@ -20345,10 +20807,12 @@
           "application",
           "customer",
           "last_setup_error",
+          "mandate",
           "next_action",
           "on_behalf_of",
           "payment_method",
-          "payment_method_options"
+          "payment_method_options",
+          "single_use_mandate"
         ],
         "x-resourceId": "setup_intent",
         "x-stripeOperations": [
@@ -22984,6 +23448,9 @@
             "maxLength": 5000,
             "type": "string"
           },
+          "invoice_customer_balance_settings": {
+            "$ref": "#/components/schemas/subscription_invoice_customer_balance_settings"
+          },
           "items": {
             "description": "List of subscription items, each with an attached plan.",
             "properties": {
@@ -23183,6 +23650,7 @@
           "current_period_start",
           "customer",
           "id",
+          "invoice_customer_balance_settings",
           "items",
           "livemode",
           "metadata",
@@ -23199,6 +23667,7 @@
           "default_source",
           "default_tax_rates",
           "discount",
+          "invoice_customer_balance_settings",
           "items",
           "latest_invoice",
           "pending_invoice_item_interval",
@@ -23348,6 +23817,7 @@
           "in_package": "",
           "inner_classes": [
             "subscription_billing_thresholds",
+            "subscription_invoice_customer_balance_settings",
             "subscription_pending_invoice_item_interval"
           ]
         }
@@ -23372,6 +23842,26 @@
         ],
         "x-stripeResource": {
           "class_name": "BillingThresholds",
+          "in_class": "subscription"
+        }
+      },
+      "subscription_invoice_customer_balance_settings": {
+        "properties": {
+          "consume_applied_balance_on_void": {
+            "description": "Controls whether a customer balance applied to this invoice should be consumed and not credited or debited back to the customer if voided.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consume_applied_balance_on_void"
+        ],
+        "title": "SubscriptionInvoiceCustomerBalanceSettings",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "InvoiceCustomerBalanceSettings",
           "in_class": "subscription"
         }
       },
@@ -23644,29 +24134,11 @@
       },
       "subscription_schedule": {
         "properties": {
-          "billing_thresholds": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/subscription_billing_thresholds"
-              }
-            ],
-            "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period",
-            "nullable": true
-          },
           "canceled_at": {
             "description": "Time at which the subscription schedule was canceled. Measured in seconds since the Unix epoch.",
             "format": "unix-time",
             "nullable": true,
             "type": "integer"
-          },
-          "collection_method": {
-            "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions.",
-            "enum": [
-              "charge_automatically",
-              "send_invoice"
-            ],
-            "nullable": true,
-            "type": "string"
           },
           "completed_at": {
             "description": "Time at which the subscription schedule was completed. Measured in seconds since the Unix epoch.",
@@ -23707,45 +24179,8 @@
               ]
             }
           },
-          "default_payment_method": {
-            "anyOf": [
-              {
-                "maxLength": 5000,
-                "type": "string"
-              },
-              {
-                "$ref": "#/components/schemas/payment_method"
-              }
-            ],
-            "description": "ID of the default payment method for the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
-            "nullable": true,
-            "x-expansionResources": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/payment_method"
-                }
-              ]
-            }
-          },
-          "default_source": {
-            "anyOf": [
-              {
-                "maxLength": 5000,
-                "type": "string"
-              },
-              {
-                "$ref": "#/components/schemas/payment_source"
-              }
-            ],
-            "description": "ID of the default payment source for the subscription schedule. If not set, defaults to the customer's default source.",
-            "nullable": true,
-            "x-expansionResources": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/payment_source"
-                }
-              ]
-            }
+          "default_settings": {
+            "$ref": "#/components/schemas/subscription_schedules_resource_default_settings"
           },
           "end_behavior": {
             "description": "Behavior of the subscription schedule and underlying subscription when it ends.",
@@ -23761,15 +24196,6 @@
             "description": "Unique identifier for the object.",
             "maxLength": 5000,
             "type": "string"
-          },
-          "invoice_settings": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/invoice_setting_subscription_schedule_setting"
-              }
-            ],
-            "description": "The subscription schedule's default invoice settings.",
-            "nullable": true
           },
           "livemode": {
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
@@ -23854,6 +24280,7 @@
         "required": [
           "created",
           "customer",
+          "default_settings",
           "end_behavior",
           "id",
           "livemode",
@@ -23864,12 +24291,9 @@
         "title": "SubscriptionSchedule",
         "type": "object",
         "x-expandableFields": [
-          "billing_thresholds",
           "current_phase",
           "customer",
-          "default_payment_method",
-          "default_source",
-          "invoice_settings",
+          "default_settings",
           "phases",
           "renewal_interval",
           "subscription"
@@ -24018,7 +24442,8 @@
             "subscription_schedule_configuration_item",
             "subscription_schedule_current_phase",
             "subscription_schedule_phase_configuration",
-            "subscription_schedule_renewal_interval"
+            "subscription_schedule_renewal_interval",
+            "subscription_schedules_resource_default_settings"
           ]
         }
       },
@@ -24264,6 +24689,68 @@
         ],
         "x-stripeResource": {
           "class_name": "RenewalInterval",
+          "in_class": "subscription_schedule"
+        }
+      },
+      "subscription_schedules_resource_default_settings": {
+        "properties": {
+          "billing_thresholds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/subscription_billing_thresholds"
+              }
+            ],
+            "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period",
+            "nullable": true
+          },
+          "collection_method": {
+            "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions.",
+            "enum": [
+              "charge_automatically",
+              "send_invoice"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "default_payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "ID of the default payment method for the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "invoice_settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/invoice_setting_subscription_schedule_setting"
+              }
+            ],
+            "description": "The subscription schedule's default invoice settings.",
+            "nullable": true
+          }
+        },
+        "title": "SubscriptionSchedulesResourceDefaultSettings",
+        "type": "object",
+        "x-expandableFields": [
+          "billing_thresholds",
+          "default_payment_method",
+          "invoice_settings"
+        ],
+        "x-stripeResource": {
+          "class_name": "DefaultSettings",
           "in_class": "subscription_schedule"
         }
       },
@@ -26725,7 +27212,7 @@
     "description": "The Stripe REST API. Please see https://stripe.com/docs/api for more details.",
     "termsOfService": "https://stripe.com/us/terms/",
     "title": "Stripe API",
-    "version": "2019-10-17",
+    "version": "2019-11-05",
     "x-stripeSpecFilename": "spec3.sdk"
   },
   "openapi": "3.0.0",
@@ -27778,7 +28265,7 @@
                     "type": "object"
                   },
                   "requested_capabilities": {
-                    "description": "The set of capabilities you want to unlock for this account (US only). Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
+                    "description": "The set of capabilities you want to unlock for this account. Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
                     "items": {
                       "enum": [
                         "card_issuing",
@@ -28727,7 +29214,7 @@
                     "type": "object"
                   },
                   "requested_capabilities": {
-                    "description": "The set of capabilities you want to unlock for this account (US only). Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
+                    "description": "The set of capabilities you want to unlock for this account. Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
                     "items": {
                       "enum": [
                         "card_issuing",
@@ -38396,6 +38883,17 @@
         "operationId": "GetDisputes",
         "parameters": [
           {
+            "description": "Only return disputes that are associated by the Charge specified by this Charge ID.",
+            "in": "query",
+            "name": "charge",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
             "explode": true,
             "in": "query",
             "name": "created",
@@ -43026,7 +43524,6 @@
                 "pending",
                 "reversed"
               ],
-              "maxLength": 5000,
               "type": "string"
             },
             "style": "form"
@@ -49312,6 +49809,76 @@
         }
       }
     },
+    "/v1/mandates/{mandate}": {
+      "get": {
+        "description": "<p>Retrieves a Mandate object.</p>",
+        "operationId": "GetMandatesMandate",
+        "parameters": [
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "ID of the Mandate to retrieve.",
+            "in": "path",
+            "name": "mandate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
     "/v1/order_returns": {
       "get": {
         "description": "<p>Returns a list of your order returns. The returns are returned sorted by creation date, with the most recently created return appearing first.</p>",
@@ -50702,6 +51269,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -50781,6 +51352,73 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "mandate": {
+                    "description": "ID of the mandate to be used for this payment. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm).",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "mandate_data": {
+                    "description": "This hash contains details about the Mandate to create. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/payment_intents/create#create_payment_intent-confirm).",
+                    "properties": {
+                      "customer_acceptance": {
+                        "description": "This hash contains details about the customer acceptance of the Mandate.",
+                        "properties": {
+                          "accepted_at": {
+                            "description": "The time at which the customer accepted the Mandate.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "offline": {
+                            "description": "If this is a Mandate accepted offline, this hash contains details about the offline acceptance.",
+                            "properties": {
+                            },
+                            "title": "offline_param",
+                            "type": "object"
+                          },
+                          "online": {
+                            "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                            "properties": {
+                              "ip_address": {
+                                "description": "The IP address from which the Mandate was accepted by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip_address",
+                              "user_agent"
+                            ],
+                            "title": "online_param",
+                            "type": "object"
+                          },
+                          "type": {
+                            "description": "The type of customer acceptance information included with the Mandate. One of `online` or `offline`.",
+                            "enum": [
+                              "offline",
+                              "online"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "title": "customer_acceptance_param",
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "customer_acceptance"
+                    ],
+                    "title": "secret_key_param",
+                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -51025,6 +51663,10 @@
                   "transfer_group": {
                     "description": "A string that identifies the resulting payment as part of a group. See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/payment-intents/use-cases#connected-accounts) for details.",
                     "type": "string"
+                  },
+                  "use_stripe_sdk": {
+                    "description": "Set to `true` only when using manual confirmation and the iOS or Android SDKs to handle additional authentication steps.",
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -51625,6 +52267,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "off_session": {
                   "explode": true,
                   "style": "deepObject"
@@ -51652,6 +52298,125 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "mandate": {
+                    "description": "ID of the mandate to be used for this payment.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "mandate_data": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "customer_acceptance": {
+                            "description": "This hash contains details about the customer acceptance of the Mandate.",
+                            "properties": {
+                              "accepted_at": {
+                                "description": "The time at which the customer accepted the Mandate.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "offline": {
+                                "description": "If this is a Mandate accepted offline, this hash contains details about the offline acceptance.",
+                                "properties": {
+                                },
+                                "title": "offline_param",
+                                "type": "object"
+                              },
+                              "online": {
+                                "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                                "properties": {
+                                  "ip_address": {
+                                    "description": "The IP address from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "user_agent": {
+                                    "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "ip_address",
+                                  "user_agent"
+                                ],
+                                "title": "online_param",
+                                "type": "object"
+                              },
+                              "type": {
+                                "description": "The type of customer acceptance information included with the Mandate. One of `online` or `offline`.",
+                                "enum": [
+                                  "offline",
+                                  "online"
+                                ],
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "title": "customer_acceptance_param",
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "customer_acceptance"
+                        ],
+                        "title": "secret_key_param",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "customer_acceptance": {
+                            "description": "This hash contains details about the customer acceptance of the Mandate.",
+                            "properties": {
+                              "online": {
+                                "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                                "properties": {
+                                  "ip_address": {
+                                    "description": "The IP address from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "user_agent": {
+                                    "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  }
+                                },
+                                "title": "online_param",
+                                "type": "object"
+                              },
+                              "type": {
+                                "description": "The type of customer acceptance information included with the Mandate.",
+                                "enum": [
+                                  "online"
+                                ],
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "online",
+                              "type"
+                            ],
+                            "title": "customer_acceptance_param",
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "customer_acceptance"
+                        ],
+                        "title": "client_key_param",
+                        "type": "object",
+                        "x-stripeParam": {
+                          "class_name": "MandateDataPublishableKey"
+                        }
+                      }
+                    ],
+                    "description": "This hash contains details about the Mandate to create"
                   },
                   "off_session": {
                     "anyOf": [
@@ -51863,6 +52628,10 @@
                   "source": {
                     "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
                     "type": "string"
+                  },
+                  "use_stripe_sdk": {
+                    "description": "Set to `true` only when using manual confirmation and the iOS or Android SDKs to handle additional authentication steps.",
+                    "type": "boolean"
                   }
                 },
                 "type": "object"
@@ -51964,7 +52733,9 @@
             "schema": {
               "enum": [
                 "card",
-                "card_present"
+                "card_present",
+                "ideal",
+                "sepa_debit"
               ],
               "maxLength": 5000,
               "type": "string",
@@ -52065,7 +52836,15 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "ideal": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "sepa_debit": {
                   "explode": true,
                   "style": "deepObject"
                 }
@@ -52192,6 +52971,32 @@
                     },
                     "type": "array"
                   },
+                  "ideal": {
+                    "description": "If this is an `ideal` PaymentMethod, this hash contains details about the iDEAL payment method.",
+                    "properties": {
+                      "bank": {
+                        "description": "The customer's bank.",
+                        "enum": [
+                          "abn_amro",
+                          "asn_bank",
+                          "bunq",
+                          "handelsbanken",
+                          "ing",
+                          "knab",
+                          "moneyou",
+                          "rabobank",
+                          "regiobank",
+                          "sns_bank",
+                          "triodos_bank",
+                          "van_lanschot"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "title": "param",
+                    "type": "object"
+                  },
                   "metadata": {
                     "additionalProperties": {
                       "type": "string"
@@ -52204,11 +53009,27 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "sepa_debit": {
+                    "description": "If this is a `sepa_debit` PaymentMethod, this hash contains details about the SEPA debit bank account.",
+                    "properties": {
+                      "iban": {
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "iban"
+                    ],
+                    "title": "param",
+                    "type": "object"
+                  },
                   "type": {
                     "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Cloning PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#cloning-payment-methods) guide)",
                     "enum": [
                       "card",
-                      "card_present"
+                      "card_present",
+                      "ideal",
+                      "sepa_debit"
                     ],
                     "type": "string",
                     "x-stripeBypassValidation": true
@@ -56445,14 +57266,11 @@
                     "type": "boolean"
                   }
                 },
-                "required": [
-                  "charge"
-                ],
                 "type": "object"
               }
             }
           },
-          "required": true
+          "required": false
         },
         "responses": {
           "200": {
@@ -57659,6 +58477,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -57668,6 +58490,10 @@
                   "style": "deepObject"
                 },
                 "payment_method_types": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "single_use": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -57700,6 +58526,68 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "mandate_data": {
+                    "description": "This hash contains details about the Mandate to create. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/setup_intents/create#create_setup_intent-confirm).",
+                    "properties": {
+                      "customer_acceptance": {
+                        "description": "This hash contains details about the customer acceptance of the Mandate.",
+                        "properties": {
+                          "accepted_at": {
+                            "description": "The time at which the customer accepted the Mandate.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "offline": {
+                            "description": "If this is a Mandate accepted offline, this hash contains details about the offline acceptance.",
+                            "properties": {
+                            },
+                            "title": "offline_param",
+                            "type": "object"
+                          },
+                          "online": {
+                            "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                            "properties": {
+                              "ip_address": {
+                                "description": "The IP address from which the Mandate was accepted by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip_address",
+                              "user_agent"
+                            ],
+                            "title": "online_param",
+                            "type": "object"
+                          },
+                          "type": {
+                            "description": "The type of customer acceptance information included with the Mandate. One of `online` or `offline`.",
+                            "enum": [
+                              "offline",
+                              "online"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "type"
+                        ],
+                        "title": "customer_acceptance_param",
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "customer_acceptance"
+                    ],
+                    "title": "secret_key_param",
+                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -57759,6 +58647,25 @@
                   "return_url": {
                     "description": "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme. This parameter can only be used with [`confirm=true`](https://stripe.com/docs/api/setup_intents/create#create_setup_intent-confirm).",
                     "type": "string"
+                  },
+                  "single_use": {
+                    "description": "If this hash is populated, this SetupIntent will generate a single_use Mandate on success.",
+                    "properties": {
+                      "amount": {
+                        "description": "A positive integer representing how much to charge in the [smallest currency unit](https://stripe.com/docs/currencies#zero-decimal) (e.g., 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). The minimum amount is $0.50 US or [equivalent in charge currency](https://stripe.com/docs/currencies#minimum-and-maximum-charge-amounts). The amount value supports up to eight digits (e.g., a value of 99999999 for a USD charge of $999,999.99).",
+                        "type": "integer"
+                      },
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "title": "setup_intent_single_use_params",
+                    "type": "object"
                   },
                   "usage": {
                     "anyOf": [
@@ -58098,6 +59005,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "mandate_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "payment_method_options": {
                   "explode": true,
                   "style": "deepObject"
@@ -58113,6 +59024,120 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "mandate_data": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "customer_acceptance": {
+                            "description": "This hash contains details about the customer acceptance of the Mandate.",
+                            "properties": {
+                              "accepted_at": {
+                                "description": "The time at which the customer accepted the Mandate.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "offline": {
+                                "description": "If this is a Mandate accepted offline, this hash contains details about the offline acceptance.",
+                                "properties": {
+                                },
+                                "title": "offline_param",
+                                "type": "object"
+                              },
+                              "online": {
+                                "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                                "properties": {
+                                  "ip_address": {
+                                    "description": "The IP address from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "user_agent": {
+                                    "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "ip_address",
+                                  "user_agent"
+                                ],
+                                "title": "online_param",
+                                "type": "object"
+                              },
+                              "type": {
+                                "description": "The type of customer acceptance information included with the Mandate. One of `online` or `offline`.",
+                                "enum": [
+                                  "offline",
+                                  "online"
+                                ],
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "type"
+                            ],
+                            "title": "customer_acceptance_param",
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "customer_acceptance"
+                        ],
+                        "title": "secret_key_param",
+                        "type": "object"
+                      },
+                      {
+                        "properties": {
+                          "customer_acceptance": {
+                            "description": "This hash contains details about the customer acceptance of the Mandate.",
+                            "properties": {
+                              "online": {
+                                "description": "If this is a Mandate accepted online, this hash contains details about the online acceptance.",
+                                "properties": {
+                                  "ip_address": {
+                                    "description": "The IP address from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "user_agent": {
+                                    "description": "The user agent of the browser from which the Mandate was accepted by the customer.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  }
+                                },
+                                "title": "online_param",
+                                "type": "object"
+                              },
+                              "type": {
+                                "description": "The type of customer acceptance information included with the Mandate.",
+                                "enum": [
+                                  "online"
+                                ],
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "online",
+                              "type"
+                            ],
+                            "title": "customer_acceptance_param",
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "customer_acceptance"
+                        ],
+                        "title": "client_key_param",
+                        "type": "object",
+                        "x-stripeParam": {
+                          "class_name": "MandateDataPublishableKey"
+                        }
+                      }
+                    ],
+                    "description": "This hash contains details about the Mandate to create"
                   },
                   "payment_method": {
                     "description": "ID of the payment method (a PaymentMethod, Card, BankAccount, or saved Source object) to attach to this SetupIntent.",
@@ -61325,15 +62350,11 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
-                "billing_thresholds": {
+                "default_settings": {
                   "explode": true,
                   "style": "deepObject"
                 },
                 "expand": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
-                "invoice_settings": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -61353,53 +62374,65 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "billing_thresholds": {
-                    "anyOf": [
-                      {
-                        "properties": {
-                          "amount_gte": {
-                            "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
-                            "type": "integer"
-                          },
-                          "reset_billing_cycle_anchor": {
-                            "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
-                            "type": "boolean"
-                          }
-                        },
-                        "title": "billing_thresholds_param",
-                        "type": "object"
-                      },
-                      {
-                        "enum": [
-                          ""
-                        ],
-                        "type": "string"
-                      }
-                    ],
-                    "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
-                  },
-                  "collection_method": {
-                    "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "type": "string"
-                  },
                   "customer": {
                     "description": "The identifier of the customer to create the subscription schedule for.",
                     "maxLength": 5000,
                     "type": "string"
                   },
-                  "default_payment_method": {
-                    "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
-                    "maxLength": 5000,
-                    "type": "string"
-                  },
-                  "default_source": {
-                    "description": "ID of the default payment source for the subscription schedule. It must belong to the customer associated with the subscription schedule and be in a chargeable state. If not set, defaults to the customer's default source.",
-                    "maxLength": 5000,
-                    "type": "string"
+                  "default_settings": {
+                    "description": "Object representing the subscription schedule's default settings.",
+                    "properties": {
+                      "billing_thresholds": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "amount_gte": {
+                                "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
+                                "type": "integer"
+                              },
+                              "reset_billing_cycle_anchor": {
+                                "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
+                                "type": "boolean"
+                              }
+                            },
+                            "title": "billing_thresholds_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
+                      },
+                      "collection_method": {
+                        "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
+                        "enum": [
+                          "charge_automatically",
+                          "send_invoice"
+                        ],
+                        "type": "string"
+                      },
+                      "default_payment_method": {
+                        "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "invoice_settings": {
+                        "description": "All invoices will be billed using the specified settings.",
+                        "properties": {
+                          "days_until_due": {
+                            "type": "integer"
+                          }
+                        },
+                        "title": "subscription_schedules_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "default_settings_params",
+                    "type": "object"
                   },
                   "end_behavior": {
                     "description": "Configures how the subscription schedule behaves when it ends. Possible values are `release` or `cancel` with the default being `release`. `release` will end the subscription schedule and keep the underlying subscription running.`cancel` will end the subscription schedule and cancel the underlying subscription.",
@@ -61423,16 +62456,6 @@
                     "description": "Migrate an existing subscription to be managed by a subscription schedule. If this parameter is set, a subscription schedule will be created using the subscription's plan(s), set to auto-renew using the subscription's interval. Other parameters cannot be set since their values will be inferred from the subscription.",
                     "maxLength": 5000,
                     "type": "string"
-                  },
-                  "invoice_settings": {
-                    "description": "All invoices will be billed using the specified settings.",
-                    "properties": {
-                      "days_until_due": {
-                        "type": "integer"
-                      }
-                    },
-                    "title": "invoice_settings_params",
-                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -61525,7 +62548,7 @@
                               "type": "integer"
                             }
                           },
-                          "title": "invoice_settings_params",
+                          "title": "subscription_schedules_param",
                           "type": "object"
                         },
                         "iterations": {
@@ -61762,15 +62785,11 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
-                "billing_thresholds": {
+                "default_settings": {
                   "explode": true,
                   "style": "deepObject"
                 },
                 "expand": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
-                "invoice_settings": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -61786,48 +62805,60 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
-                  "billing_thresholds": {
-                    "anyOf": [
-                      {
-                        "properties": {
-                          "amount_gte": {
-                            "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
-                            "type": "integer"
+                  "default_settings": {
+                    "description": "Object representing the subscription schedule's default settings.",
+                    "properties": {
+                      "billing_thresholds": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "amount_gte": {
+                                "description": "Monetary threshold that triggers the subscription to advance to a new billing period",
+                                "type": "integer"
+                              },
+                              "reset_billing_cycle_anchor": {
+                                "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
+                                "type": "boolean"
+                              }
+                            },
+                            "title": "billing_thresholds_param",
+                            "type": "object"
                           },
-                          "reset_billing_cycle_anchor": {
-                            "description": "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached. If true, `billing_cycle_anchor` will be updated to the date/time the threshold was last reached; otherwise, the value will remain unchanged.",
-                            "type": "boolean"
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
                           }
-                        },
-                        "title": "billing_thresholds_param",
-                        "type": "object"
+                        ],
+                        "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
                       },
-                      {
+                      "collection_method": {
+                        "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
                         "enum": [
-                          ""
+                          "charge_automatically",
+                          "send_invoice"
                         ],
                         "type": "string"
+                      },
+                      "default_payment_method": {
+                        "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "invoice_settings": {
+                        "description": "All invoices will be billed using the specified settings.",
+                        "properties": {
+                          "days_until_due": {
+                            "type": "integer"
+                          }
+                        },
+                        "title": "subscription_schedules_param",
+                        "type": "object"
                       }
-                    ],
-                    "description": "Define thresholds at which an invoice will be sent, and the subscription advanced to a new billing period. Pass an empty string to remove previously-defined thresholds."
-                  },
-                  "collection_method": {
-                    "description": "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer. When sending an invoice, Stripe will email your customer an invoice with payment instructions. Defaults to `charge_automatically` on creation.",
-                    "enum": [
-                      "charge_automatically",
-                      "send_invoice"
-                    ],
-                    "type": "string"
-                  },
-                  "default_payment_method": {
-                    "description": "ID of the default payment method for the subscription schedule. It must belong to the customer associated with the subscription schedule. If not set, invoices will use the default payment method in the customer's invoice settings.",
-                    "maxLength": 5000,
-                    "type": "string"
-                  },
-                  "default_source": {
-                    "description": "ID of the default payment source for the subscription schedule. It must belong to the customer associated with the subscription schedule and be in a chargeable state. If not set, defaults to the customer's default source.",
-                    "maxLength": 5000,
-                    "type": "string"
+                    },
+                    "title": "default_settings_params",
+                    "type": "object"
                   },
                   "end_behavior": {
                     "description": "Configures how the subscription schedule behaves when it ends. Possible values are `release` or `cancel` with the default being `release`. `release` will end the subscription schedule and keep the underlying subscription running.`cancel` will end the subscription schedule and cancel the underlying subscription.",
@@ -61846,16 +62877,6 @@
                       "type": "string"
                     },
                     "type": "array"
-                  },
-                  "invoice_settings": {
-                    "description": "All invoices will be billed using the specified settings.",
-                    "properties": {
-                      "days_until_due": {
-                        "type": "integer"
-                      }
-                    },
-                    "title": "invoice_settings_params",
-                    "type": "object"
                   },
                   "metadata": {
                     "additionalProperties": {
@@ -61958,7 +62979,7 @@
                               "type": "integer"
                             }
                           },
-                          "title": "invoice_settings_params",
+                          "title": "subscription_schedules_param",
                           "type": "object"
                         },
                         "iterations": {
@@ -62579,6 +63600,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "invoice_customer_balance_settings": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "items": {
                   "explode": true,
                   "style": "deepObject"
@@ -62717,6 +63742,13 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "invoice_customer_balance_settings": {
+                    "description": "Controls whether a customer balance applied to an invoice should be consumed and not credited or debited back to the customer if voided by this subscription.",
+                    "properties": {
+                    },
+                    "title": "invoice_customer_balance_settings_param",
+                    "type": "object"
                   },
                   "items": {
                     "description": "List of subscription items, each with an attached plan.",
@@ -63106,6 +64138,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "invoice_customer_balance_settings": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "items": {
                   "explode": true,
                   "style": "deepObject"
@@ -63248,6 +64284,13 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "invoice_customer_balance_settings": {
+                    "description": "Controls whether a customer balance applied to an invoice should be consumed and not credited or debited back to the customer if voided by this subscription.",
+                    "properties": {
+                    },
+                    "title": "invoice_customer_balance_settings_param",
+                    "type": "object"
                   },
                   "items": {
                     "description": "List of subscription items, each with an attached plan.",
@@ -67263,7 +68306,8 @@
                       "2019-08-14",
                       "2019-09-09",
                       "2019-10-08",
-                      "2019-10-17"
+                      "2019-10-17",
+                      "2019-11-05"
                     ],
                     "maxLength": 5000,
                     "type": "string",
@@ -67354,6 +68398,7 @@
                         "issuing_settlement.updated",
                         "issuing_transaction.created",
                         "issuing_transaction.updated",
+                        "mandate.updated",
                         "order.created",
                         "order.payment_failed",
                         "order.payment_succeeded",
@@ -67723,6 +68768,7 @@
                         "issuing_settlement.updated",
                         "issuing_transaction.created",
                         "issuing_transaction.updated",
+                        "mandate.updated",
                         "order.created",
                         "order.payment_failed",
                         "order.payment_succeeded",
