@@ -1,4 +1,4 @@
-//go:generate go run vfsgen.go
+//go:generate go run -tags=dev vfsgen.go
 
 package spec
 
