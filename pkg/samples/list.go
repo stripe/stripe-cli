@@ -126,7 +126,6 @@ var chargingSavedCard = &SampleData{
 	URL:         "https://github.com/stripe-samples/charging-a-saved-card",
 }
 
-
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
