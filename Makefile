@@ -10,8 +10,6 @@ export GOLANGCI_LINT_VERSION := v1.21.0
 
 # Install all the build and lint dependencies
 setup:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
-	curl -L https://git.io/misspell | sh
 	go mod download
 .PHONY: setup
 
@@ -35,11 +33,17 @@ fmt:
 .PHONY: fmt
 
 # Run all the linters
-lint:
+lint: bin/golangci-lint bin/misspell
 	# TODO: fix disabled linter issues
 	./bin/golangci-lint run ./...
 	./bin/misspell -error **/*.go
 .PHONY: lint
+
+bin/golangci-lint:
+	curl -fsSL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
+
+bin/misspell:
+	curl -fsSL https://git.io/misspell | sh
 
 # Clean go.mod
 go-mod-tidy:
