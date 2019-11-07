@@ -146,7 +146,7 @@ var List = map[string]*SampleData{
 	"web-elements-sepa-debit-payment":  sepaPayment,
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
-	"charging-a-saved-card":         	chargingSavedCard,
+	"charging-a-saved-card":            chargingSavedCard,
 }
 
 // Names returns a list of all the sample's names
