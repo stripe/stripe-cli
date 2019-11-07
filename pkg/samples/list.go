@@ -102,6 +102,30 @@ var singleSubscription = &SampleData{
 	URL:         "https://github.com/stripe-samples/creating-subscriptions",
 }
 
+var sepaPayment = &SampleData{
+	Name:        "web-elements-sepa-debit-payment",
+	Description: "Accept SEPA Debit payments",
+	URL:         "https://github.com/stripe-samples/web-elements-sepa-debit-payment",
+}
+
+var idealPayment = &SampleData{
+	Name:        "web-elements-ideal-payment",
+	Description: "Build a payment form to collect iDEAL and card payments",
+	URL:         "https://github.com/stripe-samples/web-elements-ideal-payment",
+}
+
+var fpxPayment = &SampleData{
+	Name:        "web-elements-fpx-payment",
+	Description: "[Beta] Accept payments with FPX, a popular payment method in Malaysia",
+	URL:         "https://github.com/stripe-samples/web-elements-fpx-payment",
+}
+
+var chargingSavedCard = &SampleData{
+	Name:        "charging-a-saved-card",
+	Description: "Learn how to charge a saved card",
+	URL:         "https://github.com/stripe-samples/charging-a-saved-card",
+}
+
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
@@ -119,6 +143,10 @@ var List = map[string]*SampleData{
 	"card-payment-charges-api":         cardPaymentCharges,
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
 	"creating-subscriptions":           singleSubscription,
+	"web-elements-sepa-debit-payment":  sepaPayment,
+	"web-elements-ideal-payment":       idealPayment,
+	"web-elements-fpx-payment":         fpxPayment,
+	"charging-a-saved-card":            chargingSavedCard,
 }
 
 // Names returns a list of all the sample's names
