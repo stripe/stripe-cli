@@ -165,7 +165,7 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 		}
 
 		result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
-		fmt.Println(result)
+		fmt.Print(result)
 	}
 
 	return body, nil
