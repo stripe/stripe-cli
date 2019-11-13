@@ -142,7 +142,7 @@ var List = map[string]*SampleData{
 	"react-elements-card-payment":      reactElementsCardPayment,
 	"card-payment-charges-api":         cardPaymentCharges,
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
-	"set-up-subscription":           	singleSubscription,
+	"set-up-subscription":              singleSubscription,
 	"web-elements-sepa-debit-payment":  sepaPayment,
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
