@@ -46,6 +46,9 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// if the device name errors, don't fail running the command
+		deviceName, _ := Config.Profile.GetDeviceName()
+		stripe.GetTelemetryInstance().SetDeviceName(deviceName)
 		stripe.GetTelemetryInstance().SetCommandContext(cmd)
 	},
 }
