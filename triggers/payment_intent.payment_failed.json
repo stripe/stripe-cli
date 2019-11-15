@@ -4,20 +4,6 @@
   },
   "fixtures": [
     {
-      "name": "payment_method",
-      "path": "/v1/payment_methods",
-      "method": "post",
-      "params": {
-        "type": "card",
-        "card": {
-          "number": "4000000000000002",
-          "exp_month": "12",
-          "exp_year": "2020",
-          "cvc": "424"
-        }
-      }
-    },
-    {
       "name": "payment_intent",
       "path": "/v1/payment_intents",
       "method": "post",
@@ -25,7 +11,7 @@
         "amount": 2000,
         "confirm": "true",
         "currency": "usd",
-        "payment_method": "${payment_method:id}",
+        "payment_method": "pm_card_chargeDeclined",
         "payment_method_types": ["card"]
       }
     }

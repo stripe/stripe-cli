@@ -9,23 +9,12 @@
       "method": "post"
     },
     {
-      "name": "payment_method",
-      "path": "/v1/payment_methods",
+      "name": "payment_method_attach",
+      "path": "/v1/payment_methods/pm_card_visa/attach",
       "method": "post",
       "params": {
-        "type": "card",
-        "card": {
-          "number": "4242424242424242",
-          "exp_month": "12",
-          "exp_year": "2020",
-          "cvc": "424"
-        }
+        "customer": "${customer:id}"
       }
-    },
-    {
-      "name": "payment_method_attach",
-      "path": "/v1/payment_methods/${payment_method:id}/attach",
-      "method": "post"
     }
   ]
 }
