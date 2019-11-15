@@ -4,20 +4,6 @@
   },
   "fixtures": [
     {
-      "name": "payment_method",
-      "path": "/v1/payment_methods",
-      "method": "post",
-      "params": {
-        "type": "card",
-        "card": {
-          "number": "4242424242424242",
-          "exp_month": "12",
-          "exp_year": "2020",
-          "cvc": "424"
-        }
-      }
-    },
-    {
       "name": "payment_intent",
       "path": "/v1/payment_intents",
       "method": "post",
@@ -27,7 +13,7 @@
         "confirm": true,
         "confirmation_method": "manual",
         "currency": "usd",
-        "payment_method": "${payment_method:id}",
+        "payment_method": "pm_card_visa",
         "return_url": "https://stripe.com"
       }
     }
