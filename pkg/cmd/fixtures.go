@@ -42,6 +42,10 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if len(args) == 0 {
+		return nil
+	}
+
 	fixture, err := fixtures.NewFixture(
 		afero.NewOsFs(),
 		apiKey,

@@ -10,6 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 //
@@ -39,6 +40,10 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
 	if err != nil {
 		return err
+	}
+
+	if len(args) == 0 {
+		return nil
 	}
 
 	path := formatURL(oc.Path, args)
@@ -97,7 +102,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Use:         name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
-		Args:        cobra.ExactArgs(len(urlParams)),
+		Args:        validators.ExactArgs(len(urlParams)),
 	}
 
 	for prop := range propFlags {
