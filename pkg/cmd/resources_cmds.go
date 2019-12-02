@@ -268,13 +268,14 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"name": "string",
 	}, &Config)
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "create", "/v1/credit_notes", http.MethodPost, map[string]string{
-		"amount":        "integer",
-		"credit_amount": "integer",
-		"invoice":       "string",
-		"memo":          "string",
-		"reason":        "string",
-		"refund":        "string",
-		"refund_amount": "integer",
+		"amount":             "integer",
+		"credit_amount":      "integer",
+		"invoice":            "string",
+		"memo":               "string",
+		"out_of_band_amount": "integer",
+		"reason":             "string",
+		"refund":             "string",
+		"refund_amount":      "integer",
 	}, &Config)
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "list", "/v1/credit_notes", http.MethodGet, map[string]string{
 		"customer":       "string",
@@ -282,6 +283,16 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"invoice":        "string",
 		"limit":          "integer",
 		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview", "/v1/credit_notes/preview", http.MethodGet, map[string]string{
+		"amount":             "integer",
+		"credit_amount":      "integer",
+		"invoice":            "string",
+		"memo":               "string",
+		"out_of_band_amount": "integer",
+		"reason":             "string",
+		"refund":             "string",
+		"refund_amount":      "integer",
 	}, &Config)
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "retrieve", "/v1/credit_notes/{id}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "update", "/v1/credit_notes/{id}", http.MethodPost, map[string]string{
@@ -340,6 +351,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"charge":         "string",
 		"ending_before":  "string",
 		"limit":          "integer",
+		"payment_intent": "string",
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "retrieve", "/v1/disputes/{dispute}", http.MethodGet, map[string]string{}, &Config)
@@ -769,6 +781,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "create", "/v1/refunds", http.MethodPost, map[string]string{
 		"amount":                 "integer",
 		"charge":                 "string",
+		"payment_intent":         "string",
 		"reason":                 "string",
 		"refund_application_fee": "boolean",
 		"reverse_transfer":       "boolean",
@@ -777,6 +790,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"charge":         "string",
 		"ending_before":  "string",
 		"limit":          "integer",
+		"payment_intent": "string",
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "retrieve", "/v1/refunds/{refund}", http.MethodGet, map[string]string{}, &Config)
