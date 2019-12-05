@@ -1,6 +1,8 @@
 package git
 
-import "gopkg.in/src-d/go-git.v4"
+import (
+	"gopkg.in/src-d/go-git.v4"
+)
 
 // Operations contains the behaviors of the internal git package
 type Operations struct{}
@@ -30,9 +32,18 @@ func (g Operations) Pull(appCachePath string) error {
 		return err
 	}
 
-	repo.Fetch(&git.FetchOptions{
-		Force: true,
+	err = repo.Fetch(&git.FetchOptions{
+		RemoteName: "origin",
+		Force:      true,
 	})
+	if err != nil {
+		switch e := err.Error(); e {
+		case git.NoErrAlreadyUpToDate.Error():
+			break
+		default:
+			return err
+		}
+	}
 
 	worktree, err := repo.Worktree()
 	if err != nil {
@@ -43,7 +54,14 @@ func (g Operations) Pull(appCachePath string) error {
 		Mode: git.HardReset,
 	})
 	if err != nil {
-		return nil
+		return err
+	}
+
+	err = worktree.Pull(&git.PullOptions{
+		Force: true,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
