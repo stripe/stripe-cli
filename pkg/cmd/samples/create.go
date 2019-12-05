@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -23,12 +24,15 @@ import (
 type CreateCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
+
+	forceRefresh bool
 }
 
 // NewCreateCmd creates and returns a create command for samples
 func NewCreateCmd(config *config.Config) *CreateCmd {
 	createCmd := &CreateCmd{
-		cfg: config,
+		cfg:          config,
+		forceRefresh: false,
 	}
 	createCmd.Cmd = &cobra.Command{
 		Use:       "create <sample> [destination]",
@@ -42,6 +46,8 @@ local configuration to let you get started faster.`,
   stripe samples create react-elements-card-payment my-payments-form`,
 		RunE: createCmd.runCreateCmd,
 	}
+
+	createCmd.Cmd.Flags().BoolVar(&createCmd.forceRefresh, "force-refresh", false, "Forcefully refresh the local samples cache")
 
 	return createCmd
 }
@@ -78,6 +84,20 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
+
+	if cc.forceRefresh {
+		err := sample.DeleteCache(selectedSample)
+		if err != nil {
+			logger := log.Logger{
+				Out: os.Stdout,
+			}
+
+			logger.WithFields(log.Fields{
+				"prefix": "samples.create.forceRefresh",
+				"error":  err,
+			}).Debug("Could not clear cache")
+		}
+	}
 
 	// Initialize the selected sample in the local cache directory.
 	// This will either clone or update the specified sample,

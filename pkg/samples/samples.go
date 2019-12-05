@@ -11,10 +11,11 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
+	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/git"
+	g "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
@@ -85,7 +86,7 @@ func (i *sampleConfigIntegration) name() string {
 type Samples struct {
 	Config *config.Config
 	Fs     afero.Fs
-	Git    git.Interface
+	Git    g.Interface
 
 	name string
 
@@ -126,7 +127,16 @@ func (s *Samples) Initialize(app string) error {
 	} else {
 		err := s.Git.Pull(appPath)
 		if err != nil {
-			return err
+			if err != nil {
+				switch e := err.Error(); e {
+				case git.NoErrAlreadyUpToDate.Error():
+					// Repo is already up to date. This isn't a program
+					// error to continue as normal
+					break
+				default:
+					return err
+				}
+			}
 		}
 	}
 
@@ -317,6 +327,22 @@ func (s *Samples) Cleanup(name string) error {
 	fmt.Println("Cleaning up...")
 
 	return s.delete(name)
+}
+
+// DeleteCache forces the local sample cache to refresh in case something
+// goes awry during the initial clone or to clean out stale samples
+func (s *Samples) DeleteCache(sample string) error {
+	appPath, err := s.appCacheFolder(sample)
+	if err != nil {
+		return err
+	}
+
+	err = s.Fs.RemoveAll(appPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func selectOptions(template, label string, options []string) (string, error) {
