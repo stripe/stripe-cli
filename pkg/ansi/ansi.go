@@ -74,7 +74,7 @@ func ColorizeStatus(status int) aurora.Value {
 	switch {
 	case status >= 500:
 		return color.Red(status).Bold()
-	case status >= 400:
+	case status >= 300:
 		return color.Yellow(status).Bold()
 	default:
 		return color.Green(status).Bold()

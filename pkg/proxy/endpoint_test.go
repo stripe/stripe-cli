@@ -73,13 +73,64 @@ func TestClientHandler(t *testing.T) {
 	}
 
 	err := client.Post(evtCtx, payload, headers)
+	require.NoError(t, err)
 
 	wg.Wait()
 
-	require.NoError(t, err)
 	require.Equal(t, "OK!", rcvBody)
 	require.Equal(t, ts.URL, rcvForwardURL)
 	require.Equal(t, "wh_123", rcvCtx.webhookID)
 	require.Equal(t, "wc_123", rcvCtx.webhookConversationID)
 	require.Equal(t, "evt_123", rcvCtx.event.ID)
+}
+
+func TestClientHandler_Redirects(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	n := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+
+		n++
+		if n == 1 {
+			http.Redirect(w, r, "/foo", http.StatusMovedPermanently)
+		} else {
+			require.FailNow(t, "Received more than one request")
+		}
+	}))
+
+	defer ts.Close()
+
+	client := NewEndpointClient(
+		ts.URL,
+		[]string{},
+		false,
+		[]string{"*"},
+		&EndpointConfig{
+			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
+				require.Equal(t, http.StatusMovedPermanently, resp.StatusCode)
+				wg.Done()
+			}),
+		},
+	)
+
+	evt := &stripeEvent{
+		ID: "evt_123",
+	}
+	evtCtx := eventContext{
+		webhookID:             "wh_123",
+		webhookConversationID: "wc_123",
+		event:                 evt,
+	}
+	payload := "{}"
+	headers := map[string]string{
+		"User-Agent":       "TestAgent/v1",
+		"Stripe-Signature": "t=123,v1=hunter2",
+	}
+
+	err := client.Post(evtCtx, payload, headers)
+	require.NoError(t, err)
+
+	wg.Wait()
 }

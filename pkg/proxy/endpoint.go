@@ -136,6 +136,9 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 			Timeout: defaultTimeout,
 		}
 	}
