@@ -97,9 +97,9 @@ var multiPlanSubscriptions = &SampleData{
 }
 
 var singleSubscription = &SampleData{
-	Name:        "set-up-subscription",
+	Name:        "set-up-subscriptions",
 	Description: "Learn how to create a simple subscription with Stripe Billing",
-	URL:         "https://github.com/stripe-samples/set-up-subscription",
+	URL:         "https://github.com/stripe-samples/set-up-subscriptions",
 }
 
 var sepaPayment = &SampleData{
@@ -142,7 +142,7 @@ var List = map[string]*SampleData{
 	"react-elements-card-payment":      reactElementsCardPayment,
 	"card-payment-charges-api":         cardPaymentCharges,
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
-	"set-up-subscription":              singleSubscription,
+	"set-up-subscriptions":             singleSubscription,
 	"web-elements-sepa-debit-payment":  sepaPayment,
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
