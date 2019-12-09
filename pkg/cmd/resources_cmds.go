@@ -1151,7 +1151,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"replacement_for":    "string",
 		"replacement_reason": "string",
 		"status":             "string",
-		"type":               "string",
 	}, &Config)
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "details", "/v1/issuing/cards/{card}/details", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "list", "/v1/issuing/cards", http.MethodGet, map[string]string{
@@ -1169,8 +1168,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "retrieve", "/v1/issuing/cards/{card}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "update", "/v1/issuing/cards/{card}", http.MethodPost, map[string]string{
-		"cardholder": "string",
-		"status":     "string",
+		"status": "string",
 	}, &Config)
 	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "create", "/v1/issuing/disputes", http.MethodPost, map[string]string{
 		"amount":               "integer",

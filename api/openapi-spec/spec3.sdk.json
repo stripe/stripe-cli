@@ -1054,7 +1054,6 @@
           },
           "payment_currency": {
             "description": "If the Alipay account object is not reusable, the exact currency that you can create a charge for.",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           },
@@ -1448,7 +1447,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "id": {
@@ -1687,7 +1685,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "source_types": {
@@ -1750,7 +1747,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -2021,7 +2017,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO code for the currency](https://stripe.com/docs/payouts) paid out to the bank account.",
-            "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
@@ -2377,7 +2372,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) to which the bitcoin will be converted.",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -2573,7 +2567,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) to which this transaction was converted.",
-            "maxLength": 3,
             "type": "string"
           },
           "id": {
@@ -2915,7 +2908,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
@@ -3337,7 +3329,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -4084,7 +4075,7 @@
             "type": "boolean"
           },
           "locale": {
-            "description": "The IETF language tag of the locale Checkout is displayed in. If blank\nor `auto`, the browser's locale is used.",
+            "description": "The IETF language tag of the locale Checkout is displayed in. If blank or `auto`, the browser's locale is used.",
             "enum": [
               "auto",
               "da",
@@ -4103,7 +4094,8 @@
               "zh"
             ],
             "nullable": true,
-            "type": "string"
+            "type": "string",
+            "x-stripeBypassValidation": true
           },
           "mode": {
             "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`.",
@@ -4319,7 +4311,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "custom": {
@@ -4364,7 +4355,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "destination": {
@@ -4623,7 +4613,6 @@
           },
           "currency": {
             "description": "If `amount_off` has been set, the three-letter [ISO code for the currency](https://stripe.com/docs/currencies) of the amount to take off.",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           },
@@ -4840,7 +4829,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -5413,24 +5401,6 @@
             "x-expandableFields": [
               "data"
             ]
-          },
-          "tax_info": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/tax_info"
-              }
-            ],
-            "description": "The customer's tax information. Appears on invoices emailed to this customer. This field has been deprecated and will be removed in a future API version, for further information view the [migration guide](https://stripe.com/docs/billing/migration/taxes#moving-from-taxinfo-to-customer-tax-ids).",
-            "nullable": true
-          },
-          "tax_info_verification": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/tax_info_verification"
-              }
-            ],
-            "description": "Describes the status of looking up the tax ID provided in `tax_info`. This field has been deprecated and will be removed in a future API version, for further information view the [migration guide](https://stripe.com/docs/billing/migration/taxes#moving-from-taxinfo-to-customer-tax-ids).",
-            "nullable": true
           }
         },
         "required": [
@@ -5447,9 +5417,7 @@
           "shipping",
           "sources",
           "subscriptions",
-          "tax_ids",
-          "tax_info",
-          "tax_info_verification"
+          "tax_ids"
         ],
         "x-resourceId": "customer",
         "x-stripeOperations": [
@@ -5604,9 +5572,7 @@
           "has_collection_class": true,
           "in_package": "",
           "inner_classes": [
-            "invoice_setting_customer_setting",
-            "tax_info",
-            "tax_info_verification"
+            "invoice_setting_customer_setting"
           ]
         }
       },
@@ -5684,7 +5650,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -6070,7 +6035,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "evidence": {
@@ -7127,7 +7091,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -7190,7 +7153,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "fee": {
@@ -7733,7 +7695,6 @@
           },
           "currency": {
             "description": "Currency of objects to be included in the report run.",
-            "maxLength": 3,
             "type": "string"
           },
           "interval_end": {
@@ -7893,7 +7854,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "custom_fields": {
@@ -8847,7 +8807,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -9339,8 +9298,14 @@
             "type": "boolean"
           },
           "authorization_method": {
-            "description": "How the card details were provided. One of `chip`, `contactless`, `keyed_in`, `online`, or `swipe`.",
-            "maxLength": 5000,
+            "description": "How the card details were provided.",
+            "enum": [
+              "chip",
+              "contactless",
+              "keyed_in",
+              "online",
+              "swipe"
+            ],
             "type": "string"
           },
           "authorized_amount": {
@@ -9349,7 +9314,6 @@
           },
           "authorized_currency": {
             "description": "The currency that was presented to the cardholder for the authorization. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "balance_transactions": {
@@ -9392,7 +9356,6 @@
           },
           "held_currency": {
             "description": "The currency of the [held amount](https://stripe.com/docs/api#issuing_authorization_object-held_amount). This will always be the card currency.",
-            "maxLength": 3,
             "type": "string"
           },
           "id": {
@@ -9440,8 +9403,12 @@
             "type": "array"
           },
           "status": {
-            "description": "One of `closed`, `pending`, or `reversed`.",
-            "maxLength": 5000,
+            "description": "The current status of the authorization in its lifecycle.",
+            "enum": [
+              "closed",
+              "pending",
+              "reversed"
+            ],
             "type": "string"
           },
           "transactions": {
@@ -9654,7 +9621,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "exp_month": {
@@ -9749,20 +9715,22 @@
             "nullable": true
           },
           "status": {
-            "description": "One of `active`, `inactive`, `canceled`, `lost`, or `stolen`.",
+            "description": "Whether authorizations can be approved on this card.",
             "enum": [
               "active",
               "canceled",
               "inactive",
               "lost",
-              "pending",
               "stolen"
             ],
             "type": "string"
           },
           "type": {
-            "description": "One of `virtual` or `physical`.",
-            "maxLength": 5000,
+            "description": "The type of the card.",
+            "enum": [
+              "physical",
+              "virtual"
+            ],
             "type": "string"
           }
         },
@@ -10197,7 +10165,6 @@
           },
           "currency": {
             "description": "The currency the `disputed_transaction` was made in.",
-            "maxLength": 3,
             "type": "string"
           },
           "disputed_transaction": {
@@ -10466,7 +10433,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "dispute": {
@@ -10503,7 +10469,6 @@
           },
           "merchant_currency": {
             "description": "The currency with which the merchant is taking payment.",
-            "maxLength": 3,
             "type": "string"
           },
           "merchant_data": {
@@ -10778,12 +10743,12 @@
       "issuing_authorization_verification_data": {
         "properties": {
           "address_line1_check": {
-            "description": "One of `match`, `mismatch`, or `not_provided`.",
+            "description": "Wether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`. One of `match`, `mismatch`, or `not_provided`.",
             "maxLength": 5000,
             "type": "string"
           },
           "address_zip_check": {
-            "description": "One of `match`, `mismatch`, or `not_provided`.",
+            "description": "Wether the cardholder provided a zip (or postal code) and if it matched the cardholder’s `billing.address.postal_code`. One of `match`, `mismatch`, or `not_provided`.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -10793,7 +10758,7 @@
             "type": "string"
           },
           "cvc_check": {
-            "description": "One of `match`, `mismatch`, or `not_provided`.",
+            "description": "Wether the cardholder provided a CVC and if it matched Stripe’s record. One of `match`, `mismatch`, or `not_provided`.",
             "maxLength": 5000,
             "type": "string"
           }
@@ -11451,7 +11416,6 @@
           },
           "currency": {
             "description": "The currency of the card. See [max_amount](https://stripe.com/docs/api#issuing_card_object-authorization_controls-max_amount)",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           },
@@ -11470,7 +11434,6 @@
           },
           "spending_limits_currency": {
             "description": "Currency for the amounts within spending_limits. Locked to the currency of the card.",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           }
@@ -11515,7 +11478,7 @@
             "$ref": "#/components/schemas/address"
           },
           "carrier": {
-            "description": "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+            "description": "The delivery service that shipped a card. One of `fedex` or `usps`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -11538,8 +11501,15 @@
             "type": "string"
           },
           "status": {
-            "description": "The delivery status of the card. One of `pending`, `shipped`, `delivered`, `returned`, `failure`, or `canceled`.",
-            "maxLength": 5000,
+            "description": "The delivery status of the card.",
+            "enum": [
+              "canceled",
+              "delivered",
+              "failure",
+              "pending",
+              "returned",
+              "shipped"
+            ],
             "nullable": true,
             "type": "string"
           },
@@ -11556,8 +11526,11 @@
             "type": "string"
           },
           "type": {
-            "description": "One of `bulk` or `individual`. Bulk shipments will be grouped and mailed together, while individual ones will not.",
-            "maxLength": 5000,
+            "description": "Packaging options.",
+            "enum": [
+              "bulk",
+              "individual"
+            ],
             "type": "string"
           }
         },
@@ -11881,7 +11854,7 @@
             "type": "array"
           },
           "interval": {
-            "description": "The time interval with which to apply this spending limit towards. Allowed values are `per_authorization`, `daily`, `weekly`, `monthly`, `yearly`, or `all_time`.",
+            "description": "The time interval or event with which to apply this spending limit towards.",
             "enum": [
               "all_time",
               "daily",
@@ -12539,7 +12512,6 @@
           },
           "spending_limits_currency": {
             "description": "Currency for the amounts within spending_limits.",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           }
@@ -12709,7 +12681,7 @@
       "issuing_cardholder_requirements": {
         "properties": {
           "disabled_reason": {
-            "description": "If the cardholder is disabled, this string describes why. Can be one of `listed`, `rejected.listed`, or `under_review`.",
+            "description": "If `disabled_reason` is present, all cards will decline authorizations with `cardholder_verification_required` reason.",
             "enum": [
               "listed",
               "rejected.listed",
@@ -13050,7 +13022,7 @@
             "type": "array"
           },
           "interval": {
-            "description": "The time interval with which to apply this spending limit towards. Allowed values are `per_authorization`, `daily`, `weekly`, `monthly`, `yearly`, or `all_time`.",
+            "description": "The time interval or event with which to apply this spending limit towards.",
             "enum": [
               "all_time",
               "daily",
@@ -13688,7 +13660,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -14029,10 +14000,31 @@
           "in_package": "",
           "inner_classes": [
             "customer_acceptance",
+            "mandate_au_becs_debit",
             "mandate_multi_use",
             "mandate_payment_method_details",
             "mandate_single_use"
           ]
+        }
+      },
+      "mandate_au_becs_debit": {
+        "properties": {
+          "url": {
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "mandate_au_becs_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AuBecsDebit",
+          "in_class": "mandate"
         }
       },
       "mandate_multi_use": {
@@ -14050,6 +14042,9 @@
       },
       "mandate_payment_method_details": {
         "properties": {
+          "au_becs_debit": {
+            "$ref": "#/components/schemas/mandate_au_becs_debit"
+          },
           "card": {
             "$ref": "#/components/schemas/card_mandate_payment_method_details"
           },
@@ -14068,6 +14063,7 @@
         "title": "mandate_payment_method_details",
         "type": "object",
         "x-expandableFields": [
+          "au_becs_debit",
           "card",
           "sepa_debit"
         ],
@@ -14115,7 +14111,6 @@
           },
           "currency": {
             "description": "On a single use mandate, the currency of the payment.",
-            "maxLength": 3,
             "type": "string"
           }
         },
@@ -14267,7 +14262,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -14592,7 +14586,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -14668,7 +14661,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "id": {
@@ -14962,7 +14954,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "customer": {
@@ -15523,6 +15514,9 @@
       },
       "payment_method": {
         "properties": {
+          "au_becs_debit": {
+            "$ref": "#/components/schemas/payment_method_au_becs_debit"
+          },
           "billing_details": {
             "$ref": "#/components/schemas/billing_details"
           },
@@ -15590,6 +15584,7 @@
           "type": {
             "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
             "enum": [
+              "au_becs_debit",
               "card",
               "card_present",
               "ideal",
@@ -15611,6 +15606,7 @@
         "title": "PaymentMethod",
         "type": "object",
         "x-expandableFields": [
+          "au_becs_debit",
           "billing_details",
           "card",
           "card_present",
@@ -15759,11 +15755,40 @@
           "in_package": "",
           "inner_classes": [
             "billing_details",
+            "payment_method_au_becs_debit",
             "payment_method_card",
             "payment_method_card_present",
             "payment_method_ideal",
             "payment_method_sepa_debit"
           ]
+        }
+      },
+      "payment_method_au_becs_debit": {
+        "properties": {
+          "bsb_number": {
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "fingerprint": {
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "last4": {
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "title": "payment_method_au_becs_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AuBecsDebit",
+          "in_class": "payment_method"
         }
       },
       "payment_method_card": {
@@ -15876,19 +15901,19 @@
       "payment_method_card_checks": {
         "properties": {
           "address_line1_check": {
-            "description": "If a address line1 was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a address line1 was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "address_postal_code_check": {
-            "description": "If a address postal code was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a address postal code was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "cvc_check": {
-            "description": "If a CVC was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a CVC was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -16595,6 +16620,12 @@
             "nullable": true,
             "type": "boolean"
           },
+          "network": {
+            "description": "Identifies which network this charge was processed on. Can be `amex`, `diners`, `discover`, `interac`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
           "three_d_secure": {
             "anyOf": [
               {
@@ -16636,19 +16667,19 @@
       "payment_method_details_card_checks": {
         "properties": {
           "address_line1_check": {
-            "description": "If a address line1 was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a address line1 was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "address_postal_code_check": {
-            "description": "If a address postal code was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a address postal code was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "cvc_check": {
-            "description": "If a CVC was provided, results of the check, one of 'pass', 'failed', 'unavailable' or 'unchecked'.",
+            "description": "If a CVC was provided, results of the check, one of `pass`, `fail`, `unavailable`, or `unchecked`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -16772,6 +16803,12 @@
           },
           "last4": {
             "description": "The last four digits of the card.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "network": {
+            "description": "Identifies which network this charge was processed on. Can be `amex`, `diners`, `discover`, `interac`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -17701,7 +17738,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -18453,7 +18489,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "deleted": {
@@ -19958,7 +19993,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -20486,7 +20520,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -21451,7 +21484,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "delivery_estimate": {
@@ -21535,7 +21567,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "deleted": {
@@ -21790,7 +21821,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) associated with the source. This is the currency for which the source will be chargeable once ready. Required for `single_use` sources.",
-            "maxLength": 3,
             "nullable": true,
             "type": "string"
           },
@@ -22292,7 +22322,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "email": {
@@ -22541,7 +22570,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "gbp_credit_transfer": {
@@ -22711,6 +22739,11 @@
         "properties": {
           "fingerprint": {
             "description": "Bank account fingerprint associated with the transfer.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "funding_method": {
+            "description": "The credit transfer rails the sender used to push money. The three rails are: Faster Payments, BACS, and CHAPS.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -23796,9 +23829,6 @@
             "maxLength": 5000,
             "type": "string"
           },
-          "invoice_customer_balance_settings": {
-            "$ref": "#/components/schemas/subscription_invoice_customer_balance_settings"
-          },
           "items": {
             "description": "List of subscription items, each with an attached plan.",
             "properties": {
@@ -23998,7 +24028,6 @@
           "current_period_start",
           "customer",
           "id",
-          "invoice_customer_balance_settings",
           "items",
           "livemode",
           "metadata",
@@ -24015,7 +24044,6 @@
           "default_source",
           "default_tax_rates",
           "discount",
-          "invoice_customer_balance_settings",
           "items",
           "latest_invoice",
           "pending_invoice_item_interval",
@@ -24165,7 +24193,6 @@
           "in_package": "",
           "inner_classes": [
             "subscription_billing_thresholds",
-            "subscription_invoice_customer_balance_settings",
             "subscription_pending_invoice_item_interval"
           ]
         }
@@ -24190,26 +24217,6 @@
         ],
         "x-stripeResource": {
           "class_name": "BillingThresholds",
-          "in_class": "subscription"
-        }
-      },
-      "subscription_invoice_customer_balance_settings": {
-        "properties": {
-          "consume_applied_balance_on_void": {
-            "description": "Controls whether a customer balance applied to this invoice should be consumed and not credited or debited back to the customer if voided.",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "consume_applied_balance_on_void"
-        ],
-        "title": "SubscriptionInvoiceCustomerBalanceSettings",
-        "type": "object",
-        "x-expandableFields": [
-
-        ],
-        "x-stripeResource": {
-          "class_name": "InvoiceCustomerBalanceSettings",
           "in_class": "subscription"
         }
       },
@@ -25411,58 +25418,6 @@
           "in_class": "tax_id"
         }
       },
-      "tax_info": {
-        "properties": {
-          "tax_id": {
-            "description": "The customer's tax ID number.",
-            "maxLength": 5000,
-            "nullable": true,
-            "type": "string"
-          },
-          "type": {
-            "description": "The type of ID number.",
-            "maxLength": 5000,
-            "type": "string"
-          }
-        },
-        "required": [
-          "type"
-        ],
-        "title": "TaxInfo",
-        "type": "object",
-        "x-expandableFields": [
-
-        ],
-        "x-stripeResource": {
-          "class_name": "TaxInfo",
-          "in_class": "customer"
-        }
-      },
-      "tax_info_verification": {
-        "properties": {
-          "status": {
-            "description": "The state of verification for this customer. Possible values are `unverified`, `pending`, or `verified`.",
-            "maxLength": 5000,
-            "nullable": true,
-            "type": "string"
-          },
-          "verified_name": {
-            "description": "The official name associated with the tax ID returned from the external provider.",
-            "maxLength": 5000,
-            "nullable": true,
-            "type": "string"
-          }
-        },
-        "title": "TaxInfoVerification",
-        "type": "object",
-        "x-expandableFields": [
-
-        ],
-        "x-stripeResource": {
-          "class_name": "TaxInfoVerification",
-          "in_class": "customer"
-        }
-      },
       "tax_rate": {
         "properties": {
           "active": {
@@ -26581,7 +26536,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "description": {
@@ -26913,7 +26867,6 @@
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-            "maxLength": 3,
             "type": "string"
           },
           "destination_payment_refund": {
@@ -27563,7 +27516,7 @@
     "description": "The Stripe REST API. Please see https://stripe.com/docs/api for more details.",
     "termsOfService": "https://stripe.com/us/terms/",
     "title": "Stripe API",
-    "version": "2019-11-05",
+    "version": "2019-12-03",
     "x-stripeSpecFilename": "spec3.sdk"
   },
   "openapi": "3.0.0",
@@ -34902,7 +34855,7 @@
                     }
                   },
                   "locale": {
-                    "description": "The IETF language tag of the locale Checkout is displayed in. If blank or `auto`, the browser's locale is used. Supported values are `auto`, `da`, `de`, `en`, `es`, `fi`, `fr`, `it`, `ja`, `nb`, `nl`, `pl`, `pt`, `sv`, or `zh`.",
+                    "description": "The IETF language tag of the locale Checkout is displayed in. If blank or `auto`, the browser's locale is used.",
                     "enum": [
                       "auto",
                       "da",
@@ -34920,7 +34873,8 @@
                       "sv",
                       "zh"
                     ],
-                    "type": "string"
+                    "type": "string",
+                    "x-stripeBypassValidation": true
                   },
                   "mode": {
                     "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`.",
@@ -36807,10 +36761,6 @@
                 "tax_id_data": {
                   "explode": true,
                   "style": "deepObject"
-                },
-                "tax_info": {
-                  "explode": true,
-                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -37074,7 +37024,8 @@
                             "za_vat"
                           ],
                           "maxLength": 5000,
-                          "type": "string"
+                          "type": "string",
+                          "x-stripeBypassValidation": true
                         },
                         "value": {
                           "description": "Value of the tax ID.",
@@ -37092,30 +37043,6 @@
                     "x-stripeParam": {
                       "containee_entity_name": "tax_id_data"
                     }
-                  },
-                  "tax_info": {
-                    "description": "The customer's tax information. Appears on invoices emailed to this customer. This parameter has been deprecated and will be removed in a future API version, for further information view the [migration guide](https://stripe.com/docs/billing/migration/taxes#moving-from-taxinfo-to-customer-tax-ids).",
-                    "properties": {
-                      "tax_id": {
-                        "description": "The customer's tax ID number.",
-                        "maxLength": 5000,
-                        "type": "string"
-                      },
-                      "type": {
-                        "description": "The type of ID number. The only possible value is `vat`",
-                        "enum": [
-                          "vat"
-                        ],
-                        "maxLength": 5000,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "tax_id",
-                      "type"
-                    ],
-                    "title": "tax_info_param",
-                    "type": "object"
                   }
                 },
                 "type": "object"
@@ -37313,10 +37240,6 @@
                   "style": "deepObject"
                 },
                 "shipping": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
-                "tax_info": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -37569,30 +37492,6 @@
                       "reverse"
                     ],
                     "type": "string"
-                  },
-                  "tax_info": {
-                    "description": "The customer's tax information. Appears on invoices emailed to this customer. This parameter has been deprecated and will be removed in a future API version, for further information view the [migration guide](https://stripe.com/docs/billing/migration/taxes#moving-from-taxinfo-to-customer-tax-ids).",
-                    "properties": {
-                      "tax_id": {
-                        "description": "The customer's tax ID number.",
-                        "maxLength": 5000,
-                        "type": "string"
-                      },
-                      "type": {
-                        "description": "The type of ID number. The only possible value is `vat`",
-                        "enum": [
-                          "vat"
-                        ],
-                        "maxLength": 5000,
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "tax_id",
-                      "type"
-                    ],
-                    "title": "tax_info_param",
-                    "type": "object"
                   },
                   "trial_end": {
                     "anyOf": [
@@ -38964,7 +38863,8 @@
                       "za_vat"
                     ],
                     "maxLength": 5000,
-                    "type": "string"
+                    "type": "string",
+                    "x-stripeBypassValidation": true
                   },
                   "value": {
                     "description": "Value of the tax ID.",
@@ -45636,7 +45536,7 @@
                               }
                             },
                             "interval": {
-                              "description": "The time interval with which to apply this spending limit towards. Allowed values are 'per_authorization', 'daily', 'weekly', 'monthly', 'yearly', and 'all_time'.",
+                              "description": "The time interval with which to apply this spending limit towards.",
                               "enum": [
                                 "all_time",
                                 "daily",
@@ -45645,7 +45545,6 @@
                                 "weekly",
                                 "yearly"
                               ],
-                              "maxLength": 5000,
                               "type": "string"
                             }
                           },
@@ -46916,7 +46815,7 @@
                               }
                             },
                             "interval": {
-                              "description": "The time interval with which to apply this spending limit towards. Allowed values are 'per_authorization', 'daily', 'weekly', 'monthly', 'yearly', and 'all_time'.",
+                              "description": "The time interval with which to apply this spending limit towards.",
                               "enum": [
                                 "all_time",
                                 "daily",
@@ -46925,7 +46824,6 @@
                                 "weekly",
                                 "yearly"
                               ],
-                              "maxLength": 5000,
                               "type": "string"
                             }
                           },
@@ -47426,6 +47324,10 @@
                   "style": "deepObject"
                 },
                 "shipping": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "type": {
                   "explode": true,
                   "style": "deepObject"
                 }
@@ -48352,7 +48254,7 @@
                               }
                             },
                             "interval": {
-                              "description": "The time interval with which to apply this spending limit towards. Allowed values are 'per_authorization', 'daily', 'weekly', 'monthly', 'yearly', and 'all_time'.",
+                              "description": "The time interval with which to apply this spending limit towards.",
                               "enum": [
                                 "all_time",
                                 "daily",
@@ -48361,7 +48263,6 @@
                                 "weekly",
                                 "yearly"
                               ],
-                              "maxLength": 5000,
                               "type": "string"
                             }
                           },
@@ -48463,13 +48364,12 @@
                         "type": "string"
                       },
                       "type": {
-                        "description": "One of `bulk` or `individual`. Bulk shipments will be grouped and mailed together, while individual ones will not.",
+                        "description": "Packaging options.",
                         "enum": [
                           "",
                           "bulk",
                           "individual"
                         ],
-                        "maxLength": 5000,
                         "type": "string"
                       }
                     },
@@ -48481,22 +48381,28 @@
                     "type": "object"
                   },
                   "status": {
-                    "description": "Specifies whether to permit authorizations on this card. Possible values are `active` or `inactive`.",
+                    "description": "Whether authorizations can be approved on this card.",
                     "enum": [
                       "active",
                       "inactive"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "type": {
-                    "description": "The type of card to issue. Possible values are `physical` or `virtual`.",
-                    "enum": [
-                      "physical",
-                      "virtual"
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "physical",
+                          "virtual"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
                     ],
-                    "maxLength": 5000,
-                    "type": "string"
+                    "description": "The type of card to issue. Possible values are `physical` or `virtual`."
                   }
                 },
                 "required": [
@@ -49558,7 +49464,7 @@
                               }
                             },
                             "interval": {
-                              "description": "The time interval with which to apply this spending limit towards. Allowed values are 'per_authorization', 'daily', 'weekly', 'monthly', 'yearly', and 'all_time'.",
+                              "description": "The time interval with which to apply this spending limit towards.",
                               "enum": [
                                 "all_time",
                                 "daily",
@@ -49567,7 +49473,6 @@
                                 "weekly",
                                 "yearly"
                               ],
-                              "maxLength": 5000,
                               "type": "string"
                             }
                           },
@@ -49586,11 +49491,6 @@
                     },
                     "title": "authorization_controls_param",
                     "type": "object"
-                  },
-                  "cardholder": {
-                    "description": "The [Cardholder](https://stripe.com/docs/api#issuing_cardholder_object) to associate the card with. (This field is deprecated and will be removed from future versions of the API.)",
-                    "maxLength": 5000,
-                    "type": "string"
                   },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
@@ -49617,7 +49517,7 @@
                     ]
                   },
                   "status": {
-                    "description": "Specifies whether to permit authorizations on this card. Possible values are `active`, `inactive`, or the terminal states: `canceled`, `lost`, `stolen`.",
+                    "description": "Whether authorizations can be approved on this card.",
                     "enum": [
                       "active",
                       "canceled",
@@ -49625,7 +49525,6 @@
                       "lost",
                       "stolen"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   }
                 },
@@ -52180,7 +52079,7 @@
                     "type": "string"
                   },
                   "payment_method": {
-                    "description": "ID of the payment method (a PaymentMethod, Card, or [compatible Source](https://stripe.com/docs/payments/payment-methods#compatibility) object) to attach to this PaymentIntent.",
+                    "description": "ID of the payment method (a PaymentMethod, Card, or [compatible Source](https://stripe.com/docs/payments/payment-methods#compatibility) object) to attach to this PaymentIntent.\n\nIf neither the `payment_method` parameter nor the `source` parameter are provided with `confirm=true`, `source` will be automatically populated with `customer.default_source` to improve the migration experience for users of the Charges API. We recommend that you explicitly provide the `payment_method` going forward.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -52361,7 +52260,7 @@
                     "type": "object"
                   },
                   "source": {
-                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
+                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Cards and [compatible Source](https://stripe.com/docs/payments/payment-methods#compatibility) objects.If neither the `payment_method` parameter nor the `source` parameter are provided with `confirm=true`, this field will be automatically populated with `customer.default_source` to improve the migration experience for users of the Charges API. We recommend that you explicitly provide the `source` or `payment_method` parameter going forward.",
                     "type": "string"
                   },
                   "statement_descriptor": {
@@ -52734,7 +52633,7 @@
                     "description": "Shipping information for this PaymentIntent."
                   },
                   "source": {
-                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
+                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Cards and [compatible Source](https://stripe.com/docs/payments/payment-methods#compatibility) objects.",
                     "type": "string"
                   },
                   "statement_descriptor": {
@@ -53358,7 +53257,7 @@
                     "description": "Shipping information for this PaymentIntent."
                   },
                   "source": {
-                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Source, Card, and BankAccount objects.",
+                    "description": "This is a legacy field that will be removed in the future. It is the ID of the Source object to attach to this PaymentIntent. Please use the `payment_method` field instead, which also supports Cards and [compatible Source](https://stripe.com/docs/payments/payment-methods#compatibility) objects.",
                     "type": "string"
                   },
                   "use_stripe_sdk": {
@@ -53556,6 +53455,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "au_becs_debit": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "billing_details": {
                   "explode": true,
                   "style": "deepObject"
@@ -53584,6 +53487,25 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "au_becs_debit": {
+                    "description": "If this is a `au_becs_debit` PaymentMethod, this hash contains details about the bank account.",
+                    "properties": {
+                      "account_number": {
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "bsb_number": {
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "account_number",
+                      "bsb_number"
+                    ],
+                    "title": "param",
+                    "type": "object"
+                  },
                   "billing_details": {
                     "description": "Billing information associated with the PaymentMethod that may be used or required by particular types of payment methods.",
                     "properties": {
@@ -53758,6 +53680,7 @@
                   "type": {
                     "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type. Required unless `payment_method` is specified (see the [Cloning PaymentMethods](https://stripe.com/docs/payments/payment-methods/connect#cloning-payment-methods) guide)",
                     "enum": [
+                      "au_becs_debit",
                       "card",
                       "card_present",
                       "ideal",
@@ -54943,7 +54866,6 @@
                       "max",
                       "sum"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "amount": {
@@ -54961,7 +54883,6 @@
                       "per_unit",
                       "tiered"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "currency": {
@@ -54989,7 +54910,6 @@
                       "week",
                       "year"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   },
                   "interval_count": {
@@ -55150,7 +55070,6 @@
                       "licensed",
                       "metered"
                     ],
-                    "maxLength": 5000,
                     "type": "string"
                   }
                 },
@@ -60891,7 +60810,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "Amount associated with the source. This is the amount for which the source will be chargeable once ready. Required for `single_use` sources.",
+                    "description": "Amount associated with the source. This is the amount for which the source will be chargeable once ready. Required for `single_use` sources. Not supported for `receiver` type sources, where charge amount may not be specified until funds land.",
                     "type": "integer"
                   },
                   "currency": {
@@ -64358,10 +64277,6 @@
                   "explode": true,
                   "style": "deepObject"
                 },
-                "invoice_customer_balance_settings": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
                 "items": {
                   "explode": true,
                   "style": "deepObject"
@@ -64501,13 +64416,6 @@
                     },
                     "type": "array"
                   },
-                  "invoice_customer_balance_settings": {
-                    "description": "Controls whether a customer balance applied to an invoice should be consumed and not credited or debited back to the customer if voided by this subscription.",
-                    "properties": {
-                    },
-                    "title": "invoice_customer_balance_settings_param",
-                    "type": "object"
-                  },
                   "items": {
                     "description": "List of subscription items, each with an attached plan.",
                     "items": {
@@ -64617,7 +64525,6 @@
                               "week",
                               "year"
                             ],
-                            "maxLength": 5000,
                             "type": "string"
                           },
                           "interval_count": {
@@ -64896,10 +64803,6 @@
                   "explode": true,
                   "style": "deepObject"
                 },
-                "invoice_customer_balance_settings": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
                 "items": {
                   "explode": true,
                   "style": "deepObject"
@@ -65043,13 +64946,6 @@
                     },
                     "type": "array"
                   },
-                  "invoice_customer_balance_settings": {
-                    "description": "Controls whether a customer balance applied to an invoice should be consumed and not credited or debited back to the customer if voided by this subscription.",
-                    "properties": {
-                    },
-                    "title": "invoice_customer_balance_settings_param",
-                    "type": "object"
-                  },
                   "items": {
                     "description": "List of subscription items, each with an attached plan.",
                     "items": {
@@ -65169,7 +65065,6 @@
                               "week",
                               "year"
                             ],
-                            "maxLength": 5000,
                             "type": "string"
                           },
                           "interval_count": {
@@ -69065,7 +68960,8 @@
                       "2019-09-09",
                       "2019-10-08",
                       "2019-10-17",
-                      "2019-11-05"
+                      "2019-11-05",
+                      "2019-12-03"
                     ],
                     "maxLength": 5000,
                     "type": "string",

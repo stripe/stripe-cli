@@ -13,6 +13,7 @@ setup:
 	go mod download
 .PHONY: setup
 
+# Initialize the pre-commit git hook
 githooks-init:
 	cp .pre-commit .git/hooks/pre-commit
 .PHONY: githooks-init
@@ -62,17 +63,19 @@ build:
 	go build -o stripe cmd/stripe/main.go
 .PHONY: build
 
+# Build a beta version of stripe with the `dev` tag
 build-dev:
 	go generate -tags dev ./...
 	go build -o stripe cmd/stripe/main.go
+.PHONY: build-dev
 
-# Build a beta version of stripe for all support platforms
+# Build a beta version of stripe for all supported platforms
 build-all-platforms:
 	go generate ./...
 	env GOOS=darwin go build -o stripe-darwin cmd/stripe/main.go
 	env GOOS=linux go build -o stripe-linux cmd/stripe/main.go
 	env GOOS=windows go build -o stripe-windows.exe cmd/stripe/main.go
-.PHONY: build
+.PHONY: build-all-platforms
 
 # Show to-do items per file
 todo:
