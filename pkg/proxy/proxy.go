@@ -357,6 +357,9 @@ func New(cfg *Config, events []string) *Proxy {
 			route.EventTypes,
 			&EndpointConfig{
 				HTTPClient: &http.Client{
+					CheckRedirect: func(req *http.Request, via []*http.Request) error {
+						return http.ErrUseLastResponse
+					},
 					Timeout: defaultTimeout,
 					Transport: &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
