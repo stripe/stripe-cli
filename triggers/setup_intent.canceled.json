@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "setup_intent",
+      "path": "/v1/setup_intents",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)",
+        "payment_method_types": ["card"]
+      }
+    },
+    {
+      "name": "setup_intent_canceled",
+      "path": "/v1/setup_intents/${setup_intent:id}/cancel",
+      "method": "post",
+      "params": {
+        "cancellation_reason": "requested_by_customer"
+      }
+    }
+  ]
+}

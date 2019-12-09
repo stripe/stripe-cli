@@ -6,7 +6,10 @@
     {
       "name": "customer",
       "path": "/v1/customers",
-      "method": "post"
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
     },
     {
       "name": "customer_updated",

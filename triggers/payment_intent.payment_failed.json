@@ -11,6 +11,7 @@
         "amount": 2000,
         "confirm": "true",
         "currency": "usd",
+        "description": "(created by Stripe CLI)",
         "payment_method": "pm_card_chargeDeclined",
         "payment_method_types": ["card"]
       }

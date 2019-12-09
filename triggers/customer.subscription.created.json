@@ -8,6 +8,7 @@
         "path": "/v1/customers",
         "method": "post",
         "params": {
+          "description": "(created by Stripe CLI)",
           "source": "tok_visa"
         }
       },
