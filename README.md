@@ -49,6 +49,8 @@ docker run --rm -it stripe/stripe-cli version
 stripe version x.y.z (beta)
 ```
 
+Please refer to the [wiki](../../wiki/Using-with-Docker) for detailed instructions on how to use the Docker container.
+
 ### Without package managers
 
 Instructions are also available for installing and using the CLI [without a package manager](https://github.com/stripe/stripe-cli/wiki/Installing-and-updating#without-a-package-manager).
