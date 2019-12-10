@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 
@@ -239,5 +238,5 @@ func buildForwardURL(forwardURL string, destination *url.URL) string {
 		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
 	}
 
-	return fmt.Sprintf("%s://%s", f.Scheme, path.Join(f.Host, destination.Path))
+	return fmt.Sprintf("%s://%s%s", f.Scheme, f.Host, destination.Path)
 }
