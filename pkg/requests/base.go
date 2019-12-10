@@ -64,6 +64,10 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
 	}
 
+	if len(args) == 0 {
+		return nil
+	}
+
 	confirmed, err := rb.confirmCommand()
 	if err != nil {
 		return err

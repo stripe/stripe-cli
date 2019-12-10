@@ -56,7 +56,8 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
 	if len(args) == 0 {
-		return fmt.Errorf("Creating a sample requires at least 1 argument, received 0")
+		cmd.Help()
+		return nil
 	}
 
 	if _, ok := samples.List[args[0]]; !ok {

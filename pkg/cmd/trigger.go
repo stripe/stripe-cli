@@ -58,7 +58,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		cmd.Usage()
+		cmd.Help()
 
 		return nil
 	}
