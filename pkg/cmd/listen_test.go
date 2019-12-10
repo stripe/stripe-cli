@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -48,4 +49,20 @@ func TestBuildEndpointRoutes(t *testing.T) {
 	require.Equal(t, []string{"Host: connecthostname"}, output[1].ForwardHeaders)
 	require.Equal(t, true, output[1].Connect)
 	require.Equal(t, []string{"*"}, output[1].EventTypes)
+}
+
+func TestBuildForwardURL(t *testing.T) {
+	f, err := url.Parse("http://example.com/foo/bar.php")
+	require.NoError(t, err)
+
+	require.Equal(t, "http://localhost/foo/bar.php", buildForwardURL("http://localhost/", f))
+	require.Equal(t, "https://localhost/foo/bar.php", buildForwardURL("https://localhost/", f))
+	require.Equal(t, "http://localhost:8000/foo/bar.php", buildForwardURL("http://localhost:8000", f))
+
+	f, err = url.Parse("http://example.com/bar/")
+	require.NoError(t, err)
+
+	require.Equal(t, "http://localhost/bar/", buildForwardURL("http://localhost/", f))
+	require.Equal(t, "https://localhost/bar/", buildForwardURL("https://localhost/", f))
+	require.Equal(t, "http://localhost:8000/bar/", buildForwardURL("http://localhost:8000", f))
 }
