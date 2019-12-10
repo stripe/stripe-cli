@@ -10,7 +10,8 @@
       "params": {
         "source": "tok_visa",
         "amount": 100,
-        "currency": "usd"
+        "currency": "usd",
+        "description": "(created by Stripe CLI)"
       }
     }
   ]

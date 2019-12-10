@@ -12,7 +12,7 @@
         "confirm": "true",
         "currency": "usd",
         "description": "(created by Stripe CLI)",
-        "payment_method": "pm_card_visa",
+        "payment_method": "pm_card_bypassPending",
         "payment_method_types": ["card"],
         "shipping": {
           "name": "Jenny Rosen",

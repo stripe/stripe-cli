@@ -11,6 +11,7 @@ import (
 
 // Events is a mapping of pre-built trigger events and the corresponding json file
 var Events = map[string]string{
+	"balance.available":                        "/balance.available.json",
 	"charge.captured":                          "/charge.captured.json",
 	"charge.dispute.created":                   "/charge.disputed.created.json",
 	"charge.failed":                            "/charge.failed.json",
@@ -36,6 +37,10 @@ var Events = map[string]string{
 	"payment_intent.succeeded":                 "/payment_intent.succeeded.json",
 	"payment_intent.canceled":                  "/payment_intent.canceled.json",
 	"payment_method.attached":                  "/payment_method.attached.json",
+	"setup_intent.canceled":                    "/setup_intent.canceled.json",
+	"setup_intent.created":                     "/setup_intent.created.json",
+	"setup_intent.setup_failed":                "/setup_intent.setup_failed.json",
+	"setup_intent.succeeded":                   "/setup_intent.succeeded.json",
 }
 
 // BuildFromFixture creates a new fixture struct for a file
