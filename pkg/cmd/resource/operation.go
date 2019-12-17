@@ -42,10 +42,6 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	if len(args) == 0 {
-		return nil
-	}
-
 	path := formatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
