@@ -26,11 +26,6 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 // is different than the arguments passed in
 func ExactArgs(num int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 {
-			cmd.Help()
-			return nil
-		}
-
 		argument := "argument"
 		if num > 1 {
 			argument = "arguments"
