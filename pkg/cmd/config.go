@@ -34,7 +34,7 @@ you need more granular control over the configuration.`,
 	cc.cmd.Flags().BoolVar(&cc.list, "list", false, "List configs")
 	cc.cmd.Flags().BoolVarP(&cc.edit, "edit", "e", false, "Open an editor to the config file")
 	cc.cmd.Flags().StringVar(&cc.unset, "unset", "", "Unset a specific config field")
-	cc.cmd.Flags().BoolVar(&cc.set, "set string string", false, "Set a config field to some value")
+	cc.cmd.Flags().BoolVar(&cc.set, "set", false, "Set a config field to some value")
 
 	cc.cmd.Flags().SetInterspersed(false) // allow args to happen after flags to enable 2 arguments to --set
 
