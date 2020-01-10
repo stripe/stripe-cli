@@ -73,6 +73,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rTopupsCmd := resource.NewResourceCmd(rootCmd, "topups")
 	rTransferReversalsCmd := resource.NewResourceCmd(rootCmd, "transfer_reversals")
 	rTransfersCmd := resource.NewResourceCmd(rootCmd, "transfers")
+	rUsageRecordSummariesCmd := resource.NewResourceCmd(rootCmd, "usage_record_summaries")
 	rUsageRecordsCmd := resource.NewResourceCmd(rootCmd, "usage_records")
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
 
@@ -505,6 +506,22 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"coupon":                            "string",
 		"customer":                          "string",
 		"schedule":                          "string",
+		"subscription":                      "string",
+		"subscription_cancel_at_period_end": "boolean",
+		"subscription_cancel_now":           "boolean",
+		"subscription_prorate":              "boolean",
+		"subscription_proration_date":       "integer",
+		"subscription_start_date":           "integer",
+		"subscription_tax_percent":          "number",
+		"subscription_trial_from_plan":      "boolean",
+	}, &Config)
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "upcomingLines", "/v1/invoices/upcoming/lines", http.MethodGet, map[string]string{
+		"coupon":                            "string",
+		"customer":                          "string",
+		"ending_before":                     "string",
+		"limit":                             "integer",
+		"schedule":                          "string",
+		"starting_after":                    "string",
 		"subscription":                      "string",
 		"subscription_cancel_at_period_end": "boolean",
 		"subscription_cancel_now":           "boolean",
@@ -1072,6 +1089,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTransfersCmd.Cmd, "retrieve", "/v1/transfers/{transfer}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTransfersCmd.Cmd, "update", "/v1/transfers/{transfer}", http.MethodPost, map[string]string{
 		"description": "string",
+	}, &Config)
+	resource.NewOperationCmd(rUsageRecordSummariesCmd.Cmd, "list", "/v1/subscription_items/{subscription_item}/usage_record_summaries", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rUsageRecordsCmd.Cmd, "create", "/v1/subscription_items/{subscription_item}/usage_records", http.MethodPost, map[string]string{
 		"action":    "string",
