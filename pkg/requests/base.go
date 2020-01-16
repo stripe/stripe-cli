@@ -308,7 +308,7 @@ func createOrNormalizePath(arg string) (string, error) {
 			return path + arg, nil
 		}
 
-		return "", fmt.Errorf("Unrecogized object id: %s", arg)
+		return "", fmt.Errorf("Unrecognized object id: %s", arg)
 	}
 
 	return normalizePath(arg), nil
