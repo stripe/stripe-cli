@@ -1,5 +1,3 @@
-//go:generate go run -tags=dev vfsgen.go
-
 package spec
 
 import (
@@ -245,7 +243,7 @@ type StatusCode string
 
 // LoadSpec loads and returns the OpenAPI spec.
 func LoadSpec(specPath string) (*Spec, error) {
-	data, err := readSpecData(specPath)
+	data, err := ioutil.ReadFile(specPath)
 	if err != nil {
 		return nil, err
 	}
@@ -258,21 +256,4 @@ func LoadSpec(specPath string) (*Spec, error) {
 	}
 
 	return &stripeSpec, nil
-}
-
-//
-// Private functions
-//
-
-func readSpecData(specPath string) ([]byte, error) {
-	if specPath != "" {
-		return ioutil.ReadFile(specPath)
-	}
-
-	file, err := FS.Open("./spec3.sdk.json")
-	if err != nil {
-		return nil, err
-	}
-
-	return ioutil.ReadAll(file)
 }
