@@ -22,7 +22,8 @@ func newServeCmd() *serveCmd {
 
 	sc.cmd = &cobra.Command{
 		Use:     "serve",
-		Short:   "Serve static files",
+		Aliases: []string{"srv"},
+		Short:   "Serve static files locally",
 		Args:    validators.MaximumNArgs(1),
 		Example: "stripe serve /path/to/directory",
 		RunE: func(cmd *cobra.Command, args []string) error {
