@@ -44,20 +44,22 @@ type fixture struct {
 
 // Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
-	Fs        afero.Fs
-	APIKey    string
-	BaseURL   string
-	responses map[string]*gojsonq.JSONQ
-	fixture   fixtureFile
+	Fs            afero.Fs
+	APIKey        string
+	StripeAccount string
+	BaseURL       string
+	responses     map[string]*gojsonq.JSONQ
+	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixture, error) {
 	fxt := Fixture{
-		Fs:        fs,
-		APIKey:    apiKey,
-		BaseURL:   baseURL,
-		responses: make(map[string]*gojsonq.JSONQ),
+		Fs:            fs,
+		APIKey:        apiKey,
+		StripeAccount: stripeAccount,
+		BaseURL:       baseURL,
+		responses:     make(map[string]*gojsonq.JSONQ),
 	}
 
 	var filedata []byte
@@ -169,6 +171,8 @@ func (fxt *Fixture) parsePath(http fixture) string {
 func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters {
 	requestParams := requests.RequestParameters{}
 	requestParams.AppendData(fxt.parseInterface(params))
+
+	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	return &requestParams
 }

@@ -16,8 +16,9 @@ import (
 type triggerCmd struct {
 	cmd *cobra.Command
 
-	fs         afero.Fs
-	apiBaseURL string
+	fs            afero.Fs
+	stripeAccount string
+	apiBaseURL    string
 }
 
 func newTriggerCmd() *triggerCmd {
@@ -41,6 +42,8 @@ needed to create the triggered event as well as the corresponding API objects.
 		Example: `stripe trigger payment_intent.created`,
 		RunE:    tc.runTriggerCmd,
 	}
+
+	tc.cmd.Flags().StringVar(&tc.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -67,7 +70,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	var fixture *fixtures.Fixture
 	if file, ok := fixtures.Events[event]; ok {
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, file)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, file)
 		if err != nil {
 			return err
 		}
@@ -77,7 +80,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 		}
 
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, event)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, event)
 		if err != nil {
 			return err
 		}
