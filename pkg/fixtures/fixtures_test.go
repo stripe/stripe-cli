@@ -118,7 +118,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()

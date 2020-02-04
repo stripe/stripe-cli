@@ -34,6 +34,11 @@ func (r *RequestParameters) AppendData(data []string) {
 	r.data = append(r.data, data...)
 }
 
+// SetStripeAccount sets the value for the `Stripe-Account` header.
+func (r *RequestParameters) SetStripeAccount(value string) {
+	r.stripeAccount = value
+}
+
 // Base encapsulates the required information needed to make requests to the API
 type Base struct {
 	Cmd *cobra.Command
