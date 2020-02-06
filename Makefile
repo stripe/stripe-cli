@@ -6,7 +6,7 @@ export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
 export GOPROXY := https://gocenter.io
-export GOLANGCI_LINT_VERSION := v1.21.0
+export GOLANGCI_LINT_VERSION := v1.23.3
 
 # Install all the build and lint dependencies
 setup:
