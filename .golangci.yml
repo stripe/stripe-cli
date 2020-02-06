@@ -26,4 +26,5 @@ issues:
     - path: _test\.go
       linters:
         - dupl
+        - gomnd
   exclude-use-default: false
