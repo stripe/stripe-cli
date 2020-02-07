@@ -57,12 +57,12 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollA
 			return nil, nil, err
 		}
 
-		defer res.Body.Close()
-
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		if err != nil {
+			res.Body.Close()
 			return nil, nil, err
 		}
+		res.Body.Close()
 
 		if res.StatusCode != http.StatusOK {
 			return nil, nil, fmt.Errorf("unexpected http status code: %d %s", res.StatusCode, string(bodyBytes))
