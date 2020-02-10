@@ -126,6 +126,12 @@ var chargingSavedCard = &SampleData{
 	URL:         "https://github.com/stripe-samples/charging-a-saved-card",
 }
 
+var connectOnboardingStandard = &SampleData{
+	Name:        "connect-onboarding-for-standard",
+	Description: "Learn how to onboard users for Stripe Connect with Onboarding for Standard",
+	URL:         "https://github.com/stripe-samples/connect-onboarding-for-standard",
+}
+
 // List contains a mapping of Stripe Samples that we want to be available in the
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
@@ -147,6 +153,7 @@ var List = map[string]*SampleData{
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
 	"charging-a-saved-card":            chargingSavedCard,
+	"connect-onboarding-for-standard":  connectOnboardingStandard,
 }
 
 // Names returns a list of all the sample's names
