@@ -30,13 +30,13 @@ func QuickstartP400(cfg *config.Config) error {
 	if err != nil {
 		switch e := err.Error(); e {
 		case p400.ErrRegisterReaderFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrActivateReaderFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrConnectionTokenFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrNewRPCSessionFailed.Error():
 			return fmt.Errorf(err.Error())
@@ -52,11 +52,11 @@ func QuickstartP400(cfg *config.Config) error {
 
 	if err != nil {
 		switch e := err.Error(); e {
-		case p400.ErrSetReaderDisplayFailed.Error():
-			return fmt.Errorf(err.Error())
-
 		case p400.ErrNewPaymentIntentFailed.Error():
 			p400.ClearReaderDisplay(tsCtx)
+			fallthrough
+
+		case p400.ErrSetReaderDisplayFailed.Error():
 			return fmt.Errorf(err.Error())
 
 		default:
@@ -71,16 +71,16 @@ func QuickstartP400(cfg *config.Config) error {
 
 		switch e := err.Error(); e {
 		case p400.ErrCapturePaymentIntentFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrCollectPaymentFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrCollectPaymentTimeout.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrConfirmPaymentFailed.Error():
-			return fmt.Errorf(err.Error())
+			fallthrough
 
 		case p400.ErrQueryPaymentFailed.Error():
 			return fmt.Errorf(err.Error())
