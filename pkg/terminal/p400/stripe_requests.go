@@ -107,8 +107,8 @@ func StartNewRPCSession(tsCtx TerminalSessionContext) (string, error) {
 	data := url.Values{}
 	data.Set("pos_device_info[device_class]", tsCtx.DeviceInfo.DeviceClass)
 	data.Set("pos_device_info[device_uuid]", tsCtx.DeviceInfo.DeviceUUID)
-	data.Set("pos_device_info[host_os_version]", tsCtx.DeviceInfo.HostOsVersion)
-	data.Set("pos_device_info[hardware_model][pos_info][description]", tsCtx.DeviceInfo.HardwareModel.PosInfo.Description)
+	data.Set("pos_device_info[host_os_version]", tsCtx.DeviceInfo.HostOSVersion)
+	data.Set("pos_device_info[hardware_model][pos_info][description]", tsCtx.DeviceInfo.HardwareModel.POSInfo.Description)
 	data.Set("pos_device_info[app_model][app_id]", tsCtx.DeviceInfo.AppModel.AppID)
 	data.Set("pos_device_info[app_model][app_version]", tsCtx.DeviceInfo.AppModel.AppVersion)
 

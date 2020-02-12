@@ -21,7 +21,7 @@ type Profile struct {
 	LiveModePublishableKey string
 	TestModeAPIKey         string
 	TestModePublishableKey string
-	TerminalPosDeviceID    string
+	TerminalPOSDeviceID    string
 }
 
 // CreateProfile creates a profile when logging in
@@ -132,7 +132,7 @@ func (p *Profile) GetPublishableKey() string {
 }
 
 // GetTerminalPosDeviceID returns the device id from the config for Terminal quickstart to use
-func (p *Profile) GetTerminalPosDeviceID() string {
+func (p *Profile) GetTerminalPOSDeviceID() string {
 	if err := viper.ReadInConfig(); err == nil {
 		return viper.GetString(p.GetConfigField("terminal_pos_device_id"))
 	}

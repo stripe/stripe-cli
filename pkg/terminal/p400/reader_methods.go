@@ -29,14 +29,14 @@ type TerminalSessionContext struct {
 type DeviceInfo struct {
 	DeviceClass   string        `json:"device_class"`
 	DeviceUUID    string        `json:"device_uuid"`
-	HostOsVersion string        `json:"host_os_version"`
+	HostOSVersion string        `json:"host_os_version"`
 	HardwareModel HardwareModel `json:"hardware_model"`
 	AppModel      AppModel      `json:"app_model"`
 }
 
 // HardwareModel belongs to the Rabbit Service RPC call payload shape
 type HardwareModel struct {
-	PosInfo PosInfo `json:"pos_info"`
+	POSInfo POSInfo `json:"pos_info"`
 }
 
 // AppModel belongs to the Rabbit Service RPC call payload shape
@@ -46,13 +46,13 @@ type AppModel struct {
 }
 
 // PosInfo belongs to the Rabbit Service RPC call payload shape
-type PosInfo struct {
+type POSInfo struct {
 	Description string `json:"description"`
 }
 
 // PosSoftwareInfo belongs to the Rabbit Service RPC call payload shape
 type PosSoftwareInfo struct {
-	PosType    string `json:"pos_type"`
+	POSType    string `json:"pos_type"`
 	SdkVersion string `json:"sdk_version"`
 }
 
@@ -62,10 +62,10 @@ type PaymentMethod struct {
 
 // ReaderActivateContent represents the shape of the serialized protobuf sent to Rabbit Service for activating a terminal session
 type ReaderActivateContent struct {
-	PosActivationToken string          `json:"pos_activation_token"`
+	POSActivationToken string          `json:"pos_activation_token"`
 	StoreName          string          `json:"store_name"`
-	PosDeviceID        string          `json:"pos_device_id"`
-	PosSoftwareInfo    PosSoftwareInfo `json:"pos_software_info"`
+	POSDeviceID        string          `json:"pos_device_id"`
+	POSSoftwareInfo    PosSoftwareInfo `json:"pos_software_info"`
 }
 
 // ReaderActivateResponse is the RPC response from calling the activateTerminal method
@@ -178,7 +178,7 @@ func SetParentTraceID(transactionID int, methodID int, methodName string) string
 
 // GetOsString finds which operating system the user is running and creates the correct string name for it to report to Rabbit Service when making a call
 // this is mostly used by the TransactionContext properties
-func GetOsString() string {
+func GetOSString() string {
 	var osString string
 
 	switch plat := runtime.GOOS; plat {
@@ -197,7 +197,7 @@ func GetOsString() string {
 
 // GeneratePosDeviceID creates a pseudorandom alpha string id for a point-of-sale quasi-unique identifier
 // mostly used for TransactionContext related tracking / tracing and is semi-persistent to a machine but not determinant
-func GeneratePosDeviceID(seed int64) string {
+func GeneratePOSDeviceID(seed int64) string {
 	rand.Seed(seed)
 
 	idLength := 11
@@ -234,11 +234,11 @@ func ActivateTerminalRPCSession(tsCtx TerminalSessionContext) (string, error) {
 	activateTraceID := fmt.Sprintf("connectReader!%v", methodID)
 
 	activateTermContent := &ReaderActivateContent{
-		PosActivationToken: tsCtx.PstToken,
+		POSActivationToken: tsCtx.PstToken,
 		StoreName:          "empty",
-		PosDeviceID:        tsCtx.DeviceInfo.DeviceUUID,
-		PosSoftwareInfo: PosSoftwareInfo{
-			PosType:    "pos-cli",
+		POSDeviceID:        tsCtx.DeviceInfo.DeviceUUID,
+		POSSoftwareInfo: PosSoftwareInfo{
+			POSType:    "pos-cli",
 			SdkVersion: "1.0.0",
 		},
 	}

@@ -17,7 +17,7 @@ func TestGeneratePosDeviceID(t *testing.T) {
 	var seed int64 = 12345
 
 	expected := "pos-isjlqargbit"
-	posid := GeneratePosDeviceID(seed)
+	posid := GeneratePOSDeviceID(seed)
 
 	require.Equal(t, expected, posid, "they should be equal")
 }

@@ -12,9 +12,9 @@ func TestCreateRabbitServicePayload(t *testing.T) {
 		DeviceInfo: DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    "pos-1234",
-			HostOsVersion: "Mac OS",
+			HostOSVersion: "Mac OS",
 			HardwareModel: HardwareModel{
-				PosInfo: PosInfo{
+				POSInfo: POSInfo{
 					Description: "Mac OS:StripeCLI",
 				},
 			},

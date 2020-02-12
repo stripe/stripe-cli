@@ -99,26 +99,26 @@ func QuickstartP400(cfg *config.Config) error {
 // it returns a TerminalSessionContext interface that is passed into most of the P400 reader related functions in the quickstart flow
 func SetTerminalSessionContext(cfg *config.Config) p400.TerminalSessionContext {
 	apiKey, _ := cfg.Profile.GetAPIKey(false)
-	posID := cfg.Profile.GetTerminalPosDeviceID()
+	posID := cfg.Profile.GetTerminalPOSDeviceID()
 
 	if posID == "" {
 		seed := time.Now().UnixNano()
-		posID = p400.GeneratePosDeviceID(seed)
+		posID = p400.GeneratePOSDeviceID(seed)
 		cfg.Profile.WriteConfigField("terminal_pos_device_id", posID)
 	}
 
-	hostOsVersion := p400.GetOsString()
-	posInfoDescription := fmt.Sprintf("%v:StripeCLI", hostOsVersion)
+	hostOSVersion := p400.GetOSString()
+	POSInfoDescription := fmt.Sprintf("%v:StripeCLI", hostOSVersion)
 
 	tsCtx := p400.TerminalSessionContext{
 		APIKey: apiKey,
 		DeviceInfo: p400.DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    posID,
-			HostOsVersion: hostOsVersion,
+			HostOSVersion: hostOSVersion,
 			HardwareModel: p400.HardwareModel{
-				PosInfo: p400.PosInfo{
-					Description: posInfoDescription,
+				POSInfo: p400.POSInfo{
+					Description: POSInfoDescription,
 				},
 			},
 			AppModel: p400.AppModel{
