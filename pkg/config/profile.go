@@ -131,7 +131,7 @@ func (p *Profile) GetPublishableKey() string {
 	return ""
 }
 
-// GetTerminalPosDeviceID returns the device id from the config for Terminal quickstart to use
+// GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
 func (p *Profile) GetTerminalPOSDeviceID() string {
 	if err := viper.ReadInConfig(); err == nil {
 		return viper.GetString(p.GetConfigField("terminal_pos_device_id"))

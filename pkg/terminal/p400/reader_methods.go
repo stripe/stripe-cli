@@ -45,7 +45,7 @@ type AppModel struct {
 	AppVersion string `json:"app_version"`
 }
 
-// PosInfo belongs to the Rabbit Service RPC call payload shape
+// POSInfo belongs to the Rabbit Service RPC call payload shape
 type POSInfo struct {
 	Description string `json:"description"`
 }
@@ -176,7 +176,7 @@ func SetParentTraceID(transactionID int, methodID int, methodName string) string
 	return fmt.Sprintf("txn!%v>%s!%v", transactionID, methodName, methodID)
 }
 
-// GetOsString finds which operating system the user is running and creates the correct string name for it to report to Rabbit Service when making a call
+// GetOSString finds which operating system the user is running and creates the correct string name for it to report to Rabbit Service when making a call
 // this is mostly used by the TransactionContext properties
 func GetOSString() string {
 	var osString string
@@ -195,7 +195,7 @@ func GetOSString() string {
 	return osString
 }
 
-// GeneratePosDeviceID creates a pseudorandom alpha string id for a point-of-sale quasi-unique identifier
+// GeneratePOSDeviceID creates a pseudorandom alpha string id for a point-of-sale quasi-unique identifier
 // mostly used for TransactionContext related tracking / tracing and is semi-persistent to a machine but not determinant
 func GeneratePOSDeviceID(seed int64) string {
 	rand.Seed(seed)
