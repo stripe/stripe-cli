@@ -50,8 +50,8 @@ type POSInfo struct {
 	Description string `json:"description"`
 }
 
-// PosSoftwareInfo belongs to the Rabbit Service RPC call payload shape
-type PosSoftwareInfo struct {
+// POSSoftwareInfo belongs to the Rabbit Service RPC call payload shape
+type POSSoftwareInfo struct {
 	POSType    string `json:"pos_type"`
 	SdkVersion string `json:"sdk_version"`
 }
@@ -65,7 +65,7 @@ type ReaderActivateContent struct {
 	POSActivationToken string          `json:"pos_activation_token"`
 	StoreName          string          `json:"store_name"`
 	POSDeviceID        string          `json:"pos_device_id"`
-	POSSoftwareInfo    PosSoftwareInfo `json:"pos_software_info"`
+	POSSoftwareInfo    POSSoftwareInfo `json:"pos_software_info"`
 }
 
 // ReaderActivateResponse is the RPC response from calling the activateTerminal method
@@ -237,7 +237,7 @@ func ActivateTerminalRPCSession(tsCtx TerminalSessionContext) (string, error) {
 		POSActivationToken: tsCtx.PstToken,
 		StoreName:          "empty",
 		POSDeviceID:        tsCtx.DeviceInfo.DeviceUUID,
-		POSSoftwareInfo: PosSoftwareInfo{
+		POSSoftwareInfo: POSSoftwareInfo{
 			POSType:    "pos-cli",
 			SdkVersion: "1.0.0",
 		},
