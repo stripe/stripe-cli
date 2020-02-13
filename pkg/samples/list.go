@@ -156,7 +156,7 @@ var List = map[string]*SampleData{
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
 	"set-up-subscriptions":             singleSubscription,
 	"web-elements-sepa-debit-payment":  sepaPayment,
-	"oxxo-payment": 					oxxoPayment,
+	"oxxo-payment":                     oxxoPayment,
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
 	"charging-a-saved-card":            chargingSavedCard,
