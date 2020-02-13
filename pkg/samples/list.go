@@ -102,6 +102,12 @@ var singleSubscription = &SampleData{
 	URL:         "https://github.com/stripe-samples/set-up-subscriptions",
 }
 
+var oxxoPayment = &SampleData{
+	Name:        "oxxo-payment",
+	Description: "Build a payment form to collect OXXO and card payments",
+	URL:         "https://github.com/stripe-samples/oxxo-payment",
+}
+
 var sepaPayment = &SampleData{
 	Name:        "web-elements-sepa-debit-payment",
 	Description: "Accept SEPA Debit payments",
@@ -150,6 +156,7 @@ var List = map[string]*SampleData{
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
 	"set-up-subscriptions":             singleSubscription,
 	"web-elements-sepa-debit-payment":  sepaPayment,
+	"oxxo-payment": 					oxxoPayment,
 	"web-elements-ideal-payment":       idealPayment,
 	"web-elements-fpx-payment":         fpxPayment,
 	"charging-a-saved-card":            chargingSavedCard,
