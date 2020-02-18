@@ -75,6 +75,7 @@ The Stripe CLI supports a broad range of commands. Below is some of the most use
 - [`logs tail`](../../wiki/logs-tail-command)
 - [`events resend`](../../wiki/events-resend-command)
 - [`samples`](../../wiki/samples-command)
+- [`serve`](../../wiki/serve-command)
 - [`status`](../../wiki/status-command)
 - [`config`](../../wiki/config-command)
 - [`open`](../../wiki/open-command)
