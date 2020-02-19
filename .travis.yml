@@ -43,3 +43,10 @@ deploy:
   on:
     tags: true
     condition: $TRAVIS_OS_NAME = linux
+- provider: script
+  skip_cleanup: true
+  script: bash scripts/upload-zip-to-virustotal.sh
+  verbose: true
+  on:
+    tags: true
+    condition: $TRAVIS_OS_NAME = linux
