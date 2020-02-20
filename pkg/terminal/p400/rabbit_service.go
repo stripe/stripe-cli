@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // RabbitServicePayload represents the JSON shape of all request bodies when calling Rabbit Service
@@ -98,8 +100,8 @@ func CreateRabbitServicePayload(method string, methodContent string, parentTrace
 		SessionToken: tsCtx.SessionToken,
 		RequestType:  "STANDARD",
 		VersionInfo: versionInfo{
-			ClientType:    "JS_SDK",
-			ClientVersion: "1.0.0",
+			ClientType:    "STRIPE_CLI",
+			ClientVersion: version.Version,
 		},
 		ParentTraceID: parentTraceID,
 		DeviceInfo:    tsCtx.DeviceInfo,
