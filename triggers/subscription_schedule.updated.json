@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)",
+        "source": "tok_visa"
+      }
+    },
+    {
+      "name": "plan",
+      "path": "/v1/plans",
+      "method": "post",
+      "params": {
+        "currency": "usd",
+        "interval": "month",
+        "amount": 2000,
+        "product": {
+          "name": "myproduct"
+        }
+      }
+    },
+    {
+      "name": "subscription_schedule",
+      "path": "/v1/subscription_schedules",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "start_date": "now",
+        "phases": {
+          "0": {
+            "iterations": 1,
+            "plans": [
+              {
+                "plan": "${plan:id}",
+                "quantity": 1
+              }
+            ]
+          },
+          "1": {
+            "iterations": 1,
+            "plans": [
+              {
+                "plan": "${plan:id}",
+                "quantity": 2
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "subscription_schedule_released",
+      "path": "/v1/subscription_schedules/${subscription_schedule:id}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}

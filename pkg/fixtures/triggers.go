@@ -37,10 +37,20 @@ var Events = map[string]string{
 	"payment_intent.succeeded":                 "/payment_intent.succeeded.json",
 	"payment_intent.canceled":                  "/payment_intent.canceled.json",
 	"payment_method.attached":                  "/payment_method.attached.json",
+	"plan.created":                             "/plan.created.json",
+	"plan.deleted":                             "/plan.deleted.json",
+	"plan.updated":                             "/plan.updated.json",
+	"product.created":                          "/product.created.json",
+	"product.deleted":                          "/product.deleted.json",
+	"product.updated":                          "/product.updated.json",
 	"setup_intent.canceled":                    "/setup_intent.canceled.json",
 	"setup_intent.created":                     "/setup_intent.created.json",
 	"setup_intent.setup_failed":                "/setup_intent.setup_failed.json",
 	"setup_intent.succeeded":                   "/setup_intent.succeeded.json",
+	"subscription_schedule.canceled":           "/subscription_schedule.canceled.json",
+	"subscription_schedule.created":            "/subscription_schedule.created.json",
+	"subscription_schedule.released":           "/subscription_schedule.released.json",
+	"subscription_schedule.updated":            "/subscription_schedule.updated.json",
 }
 
 // BuildFromFixture creates a new fixture struct for a file
