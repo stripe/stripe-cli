@@ -32,8 +32,9 @@
       "params": {
         "customer": "${customer:id}",
         "start_date": "now",
-        "phases": [
-          {
+        "phases": {
+          "0": {
+            "iterations": 1,
             "plans": [
               {
                 "plan": "${plan:id}",
@@ -41,7 +42,8 @@
               }
             ]
           },
-          {
+          "1": {
+            "iterations": 1,
             "plans": [
               {
                 "plan": "${plan:id}",
@@ -49,7 +51,7 @@
               }
             ]
           }
-        ]
+        }
       }
     },
     {
