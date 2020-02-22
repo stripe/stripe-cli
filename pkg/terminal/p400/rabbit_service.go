@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptrace"
 	"strings"
 	"time"
 
@@ -61,12 +62,26 @@ func CallRabbitService(tsCtx TerminalSessionContext, method string, methodConten
 
 	payload := CreateRabbitServicePayload(method, encodedMethodContent, parentTraceID, tsCtx)
 	formattedIP := strings.Join(strings.Split(tsCtx.IPAddress, "."), "-")
+	t := &Transport{}
 
 	rabbitServiceURL := fmt.Sprintf(readerURL, formattedIP)
-	res, err := http.Post(rabbitServiceURL, "application/json", &payload)
+	req, _ := http.NewRequest("POST", rabbitServiceURL, &payload)
+	req.Header.Set("Content-Type", "application/json")
+
+	trace := &httptrace.ClientTrace{
+		DNSDone: t.DNSDone,
+	}
+
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	client := &http.Client{Transport: t}
+	res, err := client.Do(req)
 
 	if err != nil {
-		return err
+		if len(t.DNSIPs) == 0 {
+			return ErrDNSFailed
+		}
+
+		return t.Err
 	}
 
 	json.NewDecoder(res.Body).Decode(&result)

@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // TerminalSessionContext is a type that contains important context most methods need to know to complete the quickstart flow
@@ -248,6 +250,10 @@ func ActivateTerminalRPCSession(tsCtx TerminalSessionContext) (string, error) {
 	err := CallRabbitService(tsCtx, rabbitMethods[activateTerminal], activateTermContent, &readerActivateResponse, activateTraceID)
 
 	if err != nil {
+		if err.Error() == ErrDNSFailed.Error() {
+			return "", err
+		}
+
 		return "", ErrActivateReaderFailed
 	}
 

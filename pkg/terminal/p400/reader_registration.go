@@ -38,7 +38,7 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (string, err
 
 	if err != nil {
 		tries++
-		fmt.Println("Could not register reader - please try your code again.")
+		fmt.Println("Could not register the Reader - please try your code again.")
 
 		if tries < 3 {
 			return AttemptRegisterReader(tsCtx, tries)

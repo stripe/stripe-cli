@@ -6,9 +6,9 @@ import (
 
 var (
 	// ErrActivateReaderFailed is for when a new RPC session could not be created for the reader
-	ErrActivateReaderFailed = errors.New("could not activate reader session")
+	ErrActivateReaderFailed = errors.New("Could not communicate with the Reader. Please make sure your reader is online and on the same network as your device.\nSee our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
 	// ErrRegisterReaderFailed is for when adding the reader via the Stripe API could not be completed (likely bad reg code)
-	ErrRegisterReaderFailed = errors.New("could not register reader due to an invalid reader code")
+	ErrRegisterReaderFailed = errors.New("could not register the Reader due to an invalid reader code")
 	// ErrReaderSelectionFailed is for when the user quit the CLI at the reader choice prompt
 	ErrReaderSelectionFailed = errors.New("reader choice failed, no selection made")
 	// ErrDiscoverReadersFailed is for when the call to Stripe failed for listing the readers registered to user's account
@@ -24,9 +24,9 @@ var (
 	// ErrCapturePaymentIntentFailed is for when you need to manually collect the Payment Intent after a Payment Method is attached and it failed
 	ErrCapturePaymentIntentFailed = errors.New("could not capture the Payment Intent")
 	// ErrSetReaderDisplayFailed is for when the Rabbit call to update the reader display didn't work as planned
-	ErrSetReaderDisplayFailed = errors.New("could not set the reader's display")
+	ErrSetReaderDisplayFailed = errors.New("could not set the Reader's display")
 	// ErrClearReaderDisplayFailed is for when you're canceling a payment collection and need to reset the display back to default splash but it failed
-	ErrClearReaderDisplayFailed = errors.New("could not clear the reader's display")
+	ErrClearReaderDisplayFailed = errors.New("could not clear the Reader's display")
 	// ErrCollectPaymentFailed is for when the Rabbit call for the reader to go into collect payment state failed
 	ErrCollectPaymentFailed = errors.New("could not collect payment method")
 	// ErrCollectPaymentTimeout is for when the user didn't boop the card on the reader in a reasonable time
@@ -35,4 +35,6 @@ var (
 	ErrConfirmPaymentFailed = errors.New("could not confirm the payment")
 	// ErrQueryPaymentFailed is for when you're polling Rabbit to see if the user has booped their card on the reader yet but something went wrong
 	ErrQueryPaymentFailed = errors.New("could not query the payment")
+	// ErrDNSFailed is for when a reader's address could not be resolved by DNS while attempting to contact it via Rabbit Service
+	ErrDNSFailed = errors.New("Couldn't find your reader on the network. We think it's probably a DNS issue.\n See our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
 )
