@@ -3,8 +3,9 @@ package terminal
 import (
 	"fmt"
 	"os"
-	"os/signal"
 	"time"
+
+	"github.com/manifoldco/promptui"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/terminal/p400"
@@ -14,35 +15,13 @@ import (
 func QuickstartP400(cfg *config.Config) error {
 	tsCtx := SetTerminalSessionContext(cfg)
 
-	// reset the reader's state on SIGINT
-	interruptChannel := make(chan os.Signal, 1)
-	signal.Notify(interruptChannel, os.Interrupt)
-
-	go func() {
-		// block unless SIGINT occurs
-		<-interruptChannel
-		p400.ClearReaderDisplay(tsCtx)
-		os.Exit(1)
-	}()
-
 	tsCtx, err := p400.RegisterAndActivateReader(tsCtx)
 
 	if err != nil {
-		switch e := err.Error(); e {
-		case p400.ErrRegisterReaderFailed.Error():
-			fallthrough
-
-		case p400.ErrActivateReaderFailed.Error():
-			fallthrough
-
-		case p400.ErrConnectionTokenFailed.Error():
-			fallthrough
-
-		case p400.ErrNewRPCSessionFailed.Error():
-			return fmt.Errorf(err.Error())
-
-		default:
+		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
+		} else {
+			return fmt.Errorf(err.Error())
 		}
 	}
 
@@ -51,16 +30,11 @@ func QuickstartP400(cfg *config.Config) error {
 	tsCtx, err = p400.SetUpTestPayment(tsCtx)
 
 	if err != nil {
-		switch e := err.Error(); e {
-		case p400.ErrNewPaymentIntentFailed.Error():
-			p400.ClearReaderDisplay(tsCtx)
-			fallthrough
-
-		case p400.ErrSetReaderDisplayFailed.Error():
-			return fmt.Errorf(err.Error())
-
-		default:
+		p400.ClearReaderDisplay(tsCtx)
+		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
+		} else {
+			return fmt.Errorf(err.Error())
 		}
 	}
 
@@ -68,25 +42,10 @@ func QuickstartP400(cfg *config.Config) error {
 
 	if err != nil {
 		p400.ClearReaderDisplay(tsCtx)
-
-		switch e := err.Error(); e {
-		case p400.ErrCapturePaymentIntentFailed.Error():
-			fallthrough
-
-		case p400.ErrCollectPaymentFailed.Error():
-			fallthrough
-
-		case p400.ErrCollectPaymentTimeout.Error():
-			fallthrough
-
-		case p400.ErrConfirmPaymentFailed.Error():
-			fallthrough
-
-		case p400.ErrQueryPaymentFailed.Error():
-			return fmt.Errorf(err.Error())
-
-		default:
+		if err.Error() == promptui.ErrInterrupt.Error() {
 			os.Exit(1)
+		} else {
+			return fmt.Errorf(err.Error())
 		}
 	}
 
