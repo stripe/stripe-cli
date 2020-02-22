@@ -239,7 +239,7 @@ func ActivateTerminalRPCSession(tsCtx TerminalSessionContext) (string, error) {
 		POSDeviceID:        tsCtx.DeviceInfo.DeviceUUID,
 		POSSoftwareInfo: POSSoftwareInfo{
 			POSType:    "pos-cli",
-			SdkVersion: "1.0.0",
+			SdkVersion: version.Version,
 		},
 	}
 
