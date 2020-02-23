@@ -36,6 +36,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.5.0
 	github.com/stretchr/testify v1.4.0
+	github.com/stripe/stripe-go v69.1.0+incompatible
 	github.com/thedevsaddam/gojsonq v2.3.0+incompatible
 	github.com/tidwall/gjson v1.3.2
 	github.com/tidwall/pretty v1.0.0
