@@ -6,7 +6,7 @@ import (
 
 var (
 	// ErrActivateReaderFailed is for when a new RPC session could not be created for the reader
-	ErrActivateReaderFailed = errors.New("Could not communicate with the Reader. Please make sure your reader is online and on the same network as your device.\nSee our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
+	ErrActivateReaderFailed = errors.New("couldn't communicate with the Reader. Please make sure your reader is online and on the same network as your device.\nSee our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
 	// ErrRegisterReaderFailed is for when adding the reader via the Stripe API could not be completed (likely bad reg code)
 	ErrRegisterReaderFailed = errors.New("could not register the Reader due to an invalid reader code")
 	// ErrReaderSelectionFailed is for when the user quit the CLI at the reader choice prompt
@@ -20,7 +20,7 @@ var (
 	// ErrNewRPCSessionFailed is for when a new RPC Session (via the Stripe API not Rabbit) could not be created
 	ErrNewRPCSessionFailed = errors.New("could not create new Terminal session")
 	// ErrNewPaymentIntentFailed is for when calling Stripe for a new shiny Payment Intent failed
-	ErrNewPaymentIntentFailed = errors.New("Could not create new Payment Intent")
+	ErrNewPaymentIntentFailed = errors.New("could not create new Payment Intent")
 	// ErrCapturePaymentIntentFailed is for when you need to manually collect the Payment Intent after a Payment Method is attached and it failed
 	ErrCapturePaymentIntentFailed = errors.New("could not capture the Payment Intent")
 	// ErrSetReaderDisplayFailed is for when the Rabbit call to update the reader display didn't work as planned
@@ -36,5 +36,7 @@ var (
 	// ErrQueryPaymentFailed is for when you're polling Rabbit to see if the user has booped their card on the reader yet but something went wrong
 	ErrQueryPaymentFailed = errors.New("could not query the payment")
 	// ErrDNSFailed is for when a reader's address could not be resolved by DNS while attempting to contact it via Rabbit Service
-	ErrDNSFailed = errors.New("Couldn't find your reader on the network. We think it's probably a DNS issue.\n See our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
+	ErrDNSFailed = errors.New("couldn't find your reader on the network. We think it's probably a DNS issue.\n See our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
+	// ErrRabbitRequestCreationFailed is for when a Rabbit Service request is being rolled and the first stage of setting it up with the http client instance fails
+	ErrRabbitRequestCreationFailed = errors.New("could not prepare request for Reader")
 )

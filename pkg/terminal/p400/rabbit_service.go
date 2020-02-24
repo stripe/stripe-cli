@@ -54,18 +54,23 @@ func encodeRPCContent(rpcContent interface{}) (string, error) {
 func CallRabbitService(tsCtx TerminalSessionContext, method string, methodContent interface{}, methodResponse interface{}, parentTraceID string) error {
 	encodedMethodContent, err := encodeRPCContent(methodContent)
 
-	var result RabbitServiceResponse
-
 	if err != nil {
 		return err
 	}
+
+	var result RabbitServiceResponse
 
 	payload := CreateRabbitServicePayload(method, encodedMethodContent, parentTraceID, tsCtx)
 	formattedIP := strings.Join(strings.Split(tsCtx.IPAddress, "."), "-")
 	t := &Transport{}
 
 	rabbitServiceURL := fmt.Sprintf(readerURL, formattedIP)
-	req, _ := http.NewRequest("POST", rabbitServiceURL, &payload)
+	req, err := http.NewRequest("POST", rabbitServiceURL, &payload)
+
+	if err != nil {
+		return ErrRabbitRequestCreationFailed
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 
 	trace := &httptrace.ClientTrace{
