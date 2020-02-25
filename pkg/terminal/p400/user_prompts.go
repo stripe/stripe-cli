@@ -79,16 +79,16 @@ func ReaderNewOrExistingPrompt() (string, error) {
 // it returns the IP address of the chosen reader
 func RegisteredReaderChoicePrompt(readerList []Reader, tsCtx TerminalSessionContext) (string, error) {
 	templates := &promptui.SelectTemplates{
-		Label:    "{{ .Label }} ",
-		Active:   "▸ {{ .Label | underline }} ",
-		Inactive: "{{ .Label }} ",
+		Label:    "{{ .Label }} ({{ .Status }}) ",
+		Active:   "▸ {{ .Label | underline }} ({{ .Status }})",
+		Inactive: "{{ .Label }} ({{ .Status }})",
 		Selected: ansi.Faint(fmt.Sprintf("✔ Selected %s: {{ .Label | bold }} ", "reader")),
 	}
 
 	index, _, err := selectOptions(templates, "Select a reader:", readerList)
 
 	if err != nil {
-		return "", ErrDiscoverReadersFailed
+		return "", err
 	}
 
 	IPAddress := readerList[index].IPAddress
