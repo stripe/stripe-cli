@@ -108,6 +108,12 @@ var oxxoPayment = &SampleData{
 	URL:         "https://github.com/stripe-samples/oxxo-payment",
 }
 
+var auBecsPayment = &SampleData{
+	Name:        "au-becs-debit-payment",
+	Description: "Collecting AU BECS Direct Debit mandates and payments",
+	URL:         "https://github.com/stripe-samples/au-becs-debit-payment",
+}
+
 var sepaPayment = &SampleData{
 	Name:        "web-elements-sepa-debit-payment",
 	Description: "Accept SEPA Debit payments",
@@ -161,6 +167,7 @@ var List = map[string]*SampleData{
 	"card-payment-charges-api":         cardPaymentCharges,
 	"multiple-plan-subscriptions":      multiPlanSubscriptions,
 	"set-up-subscriptions":             singleSubscription,
+	"au-becs-debit-payment":            auBecsPayment,
 	"web-elements-sepa-debit-payment":  sepaPayment,
 	"oxxo-payment":                     oxxoPayment,
 	"web-elements-ideal-payment":       idealPayment,
