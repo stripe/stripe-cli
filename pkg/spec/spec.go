@@ -111,16 +111,17 @@ type Schema struct {
 	// for anything right now.
 	AdditionalProperties interface{} `json:"additionalProperties,omitempty"`
 
-	AnyOf      []*Schema          `json:"anyOf,omitempty"`
-	Enum       []interface{}      `json:"enum,omitempty"`
-	Format     string             `json:"format,omitempty"`
-	Items      *Schema            `json:"items,omitempty"`
-	MaxLength  int                `json:"maxLength,omitempty"`
-	Nullable   bool               `json:"nullable,omitempty"`
-	Pattern    string             `json:"pattern,omitempty"`
-	Properties map[string]*Schema `json:"properties,omitempty"`
-	Required   []string           `json:"required,omitempty"`
-	Type       string             `json:"type,omitempty"`
+	AnyOf       []*Schema          `json:"anyOf,omitempty"`
+	Description string             `json:"description,omitempty"`
+	Enum        []interface{}      `json:"enum,omitempty"`
+	Format      string             `json:"format,omitempty"`
+	Items       *Schema            `json:"items,omitempty"`
+	MaxLength   int                `json:"maxLength,omitempty"`
+	Nullable    bool               `json:"nullable,omitempty"`
+	Pattern     string             `json:"pattern,omitempty"`
+	Properties  map[string]*Schema `json:"properties,omitempty"`
+	Required    []string           `json:"required,omitempty"`
+	Type        string             `json:"type,omitempty"`
 
 	// Ref is populated if this JSON Schema is actually a JSON reference, and
 	// it defines the location of the actual schema definition.
