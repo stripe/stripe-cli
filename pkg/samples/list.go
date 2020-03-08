@@ -1,7 +1,9 @@
 package samples
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
@@ -9,9 +11,30 @@ import (
 // SampleData stores the information needed for Stripe Samples to operate in
 // the CLI
 type SampleData struct {
-	Name        string
-	URL         string
-	Description string
+	Name        string `json:"name"`
+	URL         string `json:"URL"`
+	Description string `json:"description"`
+}
+
+type SampleList struct {
+	Samples []SampleData `json:"samples"`
+}
+
+func getJson(url string, target interface{}) error {
+	r, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+
+	return json.NewDecoder(r.Body).Decode(target)
+}
+
+func Get() []SampleData {
+	// Fetch samples from gh-pages
+	sampleList := SampleList{}
+	getJson("https://thorsten-stripe.github.io/stripe-cli-gh-pages/samples.json", &sampleList)
+	return sampleList.Samples
 }
 
 // BoldName returns an ansi bold string for the name
@@ -20,10 +43,13 @@ func (sd *SampleData) BoldName() string {
 }
 
 // GitRepo returns a string of the repo with the .git prefix
+// List contains a mapping of Stripe Samples that we want to be available in the
+// CLI to some of their metadata
 func (sd *SampleData) GitRepo() string {
 	return fmt.Sprintf("%s.git", sd.URL)
 }
 
+// TODO refactor to use fetched data
 var addingSalesTax = &SampleData{
 	Name:        "adding-sales-tax",
 	Description: "Learn how to use PaymentIntents to build a simple checkout flow",
