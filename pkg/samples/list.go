@@ -102,6 +102,12 @@ var singleSubscription = &SampleData{
 	URL:         "https://github.com/stripe-samples/set-up-subscriptions",
 }
 
+var cardAndDebitSubscription = &SampleData{
+	Name:        "subscriptions-with-card-and-direct-debit",
+	Description: "Learn how to implement card and direct debit methods for usage with subscriptions",
+	URL:         "https://github.com/stripe-samples/subscriptions-with-card-and-direct-debit",
+}
+
 var oxxoPayment = &SampleData{
 	Name:        "oxxo-payment",
 	Description: "Build a payment form to collect OXXO and card payments",
@@ -154,27 +160,28 @@ var developerOfficeHours = &SampleData{
 // CLI to some of their metadata
 // TODO: what do we want to name these for it to be easier for users to select?
 var List = map[string]*SampleData{
-	"adding-sales-tax":                 addingSalesTax,
-	"checkout-subscription-and-add-on": checkoutSubscriptionAndAddOn,
-	"placing-a-hold":                   placingAHold,
-	"payment-form-modal":               paymentFormModal,
-	"saving-card-without-payment":      savingCardWithoutPayment,
-	"checkout-one-time-payments":       checkoutOneTimePayments,
-	"checkout-single-subscription":     checkoutSingleSubscription,
-	"accept-a-card-payment":            cardPayment,
-	"saving-card-after-payment":        savingCardAfterPayment,
-	"react-elements-card-payment":      reactElementsCardPayment,
-	"card-payment-charges-api":         cardPaymentCharges,
-	"multiple-plan-subscriptions":      multiPlanSubscriptions,
-	"set-up-subscriptions":             singleSubscription,
-	"au-becs-debit-payment":            auBecsPayment,
-	"web-elements-sepa-debit-payment":  sepaPayment,
-	"oxxo-payment":                     oxxoPayment,
-	"web-elements-ideal-payment":       idealPayment,
-	"web-elements-fpx-payment":         fpxPayment,
-	"charging-a-saved-card":            chargingSavedCard,
-	"connect-onboarding-for-standard":  connectOnboardingStandard,
-	"developer-office-hours":           developerOfficeHours,
+	"adding-sales-tax":                         addingSalesTax,
+	"checkout-subscription-and-add-on":         checkoutSubscriptionAndAddOn,
+	"placing-a-hold":                           placingAHold,
+	"payment-form-modal":                       paymentFormModal,
+	"saving-card-without-payment":              savingCardWithoutPayment,
+	"checkout-one-time-payments":               checkoutOneTimePayments,
+	"checkout-single-subscription":             checkoutSingleSubscription,
+	"accept-a-card-payment":                    cardPayment,
+	"saving-card-after-payment":                savingCardAfterPayment,
+	"react-elements-card-payment":              reactElementsCardPayment,
+	"card-payment-charges-api":                 cardPaymentCharges,
+	"multiple-plan-subscriptions":              multiPlanSubscriptions,
+	"set-up-subscriptions":                     singleSubscription,
+	"subscriptions-with-card-and-direct-debit": cardAndDebitSubscription,
+	"au-becs-debit-payment":                    auBecsPayment,
+	"web-elements-sepa-debit-payment":          sepaPayment,
+	"oxxo-payment":                             oxxoPayment,
+	"web-elements-ideal-payment":               idealPayment,
+	"web-elements-fpx-payment":                 fpxPayment,
+	"charging-a-saved-card":                    chargingSavedCard,
+	"connect-onboarding-for-standard":          connectOnboardingStandard,
+	"developer-office-hours":                   developerOfficeHours,
 }
 
 // Names returns a list of all the sample's names
