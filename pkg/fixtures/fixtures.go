@@ -277,15 +277,20 @@ func (fxt *Fixture) parseQuery(value string) string {
 
 		// Catch and insert .env values
 		if name == ".env" {
-			dir, err := os.Getwd() // which dir is this once compiled?
-			err = godotenv.Load(path.Join(dir, ".env"))
-			if err != nil {
-				fmt.Println(fmt.Sprintf("Error loading .env: %v", err))
-				return value
-			}
-
 			key := nameAndQuery[2]
+			// Check if env variable is present
 			envValue := os.Getenv(key)
+			if envValue == "" {
+				fmt.Println(fmt.Sprintf("Env var %s not set. Looking for .env file.", key))
+				// Try to load from .env file
+				dir, err := os.Getwd()
+				err = godotenv.Load(path.Join(dir, ".env"))
+				if err != nil {
+					fmt.Println(fmt.Sprintf("Error: %v", err))
+					return value
+				}
+				envValue = os.Getenv(key)
+			}
 			if envValue == "" {
 				fmt.Println(fmt.Sprintf("No value for env var: %s", key))
 				return value
