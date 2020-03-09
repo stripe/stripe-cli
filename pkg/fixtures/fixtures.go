@@ -284,6 +284,9 @@ func (fxt *Fixture) parseQuery(value string) string {
 				fmt.Println(fmt.Sprintf("Env var %s not set. Looking for .env file.", key))
 				// Try to load from .env file
 				dir, err := os.Getwd()
+				if err != nil {
+					dir = ""
+				}
 				err = godotenv.Load(path.Join(dir, ".env"))
 				if err != nil {
 					fmt.Println(fmt.Sprintf("Error: %v", err))
