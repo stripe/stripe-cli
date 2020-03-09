@@ -14,7 +14,6 @@ import (
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
-	"github.com/stripe/stripe-cli/pkg/version"
 
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -53,7 +52,6 @@ local configuration to let you get started faster.`,
 }
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
-	version.CheckLatestVersion()
 	samples.InitSampleList()
 
 	if len(args) == 0 {

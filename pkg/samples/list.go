@@ -55,8 +55,6 @@ func (sd *SampleData) BoldName() string {
 }
 
 // GitRepo returns a string of the repo with the .git prefix
-// List contains a mapping of Stripe Samples that we want to be available in the
-// CLI to some of their metadata
 func (sd *SampleData) GitRepo() string {
 	return fmt.Sprintf("%s.git", sd.URL)
 }
