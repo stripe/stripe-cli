@@ -17,11 +17,12 @@ type SampleData struct {
 	Description string `json:"description"`
 }
 
+// SampleList is used to unmarshal the samples array from the JSON response
 type SampleList struct {
 	Samples []SampleData `json:"samples"`
 }
 
-func getJson(url string, target interface{}) error {
+func getJSON(url string, target interface{}) error {
 	spinner := ansi.StartSpinner("Loading...", os.Stdout)
 	r, err := http.Get(url)
 	if err != nil {
@@ -33,17 +34,23 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
-func GetSamples() []SampleData {
+func getSamples() []SampleData {
 	// Fetch samples from gh-pages
 	sampleList := SampleList{}
-	getJson("https://thorsten-stripe.github.io/stripe-cli-gh-pages/samples.json", &sampleList)
+	getJSON("https://thorsten-stripe.github.io/stripe-cli-gh-pages/samples.json", &sampleList)
 	return sampleList.Samples
 }
 
+// List contains a mapping of Stripe Samples that we want to be available in the
+// CLI to some of their metadata.
+// TODO: what do we want to name these for it to be easier for users to select?
+// TODO: should we group them by products for easier exploring?
 var List = map[string]*SampleData{}
 
+// InitSampleList fetches the samples from a remote JSON file and sets up the
+// List mapping.
 func InitSampleList() {
-	sampleList := GetSamples()
+	sampleList := getSamples()
 	for i, sample := range sampleList {
 		List[sample.Name] = &sampleList[i]
 	}
