@@ -54,6 +54,7 @@ local configuration to let you get started faster.`,
 
 func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
+	samples.InitSampleList()
 
 	if len(args) == 0 {
 		cmd.Help()
