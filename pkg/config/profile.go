@@ -118,16 +118,19 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 }
 
 // GetPublishableKey returns the publishable key for the user
-func (p *Profile) GetPublishableKey() string {
-	if err := viper.ReadInConfig(); err == nil {
-		if viper.IsSet(p.GetConfigField("publishable_key")) {
-			p.RegisterAlias("test_mode_publishable_key", "publishable_key")
-		}
-
-		return viper.GetString(p.GetConfigField("test_mode_publishable_key"))
+func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
+	envKey := os.Getenv("STRIPE_PUBLISHABLE_KEY")
+	if envKey != "" {
+		return envKey, nil
 	}
 
-	return ""
+	// Try to fetch the API key from the configuration file
+	if err := viper.ReadInConfig(); err == nil {
+		key := viper.GetString(p.GetConfigField(livemodePublishableKeyField(livemode)))
+		return key, nil
+	}
+
+	return "", errors.New("your publishable key has not been configured. Use `stripe login` to set your publishable key")
 }
 
 // GetConfigField returns the configuration field for the specific profile
@@ -229,4 +232,12 @@ func livemodeKeyField(livemode bool) string {
 	}
 
 	return "test_mode_api_key"
+}
+
+func livemodePublishableKeyField(livemode bool) string {
+	if livemode {
+		return "live_mode_publishable_key"
+	}
+
+	return "test_mode_publishable_key"
 }

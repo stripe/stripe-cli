@@ -116,4 +116,9 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = resource.AddCheckoutSubCmds(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
