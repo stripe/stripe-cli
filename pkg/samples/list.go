@@ -42,11 +42,11 @@ func GetSamples() []SampleData {
 
 var List = map[string]*SampleData{}
 
-func InitSampleList() map[string]*SampleData {
-	for _, sample := range GetSamples() {
-		List[sample.Name] = &sample
+func InitSampleList() {
+	sampleList := GetSamples()
+	for i, sample := range sampleList {
+		List[sample.Name] = &sampleList[i]
 	}
-	return List
 }
 
 // BoldName returns an ansi bold string for the name
