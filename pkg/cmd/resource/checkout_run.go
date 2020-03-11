@@ -30,6 +30,7 @@ type CheckoutRunCmd struct {
 
 	publishableKey string
 	sessionID      string
+	port           string
 }
 
 func (crc *CheckoutRunCmd) checkoutHandler(w http.ResponseWriter, req *http.Request) {
@@ -96,8 +97,6 @@ func (crc *CheckoutRunCmd) createCheckoutSession() error {
 
 // NewCheckoutRunCmd returns a new CheckoutRunCmd.
 func NewCheckoutRunCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	var port string
-
 	cc := CheckoutRunCmd{
 		Cfg: cfg,
 	}
@@ -144,19 +143,19 @@ func NewCheckoutRunCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Comm
 			}
 			cc.publishableKey = publishableKey
 
-			fmt.Println("Starting stripe server at address", fmt.Sprintf("http://0.0.0.0:%s", port))
+			fmt.Println("Starting stripe server at address", fmt.Sprintf("http://0.0.0.0:%s", cc.port))
 			http.HandleFunc("/", cc.checkoutHandler)
 			go func() {
 				time.Sleep(1 * time.Second)
-				open.Browser("http://0.0.0.0:4242")
+				open.Browser(fmt.Sprintf("http://0.0.0.0:%s", cc.port))
 			}()
-			err = http.ListenAndServe(fmt.Sprintf("localhost:%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
+			err = http.ListenAndServe(fmt.Sprintf("localhost:%s", cc.port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 
 			return err
 		},
 	}
 
-	cc.Cmd.Flags().StringVar(&port, "port", "4242", "Provide a custom port to serve content from.")
+	cc.Cmd.Flags().StringVar(&cc.port, "port", "4242", "Provide a custom port to serve content from.")
 
 	parentCmd.AddCommand(cc.Cmd)
 
