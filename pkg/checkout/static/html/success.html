@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Stripe Checkout Sample</title>
+    <meta name="description" content="A demo of Stripe Payment Intents" />
+
+    <link rel="icon" href="favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="/static/css/normalize.css" />
+    <link rel="stylesheet" href="/static/css/global.css" />
+    <script src="https://js.stripe.com/v3/"></script>
+  </head>
+
+  <body>
+    <div class="sr-root">
+      <div class="sr-main">
+        <header class="sr-header">
+          <div class="sr-header__logo"></div>
+        </header>
+        <div class="sr-payment-summary completed-view">
+          <h1>Your test payment succeeded</h1>
+          <h4>Checkout Session ID: <span id="session"></span></h4>
+        </div>
+      <div class="sr-content">
+        <div class="pasha-image-stack">
+          <img
+            src="https://picsum.photos/280/320?random=1"
+            width="140"
+            height="160"
+          />
+          <img
+            src="https://picsum.photos/280/320?random=2"
+            width="140"
+            height="160"
+          />
+          <img
+            src="https://picsum.photos/280/320?random=3"
+            width="140"
+            height="160"
+          />
+          <img
+            src="https://picsum.photos/280/320?random=4"
+            width="140"
+            height="160"
+          />
+        </div>
+      </div>
+    </div>
+    <script>
+      // Replace with your own publishable key: https://dashboard.stripe.com/test/apikeys
+      var PUBLISHABLE_KEY = "pk_1234";
+
+      if (PUBLISHABLE_KEY === "pk_1234") {
+        console.log(
+          "Replace the hardcoded publishable key with your own publishable key: https://dashboard.stripe.com/test/apikeys"
+        );
+      }
+
+      var stripe = Stripe(PUBLISHABLE_KEY);
+      var urlParams = new URLSearchParams(window.location.search);
+
+      if (urlParams.has("session_id")) {
+        document.getElementById("session").textContent = urlParams.get(
+          "session_id"
+        );
+      }
+    </script>
+  </body>
+</html>
