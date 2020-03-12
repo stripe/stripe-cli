@@ -3,6 +3,7 @@ package checkout
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 
@@ -14,7 +15,7 @@ type response struct {
 	ID string `json:"id"`
 }
 
-func createCheckoutSession(cfg *config.Config) (string, error) {
+func createCheckoutSession(cfg *config.Config, port string) (string, error) {
 	secretKey, err := cfg.Profile.GetAPIKey(false)
 	if err != nil {
 		return "", err
@@ -22,8 +23,8 @@ func createCheckoutSession(cfg *config.Config) (string, error) {
 
 	data := requests.RequestParameters{}
 	data.AppendData([]string{
-		`success_url=http://localhost:4242/success`,
-		`cancel_url=http://localhost:4242/cancel`,
+		fmt.Sprintf(`success_url=http://localhost:%s/success`, port),
+		fmt.Sprintf(`cancel_url=http://localhost:%s/cancel`, port),
 		`payment_method_types[0]=card`,
 		`line_items[0][name]=Increment`,
 		`line_items[0][description]=Software Architecture`,
@@ -53,7 +54,7 @@ func createCheckoutSession(cfg *config.Config) (string, error) {
 	return checkoutResp.ID, nil
 }
 
-func getOrCreateSession(cfg *config.Config) (string, error) {
+func getOrCreateSession(cfg *config.Config, port string) (string, error) {
 	info, err := os.Stdin.Stat()
 	if err != nil {
 		return "", err
@@ -62,7 +63,7 @@ func getOrCreateSession(cfg *config.Config) (string, error) {
 	// If we're not reading from a pipe, create a session
 	// else read from the pipe
 	if info.Mode()&os.ModeCharDevice != 0 || info.Size() <= 0 {
-		return createCheckoutSession(cfg)
+		return createCheckoutSession(cfg, port)
 	}
 
 	reader := bufio.NewReader(os.Stdin)
