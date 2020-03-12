@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kr/text"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday"
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,8 @@ import (
 const (
 	pathStripeSpec = "./api/openapi-spec/spec3.sdk.json"
 )
+
+var p = bluemonday.StrictPolicy()
 
 //
 // Public types
@@ -227,14 +230,20 @@ func (oc *OperationCmd) helpString(cmd *cobra.Command) string {
 
 	sb.WriteString(fmt.Sprintf(`%s
 %s
+
 %s
 %s
+
 %s
-`,
+%s
+
+%s`,
 		ansi.Bold("USAGE"),
 		text.Indent(cmd.CommandPath(), "    "),
+		ansi.Bold("PATH"),
+		text.Indent(fmt.Sprint(ansi.Bold(oc.HTTPVerb), " ", oc.Path), "    "),
 		ansi.Bold("DESCRIPTION"),
-		text.Indent(text.Wrap(opSpec.Description, 76), "    "),
+		text.Indent(p.Sanitize(text.Wrap(opSpec.Description, 76)), "    "),
 		ansi.Bold("PARAMETERS"),
 	))
 
@@ -251,7 +260,7 @@ func (oc *OperationCmd) helpString(cmd *cobra.Command) string {
 func paramHelpString(name string, schema *spec.Schema, indent string) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%so %s (%s)\n", indent, ansi.Bold(name), ansi.Italic(schema.Type)))
+	sb.WriteString(fmt.Sprintf("\n%s• %s %s\n", indent, ansi.Bold(name), ansi.Italic(ansi.Faint(schema.Type))))
 
 	indent += "  "
 

@@ -21,6 +21,7 @@ require (
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.10 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
+	github.com/microcosm-cc/bluemonday v1.0.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nicksnyder/go-i18n v2.0.3+incompatible // indirect
 	github.com/onsi/ginkgo v1.8.0 // indirect
