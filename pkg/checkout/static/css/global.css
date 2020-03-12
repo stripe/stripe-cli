@@ -10,7 +10,6 @@
   --accent-color: #0066f0;
   --body-font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   --radius: 6px;
-  --logo-image: url("https://storage.googleapis.com/stripe-sample-images/KAVHOLM.svg");
   --form-width: 600px;
 }
 
@@ -73,9 +72,6 @@ h4 {
 }
 .sr-main {
   width: var(--form-width);
-}
-.sr-content {
-  padding-left: 48px;
 }
 .sr-header__logo {
   background-image: var(--logo-image);
@@ -321,6 +317,11 @@ pre {
   font-size: 12px;
 }
 
+span.code {
+  font-family: "SF Mono", "IBM Plex Mono", "Menlo", monospace;
+  font-size: 12px;
+}
+
 /* Stripe Element placeholder */
 .sr-card-element {
   padding-top: 12px;
@@ -350,51 +351,6 @@ pre {
   .sr-main {
     width: 100%;
   }
-}
-
-/* Pasha styles – Brand-overrides, can split these out */
-:root {
-  --accent-color: #ed5f74;
-  --headline-color: var(--accent-color);
-  --logo-image: url("https://storage.googleapis.com/stripe-sample-images/logo-pasha.svg");
-}
-
-.pasha-image-stack {
-  display: grid;
-  grid-gap: 12px;
-  grid-template-columns: auto auto;
-}
-
-.pasha-image-stack img,
-.pasha-image img {
-  border-radius: var(--radius);
-  background-color: var(--gray-border);
-  box-shadow: 0 7px 14px 0 rgba(50, 50, 93, 0.1),
-    0 3px 6px 0 rgba(0, 0, 0, 0.07);
-  transition: all 0.8s ease;
-  opacity: 0;
-}
-
-.pasha-image {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.pasha-image img {
-  opacity: 1;
-}
-
-.pasha-image-stack img:nth-child(1) {
-  transform: translate(30px, 15px);
-  opacity: 1;
-}
-.pasha-image-stack img:nth-child(2) {
-  transform: translate(-28px, 0px);
-  opacity: 1;
-}
-.pasha-image-stack img:nth-child(3) {
-  transform: translate(64px, -50px);
-  opacity: 1;
 }
 
 /* todo: spinner/processing state, errors, animations */
@@ -479,10 +435,6 @@ pre {
   flex-direction: column;
   justify-content: space-between;
   max-width: 400px;
-}
-
-.container .pasha-image-stack {
-  margin-top: 20px;
 }
 
 .container:first-of-type {
