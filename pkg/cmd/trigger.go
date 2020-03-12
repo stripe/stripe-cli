@@ -70,7 +70,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	var fixture *fixtures.Fixture
 	if file, ok := fixtures.Events[event]; ok {
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, file)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, file)
 		if err != nil {
 			return err
 		}
@@ -80,7 +80,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 		}
 
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, event)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, event)
 		if err != nil {
 			return err
 		}

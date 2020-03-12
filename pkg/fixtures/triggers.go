@@ -5,8 +5,6 @@ import (
 	"sort"
 
 	"github.com/spf13/afero"
-
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // Events is a mapping of pre-built trigger events and the corresponding json file
@@ -54,12 +52,12 @@ var Events = map[string]string{
 }
 
 // BuildFromFixture creates a new fixture struct for a file
-func BuildFromFixture(fs afero.Fs, apiKey, stripeAccount, jsonFile string) (*Fixture, error) {
+func BuildFromFixture(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string) (*Fixture, error) {
 	fixture, err := NewFixture(
 		fs,
 		apiKey,
 		stripeAccount,
-		stripe.DefaultAPIBaseURL,
+		apiBaseURL,
 		jsonFile,
 	)
 	if err != nil {
