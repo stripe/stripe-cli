@@ -68,6 +68,8 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 					// Repo is already up to date. This isn't a program
 					// error to continue as normal
 					break
+				default:
+					return err
 				}
 			}
 		}
@@ -92,7 +94,7 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 	return nil
 }
 
-// Returns a list that contains a mapping of Stripe Samples that
+// GetSamples returns a list that contains a mapping of Stripe Samples that
 // we want to be available in the CLI to some of their metadata.
 // TODO: what do we want to name these for it to be easier for users to select?
 // TODO: should we group them by products for easier exploring?
@@ -109,10 +111,8 @@ func (s *Samples) GetSamples(mode string) map[string]*SampleData {
 	switch mode {
 	case "list":
 		noNetwork = false
-		break
 	case "create":
 		noNetwork = true
-		break
 	default:
 		noNetwork = false
 	}
