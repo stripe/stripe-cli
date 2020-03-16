@@ -12,6 +12,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
+const sampleListGithubURL = "https://github.com/stripe-samples/samples-list.git"
+
 // SampleData stores the information needed for Stripe Samples to operate in
 // the CLI
 type SampleData struct {
@@ -55,7 +57,7 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 	}
 
 	if _, err := s.Fs.Stat(listPath); os.IsNotExist(err) {
-		err = s.Git.Clone(listPath, "https://github.com/stripe-samples/samples-list.git")
+		err = s.Git.Clone(listPath, sampleListGithubURL)
 		if err != nil {
 			return err
 		}
