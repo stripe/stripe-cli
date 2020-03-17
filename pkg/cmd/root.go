@@ -59,6 +59,11 @@ func Execute() {
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
 
+	fmt.Println(rootCmd.HasSubCommands())
+	fmt.Println(rootCmd.HasHelpSubCommands())
+	fmt.Println(rootCmd.HasAvailableSubCommands())
+	fmt.Println(rootCmd.Runnable())
+	fmt.Println(rootCmd.HasAvailableSubCommands())
 	if err := rootCmd.Execute(); err != nil {
 		if strings.Contains(err.Error(), "unknown command") {
 			suggStr := "\nS"

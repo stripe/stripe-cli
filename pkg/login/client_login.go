@@ -52,7 +52,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	var s *spinner.Spinner
 
 	if isSSH() {
-		fmt.Println(fmt.Sprintf("To authenticate with Stripe, please go to: %s", links.BrowserURL))
+		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
 
 		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
 	} else {
@@ -92,7 +92,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("> Error verifying the CLI was set up successfully: %s", err))
+		fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 	} else {
 		ansi.StopSpinner(s, message, os.Stdout)
 		fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))

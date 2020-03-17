@@ -156,7 +156,7 @@ func (t *Tailer) Run() error {
 
 	if session.DisplayConnectFilterWarning {
 		color := ansi.Color(os.Stdout)
-		fmt.Println(fmt.Sprintf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.", color.Yellow("Warning")))
+		fmt.Printf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.\n", color.Yellow("Warning"))
 	}
 
 	// Block until context is done (i.e. Ctrl+C is pressed)

@@ -38,9 +38,9 @@ func InteractiveLogin(config *config.Config) error {
 	// we need to include it manually to maintain consistency in outputs.
 	message, err := SuccessMessage(nil, stripe.DefaultAPIBaseURL, apiKey)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("> Error verifying the CLI was setup successfully: %s", err))
+		fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
 	} else {
-		fmt.Println(fmt.Sprintf("> %s", message))
+		fmt.Printf("> %s\n", message)
 	}
 
 	return nil
