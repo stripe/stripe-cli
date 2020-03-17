@@ -13,7 +13,8 @@ type CheckoutRunCmd struct {
 	Cmd *cobra.Command
 	Cfg *config.Config
 
-	port string
+	port      string
+	sessionID string
 }
 
 // NewCheckoutRunCmd returns a new CheckoutRunCmd.
@@ -29,8 +30,9 @@ func NewCheckoutRunCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Comm
 		Long:  "Run checkout session",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			server := checkout.Server{
-				Cfg:  cc.Cfg,
-				Port: cc.port,
+				Cfg:       cc.Cfg,
+				Port:      cc.port,
+				SessionID: cc.sessionID,
 			}
 
 			return server.Run()
@@ -38,6 +40,7 @@ func NewCheckoutRunCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Comm
 	}
 
 	cc.Cmd.Flags().StringVar(&cc.port, "port", "4242", "Provide a custom port to serve content from.")
+	cc.Cmd.Flags().StringVar(&cc.sessionID, "session-id", "", "Provide a custom checkout session to use.")
 
 	parentCmd.AddCommand(cc.Cmd)
 

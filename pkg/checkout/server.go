@@ -20,9 +20,11 @@ type Data struct {
 
 // Server maps required data to run a simple checkout integration
 type Server struct {
-	Cfg  *config.Config
-	Port string
-	data *Data
+	Cfg *config.Config
+
+	Port      string
+	sessionID string
+	data      *Data
 }
 
 func (s *Server) checkoutHandler(w http.ResponseWriter, req *http.Request) {
@@ -64,9 +66,14 @@ func (s *Server) cancelHandler(w http.ResponseWriter, req *http.Request) {
 // Run creates a checkout session, retrieves the publishable key, and sets up
 // a simple server to show checkout
 func (s *Server) Run() error {
-	session, err := getOrCreateSession(s.Cfg, s.Port)
-	if err != nil {
-		return err
+	var err error
+
+	session := s.sessionID
+	if session == "" {
+		session, err = getOrCreateSession(s.Cfg, s.Port)
+		if err != nil {
+			return err
+		}
 	}
 
 	publishableKey, err := s.Cfg.Profile.GetPublishableKey(false)
