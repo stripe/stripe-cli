@@ -7,7 +7,8 @@
 
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
-    <link rel="stylesheet" href="/static/css/global.css" />
+    <!--<link rel="stylesheet" href="/static/css/global.css" />-->
+    <link rel="stylesheet" href="file:///Users/tomer/code/stripe-cli/pkg/checkout/static/css/global.css" />
     <script src="https://js.stripe.com/v3/"></script>
   </head>
 
@@ -19,14 +20,18 @@
         </header>
         <div class="sr-payment-summary completed-view">
           <h1>Your test payment succeeded</h1>
-          <h4>Checkout Session ID: <span id="session">{{.SessionID}}</span></h4>
+          <div>
+            <p>Checkout Session ID:</p>
+            <pre>{{.SessionID}}</pre>
+          </div>
         </div>
       <div class="sr-content">
-        <h1>Next steps:</h1>
+        <h2>Next steps</h2>
         <ul>
           <li>
+            <div>
             <p>Create a custom checkout session <a href="https://stripe.com/docs/api/checkout/sessions/create?lang=cli">with the CLI:</a></p>
-            <pre>$ stripe checkout sessions create \
+            <pre class="dark">$ stripe checkout sessions create \
     --success-url="https://example.com/success" \
     --cancel-url="https://example.com/cancel" \
     -d "payment_method_types[]"=card \
@@ -36,13 +41,23 @@
     -d "line_items[0][currency]"=usd \
     -d "line_items[0][quantity]"=2 \
   | stripe-dev checkout run</pre>
+</div>
           </li>
-          <li><p>Clone one of our checkout samples with the CLI to see more indepth use cases: <a href="https://github.com/stripe-samples/checkout-one-time-payments">checkout-one-time-payments</a>, <a href="https://github.com/stripe-samples/checkout-single-subscription">checkout-single-subscription</a>, <a href="https://github.com/stripe-samples/checkout-subscription-and-add-on">checkout-subscription-and-add-on</a>, and <a href="https://github.com/stripe-samples/checkout-with-multiple-locales">checkout-with-multiple-locales</a></p></li>
-          <li><p>Make sure to configure a webhooks endpoint for <span class="code">checkout.session.completed</span> and use that to a completed payment.</p></li>
+          <li>
+            <div>
+            <p>Clone one of our checkout samples with the CLI to see more indepth use cases</p>
+            <ul>
+              <li><a href="https://github.com/stripe-samples/checkout-one-time-payments">checkout-one-time-payments</a></li>
+              <li><a href="https://github.com/stripe-samples/checkout-single-subscription">checkout-single-subscription</a></li>
+              <li><a href="https://github.com/stripe-samples/checkout-subscription-and-add-on">checkout-subscription-and-add-on</a></li>
+            </ul>
+          </div>
+          </li>
+          <li><div><p>Make sure to configure a webhooks endpoint for <span class="code">checkout.session.completed</span> and use that to a completed payment.</p></div></li>
         </ul>
 
-        <h1>More reading:</h1>
-        <ul>
+        <h2>More reading</h2>
+        <ul class="no-bullets">
           <li><a href="https://stripe.com/docs/payments/checkout">Stripe Checkout documentation</a></li>
           <li><a href="https://stripe.com/docs/webhooks">Receiving webhooks</a></li>
           <li><a href="https://stripe.com/docs/stripe-cli">Using the Stripe CLI</a></li>
