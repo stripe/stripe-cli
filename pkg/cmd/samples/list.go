@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
-	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // ListCmd prints a list of all the available sample projects that users can
@@ -33,18 +34,22 @@ the CLI.`,
 }
 
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
-	version.CheckLatestVersion()
+	sample := samples.Samples{
+		Fs:  afero.NewOsFs(),
+		Git: gitpkg.Operations{},
+	}
 
 	fmt.Println("A list of available Stripe Samples:")
 	fmt.Println()
 
-	names := samples.Names()
+	list := sample.GetSamples("list")
+	names := samples.Names(list)
 	sort.Strings(names)
 
 	for _, name := range names {
-		fmt.Println(samples.List[name].BoldName())
-		fmt.Println(samples.List[name].Description)
-		fmt.Println(fmt.Sprintf("Repo: %s", samples.List[name].URL))
+		fmt.Println(list[name].BoldName())
+		fmt.Println(list[name].Description)
+		fmt.Println(fmt.Sprintf("Repo: %s", list[name].URL))
 		fmt.Println()
 	}
 }

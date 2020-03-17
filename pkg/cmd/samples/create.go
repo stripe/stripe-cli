@@ -35,10 +35,9 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 		forceRefresh: false,
 	}
 	createCmd.Cmd = &cobra.Command{
-		Use:       "create <sample> [destination]",
-		ValidArgs: samples.Names(),
-		Args:      validators.MaximumNArgs(2),
-		Short:     "Setup and bootstrap a Stripe Sample",
+		Use:   "create <sample> [destination]",
+		Args:  validators.MaximumNArgs(2),
+		Short: "Setup and bootstrap a Stripe Sample",
 		Long: `The create command will locally clone a sample, let you select which integration,
 client, and server you want to run. It then automatically bootstraps the
 local configuration to let you get started faster.`,
@@ -60,17 +59,18 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if _, ok := samples.List[args[0]]; !ok {
-		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
-To see supported samples, run 'stripe samples list'`, args[0])
-		return fmt.Errorf(errorMessage)
-	}
-
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
 		Git:    gitpkg.Operations{},
 	}
+
+	if _, ok := sample.GetSamples("create")[args[0]]; !ok {
+		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
+To see supported samples, run 'stripe samples list'`, args[0])
+		return fmt.Errorf(errorMessage)
+	}
+
 	selectedSample := args[0]
 	color := ansi.Color(os.Stdout)
 
