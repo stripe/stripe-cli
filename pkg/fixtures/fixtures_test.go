@@ -144,9 +144,10 @@ func TestParseWithLocalEnv(t *testing.T) {
 }
 
 func TestParseWithEnvFile(t *testing.T) {
-	fs := afero.NewMemMapFs()
+	fs := afero.NewOsFs()
 	wd, _ := os.Getwd()
-	afero.WriteFile(fs, path.Join(wd, ".env"), []byte(`PHONE_FILE="+1234"`), os.ModePerm)
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte(`PHONE_FILE="+1234"`), os.ModePerm)
 
 	fxt := Fixture{}
 	data := make(map[string]interface{})
@@ -155,6 +156,8 @@ func TestParseWithEnvFile(t *testing.T) {
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
+
+	fs.Remove(envPath)
 }
 
 func TestMakeRequest(t *testing.T) {
