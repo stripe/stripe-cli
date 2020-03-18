@@ -133,7 +133,7 @@ func (p *Proxy) Run() error {
 
 	select {
 	case <-p.webSocketClient.Connected():
-		ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+		ansi.StopSpinner(s, fmt.Sprintf("Ready! You are using Stripe API Version %s. Your webhook signing secret is %s (^C to quit)", session.APIVersion, ansi.Bold(session.Secret)), p.cfg.Log.Out)
 	case <-p.ctx.Done():
 		ansi.StopSpinner(s, "", p.cfg.Log.Out)
 		p.cfg.Log.Fatalf("Aborting")
