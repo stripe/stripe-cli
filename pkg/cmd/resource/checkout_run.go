@@ -24,6 +24,9 @@ func NewCheckoutRunCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Comm
 	}
 
 	cc.Cmd = &cobra.Command{
+		// Hide this commend for now, we want to colelct some feedback
+		Hidden: true,
+
 		Use:   "run",
 		Args:  validators.NoArgs,
 		Short: "Run checkout session",
