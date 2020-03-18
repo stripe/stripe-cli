@@ -23,7 +23,7 @@ type Server struct {
 	Cfg *config.Config
 
 	Port      string
-	sessionID string
+	SessionID string
 	data      *Data
 }
 
@@ -68,7 +68,7 @@ func (s *Server) cancelHandler(w http.ResponseWriter, req *http.Request) {
 func (s *Server) Run() error {
 	var err error
 
-	session := s.sessionID
+	session := s.SessionID
 	if session == "" {
 		session, err = getOrCreateSession(s.Cfg, s.Port)
 		if err != nil {
