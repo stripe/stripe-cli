@@ -90,7 +90,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	if err == nil {
 		fmt.Println("Trigger succeeded! Check dashboard for event details.")
 	} else {
-		fmt.Println(fmt.Sprintf("Trigger failed: %s", err))
+		fmt.Printf("Trigger failed: %s\n", err)
 	}
 
 	return err

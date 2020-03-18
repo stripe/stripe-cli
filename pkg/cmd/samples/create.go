@@ -124,7 +124,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Finished downloading")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Finished downloading"))
 
 	// Once we've initialized the sample in the local cache
 	// directory, the user needs to select which integration they
@@ -162,7 +162,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Files copied")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Files copied"))
 
 	spinner = ansi.StartSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
 
@@ -172,7 +172,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Project configured")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Project configured"))
 	fmt.Println("You're all set. To get started: cd", selectedSample)
 
 	if sample.PostInstall() != "" {

@@ -6,7 +6,7 @@ export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
 export GOPROXY := https://gocenter.io
-export GOLANGCI_LINT_VERSION := v1.23.3
+export GOLANGCI_LINT_VERSION := v1.24.0
 
 # Install all the build and lint dependencies
 setup:
@@ -36,7 +36,7 @@ fmt:
 # Run all the linters
 lint: bin/golangci-lint bin/misspell
 	# TODO: fix disabled linter issues
-	./bin/golangci-lint run ./...
+	./bin/golangci-lint run ./... --max-issues-per-linter=0 --max-same-issues=0
 	./bin/misspell -error **/*.go
 .PHONY: lint
 

@@ -49,7 +49,7 @@ func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
 	for _, name := range names {
 		fmt.Println(list[name].BoldName())
 		fmt.Println(list[name].Description)
-		fmt.Println(fmt.Sprintf("Repo: %s", list[name].URL))
+		fmt.Printf("Repo: %s\n", list[name].URL)
 		fmt.Println()
 	}
 }
