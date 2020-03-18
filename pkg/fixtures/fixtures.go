@@ -269,18 +269,52 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 
 func (fxt *Fixture) parseQuery(value string) string {
 	// Queries to fill data will start with #$ and contain a : -- search for both
-	// to make sure that we're trying to parse a query
-	r := regexp.MustCompile(`\${(.+):(.+)}`)
+	// to make sure that we're trying to parse a query.
+	// Additionally look for an optional default value: ${name:json_path|default_value}
+	r := regexp.MustCompile(`\${([^\|]+):([^\|]+)\|?(.+)?}`)
 	if r.Match([]byte(value)) {
 		nameAndQuery := r.FindStringSubmatch(value)
 		name := nameAndQuery[1]
+
+		// Check if there is a default value specified
+		if nameAndQuery[3] != "" {
+			value = nameAndQuery[3]
+		}
+
+		// Catch and insert .env values
+		if name == ".env" {
+			key := nameAndQuery[2]
+			// Check if env variable is present
+			envValue := os.Getenv(key)
+			if envValue == "" {
+				// Try to load from .env file
+				dir, err := os.Getwd()
+				if err != nil {
+					dir = ""
+				}
+				err = godotenv.Load(path.Join(dir, ".env"))
+				if err != nil {
+					return value
+				}
+				envValue = os.Getenv(key)
+			}
+			if envValue == "" {
+				fmt.Println(fmt.Sprintf("No value for env var: %s", key))
+				return value
+			}
+			return envValue
+		}
 
 		// Reset just in case someone else called a query here
 		fxt.responses[name].Reset()
 
 		query := nameAndQuery[2]
-
-		return fxt.responses[name].Find(query).(string)
+		findResult, err := fxt.responses[name].FindR(query)
+		if err != nil {
+			return value
+		}
+		findResultString, _ := findResult.String()
+		return findResultString
 	}
 
 	return value
