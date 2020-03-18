@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -37,9 +36,9 @@ func NewTailCmd(config *config.Config) *TailCmd {
 		Use:   "tail",
 		Args:  validators.NoArgs,
 		Short: "Tail API request logs from your Stripe requests.",
-		Long: fmt.Sprintf(`View API request logs in real-time as they are made to your Stripe account.
+		Long: `View API request logs in real-time as they are made to your Stripe account.
 Log tailing allows you to filter data similarly to the Stripe Dashboard; filter
-HTTP methods, IP addresses, paths, response status, and more.`),
+HTTP methods, IP addresses, paths, response status, and more.`,
 		Example: `stripe logs tail
   stripe logs tail --filter-http-methods GET
   stripe logs tail --filter-status-code-type 4XX`,

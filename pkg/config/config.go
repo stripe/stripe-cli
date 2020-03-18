@@ -182,9 +182,9 @@ func (c *Config) PrintConfig() error {
 		configs := viper.GetStringMapString(c.Profile.ProfileName)
 
 		if len(configs) > 0 {
-			fmt.Println(fmt.Sprintf("[%s]", c.Profile.ProfileName))
+			fmt.Printf("[%s]\n", c.Profile.ProfileName)
 			for field, value := range configs {
-				fmt.Println(fmt.Sprintf("  %s=%s", field, value))
+				fmt.Printf("  %s=%s\n", field, value)
 			}
 		}
 	}

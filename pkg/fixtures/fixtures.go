@@ -99,7 +99,7 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 // defined to populate the user's account
 func (fxt *Fixture) Execute() error {
 	for _, data := range fxt.fixture.Fixtures {
-		fmt.Println(fmt.Sprintf("Setting up fixture for: %s", data.Name))
+		fmt.Printf("Setting up fixture for: %s\n", data.Name)
 
 		resp, err := fxt.makeRequest(data)
 		if err != nil {
@@ -299,7 +299,7 @@ func (fxt *Fixture) parseQuery(value string) string {
 				envValue = os.Getenv(key)
 			}
 			if envValue == "" {
-				fmt.Println(fmt.Sprintf("No value for env var: %s", key))
+				fmt.Printf("No value for env var: %s\n", key)
 				return value
 			}
 			return envValue
