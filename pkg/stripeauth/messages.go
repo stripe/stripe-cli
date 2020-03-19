@@ -3,7 +3,6 @@ package stripeauth
 // StripeCLISession is the API resource returned by Stripe when initiating
 // a new CLI session.
 type StripeCLISession struct {
-	APIVersion                  []string
 	DisplayConnectFilterWarning bool   `json:"display_connect_filter_warning"`
 	ReconnectDelay              int    `json:"reconnect_delay"`
 	Secret                      string `json:"secret"`

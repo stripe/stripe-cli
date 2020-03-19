@@ -82,9 +82,7 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 		return nil, err
 	}
 
-	session.APIVersion = resp.Header["Stripe-Version"]
 	c.cfg.Log.WithFields(log.Fields{
-		"api_version":                    session.APIVersion,
 		"prefix":                         "stripeauth.Client.Authorize",
 		"websocket_url":                  session.WebSocketURL,
 		"websocket_id":                   session.WebSocketID,

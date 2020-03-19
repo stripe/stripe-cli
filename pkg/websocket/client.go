@@ -208,6 +208,7 @@ func (c *Client) connect() bool {
 
 	c.changeConnection(conn)
 	c.isConnected = true
+
 	c.wg = &sync.WaitGroup{}
 	c.wg.Add(2)
 
@@ -216,10 +217,7 @@ func (c *Client) connect() bool {
 	go c.writePump()
 
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix":  "websocket.client.connect",
-		"headers": resp.Header,
-		"status":  resp.Status,
-		"config":  c.cfg,
+		"prefix": "websocket.client.connect",
 	}).Debug("Connected!")
 
 	return true
