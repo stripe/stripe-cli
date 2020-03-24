@@ -27,6 +27,7 @@ type NamespaceData struct {
 
 type ResourceData struct {
 	Operations map[string]*OperationData
+	Object     string
 }
 
 type OperationData struct {
@@ -134,6 +135,7 @@ func getTemplateData() (*TemplateData, error) {
 			if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
 				data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
 					Operations: make(map[string]*OperationData),
+					Object:     resName,
 				}
 			}
 

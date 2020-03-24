@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 )
 
 //
@@ -131,6 +132,16 @@ type Schema struct {
 	XExpansionResources *ExpansionResources `json:"x-expansionResources,omitempty"`
 	XResourceID         string              `json:"x-resourceId,omitempty"`
 	XStripeOperations   *[]StripeOperation  `json:"x-stripeOperations,omitempty"`
+}
+
+// Dereference pulls the schema for reference pointers
+func (s *Schema) Dereference(spec *Spec) *Schema {
+	if s.Ref != "" {
+		component := strings.TrimPrefix(s.Ref, "#/components/schemas/")
+		return spec.Components.Schemas[component]
+	}
+
+	return nil
 }
 
 func (s *Schema) String() string {

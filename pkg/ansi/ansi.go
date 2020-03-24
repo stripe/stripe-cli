@@ -52,6 +52,21 @@ func Color(w io.Writer) aurora.Aurora {
 	return aurora.NewAurora(shouldUseColors(w))
 }
 
+func ColorizeHTTPVerb(verb string) string {
+	color := Color(os.Stdout)
+
+	switch verb {
+	case "GET":
+		return color.Blue(verb).Bold().String()
+	case "POST":
+		return color.Green(verb).Bold().String()
+	case "DELETE":
+		return color.Red(verb).Bold().String()
+	}
+
+	return ""
+}
+
 // ColorizeJSON returns a colorized version of the input JSON, if the writer
 // supports colors.
 func ColorizeJSON(json string, darkStyle bool, w io.Writer) string {
