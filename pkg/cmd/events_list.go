@@ -92,6 +92,7 @@ var validEvents = map[string]bool{
 	"payment_intent.canceled":                      true,
 	"payment_intent.created":                       true,
 	"payment_intent.payment_failed":                true,
+	"payment_intent.processing":                    true,
 	"payment_intent.succeeded":                     true,
 	"payment_method.attached":                      true,
 	"payment_method.card_automatically_updated":    true,
