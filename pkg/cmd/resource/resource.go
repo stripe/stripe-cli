@@ -48,12 +48,29 @@ func GetResourceCmdName(name string) string {
 }
 
 // NewResourceCmd returns a new ResourceCmd.
-func NewResourceCmd(parentCmd *cobra.Command, resourceName string) *ResourceCmd {
+func NewResourceCmd(parentCmd *cobra.Command, resourceName string, objectName string) *ResourceCmd {
 	cmd := &cobra.Command{
 		Use:         resourceName,
 		Annotations: make(map[string]string),
+		Run: func(cmd *cobra.Command, args []string) {
+			apiRef, _ := cmd.Flags().GetBool("api-reference")
+			if apiRef {
+				rh := ResourceReference{
+					object: objectName,
+					cmd:    cmd,
+					args:   args,
+				}
+				rh.helpFunc()
+
+				return
+			}
+
+			// TODO(tomer) this is causing a double render of the command
+			cmd.Usage()
+		},
 	}
 	cmd.SetUsageTemplate(resourceUsageTemplate())
+	cmd.Flags().Bool("api-reference", false, "Display API reference")
 
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[resourceName] = "resource"

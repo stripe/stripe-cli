@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 )
 
 //
@@ -111,16 +112,17 @@ type Schema struct {
 	// for anything right now.
 	AdditionalProperties interface{} `json:"additionalProperties,omitempty"`
 
-	AnyOf      []*Schema          `json:"anyOf,omitempty"`
-	Enum       []interface{}      `json:"enum,omitempty"`
-	Format     string             `json:"format,omitempty"`
-	Items      *Schema            `json:"items,omitempty"`
-	MaxLength  int                `json:"maxLength,omitempty"`
-	Nullable   bool               `json:"nullable,omitempty"`
-	Pattern    string             `json:"pattern,omitempty"`
-	Properties map[string]*Schema `json:"properties,omitempty"`
-	Required   []string           `json:"required,omitempty"`
-	Type       string             `json:"type,omitempty"`
+	AnyOf       []*Schema          `json:"anyOf,omitempty"`
+	Description string             `json:"description,omitempty"`
+	Enum        []interface{}      `json:"enum,omitempty"`
+	Format      string             `json:"format,omitempty"`
+	Items       *Schema            `json:"items,omitempty"`
+	MaxLength   int                `json:"maxLength,omitempty"`
+	Nullable    bool               `json:"nullable,omitempty"`
+	Pattern     string             `json:"pattern,omitempty"`
+	Properties  map[string]*Schema `json:"properties,omitempty"`
+	Required    []string           `json:"required,omitempty"`
+	Type        string             `json:"type,omitempty"`
 
 	// Ref is populated if this JSON Schema is actually a JSON reference, and
 	// it defines the location of the actual schema definition.
@@ -130,6 +132,16 @@ type Schema struct {
 	XExpansionResources *ExpansionResources `json:"x-expansionResources,omitempty"`
 	XResourceID         string              `json:"x-resourceId,omitempty"`
 	XStripeOperations   *[]StripeOperation  `json:"x-stripeOperations,omitempty"`
+}
+
+// Dereference pulls the schema for reference pointers
+func (s *Schema) Dereference(spec *Spec) *Schema {
+	if s.Ref != "" {
+		component := strings.TrimPrefix(s.Ref, "#/components/schemas/")
+		return spec.Components.Schemas[component]
+	}
+
+	return nil
 }
 
 func (s *Schema) String() string {

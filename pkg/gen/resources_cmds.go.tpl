@@ -16,7 +16,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	ns{{ $nsName | ToCamel }}Cmd := resource.NewNamespaceCmd(rootCmd, "{{ $nsName }}"){{ end }}{{ end }}{{ end }}
 
 	// Resource commands{{ range $nsName, $nsData := .Namespaces }}{{ range $resName, $resData := $nsData.Resources }}{{ if $resData.Operations }}
-	r{{ (printf "%s_%s" $nsName $resName) | ToCamel }}Cmd := resource.NewResourceCmd({{ if ne $nsName "" }}ns{{ $nsName | ToCamel }}Cmd.Cmd{{ else }}rootCmd{{ end }}, "{{ $resName }}"){{ end }}{{ end }}
+	r{{ (printf "%s_%s" $nsName $resName) | ToCamel }}Cmd := resource.NewResourceCmd({{ if ne $nsName "" }}ns{{ $nsName | ToCamel }}Cmd.Cmd{{ else }}rootCmd{{ end }}, "{{ $resName }}", "{{ $resData.Object }}"){{ end }}{{ end }}
 	{{ end }}
 
 	// Operation commands{{ range $nsName, $nsData := .Namespaces }}{{ range $resName, $resData := $nsData.Resources }}{{ range $opName, $opData := $resData.Operations }}

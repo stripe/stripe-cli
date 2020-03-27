@@ -10,7 +10,7 @@ import (
 func TestNewResourceCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	rc := NewResourceCmd(parentCmd, "foo")
+	rc := NewResourceCmd(parentCmd, "foo", "foo")
 
 	require.Equal(t, "foo", rc.Name)
 	require.True(t, parentCmd.HasSubCommands())

@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -12,6 +13,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
+
+const (
+	pathStripeSpec = "./api/openapi-spec/spec3.sdk.json"
+)
+
+var p = bluemonday.StrictPolicy()
 
 //
 // Public types
@@ -37,6 +44,22 @@ type OperationCmd struct {
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
+	apiRef, err := cmd.Flags().GetBool("api-reference")
+	if err != nil {
+		return err
+	}
+
+	if apiRef {
+		oh := OperationReference{
+			oc:   oc,
+			cmd:  cmd,
+			args: args,
+		}
+		oh.helpFunc()
+
+		return nil
+	}
+
 	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
 	if err != nil {
 		return err
@@ -109,6 +132,8 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 	}
 
+	cmd.Flags().Bool("api-reference", false, "Display API reference")
+	//cmd.SetHelpFunc(operationCmd.helpFunc)
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
