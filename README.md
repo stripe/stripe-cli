@@ -2,7 +2,6 @@
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/stripe/stripe-cli)
 [![Build Status](https://travis-ci.org/stripe/stripe-cli.svg?branch=master)](https://travis-ci.org/stripe/stripe-cli)
-![GitHub](https://img.shields.io/github/license/stripe/stripe-cli)
 
 The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
 
