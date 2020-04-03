@@ -2,7 +2,6 @@
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/stripe/stripe-cli)
 [![Build Status](https://travis-ci.org/stripe/stripe-cli.svg?branch=master)](https://travis-ci.org/stripe/stripe-cli)
-![GitHub](https://img.shields.io/github/license/stripe/stripe-cli)
 
 The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
 
@@ -29,7 +28,7 @@ brew install stripe/stripe-cli/stripe
 
 ### Linux
 
-Please refer to the [installation wiki](../../wiki/installation#linux) for detailed Linux instructions.
+Refer to the [installation instructions](https://stripe.com/docs/stripe-cli#install) for available Linux installation options.
 
 ### Windows
 
@@ -49,8 +48,6 @@ docker run --rm -it stripe/stripe-cli version
 stripe version x.y.z (beta)
 ```
 
-Please refer to the [wiki](../../wiki/Using-with-Docker) for detailed instructions on how to use the Docker container.
-
 ### Without package managers
 
 Instructions are also available for installing and using the CLI [without a package manager](https://github.com/stripe/stripe-cli/wiki/Installing-and-updating#without-a-package-manager).
@@ -69,28 +66,26 @@ stripe [command] help
 ## Commands
 
 The Stripe CLI supports a broad range of commands. Below is some of the most used ones:
-- [`login`](../../wiki/login-command)
-- [`listen`](../../wiki/listen-command)
-- [`trigger`](../../wiki/trigger-command)
-- [`logs tail`](../../wiki/logs-tail-command)
-- [`events resend`](../../wiki/events-resend-command)
-- [`samples`](../../wiki/samples-command)
-- [`serve`](../../wiki/serve-command)
-- [`status`](../../wiki/status-command)
-- [`config`](../../wiki/config-command)
-- [`open`](../../wiki/open-command)
-- [`get`, `post` & `delete` commands](../../wiki/http-(get,-post-&-delete)-commands)
-- [`resource` commands](../../wiki/resource-commands)
-
-Please see [commands](../../wiki/commands) for a full overview.
+- [`login`](https://stripe.com/docs/cli/login)
+- [`listen`](https://stripe.com/docs/cli/listen)
+- [`trigger`](https://stripe.com/docs/cli/trigger)
+- [`logs tail`](https://stripe.com/docs/cli/logs/tail)
+- [`events resend`](https://stripe.com/docs/cli/events/resend)
+- [`samples`](https://stripe.com/docs/cli/intro_stripe_samples)
+- [`serve`](https://stripe.com/docs/cli/serve)
+- [`status`](https://stripe.com/docs/cli/status)
+- [`config`](https://stripe.com/docs/cli/config)
+- [`open`](https://stripe.com/docs/cli/open)
+- [`get`, `post` & `delete` commands](https://stripe.com/docs/cli/get)
+- [`resource` commands](https://stripe.com/docs/cli/resources)
 
 ## Documentation
 
-Please see our [documentation in the wiki](../../wiki).
+For a full reference, see the [CLI reference site](https://stripe.com/docs/cli)
 
 ## Telemetry
 
-The Stripe CLI includes a telemetry feature that collects some usage data. See our [telemetry wiki](../../wiki/telemetry) for details.
+The Stripe CLI includes a telemetry feature that collects some usage data. See our [telemetry reference](https://stripe.com/docs/cli/telemetry) for details.
 
 ## Feedback
 
