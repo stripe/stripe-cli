@@ -267,10 +267,17 @@ func (c *Client) readPump() {
 					"prefix": "websocket.Client.readPump",
 				}).Debug("stopReadPump")
 			default:
-				if !ws.IsCloseError(err) {
-					c.cfg.Log.Error("read error: ", err)
-				} else if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
-					c.cfg.Log.Error("read error: ", err)
+				switch {
+				case !ws.IsCloseError(err):
+					// read errors do not prevent websocket reconnects in the CLI so we should
+					// only display this on debug-level logging
+					c.cfg.Log.Debug("read error: ", err)
+				case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
+					c.cfg.Log.Error("close error: ", err)
+					c.cfg.Log.Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+				default:
+					c.cfg.Log.Error("other error: ", err)
+					c.cfg.Log.Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
 				}
 				c.notifyClose <- err
 			}
