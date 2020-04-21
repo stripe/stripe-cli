@@ -44,5 +44,4 @@ require (
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 )
