@@ -2584,6 +2584,82 @@
           "in_class": "payment_method"
         }
       },
+      "billing_portal.session": {
+        "description": "A Session describes the instantiation of the Self-serve Portal for\na particular customer. By visiting the Self-serve Portal's URL, the customer\ncan manage their subscriptions and view their invoice payment history. For security reasons,\nSessions are short-lived and will expire if the customer does not visit the URL.\nCreate Sessions on-demand.\n\nRelated guide: [Self-serve Portal](https://stripe.com/docs/billing/subscriptions/integrating-self-serve).",
+        "properties": {
+          "created": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "customer": {
+            "description": "The ID of the customer for this session.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "billing_portal.session"
+            ],
+            "type": "string"
+          },
+          "return_url": {
+            "description": "The URL to which Stripe should send customers when they click on the link to return to your website.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "url": {
+            "description": "The short-lived URL of the session giving customers access to the self-serve portal.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "created",
+          "customer",
+          "id",
+          "livemode",
+          "object",
+          "return_url",
+          "url"
+        ],
+        "title": "PortalSession",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-resourceId": "billing_portal.session",
+        "x-stripeOperations": [
+          {
+            "method_name": "create",
+            "method_on": "class",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/billing_portal/sessions"
+          },
+          {
+            "method_name": "create",
+            "method_on": "service",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/billing_portal/sessions"
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "Session",
+          "in_package": "BillingPortal"
+        }
+      },
       "bitcoin_receiver": {
         "description": "",
         "properties": {
@@ -20929,10 +21005,10 @@
         }
       },
       "plan": {
-        "description": "Plans define the base price, currency, and billing cycle for subscriptions.\nFor example, you might have a <currency>5</currency>/month plan\nthat provides limited access to your products, and a\n<currency>15</currency>/month plan that allows full access.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription) and more about [products and plans](https://stripe.com/docs/billing/subscriptions/products-and-plans).",
+        "description": "Plans define the base price, currency, and billing cycle for subscriptions.\nFor example, you might have a $5/month plan\nthat provides limited access to your products, and a\n$15/month plan that allows full access.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription) and more about [products and plans](https://stripe.com/docs/billing/subscriptions/products-and-plans).",
         "properties": {
           "active": {
-            "description": "Whether the price can be used for new purchases.",
+            "description": "Whether the plan can be used for new purchases.",
             "type": "boolean"
           },
           "aggregate_usage": {
@@ -20958,7 +21034,7 @@
             "type": "string"
           },
           "billing_scheme": {
-            "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `unit_amount` or `unit_amount_decimal`) will be charged per unit in `quantity` (for prices with `usage_type=licensed`), or per unit of total usage (for prices with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
+            "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `amount`) will be charged per unit in `quantity` (for plans with `usage_type=licensed`), or per unit of total usage (for plans with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
             "enum": [
               "per_unit",
               "tiered"
@@ -36487,6 +36563,73 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/balance_transaction"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/billing_portal/sessions": {
+      "post": {
+        "description": "<p>Creates a session of the Self-service Portal.</p>",
+        "operationId": "PostBillingPortalSessions",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "customer": {
+                    "description": "The ID of an existing customer.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "return_url": {
+                    "description": "The URL to which Stripe should send customers when they click on the link to return to your website. This field is required if a default return URL has not been configured for the portal.",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "customer"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/billing_portal.session"
                 }
               }
             },
