@@ -13,6 +13,7 @@ import (
 func addAllResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, "")
+	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
 	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
 	nsIssuingCmd := resource.NewNamespaceCmd(rootCmd, "issuing")
 	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
@@ -77,6 +78,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rUsageRecordSummariesCmd := resource.NewResourceCmd(rootCmd, "usage_record_summaries")
 	rUsageRecordsCmd := resource.NewResourceCmd(rootCmd, "usage_records")
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
+
+	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
 
 	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
 
@@ -1148,6 +1151,10 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description": "string",
 		"disabled":    "boolean",
 		"url":         "string",
+	}, &Config)
+	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
+		"customer":   "string",
+		"return_url": "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "create", "/v1/checkout/sessions", http.MethodPost, map[string]string{
 		"billing_address_collection": "string",
