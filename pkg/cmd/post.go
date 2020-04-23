@@ -25,7 +25,6 @@ func newPostCmd() *postCmd {
 		Long: `Make POST requests to the Stripe API using your test mode key.
 
 The post command supports API features like idempotency keys and expand flags.
-Currently, you can only POST data in test mode.
 
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api

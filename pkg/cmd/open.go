@@ -14,6 +14,7 @@ import (
 var nameURLmap = map[string]string{
 	"api":                                "https://stripe.com/docs/api",
 	"apiref":                             "https://stripe.com/docs/api",
+	"cliref":                             "https://stripe.com/docs/cli",
 	"dashboard":                          "https://dashboard.stripe.com%s",
 	"dashboard/apikeys":                  "https://dashboard.stripe.com%s/apikeys",
 	"dashboard/atlas":                    "https://dashboard.stripe.com%s/atlas",

@@ -23,7 +23,7 @@ func newConfigCmd() *configCmd {
 	cc.cmd = &cobra.Command{
 		Use:   "config",
 		Short: "Manually change the config values for the CLI",
-		Long: `config let's you set and unset specific configuration values for your profile if
+		Long: `config lets you set and unset specific configuration values for your profile if
 you need more granular control over the configuration.`,
 		Example: `stripe config --list
   stripe config --set color off
