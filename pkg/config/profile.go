@@ -157,6 +157,28 @@ func (p *Profile) DeleteConfigField(field string) error {
 	return p.writeProfile(v)
 }
 
+// ClearKeys clears all API key fields from the Profile.
+func (p *Profile) ClearKeys() error {
+	keyFieldArray := [4]string{
+		"live_mode_api_key",
+		"live_mode_publishable_key",
+		"test_mode_api_key",
+		"test_mode_publishable_key",
+	}
+
+	nv := viper.GetViper()
+	var err error
+
+	for _, field := range keyFieldArray {
+		nv, err = removeKey(nv, p.GetConfigField(field))
+		if err != nil {
+			return err
+		}
+	}
+
+	return p.writeProfile(nv)
+}
+
 func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 
