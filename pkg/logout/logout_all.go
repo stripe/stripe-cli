@@ -6,8 +6,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
-// LogoutAll function is used to clear the credentials on all profiles
-func LogoutAll(cfg *config.Config) error {
+// All function is used to clear the credentials on all profiles
+func All(cfg *config.Config) error {
 	fmt.Println("Logging out...")
 
 	err := cfg.ClearAllCredentials()

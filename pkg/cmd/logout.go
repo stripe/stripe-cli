@@ -30,7 +30,7 @@ func newLogoutCmd() *logoutCmd {
 
 func (lc *logoutCmd) runLogoutCmd(cmd *cobra.Command, args []string) error {
 	if lc.all {
-		return logout.LogoutAll(&Config)
+		return logout.All(&Config)
 	}
 
 	return logout.Logout(&Config)

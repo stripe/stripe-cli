@@ -29,6 +29,7 @@ const ColorOff = "off"
 // ColorAuto represents the auto-state for colors
 const ColorAuto = "auto"
 
+// CredentialFieldNames represents all fields tied to credentials for a profile
 var CredentialFieldNames = [4]string{
 	"live_mode_api_key",
 	"live_mode_publishable_key",
