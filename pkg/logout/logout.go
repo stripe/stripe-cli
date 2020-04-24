@@ -14,15 +14,22 @@ func Logout(config *config.Config, input io.Reader) error {
 
 	if liveKey == "" && testKey == "" {
 		fmt.Println("You are already logged out.")
+		return nil
+	}
+
+	fmt.Println("Logging out...")
+
+	err := config.Profile.ClearKeys()
+	if err != nil {
+		return err
+	}
+
+	profileName := config.Profile.ProfileName
+
+	if profileName == "default" {
+		fmt.Println("Credentials have been cleared for the default project.")
 	} else {
-		fmt.Println("Logging out...")
-
-		err := config.Profile.ClearKeys()
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("You are now logged out.")
+		fmt.Printf("Credentials have been cleared for %s.\n", profileName)
 	}
 
 	return nil
