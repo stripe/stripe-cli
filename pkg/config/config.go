@@ -29,6 +29,13 @@ const ColorOff = "off"
 // ColorAuto represents the auto-state for colors
 const ColorAuto = "auto"
 
+var CredentialFieldNames = [4]string{
+	"live_mode_api_key",
+	"live_mode_publishable_key",
+	"test_mode_api_key",
+	"test_mode_publishable_key",
+}
+
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color        string
@@ -187,6 +194,37 @@ func (c *Config) PrintConfig() error {
 				fmt.Printf("  %s=%s\n", field, value)
 			}
 		}
+	}
+
+	return nil
+}
+
+// ClearAllCredentials clears all API key fields from every Profile.
+func (c *Config) ClearAllCredentials() error {
+	runtimeViper := viper.GetViper()
+	var err error
+
+	for field, value := range runtimeViper.AllSettings() {
+		// TODO: ianjabour - ideally find a better way to identify projects in config
+		if _, ok := value.(map[string]interface{}); ok {
+			for _, keyName := range CredentialFieldNames {
+				runtimeViper, err = removeKey(runtimeViper, field+"."+keyName)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	runtimeViper.MergeInConfig()
+	profilesFile := viper.ConfigFileUsed()
+	runtimeViper.SetConfigFile(profilesFile)
+	// Ensure we preserve the config file type
+	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
+
+	err = runtimeViper.WriteConfig()
+	if err != nil {
+		return err
 	}
 
 	return nil

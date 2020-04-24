@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/logout"
@@ -11,6 +9,7 @@ import (
 
 type logoutCmd struct {
 	cmd *cobra.Command
+	all bool
 }
 
 func newLogoutCmd() *logoutCmd {
@@ -24,9 +23,15 @@ func newLogoutCmd() *logoutCmd {
 		RunE:  lc.runLogoutCmd,
 	}
 
+	lc.cmd.Flags().BoolVarP(&lc.all, "all", "a", false, "Clear credentials for all projects you are currently logged into.")
+
 	return lc
 }
 
 func (lc *logoutCmd) runLogoutCmd(cmd *cobra.Command, args []string) error {
-	return logout.Logout(&Config, os.Stdin)
+	if lc.all {
+		return logout.LogoutAll(&Config)
+	}
+
+	return logout.Logout(&Config)
 }
