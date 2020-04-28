@@ -361,9 +361,6 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 // toFixtureQuery will parse a string into a fixtureQuery struct, additionally
 // returning a bool indicating the value did contain a fixtureQuery.
 func toFixtureQuery(value string) (fixtureQuery, bool) {
-	// Queries to fill data will start with ${ and contain a : -- search for both
-	// to make sure that we're trying to parse a query.
-	// Additionally look for an optional default value: ${name:json_path|default_value}
 	var query fixtureQuery
 	isQuery := false
 
@@ -380,9 +377,10 @@ func toFixtureQuery(value string) (fixtureQuery, bool) {
 // returning a *Regexp which can be used to further parse and a boolean
 // indicating a match was found.
 func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
-	// Queries to fill data will start with ${ and contain a : -- search for both
-	// to make sure that we're trying to parse a query.
-	// Additionally look for an optional default value: ${name:json_path|default_value}
+	// Queries will start with `${` and end with `}`. The `:` is a
+	// separator for `name:json_path`. Additionally, default value will
+	// be specified after the `|`.
+	// example: ${name:json_path|default_value}
 	r := regexp.MustCompile(`\${([^\|}]+):([^\|}]+)\|?([^/\n]+)?}`)
 	if r.Match([]byte(value)) {
 		return r, true
