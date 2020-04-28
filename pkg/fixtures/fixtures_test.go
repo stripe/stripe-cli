@@ -133,7 +133,15 @@ func TestParseWithLocalEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_LOCAL|+1234567890}"
 
+	os.Setenv("CUST_ID", "cust_12345")
 	os.Setenv("PHONE_LOCAL", "+1234")
+
+	http := fixture{
+		Path: "/v1/customers/${.env:CUST_ID}",
+	}
+
+	path := fxt.parsePath(http)
+	assert.Equal(t, "/v1/customers/cust_12345", path)
 
 	output := (fxt.parseInterface(data))
 

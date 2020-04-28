@@ -144,8 +144,7 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 }
 
 func (fxt *Fixture) parsePath(http fixture) string {
-	r := regexp.MustCompile(`(\${[\w-]+:[\w-\.]+})`)
-	if r.Match([]byte(http.Path)) {
+	if r, containsQuery := matchQuery(http.Path); containsQuery {
 		var newPath []string
 
 		matches := r.FindAllStringSubmatch(http.Path, -1)
@@ -268,11 +267,7 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 }
 
 func (fxt *Fixture) parseQuery(value string) string {
-	// Queries to fill data will start with #$ and contain a : -- search for both
-	// to make sure that we're trying to parse a query.
-	// Additionally look for an optional default value: ${name:json_path|default_value}
-	r := regexp.MustCompile(`\${([^\|]+):([^\|]+)\|?(.+)?}`)
-	if r.Match([]byte(value)) {
+	if r, containsQuery := matchQuery(value); containsQuery {
 		nameAndQuery := r.FindStringSubmatch(value)
 		name := nameAndQuery[1]
 
@@ -356,4 +351,16 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
 
 	return nil
+}
+
+func matchQuery(value string) (*regexp.Regexp, bool) {
+	// Queries to fill data will start with ${ and contain a : -- search for both
+	// to make sure that we're trying to parse a query.
+	// Additionally look for an optional default value: ${name:json_path|default_value}
+	r := regexp.MustCompile(`\${([^\|}]+):([^\|}]+)\|?([^/\n]+)?}`)
+	if r.Match([]byte(value)) {
+		return r, true
+	}
+
+	return nil, false
 }
