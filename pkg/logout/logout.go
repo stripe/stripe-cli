@@ -18,12 +18,12 @@ func Logout(config *config.Config) error {
 
 	fmt.Println("Logging out...")
 
-	err := config.Profile.ClearCredentials()
+	profileName := config.Profile.ProfileName
+
+	err := config.RemoveProfile(profileName)
 	if err != nil {
 		return err
 	}
-
-	profileName := config.Profile.ProfileName
 
 	if profileName == "default" {
 		fmt.Println("Credentials have been cleared for the default project.")
@@ -38,7 +38,7 @@ func Logout(config *config.Config) error {
 func All(cfg *config.Config) error {
 	fmt.Println("Logging out...")
 
-	err := cfg.ClearAllCredentials()
+	err := cfg.RemoveAllProfiles()
 	if err != nil {
 		return err
 	}

@@ -157,21 +157,6 @@ func (p *Profile) DeleteConfigField(field string) error {
 	return p.writeProfile(v)
 }
 
-// ClearCredentials clears all API key fields from the Profile.
-func (p *Profile) ClearCredentials() error {
-	nv := viper.GetViper()
-	var err error
-
-	for _, field := range CredentialFieldNames {
-		nv, err = removeKey(nv, p.GetConfigField(field))
-		if err != nil {
-			return err
-		}
-	}
-
-	return p.writeProfile(nv)
-}
-
 func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 

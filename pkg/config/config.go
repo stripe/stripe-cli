@@ -29,14 +29,6 @@ const ColorOff = "off"
 // ColorAuto represents the auto-state for colors
 const ColorAuto = "auto"
 
-// CredentialFieldNames represents all fields tied to credentials for a profile
-var CredentialFieldNames = [4]string{
-	"live_mode_api_key",
-	"live_mode_publishable_key",
-	"test_mode_api_key",
-	"test_mode_publishable_key",
-}
-
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color        string
@@ -200,30 +192,57 @@ func (c *Config) PrintConfig() error {
 	return nil
 }
 
-// ClearAllCredentials clears all API key fields from every Profile.
-func (c *Config) ClearAllCredentials() error {
+// RemoveProfile removes the profile whose name matches the provided
+// profileName from the config file.
+func (c *Config) RemoveProfile(profileName string) error {
 	runtimeViper := viper.GetViper()
 	var err error
 
 	for field, value := range runtimeViper.AllSettings() {
-		// TODO: ianjabour - ideally find a better way to identify projects in config
-		if _, ok := value.(map[string]interface{}); ok {
-			for _, keyName := range CredentialFieldNames {
-				runtimeViper, err = removeKey(runtimeViper, field+"."+keyName)
-				if err != nil {
-					return err
-				}
+		if isProfile(value) && field == profileName {
+			runtimeViper, err = removeKey(runtimeViper, field)
+			if err != nil {
+				return err
 			}
 		}
 	}
 
+	return syncConfig(runtimeViper)
+}
+
+// RemoveAllProfiles removes all the profiles from the config file.
+func (c *Config) RemoveAllProfiles() error {
+	runtimeViper := viper.GetViper()
+	var err error
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			runtimeViper, err = removeKey(runtimeViper, field)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return syncConfig(runtimeViper)
+}
+
+// isProfile identifies whether a value in the config pertains to a profile.
+func isProfile(value interface{}) bool {
+	// TODO: ianjabour - ideally find a better way to identify projects in config
+	_, ok := value.(map[string]interface{})
+	return ok
+}
+
+// syncConfig merges a runtimeViper instance with the config file being used.
+func syncConfig(runtimeViper *viper.Viper) error {
 	runtimeViper.MergeInConfig()
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)
 	// Ensure we preserve the config file type
 	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
 
-	err = runtimeViper.WriteConfig()
+	err := runtimeViper.WriteConfig()
 	if err != nil {
 		return err
 	}
