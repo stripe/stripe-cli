@@ -18,13 +18,14 @@ install:
 script:
   - make ci
 
-after_success:
-  - test -n "$TRAVIS_TAG" && docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-
 deploy:
 - provider: script
   skip_cleanup: true
-  script: curl -sL https://git.io/goreleaser | bash -s -- --rm-dist
+  # We're running GoReleaser using the mailchain/goreleaser-xcgo Docker image
+  # so we can use cgo when building the binaries for all platforms.
+  # See https://github.com/stripe/stripe-cli/pull/439 and
+  # https://github.com/goreleaser/goreleaser/issues/708#issuecomment-488779914
+  script: docker run -e DOCKER_USERNAME=$DOCKER_USERNAME -e DOCKER_PASSWORD=$DOCKER_PASSWORD -e GITHUB_TOKEN=$GITHUB_TOKEN --rm --privileged -v $TRAVIS_BUILD_DIR:/go/src/github.com/stripe/stripe-cli -v /var/run/docker.sock:/var/run/docker.sock -w /go/src/github.com/stripe/stripe-cli mailchain/goreleaser-xcgo --rm-dist
   verbose: true
   on:
     tags: true
