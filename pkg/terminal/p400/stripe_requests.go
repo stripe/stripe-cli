@@ -78,7 +78,19 @@ func DiscoverReaders(tsCtx TerminalSessionContext) ([]Reader, error) {
 
 	res, err := client.PerformRequest(context.TODO(), http.MethodGet, stripeTerminalReadersPath, "", nil)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
+		return readersList, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			fmt.Println(res)
+			fmt.Println(res.StatusCode)
+			err = ErrStripeGenericResponse
+		}
+
 		return readersList, err
 	}
 
@@ -126,7 +138,17 @@ func StartNewRPCSession(tsCtx TerminalSessionContext) (string, error) {
 
 	res, err := httpclient.Do(request)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			err = ErrStripeGenericResponse
+		}
+
 		return "", err
 	}
 
@@ -157,7 +179,17 @@ func GetNewConnectionToken(tsCtx TerminalSessionContext) (string, error) {
 
 	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeTerminalConnectionTokensPath, "", nil)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			err = ErrStripeGenericResponse
+		}
+
 		return "", err
 	}
 
@@ -197,7 +229,17 @@ func CreatePaymentIntent(tsCtx TerminalSessionContext) (string, error) {
 
 	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCreatePaymentIntentPath, data.Encode(), nil)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			err = ErrStripeGenericResponse
+		}
+
 		return "", err
 	}
 
@@ -229,8 +271,18 @@ func CapturePaymentIntent(tsCtx TerminalSessionContext) error {
 
 	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCapturePaymentIntentURL, "", nil)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
 		return ErrCapturePaymentIntentFailed
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			err = ErrStripeGenericResponse
+		}
+
+		return err
 	}
 
 	res.Body.Close()
@@ -258,7 +310,19 @@ func RegisterReader(regcode string, tsCtx TerminalSessionContext) (string, error
 
 	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeTerminalRegisterPath, data.Encode(), nil)
 
-	if err != nil || res.StatusCode != http.StatusOK {
+	if err != nil {
+		return "", err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		if res.StatusCode >= 400 && res.StatusCode < 500 {
+			err = ErrStripeForbiddenResponse
+		} else {
+			fmt.Println(res)
+			fmt.Println(res.StatusCode)
+			err = ErrStripeGenericResponse
+		}
+
 		return "", err
 	}
 

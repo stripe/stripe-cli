@@ -27,7 +27,7 @@ func NewQuickstartCmd(parentCmd *cobra.Command, config *config.Config) {
 		Use:     "quickstart",
 		Args:    validators.MaximumNArgs(0),
 		Short:   "Set up a Terminal reader and take a test payment",
-		Example: `stripe terminal quickstart`,
+		Example: `stripe terminal quickstart --api-key sk_123`,
 		RunE:    quickstartCmd.runQuickstartCmd,
 	}
 
@@ -36,6 +36,18 @@ func NewQuickstartCmd(parentCmd *cobra.Command, config *config.Config) {
 
 func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
+
+	key, err := cc.cfg.Profile.GetAPIKey(false)
+
+	if err != nil {
+		return fmt.Errorf(err.Error())
+	}
+
+	err = validators.APIKeyNotRestricted(key)
+
+	if err != nil {
+		return fmt.Errorf(err.Error())
+	}
 
 	readers := terminal.ReaderNames()
 	reader, err := terminal.ReaderTypeSelectPrompt(readers)

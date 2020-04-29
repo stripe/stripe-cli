@@ -39,4 +39,8 @@ var (
 	ErrDNSFailed = errors.New("couldn't find your reader on the network. We think it's probably a DNS issue.\n See our troubleshooting docs here: https://stripe.com/docs/terminal/readers/verifone-p400#troubleshooting")
 	// ErrRabbitRequestCreationFailed is for when a Rabbit Service request is being rolled and the first stage of setting it up with the http client instance fails
 	ErrRabbitRequestCreationFailed = errors.New("could not prepare request for Reader")
+	// ErrStripeForbiddenResponse is for when a Stripe API call fails due to Terminal resource calls not supporting restricted keys
+	ErrStripeForbiddenResponse = errors.New("it seems that your Stripe API Key is either restricted or out of date. Are you using a valid Stripe Secret Key with the --api-key global flag for this command?")
+	// ErrStripeGenericResponse is for when any non status code happens for a Stripe call that isn't a 200 or a 403. This should be exceedingly rare (famous last words)
+	ErrStripeGenericResponse = errors.New("could not connect to Stripe, perhaps try again?")
 )

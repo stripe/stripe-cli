@@ -52,6 +52,7 @@ func ReaderChargeCurrencyPrompt() (string, error) {
 		return "", err
 	}
 
+	// support any casing the user types but Stripe call needs lowercase
 	currency = strings.ToLower(currency)
 
 	return currency, nil
