@@ -133,7 +133,15 @@ func TestParseWithLocalEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_LOCAL|+1234567890}"
 
+	os.Setenv("CUST_ID", "cust_12345")
 	os.Setenv("PHONE_LOCAL", "+1234")
+
+	http := fixture{
+		Path: "/v1/customers/${.env:CUST_ID}",
+	}
+
+	path := fxt.parsePath(http)
+	assert.Equal(t, "/v1/customers/cust_12345", path)
 
 	output := (fxt.parseInterface(data))
 
@@ -279,4 +287,64 @@ func TestUpdateEnv(t *testing.T) {
 CUST_ID="char_12345"`
 	output, _ := afero.ReadFile(fs, filepath.Join(wd, ".env"))
 	assert.Equal(t, expected, string(output))
+}
+
+func TestToFixtureQuery(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected fixtureQuery
+		didMatch bool
+	}{
+		{
+			"/v1/charges",
+			fixtureQuery{},
+			false,
+		},
+		{
+			"/v1/charges/${char_bender:id}/capture",
+			fixtureQuery{"char_bender", "id", ""},
+			true,
+		},
+		{
+			"${.env:PHONE_NOT_SET|+1234567890}",
+			fixtureQuery{".env", "PHONE_NOT_SET", "+1234567890"},
+			true,
+		},
+		{
+			"/v1/customers/${.env:CUST_ID}",
+			fixtureQuery{".env", "CUST_ID", ""},
+			true,
+		},
+		{
+			"${.env:CUST_ID}",
+			fixtureQuery{".env", "CUST_ID", ""},
+			true,
+		},
+		{
+			"${cust_bender:subscriptions.data.[0].id}",
+			fixtureQuery{"cust_bender", "subscriptions.data.[0].id", ""},
+			true,
+		},
+		{
+			"${cust_bender:subscriptions.data.[0].name|Unknown Person}",
+			fixtureQuery{"cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
+			true,
+		},
+		{
+			"${cust_bender:billing_details.address.country}",
+			fixtureQuery{"cust_bender", "billing_details.address.country", ""},
+			true,
+		},
+		{
+			"${cust_bender:billing_details.address.country|San Mateo}",
+			fixtureQuery{"cust_bender", "billing_details.address.country", "San Mateo"},
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		actualQuery, actualDidMatch := toFixtureQuery(test.input)
+		assert.Equal(t, test.expected, actualQuery)
+		assert.Equal(t, test.didMatch, actualDidMatch)
+	}
 }

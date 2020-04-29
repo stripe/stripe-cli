@@ -42,6 +42,12 @@ type fixture struct {
 	Params interface{} `json:"params"`
 }
 
+type fixtureQuery struct {
+	Name         string
+	Query        string
+	DefaultValue string
+}
+
 // Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
 	Fs            afero.Fs
@@ -144,8 +150,7 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 }
 
 func (fxt *Fixture) parsePath(http fixture) string {
-	r := regexp.MustCompile(`(\${[\w-]+:[\w-\.]+})`)
-	if r.Match([]byte(http.Path)) {
+	if r, containsQuery := matchFixtureQuery(http.Path); containsQuery {
 		var newPath []string
 
 		matches := r.FindAllStringSubmatch(http.Path, -1)
@@ -268,22 +273,17 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 }
 
 func (fxt *Fixture) parseQuery(value string) string {
-	// Queries to fill data will start with #$ and contain a : -- search for both
-	// to make sure that we're trying to parse a query.
-	// Additionally look for an optional default value: ${name:json_path|default_value}
-	r := regexp.MustCompile(`\${([^\|]+):([^\|]+)\|?(.+)?}`)
-	if r.Match([]byte(value)) {
-		nameAndQuery := r.FindStringSubmatch(value)
-		name := nameAndQuery[1]
+	if query, isQuery := toFixtureQuery(value); isQuery {
+		name := query.Name
 
 		// Check if there is a default value specified
-		if nameAndQuery[3] != "" {
-			value = nameAndQuery[3]
+		if query.DefaultValue != "" {
+			value = query.DefaultValue
 		}
 
 		// Catch and insert .env values
 		if name == ".env" {
-			key := nameAndQuery[2]
+			key := query.Query
 			// Check if env variable is present
 			envValue := os.Getenv(key)
 			if envValue == "" {
@@ -308,7 +308,7 @@ func (fxt *Fixture) parseQuery(value string) string {
 		// Reset just in case someone else called a query here
 		fxt.responses[name].Reset()
 
-		query := nameAndQuery[2]
+		query := query.Query
 		findResult, err := fxt.responses[name].FindR(query)
 		if err != nil {
 			return value
@@ -356,4 +356,35 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
 
 	return nil
+}
+
+// toFixtureQuery will parse a string into a fixtureQuery struct, additionally
+// returning a bool indicating the value did contain a fixtureQuery.
+func toFixtureQuery(value string) (fixtureQuery, bool) {
+	var query fixtureQuery
+	isQuery := false
+
+	if r, didMatch := matchFixtureQuery(value); didMatch {
+		isQuery = true
+		match := r.FindStringSubmatch(value)
+		query = fixtureQuery{Name: match[1], Query: match[2], DefaultValue: match[3]}
+	}
+
+	return query, isQuery
+}
+
+// matchQuery will attempt to find matches for a fixture query pattern
+// returning a *Regexp which can be used to further parse and a boolean
+// indicating a match was found.
+func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
+	// Queries will start with `${` and end with `}`. The `:` is a
+	// separator for `name:json_path`. Additionally, default value will
+	// be specified after the `|`.
+	// example: ${name:json_path|default_value}
+	r := regexp.MustCompile(`\${([^\|}]+):([^\|}]+)\|?([^/\n]+)?}`)
+	if r.Match([]byte(value)) {
+		return r, true
+	}
+
+	return nil, false
 }
