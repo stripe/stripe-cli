@@ -94,11 +94,11 @@ func SummarizeQuickstartCompletion(tsCtx TerminalSessionContext) error {
 	exampleAppURL := color.Cyan("https://stripe.com/docs/terminal/example-applications")
 	paymentIntentURL := color.Cyan(fmt.Sprintf("https://dashboard.stripe.com/test/payments/%s", tsCtx.PaymentIntentID))
 	readerURL := color.Cyan(fmt.Sprintf("https://dashboard.stripe.com/test/terminal/locations/%s", tsCtx.LocationID))
+	successPrint := fmt.Sprintf("%s\n%s\n\n", successText, exampleAppURL)
+	fmt.Print(successPrint)
 
-	fmt.Println(fmt.Sprintf("%s\n%s\n", successText, exampleAppURL))
-
-	fmt.Println(fmt.Sprintf("View your test payment: %s", paymentIntentURL))
-	fmt.Println(fmt.Sprintf("View your registered reader: %s", readerURL))
+	fmt.Printf("View your test payment: %s\n", paymentIntentURL)
+	fmt.Printf("View your registered reader: %s\n", readerURL)
 
 	return nil
 }
