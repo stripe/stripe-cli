@@ -557,6 +557,15 @@
             ],
             "type": "string"
           },
+          "jcb_payments": {
+            "description": "The status of the JCB payments capability of the account, or whether the account (Japan only) can directly process JCB credit card charges in JPY currency.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "legacy_payments": {
             "description": "The status of the legacy payments capability of the account.",
             "enum": [
@@ -2585,7 +2594,7 @@
         }
       },
       "billing_portal.session": {
-        "description": "A Session describes the instantiation of the Self-serve Portal for\na particular customer. By visiting the Self-serve Portal's URL, the customer\ncan manage their subscriptions and view their invoice payment history. For security reasons,\nSessions are short-lived and will expire if the customer does not visit the URL.\nCreate Sessions on-demand.\n\nRelated guide: [Self-serve Portal](https://stripe.com/docs/billing/subscriptions/integrating-self-serve).",
+        "description": "A Session describes the instantiation of the self-serve portal for\na particular customer. By visiting the self-serve portal's URL, the customer\ncan manage their subscriptions and view their invoice payment history. For security reasons,\nSessions are short-lived and will expire if the customer does not visit the URL.\nCreate Sessions on-demand.\n\nRelated guide: [self-serve Portal](https://stripe.com/docs/billing/subscriptions/integrating-self-serve).",
         "properties": {
           "created": {
             "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
@@ -4491,7 +4500,6 @@
             "items": {
               "$ref": "#/components/schemas/checkout_session_display_item"
             },
-            "nullable": true,
             "type": "array"
           },
           "id": {
@@ -4663,7 +4671,6 @@
           "client_reference_id",
           "customer",
           "customer_email",
-          "display_items",
           "id",
           "livemode",
           "locale",
@@ -7224,6 +7231,44 @@
         "x-resourceId": "deleted_plan",
         "x-stripeResource": {
           "class_name": "DeletedPlan",
+          "in_package": ""
+        }
+      },
+      "deleted_price": {
+        "description": "",
+        "properties": {
+          "deleted": {
+            "description": "Always true for a deleted object",
+            "enum": [
+              true
+            ],
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "price"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "id",
+          "object"
+        ],
+        "title": "DeletedPrice",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DeletedPrice",
           "in_package": ""
         }
       },
@@ -10790,6 +10835,15 @@
             "description": "If the invoice item is a proration, the plan of the subscription that the proration was computed for.",
             "nullable": true
           },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/price"
+              }
+            ],
+            "description": "The price of the invoice item.",
+            "nullable": true
+          },
           "proration": {
             "description": "Whether the invoice item was created automatically as a proration adjustment when the customer switched plans.",
             "type": "boolean"
@@ -10875,6 +10929,7 @@
           "invoice",
           "period",
           "plan",
+          "price",
           "subscription",
           "tax_rates"
         ],
@@ -10997,9 +11052,11 @@
         "description": "",
         "properties": {
           "type": {
-            "description": "The type of the tax ID, one of `eu_vat`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, `sg_gst`, or `unknown`",
+            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, `sg_gst`, or `unknown`",
             "enum": [
               "au_abn",
+              "br_cnpj",
+              "br_cpf",
               "ca_bn",
               "ca_qst",
               "ch_vat",
@@ -15500,6 +15557,15 @@
             "description": "The plan of the subscription, if the line item is a subscription or a proration.",
             "nullable": true
           },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/price"
+              }
+            ],
+            "description": "The price of the line item.",
+            "nullable": true
+          },
           "proration": {
             "description": "Whether this is a proration.",
             "type": "boolean"
@@ -15570,6 +15636,7 @@
         "x-expandableFields": [
           "period",
           "plan",
+          "price",
           "tax_amounts",
           "tax_rates"
         ],
@@ -21005,7 +21072,7 @@
         }
       },
       "plan": {
-        "description": "Plans define the base price, currency, and billing cycle for subscriptions.\nFor example, you might have a $5/month plan\nthat provides limited access to your products, and a\n$15/month plan that allows full access.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription) and more about [products and plans](https://stripe.com/docs/billing/subscriptions/products-and-plans).",
+        "description": "Plans define the base price, currency, and billing cycle for recurring purchases of products.\nProducts help you track inventory or provisioning, and plans help you track pricing. Different physical goods or levels of service should be represented by products, and pricing options should be represented by plans. This approach lets you change prices without having to change your provisioning scheme.\n\nFor example, you might have a single \"gold\" product that has plans for $10/month, $100/year, €9/month, and €90/year.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription) and more about [products and plans](https://stripe.com/docs/billing/subscriptions/products-and-plans).",
         "properties": {
           "active": {
             "description": "Whether the plan can be used for new purchases.",
@@ -21407,8 +21474,312 @@
           ]
         }
       },
+      "price": {
+        "description": "Prices define the unit cost, currency, and (optional) billing cycle for both recurring and one-time purchases of products.\nProducts help you track inventory or provisioning, and prices help you track payment terms. Different physical goods or levels of service should be represented by products, and pricing options should be represented by prices. This approach lets you change prices without having to change your provisioning scheme.\n\nFor example, you might have a single \"gold\" product that has prices for $10/month, $100/year, and €9 once.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription), [create an invoice](https://stripe.com/docs/billing/invoices/create), and more about [products and prices](https://stripe.com/docs/billing/prices-guide).",
+        "properties": {
+          "active": {
+            "description": "Whether the price can be used for new purchases.",
+            "type": "boolean"
+          },
+          "billing_scheme": {
+            "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `unit_amount` or `unit_amount_decimal`) will be charged per unit in `quantity` (for prices with `usage_type=licensed`), or per unit of total usage (for prices with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
+            "enum": [
+              "per_unit",
+              "tiered"
+            ],
+            "type": "string"
+          },
+          "created": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "currency": {
+            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "lookup_key": {
+            "description": "A lookup key used to retrieve prices dynamically from a static string.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
+            "type": "object"
+          },
+          "nickname": {
+            "description": "A brief description of the plan, hidden from customers.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "price"
+            ],
+            "type": "string"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/product"
+              }
+            ],
+            "description": "The ID of the product this price is associated with.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/product"
+                }
+              ]
+            }
+          },
+          "recurring": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/recurring"
+              }
+            ],
+            "description": "The recurring components of a price such as `interval` and `usage_type`.",
+            "nullable": true
+          },
+          "tiers": {
+            "description": "Each element represents a pricing tier. This parameter requires `billing_scheme` to be set to `tiered`. See also the documentation for `billing_scheme`.",
+            "items": {
+              "$ref": "#/components/schemas/price_tier"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "tiers_mode": {
+            "description": "Defines if the tiering price should be `graduated` or `volume` based. In `volume`-based tiering, the maximum quantity within a period determines the per unit price. In `graduated` tiering, pricing can change as the quantity grows.",
+            "enum": [
+              "graduated",
+              "volume"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "transform_quantity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/transform_quantity"
+              }
+            ],
+            "description": "Apply a transformation to the reported usage or set quantity before computing the amount billed. Cannot be combined with `tiers`.",
+            "nullable": true
+          },
+          "type": {
+            "description": "One of `one_time` or `recurring` depending on whether the price is for a one-time purchase or a recurring (subscription) purchase.",
+            "enum": [
+              "one_time",
+              "recurring"
+            ],
+            "type": "string"
+          },
+          "unit_amount": {
+            "description": "The unit amount in %s to be charged.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "unit_amount_decimal": {
+            "description": "Same as `amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "active",
+          "billing_scheme",
+          "created",
+          "currency",
+          "id",
+          "livemode",
+          "lookup_key",
+          "metadata",
+          "nickname",
+          "object",
+          "product",
+          "recurring",
+          "tiers",
+          "tiers_mode",
+          "transform_quantity",
+          "type",
+          "unit_amount",
+          "unit_amount_decimal"
+        ],
+        "title": "Price",
+        "type": "object",
+        "x-expandableFields": [
+          "product",
+          "recurring",
+          "tiers",
+          "transform_quantity"
+        ],
+        "x-resourceId": "price",
+        "x-stripeOperations": [
+          {
+            "method_name": "list",
+            "method_on": "class",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/prices"
+          },
+          {
+            "method_name": "list",
+            "method_on": "service",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/prices"
+          },
+          {
+            "method_name": "create",
+            "method_on": "class",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/prices"
+          },
+          {
+            "method_name": "create",
+            "method_on": "service",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/prices"
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "class",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/prices/{price}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "price",
+                "name": "price"
+              }
+            ]
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "service",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/prices/{price}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "price",
+                "name": "price"
+              }
+            ]
+          },
+          {
+            "method_name": "update",
+            "method_on": "instance",
+            "method_type": "update",
+            "operation": "post",
+            "path": "/v1/prices/{price}",
+            "path_resource_variables": [
+              {
+                "name": "price",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "update",
+            "method_on": "service",
+            "method_type": "update",
+            "operation": "post",
+            "path": "/v1/prices/{price}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "price",
+                "name": "price"
+              }
+            ]
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "Price",
+          "has_collection_class": true,
+          "in_package": "",
+          "inner_classes": [
+            "price_tier",
+            "recurring",
+            "transform_quantity"
+          ]
+        }
+      },
+      "price_tier": {
+        "description": "",
+        "properties": {
+          "flat_amount": {
+            "description": "Price for the entire tier.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "flat_amount_decimal": {
+            "description": "Same as `flat_amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
+          },
+          "unit_amount": {
+            "description": "Per unit price for units relevant to the tier.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "unit_amount_decimal": {
+            "description": "Same as `unit_amount`, but contains a decimal value with at most 12 decimal places.",
+            "format": "decimal",
+            "nullable": true,
+            "type": "string"
+          },
+          "up_to": {
+            "description": "Up to and including to this quantity will be contained in the tier.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "flat_amount",
+          "flat_amount_decimal",
+          "unit_amount",
+          "unit_amount_decimal",
+          "up_to"
+        ],
+        "title": "PriceTier",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Tier",
+          "in_class": "price"
+        }
+      },
       "product": {
-        "description": "Store representations of products you sell in `Product` objects, used in\nconjunction with [SKUs](https://stripe.com/docs/api#skus). Products may be physical goods, to be shipped, or\ndigital.\n\nDocumentation on `Product`s for use with `Subscription`s can be found at\n[Subscription Products](https://stripe.com/docs/api#service_products).\n\nRelated guide: [Define products and SKUs](https://stripe.com/docs/orders#define-products-skus)",
+        "description": "Products describe the specific goods or services you offer to your customers.\nFor example, you might offer a Standard and Premium version of your goods or service; each version would be a separate Product.\nThey can be used in conjuction with [SKUs](https://stripe.com/docs/api#skus) and [Plans](https://stripe.com/docs/api#plans) to configure pricing in Checkout and Subscriptions.\n\nRelated guides: [Set up a subscription](https://stripe.com/docs/billing/subscriptions/set-up-subscription) or accept [one-time payments with Checkout](https://stripe.com/docs/payments/checkout/client#create-products) and more about [Products and Plans](https://stripe.com/docs/billing/subscriptions/products-and-plans)",
         "properties": {
           "active": {
             "description": "Whether the product is currently available for purchase.",
@@ -22558,6 +22929,65 @@
           "class_name": "Recipient",
           "has_collection_class": true,
           "in_package": ""
+        }
+      },
+      "recurring": {
+        "description": "",
+        "properties": {
+          "aggregate_usage": {
+            "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+            "enum": [
+              "last_during_period",
+              "last_ever",
+              "max",
+              "sum"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "interval": {
+            "description": "The frequency at which a subscription is billed. One of `day`, `week`, `month` or `year`.",
+            "enum": [
+              "day",
+              "month",
+              "week",
+              "year"
+            ],
+            "type": "string"
+          },
+          "interval_count": {
+            "description": "The number of intervals (specified in the `interval` attribute) between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months.",
+            "type": "integer"
+          },
+          "trial_period_days": {
+            "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+            "nullable": true,
+            "type": "integer"
+          },
+          "usage_type": {
+            "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+            "enum": [
+              "licensed",
+              "metered"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "aggregate_usage",
+          "interval",
+          "interval_count",
+          "trial_period_days",
+          "usage_type"
+        ],
+        "title": "Recurring",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Recurring",
+          "in_class": "price"
         }
       },
       "refund": {
@@ -27058,6 +27488,9 @@
           "plan": {
             "$ref": "#/components/schemas/plan"
           },
+          "price": {
+            "$ref": "#/components/schemas/price"
+          },
           "quantity": {
             "description": "The [quantity](https://stripe.com/docs/subscriptions/quantities) of the plan to which the customer should be subscribed.",
             "type": "integer"
@@ -27091,6 +27524,7 @@
         "x-expandableFields": [
           "billing_thresholds",
           "plan",
+          "price",
           "tax_rates"
         ],
         "x-resourceId": "subscription_item",
@@ -27602,11 +28036,59 @@
           "in_package": "",
           "inner_classes": [
             "invoice_setting_subscription_schedule_setting",
+            "subscription_schedule_add_invoice_item",
             "subscription_schedule_configuration_item",
             "subscription_schedule_current_phase",
             "subscription_schedule_phase_configuration",
             "subscription_schedules_resource_default_settings"
           ]
+        }
+      },
+      "subscription_schedule_add_invoice_item": {
+        "description": "An Add Invoice Item describes the prices and quantities that will be added as pending invoice items when entering a phase.",
+        "properties": {
+          "price": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/price"
+              },
+              {
+                "$ref": "#/components/schemas/deleted_price"
+              }
+            ],
+            "description": "ID of the price used to generate the invoice item.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/price"
+                },
+                {
+                  "$ref": "#/components/schemas/deleted_price"
+                }
+              ]
+            }
+          },
+          "quantity": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "price",
+          "quantity"
+        ],
+        "title": "SubscriptionScheduleAddInvoiceItem",
+        "type": "object",
+        "x-expandableFields": [
+          "price"
+        ],
+        "x-stripeResource": {
+          "class_name": "AddInvoiceItem",
+          "in_class": "subscription_schedule"
         }
       },
       "subscription_schedule_configuration_item": {
@@ -27646,6 +28128,31 @@
               ]
             }
           },
+          "price": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/price"
+              },
+              {
+                "$ref": "#/components/schemas/deleted_price"
+              }
+            ],
+            "description": "ID of the price to which the customer should be subscribed.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/price"
+                },
+                {
+                  "$ref": "#/components/schemas/deleted_price"
+                }
+              ]
+            }
+          },
           "quantity": {
             "description": "Quantity of the plan to which the customer should be subscribed.",
             "type": "integer"
@@ -27668,6 +28175,7 @@
         "x-expandableFields": [
           "billing_thresholds",
           "plan",
+          "price",
           "tax_rates"
         ],
         "x-stripeResource": {
@@ -27706,6 +28214,12 @@
       "subscription_schedule_phase_configuration": {
         "description": "A phase describes the plans, coupon, and trialing status of a subscription for a predefined time period.",
         "properties": {
+          "add_invoice_items": {
+            "items": {
+              "$ref": "#/components/schemas/subscription_schedule_add_invoice_item"
+            },
+            "type": "array"
+          },
           "application_fee_percent": {
             "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account during this phase of the schedule.",
             "nullable": true,
@@ -27848,6 +28362,7 @@
         "title": "SubscriptionSchedulePhaseConfiguration",
         "type": "object",
         "x-expandableFields": [
+          "add_invoice_items",
           "billing_thresholds",
           "coupon",
           "default_payment_method",
@@ -28150,9 +28665,11 @@
             "type": "string"
           },
           "type": {
-            "description": "Type of the tax ID, one of `au_abn`, `ca_bn`, `ca_qst`, `ch_vat`, `es_cif`, `eu_vat`, `hk_br`, `in_gst`, `jp_cn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
+            "description": "Type of the tax ID, one of `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `es_cif`, `eu_vat`, `hk_br`, `in_gst`, `jp_cn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
             "enum": [
               "au_abn",
+              "br_cnpj",
+              "br_cpf",
               "ca_bn",
               "ca_qst",
               "ch_vat",
@@ -30144,6 +30661,36 @@
           "in_class": "account"
         }
       },
+      "transform_quantity": {
+        "description": "",
+        "properties": {
+          "divide_by": {
+            "description": "Divide usage by this number.",
+            "type": "integer"
+          },
+          "round": {
+            "description": "After division, either round the result `up` or `down`.",
+            "enum": [
+              "down",
+              "up"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "divide_by",
+          "round"
+        ],
+        "title": "TransformQuantity",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "TransformQuantity",
+          "in_class": "price"
+        }
+      },
       "transform_usage": {
         "description": "",
         "properties": {
@@ -31694,6 +32241,7 @@
                         "au_becs_debit_payments",
                         "card_issuing",
                         "card_payments",
+                        "jcb_payments",
                         "legacy_payments",
                         "tax_reporting_us_1099_k",
                         "tax_reporting_us_1099_misc",
@@ -32699,6 +33247,7 @@
                         "au_becs_debit_payments",
                         "card_issuing",
                         "card_payments",
+                        "jcb_payments",
                         "legacy_payments",
                         "tax_reporting_us_1099_k",
                         "tax_reporting_us_1099_misc",
@@ -36583,7 +37132,7 @@
     },
     "/v1/billing_portal/sessions": {
       "post": {
-        "description": "<p>Creates a session of the Self-service Portal.</p>",
+        "description": "<p>Creates a session of the self-serve Portal.</p>",
         "operationId": "PostBillingPortalSessions",
         "requestBody": {
           "content": {
@@ -38316,7 +38865,7 @@
                           "type": "string"
                         },
                         "images": {
-                          "description": "A list of images representing this line item.",
+                          "description": "A list of images representing this line item. Each image can be up to 5 MB in size.",
                           "items": {
                             "maxLength": 5000,
                             "type": "string"
@@ -38859,6 +39408,11 @@
                       "application_fee_percent": {
                         "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. To use an application fee percent, the request must be made on behalf of another account, using the `Stripe-Account` header or an OAuth key. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                         "type": "number"
+                      },
+                      "coupon": {
+                        "description": "The code of the coupon to apply to this subscription. A coupon applied to a subscription will only affect invoices created for that particular subscription.",
+                        "maxLength": 5000,
+                        "type": "string"
                       },
                       "default_tax_rates": {
                         "description": "The tax rates that will apply to any subscription item that does not have\n`tax_rates` set. Invoices created will have their `default_tax_rates` populated\nfrom the subscription.",
@@ -41461,9 +42015,11 @@
                     "items": {
                       "properties": {
                         "type": {
-                          "description": "Type of the tax ID, one of `eu_vat`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, or `sg_gst`",
+                          "description": "Type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, or `sg_gst`",
                           "enum": [
                             "au_abn",
+                            "br_cnpj",
+                            "br_cpf",
                             "ca_bn",
                             "ca_qst",
                             "ch_vat",
@@ -43394,9 +43950,11 @@
                     "type": "array"
                   },
                   "type": {
-                    "description": "Type of the tax ID, one of `eu_vat`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, or `sg_gst`",
+                    "description": "Type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, or `sg_gst`",
                     "enum": [
                       "au_abn",
+                      "br_cnpj",
+                      "br_cpf",
                       "ca_bn",
                       "ca_qst",
                       "ch_vat",
@@ -46052,6 +46610,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "price_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_rates": {
                   "explode": true,
                   "style": "deepObject"
@@ -46131,6 +46693,40 @@
                       "start"
                     ],
                     "title": "period",
+                    "type": "object"
+                  },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product"
+                    ],
+                    "title": "one_time_price_data",
                     "type": "object"
                   },
                   "quantity": {
@@ -46349,6 +46945,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "price_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_rates": {
                   "explode": true,
                   "style": "deepObject"
@@ -46414,6 +47014,40 @@
                       "start"
                     ],
                     "title": "period",
+                    "type": "object"
+                  },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product"
+                    ],
+                    "title": "one_time_price_data",
                     "type": "object"
                   },
                   "quantity": {
@@ -47062,6 +47696,40 @@
                     "title": "period",
                     "type": "object"
                   },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product"
+                    ],
+                    "title": "one_time_price_data",
+                    "type": "object"
+                  },
                   "quantity": {
                     "description": "Non-negative integer. The quantity of units for the invoice item.",
                     "type": "integer"
@@ -47290,6 +47958,87 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "recurring": {
+                        "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                        "properties": {
+                          "aggregate_usage": {
+                            "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                            "enum": [
+                              "last_during_period",
+                              "last_ever",
+                              "max",
+                              "sum"
+                            ],
+                            "type": "string"
+                          },
+                          "interval": {
+                            "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          },
+                          "trial_period_days": {
+                            "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                            "type": "integer"
+                          },
+                          "usage_type": {
+                            "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                            "enum": [
+                              "licensed",
+                              "metered"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "recurring",
+                        "type": "object"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product",
+                      "recurring"
+                    ],
+                    "title": "recurring_price_data",
+                    "type": "object"
+                  },
                   "quantity": {
                     "description": "Quantity for this item.",
                     "type": "integer"
@@ -47327,7 +48076,7 @@
             "style": "deepObject"
           },
           {
-            "description": "If previewing an update to a subscription, this decides whether the preview will show the result of applying prorations or not. If set, one of `subscription_items` or `subscription`, and one of `subscription_items` or `subscription_trial_end` are required.",
+            "description": "This field has been renamed to `subscription_proration_behavior`. `subscription_prorate=true` can be replaced with `subscription_proration_behavior=create_prorations` and `subscription_prorate=false` can be replaced with `subscription_proration_behavior=none`.",
             "in": "query",
             "name": "subscription_prorate",
             "required": false,
@@ -47576,6 +48325,40 @@
                       "start"
                     ],
                     "title": "period",
+                    "type": "object"
+                  },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product"
+                    ],
+                    "title": "one_time_price_data",
                     "type": "object"
                   },
                   "quantity": {
@@ -47827,6 +48610,87 @@
                     "maxLength": 5000,
                     "type": "string"
                   },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "recurring": {
+                        "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                        "properties": {
+                          "aggregate_usage": {
+                            "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                            "enum": [
+                              "last_during_period",
+                              "last_ever",
+                              "max",
+                              "sum"
+                            ],
+                            "type": "string"
+                          },
+                          "interval": {
+                            "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          },
+                          "trial_period_days": {
+                            "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                            "type": "integer"
+                          },
+                          "usage_type": {
+                            "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                            "enum": [
+                              "licensed",
+                              "metered"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "recurring",
+                        "type": "object"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product",
+                      "recurring"
+                    ],
+                    "title": "recurring_price_data",
+                    "type": "object"
+                  },
                   "quantity": {
                     "description": "Quantity for this item.",
                     "type": "integer"
@@ -47864,7 +48728,7 @@
             "style": "deepObject"
           },
           {
-            "description": "If previewing an update to a subscription, this decides whether the preview will show the result of applying prorations or not. If set, one of `subscription_items` or `subscription`, and one of `subscription_items` or `subscription_trial_end` are required.",
+            "description": "If previewing an update to a subscription, this decides whether the preview will show the result of applying prorations or not. If set, one of `subscription_items` or `subscription`, and one of `subscription_items` or `subscription_trial_end` are required. This field has been deprecated and will be removed in a future API version. Use `subscription_proration_behavior=create_prorations` as a replacement for `subscription_prorate=true` and `subscription_proration_behavior=none` for `subscription_prorate=false`.",
             "in": "query",
             "name": "subscription_prorate",
             "required": false,
@@ -60639,6 +61503,760 @@
         }
       }
     },
+    "/v1/prices": {
+      "get": {
+        "description": "<p>Returns a list of your prices.</p>",
+        "operationId": "GetPrices",
+        "parameters": [
+          {
+            "description": "Only return prices that are active or inactive (e.g., pass `false` to list all inactive prices).",
+            "in": "query",
+            "name": "active",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A filter on the list, based on the object `created` field. The value can be a string with an integer Unix timestamp, or it can be a dictionary with a number of different query options.",
+            "explode": true,
+            "in": "query",
+            "name": "created",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "gt": {
+                      "description": "Minimum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "gte": {
+                      "description": "Minimum value to filter by (inclusive)",
+                      "type": "integer"
+                    },
+                    "lt": {
+                      "description": "Maximum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "lte": {
+                      "description": "Maximum value to filter by (inclusive)",
+                      "type": "integer"
+                    }
+                  },
+                  "title": "range_query_specs",
+                  "type": "object"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "Only return prices for the given currency.",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+            "in": "query",
+            "name": "ending_before",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return the price with these lookup_keys, if any exist.",
+            "explode": true,
+            "in": "query",
+            "name": "lookup_keys",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array",
+              "x-stripeParam": {
+                "containee_entity_name": "lookup_keys"
+              }
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "Only return prices for the given product.",
+            "in": "query",
+            "name": "product",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return prices with these recurring fields.",
+            "explode": true,
+            "in": "query",
+            "name": "recurring",
+            "required": false,
+            "schema": {
+              "properties": {
+                "interval": {
+                  "description": "Filter by billing frequency. Either `day`, `week`, `month` or `year`.",
+                  "enum": [
+                    "day",
+                    "month",
+                    "week",
+                    "year"
+                  ],
+                  "type": "string"
+                },
+                "usage_type": {
+                  "description": "Filter by the usage type for this price. Can be either `metered` or `licensed`.",
+                  "enum": [
+                    "licensed",
+                    "metered"
+                  ],
+                  "type": "string"
+                }
+              },
+              "title": "all_prices_recurring_params",
+              "type": "object"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+            "in": "query",
+            "name": "starting_after",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return prices of type `recurring` or `one_time`.",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "one_time",
+                "recurring"
+              ],
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "",
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/price"
+                      },
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "True if this list has another page of items after this one that can be fetched.",
+                      "type": "boolean"
+                    },
+                    "object": {
+                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
+                      "enum": [
+                        "list"
+                      ],
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL where this list can be accessed.",
+                      "maxLength": 5000,
+                      "pattern": "^/v1/prices",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more",
+                    "object",
+                    "url"
+                  ],
+                  "type": "object",
+                  "x-expandableFields": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      },
+      "post": {
+        "description": "<p>Creates a new price for an existing product. The price can be recurring or one-time.</p>",
+        "operationId": "PostPrices",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "product_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "recurring": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "tiers": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "transform_quantity": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the price is currently active. Defaults to `true`.",
+                    "type": "boolean"
+                  },
+                  "billing_scheme": {
+                    "description": "Describes how to compute the price per period. Either `per_unit` or `tiered`. `per_unit` indicates that the fixed amount (specified in `unit_amount` or `unit_amount_decimal`) will be charged per unit in `quantity` (for prices with `usage_type=licensed`), or per unit of total usage (for prices with `usage_type=metered`). `tiered` indicates that the unit pricing will be computed using a tiering strategy as defined using the `tiers` and `tiers_mode` attributes.",
+                    "enum": [
+                      "per_unit",
+                      "tiered"
+                    ],
+                    "type": "string"
+                  },
+                  "currency": {
+                    "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                    "type": "string"
+                  },
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "lookup_key": {
+                    "description": "A lookup key used to retrieve prices dynamically from a static string.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                    "type": "object"
+                  },
+                  "nickname": {
+                    "description": "A brief description of the price, hidden from customers.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "product": {
+                    "description": "The ID of the product that this price will belong to.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "product_data": {
+                    "description": "These fields can be used to create a new product that this price will belong to.",
+                    "properties": {
+                      "active": {
+                        "description": "Whether the product is currently available for purchase. Defaults to `true`.",
+                        "type": "boolean"
+                      },
+                      "id": {
+                        "description": "The identifier for the product. Must be unique. If not provided, an identifier will be randomly generated.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "metadata": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                        "type": "object"
+                      },
+                      "name": {
+                        "description": "The product's name, meant to be displayable to the customer. Whenever this product is sold via a subscription, name will show up on associated invoice line item descriptions.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "statement_descriptor": {
+                        "description": "An arbitrary string to be displayed on your customer's credit card or bank statement. While most banks display this information consistently, some may display it incorrectly or not at all.\n\nThis may be up to 22 characters. The statement description may not include `<`, `>`, `\\`, `\"`, `'` characters, and will appear on your customer's statement in capital letters. Non-ASCII characters are automatically stripped.",
+                        "maxLength": 22,
+                        "type": "string"
+                      },
+                      "unit_label": {
+                        "description": "A label that represents units of this product in Stripe and on customers’ receipts and invoices. When set, this will be included in associated invoice line item descriptions.",
+                        "maxLength": 12,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "title": "inline_product_params",
+                    "type": "object"
+                  },
+                  "recurring": {
+                    "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                    "properties": {
+                      "aggregate_usage": {
+                        "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                        "enum": [
+                          "last_during_period",
+                          "last_ever",
+                          "max",
+                          "sum"
+                        ],
+                        "type": "string"
+                      },
+                      "interval": {
+                        "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                        "enum": [
+                          "day",
+                          "month",
+                          "week",
+                          "year"
+                        ],
+                        "type": "string"
+                      },
+                      "interval_count": {
+                        "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                        "type": "integer"
+                      },
+                      "trial_period_days": {
+                        "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                        "type": "integer"
+                      },
+                      "usage_type": {
+                        "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                        "enum": [
+                          "licensed",
+                          "metered"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "interval"
+                    ],
+                    "title": "recurring",
+                    "type": "object"
+                  },
+                  "tiers": {
+                    "description": "Each element represents a pricing tier. This parameter requires `billing_scheme` to be set to `tiered`. See also the documentation for `billing_scheme`.",
+                    "items": {
+                      "properties": {
+                        "flat_amount": {
+                          "description": "The flat billing amount for an entire tier, regardless of the number of units in the tier.",
+                          "type": "integer"
+                        },
+                        "flat_amount_decimal": {
+                          "description": "Same as `flat_amount`, but accepts a decimal value representing an integer in the minor units of the currency. Only one of `flat_amount` and `flat_amount_decimal` can be set.",
+                          "format": "decimal",
+                          "type": "string"
+                        },
+                        "unit_amount": {
+                          "description": "The per unit billing amount for each individual unit for which this tier applies.",
+                          "type": "integer"
+                        },
+                        "unit_amount_decimal": {
+                          "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                          "format": "decimal",
+                          "type": "string"
+                        },
+                        "up_to": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "inf"
+                              ],
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            {
+                              "type": "integer"
+                            }
+                          ],
+                          "description": "Specifies the upper bound of this tier. The lower bound of a tier is the upper bound of the previous tier adding one. Use `inf` to define a fallback tier."
+                        }
+                      },
+                      "required": [
+                        "up_to"
+                      ],
+                      "title": "tier",
+                      "type": "object"
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "tier"
+                    }
+                  },
+                  "tiers_mode": {
+                    "description": "Defines if the tiering price should be `graduated` or `volume` based. In `volume`-based tiering, the maximum quantity within a period determines the per unit price, in `graduated` tiering pricing can successively change as the quantity grows.",
+                    "enum": [
+                      "graduated",
+                      "volume"
+                    ],
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "transfer_lookup_key": {
+                    "description": "If set to true, will atomically remove the lookup key from the existing price, and assign it to this price.",
+                    "type": "boolean"
+                  },
+                  "transform_quantity": {
+                    "description": "Apply a transformation to the reported usage or set quantity before computing the billed price. Cannot be combined with `tiers`.",
+                    "properties": {
+                      "divide_by": {
+                        "description": "Divide usage by this number.",
+                        "type": "integer"
+                      },
+                      "round": {
+                        "description": "After division, either round the result `up` or `down`.",
+                        "enum": [
+                          "down",
+                          "up"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "divide_by",
+                      "round"
+                    ],
+                    "title": "transform_usage_param",
+                    "type": "object"
+                  },
+                  "unit_amount": {
+                    "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                    "type": "integer"
+                  },
+                  "unit_amount_decimal": {
+                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "format": "decimal",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currency"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/price"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/prices/{price}": {
+      "get": {
+        "description": "<p>Retrieves the price with the given ID.</p>",
+        "operationId": "GetPricesPrice",
+        "parameters": [
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "in": "path",
+            "name": "price",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/price"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      },
+      "post": {
+        "description": "<p>Updates the specified price by setting the values of the parameters passed. Any parameters not provided are left unchanged.</p>",
+        "operationId": "PostPricesPrice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "price",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "recurring": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "active": {
+                    "description": "Whether the price is currently active. Defaults to `true`.",
+                    "type": "boolean"
+                  },
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "lookup_key": {
+                    "description": "A lookup key used to retrieve prices dynamically from a static string.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`."
+                  },
+                  "nickname": {
+                    "description": "A brief description of the price, hidden from customers.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "recurring": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "trial_period_days": {
+                            "description": "Default number of trial days when subscribing a customer to this plan using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                            "type": "integer"
+                          }
+                        },
+                        "title": "update_recurring_params",
+                        "type": "object"
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "The recurring components of a price such as `interval` and `usage_type`."
+                  },
+                  "transfer_lookup_key": {
+                    "description": "If set to true, will atomically remove the lookup key from the existing price, and assign it to this price.",
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/price"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
     "/v1/products": {
       "get": {
         "description": "<p>Returns a list of your products. The products are returned sorted by creation date, with the most recently created products appearing first.</p>",
@@ -60867,7 +62485,7 @@
         }
       },
       "post": {
-        "description": "<p>Creates a new product object. To create a product for use with orders, see <a href=\"#create_product\">Products</a>.</p>",
+        "description": "<p>Creates a new product object.</p>",
         "operationId": "PostProducts",
         "requestBody": {
           "content": {
@@ -63742,7 +65360,8 @@
                           "transfer_reversal"
                         ],
                         "maxLength": 5000,
-                        "type": "string"
+                        "type": "string",
+                        "x-stripeBypassValidation": true
                       },
                       "timezone": {
                         "description": "Defaults to `Etc/UTC`. The output timezone for all timestamps in the report. A list of possible time zone values is maintained at the [IANA Time Zone Database](http://www.iana.org/time-zones). Has no effect on `interval_start` or `interval_end`.",
@@ -68110,6 +69729,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "price_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_rates": {
                   "explode": true,
                   "style": "deepObject"
@@ -68170,6 +69793,87 @@
                     "description": "The identifier of the plan to add to the subscription.",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "recurring": {
+                        "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                        "properties": {
+                          "aggregate_usage": {
+                            "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                            "enum": [
+                              "last_during_period",
+                              "last_ever",
+                              "max",
+                              "sum"
+                            ],
+                            "type": "string"
+                          },
+                          "interval": {
+                            "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          },
+                          "trial_period_days": {
+                            "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                            "type": "integer"
+                          },
+                          "usage_type": {
+                            "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                            "enum": [
+                              "licensed",
+                              "metered"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "recurring",
+                        "type": "object"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product",
+                      "recurring"
+                    ],
+                    "title": "recurring_price_data",
+                    "type": "object"
                   },
                   "prorate": {
                     "description": "This field has been renamed to `proration_behavior`. `prorate=true` can be replaced with `proration_behavior=create_prorations` and `prorate=false` can be replaced with `proration_behavior=none`.",
@@ -68428,6 +70132,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "price_data": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "tax_rates": {
                   "explode": true,
                   "style": "deepObject"
@@ -68502,6 +70210,87 @@
                     "description": "The identifier of the new plan for this subscription item.",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "price": {
+                    "description": "The ID of the price object.",
+                    "maxLength": 5000,
+                    "type": "string"
+                  },
+                  "price_data": {
+                    "description": "Data used to generate a new price object inline.",
+                    "properties": {
+                      "currency": {
+                        "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                        "type": "string"
+                      },
+                      "product": {
+                        "description": "The ID of the product that this price will belong to.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "recurring": {
+                        "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                        "properties": {
+                          "aggregate_usage": {
+                            "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                            "enum": [
+                              "last_during_period",
+                              "last_ever",
+                              "max",
+                              "sum"
+                            ],
+                            "type": "string"
+                          },
+                          "interval": {
+                            "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                            "enum": [
+                              "day",
+                              "month",
+                              "week",
+                              "year"
+                            ],
+                            "type": "string"
+                          },
+                          "interval_count": {
+                            "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                            "type": "integer"
+                          },
+                          "trial_period_days": {
+                            "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                            "type": "integer"
+                          },
+                          "usage_type": {
+                            "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                            "enum": [
+                              "licensed",
+                              "metered"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "interval"
+                        ],
+                        "title": "recurring",
+                        "type": "object"
+                      },
+                      "unit_amount": {
+                        "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                        "type": "integer"
+                      },
+                      "unit_amount_decimal": {
+                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                        "format": "decimal",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "currency",
+                      "product",
+                      "recurring"
+                    ],
+                    "title": "recurring_price_data",
+                    "type": "object"
                   },
                   "prorate": {
                     "description": "This field has been renamed to `proration_behavior`. `prorate=true` can be replaced with `proration_behavior=create_prorations` and `prorate=false` can be replaced with `proration_behavior=none`.",
@@ -69230,6 +71019,60 @@
                     "description": "List representing phases of the subscription schedule. Each phase can be customized to have different durations, plans, and coupons. If there are multiple phases, the `end_date` of one phase will always equal the `start_date` of the next phase.",
                     "items": {
                       "properties": {
+                        "add_invoice_items": {
+                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 10 items.",
+                          "items": {
+                            "properties": {
+                              "price": {
+                                "description": "The ID of the price object.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "price_data": {
+                                "description": "Data used to generate a new price object inline.",
+                                "properties": {
+                                  "currency": {
+                                    "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                                    "type": "string"
+                                  },
+                                  "product": {
+                                    "description": "The ID of the product that this price will belong to.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "unit_amount": {
+                                    "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                                    "type": "integer"
+                                  },
+                                  "unit_amount_decimal": {
+                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                                    "format": "decimal",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "currency",
+                                  "product"
+                                ],
+                                "title": "one_time_price_data",
+                                "type": "object"
+                              },
+                              "quantity": {
+                                "description": "Quantity for this item. Defaults to 1.",
+                                "type": "integer"
+                              }
+                            },
+                            "title": "one_time_price_and_quantity",
+                            "type": "object",
+                            "x-stripeParam": {
+                              "class_name": "AddInvoiceItem"
+                            }
+                          },
+                          "type": "array",
+                          "x-stripeParam": {
+                            "containee_entity_name": "add_invoice_item"
+                          }
+                        },
                         "application_fee_percent": {
                           "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                           "type": "number"
@@ -69350,6 +71193,87 @@
                                 "description": "The plan ID to subscribe to.",
                                 "maxLength": 5000,
                                 "type": "string"
+                              },
+                              "price": {
+                                "description": "The ID of the price object.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "price_data": {
+                                "description": "Data used to generate a new price object inline.",
+                                "properties": {
+                                  "currency": {
+                                    "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                                    "type": "string"
+                                  },
+                                  "product": {
+                                    "description": "The ID of the product that this price will belong to.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "recurring": {
+                                    "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                                    "properties": {
+                                      "aggregate_usage": {
+                                        "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                                        "enum": [
+                                          "last_during_period",
+                                          "last_ever",
+                                          "max",
+                                          "sum"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "interval": {
+                                        "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                                        "enum": [
+                                          "day",
+                                          "month",
+                                          "week",
+                                          "year"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "interval_count": {
+                                        "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                                        "type": "integer"
+                                      },
+                                      "trial_period_days": {
+                                        "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                                        "type": "integer"
+                                      },
+                                      "usage_type": {
+                                        "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                                        "enum": [
+                                          "licensed",
+                                          "metered"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "interval"
+                                    ],
+                                    "title": "recurring",
+                                    "type": "object"
+                                  },
+                                  "unit_amount": {
+                                    "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                                    "type": "integer"
+                                  },
+                                  "unit_amount_decimal": {
+                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                                    "format": "decimal",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "currency",
+                                  "product",
+                                  "recurring"
+                                ],
+                                "title": "recurring_price_data",
+                                "type": "object"
                               },
                               "quantity": {
                                 "description": "Quantity for the given plan. Can be set only if the plan's `usage_type` is `licensed` and not `metered`.",
@@ -69668,6 +71592,60 @@
                     "description": "List representing phases of the subscription schedule. Each phase can be customized to have different durations, plans, and coupons. If there are multiple phases, the `end_date` of one phase will always equal the `start_date` of the next phase. Note that past phases can be omitted.",
                     "items": {
                       "properties": {
+                        "add_invoice_items": {
+                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 10 items.",
+                          "items": {
+                            "properties": {
+                              "price": {
+                                "description": "The ID of the price object.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "price_data": {
+                                "description": "Data used to generate a new price object inline.",
+                                "properties": {
+                                  "currency": {
+                                    "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                                    "type": "string"
+                                  },
+                                  "product": {
+                                    "description": "The ID of the product that this price will belong to.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "unit_amount": {
+                                    "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                                    "type": "integer"
+                                  },
+                                  "unit_amount_decimal": {
+                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                                    "format": "decimal",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "currency",
+                                  "product"
+                                ],
+                                "title": "one_time_price_data",
+                                "type": "object"
+                              },
+                              "quantity": {
+                                "description": "Quantity for this item. Defaults to 1.",
+                                "type": "integer"
+                              }
+                            },
+                            "title": "one_time_price_and_quantity",
+                            "type": "object",
+                            "x-stripeParam": {
+                              "class_name": "AddInvoiceItem"
+                            }
+                          },
+                          "type": "array",
+                          "x-stripeParam": {
+                            "containee_entity_name": "add_invoice_item"
+                          }
+                        },
                         "application_fee_percent": {
                           "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                           "type": "number"
@@ -69798,6 +71776,87 @@
                                 "description": "The plan ID to subscribe to.",
                                 "maxLength": 5000,
                                 "type": "string"
+                              },
+                              "price": {
+                                "description": "The ID of the price object.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "price_data": {
+                                "description": "Data used to generate a new price object inline.",
+                                "properties": {
+                                  "currency": {
+                                    "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                                    "type": "string"
+                                  },
+                                  "product": {
+                                    "description": "The ID of the product that this price will belong to.",
+                                    "maxLength": 5000,
+                                    "type": "string"
+                                  },
+                                  "recurring": {
+                                    "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                                    "properties": {
+                                      "aggregate_usage": {
+                                        "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                                        "enum": [
+                                          "last_during_period",
+                                          "last_ever",
+                                          "max",
+                                          "sum"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "interval": {
+                                        "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                                        "enum": [
+                                          "day",
+                                          "month",
+                                          "week",
+                                          "year"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "interval_count": {
+                                        "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                                        "type": "integer"
+                                      },
+                                      "trial_period_days": {
+                                        "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                                        "type": "integer"
+                                      },
+                                      "usage_type": {
+                                        "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                                        "enum": [
+                                          "licensed",
+                                          "metered"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "interval"
+                                    ],
+                                    "title": "recurring",
+                                    "type": "object"
+                                  },
+                                  "unit_amount": {
+                                    "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                                    "type": "integer"
+                                  },
+                                  "unit_amount_decimal": {
+                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                                    "format": "decimal",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "currency",
+                                  "product",
+                                  "recurring"
+                                ],
+                                "title": "recurring_price_data",
+                                "type": "object"
                               },
                               "quantity": {
                                 "description": "Quantity for the given plan. Can be set only if the plan's `usage_type` is `licensed` and not `metered`.",
@@ -70269,6 +72328,17 @@
             "style": "form"
           },
           {
+            "description": "Filter for subscriptions that contain this recurring price ID.",
+            "in": "query",
+            "name": "price",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
             "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
             "in": "query",
             "name": "starting_after",
@@ -70382,6 +72452,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "add_invoice_items": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "billing_thresholds": {
                   "explode": true,
                   "style": "deepObject"
@@ -70422,6 +72496,60 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "add_invoice_items": {
+                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 10 items.",
+                    "items": {
+                      "properties": {
+                        "price": {
+                          "description": "The ID of the price object.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "price_data": {
+                          "description": "Data used to generate a new price object inline.",
+                          "properties": {
+                            "currency": {
+                              "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                              "type": "string"
+                            },
+                            "product": {
+                              "description": "The ID of the product that this price will belong to.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "unit_amount": {
+                              "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                              "type": "integer"
+                            },
+                            "unit_amount_decimal": {
+                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                              "format": "decimal",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "product"
+                          ],
+                          "title": "one_time_price_data",
+                          "type": "object"
+                        },
+                        "quantity": {
+                          "description": "Quantity for this item. Defaults to 1.",
+                          "type": "integer"
+                        }
+                      },
+                      "title": "one_time_price_and_quantity",
+                      "type": "object",
+                      "x-stripeParam": {
+                        "class_name": "AddInvoiceItem"
+                      }
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "add_invoice_item"
+                    }
+                  },
                   "application_fee_percent": {
                     "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                     "type": "number"
@@ -70572,6 +72700,87 @@
                           "description": "Plan ID for this item, as a string.",
                           "maxLength": 5000,
                           "type": "string"
+                        },
+                        "price": {
+                          "description": "The ID of the price object.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "price_data": {
+                          "description": "Data used to generate a new price object inline.",
+                          "properties": {
+                            "currency": {
+                              "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                              "type": "string"
+                            },
+                            "product": {
+                              "description": "The ID of the product that this price will belong to.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "recurring": {
+                              "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                              "properties": {
+                                "aggregate_usage": {
+                                  "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                                  "enum": [
+                                    "last_during_period",
+                                    "last_ever",
+                                    "max",
+                                    "sum"
+                                  ],
+                                  "type": "string"
+                                },
+                                "interval": {
+                                  "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                                  "enum": [
+                                    "day",
+                                    "month",
+                                    "week",
+                                    "year"
+                                  ],
+                                  "type": "string"
+                                },
+                                "interval_count": {
+                                  "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                                  "type": "integer"
+                                },
+                                "trial_period_days": {
+                                  "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                                  "type": "integer"
+                                },
+                                "usage_type": {
+                                  "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                                  "enum": [
+                                    "licensed",
+                                    "metered"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "interval"
+                              ],
+                              "title": "recurring",
+                              "type": "object"
+                            },
+                            "unit_amount": {
+                              "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                              "type": "integer"
+                            },
+                            "unit_amount_decimal": {
+                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                              "format": "decimal",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "product",
+                            "recurring"
+                          ],
+                          "title": "recurring_price_data",
+                          "type": "object"
                         },
                         "quantity": {
                           "description": "Quantity for this item.",
@@ -70931,6 +73140,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "add_invoice_items": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "billing_thresholds": {
                   "explode": true,
                   "style": "deepObject"
@@ -70979,6 +73192,60 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "add_invoice_items": {
+                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 10 items.",
+                    "items": {
+                      "properties": {
+                        "price": {
+                          "description": "The ID of the price object.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "price_data": {
+                          "description": "Data used to generate a new price object inline.",
+                          "properties": {
+                            "currency": {
+                              "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                              "type": "string"
+                            },
+                            "product": {
+                              "description": "The ID of the product that this price will belong to.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "unit_amount": {
+                              "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                              "type": "integer"
+                            },
+                            "unit_amount_decimal": {
+                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                              "format": "decimal",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "product"
+                          ],
+                          "title": "one_time_price_data",
+                          "type": "object"
+                        },
+                        "quantity": {
+                          "description": "Quantity for this item. Defaults to 1.",
+                          "type": "integer"
+                        }
+                      },
+                      "title": "one_time_price_and_quantity",
+                      "type": "object",
+                      "x-stripeParam": {
+                        "class_name": "AddInvoiceItem"
+                      }
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "add_invoice_item"
+                    }
+                  },
                   "application_fee_percent": {
                     "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the application owner's Stripe account. The request must be made by a platform account on a connected account in order to set an application fee percentage. For more information, see the application fees [documentation](https://stripe.com/docs/connect/subscriptions#collecting-fees-on-subscriptions).",
                     "type": "number"
@@ -71156,6 +73423,87 @@
                           "description": "Plan ID for this item, as a string.",
                           "maxLength": 5000,
                           "type": "string"
+                        },
+                        "price": {
+                          "description": "The ID of the price object.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "price_data": {
+                          "description": "Data used to generate a new price object inline.",
+                          "properties": {
+                            "currency": {
+                              "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                              "type": "string"
+                            },
+                            "product": {
+                              "description": "The ID of the product that this price will belong to.",
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "recurring": {
+                              "description": "The recurring components of a price such as `interval` and `usage_type`.",
+                              "properties": {
+                                "aggregate_usage": {
+                                  "description": "Specifies a usage aggregation strategy for prices of `usage_type=metered`. Allowed values are `sum` for summing up all usage during a period, `last_during_period` for using the last usage record reported within a period, `last_ever` for using the last usage record ever (across period bounds) or `max` which uses the usage record with the maximum reported usage during a period. Defaults to `sum`.",
+                                  "enum": [
+                                    "last_during_period",
+                                    "last_ever",
+                                    "max",
+                                    "sum"
+                                  ],
+                                  "type": "string"
+                                },
+                                "interval": {
+                                  "description": "Specifies billing frequency. Either `day`, `week`, `month` or `year`.",
+                                  "enum": [
+                                    "day",
+                                    "month",
+                                    "week",
+                                    "year"
+                                  ],
+                                  "type": "string"
+                                },
+                                "interval_count": {
+                                  "description": "The number of intervals between subscription billings. For example, `interval=month` and `interval_count=3` bills every 3 months. Maximum of one year interval allowed (1 year, 12 months, or 52 weeks).",
+                                  "type": "integer"
+                                },
+                                "trial_period_days": {
+                                  "description": "Default number of trial days when subscribing a customer to this price using [`trial_from_plan=true`](https://stripe.com/docs/api#create_subscription-trial_from_plan).",
+                                  "type": "integer"
+                                },
+                                "usage_type": {
+                                  "description": "Configures how the quantity per period should be determined. Can be either `metered` or `licensed`. `licensed` automatically bills the `quantity` set when adding it to a subscription. `metered` aggregates the total usage based on usage records. Defaults to `licensed`.",
+                                  "enum": [
+                                    "licensed",
+                                    "metered"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "interval"
+                              ],
+                              "title": "recurring",
+                              "type": "object"
+                            },
+                            "unit_amount": {
+                              "description": "A positive integer in %s (or 0 for a free price) representing how much to charge.",
+                              "type": "integer"
+                            },
+                            "unit_amount_decimal": {
+                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                              "format": "decimal",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "currency",
+                            "product",
+                            "recurring"
+                          ],
+                          "title": "recurring_price_data",
+                          "type": "object"
                         },
                         "quantity": {
                           "description": "Quantity for this item.",
