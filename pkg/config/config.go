@@ -192,6 +192,64 @@ func (c *Config) PrintConfig() error {
 	return nil
 }
 
+// RemoveProfile removes the profile whose name matches the provided
+// profileName from the config file.
+func (c *Config) RemoveProfile(profileName string) error {
+	runtimeViper := viper.GetViper()
+	var err error
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) && field == profileName {
+			runtimeViper, err = removeKey(runtimeViper, field)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return syncConfig(runtimeViper)
+}
+
+// RemoveAllProfiles removes all the profiles from the config file.
+func (c *Config) RemoveAllProfiles() error {
+	runtimeViper := viper.GetViper()
+	var err error
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			runtimeViper, err = removeKey(runtimeViper, field)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return syncConfig(runtimeViper)
+}
+
+// isProfile identifies whether a value in the config pertains to a profile.
+func isProfile(value interface{}) bool {
+	// TODO: ianjabour - ideally find a better way to identify projects in config
+	_, ok := value.(map[string]interface{})
+	return ok
+}
+
+// syncConfig merges a runtimeViper instance with the config file being used.
+func syncConfig(runtimeViper *viper.Viper) error {
+	runtimeViper.MergeInConfig()
+	profilesFile := viper.ConfigFileUsed()
+	runtimeViper.SetConfigFile(profilesFile)
+	// Ensure we preserve the config file type
+	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
+
+	err := runtimeViper.WriteConfig()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Temporary workaround until https://github.com/spf13/viper/pull/519 can remove a key from viper
 func removeKey(v *viper.Viper, key string) (*viper.Viper, error) {
 	configMap := v.AllSettings()
