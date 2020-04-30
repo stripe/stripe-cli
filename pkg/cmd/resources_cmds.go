@@ -59,6 +59,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rPayoutsCmd := resource.NewResourceCmd(rootCmd, "payouts")
 	rPersonsCmd := resource.NewResourceCmd(rootCmd, "persons")
 	rPlansCmd := resource.NewResourceCmd(rootCmd, "plans")
+	rPricesCmd := resource.NewResourceCmd(rootCmd, "prices")
 	rProductsCmd := resource.NewResourceCmd(rootCmd, "products")
 	rRefundsCmd := resource.NewResourceCmd(rootCmd, "refunds")
 	rReviewsCmd := resource.NewResourceCmd(rootCmd, "reviews")
@@ -465,6 +466,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":         "string",
 		"discountable":        "boolean",
 		"invoice":             "string",
+		"price":               "string",
 		"quantity":            "integer",
 		"subscription":        "string",
 		"unit_amount":         "integer",
@@ -484,6 +486,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"amount":              "integer",
 		"description":         "string",
 		"discountable":        "boolean",
+		"price":               "string",
 		"quantity":            "integer",
 		"unit_amount":         "integer",
 		"unit_amount_decimal": "string",
@@ -790,6 +793,34 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"product":           "string",
 		"trial_period_days": "integer",
 	}, &Config)
+	resource.NewOperationCmd(rPricesCmd.Cmd, "create", "/v1/prices", http.MethodPost, map[string]string{
+		"active":              "boolean",
+		"billing_scheme":      "string",
+		"currency":            "string",
+		"lookup_key":          "string",
+		"nickname":            "string",
+		"product":             "string",
+		"tiers_mode":          "string",
+		"transfer_lookup_key": "boolean",
+		"unit_amount":         "integer",
+		"unit_amount_decimal": "string",
+	}, &Config)
+	resource.NewOperationCmd(rPricesCmd.Cmd, "list", "/v1/prices", http.MethodGet, map[string]string{
+		"active":         "boolean",
+		"currency":       "string",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"product":        "string",
+		"starting_after": "string",
+		"type":           "string",
+	}, &Config)
+	resource.NewOperationCmd(rPricesCmd.Cmd, "retrieve", "/v1/prices/{price}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rPricesCmd.Cmd, "update", "/v1/prices/{price}", http.MethodPost, map[string]string{
+		"active":              "boolean",
+		"lookup_key":          "string",
+		"nickname":            "string",
+		"transfer_lookup_key": "boolean",
+	}, &Config)
 	resource.NewOperationCmd(rProductsCmd.Cmd, "create", "/v1/products", http.MethodPost, map[string]string{
 		"active":               "boolean",
 		"caption":              "string",
@@ -936,6 +967,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "create", "/v1/subscription_items", http.MethodPost, map[string]string{
 		"payment_behavior":   "string",
 		"plan":               "string",
+		"price":              "string",
 		"prorate":            "boolean",
 		"proration_behavior": "string",
 		"proration_date":     "integer",
@@ -954,6 +986,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"off_session":        "boolean",
 		"payment_behavior":   "string",
 		"plan":               "string",
+		"price":              "string",
 		"prorate":            "boolean",
 		"proration_behavior": "string",
 		"proration_date":     "integer",
@@ -1016,6 +1049,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":     "string",
 		"limit":             "integer",
 		"plan":              "string",
+		"price":             "string",
 		"starting_after":    "string",
 		"status":            "string",
 	}, &Config)
