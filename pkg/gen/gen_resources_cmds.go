@@ -154,12 +154,13 @@ func getTemplateData() (*TemplateData, error) {
 
 					if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
 						for propName, schema := range media.Schema.Properties {
-							// only deal with scalar types for now
-							if !scalarTypes[schema.Type] {
+							scalarType := getScalarType(schema)
+
+							if scalarType == nil {
 								continue
 							}
 
-							properties[propName] = schema.Type
+							properties[propName] = *scalarType
 						}
 					}
 				} else {
@@ -170,13 +171,13 @@ func getTemplateData() (*TemplateData, error) {
 						}
 
 						schema := param.Schema
+						scalarType := getScalarType(schema)
 
-						// only deal with scalar types for now
-						if !scalarTypes[schema.Type] {
+						if scalarType == nil {
 							continue
 						}
 
-						properties[param.Name] = schema.Type
+						properties[param.Name] = *scalarType
 					}
 				}
 
@@ -198,4 +199,33 @@ func parseSchemaName(name string) (string, string) {
 		return components[0], components[1]
 	}
 	return "", name
+}
+
+// getScalarType accepts a schema and returns its scalar type, if it has one.
+//
+// If the schema is monomorphic, it returns its type if it's scalar.
+//
+// If the schema is polymorphic, it returns the first scalar type for the
+// schema, if there is any.
+func getScalarType(schema *spec.Schema) *string {
+	if len(schema.AnyOf) > 0 {
+		for _, subSchema := range schema.AnyOf {
+			scalarType := getScalarType(subSchema)
+			if scalarType != nil {
+				return scalarType
+			}
+		}
+	} else if scalarTypes[schema.Type] {
+		// Special case for string types that only support the "" (empty
+		// string) value: we consider these to be non-scalar so we don't
+		// generate a flag for those.
+		if schema.Type == "string" {
+			if len(schema.Enum) == 1 && schema.Enum[0] == "" {
+				return nil
+			}
+		}
+		return &schema.Type
+	}
+
+	return nil
 }
