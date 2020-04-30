@@ -3,15 +3,23 @@ name: Go
 on:
   push:
     branches: [ master ]
+    paths-ignore: [ '**.md' ]
   pull_request:
     branches: [ master ]
+    paths-ignore: [ '**.md' ]
 
 jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
     - name: Set up Go 1.14
       uses: actions/setup-go@v1
