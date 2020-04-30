@@ -57,7 +57,7 @@ func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, 
 		return tsCtx, err
 	}
 
-	spinner := ansi.StartSpinner("Tap your Stripe Test Card against the reader...", os.Stdout)
+	spinner := ansi.StartSpinner("Tap, swipe or dip your Stripe Test Card in the reader...", os.Stdout)
 	paymentMethod, err := WaitForPaymentCollection(tsCtx, parentTraceID, 0)
 
 	if err != nil {
