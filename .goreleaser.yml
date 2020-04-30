@@ -24,7 +24,7 @@ builds:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     main: ./cmd/stripe/main.go
     goos:
       - linux
@@ -67,6 +67,8 @@ changelog:
     - '^test:'
 nfpms:
   -
+    builds:
+    - stripe-linux-amd64
     vendor: Stripe
     homepage:  https://stripe.com
     maintainer: Stripe <support@stripe.com>
@@ -111,8 +113,20 @@ scoop:
   description: Stripe CLI utility
   license: Apache 2.0
 dockers:
-  - binaries:
+  - goos: linux
+    goarch: amd64
+    binaries:
     - stripe
+    builds:
+    - stripe-linux-amd64
     image_templates:
     - "stripe/stripe-cli:latest"
     - "stripe/stripe-cli:{{ .Tag }}"
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.name={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--label=repository=https://github.com/stripe/stripe-cli"
+    - "--label=homepage=https://stripe.com"
