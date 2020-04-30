@@ -89,9 +89,8 @@ func CallRabbitService(tsCtx TerminalSessionContext, method string, methodConten
 		return t.Err
 	}
 
+	defer res.Body.Close()
 	json.NewDecoder(res.Body).Decode(&result)
-
-	res.Body.Close()
 
 	if result.Content != "" {
 		decoded, err := base64.StdEncoding.DecodeString(result.Content)
