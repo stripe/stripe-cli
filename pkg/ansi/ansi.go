@@ -122,7 +122,7 @@ func StartSpinner(msg string, w io.Writer) *spinner.Spinner {
 		charSetIdx = 8
 	}
 
-	s := spinner.New(spinner.CharSets[charSetIdx], 100*time.Millisecond)
+	s := spinner.New(spinner.CharSets[charSetIdx], time.Duration(100)*time.Millisecond)
 	s.Writer = w
 
 	if msg != "" {
