@@ -32,7 +32,7 @@ func newServeCmd() *serveCmd {
 				dir = args[0]
 			}
 
-			fmt.Println("Starting stripe server at address", fmt.Sprintf("http://localhost:%s", port))
+			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
 			http.Handle("/", http.FileServer(http.Dir(dir)))
 			err := http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 
