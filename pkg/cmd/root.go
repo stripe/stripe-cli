@@ -117,4 +117,9 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = resource.AddTerminalSubCmds(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
