@@ -24,16 +24,21 @@ func TestLegacyAPIKeys(t *testing.T) {
 
 func TestPublishableAPIKey(t *testing.T) {
 	err := APIKey("pk_test_12345")
-	require.EqualError(t, err, "the CLI only supports using a secret or restricted key")
+	require.EqualError(t, err, "the CLI only supports using a restricted or test secret key")
 }
 
 func TestLivemodeAPIKey(t *testing.T) {
 	err := APIKey("sk_live_12345")
-	require.NoError(t, err)
+	require.EqualError(t, err, "the CLI only supports using a restricted or test secret key")
 }
 
 func TestTestmodeAPIKey(t *testing.T) {
 	err := APIKey("sk_test_12345")
+	require.NoError(t, err)
+}
+
+func TestLivemodeRestrictedAPIKey(t *testing.T) {
+	err := APIKey("rk_live_12345")
 	require.NoError(t, err)
 }
 

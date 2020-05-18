@@ -39,7 +39,7 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 	return validator(value)
 }
 
-// APIKey validates that a string looks like an API key.
+// APIKey validates that a string looks like an API key supported for CLI use.
 func APIKey(input string) error {
 	if len(input) == 0 {
 		return errors.New("you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
@@ -52,8 +52,10 @@ func APIKey(input string) error {
 		return errors.New("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
 	}
 
-	if keyParts[0] != "sk" && keyParts[0] != "rk" {
-		return errors.New("the CLI only supports using a secret or restricted key")
+	keyType := keyParts[0] + "_" + keyParts[1]
+
+	if keyType != "sk_test" && keyParts[0] != "rk" {
+		return errors.New("the CLI only supports using a restricted or test secret key")
 	}
 
 	return nil
