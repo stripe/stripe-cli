@@ -12,7 +12,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/joho/godotenv v1.3.0
-	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
 	github.com/manifoldco/promptui v0.7.0
