@@ -55,7 +55,7 @@ func APIKey(input string) error {
 	keyType := keyParts[0] + "_" + keyParts[1]
 
 	if keyType != "sk_test" && keyParts[0] != "rk" {
-		return errors.New("the CLI only supports using a restricted or test secret key")
+		return errors.New("for security reasons, the Stripe CLI does not permit the use of secret keys in live mode. To generate restricted keys for use in live mode, use the `stripe login` command")
 	}
 
 	return nil

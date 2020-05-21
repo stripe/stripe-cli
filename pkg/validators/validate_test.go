@@ -24,12 +24,12 @@ func TestLegacyAPIKeys(t *testing.T) {
 
 func TestPublishableAPIKey(t *testing.T) {
 	err := APIKey("pk_test_12345")
-	require.EqualError(t, err, "the CLI only supports using a restricted or test secret key")
+	require.EqualError(t, err, "for security reasons, the Stripe CLI does not permit the use of secret keys in live mode. To generate restricted keys for use in live mode, use the `stripe login` command")
 }
 
 func TestLivemodeAPIKey(t *testing.T) {
 	err := APIKey("sk_live_12345")
-	require.EqualError(t, err, "the CLI only supports using a restricted or test secret key")
+	require.EqualError(t, err, "for security reasons, the Stripe CLI does not permit the use of secret keys in live mode. To generate restricted keys for use in live mode, use the `stripe login` command")
 }
 
 func TestTestmodeAPIKey(t *testing.T) {
