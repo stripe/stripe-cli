@@ -48,14 +48,17 @@ func APIKey(input string) error {
 	}
 
 	keyParts := strings.Split(input, "_")
+
 	if len(keyParts) < 3 {
 		return errors.New("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
 	}
 
-	keyType := keyParts[0] + "_" + keyParts[1]
-
-	if keyType != "sk_test" && keyParts[0] != "rk" {
+	if (keyParts[0] + "_" + keyParts[1]) == "sk_live" {
 		return errors.New("for security reasons, the Stripe CLI does not permit the use of secret keys in live mode. To generate restricted keys for use in live mode, use the `stripe login` command")
+	}
+
+	if keyParts[0] != "sk" && keyParts[0] != "rk" {
+		return errors.New("the CLI only supports using a secret or restricted key")
 	}
 
 	return nil
