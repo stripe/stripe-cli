@@ -1,0 +1,77 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "checkout_session",
+      "path": "/v1/checkout/sessions",
+      "method": "post",
+      "params": {
+        "success_url": "https://httpbin.org/post",
+        "cancel_url": "https://httpbin.org/post",
+        "payment_method_types": ["bacs_debit"],
+        "line_items": [
+          {
+            "name": "t-shirt",
+            "description": "comfortable cotton t-shirt",
+            "amount": 1500,
+            "currency": "gbp",
+            "quantity": 2
+          }
+        ],
+        "payment_intent_data": {
+          "shipping": {
+            "name": "Jenny Rosen",
+            "address": {
+              "line1": "510 Townsend St",
+              "postal_code": "94103",
+              "city": "San Francisco",
+              "state": "CA",
+              "country": "US"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "payment_page",
+      "path": "/v1/payment_pages",
+      "method": "get",
+      "params": {
+        "session_id": "${checkout_session:id}"
+      }
+    },
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods",
+      "method": "post",
+      "params": {
+        "type": "bacs_debit",
+        "bacs_debit": {
+          "account_number": "33333335",
+          "sort_code": "108800"
+        },
+        "billing_details": {
+          "email": "stripe@example.com",
+          "name": "Jenny Rosen",
+          "phone": "1234567890",
+          "address": {
+            "line1": "71 Crown Street",
+            "city": "London",
+            "postal_code": "W10 2WB",
+            "country": "GB"
+          }
+        }
+      }
+    },
+    {
+      "name": "payment_page_confirm",
+      "path": "/v1/payment_pages/${payment_page:id}/confirm",
+      "method": "post",
+      "params": {
+        "payment_method": "${payment_method:id}"
+      }
+    }
+  ]
+}
