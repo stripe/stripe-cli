@@ -16,7 +16,7 @@ install:
   - make setup
 
 script:
-  - make ci
+  - travis_retry make ci
 
 deploy:
 - provider: script
