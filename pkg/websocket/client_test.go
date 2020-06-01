@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -72,7 +71,6 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		require.FailNow(t, "Timed out waiting for response from test server")
 	}
 
-	fmt.Println("assertions")
 	require.Equal(t, "TestAgent/v1", rcvMsg.HTTPHeaders["User-Agent"])
 	require.Equal(t, "t=123,v1=hunter2", rcvMsg.HTTPHeaders["Stripe-Signature"])
 	require.Equal(t, "{}", rcvMsg.EventPayload)
