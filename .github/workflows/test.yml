@@ -12,6 +12,11 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go-version }}
+    # Windows throws false positives with linting because of CRLF / goimports incompat
+    - name: Set git to use LF
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Run Setup
