@@ -18,3 +18,4 @@ jobs:
       run: make setup
     - name: Run Tests
       run: make ci
+      shell: bash

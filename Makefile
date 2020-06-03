@@ -44,7 +44,7 @@ bin/golangci-lint:
 	curl -fsSL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
 
 bin/misspell:
-	curl -fsSL https://git.io/misspell | sh
+	curl -fsSL https://git.io/misspell | bash
 
 # Clean go.mod
 go-mod-tidy:
