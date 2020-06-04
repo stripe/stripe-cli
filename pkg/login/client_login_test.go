@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -119,13 +120,21 @@ func TestGetLinksHTTPStatusError(t *testing.T) {
 }
 
 func TestGetLinksRequestError(t *testing.T) {
+	errorString := ""
+
+	if runtime.GOOS == "windows" {
+		errorString = "connectex: No connection could be made because the target machine actively refused it."
+	} else {
+		errorString = "connect: connection refused"
+	}
+
 	// Immediately close the HTTP server so that the request fails.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
 	links, err := getLinks(ts.URL, "test")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "connect: connection refused")
+	require.Contains(t, err.Error(), errorString)
 	require.Empty(t, links)
 }
 

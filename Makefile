@@ -34,17 +34,13 @@ fmt:
 .PHONY: fmt
 
 # Run all the linters
-lint: bin/golangci-lint bin/misspell
+lint: bin/golangci-lint
 	# TODO: fix disabled linter issues
 	./bin/golangci-lint run ./...
-	./bin/misspell -error **/*.go
 .PHONY: lint
 
 bin/golangci-lint:
 	curl -fsSL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
-
-bin/misspell:
-	curl -fsSL https://git.io/misspell | sh
 
 # Clean go.mod
 go-mod-tidy:

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
@@ -27,7 +28,7 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 func TestGetPathNoXDG(t *testing.T) {
 	actual := Config.GetConfigFolder("")
 	expected, err := homedir.Dir()
-	expected += "/.config/stripe"
+	expected += filepath.Join("/", ".config", "stripe")
 
 	require.NoError(t, err)
 	require.Equal(t, actual, expected)
@@ -35,7 +36,7 @@ func TestGetPathNoXDG(t *testing.T) {
 
 func TestGetPathXDG(t *testing.T) {
 	actual := Config.GetConfigFolder("/some/xdg/path")
-	expected := "/some/xdg/path/stripe"
+	expected := filepath.Join("/", "some", "xdg", "path", "stripe")
 
 	require.Equal(t, actual, expected)
 }
