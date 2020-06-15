@@ -6,7 +6,7 @@ before:
     - go generate ./...
 project_name: stripe
 builds:
-  - id: stripe-darwin-amd64
+  - id: stripe-darwin
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
@@ -19,7 +19,7 @@ builds:
       - darwin
     goarch:
       - amd64
-  - id: stripe-linux-amd64
+  - id: stripe-linux
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
@@ -30,7 +30,7 @@ builds:
       - linux
     goarch:
       - amd64
-  - id: stripe-windows-amd64
+  - id: stripe-windows
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
@@ -43,12 +43,14 @@ builds:
       - windows
     goarch:
       - amd64
+      - 386
 archives:
   -
     replacements:
       darwin: mac-os
       linux: linux
       windows: windows
+      386: i386
       amd64: x86_64
     format_overrides:
       - goos: windows
