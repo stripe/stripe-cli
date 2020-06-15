@@ -70,7 +70,7 @@ changelog:
 nfpms:
   -
     builds:
-    - stripe-linux-amd64
+    - stripe-linux
     vendor: Stripe
     homepage:  https://stripe.com
     maintainer: Stripe <support@stripe.com>
@@ -120,7 +120,7 @@ dockers:
     binaries:
     - stripe
     builds:
-    - stripe-linux-amd64
+    - stripe-linux
     image_templates:
     - "stripe/stripe-cli:latest"
     - "stripe/stripe-cli:{{ .Tag }}"
