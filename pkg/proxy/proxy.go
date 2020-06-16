@@ -85,18 +85,15 @@ type Proxy struct {
 	events map[string]bool
 
 	interruptCh chan os.Signal
-
-	ctx context.Context
 }
 
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
-func (p *Proxy) Run() error {
+func (p *Proxy) Run(ctx context.Context) error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
 
 	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(context.Background())
-	p.ctx = ctx
+	ctx, cancel := context.WithCancel(ctx)
 	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
@@ -110,7 +107,7 @@ func (p *Proxy) Run() error {
 	}()
 
 	// Create the CLI session
-	session, err := p.createSession()
+	session, err := p.createSession(ctx)
 	if err != nil {
 		ansi.StopSpinner(s, "", p.cfg.Log.Out)
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
@@ -126,21 +123,20 @@ func (p *Proxy) Run() error {
 			NoWSS:             p.cfg.NoWSS,
 			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 			EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
-			Ctx:               p.ctx,
 		},
 	)
-	go p.webSocketClient.Run()
+	go p.webSocketClient.Run(ctx)
 
 	select {
 	case <-p.webSocketClient.Connected():
 		ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
-	case <-p.ctx.Done():
+	case <-ctx.Done():
 		ansi.StopSpinner(s, "", p.cfg.Log.Out)
 		p.cfg.Log.Fatalf("Aborting")
 	}
 
 	// Block until context is done (i.e. Ctrl+C is pressed)
-	<-p.ctx.Done()
+	<-ctx.Done()
 
 	if p.webSocketClient != nil {
 		p.webSocketClient.Stop()
@@ -153,7 +149,7 @@ func (p *Proxy) Run() error {
 	return nil
 }
 
-func (p *Proxy) createSession() (*stripeauth.StripeCLISession, error) {
+func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
 	var session *stripeauth.StripeCLISession
 
 	var err error
@@ -164,7 +160,7 @@ func (p *Proxy) createSession() (*stripeauth.StripeCLISession, error) {
 		// Try to authorize at least 5 times before failing. Sometimes we have random
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
-			session, err = p.stripeAuthClient.Authorize(p.ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
+			session, err = p.stripeAuthClient.Authorize(ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
 
 			if err == nil {
 				exitCh <- struct{}{}
@@ -172,7 +168,7 @@ func (p *Proxy) createSession() (*stripeauth.StripeCLISession, error) {
 			}
 
 			select {
-			case <-p.ctx.Done():
+			case <-ctx.Done():
 				exitCh <- struct{}{}
 				return
 			case <-time.After(1 * time.Second):

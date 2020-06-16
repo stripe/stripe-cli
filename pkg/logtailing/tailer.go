@@ -66,8 +66,6 @@ type Tailer struct {
 	webSocketClient  *websocket.Client
 
 	interruptCh chan os.Signal
-
-	ctx context.Context
 }
 
 // EventPayload is the mapping for fields in event payloads from request log tailing
@@ -108,12 +106,11 @@ func New(cfg *Config) *Tailer {
 }
 
 // Run sets the websocket connection
-func (t *Tailer) Run() error {
+func (t *Tailer) Run(ctx context.Context) error {
 	s := ansi.StartSpinner("Getting ready...", t.cfg.Log.Out)
 
 	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(context.Background())
-	t.ctx = ctx
+	ctx, cancel := context.WithCancel(ctx)
 	signal.Notify(t.interruptCh, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
@@ -126,7 +123,7 @@ func (t *Tailer) Run() error {
 	}()
 
 	// Create the CLI session
-	session, err := t.createSession()
+	session, err := t.createSession(ctx)
 	if err != nil {
 		ansi.StopSpinner(s, "", t.cfg.Log.Out)
 		t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
@@ -144,12 +141,12 @@ func (t *Tailer) Run() error {
 			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 		},
 	)
-	go t.webSocketClient.Run()
+	go t.webSocketClient.Run(ctx)
 
 	select {
 	case <-t.webSocketClient.Connected():
 		ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
-	case <-t.ctx.Done():
+	case <-ctx.Done():
 		ansi.StopSpinner(s, "", t.cfg.Log.Out)
 		t.cfg.Log.Fatalf("Aborting")
 	}
@@ -160,7 +157,7 @@ func (t *Tailer) Run() error {
 	}
 
 	// Block until context is done (i.e. Ctrl+C is pressed)
-	<-t.ctx.Done()
+	<-ctx.Done()
 
 	if t.webSocketClient != nil {
 		t.webSocketClient.Stop()
@@ -173,7 +170,7 @@ func (t *Tailer) Run() error {
 	return nil
 }
 
-func (t *Tailer) createSession() (*stripeauth.StripeCLISession, error) {
+func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
 	var session *stripeauth.StripeCLISession
 
 	var err error
@@ -189,7 +186,7 @@ func (t *Tailer) createSession() (*stripeauth.StripeCLISession, error) {
 		// Try to authorize at least 5 times before failing. Sometimes we have random
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
-			session, err = t.stripeAuthClient.Authorize(t.ctx, t.cfg.DeviceName, t.cfg.WebSocketFeature, &filters)
+			session, err = t.stripeAuthClient.Authorize(ctx, t.cfg.DeviceName, t.cfg.WebSocketFeature, &filters)
 
 			if err == nil {
 				exitCh <- struct{}{}
@@ -197,7 +194,7 @@ func (t *Tailer) createSession() (*stripeauth.StripeCLISession, error) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				exitCh <- struct{}{}
 				return
 			case <-time.After(1 * time.Second):

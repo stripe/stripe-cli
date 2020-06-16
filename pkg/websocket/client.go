@@ -46,8 +46,6 @@ type Config struct {
 	WriteWait time.Duration
 
 	EventHandler EventHandler
-
-	Ctx context.Context
 }
 
 // EventHandler handles an event.
@@ -107,27 +105,27 @@ func (c *Client) Connected() <-chan struct{} {
 }
 
 // Run starts listening for incoming webhook requests from Stripe.
-func (c *Client) Run() {
+func (c *Client) Run(ctx context.Context) {
 	for {
 		c.isConnected = false
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.client.Run",
 		}).Debug("Attempting to connect to Stripe")
 
-		for !c.connect() {
+		for !c.connect(ctx) {
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.client.Run",
 			}).Debug("Failed to connect to Stripe. Retrying...")
 
 			select {
-			case <-c.cfg.Ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-time.After(c.cfg.ConnectAttemptWait):
 			}
 		}
 
 		select {
-		case <-c.cfg.Ctx.Done():
+		case <-ctx.Done():
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
@@ -174,7 +172,7 @@ func (c *Client) SendMessage(msg *OutgoingMessage) {
 
 // connect makes a single attempt to connect to the websocket URL. It returns
 // the success of the attempt.
-func (c *Client) connect() bool {
+func (c *Client) connect(ctx context.Context) bool {
 	header := http.Header{}
 	// Disable compression by requiring "identity"
 	header.Set("Accept-Encoding", "identity")
@@ -194,7 +192,7 @@ func (c *Client) connect() bool {
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, resp, err := c.cfg.Dialer.DialContext(c.cfg.Ctx, url, header)
+	conn, resp, err := c.cfg.Dialer.DialContext(ctx, url, header)
 	if err != nil {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.connect",
@@ -427,10 +425,6 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 
 	if cfg.EventHandler == nil {
 		cfg.EventHandler = nullEventHandler
-	}
-
-	if cfg.Ctx == nil {
-		cfg.Ctx = context.Background()
 	}
 
 	return &Client{
