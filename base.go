@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 )
@@ -39,31 +38,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // func main() {
-
-// 	resp, err := http.Get("http://gobyexample.com")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer resp.Body.Close()
-
-// 	fmt.Println("Response status:", resp.Status)
-
-// 	fmt.Printf("%s", resp.Body)
-
-// 	// scanner := bufio.NewScanner(resp.Body)
-// 	// for i := 0; scanner.Scan() && i < 5; i++ {
-// 	// 	fmt.Println(scanner.Text())
-// 	// }
-
-// 	// if err := scanner.Err(); err != nil {
-// 	// 	panic(err)
-// 	// }
+// 	http.HandleFunc("/", handler)
+// 	log.Fatal(http.ListenAndServe(":8080", nil))
 // }
-
-func main() {
-	http.HandleFunc("/", handler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
 
 // --- Public interface
 
@@ -167,21 +144,3 @@ func (vcr *Vcr) getNextRecordedCassetteResponse(request *http.Request) (resp *ht
 	// the passed in request arg may not be necessary
 	return nil, nil
 }
-
-// Test: VCRRecoder VCRReplayer
-/*
-
-try to write a test case
-
-// recorder.Write('a' -> 'A')
-// recorder.Write('b')
-// recorder.Write('c')
-// buf := recorder.Close()
-//
-// replayer.Open(buf)
-// resp := replayer.Write('a')
-//
-
-
-
-*/
