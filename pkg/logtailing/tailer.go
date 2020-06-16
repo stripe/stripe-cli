@@ -105,59 +105,84 @@ func New(cfg *Config) *Tailer {
 	}
 }
 
+func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(ctx)
+
+	interruptCh := make(chan os.Signal, 1)
+	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-interruptCh
+		onCancel()
+		cancel()
+	}()
+	return ctx
+}
+
+const maxConnectAttempts = 3
+
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
 	s := ansi.StartSpinner("Getting ready...", t.cfg.Log.Out)
 
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-	signal.Notify(t.interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
+	ctx = withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "logtailing.Tailer.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
+	})
 
-		<-t.interruptCh
-		cancel()
-	}()
+	var warned = false
+	var nAttempts int = 0
 
-	// Create the CLI session
-	session, err := t.createSession(ctx)
-	if err != nil {
-		ansi.StopSpinner(s, "", t.cfg.Log.Out)
-		t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+	for nAttempts < maxConnectAttempts {
+		session, err := t.createSession(ctx)
+
+		if err != nil {
+			ansi.StopSpinner(s, "", t.cfg.Log.Out)
+			t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+		}
+
+		if session.DisplayConnectFilterWarning && !warned {
+			color := ansi.Color(os.Stdout)
+			fmt.Printf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.\n", color.Yellow("Warning"))
+			// Only display this warning once
+			warned = true
+		}
+
+		t.webSocketClient = websocket.NewClient(
+			session.WebSocketURL,
+			session.WebSocketID,
+			session.WebSocketAuthorizedFeature,
+			&websocket.Config{
+				EventHandler:      websocket.EventHandlerFunc(t.processRequestLogEvent),
+				Log:               t.cfg.Log,
+				NoWSS:             t.cfg.NoWSS,
+				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
+			},
+		)
+
+		go func() {
+			<-t.webSocketClient.Connected()
+			nAttempts = 0
+			ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
+		}()
+
+		go t.webSocketClient.Run(ctx)
+		nAttempts++
+
+		select {
+		case <-ctx.Done():
+			ansi.StopSpinner(s, "", t.cfg.Log.Out)
+			t.cfg.Log.Fatalf("Aborting")
+		case <-t.webSocketClient.NotifyExpired:
+			if nAttempts < maxConnectAttempts {
+				s = ansi.StartSpinner("Session expired, reconnecting...", t.cfg.Log.Out)
+			} else {
+				t.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+			}
+		}
 	}
-
-	// Create and start the websocket client
-	t.webSocketClient = websocket.NewClient(
-		session.WebSocketURL,
-		session.WebSocketID,
-		session.WebSocketAuthorizedFeature,
-		&websocket.Config{
-			EventHandler:      websocket.EventHandlerFunc(t.processRequestLogEvent),
-			Log:               t.cfg.Log,
-			NoWSS:             t.cfg.NoWSS,
-			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
-		},
-	)
-	go t.webSocketClient.Run(ctx)
-
-	select {
-	case <-t.webSocketClient.Connected():
-		ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
-	case <-ctx.Done():
-		ansi.StopSpinner(s, "", t.cfg.Log.Out)
-		t.cfg.Log.Fatalf("Aborting")
-	}
-
-	if session.DisplayConnectFilterWarning {
-		color := ansi.Color(os.Stdout)
-		fmt.Printf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.\n", color.Yellow("Warning"))
-	}
-
-	// Block until context is done (i.e. Ctrl+C is pressed)
-	<-ctx.Done()
 
 	if t.webSocketClient != nil {
 		t.webSocketClient.Stop()

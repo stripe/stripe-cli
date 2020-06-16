@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +62,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run()
+	go client.Run(context.Background())
 
 	defer client.Stop()
 
@@ -123,7 +124,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run()
+	go client.Run(context.Background())
 
 	defer client.Stop()
 

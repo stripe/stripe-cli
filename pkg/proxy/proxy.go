@@ -85,7 +85,7 @@ type Proxy struct {
 	events map[string]bool
 }
 
-func WithSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	// Create a context that will be canceled when Ctrl+C is pressed
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -100,47 +100,61 @@ func WithSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
+const maxConnectAttempts = 3
+
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
 
-	ctx = WithSIGTERMCancel(ctx, func() {
+	ctx = withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
-	// Create the CLI session
-	session, err := p.createSession(ctx)
-	if err != nil {
-		ansi.StopSpinner(s, "", p.cfg.Log.Out)
-		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+
+	var nAttempts int = 0
+
+	for nAttempts < maxConnectAttempts {
+		session, err := p.createSession(ctx)
+		if err != nil {
+			ansi.StopSpinner(s, "", p.cfg.Log.Out)
+			p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+		}
+
+		p.webSocketClient = websocket.NewClient(
+			session.WebSocketURL,
+			session.WebSocketID,
+			session.WebSocketAuthorizedFeature,
+			&websocket.Config{
+				Log:               p.cfg.Log,
+				NoWSS:             p.cfg.NoWSS,
+				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
+				EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
+			},
+		)
+
+		go func() {
+			<-p.webSocketClient.Connected()
+			nAttempts = 0
+			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+		}()
+
+		go p.webSocketClient.Run(ctx)
+		nAttempts++
+
+		select {
+		case <-ctx.Done():
+			ansi.StopSpinner(s, "", p.cfg.Log.Out)
+			p.cfg.Log.Fatalf("Aborting")
+		case <-p.webSocketClient.NotifyExpired:
+			if nAttempts < maxConnectAttempts {
+				s = ansi.StartSpinner("Session expired, reconnecting...", p.cfg.Log.Out)
+			} else {
+				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+			}
+		}
 	}
-
-	// Create and start the websocket client
-	p.webSocketClient = websocket.NewClient(
-		session.WebSocketURL,
-		session.WebSocketID,
-		session.WebSocketAuthorizedFeature,
-		&websocket.Config{
-			Log:               p.cfg.Log,
-			NoWSS:             p.cfg.NoWSS,
-			ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
-			EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
-		},
-	)
-	go p.webSocketClient.Run(ctx)
-
-	select {
-	case <-p.webSocketClient.Connected():
-		ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
-	case <-ctx.Done():
-		ansi.StopSpinner(s, "", p.cfg.Log.Out)
-		p.cfg.Log.Fatalf("Aborting")
-	}
-
-	// Block until context is done (i.e. Ctrl+C is pressed)
-	<-ctx.Done()
 
 	if p.webSocketClient != nil {
 		p.webSocketClient.Stop()
