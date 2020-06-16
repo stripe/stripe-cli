@@ -83,8 +83,21 @@ type Proxy struct {
 
 	// Events is the supported event types for the command
 	events map[string]bool
+}
 
-	interruptCh chan os.Signal
+func WithSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(ctx)
+
+	interruptCh := make(chan os.Signal, 1)
+	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-interruptCh
+		onCancel()
+		cancel()
+	}()
+	return ctx
 }
 
 // Run sets the websocket connection and starts the Goroutines to forward
@@ -92,20 +105,11 @@ type Proxy struct {
 func (p *Proxy) Run(ctx context.Context) error {
 	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
 
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-	signal.Notify(p.interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-p.interruptCh
-
+	ctx = WithSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
-
-		cancel()
-	}()
-
+	})
 	// Create the CLI session
 	session, err := p.createSession(ctx)
 	if err != nil {
@@ -337,7 +341,6 @@ func New(cfg *Config, events []string) *Proxy {
 			Log:        cfg.Log,
 			APIBaseURL: cfg.APIBaseURL,
 		}),
-		interruptCh: make(chan os.Signal, 1),
 	}
 
 	if len(events) > 0 {
