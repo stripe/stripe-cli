@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -12,6 +13,13 @@ func check(err error) {
 		panic(err)
 	}
 }
+
+type Event struct {
+	Name string
+	Id   int
+}
+
+type RequestComparator func(req1 Event, req2 Event) (accept bool, shortCircuitNow bool)
 
 type VcrRecorder struct {
 	fileHandle os.File
@@ -33,7 +41,7 @@ func NewRecorder(filepath string) (recorder *VcrRecorder, err error) {
 }
 
 // takes a generic struct
-func (recorder *VcrRecorder) Write(req interface{}, resp interface{}) error {
+func (recorder *VcrRecorder) Write(req Event, resp Event) error {
 	bytes, err := json.Marshal(Pair{req, resp})
 
 	if err != nil {
@@ -52,14 +60,16 @@ func (recorder *VcrRecorder) Close() error {
 
 type VcrReplayer struct {
 	fileHandle   *os.File
-	events       []Pair
+	events       []Pair // it'd be *real* nice to use a generic type here. eg: Pair<T, K>
 	historyIndex int
+	comparator   RequestComparator
 }
 
-func NewReplayer(filepath string) (replayer VcrReplayer, err error) {
+func NewReplayer(filepath string, comparator RequestComparator) (replayer VcrReplayer, err error) {
 
 	replayer = VcrReplayer{}
 	replayer.historyIndex = 0
+	replayer.comparator = comparator
 
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -91,32 +101,43 @@ func NewReplayer(filepath string) (replayer VcrReplayer, err error) {
 
 }
 
-func (replayer *VcrReplayer) Write(req interface{}) interface{} {
-	if replayer.historyIndex == len(replayer.events) {
-		return nil
+func (replayer *VcrReplayer) Write(req Event) (resp Event, err error) {
+	if len(replayer.events) == 0 {
+		return Event{}, errors.New("Nothing left in cassette to replay.")
 	}
-	savedRequest := replayer.events[replayer.historyIndex].First
-	savedResponse := replayer.events[replayer.historyIndex].Second
 
-	// TODO: can check req vs saved req here
-	fmt.Printf("Received %s vs recored %s\n", req, savedRequest)
+	var lastAccepted Event
+	acceptedIdx := -1
 
-	replayer.historyIndex++
-	return savedResponse
+	for idx, val := range replayer.events {
+		accept, shortCircuit := replayer.comparator(val.First, req)
+
+		if accept {
+			lastAccepted = val.Second
+			acceptedIdx = idx
+		}
+
+		if shortCircuit {
+			break
+		}
+	}
+
+	if acceptedIdx != -1 {
+		// remove the matched event
+		replayer.events = append(replayer.events[:acceptedIdx], replayer.events[acceptedIdx+1:]...)
+		return lastAccepted, nil
+	}
+
+	return Event{}, errors.New("No matching events.")
 }
 
 func (replayer *VcrReplayer) Close() {
 
 }
 
-type Event struct {
-	Name string
-	Id   int
-}
-
 type Pair struct {
-	First  interface{}
-	Second interface{}
+	First  Event
+	Second Event
 }
 
 type BetterEvent struct {
@@ -125,74 +146,40 @@ type BetterEvent struct {
 	Id   int
 }
 
-func testBaseRecorder() {
-	filepath := "test.txt"
-	recorder, err := NewRecorder(filepath)
+// func testBaseRecorder2() {
+// 	filepath := "test.txt"
+// 	recorder, err := NewRecorder(filepath)
 
-	if err != nil {
-		panic(err)
-	}
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	fmt.Println("Recording...")
+// 	fmt.Println("Recording...")
 
-	s1 := Event{Name: "Event 1", Id: 23}
-	r1 := Event{Name: "Response 1", Id: 23}
-	fmt.Printf("%s | %s\n", s1, r1)
-	recorder.Write(s1, r1)
+// 	s1 := Event{Name: "Event 1", Id: 23}
+// 	r1 := Event{Name: "Response 1", Id: 23}
+// 	fmt.Printf("%s | %s\n", s1, r1)
+// 	recorder.Write(s1, r1)
 
-	s2 := Event{Name: "Event 2", Id: 46}
-	r2 := Event{Name: "Event 2", Id: 46}
-	fmt.Printf("%s | %s\n", s2, r2)
-	recorder.Write(s2, r2)
+// 	s2 := Event{Name: "Event 2", Id: 46}
+// 	r2 := Event{Name: "Event 2", Id: 46}
+// 	fmt.Printf("%s | %s\n", s2, r2)
+// 	recorder.Write(s2, r2)
 
-	err = recorder.Close()
+// 	err = recorder.Close()
 
-	if err != nil {
-		panic(err)
-	}
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	replayer, err := NewReplayer(filepath)
+// 	replayer, err := NewReplayer(filepath)
 
-	fmt.Println("Replaying...")
-	fmt.Println(replayer.Write(s1))
-	fmt.Println(replayer.Write(s2))
-}
-
-func testBaseRecorder2() {
-	filepath := "test.txt"
-	recorder, err := NewRecorder(filepath)
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Recording...")
-
-	s1 := Event{Name: "Event 1", Id: 23}
-	r1 := Event{Name: "Response 1", Id: 23}
-	fmt.Printf("%s | %s\n", s1, r1)
-	recorder.Write(s1, r1)
-
-	s2 := Event{Name: "Event 2", Id: 46}
-	r2 := Event{Name: "Event 2", Id: 46}
-	fmt.Printf("%s | %s\n", s2, r2)
-	recorder.Write(s2, r2)
-
-	err = recorder.Close()
-
-	if err != nil {
-		panic(err)
-	}
-
-	replayer, err := NewReplayer(filepath)
-
-	fmt.Println("Replaying...")
-	fmt.Println(replayer.Write(s2))
-	fmt.Println(replayer.Write(s1))
-}
+// 	fmt.Println("Replaying...")
+// 	fmt.Println(replayer.Write(s2))
+// 	fmt.Println(replayer.Write(s1))
+// }
 
 func main() {
-	testBaseRecorder()
 }
 
 /*
