@@ -1,2 +1,2 @@
-{"Name":"Event 1","Id":23}
-{"Name":"Event 2","Id":46}
+{"First":{"Name":"Event 1","Id":23},"Second":{"Name":"Response 1","Id":23}}
+{"First":{"Name":"Event 2","Id":46},"Second":{"Name":"Event 2","Id":46}}
