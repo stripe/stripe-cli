@@ -115,11 +115,12 @@ func (replayer *VcrReplayer) Write(req Event) (resp interface{}, err error) {
 		if accept {
 			lastAccepted = val.Second
 			acceptedIdx = idx
+
+			if shortCircuit {
+				break
+			}
 		}
 
-		if shortCircuit {
-			break
-		}
 	}
 
 	if acceptedIdx != -1 {
@@ -178,9 +179,6 @@ type BetterEvent struct {
 // 	fmt.Println(replayer.Write(s2))
 // 	fmt.Println(replayer.Write(s1))
 // }
-
-func main() {
-}
 
 /*
 	Notes 5pm
