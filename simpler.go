@@ -19,7 +19,7 @@ type Event struct {
 	Id   int
 }
 
-type RequestComparator func(req1 Event, req2 Event) (accept bool, shortCircuitNow bool)
+type RequestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
 type VcrRecorder struct {
 	fileHandle os.File
@@ -41,7 +41,7 @@ func NewRecorder(filepath string) (recorder *VcrRecorder, err error) {
 }
 
 // takes a generic struct
-func (recorder *VcrRecorder) Write(req Event, resp Event) error {
+func (recorder *VcrRecorder) Write(req interface{}, resp interface{}) error {
 	bytes, err := json.Marshal(Pair{req, resp})
 
 	if err != nil {
@@ -101,12 +101,12 @@ func NewReplayer(filepath string, comparator RequestComparator) (replayer VcrRep
 
 }
 
-func (replayer *VcrReplayer) Write(req Event) (resp Event, err error) {
+func (replayer *VcrReplayer) Write(req Event) (resp interface{}, err error) {
 	if len(replayer.events) == 0 {
 		return Event{}, errors.New("Nothing left in cassette to replay.")
 	}
 
-	var lastAccepted Event
+	var lastAccepted interface{}
 	acceptedIdx := -1
 
 	for idx, val := range replayer.events {
@@ -136,8 +136,8 @@ func (replayer *VcrReplayer) Close() {
 }
 
 type Pair struct {
-	First  Event
-	Second Event
+	First  interface{}
+	Second interface{}
 }
 
 type BetterEvent struct {
