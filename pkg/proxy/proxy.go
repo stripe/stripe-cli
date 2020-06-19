@@ -105,7 +105,7 @@ const maxConnectAttempts = 3
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	s := ansi.StartSpinner("Getting ready...", p.cfg.Log.Out)
+	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
 
 	ctx = withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
@@ -149,7 +149,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 			p.cfg.Log.Fatalf("Aborting")
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				s = ansi.StartSpinner("Session expired, reconnecting...", p.cfg.Log.Out)
+				s = ansi.StartNewSpinner("Session expired, reconnecting...", p.cfg.Log.Out)
 			} else {
 				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
 			}

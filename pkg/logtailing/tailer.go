@@ -124,7 +124,7 @@ const maxConnectAttempts = 3
 
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
-	s := ansi.StartSpinner("Getting ready...", t.cfg.Log.Out)
+	s := ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
 
 	ctx = withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
@@ -177,7 +177,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 			t.cfg.Log.Fatalf("Aborting")
 		case <-t.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				s = ansi.StartSpinner("Session expired, reconnecting...", t.cfg.Log.Out)
+				s = ansi.StartNewSpinner("Session expired, reconnecting...", t.cfg.Log.Out)
 			} else {
 				t.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
 			}

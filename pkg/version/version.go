@@ -26,7 +26,7 @@ var Template = fmt.Sprintf("stripe version %s\n", Version)
 func CheckLatestVersion() {
 	// master is the dev version, we don't want to check against that every time
 	if Version != "master" {
-		s := ansi.StartSpinner("Checking for new versions...", os.Stdout)
+		s := ansi.StartNewSpinner("Checking for new versions...", os.Stdout)
 		latest := getLatestVersion()
 
 		ansi.StopSpinner(s, "", os.Stdout)

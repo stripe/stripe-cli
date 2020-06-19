@@ -107,7 +107,7 @@ func Linkify(text, url string, w io.Writer) string {
 
 // StartSpinner starts a spinner with the given message. If the writer doesn't
 // support colors, it simply prints the message.
-func StartSpinner(msg string, w io.Writer) *spinner.Spinner {
+func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
 	if !shouldUseColors(w) {
 		fmt.Fprintln(w, msg)
 		return nil

@@ -84,7 +84,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		return fmt.Errorf("Path already exists for: %s", destination)
 	}
 
-	spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
+	spinner := ansi.StartNewSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
 
 	if cc.forceRefresh {
 		err := sample.DeleteCache(selectedSample)
@@ -145,7 +145,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		os.Exit(1)
 	}()
 
-	spinner = ansi.StartSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
+	spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
@@ -164,7 +164,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	ansi.StopSpinner(spinner, "", os.Stdout)
 	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Files copied"))
 
-	spinner = ansi.StartSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
+	spinner = ansi.StartNewSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
 
 	err = sample.ConfigureDotEnv(targetPath)
 	if err != nil {
