@@ -177,7 +177,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 			t.cfg.Log.Fatalf("Aborting")
 		case <-t.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				s = ansi.StartNewSpinner("Session expired, reconnecting...", t.cfg.Log.Out)
+				ansi.StartSpinner(s, "Session expired, reconnecting...", t.cfg.Log.Out)
 			} else {
 				t.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
 			}
