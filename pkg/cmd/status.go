@@ -77,7 +77,7 @@ func (sc *statusCmd) runStatusCmd(cmd *cobra.Command, args []string) error {
 		if sc.hideSpinner {
 			time.Sleep(time.Duration(sc.pollRate) * time.Second)
 		} else {
-			spinner := ansi.StartSpinner("", os.Stderr)
+			spinner := ansi.StartNewSpinner("", os.Stderr)
 			time.Sleep(time.Duration(sc.pollRate) * time.Second)
 			ansi.StopSpinner(spinner, "", os.Stderr)
 		}

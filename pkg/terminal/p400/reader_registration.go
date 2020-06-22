@@ -30,7 +30,7 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (string, err
 		return "", err
 	}
 
-	spinner := ansi.StartSpinner("Registering your reader with Stripe...", os.Stdout)
+	spinner := ansi.StartNewSpinner("Registering your reader with Stripe...", os.Stdout)
 
 	IPAddress, err := RegisterReader(regcode, tsCtx)
 
@@ -93,7 +93,7 @@ func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionCon
 
 	tsCtx.IPAddress = IPAddress
 
-	spinner := ansi.StartSpinner("Requesting connection token...", os.Stdout)
+	spinner := ansi.StartNewSpinner("Requesting connection token...", os.Stdout)
 	tsCtx.PstToken, err = GetNewConnectionToken(tsCtx)
 
 	if err != nil {
@@ -102,7 +102,7 @@ func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionCon
 
 	ansi.StopSpinner(spinner, ansi.Faint("Received new connection token"), os.Stdout)
 
-	spinner = ansi.StartSpinner("Connecting to Reader...", os.Stdout)
+	spinner = ansi.StartNewSpinner("Connecting to Reader...", os.Stdout)
 	tsCtx.TransactionContext = SetTransactionContext(tsCtx)
 	tsCtx.SessionToken, err = ActivateTerminalRPCSession(tsCtx)
 

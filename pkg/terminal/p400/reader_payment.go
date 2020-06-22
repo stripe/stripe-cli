@@ -23,7 +23,7 @@ func SetUpTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, err
 		return tsCtx, err
 	}
 
-	spinner := ansi.StartSpinner("Setting reader display...", os.Stdout)
+	spinner := ansi.StartNewSpinner("Setting reader display...", os.Stdout)
 	tsCtx.TransactionID = int(rand.Float64() * 100000)
 	tsCtx.MethodID = int(rand.Float64() * 100000)
 	parentTraceID := SetParentTraceID(tsCtx.TransactionID, tsCtx.MethodID, "setReaderDisplay")
@@ -35,7 +35,7 @@ func SetUpTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, err
 	}
 
 	ansi.StopSpinner(spinner, ansi.Faint("Reader display updated"), os.Stdout)
-	spinner = ansi.StartSpinner("Creating a new Payment Intent...", os.Stdout)
+	spinner = ansi.StartNewSpinner("Creating a new Payment Intent...", os.Stdout)
 
 	tsCtx.PaymentIntentID, err = CreatePaymentIntent(tsCtx)
 
@@ -57,7 +57,7 @@ func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, 
 		return tsCtx, err
 	}
 
-	spinner := ansi.StartSpinner("Tap, swipe or dip your Stripe Test Card in the reader...", os.Stdout)
+	spinner := ansi.StartNewSpinner("Tap, swipe or dip your Stripe Test Card in the reader...", os.Stdout)
 	paymentMethod, err := WaitForPaymentCollection(tsCtx, parentTraceID, 0)
 
 	if err != nil {
@@ -65,7 +65,7 @@ func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, 
 	}
 
 	ansi.StopSpinner(spinner, ansi.Faint("Payment Method collected"), os.Stdout)
-	spinner = ansi.StartSpinner("Confirming payment...", os.Stdout)
+	spinner = ansi.StartNewSpinner("Confirming payment...", os.Stdout)
 	paymentMethodID, err := ConfirmPayment(tsCtx, paymentMethod, parentTraceID)
 
 	if err != nil {
@@ -75,7 +75,7 @@ func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, 
 	ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("Payment confirmed %s", paymentMethodID)), os.Stdout)
 
 	// manually capturing payment intent as required by terminal flow
-	spinner = ansi.StartSpinner("Capturing Payment Intent...", os.Stdout)
+	spinner = ansi.StartNewSpinner("Capturing Payment Intent...", os.Stdout)
 	err = CapturePaymentIntent(tsCtx)
 
 	if err != nil {

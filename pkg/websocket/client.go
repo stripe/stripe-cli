@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -16,10 +17,6 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
-
-//
-// Public constants
-//
 
 //
 // Public types
@@ -46,8 +43,6 @@ type Config struct {
 	WriteWait time.Duration
 
 	EventHandler EventHandler
-
-	Ctx context.Context
 }
 
 // EventHandler handles an event.
@@ -81,9 +76,11 @@ type Client struct {
 	// Optional configuration parameters
 	cfg *Config
 
-	conn          *ws.Conn
-	done          chan struct{}
-	isConnected   bool
+	conn        *ws.Conn
+	done        chan struct{}
+	isConnected bool
+
+	NotifyExpired chan struct{}
 	notifyClose   chan error
 	send          chan *OutgoingMessage
 	stopReadPump  chan struct{}
@@ -107,27 +104,43 @@ func (c *Client) Connected() <-chan struct{} {
 }
 
 // Run starts listening for incoming webhook requests from Stripe.
-func (c *Client) Run() {
+func (c *Client) Run(ctx context.Context) {
 	for {
 		c.isConnected = false
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.client.Run",
 		}).Debug("Attempting to connect to Stripe")
 
-		for !c.connect() {
+		var err error
+		err = c.connect(ctx)
+		for err != nil {
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.client.Run",
 			}).Debug("Failed to connect to Stripe. Retrying...")
 
+			if err == ErrUnknownID {
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.client.Run",
+				}).Debug("Websocket session is expired.")
+				select {
+				case <-ctx.Done():
+					c.Stop()
+					return
+				case <-time.After(c.cfg.ConnectAttemptWait):
+					c.NotifyExpired <- struct{}{}
+					return
+				}
+			}
 			select {
-			case <-c.cfg.Ctx.Done():
-				return
+			case <-ctx.Done():
+				c.Stop()
 			case <-time.After(c.cfg.ConnectAttemptWait):
 			}
+			err = c.connect(ctx)
 		}
 
 		select {
-		case <-c.cfg.Ctx.Done():
+		case <-ctx.Done():
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
@@ -137,6 +150,7 @@ func (c *Client) Run() {
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
+			close(c.NotifyExpired)
 
 			return
 		case <-c.notifyClose:
@@ -172,9 +186,43 @@ func (c *Client) SendMessage(msg *OutgoingMessage) {
 	c.send <- msg
 }
 
+func readWSConnectErrorMessage(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	if resp.Body == nil {
+		return ""
+	}
+
+	se := struct {
+		InnerError struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}{}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return ""
+	}
+
+	err = json.Unmarshal(body, &se)
+	if err != nil {
+		return ""
+	}
+
+	return se.InnerError.Message
+}
+
+var unknownIDMessage string = "Unknown WebSocket ID."
+
+// ErrUnknownID can occur when the websocket session is expired or invalid
+var ErrUnknownID error = errors.New(unknownIDMessage)
+
 // connect makes a single attempt to connect to the websocket URL. It returns
 // the success of the attempt.
-func (c *Client) connect() bool {
+
+func (c *Client) connect(ctx context.Context) error {
 	header := http.Header{}
 	// Disable compression by requiring "identity"
 	header.Set("Accept-Encoding", "identity")
@@ -194,14 +242,18 @@ func (c *Client) connect() bool {
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, resp, err := c.cfg.Dialer.DialContext(c.cfg.Ctx, url, header)
+	conn, resp, err := c.cfg.Dialer.DialContext(ctx, url, header)
 	if err != nil {
+		message := readWSConnectErrorMessage(resp)
 		c.cfg.Log.WithFields(log.Fields{
-			"prefix": "websocket.Client.connect",
-			"error":  err,
+			"prefix":  "websocket.Client.connect",
+			"error":   err,
+			"message": message,
 		}).Debug("Websocket connection error")
-
-		return false
+		if message == unknownIDMessage {
+			return ErrUnknownID
+		}
+		return err
 	}
 
 	defer resp.Body.Close()
@@ -220,7 +272,7 @@ func (c *Client) connect() bool {
 		"prefix": "websocket.client.connect",
 	}).Debug("Connected!")
 
-	return true
+	return err
 }
 
 // changeConnection takes a new connection and recreates the channels.
@@ -429,10 +481,6 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		cfg.EventHandler = nullEventHandler
 	}
 
-	if cfg.Ctx == nil {
-		cfg.Ctx = context.Background()
-	}
-
 	return &Client{
 		URL:                        url,
 		WebSocketID:                webSocketID,
@@ -440,6 +488,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		cfg:                        cfg,
 		done:                       make(chan struct{}),
 		send:                       make(chan *OutgoingMessage),
+		NotifyExpired:              make(chan struct{}),
 	}
 }
 

@@ -101,7 +101,7 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 // TODO: what do we want to name these for it to be easier for users to select?
 // TODO: should we group them by products for easier exploring?
 func (s *Samples) GetSamples(mode string) map[string]*SampleData {
-	spinner := ansi.StartSpinner("Loading...", os.Stdout)
+	spinner := ansi.StartNewSpinner("Loading...", os.Stdout)
 
 	if len(list) != 0 {
 		ansi.StopSpinner(spinner, "", os.Stdout)

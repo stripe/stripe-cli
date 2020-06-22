@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -163,7 +164,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		NoWSS:               lc.noWSS,
 	}, lc.events)
 
-	err = p.Run()
+	err = p.Run(context.Background())
 	if err != nil {
 		return err
 	}

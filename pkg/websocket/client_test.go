@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -61,7 +62,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run()
+	go client.Run(context.Background())
 
 	defer client.Stop()
 
@@ -123,7 +124,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run()
+	go client.Run(context.Background())
 
 	defer client.Stop()
 
@@ -143,4 +144,33 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 	require.Equal(t, "resp_123", rcvMsg.RequestLogID)
 	require.Equal(t, "request_log_event", rcvMsg.Type)
 	require.Equal(t, "{}", rcvMsg.EventPayload)
+}
+
+func TestClientExpiredError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(401)
+		_, err := w.Write([]byte("{\"error\": {\"message\": \"Unknown WebSocket ID.\"}}"))
+		require.NoError(t, err)
+	}))
+
+	defer ts.Close()
+
+	url := "ws" + strings.TrimPrefix(ts.URL, "http")
+
+	client := NewClient(
+		url,
+		"websocket-random-id",
+		"webhook-payloads",
+		&Config{
+			ConnectAttemptWait: 1,
+		},
+	)
+
+	go client.Run(context.Background())
+
+	select {
+	case <-client.NotifyExpired:
+	case <-time.After(500 * time.Millisecond):
+		require.FailNow(t, "Timed out waiting for response from test server")
+	}
 }

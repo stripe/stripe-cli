@@ -6,6 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"context"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -158,7 +160,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		WebSocketFeature: requestLogsWebSocketFeature,
 	})
 
-	err = tailer.Run()
+	err = tailer.Run(context.Background())
 	if err != nil {
 		return err
 	}

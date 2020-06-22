@@ -54,18 +54,18 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	if isSSH() {
 		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
 
-		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 	} else {
 		fmt.Printf("Press Enter to open the browser (^C to quit)")
 		fmt.Fscanln(input)
 
-		s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 
 		err = openBrowser(links.BrowserURL)
 		if err != nil {
 			msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
 			ansi.StopSpinner(s, msg, os.Stdout)
-			s = ansi.StartSpinner("Waiting for confirmation...", os.Stdout)
+			s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 		}
 	}
 
