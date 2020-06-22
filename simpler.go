@@ -1,11 +1,13 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
+	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 func check(err error) {
@@ -14,106 +16,162 @@ func check(err error) {
 	}
 }
 
-type Event struct {
-	Name string
-	Id   int
-}
-
 type RequestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
+type Serializable interface {
+	toBytes() (bytes []byte, err error)
+	fromBytes(bytes *bytes.Buffer) (val interface{}, err error)
+}
+
 type VcrRecorder struct {
-	fileHandle os.File
+	filepath  string
+	requests  [][]byte
+	responses [][]byte
 }
 
 func NewRecorder(filepath string) (recorder *VcrRecorder, err error) {
 	recorder = &VcrRecorder{}
 
-	// open a cassette file for writing
-	fileHandle, err := os.Create(filepath)
+	recorder.filepath = filepath
 
-	if err != nil {
-		return nil, err
-	}
-
-	recorder.fileHandle = *fileHandle
+	recorder.requests = make([][]byte, 0)
+	recorder.responses = make([][]byte, 0)
 
 	return recorder, nil
 }
 
 // takes a generic struct
-func (recorder *VcrRecorder) Write(req interface{}, resp interface{}) error {
-	bytes, err := json.Marshal(Pair{req, resp})
+func (recorder *VcrRecorder) Write(req Serializable, resp Serializable) error {
+	reqBytes, err := req.toBytes()
 
 	if err != nil {
 		return err
 	}
 
-	_, err = recorder.fileHandle.Write(bytes)
-	recorder.fileHandle.Write([]byte("\n"))
+	respBytes, err := resp.toBytes()
+
+	if err != nil {
+		return err
+	}
+
+	recorder.requests = append(recorder.requests, reqBytes)
+	recorder.responses = append(recorder.responses, respBytes)
+
+	// _, err = recorder.fileHandle.Write(reqBytes)
+	// recorder.fileHandle.Write([]byte("\n"))
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	// _, err = recorder.fileHandle.Write(respBytes)
+	// recorder.fileHandle.Write([]byte("\n"))
 
 	return err
 }
 
+type CassettePair struct {
+	// may have other fields like -- sequence number
+	Request  []byte
+	Response []byte
+}
+
+type CassetteYaml struct {
+	Interactions []CassettePair
+}
+
 func (recorder *VcrRecorder) Close() error {
-	return recorder.fileHandle.Close()
+	fmt.Println("Calling recorder.Close()")
+
+	// Write everything to a YAML File
+
+	// Put everything in a wrapping CassetteYaml struct that can be marshalled
+	cassette := CassetteYaml{}
+	interactions := make([]CassettePair, 0)
+
+	for i := 0; i < len(recorder.requests); i++ {
+		pair := CassettePair{}
+		pair.Request = recorder.requests[i]
+		pair.Response = recorder.responses[i]
+
+		interactions = append(interactions, pair)
+	}
+	cassette.Interactions = interactions
+
+	fmt.Printf("%v", cassette)
+	yamlBytes, err := yaml.Marshal(cassette)
+	check(err)
+
+	handle, err := os.Create(recorder.filepath)
+	check(err)
+
+	_, err = handle.Write(yamlBytes)
+	check(err)
+
+	return handle.Close()
+	// return recorder.fileHandle.Close()
 }
 
 type VcrReplayer struct {
 	fileHandle   *os.File
-	events       []Pair // it'd be *real* nice to use a generic type here. eg: Pair<T, K>
 	historyIndex int
 	comparator   RequestComparator
+	cassette     CassetteYaml
+	reqType      Serializable
+	respType     Serializable
 }
 
-func NewReplayer(filepath string, comparator RequestComparator) (replayer VcrReplayer, err error) {
+func NewReplayer(filepath string, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer VcrReplayer, err error) {
 
 	replayer = VcrReplayer{}
 	replayer.historyIndex = 0
 	replayer.comparator = comparator
+	replayer.reqType = reqType
+	replayer.respType = respType
 
-	file, err := os.Open(filepath)
-	if err != nil {
-		return VcrReplayer{}, err
-	}
+	// Read in cassette
+	yamlBytes, err := ioutil.ReadFile(filepath)
+	check(err)
 
-	replayer.fileHandle = file
-
-	scanner := bufio.NewScanner(file)
-	fmt.Println("In NewReplayer")
-
-	lineCount := 0
-	for scanner.Scan() {
-		lineCount++
-	}
-
-	replayer.events = make([]Pair, lineCount)
-	idx := 0
-
-	file.Seek(0, 0)
-	scanner = bufio.NewScanner(file)
-	for scanner.Scan() {
-		bytes := scanner.Bytes()
-		json.Unmarshal(bytes, &replayer.events[idx])
-		idx++
-	}
+	err = yaml.Unmarshal(yamlBytes, &replayer.cassette)
+	check(err)
 
 	return replayer, nil
 
 }
 
-func (replayer *VcrReplayer) Write(req Event) (resp interface{}, err error) {
-	if len(replayer.events) == 0 {
-		return Event{}, errors.New("Nothing left in cassette to replay.")
+func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err error) {
+	if len(replayer.cassette.Interactions) == 0 {
+		return nil, errors.New("Nothing left in cassette to replay.")
 	}
 
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	for idx, val := range replayer.events {
-		accept, shortCircuit := replayer.comparator(val.First, req)
+	// TODO: this should be optimized to do the deserialization from bytes
+	// once per interaction, instead of every time
+	for idx, val := range replayer.cassette.Interactions {
+		// TODO: This deserialization boilerplate is messy - refactor it
+		var b bytes.Buffer
+		b.Write(val.Request)
+		requestStruct, err := replayer.respType.fromBytes(&b)
+
+		if err != nil {
+			return nil, errors.New("Error when deserializing cassette.")
+		}
+
+		accept, shortCircuit := replayer.comparator(requestStruct, req)
 
 		if accept {
-			lastAccepted = val.Second
+			var respBuffer bytes.Buffer
+			respBuffer.Write(val.Response)
+			responseStruct, err := replayer.respType.fromBytes(&respBuffer)
+
+			if err != nil {
+				return nil, errors.New("Error when deserializing cassette.")
+			}
+
+			lastAccepted = responseStruct
 			acceptedIdx = idx
 
 			if shortCircuit {
@@ -125,11 +183,11 @@ func (replayer *VcrReplayer) Write(req Event) (resp interface{}, err error) {
 
 	if acceptedIdx != -1 {
 		// remove the matched event
-		replayer.events = append(replayer.events[:acceptedIdx], replayer.events[acceptedIdx+1:]...)
-		return lastAccepted, nil
+		replayer.cassette.Interactions = append(replayer.cassette.Interactions[:acceptedIdx], replayer.cassette.Interactions[acceptedIdx+1:]...)
+		return &lastAccepted, nil
 	}
 
-	return Event{}, errors.New("No matching events.")
+	return nil, errors.New("No matching events.")
 }
 
 func (replayer *VcrReplayer) Close() {
@@ -146,78 +204,3 @@ type BetterEvent struct {
 	Type string
 	Id   int
 }
-
-// func testBaseRecorder2() {
-// 	filepath := "test.txt"
-// 	recorder, err := NewRecorder(filepath)
-
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	fmt.Println("Recording...")
-
-// 	s1 := Event{Name: "Event 1", Id: 23}
-// 	r1 := Event{Name: "Response 1", Id: 23}
-// 	fmt.Printf("%s | %s\n", s1, r1)
-// 	recorder.Write(s1, r1)
-
-// 	s2 := Event{Name: "Event 2", Id: 46}
-// 	r2 := Event{Name: "Event 2", Id: 46}
-// 	fmt.Printf("%s | %s\n", s2, r2)
-// 	recorder.Write(s2, r2)
-
-// 	err = recorder.Close()
-
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	replayer, err := NewReplayer(filepath)
-
-// 	fmt.Println("Replaying...")
-// 	fmt.Println(replayer.Write(s2))
-// 	fmt.Println(replayer.Write(s1))
-// }
-
-/*
-	Notes 5pm
-	- could we do configurable matching?
-		func compare(req1, req2) bool {...}
-	- what should happen if you do something that is different than is recorded?
-	- can we not impose the sequential constraint? -- aka otherways of advancing/matching
-		- where we can re-order and still work (eg: match names) <<<<<< write a test for this
-	- ^^^
-	- have the structs always have a comprable / idetnity function
-
-	if we can support all of the below behaviors by taking in a matchign/comrpable function and applying it in some way... then its a good sign for our abstraction
-	- always return the responses in sequence
-	- return responses in sequence so long as they "match", if they don't match, throw an error
-	- take requests in, and return the first response that "matches", if it exists, throw an error
-	- take requests in, and return the last response that "matches", if it exists, throw an error
-
-	also think about templating with an eye towards dealing with the fake id issues we heard about
-
-	make use of automated test cases that run automatically
-
-
-
-*/
-
-// Test: VCRRecoder VCRReplayer
-/*
-
-try to write a test case
-
-// recorder.Write('a' -> 'A')
-// recorder.Write('b')
-// recorder.Write('c')
-// buf := recorder.Close()
-//
-// replayer.Open(buf)
-// resp := replayer.Write('a')
-//
-
-
-
-*/

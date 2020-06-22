@@ -1,12 +1,28 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type Event struct {
+	Name string
+	Id   int
+}
+
+func (e Event) toBytes() (bytes []byte, err error) {
+	return json.Marshal(e)
+}
+
+func (e Event) fromBytes(bytes *bytes.Buffer) (val interface{}, err error) {
+	out := Event{}
+	err = json.Unmarshal(bytes.Bytes(), &out)
+	return out, err
+}
 
 func toEvent(input interface{}) Event {
 	// TODO: why does the line not work?
@@ -20,13 +36,27 @@ func toEvent(input interface{}) Event {
 	return cast1
 }
 
+func TestSerializableEventInterface(t *testing.T) {
+	event := Event{"John", 1}
+
+	rawBytes, err := event.toBytes()
+	check(err)
+
+	var b bytes.Buffer
+	b.Write(rawBytes)
+	newEvent, err := event.fromBytes(&b)
+	check(err)
+	assert.Equal(t, event, newEvent)
+
+}
+
 func TestSequentialPlayback(t *testing.T) {
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
 
 	// --- Set up recording
-	filepath := "test.txt"
+	filepath := "testSeq.yaml"
 	recorder, err := NewRecorder(filepath)
 
 	if err != nil {
@@ -36,12 +66,12 @@ func TestSequentialPlayback(t *testing.T) {
 	// --- Record
 	fmt.Println("Recording...")
 
-	s1 := Event{Name: "Event 1", Id: 23}
+	s1 := Event{Name: "Request 1", Id: 23}
 	r1 := Event{Name: "Response 1", Id: 23}
 	fmt.Printf("%+v | %+v\n", s1, r1)
 	recorder.Write(s1, r1)
 
-	s2 := Event{Name: "Event 2", Id: 46}
+	s2 := Event{Name: "Request 2", Id: 46}
 	r2 := Event{Name: "Response 2", Id: 46}
 	fmt.Printf("%+v | %+v\n", s2, r2)
 	recorder.Write(s2, r2)
@@ -53,23 +83,22 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	// --- Load cassette and replay: matching on sequence
-	replayer, err := NewReplayer(filepath, sequentialComparator)
+	replayer, err := NewReplayer(filepath, Event{}, Event{}, sequentialComparator)
 
 	fmt.Println("Replaying...")
 	// feed the requests in *backwards* order, but responses come back in original order
 	replayedResp1, err1 := replayer.Write(s2)
 	replayedResp2, err2 := replayer.Write(s1)
 
-	castResp1 := toEvent(replayedResp1)
-	castResp2 := toEvent(replayedResp2)
+	castResp1 := (*replayedResp1).(Event)
+	castResp2 := (*replayedResp2).(Event)
 
 	if err1 != nil {
 		fmt.Println(err1)
 	} else {
 		fmt.Println(replayedResp1)
 	}
-	assert.Equal(t, castResp1.Name, r1.Name)
-	assert.Equal(t, castResp1.Id, r1.Id)
+	assert.Equal(t, r1, castResp1)
 
 	if err2 != nil {
 		fmt.Println(err2)
@@ -77,8 +106,7 @@ func TestSequentialPlayback(t *testing.T) {
 		fmt.Println(castResp2)
 	}
 
-	assert.Equal(t, castResp2.Name, r2.Name)
-	assert.Equal(t, castResp2.Id, r2.Id)
+	assert.Equal(t, r2, castResp2)
 }
 
 func TestFirstMatchingEvent(t *testing.T) {
@@ -118,7 +146,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	// --- Replay - returning the first match
-	replayer, err := NewReplayer(filepath, firstMatchingComparator)
+	replayer, err := NewReplayer(filepath, Event{}, Event{}, firstMatchingComparator)
 
 	fmt.Println("Replaying...")
 
@@ -130,8 +158,8 @@ func TestFirstMatchingEvent(t *testing.T) {
 	replayedResp2, err2 := replayer.Write(s2)
 	replayedResp1, err1 := replayer.Write(s1)
 
-	castResp1 := toEvent(replayedResp1)
-	castResp2 := toEvent(replayedResp2)
+	castResp1 := (*replayedResp1).(Event)
+	castResp2 := (*replayedResp2).(Event)
 
 	assert.NoError(t, err2)
 	assert.NoError(t, err1)
@@ -180,12 +208,12 @@ func TestLastMatchingEvent(t *testing.T) {
 		panic(err)
 	}
 
-	replayer, err := NewReplayer(filepath, lastMatchingComparator)
+	replayer, err := NewReplayer(filepath, Event{}, Event{}, lastMatchingComparator)
 
 	fmt.Println("Replaying...")
 	fmt.Println("Should return last matching event to \"Event 1\"")
 	respA, errA := replayer.Write(s1)
-	castA := toEvent(respA)
+	castA := (*respA).(Event)
 
 	check(errA)
 	assert.Equal(t, castA.Name, r2.Name)
@@ -193,21 +221,14 @@ func TestLastMatchingEvent(t *testing.T) {
 
 	fmt.Println("Should match the single \"Event 3\"")
 	respB, errB := replayer.Write(s3)
-	castB := toEvent(respB)
+	castB := (*respB).(Event)
 	check(errB)
-	assert.Equal(t, castB.Name, r3.Name)
-	assert.Equal(t, castB.Id, r3.Id)
+	assert.Equal(t, r3, castB)
 
 	fmt.Println("Should return first matching event to \"Event 1\" - since the last one was removed")
 	respC, errC := replayer.Write(s1)
 	castC := toEvent(respC)
 	check(errC)
-	assert.Equal(t, castC.Name, r1.Name)
-	assert.Equal(t, castC.Id, r1.Id)
-	// TODO: fix this
-	// replayedResp1 = replayedResp1.(Event)
-	// replayedResp2 = replayedResp2.(Event)
+	assert.Equal(t, r1, castC)
 
-	// assert.Equal(t, replayedResp1, r1)
-	// assert.Equal(t, replayedResp2, r2)
 }
