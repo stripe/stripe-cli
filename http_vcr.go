@@ -10,14 +10,37 @@ import (
 
 type HttpVcr struct {
 	recorder   *VcrRecorder
+	replayer   *VcrReplayer
 	recordMode bool
 }
 
 func NewHttpVcr(filepath string, recordMode bool) (vcr HttpVcr, err error) {
 	vcr = HttpVcr{}
-	recorder, err := NewRecorder(filepath)
 
-	vcr.recorder = recorder
+	if recordMode {
+		// delete file if exists
+		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
+			err = os.Remove(filepath)
+			check(err)
+		}
+
+		recorder, e := NewRecorder(filepath)
+		vcr.recorder = recorder
+		err = e
+	} else {
+		// delete file if exists
+		if _, err := os.Stat(filepath); os.IsNotExist(err) {
+			return vcr, err
+		}
+
+		sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
+			return true, true
+		}
+
+		replayer, e := NewReplayer(filepath, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
+		vcr.replayer = replayer
+		err = e
+	}
 
 	vcr.recordMode = recordMode
 	return vcr, err
@@ -29,10 +52,10 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	var resp *http.Response
 	var err error
 	if httpVcr.recordMode {
-		resp, err = getResponseFromRemote(r)
+		resp, err = httpVcr.getResponseFromRemote(r)
 		check(err)
 	} else {
-		resp, err = getNextRecordedCassetteResponse(r)
+		resp, err = httpVcr.getNextRecordedCassetteResponse(r)
 		check(err)
 	}
 	defer resp.Body.Close() // we need to close the body
@@ -59,29 +82,46 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "hello")
 
 	fmt.Println("EXITING AAAA")
-	httpVcr.recorder.Close() // TODO: figure out how to get recoder.Close to run
-	os.Exit(0)
+	// httpVcr.recorder.Close() // TODO: figure out how to get recoder.Close to run
+	// os.Exit(0)
 }
 
-func (httpVcr *HttpVcr) StartServer(address string) {
-	http.HandleFunc("/", httpVcr.handler)
-	defer httpVcr.recorder.Close()
-	log.Fatal(http.ListenAndServe(address, nil))
+func (httpVcr *HttpVcr) InitializeServer(address string) *http.Server {
+	customMux := http.NewServeMux()
+	server := &http.Server{Addr: address, Handler: customMux}
+
+	// --- VCR control handlers
+	// TODO: only stops recording, does not shutdown the server
+	customMux.HandleFunc("/vcr/stop", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println()
+		fmt.Println("Received /vcr/stop. Stopping...")
+
+		httpVcr.recorder.Close()
+	})
+
+	// --- Default VCR catch-all handler
+	customMux.HandleFunc("/", httpVcr.handler)
+
+	return server
 }
 func main() {
-	filepath := "test1.txt"
-	addressString := ":8080"
-	httpVcr, err := NewHttpVcr(filepath, true)
+	filepath := "main_result.yaml"
+	addressString := "localhost:8080"
+	recordMode := false
+
+	httpVcr, err := NewHttpVcr(filepath, recordMode)
 	check(err)
 
 	fmt.Println()
 	fmt.Printf("Writing to %v and listening on %v", filepath, addressString)
 	fmt.Println()
 
-	httpVcr.StartServer(addressString)
+	server := httpVcr.InitializeServer(addressString)
+
+	log.Fatal(server.ListenAndServe())
 }
 
-func getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
+func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
 	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
 	res, err := http.Get("http://gobyexample.com")
 
@@ -98,7 +138,12 @@ func getResponseFromRemote(request *http.Request) (resp *http.Response, err erro
 }
 
 // returns error if something doesn't match the cassette
-func getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
+func (httpVcr *HttpVcr) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
 	// the passed in request arg may not be necessary
-	return nil, nil
+
+	responseWrapper, err := httpVcr.replayer.Write(NewSerializableHttpRequest(request))
+	check(err)
+	response := (*responseWrapper).(*http.Response)
+
+	return response, err
 }

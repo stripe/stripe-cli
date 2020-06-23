@@ -98,7 +98,6 @@ func (recorder *VcrRecorder) Close() error {
 	}
 	cassette.Interactions = interactions
 
-	fmt.Printf("%v", cassette)
 	yamlBytes, err := yaml.Marshal(cassette)
 	check(err)
 
@@ -121,9 +120,9 @@ type VcrReplayer struct {
 	respType     Serializable
 }
 
-func NewReplayer(filepath string, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer VcrReplayer, err error) {
+func NewReplayer(filepath string, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer *VcrReplayer, err error) {
 
-	replayer = VcrReplayer{}
+	replayer = &VcrReplayer{}
 	replayer.historyIndex = 0
 	replayer.comparator = comparator
 	replayer.reqType = reqType
@@ -154,10 +153,10 @@ func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err err
 		// TODO: This deserialization boilerplate is messy - refactor it
 		var b bytes.Buffer
 		b.Write(val.Request)
-		requestStruct, err := replayer.respType.fromBytes(&b)
+		requestStruct, err := replayer.reqType.fromBytes(&b)
 
 		if err != nil {
-			return nil, errors.New("Error when deserializing cassette.")
+			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
 		}
 
 		accept, shortCircuit := replayer.comparator(requestStruct, req)
