@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -60,6 +62,17 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close() // we need to close the body
 
+	// take response and write the httpResponse
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	check(err)
+
+	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
+
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	if httpVcr.recordMode {
 		err = httpVcr.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
 		check(err)
@@ -74,14 +87,6 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	// 	panic(err)
 	// }
 
-	// take response and write the httpResponse
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
-	io.Copy(w, resp.Body)
-
-	fmt.Fprintf(w, "hello")
-
-	fmt.Println("EXITING AAAA")
 	// httpVcr.recorder.Close() // TODO: figure out how to get recoder.Close to run
 	// os.Exit(0)
 }
