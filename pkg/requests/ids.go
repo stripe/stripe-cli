@@ -27,6 +27,7 @@ var idURLMap = map[string]string{
 	"plan":  "/v1/plans/",
 	"pm":    "/v1/payment_methods/",
 	"po":    "/v1/payouts/",
+	"price": "/v1/prices/",
 	"prod":  "/v1/products/",
 	"prv":   "/v1/reviews/",
 	"py":    "/v1/charges/",
