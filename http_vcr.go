@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 )
 
 type HttpVcr struct {
@@ -49,6 +50,7 @@ func NewHttpVcr(filepath string, recordMode bool) (vcr HttpVcr, err error) {
 }
 
 func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
 	// --- pass to VCR, get response back
 	var resp *http.Response
@@ -56,9 +58,11 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	if httpVcr.recordMode {
 		resp, err = httpVcr.getResponseFromRemote(r)
 		check(err)
+		fmt.Printf("\n<-- %v from %v", resp.Status, "REMOTE")
 	} else {
 		resp, err = httpVcr.getNextRecordedCassetteResponse(r)
 		check(err)
+		fmt.Printf("\n<-- %v from %v", resp.Status, "CASSETTE")
 	}
 	defer resp.Body.Close() // we need to close the body
 
@@ -109,32 +113,69 @@ func (httpVcr *HttpVcr) InitializeServer(address string) *http.Server {
 
 	return server
 }
+
+// TODO: currently has issues - do manually for now
+func generateSelfSignedCertificates() error {
+	gorootPath := os.Getenv("GOROOT")
+	fmt.Println("GOROOT: ", gorootPath)
+	certGenerationScript := gorootPath + "/src/crypto/tls/generate_cert.go"
+	rsaBits := "2048"
+	host := "localhost, 127.0.0.1"
+	startDate := "Jan 1 00:00:00 1970"
+	duration := "--duration=100000h"
+
+	cmd := exec.Command("go", "run", certGenerationScript, "--rsa-bits", rsaBits, "--host", host, "--ca", "--start-date", startDate, duration)
+	// cmd := exec.Command("go env")
+	// cmd := exec.Command("ls")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("generating certs failed: %w", err)
+	} else {
+		return nil
+	}
+}
+
 func main() {
 	filepath := "main_result.yaml"
 	addressString := "localhost:8080"
 	recordMode := false
+	useHttps := true
 
 	httpVcr, err := NewHttpVcr(filepath, recordMode)
 	check(err)
 
 	fmt.Println()
-	fmt.Printf("Writing to %v and listening on %v", filepath, addressString)
+	fmt.Printf("===\nUsing cassette \"%v\".\nListening on %v\nUsing [HTTPS: %v]\nRecordMode: %v\n===", filepath, addressString, useHttps, recordMode)
+
 	fmt.Println()
 
 	server := httpVcr.InitializeServer(addressString)
 
-	log.Fatal(server.ListenAndServe())
+	if useHttps {
+		log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
+	} else {
+		log.Fatal(server.ListenAndServe())
+	}
 }
 
 func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
 	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
-	res, err := http.Get("http://gobyexample.com")
+	remoteUrl := "https://api.stripe.com"
+	// We need to pass on the entire request (or at least the Authorization part of the header)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(request.Method, remoteUrl+request.RequestURI, nil)
+	req.Header.Add("Authorization", request.Header.Get("Authorization"))
+
+	res, err := client.Do(req)
+	// res, err := http.Get(remoteUrl + request.URL.RequestURI())
 
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("%s", res.Body)
 
 	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
 	// defer res.Body.Close()
