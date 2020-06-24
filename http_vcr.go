@@ -15,9 +15,10 @@ type HttpVcr struct {
 	recorder   *VcrRecorder
 	replayer   *VcrReplayer
 	recordMode bool
+	remoteURL  string // base URL of remote without trailing `/`
 }
 
-func NewHttpVcr(filepath string, recordMode bool) (vcr HttpVcr, err error) {
+func NewHttpVcr(filepath string, recordMode bool, remoteURL string) (vcr HttpVcr, err error) {
 	vcr = HttpVcr{}
 
 	if recordMode {
@@ -46,6 +47,7 @@ func NewHttpVcr(filepath string, recordMode bool) (vcr HttpVcr, err error) {
 	}
 
 	vcr.recordMode = recordMode
+	vcr.remoteURL = remoteURL
 	return vcr, err
 }
 
@@ -58,18 +60,20 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	if httpVcr.recordMode {
 		resp, err = httpVcr.getResponseFromRemote(r)
 		check(err)
-		fmt.Printf("\n<-- %v from %v", resp.Status, "REMOTE")
+		fmt.Printf("\n<-- %v from %v\n", resp.Status, "REMOTE")
 	} else {
 		resp, err = httpVcr.getNextRecordedCassetteResponse(r)
 		check(err)
-		fmt.Printf("\n<-- %v from %v", resp.Status, "CASSETTE")
+		fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
 	}
 	defer resp.Body.Close() // we need to close the body
 
 	// take response and write the httpResponse
+	// TODO: this is kind of a piecemeal way to transfer data from the proxied response
+	// 		 Is there a way to copy and return the entire proxied response? (and not worry about missing a field)
+	w.WriteHeader(resp.StatusCode)
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
-
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	check(err)
 
@@ -141,33 +145,29 @@ func generateSelfSignedCertificates() error {
 func main() {
 	filepath := "main_result.yaml"
 	addressString := "localhost:8080"
-	recordMode := false
-	useHttps := true
+	recordMode := true
+	remoteURL := "https://api.stripe.com"
+	// remoteURL := "https://gobyexample.com"
 
-	httpVcr, err := NewHttpVcr(filepath, recordMode)
+	httpVcr, err := NewHttpVcr(filepath, recordMode, remoteURL)
 	check(err)
 
 	fmt.Println()
-	fmt.Printf("===\nUsing cassette \"%v\".\nListening on %v\nUsing [HTTPS: %v]\nRecordMode: %v\n===", filepath, addressString, useHttps, recordMode)
+	fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTPS on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
 
 	fmt.Println()
 
 	server := httpVcr.InitializeServer(addressString)
 
-	if useHttps {
-		log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
-	} else {
-		log.Fatal(server.ListenAndServe())
-	}
+	log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
 }
 
 func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
 	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
-	remoteUrl := "https://api.stripe.com"
 	// We need to pass on the entire request (or at least the Authorization part of the header)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(request.Method, remoteUrl+request.RequestURI, nil)
+	req, err := http.NewRequest(request.Method, httpVcr.remoteURL+request.RequestURI, nil)
 	req.Header.Add("Authorization", request.Header.Get("Authorization"))
 
 	res, err := client.Do(req)
