@@ -16,6 +16,8 @@ import (
 type FixturesCmd struct {
 	Cmd *cobra.Command
 	Cfg *config.Config
+
+	stripeAccount string
 }
 
 func newFixturesCmd(cfg *config.Config) *FixturesCmd {
@@ -30,6 +32,8 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 		Long:  `Run fixtures to populate your account with data`,
 		RunE:  fixturesCmd.runFixturesCmd,
 	}
+
+	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 
 	return fixturesCmd
 }
@@ -49,6 +53,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 	fixture, err := fixtures.NewFixture(
 		afero.NewOsFs(),
 		apiKey,
+		fc.stripeAccount,
 		stripe.DefaultAPIBaseURL,
 		args[0],
 	)

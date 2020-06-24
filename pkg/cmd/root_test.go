@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"path/filepath"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
@@ -27,7 +28,7 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 func TestGetPathNoXDG(t *testing.T) {
 	actual := Config.GetConfigFolder("")
 	expected, err := homedir.Dir()
-	expected += "/.config/stripe"
+	expected += filepath.Join("/", ".config", "stripe")
 
 	require.NoError(t, err)
 	require.Equal(t, actual, expected)
@@ -35,7 +36,7 @@ func TestGetPathNoXDG(t *testing.T) {
 
 func TestGetPathXDG(t *testing.T) {
 	actual := Config.GetConfigFolder("/some/xdg/path")
-	expected := "/some/xdg/path/stripe"
+	expected := filepath.Join("/", "some", "xdg", "path", "stripe")
 
 	require.Equal(t, actual, expected)
 }
@@ -47,4 +48,23 @@ func TestHelpFlag(t *testing.T) {
 
 	require.Contains(t, output, "Stripe commands:")
 	require.NoError(t, err)
+}
+
+func TestExampleCommands(t *testing.T) {
+	{
+		_, err := executeCommand(rootCmd, "foo")
+		require.Equal(t, err.Error(), "unknown command \"foo\" for \"stripe\"")
+	}
+	{
+		_, err := executeCommand(rootCmd, "listen", "foo")
+		require.Equal(t, err.Error(), "`stripe listen` does not take any positional arguments. See `stripe listen --help` for supported flags and usage")
+	}
+	{
+		_, err := executeCommand(rootCmd, "post")
+		require.Equal(t, err.Error(), "`stripe post` requires exactly 1 positional argument. See `stripe post --help` for supported flags and usage")
+	}
+	{
+		_, err := executeCommand(rootCmd, "samples", "create", "foo", "foo", "foo")
+		require.Equal(t, err.Error(), "`stripe samples create` accepts at maximum 2 positional arguments. See `stripe samples create --help` for supported flags and usage")
+	}
 }

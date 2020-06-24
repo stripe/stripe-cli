@@ -15,11 +15,23 @@
           {
             "name": "t-shirt",
             "description": "comfortable cotton t-shirt",
-            "amount": "1500",
+            "amount": 1500,
             "currency": "usd",
             "quantity": 2
           }
-        ]
+        ],
+        "payment_intent_data": {
+          "shipping": {
+            "name": "Jenny Rosen",
+            "address": {
+              "line1": "510 Townsend St",
+              "postal_code": "94103",
+              "city": "San Francisco",
+              "state": "CA",
+              "country": "US"
+            }
+          }
+        }
       }
     },
     {

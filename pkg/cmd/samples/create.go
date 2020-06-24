@@ -35,10 +35,9 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 		forceRefresh: false,
 	}
 	createCmd.Cmd = &cobra.Command{
-		Use:       "create <sample> [destination]",
-		ValidArgs: samples.Names(),
-		Args:      validators.MaximumNArgs(2),
-		Short:     "Setup and bootstrap a Stripe Sample",
+		Use:   "create <sample> [destination]",
+		Args:  validators.MaximumNArgs(2),
+		Short: "Setup and bootstrap a Stripe Sample",
 		Long: `The create command will locally clone a sample, let you select which integration,
 client, and server you want to run. It then automatically bootstraps the
 local configuration to let you get started faster.`,
@@ -60,17 +59,18 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	if _, ok := samples.List[args[0]]; !ok {
-		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
-To see supported samples, run 'stripe samples list'`, args[0])
-		return fmt.Errorf(errorMessage)
-	}
-
 	sample := samples.Samples{
 		Config: cc.cfg,
 		Fs:     afero.NewOsFs(),
 		Git:    gitpkg.Operations{},
 	}
+
+	if _, ok := sample.GetSamples("create")[args[0]]; !ok {
+		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
+To see supported samples, run 'stripe samples list'`, args[0])
+		return fmt.Errorf(errorMessage)
+	}
+
 	selectedSample := args[0]
 	color := ansi.Color(os.Stdout)
 
@@ -84,7 +84,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		return fmt.Errorf("Path already exists for: %s", destination)
 	}
 
-	spinner := ansi.StartSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
+	spinner := ansi.StartNewSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
 
 	if cc.forceRefresh {
 		err := sample.DeleteCache(selectedSample)
@@ -124,7 +124,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Finished downloading")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Finished downloading"))
 
 	// Once we've initialized the sample in the local cache
 	// directory, the user needs to select which integration they
@@ -145,7 +145,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		os.Exit(1)
 	}()
 
-	spinner = ansi.StartSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
+	spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
@@ -162,9 +162,9 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Files copied")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Files copied"))
 
-	spinner = ansi.StartSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
+	spinner = ansi.StartNewSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
 
 	err = sample.ConfigureDotEnv(targetPath)
 	if err != nil {
@@ -172,7 +172,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Println(fmt.Sprintf("%s %s", color.Green("✔"), ansi.Faint("Project configured")))
+	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Project configured"))
 	fmt.Println("You're all set. To get started: cd", selectedSample)
 
 	if sample.PostInstall() != "" {

@@ -7,6 +7,11 @@ set -e
 REPO="stripe-cli-rpm"
 PACKAGE="stripe"
 
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "GITHUB_TOKEN is not set"
+  exit 1
+fi
+
 if [ -z "$BINTRAY_USER" ]; then
   echo "BINTRAY_USER is not set"
   exit 1
@@ -18,7 +23,7 @@ if [ -z "$BINTRAY_API_KEY" ]; then
 fi
 
 setVersion () {
-  VERSION=$(curl --silent "https://api.github.com/repos/stripe/stripe-cli/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/');
+  VERSION=$(curl --silent "https://api.github.com/repos/stripe/stripe-cli/releases/latest" -u $GITHUB_TOKEN: | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/');
 }
 
 setUploadDirPath () {
@@ -27,7 +32,7 @@ setUploadDirPath () {
 
 downloadRpmArtifacts() {
   echo "Dowloading rpm artifacts"
-  FILES=$(curl -s https://api.github.com/repos/stripe/stripe-cli/releases/latest \
+  FILES=$(curl -s https://api.github.com/repos/stripe/stripe-cli/releases/latest -u $GITHUB_TOKEN: \
 | grep "browser_download_url.*rpm" \
 | cut -d : -f 3 \
 | sed -e 's/^/https:/' \

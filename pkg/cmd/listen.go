@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -96,7 +97,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	for _, event := range lc.events {
 		if _, found := validEvents[event]; !found {
-			fmt.Println(fmt.Sprintf("Warning: You're attempting to listen for \"%s\", which isn't a valid event", event))
+			fmt.Printf("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
 		}
 	}
 
@@ -163,7 +164,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		NoWSS:               lc.noWSS,
 	}, lc.events)
 
-	err = p.Run()
+	err = p.Run(context.Background())
 	if err != nil {
 		return err
 	}

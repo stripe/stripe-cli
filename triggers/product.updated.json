@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+        "name": "myproduct",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "product_updated",
+      "path": "/v1/products/${product:id}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}

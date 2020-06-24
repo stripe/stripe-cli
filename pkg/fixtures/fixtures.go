@@ -42,22 +42,30 @@ type fixture struct {
 	Params interface{} `json:"params"`
 }
 
+type fixtureQuery struct {
+	Name         string
+	Query        string
+	DefaultValue string
+}
+
 // Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
-	Fs        afero.Fs
-	APIKey    string
-	BaseURL   string
-	responses map[string]*gojsonq.JSONQ
-	fixture   fixtureFile
+	Fs            afero.Fs
+	APIKey        string
+	StripeAccount string
+	BaseURL       string
+	responses     map[string]*gojsonq.JSONQ
+	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixture, error) {
 	fxt := Fixture{
-		Fs:        fs,
-		APIKey:    apiKey,
-		BaseURL:   baseURL,
-		responses: make(map[string]*gojsonq.JSONQ),
+		Fs:            fs,
+		APIKey:        apiKey,
+		StripeAccount: stripeAccount,
+		BaseURL:       baseURL,
+		responses:     make(map[string]*gojsonq.JSONQ),
 	}
 
 	var filedata []byte
@@ -97,7 +105,7 @@ func NewFixture(fs afero.Fs, apiKey, baseURL, file string) (*Fixture, error) {
 // defined to populate the user's account
 func (fxt *Fixture) Execute() error {
 	for _, data := range fxt.fixture.Fixtures {
-		fmt.Println(fmt.Sprintf("Setting up fixture for: %s", data.Name))
+		fmt.Printf("Setting up fixture for: %s\n", data.Name)
 
 		resp, err := fxt.makeRequest(data)
 		if err != nil {
@@ -142,8 +150,7 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 }
 
 func (fxt *Fixture) parsePath(http fixture) string {
-	r := regexp.MustCompile(`(\${[\w-]+:[\w-\.]+})`)
-	if r.Match([]byte(http.Path)) {
+	if r, containsQuery := matchFixtureQuery(http.Path); containsQuery {
 		var newPath []string
 
 		matches := r.FindAllStringSubmatch(http.Path, -1)
@@ -169,6 +176,8 @@ func (fxt *Fixture) parsePath(http fixture) string {
 func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters {
 	requestParams := requests.RequestParameters{}
 	requestParams.AppendData(fxt.parseInterface(params))
+
+	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	return &requestParams
 }
@@ -264,19 +273,48 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 }
 
 func (fxt *Fixture) parseQuery(value string) string {
-	// Queries to fill data will start with #$ and contain a : -- search for both
-	// to make sure that we're trying to parse a query
-	r := regexp.MustCompile(`\${(.+):(.+)}`)
-	if r.Match([]byte(value)) {
-		nameAndQuery := r.FindStringSubmatch(value)
-		name := nameAndQuery[1]
+	if query, isQuery := toFixtureQuery(value); isQuery {
+		name := query.Name
+
+		// Check if there is a default value specified
+		if query.DefaultValue != "" {
+			value = query.DefaultValue
+		}
+
+		// Catch and insert .env values
+		if name == ".env" {
+			key := query.Query
+			// Check if env variable is present
+			envValue := os.Getenv(key)
+			if envValue == "" {
+				// Try to load from .env file
+				dir, err := os.Getwd()
+				if err != nil {
+					dir = ""
+				}
+				err = godotenv.Load(path.Join(dir, ".env"))
+				if err != nil {
+					return value
+				}
+				envValue = os.Getenv(key)
+			}
+			if envValue == "" {
+				fmt.Printf("No value for env var: %s\n", key)
+				return value
+			}
+			return envValue
+		}
 
 		// Reset just in case someone else called a query here
 		fxt.responses[name].Reset()
 
-		query := nameAndQuery[2]
-
-		return fxt.responses[name].Find(query).(string)
+		query := query.Query
+		findResult, err := fxt.responses[name].FindR(query)
+		if err != nil {
+			return value
+		}
+		findResultString, _ := findResult.String()
+		return findResultString
 	}
 
 	return value
@@ -318,4 +356,35 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	afero.WriteFile(fxt.Fs, envFile, []byte(content), os.ModePerm)
 
 	return nil
+}
+
+// toFixtureQuery will parse a string into a fixtureQuery struct, additionally
+// returning a bool indicating the value did contain a fixtureQuery.
+func toFixtureQuery(value string) (fixtureQuery, bool) {
+	var query fixtureQuery
+	isQuery := false
+
+	if r, didMatch := matchFixtureQuery(value); didMatch {
+		isQuery = true
+		match := r.FindStringSubmatch(value)
+		query = fixtureQuery{Name: match[1], Query: match[2], DefaultValue: match[3]}
+	}
+
+	return query, isQuery
+}
+
+// matchQuery will attempt to find matches for a fixture query pattern
+// returning a *Regexp which can be used to further parse and a boolean
+// indicating a match was found.
+func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
+	// Queries will start with `${` and end with `}`. The `:` is a
+	// separator for `name:json_path`. Additionally, default value will
+	// be specified after the `|`.
+	// example: ${name:json_path|default_value}
+	r := regexp.MustCompile(`\${([^\|}]+):([^\|}]+)\|?([^/\n]+)?}`)
+	if r.Match([]byte(value)) {
+		return r, true
+	}
+
+	return nil, false
 }

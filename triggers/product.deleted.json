@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+        "name": "myproduct",
+        "description": "(created by Stripe CLI)t"
+      }
+    },
+    {
+      "name": "product_deleted",
+      "path": "/v1/products/${product:id}",
+      "method": "delete"
+    }
+  ]
+}

@@ -10,9 +10,9 @@ import (
 // NoArgs is a validator for commands to print an error when an argument is provided
 func NoArgs(cmd *cobra.Command, args []string) error {
 	errorMessage := fmt.Sprintf(
-		"%s does not take any arguments. See `stripe %s --help` for supported flags and usage",
-		cmd.Name(),
-		cmd.Name(),
+		"`%s` does not take any positional arguments. See `%s --help` for supported flags and usage",
+		cmd.CommandPath(),
+		cmd.CommandPath(),
 	)
 
 	if len(args) > 0 {
@@ -26,17 +26,17 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 // is different than the arguments passed in
 func ExactArgs(num int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		argument := "argument"
-		if num > 1 {
-			argument = "arguments"
+		argument := "positional argument"
+		if num != 1 {
+			argument = "positional arguments"
 		}
 
 		errorMessage := fmt.Sprintf(
-			"%s only takes %d %s. See `stripe %s --help` for supported flags and usage",
-			cmd.Name(),
+			"`%s` requires exactly %d %s. See `%s --help` for supported flags and usage",
+			cmd.CommandPath(),
 			num,
 			argument,
-			cmd.Name(),
+			cmd.CommandPath(),
 		)
 
 		if len(args) != num {
@@ -50,17 +50,17 @@ func ExactArgs(num int) cobra.PositionalArgs {
 // args are greater than the maximum amount
 func MaximumNArgs(num int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
-		argument := "argument"
+		argument := "positional argument"
 		if num > 1 {
-			argument = "arguments"
+			argument = "positional arguments"
 		}
 
 		errorMessage := fmt.Sprintf(
-			"%s only takes %d %s (or less). See `stripe %s --help` for supported flags and usage",
-			cmd.Name(),
+			"`%s` accepts at maximum %d %s. See `%s --help` for supported flags and usage",
+			cmd.CommandPath(),
 			num,
 			argument,
-			cmd.Name(),
+			cmd.CommandPath(),
 		)
 
 		if len(args) > num {

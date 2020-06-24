@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -28,6 +29,7 @@ const testFixture = `
 			"params": {
 				"name": "Bender Bending Rodriguez",
 				"email": "bender@planex.com",
+				"phone": "${.env:PHONE_NO_CLASH|+1234567890}",
 				"address": {
 					"line1": "1 Planet Express St",
 					"city": "New New York"
@@ -42,7 +44,7 @@ const testFixture = `
 				"customer": "${cust_bender:id}",
 				"source": "tok_visa",
 				"amount": "100",
-				"currency": "usd",
+				"currency": "${cust_bender:currency|usd}",
 				"capture": false
 			}
 		},
@@ -76,8 +78,8 @@ func TestParseInterface(t *testing.T) {
 	require.Equal(t, output[3], "name=Bender Bending Rodriguez")
 }
 
-func TestParseWithQuery(t *testing.T) {
-	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789"}`)
+func TestParseWithQueryIgnoreDefault(t *testing.T) {
+	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789", "currency": "eur"}`)
 
 	fxt := Fixture{}
 	fxt.responses = make(map[string]*gojsonq.JSONQ)
@@ -87,16 +89,83 @@ func TestParseWithQuery(t *testing.T) {
 	data["customer"] = "${cust_bender:id}"
 	data["source"] = "tok_visa"
 	data["amount"] = "100"
-	data["currency"] = "usd"
+	data["currency"] = "${cust_bender:currency|usd}"
 
 	output := (fxt.parseInterface(data))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
 	require.Equal(t, "amount=100", output[0])
-	require.Equal(t, "currency=usd", output[1])
+	require.Equal(t, "currency=eur", output[1])
 	require.Equal(t, "customer=cust_bend123456789", output[2])
 	require.Equal(t, "source=tok_visa", output[3])
+}
+
+func TestParseWithQueryDefaultValue(t *testing.T) {
+	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789"}`)
+
+	fxt := Fixture{}
+	fxt.responses = make(map[string]*gojsonq.JSONQ)
+	fxt.responses["cust_bender"] = jsonData
+
+	data := make(map[string]interface{})
+	data["currency"] = "${cust_bender:currency|usd}"
+
+	output := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "currency=usd", output[0])
+}
+
+func TestParseNoEnv(t *testing.T) {
+	fxt := Fixture{}
+	data := make(map[string]interface{})
+	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
+
+	output := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "phone=+1234567890", output[0])
+}
+
+func TestParseWithLocalEnv(t *testing.T) {
+	fxt := Fixture{}
+	data := make(map[string]interface{})
+	data["phone"] = "${.env:PHONE_LOCAL|+1234567890}"
+
+	os.Setenv("CUST_ID", "cust_12345")
+	os.Setenv("PHONE_LOCAL", "+1234")
+
+	http := fixture{
+		Path: "/v1/customers/${.env:CUST_ID}",
+	}
+
+	path := fxt.parsePath(http)
+	assert.Equal(t, "/v1/customers/cust_12345", path)
+
+	output := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "phone=+1234", output[0])
+
+	os.Unsetenv("PHONE_LOCAL")
+}
+
+func TestParseWithEnvFile(t *testing.T) {
+	fs := afero.NewOsFs()
+	wd, _ := os.Getwd()
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte(`PHONE_FILE="+1234"`), os.ModePerm)
+
+	fxt := Fixture{}
+	data := make(map[string]interface{})
+	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
+	output := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "phone=+1234", output[0])
+
+	fs.Remove(envPath)
 }
 
 func TestMakeRequest(t *testing.T) {
@@ -118,7 +187,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -218,4 +287,64 @@ func TestUpdateEnv(t *testing.T) {
 CUST_ID="char_12345"`
 	output, _ := afero.ReadFile(fs, filepath.Join(wd, ".env"))
 	assert.Equal(t, expected, string(output))
+}
+
+func TestToFixtureQuery(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected fixtureQuery
+		didMatch bool
+	}{
+		{
+			"/v1/charges",
+			fixtureQuery{},
+			false,
+		},
+		{
+			"/v1/charges/${char_bender:id}/capture",
+			fixtureQuery{"char_bender", "id", ""},
+			true,
+		},
+		{
+			"${.env:PHONE_NOT_SET|+1234567890}",
+			fixtureQuery{".env", "PHONE_NOT_SET", "+1234567890"},
+			true,
+		},
+		{
+			"/v1/customers/${.env:CUST_ID}",
+			fixtureQuery{".env", "CUST_ID", ""},
+			true,
+		},
+		{
+			"${.env:CUST_ID}",
+			fixtureQuery{".env", "CUST_ID", ""},
+			true,
+		},
+		{
+			"${cust_bender:subscriptions.data.[0].id}",
+			fixtureQuery{"cust_bender", "subscriptions.data.[0].id", ""},
+			true,
+		},
+		{
+			"${cust_bender:subscriptions.data.[0].name|Unknown Person}",
+			fixtureQuery{"cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
+			true,
+		},
+		{
+			"${cust_bender:billing_details.address.country}",
+			fixtureQuery{"cust_bender", "billing_details.address.country", ""},
+			true,
+		},
+		{
+			"${cust_bender:billing_details.address.country|San Mateo}",
+			fixtureQuery{"cust_bender", "billing_details.address.country", "San Mateo"},
+			true,
+		},
+	}
+
+	for _, test := range tests {
+		actualQuery, actualDidMatch := toFixtureQuery(test.input)
+		assert.Equal(t, test.expected, actualQuery)
+		assert.Equal(t, test.didMatch, actualDidMatch)
+	}
 }

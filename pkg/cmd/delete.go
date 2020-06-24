@@ -24,9 +24,6 @@ func newDeleteCmd() *deleteCmd {
 		Short: "Make a DELETE request to the Stripe API",
 		Long: `Make DELETE requests to the Stripe API using your test mode key.
 
-You can only delete data in test mode, the delete command does not work for
-live mode.
-
 For a full list of supported paths, see the API reference:
 https://stripe.com/docs/api
 

@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "plan",
+      "path": "/v1/plans",
+      "method": "post",
+      "params": {
+        "currency": "usd",
+        "interval": "month",
+        "amount": 2000,
+        "product": {
+          "name": "myproduct"
+        }
+      }
+    },
+    {
+      "name": "plan_deleted",
+      "path": "/v1/plans/${plan:id}",
+      "method": "delete"
+    }
+  ]
+}

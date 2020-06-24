@@ -100,11 +100,13 @@ func init() {
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
 	rootCmd.AddCommand(newLoginCmd().cmd)
+	rootCmd.AddCommand(newLogoutCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
+	rootCmd.AddCommand(newServeCmd().cmd)
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
@@ -112,6 +114,11 @@ func init() {
 	addAllResourcesCmds(rootCmd)
 
 	err := resource.AddEventsSubCmds(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = resource.AddTerminalSubCmds(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
 	}

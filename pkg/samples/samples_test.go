@@ -1,6 +1,7 @@
 package samples
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +12,30 @@ import (
 
 type mockGit struct {
 	fs afero.Fs
+}
+
+func mockGetSamples() error {
+	samplesJSON := []byte(`{
+		"samples": [
+			{
+				"name": "adding-sales-tax",
+				"description": "Learn how to use PaymentIntents to build a simple checkout flow",
+				"URL": "https://github.com/stripe-samples/adding-sales-tax"
+			}
+		]
+		}`)
+
+	var allSamples SampleList
+
+	err := json.Unmarshal(samplesJSON, &allSamples)
+	if err != nil {
+		return err
+	}
+	for i, sample := range allSamples.Samples {
+		list[sample.Name] = &allSamples.Samples[i]
+	}
+
+	return nil
 }
 
 func (mg mockGit) Clone(appCachePath, _ string) error {
@@ -53,6 +78,7 @@ func makeRecipe(fs afero.Fs, path string, integrations []string, languages []str
 func TestInitialize(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "adding-sales-tax"
+	mockGetSamples()
 
 	sample := Samples{
 		Fs: fs,

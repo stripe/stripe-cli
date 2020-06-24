@@ -59,7 +59,7 @@ func SuccessMessage(account *Account, baseURL string, apiKey string) (string, er
 		), nil
 	}
 
-	return fmt.Sprintf("Done! The Stripe CLI is configured\n"), nil
+	return "Done! The Stripe CLI is configured\n", nil
 }
 
 func getUserAccount(baseURL string, apiKey string) (*Account, error) {

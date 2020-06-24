@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -120,13 +121,21 @@ func TestHTTPStatusError(t *testing.T) {
 }
 
 func TestHTTPRequestError(t *testing.T) {
+	errorString := ""
+
+	if runtime.GOOS == "windows" {
+		errorString = "connectex: No connection could be made because the target machine actively refused it."
+	} else {
+		errorString = "connect: connection refused"
+	}
+
 	// Immediately close the HTTP server so that the poll request fails.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
 	response, account, err := PollForKey(ts.URL, 1*time.Millisecond, 3)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "connect: connection refused")
+	require.Contains(t, err.Error(), errorString)
 	require.Nil(t, response)
 	require.Nil(t, account)
 }

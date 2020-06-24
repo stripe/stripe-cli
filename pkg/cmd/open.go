@@ -14,6 +14,7 @@ import (
 var nameURLmap = map[string]string{
 	"api":                                "https://stripe.com/docs/api",
 	"apiref":                             "https://stripe.com/docs/api",
+	"cliref":                             "https://stripe.com/docs/cli",
 	"dashboard":                          "https://dashboard.stripe.com%s",
 	"dashboard/apikeys":                  "https://dashboard.stripe.com%s/apikeys",
 	"dashboard/atlas":                    "https://dashboard.stripe.com%s/atlas",
@@ -132,8 +133,8 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 
 		longest := getLongestShortcut(shortcuts)
 
-		fmt.Println(fmt.Sprintf("%s%s", padName("shortcut", longest), "    url"))
-		fmt.Println(fmt.Sprintf("%s%s", padName("--------", longest), "    ---------"))
+		fmt.Printf("%s%s\n", padName("shortcut", longest), "    url")
+		fmt.Printf("%s%s\n", padName("--------", longest), "    ---------")
 
 		for _, shortcut := range shortcuts {
 			maybeTestMode := ""
@@ -147,7 +148,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 			}
 
 			paddedName := padName(shortcut, longest)
-			fmt.Println(fmt.Sprintf("%s => %s", paddedName, url))
+			fmt.Printf("%s => %s\n", paddedName, url)
 		}
 
 		return nil
