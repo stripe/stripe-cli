@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -61,7 +60,7 @@ func handleErrorInHandler(w http.ResponseWriter, err error) {
 
 	w.WriteHeader(500)
 	// TODO: should we crash the program or keep going?
-	fmt.Printf("\n<-- 500 error: ", err)
+	fmt.Println("\n<-- 500 error: ", err)
 }
 
 func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +192,7 @@ func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http
 	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
 	// defer res.Body.Close()
 
-	return res, errors.New("Test error.")
+	return res, nil
 }
 
 // returns error if something doesn't match the cassette
