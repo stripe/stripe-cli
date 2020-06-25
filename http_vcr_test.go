@@ -120,6 +120,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 }
 
 // Integration test for HTTP wrapper against Stripe
+// TODO: all the stripe tests should just use the SDK
 func TestStripeSimpleGet(t *testing.T) {
 	// Spin up an instance of the HTTP vcr server in record mode
 	filepath := "test_data/stripe_simple_get.yaml"

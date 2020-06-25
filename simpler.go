@@ -99,13 +99,19 @@ func (recorder *VcrRecorder) Close() error {
 	cassette.Interactions = interactions
 
 	yamlBytes, err := yaml.Marshal(cassette)
-	check(err)
+	if err != nil {
+		return err
+	}
 
 	handle, err := os.Create(recorder.filepath)
-	check(err)
+	if err != nil {
+		return err
+	}
 
 	_, err = handle.Write(yamlBytes)
-	check(err)
+	if err != nil {
+		return err
+	}
 
 	return handle.Close()
 	// return recorder.fileHandle.Close()
@@ -130,10 +136,14 @@ func NewReplayer(filepath string, reqType Serializable, respType Serializable, c
 
 	// Read in cassette
 	yamlBytes, err := ioutil.ReadFile(filepath)
-	check(err)
+	if err != nil {
+		return replayer, err
+	}
 
 	err = yaml.Unmarshal(yamlBytes, &replayer.cassette)
-	check(err)
+	if err != nil {
+		return replayer, err
+	}
 
 	return replayer, nil
 

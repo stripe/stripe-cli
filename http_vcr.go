@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,7 +26,9 @@ func NewHttpVcr(filepath string, recordMode bool, remoteURL string) (vcr HttpVcr
 		// delete file if exists
 		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
 			err = os.Remove(filepath)
-			check(err)
+			if err != nil {
+				return vcr, err
+			}
 		}
 
 		recorder, e := NewRecorder(filepath)
@@ -51,6 +54,16 @@ func NewHttpVcr(filepath string, recordMode bool, remoteURL string) (vcr HttpVcr
 	return vcr, err
 }
 
+func handleErrorInHandler(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+
+	w.WriteHeader(500)
+	// TODO: should we crash the program or keep going?
+	fmt.Printf("\n<-- 500 error: ", err)
+}
+
 func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
@@ -59,11 +72,17 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if httpVcr.recordMode {
 		resp, err = httpVcr.getResponseFromRemote(r)
-		check(err)
+		if err != nil {
+			handleErrorInHandler(w, err)
+			return
+		}
 		fmt.Printf("\n<-- %v from %v\n", resp.Status, "REMOTE")
 	} else {
 		resp, err = httpVcr.getNextRecordedCassetteResponse(r)
-		check(err)
+		if err != nil {
+			handleErrorInHandler(w, err)
+			return
+		}
 		fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
 	}
 	defer resp.Body.Close() // we need to close the body
@@ -75,7 +94,10 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	check(err)
+	if err != nil {
+		handleErrorInHandler(w, err)
+		return
+	}
 
 	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
 
@@ -83,20 +105,11 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 
 	if httpVcr.recordMode {
 		err = httpVcr.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
-		check(err)
+		if err != nil {
+			handleErrorInHandler(w, err)
+			return
+		}
 	}
-
-	// scanner := bufio.NewScanner(resp.Body)
-	// for i := 0; scanner.Scan() && i < 5; i++ {
-	// 	fmt.Println(scanner.Text())
-	// }
-
-	// if err := scanner.Err(); err != nil {
-	// 	panic(err)
-	// }
-
-	// httpVcr.recorder.Close() // TODO: figure out how to get recoder.Close to run
-	// os.Exit(0)
 }
 
 func (httpVcr *HttpVcr) InitializeServer(address string) *http.Server {
@@ -180,7 +193,7 @@ func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http
 	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
 	// defer res.Body.Close()
 
-	return res, nil
+	return res, errors.New("Test error.")
 }
 
 // returns error if something doesn't match the cassette
@@ -188,7 +201,10 @@ func (httpVcr *HttpVcr) getNextRecordedCassetteResponse(request *http.Request) (
 	// the passed in request arg may not be necessary
 
 	responseWrapper, err := httpVcr.replayer.Write(NewSerializableHttpRequest(request))
-	check(err)
+	if err != nil {
+		return &http.Response{}, err
+	}
+
 	response := (*responseWrapper).(*http.Response)
 
 	return response, err
