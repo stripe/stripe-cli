@@ -21,10 +21,13 @@ func handleErrorInHandler(w http.ResponseWriter, err error) {
 	fmt.Println("\n<-- 500 error: ", err)
 }
 
+// Interface for a http server that implements VCR functionality (record or replay)
 type VcrHttpServer interface {
 	InitializeServer(address string) *http.Server
 }
 
+// HTTP VCR *record* server that proxies requests to a remote host, and records all interactions.
+// The core VCR logic is handled by VcrRecorder.
 type HttpRecorder struct {
 	recorder  *VcrRecorder
 	remoteURL string
@@ -119,6 +122,8 @@ func (httpRecorder *HttpRecorder) InitializeServer(address string) *http.Server 
 	return server
 }
 
+// HTTP VCR *replay* server that intercepts incoming requests, and replays recorded responses from the provided cassette.
+// The core VCR logic is handled by VcrReplayer.
 type HttpReplayer struct {
 	replayer *VcrReplayer
 }

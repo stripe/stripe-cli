@@ -16,8 +16,12 @@ func check(err error) {
 	}
 }
 
+// A function that compares a provided request against a recorded request from a cassette
+// and determines 1) whether that are equivalent 2) whether we should short-circuit
+// our search (return this one immediately, or keep scanning the cassette)
 type RequestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
+// A struct that can be serialized/deserialized to bytes.
 type Serializable interface {
 	toBytes() (bytes []byte, err error)
 	fromBytes(bytes *bytes.Buffer) (val interface{}, err error)
@@ -70,12 +74,14 @@ func (recorder *VcrRecorder) Write(req Serializable, resp Serializable) error {
 	return err
 }
 
+// Contains binary data representing a generic request and response saved in a cassette.
 type CassettePair struct {
 	// may have other fields like -- sequence number
 	Request  []byte
 	Response []byte
 }
 
+// Top-level struct used to serialize cassette data to a YAML file
 type CassetteYaml struct {
 	Interactions []CassettePair
 }
@@ -191,15 +197,4 @@ func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err err
 
 func (replayer *VcrReplayer) Close() {
 
-}
-
-type Pair struct {
-	First  interface{}
-	Second interface{}
-}
-
-type BetterEvent struct {
-	Name string
-	Type string
-	Id   int
 }
