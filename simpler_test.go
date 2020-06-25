@@ -56,8 +56,8 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	// --- Set up recording
-	filepath := "testSeq.yaml"
-	recorder, err := NewRecorder(filepath)
+	var writeBuffer bytes.Buffer
+	recorder, err := NewVcrRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -83,12 +83,16 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	// --- Load cassette and replay: matching on sequence
-	replayer, err := NewReplayer(filepath, Event{}, Event{}, sequentialComparator)
+	fmt.Println(writeBuffer.Len())
+	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, sequentialComparator)
 
 	fmt.Println("Replaying...")
 	// feed the requests in *backwards* order, but responses come back in original order
 	replayedResp1, err1 := replayer.Write(s2)
 	replayedResp2, err2 := replayer.Write(s1)
+
+	assert.NoError(t, err1)
+	assert.NoError(t, err2)
 
 	castResp1 := (*replayedResp1).(Event)
 	castResp2 := (*replayedResp2).(Event)
@@ -119,8 +123,8 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	// -- Set up recorder
-	filepath := "test.txt"
-	recorder, err := NewRecorder(filepath)
+	var writeBuffer bytes.Buffer
+	recorder, err := NewVcrRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -146,7 +150,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	// --- Replay - returning the first match
-	replayer, err := NewReplayer(filepath, Event{}, Event{}, firstMatchingComparator)
+	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, firstMatchingComparator)
 
 	fmt.Println("Replaying...")
 
@@ -178,8 +182,8 @@ func TestLastMatchingEvent(t *testing.T) {
 		return (cast1.Name == cast2.Name), false // false to return last match
 	}
 
-	filepath := "test.txt"
-	recorder, err := NewRecorder(filepath)
+	var writeBuffer bytes.Buffer
+	recorder, err := NewVcrRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -208,7 +212,7 @@ func TestLastMatchingEvent(t *testing.T) {
 		panic(err)
 	}
 
-	replayer, err := NewReplayer(filepath, Event{}, Event{}, lastMatchingComparator)
+	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, lastMatchingComparator)
 
 	fmt.Println("Replaying...")
 	fmt.Println("Should return last matching event to \"Event 1\"")

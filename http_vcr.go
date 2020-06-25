@@ -11,48 +11,6 @@ import (
 	"os/exec"
 )
 
-type HttpVcr struct {
-	recorder   *VcrRecorder
-	replayer   *VcrReplayer
-	recordMode bool
-	remoteURL  string // base URL of remote without trailing `/`
-}
-
-func NewHttpVcr(filepath string, recordMode bool, remoteURL string) (vcr HttpVcr, err error) {
-	vcr = HttpVcr{}
-
-	if recordMode {
-		// delete file if exists
-		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
-			err = os.Remove(filepath)
-			if err != nil {
-				return vcr, err
-			}
-		}
-
-		recorder, e := NewRecorder(filepath)
-		vcr.recorder = recorder
-		err = e
-	} else {
-		// delete file if exists
-		if _, err := os.Stat(filepath); os.IsNotExist(err) {
-			return vcr, err
-		}
-
-		sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
-			return true, true
-		}
-
-		replayer, e := NewReplayer(filepath, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
-		vcr.replayer = replayer
-		err = e
-	}
-
-	vcr.recordMode = recordMode
-	vcr.remoteURL = remoteURL
-	return vcr, err
-}
-
 func handleErrorInHandler(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
@@ -63,30 +21,42 @@ func handleErrorInHandler(w http.ResponseWriter, err error) {
 	fmt.Println("\n<-- 500 error: ", err)
 }
 
-func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
+type VcrHttpServer interface {
+	InitializeServer(address string) *http.Server
+}
+
+type HttpRecorder struct {
+	recorder  *VcrRecorder
+	remoteURL string
+}
+
+func NewHttpRecorder(writer io.Writer, remoteURL string) (httpRecorder HttpRecorder, err error) {
+	httpRecorder = HttpRecorder{}
+
+	vcrRecorder, err := NewVcrRecorder(writer)
+	httpRecorder.recorder = vcrRecorder
+
+	httpRecorder.remoteURL = remoteURL
+	return httpRecorder, err
+}
+
+func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
-	// --- pass to VCR, get response back
+	// --- Pass request to remote
 	var resp *http.Response
 	var err error
-	if httpVcr.recordMode {
-		resp, err = httpVcr.getResponseFromRemote(r)
-		if err != nil {
-			handleErrorInHandler(w, err)
-			return
-		}
-		fmt.Printf("\n<-- %v from %v\n", resp.Status, "REMOTE")
-	} else {
-		resp, err = httpVcr.getNextRecordedCassetteResponse(r)
-		if err != nil {
-			handleErrorInHandler(w, err)
-			return
-		}
-		fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
+
+	resp, err = httpRecorder.getResponseFromRemote(r)
+	if err != nil {
+		handleErrorInHandler(w, err)
+		return
 	}
+	fmt.Printf("\n<-- %v from %v\n", resp.Status, "REMOTE")
+
 	defer resp.Body.Close() // we need to close the body
 
-	// take response and write the httpResponse
+	// --- Write response back to client
 	// TODO: this is kind of a piecemeal way to transfer data from the proxied response
 	// 		 Is there a way to copy and return the entire proxied response? (and not worry about missing a field)
 	w.WriteHeader(resp.StatusCode)
@@ -102,16 +72,35 @@ func (httpVcr *HttpVcr) handler(w http.ResponseWriter, r *http.Request) {
 
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
-	if httpVcr.recordMode {
-		err = httpVcr.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
-		if err != nil {
-			handleErrorInHandler(w, err)
-			return
-		}
+	err = httpRecorder.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
+	if err != nil {
+		handleErrorInHandler(w, err)
+		return
 	}
 }
 
-func (httpVcr *HttpVcr) InitializeServer(address string) *http.Server {
+func (httpRecorder *HttpRecorder) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
+	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
+	// We need to pass on the entire request (or at least the Authorization part of the header)
+
+	client := &http.Client{}
+	req, err := http.NewRequest(request.Method, httpRecorder.remoteURL+request.RequestURI, nil)
+	req.Header.Add("Authorization", request.Header.Get("Authorization"))
+
+	res, err := client.Do(req)
+	// res, err := http.Get(remoteUrl + request.URL.RequestURI())
+
+	if err != nil {
+		return nil, err
+	}
+
+	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
+	// defer res.Body.Close()
+
+	return res, nil
+}
+
+func (httpRecorder *HttpRecorder) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
 	server := &http.Server{Addr: address, Handler: customMux}
 
@@ -121,11 +110,84 @@ func (httpVcr *HttpVcr) InitializeServer(address string) *http.Server {
 		fmt.Println()
 		fmt.Println("Received /vcr/stop. Stopping...")
 
-		httpVcr.recorder.Close()
+		httpRecorder.recorder.Close()
 	})
 
 	// --- Default VCR catch-all handler
-	customMux.HandleFunc("/", httpVcr.handler)
+	customMux.HandleFunc("/", httpRecorder.handler)
+
+	return server
+}
+
+type HttpReplayer struct {
+	replayer *VcrReplayer
+}
+
+func NewHttpReplayer(reader io.Reader) (httpReplayer HttpReplayer, err error) {
+	httpReplayer = HttpReplayer{}
+
+	// TODO: should we expose matching configuration? how?
+	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
+		return true, true
+	}
+
+	vcrReplayer, err := NewVcrReplayer(reader, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
+	httpReplayer.replayer = vcrReplayer
+
+	return httpReplayer, err
+}
+
+func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
+
+	// --- Read matching response from cassette
+	var resp *http.Response
+	var err error
+	resp, err = httpReplayer.getNextRecordedCassetteResponse(r)
+	if err != nil {
+		handleErrorInHandler(w, err)
+		return
+	}
+	fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
+	defer resp.Body.Close() // we need to close the body
+
+	// --- Write response back to client
+	// TODO: this is kind of a piecemeal way to transfer data from the proxied response
+	// 		 Is there a way to copy and return the entire proxied response? (and not worry about missing a field)
+	w.WriteHeader(resp.StatusCode)
+	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		handleErrorInHandler(w, err)
+		return
+	}
+
+	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
+
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+}
+
+// returns error if something doesn't match the cassette
+func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
+	// the passed in request arg may not be necessary
+
+	responseWrapper, err := httpReplayer.replayer.Write(NewSerializableHttpRequest(request))
+	if err != nil {
+		return &http.Response{}, err
+	}
+
+	response := (*responseWrapper).(*http.Response)
+
+	return response, err
+}
+
+func (httpReplayer *HttpReplayer) InitializeServer(address string) *http.Server {
+	customMux := http.NewServeMux()
+	server := &http.Server{Addr: address, Handler: customMux}
+
+	// --- Default VCR catch-all handler
+	customMux.HandleFunc("/", httpReplayer.handler)
 
 	return server
 }
@@ -161,50 +223,40 @@ func main() {
 	remoteURL := "https://api.stripe.com"
 	// remoteURL := "https://gobyexample.com"
 
-	httpVcr, err := NewHttpVcr(filepath, recordMode, remoteURL)
-	check(err)
+	var httpWrapper VcrHttpServer
+
+	if recordMode {
+		// delete file if exists
+		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
+			err = os.Remove(filepath)
+			check(err)
+		}
+
+		fileWriteHandle, err := os.Create(filepath)
+		check(err)
+
+		httpRecorder, err := NewHttpRecorder(fileWriteHandle, remoteURL)
+		httpWrapper = &httpRecorder
+		check(err)
+	} else {
+		// Make sure file exists
+		_, err := os.Stat(filepath)
+		check(err)
+
+		fileReadHandle, err := os.Open(filepath)
+		check(err)
+
+		httpReplayer, err := NewHttpReplayer(fileReadHandle)
+		httpWrapper = &httpReplayer
+		check(err)
+	}
 
 	fmt.Println()
 	fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTPS on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
 
 	fmt.Println()
 
-	server := httpVcr.InitializeServer(addressString)
+	server := httpWrapper.InitializeServer(addressString)
 
 	log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
-}
-
-func (httpVcr *HttpVcr) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
-	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
-	// We need to pass on the entire request (or at least the Authorization part of the header)
-
-	client := &http.Client{}
-	req, err := http.NewRequest(request.Method, httpVcr.remoteURL+request.RequestURI, nil)
-	req.Header.Add("Authorization", request.Header.Get("Authorization"))
-
-	res, err := client.Do(req)
-	// res, err := http.Get(remoteUrl + request.URL.RequestURI())
-
-	if err != nil {
-		return nil, err
-	}
-
-	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
-	// defer res.Body.Close()
-
-	return res, nil
-}
-
-// returns error if something doesn't match the cassette
-func (httpVcr *HttpVcr) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
-	// the passed in request arg may not be necessary
-
-	responseWrapper, err := httpVcr.replayer.Write(NewSerializableHttpRequest(request))
-	if err != nil {
-		return &http.Response{}, err
-	}
-
-	response := (*responseWrapper).(*http.Response)
-
-	return response, err
 }

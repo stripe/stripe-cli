@@ -56,14 +56,14 @@ func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 // Integration test for HTTP wrapper against simple HTTP serving remote
 func TestGetFromSimpleWebsite(t *testing.T) {
 	// Spin up an instance of the HTTP vcr server in record mode
-	filepath := "test_data/simple_integration.yaml"
+	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://gobyexample.com"
 
-	httpVcr, err := NewHttpVcr(filepath, true, remoteURL)
+	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
 	check(err)
 
-	server := httpVcr.InitializeServer(addressString)
+	server := httpRecorder.InitializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -90,10 +90,10 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpVcr(filepath, false, remoteURL)
+	httpReplayer, err := NewHttpReplayer(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayVcr.InitializeServer(addressString)
+	replayServer := httpReplayer.InitializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -123,14 +123,14 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 // TODO: all the stripe tests should just use the SDK
 func TestStripeSimpleGet(t *testing.T) {
 	// Spin up an instance of the HTTP vcr server in record mode
-	filepath := "test_data/stripe_simple_get.yaml"
+	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
 
-	httpVcr, err := NewHttpVcr(filepath, true, remoteURL)
+	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
 	check(err)
 
-	server := httpVcr.InitializeServer(addressString)
+	server := httpRecorder.InitializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -154,7 +154,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpVcr(filepath, false, remoteURL)
+	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayVcr.InitializeServer(addressString)
@@ -180,14 +180,14 @@ func TestStripeSimpleGet(t *testing.T) {
 // If we make a Stripe request without the Authorization header, we should get a 401 Unauthorized
 func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	// Spin up an instance of the HTTP vcr server in record mode
-	filepath := "test_data/stripe_unauthorized_passed_on.yaml"
+	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
 
-	httpVcr, err := NewHttpVcr(filepath, true, remoteURL)
+	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
 	check(err)
 
-	server := httpVcr.InitializeServer(addressString)
+	server := httpRecorder.InitializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -210,7 +210,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpVcr(filepath, false, remoteURL)
+	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayVcr.InitializeServer(addressString)

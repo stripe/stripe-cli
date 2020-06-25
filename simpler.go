@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
-	"os"
 
 	"gopkg.in/yaml.v2"
 )
@@ -24,15 +24,15 @@ type Serializable interface {
 }
 
 type VcrRecorder struct {
-	filepath  string
+	writer    io.Writer
 	requests  [][]byte
 	responses [][]byte
 }
 
-func NewRecorder(filepath string) (recorder *VcrRecorder, err error) {
+func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
 	recorder = &VcrRecorder{}
 
-	recorder.filepath = filepath
+	recorder.writer = writer
 
 	recorder.requests = make([][]byte, 0)
 	recorder.responses = make([][]byte, 0)
@@ -103,22 +103,14 @@ func (recorder *VcrRecorder) Close() error {
 		return err
 	}
 
-	handle, err := os.Create(recorder.filepath)
-	if err != nil {
-		return err
-	}
+	_, err = recorder.writer.Write(yamlBytes)
+	return err
 
-	_, err = handle.Write(yamlBytes)
-	if err != nil {
-		return err
-	}
-
-	return handle.Close()
 	// return recorder.fileHandle.Close()
 }
 
 type VcrReplayer struct {
-	fileHandle   *os.File
+	reader       io.Reader
 	historyIndex int
 	comparator   RequestComparator
 	cassette     CassetteYaml
@@ -126,21 +118,19 @@ type VcrReplayer struct {
 	respType     Serializable
 }
 
-func NewReplayer(filepath string, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer *VcrReplayer, err error) {
-
+func NewVcrReplayer(reader io.Reader, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer *VcrReplayer, err error) {
 	replayer = &VcrReplayer{}
 	replayer.historyIndex = 0
 	replayer.comparator = comparator
 	replayer.reqType = reqType
 	replayer.respType = respType
 
-	// Read in cassette
-	yamlBytes, err := ioutil.ReadFile(filepath)
+	yamlBuf, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return replayer, err
 	}
 
-	err = yaml.Unmarshal(yamlBytes, &replayer.cassette)
+	err = yaml.Unmarshal(yamlBuf, &replayer.cassette)
 	if err != nil {
 		return replayer, err
 	}
