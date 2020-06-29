@@ -1,11 +1,18 @@
-# Usage
-## Recording
-1. Set the value of `recordMode` in `http_vcr.go:main()` to true for *record* mode. (TODO: configure via a /vcr endpoint)
-2. Start the server: `go run http_vcr.go simpler.go serializer.go`
-3. Send requests to `localhost:8080` via curl (TODO: currently it doesn't matter what endpoint you specify, the request will always be proxied to "http://gobyexample.com".)
-4. Stop the server by hitting `localhost:8080/vcr/end` via curl.
+# Setup
+If you want to serve over HTTPS, you'll need to generate a self-signed certificate for the TLS server.
 
-## Replaying
-1. Set the value of `recordMode` in `http_vcr.go:main()` to false for *replay* mode.
-2. Start the server: `go run http_vcr.go simpler.go serializer.go`
-3. Send requests to `localhost:8080` via curl. They should replay the recorded requests and stop once the cassette has finished. (TODO: make the end of cassette stopping more graceful)
+`cd pkg/vcr`
+
+`./setup_for_https.sh`
+
+Otherwise, no other setup is needed.
+
+# Usage
+
+You start and configure the server via the `stripe vcr` command. See `stripe vcr --help` for a description of the flags, which configure address, record vs replay mode, HTTP vs HTTPS, etc.
+
+`go run cmd/stripe/main.go vcr --help`
+
+# Testing
+Some of the tests require a `.env` file to be present at `/pkg/vcr/.env` containing
+`STRIPE_SECRET_KEY="sk_test_..."`. To run the tests, create this file and define your own secret testmode key in it.
