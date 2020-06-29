@@ -34,7 +34,7 @@ recording the request/response pairs in a cassette file.
 
 If run in replay mode, requests are terminated at the VCR server, and responses are played back from a cassette file.
 
-VCR Server Control via HTTP Endpoints
+VCR Server Control via HTTP Endpoints:
 /vcr/stop: stops recording and writes the current session to cassette`,
 		Example: `stripe vcr
   stripe vcr --replaymode

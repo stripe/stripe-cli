@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func handleErrorInHandler(w http.ResponseWriter, err error) {
@@ -55,7 +56,7 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 		handleErrorInHandler(w, err)
 		return
 	}
-	fmt.Printf("\n<-- %v from %v\n", resp.Status, "REMOTE")
+	fmt.Printf("\n<-- %v from %v\n", resp.Status, strings.ToUpper(httpRecorder.remoteURL))
 
 	defer resp.Body.Close() // we need to close the body
 
