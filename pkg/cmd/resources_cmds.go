@@ -48,6 +48,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rFilesCmd := resource.NewResourceCmd(rootCmd, "files")
 	rInvoiceitemsCmd := resource.NewResourceCmd(rootCmd, "invoiceitems")
 	rInvoicesCmd := resource.NewResourceCmd(rootCmd, "invoices")
+	rItemsCmd := resource.NewResourceCmd(rootCmd, "items")
 	rLineItemsCmd := resource.NewResourceCmd(rootCmd, "line_items")
 	rLoginLinksCmd := resource.NewResourceCmd(rootCmd, "login_links")
 	rMandatesCmd := resource.NewResourceCmd(rootCmd, "mandates")
@@ -114,6 +115,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"account":     "string",
 		"collect":     "string",
 		"failure_url": "string",
+		"refresh_url": "string",
+		"return_url":  "string",
 		"success_url": "string",
 		"type":        "string",
 	}, &Config)
@@ -412,7 +415,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 	}, &Config)
-	resource.NewOperationCmd(rExchangeRatesCmd.Cmd, "retrieve", "/v1/exchange_rates/{currency}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rExchangeRatesCmd.Cmd, "retrieve", "/v1/exchange_rates/{rate_id}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "create", "/v1/accounts/{account}/external_accounts", http.MethodPost, map[string]string{
 		"default_for_currency": "boolean",
 		"external_account":     "string",
@@ -597,6 +600,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"tax_percent":            "number",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rItemsCmd.Cmd, "list", "/v1/checkout/sessions/{session}/line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
 	resource.NewOperationCmd(rLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
