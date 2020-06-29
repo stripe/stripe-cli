@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -168,7 +169,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	// Send it the same GET /v1/balance request:
 	// Assert replayed message matches
 	replayReq, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
-	replayReq.Header.Set("Authorization", stripeKey)
+	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
 	check(assertHttpResponsesAreEqual(t, res1, replay1))
@@ -224,6 +225,72 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	// Send it the same GET /v1/balance request:
 	// Assert replayed message matches
 	replayReq, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
+	replay1, err := client.Do(replayReq)
+	assert.NoError(t, err)
+	check(assertHttpResponsesAreEqual(t, res1, replay1))
+
+	// Shutdown replay server
+	replayServer.Shutdown(context.TODO())
+}
+
+func TestStripeSimpleGetWithHttps(t *testing.T) {
+	// Spin up an instance of the HTTP vcr server in record mode
+	var cassetteBuffer bytes.Buffer
+	addressString := "localhost:8080"
+	remoteURL := "https://api.stripe.com"
+
+	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
+	check(err)
+
+	recordServer := httpRecorder.InitializeServer(addressString)
+	go func() {
+		if err := recordServer.ListenAndServeTLS("cert.pem", "key.pem"); err != http.ErrServerClosed {
+			// unexpected error
+			log.Fatalf("ListenAndServeTLS() 1: %v", err)
+		}
+	}()
+	// Initialize the http.Client used to send requests
+	// our test server uses a self-signed certificate -- configure the client to accept that
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	// GET /v1/balance
+	req, err := http.NewRequest("GET", "https://localhost:8080/v1/balance", nil)
+	req.Header.Set("Authorization", "Bearer "+stripeKey)
+	res1, err := client.Do(req)
+
+	// Should record a 200 response
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res1.StatusCode)
+
+	// Shutdown record server
+	shutdownReq, err := http.NewRequest("GET", "https://localhost:8080/vcr/stop", nil)
+	assert.NoError(t, err)
+	_, err = client.Do(shutdownReq)
+	assert.NoError(t, err)
+	recordServer.Shutdown(context.TODO())
+
+	// --- Set up a replay server
+	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
+	check(err)
+
+	replayServer := replayVcr.InitializeServer(addressString)
+	go func() {
+		if err := replayServer.ListenAndServeTLS("cert.pem", "key.pem"); err != http.ErrServerClosed {
+			// unexpected error
+			log.Fatalf("ListenAndServeTLS() 2: %v", err)
+		}
+	}()
+
+	// Send it the same GET /v1/balance request:
+	// Assert replayed message matches
+	replayReq, err := http.NewRequest("GET", "https://localhost:8080/v1/balance", nil)
+	assert.NoError(t, err)
+
+	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
+
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
 	check(assertHttpResponsesAreEqual(t, res1, replay1))
