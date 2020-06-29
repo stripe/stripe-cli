@@ -1,4 +1,4 @@
-package main
+package vcr
 
 import (
 	"bytes"
@@ -189,10 +189,9 @@ func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.
 
 func (httpReplayer *HttpReplayer) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
-	server := &http.Server{Addr: address, Handler: customMux}
-
-	// --- Default VCR catch-all handler
 	customMux.HandleFunc("/", httpReplayer.handler)
+
+	server := &http.Server{Addr: address, Handler: customMux}
 
 	return server
 }
@@ -224,7 +223,7 @@ func generateSelfSignedCertificates() error {
 func main() {
 	filepath := "main_result.yaml"
 	addressString := "localhost:8080"
-	recordMode := true
+	recordMode := false
 	remoteURL := "https://api.stripe.com"
 	// remoteURL := "https://gobyexample.com"
 

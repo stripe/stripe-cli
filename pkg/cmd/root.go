@@ -110,6 +110,7 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+	rootCmd.AddCommand(newVcrCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 
