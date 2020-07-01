@@ -298,3 +298,6 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
 }
+
+// TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
+// This is a regression test for a bug where request bodies weren't being forwarded by VCR

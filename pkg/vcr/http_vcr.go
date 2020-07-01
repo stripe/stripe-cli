@@ -52,6 +52,7 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	var err error
 
 	resp, err = httpRecorder.getResponseFromRemote(r)
+
 	if err != nil {
 		handleErrorInHandler(w, err)
 		return
@@ -61,20 +62,19 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close() // we need to close the body
 
 	// --- Write response back to client
-	// TODO: this is kind of a piecemeal way to transfer data from the proxied response
-	// 		 Is there a way to copy and return the entire proxied response? (and not worry about missing a field)
+
+	// Copy header
 	w.WriteHeader(resp.StatusCode)
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+	copyHTTPHeader(w.Header(), resp.Header)
+
+	// Copy body
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		handleErrorInHandler(w, err)
 		return
 	}
-
-	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
-
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	io.Copy(w, bytes.NewBuffer(bodyBytes))
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
 
 	err = httpRecorder.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
 	if err != nil {
@@ -84,23 +84,23 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 }
 
 func (httpRecorder *HttpRecorder) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
-	// TODO: placeholder proxy a request to some random website. Later - this should pass on the request
-	// We need to pass on the entire request (or at least the Authorization part of the header)
-
 	client := &http.Client{}
-	req, err := http.NewRequest(request.Method, httpRecorder.remoteURL+request.RequestURI, nil)
-	req.Header.Add("Authorization", request.Header.Get("Authorization"))
 
+	// Create a identical copy of the request
+	bodyBytes, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		return nil, err
+	}
+	request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	req, err := http.NewRequest(request.Method, httpRecorder.remoteURL+request.RequestURI, bytes.NewBuffer(bodyBytes))
+	copyHTTPHeader(req.Header, request.Header)
+
+	// Forward the request to the remote
 	res, err := client.Do(req)
-	// res, err := http.Get(remoteUrl + request.URL.RequestURI())
 
 	if err != nil {
 		return nil, err
 	}
-
-	// If returning the response to code that expects to read it, we cannot call res.Body.Close() here.
-	// defer res.Body.Close()
-
 	return res, nil
 }
 
@@ -158,19 +158,15 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close() // we need to close the body
 
 	// --- Write response back to client
-	// TODO: this is kind of a piecemeal way to transfer data from the proxied response
-	// 		 Is there a way to copy and return the entire proxied response? (and not worry about missing a field)
+	// Copy the response exactly as received, and pass on to client
 	w.WriteHeader(resp.StatusCode)
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+	copyHTTPHeader(w.Header(), resp.Header)
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		handleErrorInHandler(w, err)
 		return
 	}
-
 	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
-
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 }
 
@@ -264,4 +260,12 @@ func main() {
 	server := httpWrapper.InitializeServer(addressString)
 
 	log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
+}
+
+func copyHTTPHeader(dest, src http.Header) {
+	for k, v := range src {
+		for _, subvalues := range v {
+			dest.Add(k, subvalues)
+		}
+	}
 }
