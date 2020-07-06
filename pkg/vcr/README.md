@@ -39,8 +39,17 @@ When running in both record/replay mode, the server will print out interactions 
 <-- 200 OK from CASSETTE
 ```
 
+## Controlling the VCR server
+Besides the command line flags at startup, there are also HTTP endpoints that allow you to control and modify the server's behavior while it is running.
 
-## Example Interaction
+`GET:` `vcr/mode/[record, replay]`: Switch to the specified VCR mode.
+
+`GET:` `vcr/cassette/load?filepath=[filepath]`: Read/write from/to (depending on mode) to the cassette at `filepath`.
+
+`GET:` `vcr/casette/eject`: Eject the cassette. In `record` mode this writes the recorded interactions to the loaded cassette file. In `replay` mode this is a no-op.
+
+
+## Example
 ### In Window 1:
 
 `go run cmd/stripe/main.go vcr`
