@@ -53,21 +53,21 @@ Besides the command line flags at startup, there are also HTTP endpoints that al
 ### In Window 1:
 
 `go run cmd/stripe/main.go vcr`
-(Start a recordmode HTTP server at localhost:8080, writing to the default cassette)
+(Start a recordmode HTTP server at localhost:13111, writing to the default cassette)
 
 ### In Window 2:
 
 Record some test interactions using the stripe CLI, but proxy through the `stripe vcr` server:
 
-`stripe customers create --api-base="http://localhost:8080"`
+`stripe customers create --api-base="http://localhost:13111"`
 
-`stripe customers list --api-base="http://localhost:8080"`
+`stripe customers list --api-base="http://localhost:13111"`
 
-`stripe balance retrieve --api-base="http://localhost:8080"`
+`stripe balance retrieve --api-base="http://localhost:13111"`
 
 Stop recording:
 
-`curl http://localhost:8080/vcr/stop`
+`curl http://localhost:13111/vcr/stop`
 
 ### In Window 1:
 Ctrl-C the record server to shut it down.
@@ -80,11 +80,11 @@ Then, start the replay server, which should read from the same default cassette.
 
 Replay the same sequence of interactions using the stripe CLI, and notice that we are now replaying from the cassette:
 
-`stripe customers create --api-base="http://localhost:8080"`
+`stripe customers create --api-base="http://localhost:13111"`
 
-`stripe customers list --api-base="http://localhost:8080"`
+`stripe customers list --api-base="http://localhost:13111"`
 
-`stripe balance retrieve --api-base="http://localhost:8080"`
+`stripe balance retrieve --api-base="http://localhost:13111"`
 
 
 

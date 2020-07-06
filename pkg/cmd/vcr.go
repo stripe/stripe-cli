@@ -11,6 +11,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/vcr"
 )
 
+const defaultVCRPort = 13111
+
 type vcrCmd struct {
 	cmd *cobra.Command
 
@@ -44,7 +46,7 @@ VCR Server Control via HTTP Endpoints:
 	}
 
 	vc.cmd.Flags().BoolVar(&vc.replayMode, "replaymode", false, "Replay events (default: record)")
-	vc.cmd.Flags().StringVar(&vc.address, "address", ":8080", "Address to serve on")
+	vc.cmd.Flags().StringVar(&vc.address, "address", fmt.Sprintf(":%d", defaultVCRPort), "Address to serve on")
 	vc.cmd.Flags().StringVar(&vc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
 	vc.cmd.Flags().BoolVar(&vc.serveHTTPS, "https", false, "Serve over HTTPS (default: HTTP")
 
