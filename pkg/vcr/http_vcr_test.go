@@ -61,7 +61,8 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	addressString := "localhost:8080"
 	remoteURL := "https://gobyexample.com"
 
-	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL)
+	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -91,7 +92,8 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	httpReplayer, err := NewHttpReplayer(&cassetteBuffer)
+	httpReplayer := NewHttpReplayer()
+	err = httpReplayer.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := httpReplayer.InitializeServer(addressString)
@@ -128,7 +130,8 @@ func TestStripeSimpleGet(t *testing.T) {
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
 
-	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL)
+	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -155,7 +158,8 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
+	replayVcr := NewHttpReplayer()
+	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayVcr.InitializeServer(addressString)
@@ -185,7 +189,8 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
 
-	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL)
+	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -211,7 +216,8 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
+	replayVcr := NewHttpReplayer()
+	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayVcr.InitializeServer(addressString)
@@ -239,7 +245,8 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
 
-	httpRecorder, err := NewHttpRecorder(&cassetteBuffer, remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL)
+	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	recordServer := httpRecorder.InitializeServer(addressString)
@@ -273,7 +280,8 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	recordServer.Shutdown(context.TODO())
 
 	// --- Set up a replay server
-	replayVcr, err := NewHttpReplayer(&cassetteBuffer)
+	replayVcr := NewHttpReplayer()
+	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayVcr.InitializeServer(addressString)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -34,14 +33,21 @@ type HttpRecorder struct {
 	remoteURL string
 }
 
-func NewHttpRecorder(writer io.Writer, remoteURL string) (httpRecorder HttpRecorder, err error) {
+func NewHttpRecorder(remoteURL string) (httpRecorder HttpRecorder) {
 	httpRecorder = HttpRecorder{}
+	httpRecorder.remoteURL = remoteURL
 
+	return httpRecorder
+}
+
+func (httpRecorder *HttpRecorder) LoadCassette(writer io.Writer) error {
 	vcrRecorder, err := NewVcrRecorder(writer)
+	if err != nil {
+		return err
+	}
 	httpRecorder.recorder = vcrRecorder
 
-	httpRecorder.remoteURL = remoteURL
-	return httpRecorder, err
+	return nil
 }
 
 func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request) {
@@ -129,18 +135,26 @@ type HttpReplayer struct {
 	replayer *VcrReplayer
 }
 
-func NewHttpReplayer(reader io.Reader) (httpReplayer HttpReplayer, err error) {
+func NewHttpReplayer() (httpReplayer HttpReplayer) {
 	httpReplayer = HttpReplayer{}
 
+	return httpReplayer
+}
+
+func (httpReplayer *HttpReplayer) LoadCassette(reader io.Reader) error {
 	// TODO: should we expose matching configuration? how?
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
 
 	vcrReplayer, err := NewVcrReplayer(reader, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
+	if err != nil {
+		return err
+	}
+
 	httpReplayer.replayer = vcrReplayer
 
-	return httpReplayer, err
+	return nil
 }
 
 func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request) {
@@ -217,49 +231,140 @@ func generateSelfSignedCertificates() error {
 	}
 }
 
-func main() {
-	filepath := "main_result.yaml"
-	addressString := "localhost:8080"
-	recordMode := false
-	remoteURL := "https://api.stripe.com"
-	// remoteURL := "https://gobyexample.com"
+type RecordReplayServer struct {
+	httpRecorder HttpRecorder
+	httpReplayer HttpReplayer
 
-	var httpWrapper VcrHttpServer
+	remoteURL string
 
-	if recordMode {
-		// delete file if exists
-		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
-			err = os.Remove(filepath)
-			check(err)
-		}
+	// state machine state
+	recordMode     bool
+	cassetteLoaded bool
+}
 
-		fileWriteHandle, err := os.Create(filepath)
-		check(err)
+func NewRecordReplayServer(remoteURL string) (server *RecordReplayServer, err error) {
+	server = &RecordReplayServer{}
+	server.recordMode = true
+	server.cassetteLoaded = false
+	server.remoteURL = remoteURL
 
-		httpRecorder, err := NewHttpRecorder(fileWriteHandle, remoteURL)
-		httpWrapper = &httpRecorder
-		check(err)
-	} else {
-		// Make sure file exists
-		_, err := os.Stat(filepath)
-		check(err)
+	server.httpRecorder = NewHttpRecorder(remoteURL)
+	server.httpReplayer = NewHttpReplayer()
 
-		fileReadHandle, err := os.Open(filepath)
-		check(err)
+	return server, nil
+}
 
-		httpReplayer, err := NewHttpReplayer(fileReadHandle)
-		httpWrapper = &httpReplayer
-		check(err)
+func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
+	if !rr.cassetteLoaded {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "No cassette is loaded.")
+		return
 	}
 
-	fmt.Println()
-	fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTPS on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
+	if rr.recordMode {
+		rr.httpRecorder.handler(w, r)
+	} else {
+		rr.httpReplayer.handler(w, r)
+	}
+}
 
-	fmt.Println()
+func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
+	customMux := http.NewServeMux()
+	server := &http.Server{Addr: address, Handler: customMux}
 
-	server := httpWrapper.InitializeServer(addressString)
+	// --- VCR control handlers
+	// TODO: only stops recording, does not shutdown the server
+	// TODO: move this logic into eject
+	// customMux.HandleFunc("/vcr/stop", func(w http.ResponseWriter, r *http.Request) {
+	// 	fmt.Println()
+	// 	fmt.Println("Received /vcr/stop. Stopping...")
 
-	log.Fatal(server.ListenAndServeTLS("cert.pem", "key.pem"))
+	// 	// update state
+	// 	rr.cassetteLoaded = false
+	// 	if rr.recordMode {
+	// 		// TODO: should we expose a Close() fn on the HttpRecorder?
+	// 		rr.httpRecorder.recorder.Close()
+	// 	}
+	// })
+
+	// TODO: only stops recording, does not shutdown the server
+	customMux.HandleFunc("/vcr/mode/", func(w http.ResponseWriter, r *http.Request) {
+
+		// get mode
+		modeString := strings.TrimPrefix(r.URL.Path, "/vcr/mode/")
+
+		fmt.Println("/vcr/mode/: Setting mode to ", modeString)
+
+		if strings.EqualFold("record", modeString) {
+			rr.recordMode = true
+			w.WriteHeader(200)
+		} else if strings.EqualFold("replay", modeString) {
+			rr.recordMode = false
+			w.WriteHeader(200)
+		} else {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "\"%s\" is not a valid VCR mode. Must be \"record\" or \"replay\".", modeString)
+		}
+	})
+
+	customMux.HandleFunc("/vcr/cassette/load", func(w http.ResponseWriter, r *http.Request) {
+		// TODO: does previous cassette have to be ejected explcitly?
+		// if we allow implicitly, we should make sure to call eject so that cleanup happens
+		// get cassette
+		filepath, ok := r.URL.Query()["filepath"]
+
+		if !ok {
+			w.WriteHeader(400)
+			fmt.Fprint(w, "\"filepath\" query param must be present.")
+			return
+		}
+		fmt.Println("/vcr/cassette/load: Loading cassette ", filepath)
+
+		if rr.recordMode {
+			fileHandle, err := os.Create(filepath[0])
+			if err != nil {
+				handleErrorInHandler(w, err)
+			}
+
+			err = rr.httpRecorder.LoadCassette(fileHandle)
+			if err != nil {
+				handleErrorInHandler(w, err)
+			}
+		} else {
+			fileHandle, err := os.Open(filepath[0])
+			if err != nil {
+				handleErrorInHandler(w, err)
+			}
+
+			err = rr.httpReplayer.LoadCassette(fileHandle)
+			if err != nil {
+				handleErrorInHandler(w, err)
+			}
+		}
+
+		rr.cassetteLoaded = true
+
+	})
+
+	customMux.HandleFunc("/vcr/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
+		if rr.recordMode {
+			err := rr.httpRecorder.recorder.Close()
+			if err != nil {
+				handleErrorInHandler(w, err)
+			}
+		}
+		rr.cassetteLoaded = false
+
+		fmt.Println("/vcr/cassette/eject: Ejected cassette")
+		fmt.Println("")
+		fmt.Println("=======")
+		fmt.Println("")
+	})
+
+	// --- Default VCR catch-all handler
+	customMux.HandleFunc("/", rr.handler)
+
+	return server
 }
 
 func copyHTTPHeader(dest, src http.Header) {

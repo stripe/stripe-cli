@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"os"
+	"net/http"
 
 	"github.com/spf13/cobra"
 
@@ -59,46 +60,9 @@ func (vc *vcrCmd) runVcrCmd(cmd *cobra.Command, args []string) error {
 	recordMode := !vc.replayMode
 	remoteURL := vc.apiBaseURL
 
-	var httpWrapper vcr.VcrHttpServer
-
-	if recordMode {
-		// delete file if exists
-		if _, err := os.Stat(filepath); !os.IsNotExist(err) {
-			err = os.Remove(filepath)
-			if err != nil {
-				return err
-			}
-		}
-
-		fileWriteHandle, err := os.Create(filepath)
-		defer fileWriteHandle.Close()
-		if err != nil {
-			return err
-		}
-
-		httpRecorder, err := vcr.NewHttpRecorder(fileWriteHandle, remoteURL)
-		if err != nil {
-			return err
-		}
-		httpWrapper = &httpRecorder
-	} else {
-		// Make sure file exists
-		_, err := os.Stat(filepath)
-		if err != nil {
-			return err
-		}
-
-		fileReadHandle, err := os.Open(filepath)
-		defer fileReadHandle.Close()
-		if err != nil {
-			return err
-		}
-
-		httpReplayer, err := vcr.NewHttpReplayer(fileReadHandle)
-		if err != nil {
-			return err
-		}
-		httpWrapper = &httpReplayer
+	httpWrapper, err := vcr.NewRecordReplayServer(remoteURL)
+	if err != nil {
+		return nil
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -108,13 +72,53 @@ func (vc *vcrCmd) runVcrCmd(cmd *cobra.Command, args []string) error {
 		fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTPS on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
 
 		fmt.Println()
-		return server.ListenAndServeTLS("pkg/vcr/cert.pem", "pkg/vcr/key.pem")
+
+		go func() {
+			server.ListenAndServeTLS("pkg/vcr/cert.pem", "pkg/vcr/key.pem")
+		}()
 
 	} else {
 		fmt.Println()
 		fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTP on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
 
 		fmt.Println()
-		return server.ListenAndServe()
+		go func() {
+			server.ListenAndServe()
+		}()
 	}
+
+	fullAddressString := "localhost" + addressString
+	if vc.serveHTTPS {
+		fullAddressString = "https://" + fullAddressString
+	} else {
+		fullAddressString = "http://" + fullAddressString
+	}
+
+	if recordMode {
+		resp, err := http.Get(fullAddressString + "/vcr/mode/record")
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != 200 {
+			return errors.New("Non 200 status code received during VCR startup: " + string(resp.Status))
+		}
+	} else {
+		resp, err := http.Get(fullAddressString + "/vcr/mode/replay")
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != 200 {
+			return errors.New("Non 200 status code received during VCR startup: " + string(resp.Status))
+		}
+	}
+
+	resp, err := http.Get(fullAddressString + "/vcr/cassette/load?filepath=" + filepath)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return errors.New("Non 200 status code received during VCR startup: " + string(resp.Status))
+	}
+
+	select {}
 }

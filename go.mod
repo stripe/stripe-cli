@@ -33,7 +33,9 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
+	github.com/stripe/stripe-go v70.15.0+incompatible
+	github.com/stripe/stripe-go/v71 v71.28.0
 	github.com/thedevsaddam/gojsonq v2.3.0+incompatible
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1

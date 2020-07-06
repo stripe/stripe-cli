@@ -87,8 +87,6 @@ type CassetteYaml struct {
 }
 
 func (recorder *VcrRecorder) Close() error {
-	fmt.Println("Calling recorder.Close()")
-
 	// Write everything to a YAML File
 
 	// Put everything in a wrapping CassetteYaml struct that can be marshalled
