@@ -3,24 +3,19 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	ws "github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
-
-//
-// Public types
-//
 
 // Config contains the optional configuration parameters of a Client.
 type Config struct {
@@ -38,142 +33,124 @@ type Config struct {
 	PongWait time.Duration
 
 	// Interval at which the websocket client should reset the connection
-	ReconnectInterval time.Duration
+	GetReconnectInterval func(session *stripeauth.StripeCLISession) time.Duration
 
 	WriteWait time.Duration
-
-	EventHandler EventHandler
-}
-
-// EventHandler handles an event.
-type EventHandler interface {
-	ProcessEvent(IncomingMessage)
-}
-
-// EventHandlerFunc is an adapter to allow the use of ordinary
-// functions as event handlers. If f is a function with the
-// appropriate signature, EventHandlerFunc(f) is a
-// EventHandler that calls f.
-type EventHandlerFunc func(IncomingMessage)
-
-// ProcessEvent calls f(msg).
-func (f EventHandlerFunc) ProcessEvent(msg IncomingMessage) {
-	f(msg)
 }
 
 // Client is the client used to receive webhook requests from Stripe
 // and send back webhook responses from the local endpoint to Stripe.
 type Client struct {
-	// URL the client connects to
-	URL string
-
-	// ID sent by the client in the `Websocket-Id` header when connecting
-	WebSocketID string
-
-	// Feature that the websocket is specified for
-	WebSocketAuthorizedFeature string
-
 	// Optional configuration parameters
 	cfg *Config
 
-	conn        *ws.Conn
-	done        chan struct{}
-	isConnected bool
+	conn *ws.Conn
+	done chan struct{}
 
-	NotifyExpired chan struct{}
 	notifyClose   chan error
 	send          chan *OutgoingMessage
-	stopReadPump  chan struct{}
 	stopWritePump chan struct{}
-	wg            *sync.WaitGroup
 }
 
-// Connected returns a channel that's closed when the client has finished
-// establishing the websocket connection.
-func (c *Client) Connected() <-chan struct{} {
-	d := make(chan struct{})
+type sessionRefresher = func(context.Context, error, *http.Response) (*stripeauth.StripeCLISession, error)
 
-	go func() {
-		for !c.isConnected {
-			time.Sleep(100 * time.Millisecond)
+func cancellableWait(ctx context.Context, duration time.Duration, onCancel func()) {
+	select {
+	case <-ctx.Done():
+		onCancel()
+		return
+	case <-time.After(duration):
+		return
+	}
+}
+
+func (c *Client) connectRefreshLoop(ctx context.Context, initialSession *stripeauth.StripeCLISession, refreshSession sessionRefresher) (*ws.Conn, error) {
+	c.cfg.Log.WithFields(log.Fields{
+		"prefix": "websocket.client.Run",
+	}).Debug("Attempting to connect to Stripe")
+
+	conn, errResp, err := c.connect(ctx, initialSession)
+	for err != nil {
+		c.cfg.Log.WithFields(log.Fields{
+			"prefix": "websocket.client.Run",
+		}).Debug("Failed to connect to Stripe. Retrying...")
+
+		session, err := refreshSession(ctx, err, errResp)
+		if err != nil {
+			return nil, err
 		}
-		close(d)
-	}()
+		cancellableWait(ctx, c.cfg.ConnectAttemptWait, func() { c.Stop() })
+		conn, errResp, err = c.connect(ctx, session)
+	}
+	return conn, err
+}
 
-	return d
+type IncomingMessageEvent struct {
+	Msg IncomingMessage
+	Err error
 }
 
 // Run starts listening for incoming webhook requests from Stripe.
-func (c *Client) Run(ctx context.Context) {
-	for {
-		c.isConnected = false
-		c.cfg.Log.WithFields(log.Fields{
-			"prefix": "websocket.client.Run",
-		}).Debug("Attempting to connect to Stripe")
+func (c *Client) Run(ctx context.Context, refreshSession sessionRefresher) chan IncomingMessageEvent {
+	messages := make(chan IncomingMessageEvent, 100)
+	sendError := func(err error) chan IncomingMessageEvent {
+		messages <- IncomingMessageEvent{Err: err}
+		close(messages)
+		return messages
+	}
 
-		var err error
-		err = c.connect(ctx)
-		for err != nil {
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.client.Run",
-			}).Debug("Failed to connect to Stripe. Retrying...")
-
-			if err == ErrUnknownID {
-				c.cfg.Log.WithFields(log.Fields{
-					"prefix": "websocket.client.Run",
-				}).Debug("Websocket session is expired.")
-				select {
-				case <-ctx.Done():
-					c.Stop()
-					return
-				case <-time.After(c.cfg.ConnectAttemptWait):
-					c.NotifyExpired <- struct{}{}
-					return
-				}
+	session, err := refreshSession(ctx, nil, nil)
+	if err != nil {
+		return sendError(err)
+	}
+	go func() {
+		for {
+			conn, err := c.connectRefreshLoop(ctx, session, refreshSession)
+			if err != nil {
+				sendError(err)
 			}
+			c.changeConnection(conn)
+
+			go func() {
+				connMessages := c.readPump(conn)
+				for msg := range connMessages {
+					messages <- IncomingMessageEvent{Msg: msg}
+				}
+			}()
+
+			go c.writePump()
+
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.client.connect",
+			}).Debug("Connected!")
+
 			select {
 			case <-ctx.Done():
-				c.Stop()
-			case <-time.After(c.cfg.ConnectAttemptWait):
+				close(c.send)
+				close(c.stopWritePump)
+
+			case <-c.done:
+				close(c.send)
+				close(c.stopWritePump)
+
+			case <-c.notifyClose:
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.client.Run",
+				}).Debug("Disconnected from Stripe")
+				close(c.stopWritePump)
+			case <-time.After(c.cfg.GetReconnectInterval(session)):
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.Client.Run",
+				}).Debug("Resetting the connection")
+				close(c.stopWritePump)
+
+				if c.conn != nil {
+					c.conn.Close() // #nosec G104
+				}
 			}
-			err = c.connect(ctx)
 		}
-
-		select {
-		case <-ctx.Done():
-			close(c.send)
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-
-			return
-		case <-c.done:
-			close(c.send)
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-			close(c.NotifyExpired)
-
-			return
-		case <-c.notifyClose:
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.client.Run",
-			}).Debug("Disconnected from Stripe")
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-			c.wg.Wait()
-		case <-time.After(c.cfg.ReconnectInterval):
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
-			}).Debug("Resetting the connection")
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-
-			if c.conn != nil {
-				c.conn.Close() // #nosec G104
-			}
-
-			c.wg.Wait()
-		}
-	}
+	}()
+	return messages
 }
 
 // Stop stops listening for incoming webhook events.
@@ -186,139 +163,87 @@ func (c *Client) SendMessage(msg *OutgoingMessage) {
 	c.send <- msg
 }
 
-func readWSConnectErrorMessage(resp *http.Response) string {
-	if resp == nil {
-		return ""
-	}
-	if resp.Body == nil {
-		return ""
-	}
-
-	se := struct {
-		InnerError struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}{}
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return ""
-	}
-
-	err = json.Unmarshal(body, &se)
-	if err != nil {
-		return ""
-	}
-
-	return se.InnerError.Message
-}
-
-var unknownIDMessage string = "Unknown WebSocket ID."
-
-// ErrUnknownID can occur when the websocket session is expired or invalid
-var ErrUnknownID error = errors.New(unknownIDMessage)
-
-// connect makes a single attempt to connect to the websocket URL. It returns
-// the success of the attempt.
-
-func (c *Client) connect(ctx context.Context) error {
+func wsHeader(baseURL string, webSocketID string, webSocketAuthorizedFeature string, noWSS bool) (string, http.Header) {
 	header := http.Header{}
 	// Disable compression by requiring "identity"
 	header.Set("Accept-Encoding", "identity")
 	header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
-	header.Set("Websocket-Id", c.WebSocketID)
+	header.Set("Websocket-Id", webSocketID)
 
-	url := c.URL
-	if c.cfg.NoWSS && strings.HasPrefix(url, "wss") {
-		url = "ws" + strings.TrimPrefix(c.URL, "wss")
+	url := baseURL
+	if noWSS && strings.HasPrefix(baseURL, "wss") {
+		url = "ws" + strings.TrimPrefix(baseURL, "wss")
 	}
 
-	url = url + "?websocket_feature=" + c.WebSocketAuthorizedFeature
+	url = url + "?websocket_feature=" + webSocketAuthorizedFeature
+	return url, header
+}
+
+func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession, dialer *ws.Dialer, noWSS bool, logger *log.Logger, pongWait time.Duration) (Connection, *http.Response, error) {
+	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, noWSS)
+
+	logger.WithFields(log.Fields{
+		"prefix": "websocket.connection.ConnectWebsocket",
+		"url":    url,
+	}).Debug("Dialing websocket")
+
+	conn, resp, err := dialer.DialContext(ctx, url, header)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &connection{
+		conn:     conn,
+		log:      logger,
+		pongWait: pongWait,
+	}, resp, nil
+}
+
+func (c *Client) connect(ctx context.Context, session *stripeauth.StripeCLISession) (*ws.Conn, *http.Response, error) {
+	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, c.cfg.NoWSS)
 
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "websocket.Client.connect",
 		"url":    url,
 	}).Debug("Dialing websocket")
-
-	conn, resp, err := c.cfg.Dialer.DialContext(ctx, url, header)
-	if err != nil {
-		message := readWSConnectErrorMessage(resp)
-		c.cfg.Log.WithFields(log.Fields{
-			"prefix":  "websocket.Client.connect",
-			"error":   err,
-			"message": message,
-		}).Debug("Websocket connection error")
-		if message == unknownIDMessage {
-			return ErrUnknownID
-		}
-		return err
-	}
-
-	defer resp.Body.Close()
-
-	c.changeConnection(conn)
-	c.isConnected = true
-
-	c.wg = &sync.WaitGroup{}
-	c.wg.Add(2)
-
-	go c.readPump()
-
-	go c.writePump()
-
-	c.cfg.Log.WithFields(log.Fields{
-		"prefix": "websocket.client.connect",
-	}).Debug("Connected!")
-
-	return err
+	return c.cfg.Dialer.DialContext(ctx, url, header)
 }
 
 // changeConnection takes a new connection and recreates the channels.
 func (c *Client) changeConnection(conn *ws.Conn) {
 	c.conn = conn
 	c.notifyClose = make(chan error)
-	c.stopReadPump = make(chan struct{})
 	c.stopWritePump = make(chan struct{})
 }
 
-// readPump pumps messages from the websocket connection and pushes them into
-// RequestHandler's ProcessWebhookRequest.
-//
-// The application runs readPump in a per-connection goroutine. The application
-// ensures that there is at most one reader on a connection by executing all
-// reads from this goroutine.
-func (c *Client) readPump() {
-	defer c.wg.Done()
-
-	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
+// readPump reads from a connection and writes IncomingMessages to the channel
+// it returns
+func (c *Client) readPump(conn *ws.Conn) chan IncomingMessage {
+	err := conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 	if err != nil {
 		c.cfg.Log.Debug("SetReadDeadline error: ", err)
 	}
 
-	c.conn.SetPongHandler(func(string) error {
+	conn.SetPongHandler(func(string) error {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.readPump",
 		}).Debug("Received pong message")
 
-		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
+		err := conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 		if err != nil {
 			c.cfg.Log.Debug("SetReadDeadline error: ", err)
 		}
 
 		return nil
 	})
-
-	for {
-		_, data, err := c.conn.ReadMessage()
-		if err != nil {
-			select {
-			case <-c.stopReadPump:
-				c.cfg.Log.WithFields(log.Fields{
-					"prefix": "websocket.Client.readPump",
-				}).Debug("stopReadPump")
-			default:
+	messages := make(chan IncomingMessage)
+	go func() {
+		defer func() {
+			close(messages)
+		}()
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
 				switch {
 				case !ws.IsCloseError(err):
 					// read errors do not prevent websocket reconnects in the CLI so we should
@@ -339,26 +264,25 @@ func (c *Client) readPump() {
 						"prefix": "stripecli.ADDITIONAL_INFO",
 					}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
 				}
-				c.notifyClose <- err
+				return
 			}
 
-			return
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix":  "websocket.Client.readPump",
+				"message": string(data),
+			}).Debug("Incoming message")
+
+			var msg IncomingMessage
+			if err = json.Unmarshal(data, &msg); err != nil {
+				c.cfg.Log.Debug("Received malformed message: ", err)
+
+				continue
+			}
+
+			messages <- msg
 		}
-
-		c.cfg.Log.WithFields(log.Fields{
-			"prefix":  "websocket.Client.readPump",
-			"message": string(data),
-		}).Debug("Incoming message")
-
-		var msg IncomingMessage
-		if err = json.Unmarshal(data, &msg); err != nil {
-			c.cfg.Log.Debug("Received malformed message: ", err)
-
-			continue
-		}
-
-		go c.cfg.EventHandler.ProcessEvent(msg)
-	}
+	}()
+	return messages
 }
 
 // writePump pumps messages to the websocket connection that are queued with
@@ -372,7 +296,6 @@ func (c *Client) writePump() {
 
 	defer func() {
 		ticker.Stop()
-		c.wg.Done()
 	}()
 
 	for {
@@ -444,7 +367,7 @@ func (c *Client) writePump() {
 //
 
 // NewClient returns a new Client.
-func NewClient(url string, webSocketID string, websocketAuthorizedFeature string, cfg *Config) *Client {
+func NewClient(cfg *Config) *Client {
 	if cfg == nil {
 		cfg = &Config{}
 	}
@@ -454,7 +377,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 	}
 
 	if cfg.Dialer == nil {
-		cfg.Dialer = newWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		cfg.Dialer = NewWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	}
 
 	if cfg.Log == nil {
@@ -469,26 +392,18 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		cfg.PingPeriod = (cfg.PongWait * 9) / 10
 	}
 
-	if cfg.ReconnectInterval == 0 {
-		cfg.ReconnectInterval = defaultReconnectInterval
+	if cfg.GetReconnectInterval == nil {
+		cfg.GetReconnectInterval = defaultGetReconnectInterval
 	}
 
 	if cfg.WriteWait == 0 {
 		cfg.WriteWait = defaultWriteWait
 	}
 
-	if cfg.EventHandler == nil {
-		cfg.EventHandler = nullEventHandler
-	}
-
 	return &Client{
-		URL:                        url,
-		WebSocketID:                webSocketID,
-		WebSocketAuthorizedFeature: websocketAuthorizedFeature,
-		cfg:                        cfg,
-		done:                       make(chan struct{}),
-		send:                       make(chan *OutgoingMessage),
-		NotifyExpired:              make(chan struct{}),
+		cfg:  cfg,
+		done: make(chan struct{}),
+		send: make(chan *OutgoingMessage),
 	}
 }
 
@@ -498,12 +413,8 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 
 const (
 	defaultConnectAttemptWait = 10 * time.Second
-
-	defaultPongWait = 10 * time.Second
-
-	defaultReconnectInterval = 60 * time.Second
-
-	defaultWriteWait = 10 * time.Second
+	defaultPongWait           = 10 * time.Second
+	defaultWriteWait          = 10 * time.Second
 )
 
 //
@@ -512,13 +423,15 @@ const (
 
 var subprotocols = [...]string{"stripecli-devproxy-v1"}
 
-var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
-
 //
 // Private functions
 //
 
-func newWebSocketDialer(unixSocket string) *ws.Dialer {
+func defaultGetReconnectInterval(session *stripeauth.StripeCLISession) time.Duration {
+	return 60 * time.Second
+}
+
+func NewWebSocketDialer(unixSocket string) *ws.Dialer {
 	var dialer *ws.Dialer
 
 	if unixSocket != "" {

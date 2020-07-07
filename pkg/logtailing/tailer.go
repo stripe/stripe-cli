@@ -3,8 +3,10 @@ package logtailing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -122,25 +124,57 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 
 const maxConnectAttempts = 3
 
-// Run sets the websocket connection
-func (t *Tailer) Run(ctx context.Context) error {
-	s := ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
+func readWSConnectErrorMessage(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	if resp.Body == nil {
+		return ""
+	}
 
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "logtailing.Tailer.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
+	se := struct {
+		InnerError struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}{}
 
-	var warned = false
-	var nAttempts int = 0
+	body, err := ioutil.ReadAll(resp.Body)
 
-	for nAttempts < maxConnectAttempts {
-		session, err := t.createSession(ctx)
+	if err != nil {
+		return ""
+	}
 
+	err = json.Unmarshal(body, &se)
+	if err != nil {
+		return ""
+	}
+
+	return se.InnerError.Message
+}
+
+var unknownIDMessage string = "Unknown WebSocket ID."
+
+// ErrUnknownID can occur when the websocket session is expired or invalid
+var ErrUnknownID error = errors.New(unknownIDMessage)
+
+func isExpirationErr(err error, resp *http.Response) bool {
+	if err == nil || resp == nil {
+		return false
+	}
+	message := readWSConnectErrorMessage(resp)
+	return message == unknownIDMessage
+}
+func (t *Tailer) refreshSession() func(context.Context, error, *http.Response) (*stripeauth.StripeCLISession, error) {
+	warned := false
+	return func(ctx context.Context, err error, resp *http.Response) (*stripeauth.StripeCLISession, error) {
 		if err != nil {
-			ansi.StopSpinner(s, "", t.cfg.Log.Out)
-			t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+			if !isExpirationErr(err, resp) {
+				return nil, nil
+			}
+		}
+		session, err := t.createSession(ctx)
+		if err != nil {
+			return nil, err
 		}
 
 		if session.DisplayConnectFilterWarning && !warned {
@@ -150,49 +184,40 @@ func (t *Tailer) Run(ctx context.Context) error {
 			warned = true
 		}
 
-		t.webSocketClient = websocket.NewClient(
-			session.WebSocketURL,
-			session.WebSocketID,
-			session.WebSocketAuthorizedFeature,
-			&websocket.Config{
-				EventHandler:      websocket.EventHandlerFunc(t.processRequestLogEvent),
-				Log:               t.cfg.Log,
-				NoWSS:             t.cfg.NoWSS,
-				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
+		return session, nil
+	}
+}
+
+// Run sets the websocket connection
+func (t *Tailer) Run(ctx context.Context) error {
+	ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
+
+	ctx = withSIGTERMCancel(ctx, func() {
+		log.WithFields(log.Fields{
+			"prefix": "logtailing.Tailer.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
+
+	client := websocket.NewClient(
+		&websocket.Config{
+			Log:   t.cfg.Log,
+			NoWSS: t.cfg.NoWSS,
+
+			GetReconnectInterval: func(session *stripeauth.StripeCLISession) time.Duration {
+				return time.Duration(session.ReconnectDelay) * time.Second
 			},
-		)
+		},
+	)
 
-		go func() {
-			<-t.webSocketClient.Connected()
-			nAttempts = 0
-			ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
-		}()
+	events := client.Run(ctx, t.refreshSession())
 
-		go t.webSocketClient.Run(ctx)
-		nAttempts++
-
-		select {
-		case <-ctx.Done():
-			ansi.StopSpinner(s, "", t.cfg.Log.Out)
-			t.cfg.Log.Fatalf("Aborting")
-		case <-t.webSocketClient.NotifyExpired:
-			if nAttempts < maxConnectAttempts {
-				ansi.StartSpinner(s, "Session expired, reconnecting...", t.cfg.Log.Out)
-			} else {
-				t.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
-			}
+	for {
+		event := <-events
+		if event.Err != nil {
+			return event.Err
 		}
+		t.processRequestLogEvent(event.Msg)
 	}
-
-	if t.webSocketClient != nil {
-		t.webSocketClient.Stop()
-	}
-
-	log.WithFields(log.Fields{
-		"prefix": "logtailing.Tailer.Run",
-	}).Debug("Bye!")
-
-	return nil
 }
 
 func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
