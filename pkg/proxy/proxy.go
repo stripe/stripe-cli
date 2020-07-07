@@ -1,9 +1,11 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -102,69 +104,119 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 
 const maxConnectAttempts = 3
 
+type sessionRefresher = func(context.Context, error) (*stripeauth.StripeCLISession, error)
+type EventSource interface {
+	Run(context.Context, sessionRefresher) (chan websocket.IncomingMessage, error)
+}
+
+func readWSConnectErrorMessage(resp *http.Response) string {
+	if resp == nil {
+		return ""
+	}
+	if resp.Body == nil {
+		return ""
+	}
+
+	se := struct {
+		InnerError struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}{}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		return ""
+	}
+
+	err = json.Unmarshal(body, &se)
+	if err != nil {
+		return ""
+	}
+
+	return se.InnerError.Message
+}
+
+var unknownIDMessage string = "Unknown WebSocket ID."
+
+// ErrUnknownID can occur when the websocket session is expired or invalid
+var ErrUnknownID error = errors.New(unknownIDMessage)
+
+func isExpirationErr(err error, resp *http.Response) bool {
+	if err == nil || resp == nil {
+		return false
+	}
+	message := readWSConnectErrorMessage(resp)
+	return message == unknownIDMessage
+}
+
+func (p *Proxy) refreshSession(ctx context.Context, err error, resp *http.Response) (*stripeauth.StripeCLISession, error) {
+	if err != nil {
+		if !isExpirationErr(err, resp) {
+			return nil, nil
+		}
+	}
+	session, err := p.createSession(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
-
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
-
-	var nAttempts int = 0
-
-	for nAttempts < maxConnectAttempts {
-		session, err := p.createSession(ctx)
-		if err != nil {
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
-		}
-
-		p.webSocketClient = websocket.NewClient(
-			session.WebSocketURL,
-			session.WebSocketID,
-			session.WebSocketAuthorizedFeature,
-			&websocket.Config{
-				Log:               p.cfg.Log,
-				NoWSS:             p.cfg.NoWSS,
-				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
-				EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
-			},
-		)
-
-		go func() {
-			<-p.webSocketClient.Connected()
-			nAttempts = 0
-			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
-		}()
-
-		go p.webSocketClient.Run(ctx)
-		nAttempts++
-
-		select {
-		case <-ctx.Done():
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf("Aborting")
-		case <-p.webSocketClient.NotifyExpired:
-			if nAttempts < maxConnectAttempts {
-				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
+	connectionManager := websocket.NewConnectionManager(&websocket.ConnectionManagerCfg{})
+	session, err := p.createSession(ctx)
+	dialer := websocket.NewWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+	if err != nil {
+		return err
+	}
+	connect := func() (websocket.Connection, error) {
+		for _ = range []int{1, 2, 3} {
+			//TODO: fix this PongWait
+			conn, resp, err := websocket.ConnectWebsocket(ctx, session, dialer, p.cfg.NoWSS, p.cfg.Log, 5*time.Second)
+			if err != nil {
+				session, err = p.refreshSession(ctx, err, resp)
+				if err != nil {
+					return nil, err
+				}
 			} else {
-				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				return conn, nil
+			}
+		}
+		return nil, err
+	}
+
+	onMessage := func(b []byte) {
+		var msg websocket.IncomingMessage
+		if err := json.Unmarshal(b, &msg); err != nil {
+			p.cfg.Log.Debug("Received malformed message: ", err)
+
+			return
+		}
+		p.processWebhookEvent(msg)
+	}
+	onTerminate := func(err error) {
+		p.cfg.Log.Fatal("Terminating...", err)
+	}
+	send := connectionManager.Run(ctx, onMessage, onTerminate, connect)
+	responses := p.listenEndpoints()
+
+	for {
+		response, ok := <-responses
+		if !ok {
+			return nil
+		}
+		msg, err := p.processEndpointResponse(response.eventContext, response.forwardURL, response.resp)
+		if err == nil {
+			b, err := json.Marshal(msg)
+			if err != nil {
+				send(bytes.NewReader(b))
 			}
 		}
 	}
-
-	if p.webSocketClient != nil {
-		p.webSocketClient.Stop()
-	}
-
-	log.WithFields(log.Fields{
-		"prefix": "proxy.Proxy.Run",
-	}).Debug("Bye!")
-
-	return nil
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
@@ -296,7 +348,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 }
 
-func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
+func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) (*websocket.OutgoingMessage, error) {
 	localTime := time.Now().Format(timeLayout)
 
 	color := ansi.Color(os.Stdout)
@@ -318,7 +370,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		)
 		log.Errorf(errStr)
 
-		return
+		return nil, err
 	}
 
 	body := truncate(string(buf), maxBodySize, true)
@@ -335,17 +387,14 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		}
 	}
 
-	if p.webSocketClient != nil {
-		msg := websocket.NewWebhookResponse(
-			evtCtx.webhookID,
-			evtCtx.webhookConversationID,
-			forwardURL,
-			resp.StatusCode,
-			body,
-			headers,
-		)
-		p.webSocketClient.SendMessage(msg)
-	}
+	return websocket.NewWebhookResponse(
+		evtCtx.webhookID,
+		evtCtx.webhookConversationID,
+		forwardURL,
+		resp.StatusCode,
+		body,
+		headers,
+	), nil
 }
 
 //
@@ -370,7 +419,18 @@ func New(cfg *Config, events []string) *Proxy {
 		p.events = convertToMap(events)
 	}
 
-	for _, route := range cfg.EndpointRoutes {
+	return p
+}
+
+type EndpointResponse = struct {
+	eventContext eventContext
+	forwardURL   string
+	resp         *http.Response
+}
+
+func (p *Proxy) listenEndpoints() chan EndpointResponse {
+	responses := make(chan EndpointResponse)
+	for _, route := range p.cfg.EndpointRoutes {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
@@ -384,16 +444,21 @@ func New(cfg *Config, events []string) *Proxy {
 					},
 					Timeout: defaultTimeout,
 					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: p.cfg.SkipVerify},
 					},
 				},
-				Log:             p.cfg.Log,
-				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
+				Log: p.cfg.Log,
+				ResponseHandler: EndpointResponseHandlerFunc(func(eventContext eventContext, forwardURL string, resp *http.Response) {
+					responses <- EndpointResponse{
+						eventContext: eventContext,
+						forwardURL:   forwardURL,
+						resp:         resp,
+					}
+				}),
 			},
 		))
 	}
-
-	return p
+	return responses
 }
 
 //
