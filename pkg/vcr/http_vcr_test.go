@@ -312,20 +312,18 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 
 // Test the full server by switchign between modes, loading and ejecting cassettes, and sending real stripe requests
 func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
-	// assert.Equal(t, false, true)
-
 	// -- Setup VCR server
-	addressString := ":13111"
+	addressString := "localhost:13111"
 	filepath := "test_record_replay_single_run.yaml"
-	// httpWrapper, err := NewRecordReplayServer("api.stripe.com")
-	// assert.NoError(t, err)
+	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com")
+	assert.NoError(t, err)
 
-	// server := httpWrapper.InitializeServer(addressString)
-	// go func() {
-	// 	server.ListenAndServeTLS("pkg/vcr/cert.pem", "pkg/vcr/key.pem")
-	// }()
+	server := httpWrapper.InitializeServer(addressString)
+	go func() {
+		server.ListenAndServe()
+	}()
 
-	fullAddressString := "http://localhost" + addressString
+	fullAddressString := "http://" + addressString
 
 	resp, err := http.Get(fullAddressString + "/vcr/mode/record")
 	assert.NoError(t, err)
@@ -335,7 +333,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	// We'll use the stripe-go SDK in this test. Configure it to point to the VCR server
+	// --- We'll use the stripe-go SDK in this test. Configure it to point to the VCR server
 	stripe.Key = stripeKey
 
 	mockBackendConf := stripe.BackendConfig{
@@ -344,7 +342,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	mockBackend := stripe.GetBackendWithConfig("api", &mockBackendConf)
 	stripe.SetBackend(stripe.APIBackend, mockBackend)
 
-	// --- Start interacting with Stripe
+	// --- Start interacting in RECORD MODE
 
 	// Create a customer
 	description := "Stripe Developer"
@@ -388,7 +386,9 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	// --- Switch to replay
+	// --- END RECORD MODE
+
+	// --- Start interacting in REPLAY MODE
 	resp, err = http.Get(fullAddressString + "/vcr/mode/replay")
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -416,6 +416,8 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, myCharge, replayMyCharge)
+
+	// --- END REPLAY MODE
 
 }
 
