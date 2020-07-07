@@ -33,6 +33,7 @@ type listenCmd struct {
 	loadFromWebhooksAPI   bool
 	printJSON             bool
 	skipVerify            bool
+	onlyPrintSecret       bool
 
 	apiBaseURL string
 	noWSS      bool
@@ -65,6 +66,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout")
 	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
+	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -163,6 +165,15 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Log:                 log.StandardLogger(),
 		NoWSS:               lc.noWSS,
 	}, lc.events)
+
+	if lc.onlyPrintSecret {
+		secret, err := p.GetSessionSecret(context.Background())
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s", secret)
+		return nil
+	}
 
 	err = p.Run(context.Background())
 	if err != nil {
