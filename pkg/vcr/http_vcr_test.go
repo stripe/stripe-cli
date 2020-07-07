@@ -13,6 +13,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/charge"
+	"github.com/stripe/stripe-go/customer"
 )
 
 var stripeKey string
@@ -305,6 +308,115 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
+}
+
+// Test the full server by switchign between modes, loading and ejecting cassettes, and sending real stripe requests
+func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
+	// assert.Equal(t, false, true)
+
+	// -- Setup VCR server
+	addressString := ":13111"
+	filepath := "test_record_replay_single_run.yaml"
+	// httpWrapper, err := NewRecordReplayServer("api.stripe.com")
+	// assert.NoError(t, err)
+
+	// server := httpWrapper.InitializeServer(addressString)
+	// go func() {
+	// 	server.ListenAndServeTLS("pkg/vcr/cert.pem", "pkg/vcr/key.pem")
+	// }()
+
+	fullAddressString := "http://localhost" + addressString
+
+	resp, err := http.Get(fullAddressString + "/vcr/mode/record")
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	resp, err = http.Get(fullAddressString + "/vcr/cassette/load?filepath=" + filepath)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	// We'll use the stripe-go SDK in this test. Configure it to point to the VCR server
+	stripe.Key = stripeKey
+
+	mockBackendConf := stripe.BackendConfig{
+		URL: "http://localhost:13111",
+	}
+	mockBackend := stripe.GetBackendWithConfig("api", &mockBackendConf)
+	stripe.SetBackend(stripe.APIBackend, mockBackend)
+
+	// --- Start interacting with Stripe
+
+	// Create a customer
+	description := "Stripe Developer"
+	email := "gostripe@stripe.com"
+	params := &stripe.CustomerParams{
+		Description: stripe.String(description),
+		Email:       stripe.String(email),
+	}
+
+	c, err := customer.New(params)
+	assert.NoError(t, err)
+	assert.Equal(t, description, c.Description)
+	assert.Equal(t, email, c.Email)
+
+	// List customers
+	listParams := &stripe.CustomerListParams{}
+	listParams.Filters.AddFilter("limit", "", "1")
+	i := customer.List(listParams)
+
+	// Check the first customer returned (should be the most recent one we just created)
+	assert.True(t, i.Next())
+	newC := i.Customer()
+	assert.Equal(t, c, newC)
+
+	// Create a charge
+	chargeParams := &stripe.ChargeParams{
+		Amount:      stripe.Int64(2000),
+		Currency:    stripe.String(string(stripe.CurrencyUSD)),
+		Description: stripe.String("My First Test Charge (created for API docs)"),
+		Source:      &stripe.SourceParams{Token: stripe.String("tok_mastercard")},
+	}
+	myCharge, err := charge.New(chargeParams)
+	assert.NoError(t, err)
+
+	assert.Equal(t, int64(2000), myCharge.Amount)
+	assert.Equal(t, stripe.CurrencyUSD, myCharge.Currency)
+	assert.Equal(t, "My First Test Charge (created for API docs)", myCharge.Description)
+
+	// Tell VCR server to save recording
+	resp, err = http.Get(fullAddressString + "/vcr/cassette/eject")
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	// --- Switch to replay
+	resp, err = http.Get(fullAddressString + "/vcr/mode/replay")
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	resp, err = http.Get(fullAddressString + "/vcr/cassette/load?filepath=" + filepath)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	// Make the same interactions, assert the same things
+	// Create a customer
+	replayC, err := customer.New(params)
+	assert.NoError(t, err)
+	assert.Equal(t, c, replayC)
+
+	// List customers
+	i = customer.List(listParams)
+
+	// Check the first customer returned (should be the most recent one we just created)
+	assert.True(t, i.Next())
+	replayNewC := i.Customer()
+	assert.Equal(t, newC, replayNewC)
+
+	// Create a charge
+	replayMyCharge, err := charge.New(chargeParams)
+	assert.NoError(t, err)
+
+	assert.Equal(t, myCharge, replayMyCharge)
+
 }
 
 // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
