@@ -87,6 +87,64 @@ Replay the same sequence of interactions using the stripe CLI, and notice that w
 `stripe balance retrieve --api-base="http://localhost:13111"`
 
 
+## [WIP] Webhooks
+Skeleton demo of functionality:
+
+```
+# Terminal 1
+# Start the playback server using the default settings. (in record mode, and using the default ports)
+
+> go run cmd/stripe/main.go playback
+
+Seting up playback server...
+
+/vcr/mode/: Setting mode to  record
+/vcr/cassette/load: Loading cassette  [default_cassette.yaml]
+
+------ Server Running ------
+Recording...
+Using cassette: "default_cassette.yaml".
+
+Listening via HTTP on localhost:13111
+Forwarding webhooks to http://localhost:13112
+-----------------------------
+
+```
+
+```
+# Terminal 2
+# Use stripe listen to forward webhooks to the playback server's webhook endpoint
+
+> stripe listen --forward-to localhost:13111/vcr/webhooks
+```
+
+
+```
+# Terminal 3
+# This effectively sets up a basic HTTP server on localhost:13112 that will echo out all requests
+# and always respond with a 200 status code.
+
+> socat -v -s tcp-listen:13112,reuseaddr,fork    "exec:printf \'HTTP/1.0 200  OK\r\n\r\n\'"
+```
+Finally, use the Stripe CLI to send requests and trigger webhooks to the playback server.
+```
+# Terminal 4
+
+# Send a normal request
+stripe balance retrieve --api-base "localhost:13111"
+
+# Trigger webhooks afterwards
+stripe trigger payment_intent.created
+
+```
+You should see the `socat` server in Terminal 3 receive the forwarded webhooks. You should also see the `playback` server logging (and recording) all interactions (outbound API requests and inbound webhooks).
+
+After all this, you can re-run the server in replay mode:
+
+`go run cmd/stripe/main.go playback --replaymode`
+
+Then, rerun the same commands in the same order in Terminal 4, and you should see **recorded** responses **and** webhooks being returned to your Stripe CLI client and to your `socat` server.
+
 
 # Testing
 Some of the tests require a `.env` file to be present at `/pkg/vcr/.env` containing
