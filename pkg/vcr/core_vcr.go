@@ -44,7 +44,6 @@ func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
 
 // takes a generic struct
 func (recorder *VcrRecorder) Write(interactionType InteractionType, req Serializable, resp Serializable) error {
-	fmt.Println("Writing in VcrRecorder")
 	reqBytes, err := req.toBytes()
 
 	if err != nil {

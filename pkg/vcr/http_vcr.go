@@ -420,7 +420,6 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 
 // Webhooks are handled slightly differently from outgoing API requests
 func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("In RR webhook handler")
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
 		fmt.Fprint(w, "No cassette is loaded.")
