@@ -29,21 +29,21 @@ func newVcrCmd() *vcrCmd {
 	vc := &vcrCmd{}
 
 	vc.cmd = &cobra.Command{
-		Use:   "vcr",
+		Use:   "playback",
 		Args:  validators.NoArgs,
-		Short: "Start a VCR server",
-		Long: `The vcr command starts a local proxy server that intercepts outgoing requests to the Stripe API.
+		Short: "Start a `playback` server",
+		Long: `The playback command starts a local proxy server that intercepts outgoing requests to the Stripe API.
 
 If run in record mode, this server acts as a transparent layer between the client and Stripe,
 recording the request/response pairs in a cassette file.
 
-If run in replay mode, requests are terminated at the VCR server, and responses are played back from a cassette file.
+If run in replay mode, requests are terminated at the playback server, and responses are played back from a cassette file.
 
-VCR Server Control via HTTP Endpoints:
+Playback Server Control via HTTP Endpoints:
 /vcr/stop: stops recording and writes the current session to cassette`,
-		Example: `stripe vcr
-  stripe vcr --replaymode
-  stripe vcr --https --cassette "my_cassette.yaml"`,
+		Example: `stripe playback
+  stripe playback --replaymode
+  stripe playback --https --cassette "my_cassette.yaml"`,
 		RunE: vc.runVcrCmd,
 	}
 

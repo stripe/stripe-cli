@@ -9,9 +9,9 @@ Otherwise, no other setup is needed.
 
 # Usage
 
-You start and configure the server via the `stripe vcr` command. See `stripe vcr --help` for a description of the flags, which configure address, record vs replay mode, HTTP vs HTTPS, etc.
+You start and configure the server via the `stripe playback` command. See `stripe playback --help` for a description of the flags, which configure address, record vs replay mode, HTTP vs HTTPS, etc.
 
-`go run cmd/stripe/main.go vcr --help`
+`go run cmd/stripe/main.go playback --help`
 
 When running in both record/replay mode, the server will print out interactions with it:
 
@@ -52,12 +52,12 @@ Besides the command line flags at startup, there are also HTTP endpoints that al
 ## Example
 ### In Window 1:
 
-`go run cmd/stripe/main.go vcr`
+`go run cmd/stripe/main.go playback`
 (Start a recordmode HTTP server at localhost:13111, writing to the default cassette)
 
 ### In Window 2:
 
-Record some test interactions using the stripe CLI, but proxy through the `stripe vcr` server:
+Record some test interactions using the stripe CLI, but proxy through the `stripe playback` server:
 
 `stripe customers create --api-base="http://localhost:13111"`
 
@@ -74,7 +74,7 @@ Ctrl-C the record server to shut it down.
 
 Then, start the replay server, which should read from the same default cassette.
 
-`go run cmd/stripe/main.go vcr --replaymode`
+`go run cmd/stripe/main.go playback --replaymode`
 
 ### In Window 2:
 
