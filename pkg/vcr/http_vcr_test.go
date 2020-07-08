@@ -63,8 +63,9 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://gobyexample.com"
+	webhookURL := "http://localhost:8888" // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -95,7 +96,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	httpReplayer := NewHttpReplayer()
+	httpReplayer := NewHttpReplayer(webhookURL)
 	err = httpReplayer.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -132,8 +133,9 @@ func TestStripeSimpleGet(t *testing.T) {
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
+	webhookURL := "http://localhost:8888" // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -161,7 +163,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer()
+	replayVcr := NewHttpReplayer(webhookURL)
 	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -191,8 +193,9 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
+	webhookURL := "http://localhost:8888" // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -219,7 +222,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer()
+	replayVcr := NewHttpReplayer(webhookURL)
 	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -247,8 +250,9 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
+	webhookURL := "http://localhost:8888" // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL)
+	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -283,7 +287,7 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	recordServer.Shutdown(context.TODO())
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer()
+	replayVcr := NewHttpReplayer(webhookURL)
 	err = replayVcr.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -315,7 +319,8 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// -- Setup VCR server
 	addressString := "localhost:13111"
 	filepath := "test_record_replay_single_run.yaml"
-	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com")
+	webhookURL := "localhost:8888" // not used in this test
+	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com", webhookURL)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -420,6 +425,8 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// --- END REPLAY MODE
 
 }
+
+// TODO: create a more complicated Stripe API integration test to familiarize myself a little bit with the more complicated flows (billing, subscriptions, etc)
 
 // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
 // This is a regression test for a bug where request bodies weren't being forwarded by VCR

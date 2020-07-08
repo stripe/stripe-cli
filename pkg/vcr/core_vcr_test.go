@@ -69,12 +69,12 @@ func TestSequentialPlayback(t *testing.T) {
 	s1 := Event{Name: "Request 1", Id: 23}
 	r1 := Event{Name: "Response 1", Id: 23}
 	fmt.Printf("%+v | %+v\n", s1, r1)
-	recorder.Write(s1, r1)
+	recorder.Write(OutgoingInteraction, s1, r1)
 
 	s2 := Event{Name: "Request 2", Id: 46}
 	r2 := Event{Name: "Response 2", Id: 46}
 	fmt.Printf("%+v | %+v\n", s2, r2)
-	recorder.Write(s2, r2)
+	recorder.Write(OutgoingInteraction, s2, r2)
 
 	err = recorder.Close()
 
@@ -136,12 +136,12 @@ func TestFirstMatchingEvent(t *testing.T) {
 	s1 := Event{Name: "Event 1", Id: 23}
 	r1 := Event{Name: "Response 1", Id: 23}
 	fmt.Printf("%+v | %+v\n", s1, r1)
-	recorder.Write(s1, r1)
+	recorder.Write(OutgoingInteraction, s1, r1)
 
 	s2 := Event{Name: "Event 2", Id: 46}
 	r2 := Event{Name: "Response 2", Id: 46}
 	fmt.Printf("%+v | %+v\n", s2, r2)
-	recorder.Write(s2, r2)
+	recorder.Write(OutgoingInteraction, s2, r2)
 
 	err = recorder.Close()
 
@@ -194,17 +194,17 @@ func TestLastMatchingEvent(t *testing.T) {
 	s1 := Event{Name: "Event 1", Id: 23}
 	r1 := Event{Name: "Response 1", Id: 23}
 	fmt.Printf("%+v | %+v\n", s1, r1)
-	recorder.Write(s1, r1)
+	recorder.Write(OutgoingInteraction, s1, r1)
 
 	s2 := Event{Name: "Event 1", Id: 46}
 	r2 := Event{Name: "Response 2", Id: 46}
 	fmt.Printf("%+v | %+v\n", s2, r2)
-	recorder.Write(s2, r2)
+	recorder.Write(OutgoingInteraction, s2, r2)
 
 	s3 := Event{Name: "Event 3", Id: 52}
 	r3 := Event{Name: "Response 3", Id: 52}
 	fmt.Printf("%+v | %+v\n", s3, r3)
-	recorder.Write(s3, r3)
+	recorder.Write(OutgoingInteraction, s3, r3)
 
 	err = recorder.Close()
 

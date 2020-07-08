@@ -12,15 +12,17 @@ import (
 )
 
 const defaultVCRPort = 13111
+const defaultWebhookPort = 13112
 
 type vcrCmd struct {
 	cmd *cobra.Command
 
-	apiBaseURL string
-	filepath   string
-	address    string
-	replayMode bool
-	serveHTTPS bool
+	apiBaseURL     string
+	filepath       string
+	address        string
+	webhookAddress string
+	replayMode     bool
+	serveHTTPS     bool
 }
 
 func newVcrCmd() *vcrCmd {
@@ -46,7 +48,8 @@ VCR Server Control via HTTP Endpoints:
 	}
 
 	vc.cmd.Flags().BoolVar(&vc.replayMode, "replaymode", false, "Replay events (default: record)")
-	vc.cmd.Flags().StringVar(&vc.address, "address", fmt.Sprintf(":%d", defaultVCRPort), "Address to serve on")
+	vc.cmd.Flags().StringVar(&vc.address, "address", fmt.Sprintf("localhost:%d", defaultVCRPort), "Address to serve on")
+	vc.cmd.Flags().StringVar(&vc.webhookAddress, "forward-to", fmt.Sprintf("localhost:%d", defaultWebhookPort), "Address to forward webhooks to")
 	vc.cmd.Flags().StringVar(&vc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
 	vc.cmd.Flags().BoolVar(&vc.serveHTTPS, "https", false, "Serve over HTTPS (default: HTTP")
 
@@ -57,12 +60,24 @@ VCR Server Control via HTTP Endpoints:
 }
 
 func (vc *vcrCmd) runVcrCmd(cmd *cobra.Command, args []string) error {
+	fmt.Println()
+	fmt.Println("Seting up playback server...")
+	fmt.Println()
+
 	filepath := vc.filepath
 	addressString := vc.address
 	recordMode := !vc.replayMode
 	remoteURL := vc.apiBaseURL
 
-	httpWrapper, err := vcr.NewRecordReplayServer(remoteURL)
+	var webhookAddress string
+	if vc.serveHTTPS {
+		webhookAddress = "https://" + vc.webhookAddress
+	} else {
+		webhookAddress = "http://" + vc.webhookAddress
+	}
+
+	// TODO: figure out interface for webhook / stripe listen configuration
+	httpWrapper, err := vcr.NewRecordReplayServer(remoteURL, webhookAddress)
 	if err != nil {
 		return nil
 	}
@@ -70,30 +85,21 @@ func (vc *vcrCmd) runVcrCmd(cmd *cobra.Command, args []string) error {
 	server := httpWrapper.InitializeServer(addressString)
 
 	if vc.serveHTTPS {
-		fmt.Println()
-		fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTPS on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
-
-		fmt.Println()
-
 		go func() {
 			server.ListenAndServeTLS("pkg/vcr/cert.pem", "pkg/vcr/key.pem")
 		}()
 
 	} else {
-		fmt.Println()
-		fmt.Printf("===\nUsing cassette \"%v\".\nListening via HTTP on %v\nRecordMode: %v\n===", filepath, addressString, recordMode)
-
-		fmt.Println()
 		go func() {
 			server.ListenAndServe()
 		}()
 	}
 
-	fullAddressString := "localhost" + addressString
+	var fullAddressString string
 	if vc.serveHTTPS {
-		fullAddressString = "https://" + fullAddressString
+		fullAddressString = "https://" + addressString
 	} else {
-		fullAddressString = "http://" + fullAddressString
+		fullAddressString = "http://" + addressString
 	}
 
 	if recordMode {
@@ -121,6 +127,29 @@ func (vc *vcrCmd) runVcrCmd(cmd *cobra.Command, args []string) error {
 	if resp.StatusCode != 200 {
 		return errors.New("Non 200 status code received during VCR startup: " + string(resp.Status))
 	}
+
+	fmt.Println()
+	fmt.Println("------ Server Running ------")
+
+	if recordMode {
+		fmt.Printf("Recording...\n")
+	} else {
+		fmt.Printf("Replaying...\n")
+	}
+
+	fmt.Printf("Using cassette: \"%v\".\n", filepath)
+	fmt.Println()
+
+	if vc.serveHTTPS {
+		fmt.Printf("Listening via HTTPS on %v\n", addressString)
+	} else {
+		fmt.Printf("Listening via HTTP on %v\n", addressString)
+	}
+
+	fmt.Printf("Forwarding webhooks to %v\n", webhookAddress)
+
+	fmt.Println("-----------------------------")
+	fmt.Println()
 
 	select {}
 }

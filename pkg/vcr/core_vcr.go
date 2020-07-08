@@ -28,9 +28,8 @@ type Serializable interface {
 }
 
 type VcrRecorder struct {
-	writer    io.Writer
-	requests  [][]byte
-	responses [][]byte
+	writer       io.Writer
+	interactions []CassettePair
 }
 
 func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
@@ -38,14 +37,14 @@ func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
 
 	recorder.writer = writer
 
-	recorder.requests = make([][]byte, 0)
-	recorder.responses = make([][]byte, 0)
+	recorder.interactions = make([]CassettePair, 0)
 
 	return recorder, nil
 }
 
 // takes a generic struct
-func (recorder *VcrRecorder) Write(req Serializable, resp Serializable) error {
+func (recorder *VcrRecorder) Write(interactionType InteractionType, req Serializable, resp Serializable) error {
+	fmt.Println("Writing in VcrRecorder")
 	reqBytes, err := req.toBytes()
 
 	if err != nil {
@@ -58,8 +57,7 @@ func (recorder *VcrRecorder) Write(req Serializable, resp Serializable) error {
 		return err
 	}
 
-	recorder.requests = append(recorder.requests, reqBytes)
-	recorder.responses = append(recorder.responses, respBytes)
+	recorder.interactions = append(recorder.interactions, CassettePair{Type: interactionType, Request: reqBytes, Response: respBytes})
 
 	// _, err = recorder.fileHandle.Write(reqBytes)
 	// recorder.fileHandle.Write([]byte("\n"))
@@ -75,8 +73,16 @@ func (recorder *VcrRecorder) Write(req Serializable, resp Serializable) error {
 }
 
 // Contains binary data representing a generic request and response saved in a cassette.
+type InteractionType int
+
+const (
+	OutgoingInteraction InteractionType = iota // eg: Stripe API requests
+	IncomingInteraction                        // eg: webhooks
+)
+
 type CassettePair struct {
 	// may have other fields like -- sequence number
+	Type     InteractionType
 	Request  []byte
 	Response []byte
 }
@@ -91,16 +97,7 @@ func (recorder *VcrRecorder) Close() error {
 
 	// Put everything in a wrapping CassetteYaml struct that can be marshalled
 	cassette := CassetteYaml{}
-	interactions := make([]CassettePair, 0)
-
-	for i := 0; i < len(recorder.requests); i++ {
-		pair := CassettePair{}
-		pair.Request = recorder.requests[i]
-		pair.Response = recorder.responses[i]
-
-		interactions = append(interactions, pair)
-	}
-	cassette.Interactions = interactions
+	cassette.Interactions = recorder.interactions
 
 	yamlBytes, err := yaml.Marshal(cassette)
 	if err != nil {
@@ -191,6 +188,28 @@ func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err err
 	}
 
 	return nil, errors.New("No matching events.")
+}
+
+func (replayer *VcrReplayer) InteractionsRemaining() int {
+	return len(replayer.cassette.Interactions)
+}
+
+func (replayer *VcrReplayer) PeekFront() (interaction CassettePair, err error) {
+	if len(replayer.cassette.Interactions) == 0 {
+		return CassettePair{}, errors.New("Nothing left in cassette to replay.")
+	}
+
+	return replayer.cassette.Interactions[0], nil
+}
+
+func (replayer *VcrReplayer) PopFront() (interaction CassettePair, err error) {
+	if len(replayer.cassette.Interactions) == 0 {
+		return CassettePair{}, errors.New("Nothing left in cassette to replay.")
+	}
+
+	first := replayer.cassette.Interactions[0]
+	replayer.cassette.Interactions = replayer.cassette.Interactions[1:]
+	return first, nil
 }
 
 func (replayer *VcrReplayer) Close() {

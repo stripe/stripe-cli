@@ -2,6 +2,7 @@ package vcr
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 )
 
 func handleErrorInHandler(w http.ResponseWriter, err error) {
@@ -29,13 +32,15 @@ type VcrHttpServer interface {
 // HTTP VCR *record* server that proxies requests to a remote host, and records all interactions.
 // The core VCR logic is handled by VcrRecorder.
 type HttpRecorder struct {
-	recorder  *VcrRecorder
-	remoteURL string
+	recorder   *VcrRecorder
+	remoteURL  string
+	webhookURL string
 }
 
-func NewHttpRecorder(remoteURL string) (httpRecorder HttpRecorder) {
+func NewHttpRecorder(remoteURL string, webhookURL string) (httpRecorder HttpRecorder) {
 	httpRecorder = HttpRecorder{}
 	httpRecorder.remoteURL = remoteURL
+	httpRecorder.webhookURL = webhookURL
 
 	return httpRecorder
 }
@@ -50,6 +55,41 @@ func (httpRecorder *HttpRecorder) LoadCassette(writer io.Writer) error {
 	return nil
 }
 
+func (httpRecorder *HttpRecorder) webhookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("\n[WEBHOOK] --> STRIPE %v to %v --> POST to %v", r.Method, r.RequestURI, httpRecorder.webhookURL)
+
+	// --- Pass request to local webhook endpoint
+	resp, err := forwardRequest(r, httpRecorder.webhookURL)
+
+	// TODO: this response is going back to Stripe, what is the correct error handling logic here?
+	if err != nil {
+		handleErrorInHandler(w, fmt.Errorf("Error forwarding webhook to client: %w", err))
+		return
+	}
+
+	// --- Write response back to client
+
+	// Copy header
+	w.WriteHeader(resp.StatusCode)
+	copyHTTPHeader(w.Header(), resp.Header)
+
+	// Copy body
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		handleErrorInHandler(w, fmt.Errorf("Error processing client webhook response: %w", err))
+		return
+	}
+	io.Copy(w, bytes.NewBuffer(bodyBytes))
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
+
+	// TODO: when reading from the cassette, we need to differentiate between webhook and non-webhook interactions (because they're replayed very differently (both in destination, and in trigger))
+	err = httpRecorder.recorder.Write(IncomingInteraction, NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
+	if err != nil {
+		handleErrorInHandler(w, fmt.Errorf("Error writing webhook interaction to cassette: %w", err))
+		return
+	}
+}
+
 func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
@@ -57,7 +97,7 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	var resp *http.Response
 	var err error
 
-	resp, err = httpRecorder.getResponseFromRemote(r)
+	resp, err = forwardRequest(r, httpRecorder.remoteURL+r.RequestURI)
 
 	if err != nil {
 		handleErrorInHandler(w, err)
@@ -82,15 +122,19 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	io.Copy(w, bytes.NewBuffer(bodyBytes))
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
 
-	err = httpRecorder.recorder.Write(NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
+	err = httpRecorder.recorder.Write(OutgoingInteraction, NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
 	if err != nil {
 		handleErrorInHandler(w, err)
 		return
 	}
 }
 
-func (httpRecorder *HttpRecorder) getResponseFromRemote(request *http.Request) (resp *http.Response, err error) {
-	client := &http.Client{}
+// TODO: doesn't need to be a HttpRecorder method (can be a helper)
+func forwardRequest(request *http.Request, destinationURL string) (resp *http.Response, err error) {
+	client := &http.Client{
+		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
+		Timeout: time.Second * 10,
+	}
 
 	// Create a identical copy of the request
 	bodyBytes, err := ioutil.ReadAll(request.Body)
@@ -98,7 +142,7 @@ func (httpRecorder *HttpRecorder) getResponseFromRemote(request *http.Request) (
 		return nil, err
 	}
 	request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	req, err := http.NewRequest(request.Method, httpRecorder.remoteURL+request.RequestURI, bytes.NewBuffer(bodyBytes))
+	req, err := http.NewRequest(request.Method, destinationURL, bytes.NewBuffer(bodyBytes))
 	copyHTTPHeader(req.Header, request.Header)
 
 	// Forward the request to the remote
@@ -132,17 +176,21 @@ func (httpRecorder *HttpRecorder) InitializeServer(address string) *http.Server 
 // HTTP VCR *replay* server that intercepts incoming requests, and replays recorded responses from the provided cassette.
 // The core VCR logic is handled by VcrReplayer.
 type HttpReplayer struct {
-	replayer *VcrReplayer
+	replayer   *VcrReplayer
+	webhookURL string
+	replayLock *sync.WaitGroup // used to
 }
 
-func NewHttpReplayer() (httpReplayer HttpReplayer) {
+func NewHttpReplayer(webhookURL string) (httpReplayer HttpReplayer) {
 	httpReplayer = HttpReplayer{}
-
+	httpReplayer.webhookURL = webhookURL
+	httpReplayer.replayLock = &sync.WaitGroup{}
 	return httpReplayer
 }
 
 func (httpReplayer *HttpReplayer) LoadCassette(reader io.Reader) error {
 	// TODO: should we expose matching configuration? how?
+	// TODO: how will this change with webhooks?
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
@@ -158,6 +206,10 @@ func (httpReplayer *HttpReplayer) LoadCassette(reader io.Reader) error {
 }
 
 func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request) {
+	httpReplayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
+	httpReplayer.replayLock.Add(1)       // acquire the lock so we can handle this request
+	defer httpReplayer.replayLock.Done() // release the lock when handler func is done
+
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
 	// --- Read matching response from cassette
@@ -180,14 +232,62 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 		handleErrorInHandler(w, err)
 		return
 	}
-	io.Copy(w, bytes.NewBuffer(bodyBytes)) // TODO: there is an ordering bug between this and recorder.Write() below
+	io.Copy(w, bytes.NewBuffer(bodyBytes))
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	// --- Handle webhooks
+	// Check the cassette to see if there are pending webhooks we should fire
+	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette()
+	if err != nil {
+		fmt.Printf("Error when checking cassette for webhooks to replay: %v\n", err)
+	}
+	fmt.Printf("Replaying %d webhooks.\n", len(webhookRequests))
+
+	// Send the webhooks
+
+	// Struct used to parse the event.Type from recorded webhook JSON bodies
+	type stripeEvent struct {
+		Type string `json:"type"`
+	}
+
+	go func() {
+		// Note: if there are any errors in processing recorded webhooks here,
+		// we log the error and keep going. TODO: is this the appropriate behavior?
+		httpReplayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
+		httpReplayer.replayLock.Add(1)       // acquire lock so we can send webhooks
+		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
+
+		for i, webhookReq := range webhookRequests {
+			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
+			expectedResp := webhookResponses[i]
+			var evt stripeEvent
+
+			webhookPayload, err := ioutil.ReadAll(webhookReq.Body)
+			if err != nil {
+				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				continue
+			}
+			err = json.Unmarshal([]byte(webhookPayload), &evt)
+			if err != nil {
+				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				continue
+			}
+
+			fmt.Printf("	> Forwarding webhook [%v].\n", evt.Type)
+			fmt.Printf("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
+			if err != nil {
+				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				continue
+			}
+		}
+
+	}()
+
 }
 
 // returns error if something doesn't match the cassette
 func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
 	// the passed in request arg may not be necessary
-
 	responseWrapper, err := httpReplayer.replayer.Write(NewSerializableHttpRequest(request))
 	if err != nil {
 		return &http.Response{}, err
@@ -196,6 +296,56 @@ func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.
 	response := (*responseWrapper).(*http.Response)
 
 	return response, err
+}
+
+// Reads any contiguous set of webhook recordings from the start of the cassette
+func (httpReplayer *HttpReplayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*http.Request, webhookResponses []*http.Response, err error) {
+
+	webhookBytes := make([]CassettePair, 0)
+
+	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
+	for httpReplayer.replayer.InteractionsRemaining() > 0 {
+		interaction, err := httpReplayer.replayer.PeekFront()
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error when checking webhooks: %w", err)
+		}
+
+		if interaction.Type == IncomingInteraction {
+			webhookBytes = append(webhookBytes, interaction)
+			_, err = httpReplayer.replayer.PopFront()
+			if err != nil {
+				return nil, nil, fmt.Errorf("Unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
+			}
+		} else {
+			break
+		}
+	}
+
+	// --- Deserialize the bytes into HTTP request & response pairs
+	webhookRequests = make([]*http.Request, 0)
+	webhookResponses = make([]*http.Response, 0)
+	for _, rawWebhookBytes := range webhookBytes {
+		// TODO(bwang): having to create a new instance to get at the fromBytes() method doesn't feel great.
+		// But is it unavoidable since Golang doesn't have 'static' methods? Is there some other refactoring we can do?
+		requestSerializer := NewSerializableHttpRequest(&http.Request{})
+		webhookHTTPRequest, err := requestSerializer.fromBytes(bytes.NewBuffer(rawWebhookBytes.Request))
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
+		}
+
+		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*http.Request))
+
+		responseSerializer := NewSerializableHttpResponse(&http.Response{})
+		webhookHTTPResponse, err := responseSerializer.fromBytes(bytes.NewBuffer(rawWebhookBytes.Response))
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
+		}
+
+		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*http.Response))
+	}
+
+	return webhookRequests, webhookResponses, nil
+
 }
 
 func (httpReplayer *HttpReplayer) InitializeServer(address string) *http.Server {
@@ -242,14 +392,14 @@ type RecordReplayServer struct {
 	cassetteLoaded bool
 }
 
-func NewRecordReplayServer(remoteURL string) (server *RecordReplayServer, err error) {
+func NewRecordReplayServer(remoteURL string, webhookURL string) (server *RecordReplayServer, err error) {
 	server = &RecordReplayServer{}
 	server.recordMode = true
 	server.cassetteLoaded = false
 	server.remoteURL = remoteURL
 
-	server.httpRecorder = NewHttpRecorder(remoteURL)
-	server.httpReplayer = NewHttpReplayer()
+	server.httpRecorder = NewHttpRecorder(remoteURL, webhookURL)
+	server.httpReplayer = NewHttpReplayer(webhookURL)
 
 	return server, nil
 }
@@ -268,26 +418,30 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Webhooks are handled slightly differently from outgoing API requests
+func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("In RR webhook handler")
+	if !rr.cassetteLoaded {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "No cassette is loaded.")
+		return
+	}
+
+	if rr.recordMode {
+		rr.httpRecorder.webhookHandler(w, r)
+	} else {
+		fmt.Println("Error: webhook endpoint should never be called in replay mode")
+	}
+}
+
 func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
 	server := &http.Server{Addr: address, Handler: customMux}
 
+	// --- Webhook endpoint
+	customMux.HandleFunc("/vcr/webhooks", rr.webhookHandler)
+
 	// --- VCR control handlers
-	// TODO: only stops recording, does not shutdown the server
-	// TODO: move this logic into eject
-	// customMux.HandleFunc("/vcr/stop", func(w http.ResponseWriter, r *http.Request) {
-	// 	fmt.Println()
-	// 	fmt.Println("Received /vcr/stop. Stopping...")
-
-	// 	// update state
-	// 	rr.cassetteLoaded = false
-	// 	if rr.recordMode {
-	// 		// TODO: should we expose a Close() fn on the HttpRecorder?
-	// 		rr.httpRecorder.recorder.Close()
-	// 	}
-	// })
-
-	// TODO: only stops recording, does not shutdown the server
 	customMux.HandleFunc("/vcr/mode/", func(w http.ResponseWriter, r *http.Request) {
 
 		// get mode
