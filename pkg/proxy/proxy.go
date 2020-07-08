@@ -167,6 +167,15 @@ func (p *Proxy) Run(ctx context.Context) error {
 	return nil
 }
 
+// GetSessionSecret creates a session and returns the webhook signing secret.
+func (p *Proxy) GetSessionSecret(ctx context.Context) (string, error) {
+	session, err := p.createSession(ctx)
+	if err != nil {
+		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+	}
+	return session.Secret, nil
+}
+
 func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
 	var session *stripeauth.StripeCLISession
 
