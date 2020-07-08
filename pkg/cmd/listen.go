@@ -171,7 +171,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("%s", secret)
+		fmt.Printf("%s\n", secret)
 		return nil
 	}
 
