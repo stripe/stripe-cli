@@ -1,15 +1,14 @@
-# Setup
-If you want to serve over HTTPS, you'll need to generate a self-signed certificate for the TLS server.
+# Introduction
+`stripe playback` is a prototype feature for the Stripe CLI. It is still under development. This project is inspired by the [VCR](https://github.com/vcr/vcr) approach to testing popularized in Ruby.
 
-`cd pkg/playback`
+When using the Ruby VCR gem, you record any HTTP interactions made in your test suite (request & response). These recordings are stored in serialized format, and can be replayed in future Źests to make them "fast, deterministic, and accurate".
 
-`./setup_for_https.sh`
+While Ruby VCR is implemented as a Gem that you can directly use and configure in your test source code - `stripe playback` runs as a separate HTTP proxy server on your machine. That means any configuration happens either at startup via the CLI, or via interprocess HTTP calls.
 
-Otherwise, no other setup is needed.
-
+This WIP document aims to give an unfamiliar developer enough information to begin using `stripe playback`.
 # Usage
 
-You start and configure the server via the `stripe playback` command. See `stripe playback --help` for a description of the flags, which configure address, record vs replay mode, HTTP vs HTTPS, etc.
+You start and configure the server via the `stripe playback` command. See `stripe playback --help` for a description of the flags, which configures address, record vs replay mode, etc.
 
 `go run cmd/stripe/main.go playback --help`
 
@@ -88,6 +87,8 @@ Replay the same sequence of interactions using the stripe CLI, and notice that w
 
 
 ## [WIP] Webhooks
+Webhooks are a WIP feature, but currently have basic functionality working. If you don't plan to make use of webhook recording/replaying, you can ignore this section.
+
 Skeleton demo of functionality:
 
 ```
