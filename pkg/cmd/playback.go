@@ -19,11 +19,12 @@ const defaultWebhookPort = 13112
 type playbackCmd struct {
 	cmd *cobra.Command
 
+	mode string
+
 	apiBaseURL     string
 	filepath       string
 	address        string
 	webhookAddress string
-	replayMode     bool
 	serveHTTPS     bool
 }
 
@@ -36,22 +37,28 @@ func newPlaybackCmd() *playbackCmd {
 		Short: "Start a `playback` server",
 		Long: `The playback command starts a local proxy server that intercepts outgoing requests to the Stripe API.
 
-If run in record mode, this server acts as a transparent layer between the client and Stripe,
-recording the request/response pairs in a cassette file.
+There are three modes of operation:
 
-If run in replay mode, requests are terminated at the playback server, and responses are played back from a cassette file.
+- "record": Any requests received are forwarded to the api.stripe.com, and the response is returned. All interactions
+are written to the loaded 'cassette' file for later playback in replay mode.
+
+- "replay": All received requests are terminated at the playback server, and responses are played back[1] from a cassette file. A existing cassette most be loaded.
+
+- "auto": The server determines whether to run in "record" or "replay" mode on a per-cassette basis. If the cassette exists, operates in "replay" mode. If not, operates in "record" mode.
 
 Currently, stripe playback only supports serving over HTTP.
 
-Playback Server Control via HTTP Endpoints:
-/pb/stop: stops recording and writes the current session to cassette`,
+// TODO: add documentation of control endpoints
+
+[1]: requests are currently replayed sequentially in the same order they were recorded.
+`,
 		Example: `stripe playback
   stripe playback --replaymode
   stripe playback --cassette "my_cassette.yaml"`,
 		RunE: pc.runPlaybackCmd,
 	}
 
-	pc.cmd.Flags().BoolVar(&pc.replayMode, "replaymode", false, "Replay events (default: record)")
+	pc.cmd.Flags().StringVar(&pc.mode, "mode", "auto", "Auto: record if cassette doesn't exist, replay if exists. Record: always record/re-record. Replay: always replay.")
 	pc.cmd.Flags().StringVar(&pc.address, "address", fmt.Sprintf("localhost:%d", defaultPort), "Address to serve on")
 	pc.cmd.Flags().StringVar(&pc.webhookAddress, "forward-to", fmt.Sprintf("localhost:%d", defaultWebhookPort), "Address to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
@@ -70,15 +77,20 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	filepath := pc.filepath
 	addressString := pc.address
-	recordMode := !pc.replayMode
 	remoteURL := pc.apiBaseURL
 
+	// --- Validate command-line args
+	if pc.mode != playback.Auto && pc.mode != playback.Record && pc.mode != playback.Replay {
+		return errors.New(
+			fmt.Sprintf(
+				"\"%v\" is not a valid mode. It must be either \"%v\", \"%v\", or \"%v\"",
+				pc.mode, playback.Auto, playback.Record, playback.Replay))
+	}
 	// TODO: disable HTTPS for now. it needs more work to be able to run in a released version of the stripe-cli
 	// eg: how should we package cert.pem and key.pem? (see stripe-mock's implementation)
 	pc.serveHTTPS = false
 
 	var webhookAddress string
-
 	if pc.serveHTTPS {
 		webhookAddress = "https://" + pc.webhookAddress
 	} else {
@@ -129,25 +141,15 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 	client := &http.Client{Transport: tr}
 
-	if recordMode {
-		resp, err := client.Get(fullAddressString + "/pb/mode/record")
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode != 200 {
-			return errors.New("Non 200 status code received during startup: " + string(resp.Status))
-		}
-	} else {
-		resp, err := client.Get(fullAddressString + "/pb/mode/replay")
-		if err != nil {
-			return err
-		}
-		if resp.StatusCode != 200 {
-			return errors.New("Non 200 status code received during startup: " + string(resp.Status))
-		}
+	resp, err := client.Get(fullAddressString + "/pb/mode/" + pc.mode)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		return errors.New("Non 200 status code received during startup: " + string(resp.Status))
 	}
 
-	resp, err := client.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
+	resp, err = client.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
 	if err != nil {
 		return err
 	}
@@ -158,10 +160,19 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("------ Server Running ------")
 
-	if recordMode {
-		fmt.Printf("Recording...\n")
-	} else {
-		fmt.Printf("Replaying...\n")
+	switch pc.mode {
+	case playback.Record:
+		fmt.Printf("In \"record\" mode.\n")
+		fmt.Println("Will always record interactions, and write (or overwrite) to the given cassette filepath.")
+		fmt.Println()
+	case playback.Replay:
+		fmt.Printf("In \"replay\" mode.\n")
+		fmt.Println("Will always replay from the given cassette. Will error if loaded cassette path doesn't exist.")
+		fmt.Println()
+	case playback.Auto:
+		fmt.Printf("In \"auto\" mode.\n")
+		fmt.Println("Can both record or replay, depending on the file passed in. If exists, replays. If not, records.")
+		fmt.Println()
 	}
 
 	fmt.Printf("Using cassette: \"%v\".\n", filepath)

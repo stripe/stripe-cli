@@ -426,6 +426,12 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 }
 
+// TODO:
+// Test auto mode on the full server
+func TestRecordReplayAutoMode(t *testing.T) {
+
+}
+
 // TODO: create a more complicated Stripe API integration test to familiarize myself a little bit with the more complicated flows (billing, subscriptions, etc)
 
 // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)

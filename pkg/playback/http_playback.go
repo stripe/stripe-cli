@@ -3,6 +3,7 @@ package playback
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -375,6 +376,14 @@ func generateSelfSignedCertificates() error {
 	}
 }
 
+const (
+	// in auto mode, the server records a new cassette if the given file initially doesn't exist
+	// and replays a cassette of the file does exist.
+	Auto   string = "auto"
+	Record string = "record"
+	Replay string = "replay"
+)
+
 type RecordReplayServer struct {
 	httpRecorder HttpRecorder
 	httpReplayer HttpReplayer
@@ -382,13 +391,14 @@ type RecordReplayServer struct {
 	remoteURL string
 
 	// state machine state
-	recordMode     bool
-	cassetteLoaded bool
+	mode                  string // the user specified state (auto, record, replay)
+	isRecordingInAutoMode bool   // internal state used when in auto mode to keep track of the state for the current cassette (either recording or replaying)
+	cassetteLoaded        bool
 }
 
 func NewRecordReplayServer(remoteURL string, webhookURL string) (server *RecordReplayServer, err error) {
 	server = &RecordReplayServer{}
-	server.recordMode = true
+	server.mode = Auto
 	server.cassetteLoaded = false
 	server.remoteURL = remoteURL
 
@@ -405,10 +415,21 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if rr.recordMode {
+	switch rr.mode {
+	case Record:
 		rr.httpRecorder.handler(w, r)
-	} else {
+	case Replay:
 		rr.httpReplayer.handler(w, r)
+	case Auto:
+		if rr.isRecordingInAutoMode {
+			rr.httpRecorder.handler(w, r)
+		} else {
+			rr.httpReplayer.handler(w, r)
+		}
+	default:
+		// Should never get here
+		handleErrorInHandler(w, errors.New(fmt.Sprintf("Got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\".", rr.mode)))
+		return
 	}
 }
 
@@ -420,11 +441,90 @@ func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if rr.recordMode {
+	switch rr.mode {
+	case Record:
 		rr.httpRecorder.webhookHandler(w, r)
-	} else {
+	case Replay:
 		fmt.Println("Error: webhook endpoint should never be called in replay mode")
+	case Auto:
+		if rr.isRecordingInAutoMode {
+			rr.httpRecorder.webhookHandler(w, r)
+		} else {
+			fmt.Println("Error: webhook endpoint should never be called in replay mode")
+		}
 	}
+}
+
+func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: does previous cassette have to be ejected explcitly?
+	// if we allow implicitly, we should make sure to call eject so that cleanup happens
+	// get cassette
+	filepathVals, ok := r.URL.Query()["filepath"]
+
+	if !ok {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "\"filepath\" query param must be present.")
+		return
+	}
+
+	if len(filepathVals) > 1 {
+		fmt.Printf("Multiple \"filepath\" param values given, ignoring all except first: %v\n", filepathVals[0])
+	}
+
+	filepath := filepathVals[0]
+
+	if !strings.HasSuffix(strings.ToLower(filepath), ".yaml") {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "\"filepath\" must specify a .yaml file.")
+		return
+	}
+
+	var shouldCreateNewFile bool
+
+	switch rr.mode {
+	case Record:
+		fmt.Println("/pb/cassette/load: Recording to: ", filepath)
+		shouldCreateNewFile = true
+	case Replay:
+		fmt.Println("/pb/cassette/load: Replaying from: ", filepath)
+		shouldCreateNewFile = false
+	case Auto:
+		_, err := os.Stat(filepath)
+		if os.IsNotExist(err) {
+			fmt.Println("/pb/cassette/load: Recording to: ", filepath)
+			shouldCreateNewFile = true
+			rr.isRecordingInAutoMode = true
+		} else {
+			fmt.Println("/pb/cassette/load: Replaying from: ", filepath)
+			shouldCreateNewFile = false
+			rr.isRecordingInAutoMode = false
+		}
+	}
+
+	if shouldCreateNewFile {
+		fileHandle, err := os.Create(filepath)
+		if err != nil {
+			handleErrorInHandler(w, err)
+		}
+
+		err = rr.httpRecorder.LoadCassette(fileHandle)
+		if err != nil {
+			handleErrorInHandler(w, err)
+		}
+	} else {
+		fileHandle, err := os.Open(filepath)
+		if err != nil {
+			handleErrorInHandler(w, err)
+		}
+
+		err = rr.httpReplayer.LoadCassette(fileHandle)
+		if err != nil {
+			handleErrorInHandler(w, err)
+		}
+	}
+
+	rr.cassetteLoaded = true
+
 }
 
 func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
@@ -442,64 +542,47 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 
 		fmt.Println("/pb/mode/: Setting mode to ", modeString)
 
-		if strings.EqualFold("record", modeString) {
-			rr.recordMode = true
+		if strings.EqualFold(Record, modeString) {
+			rr.mode = Record
 			w.WriteHeader(200)
-		} else if strings.EqualFold("replay", modeString) {
-			rr.recordMode = false
+		} else if strings.EqualFold(Replay, modeString) {
+			rr.mode = Replay
+			w.WriteHeader(200)
+		} else if strings.EqualFold(Auto, modeString) {
+			rr.mode = Auto
 			w.WriteHeader(200)
 		} else {
 			w.WriteHeader(400)
-			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\" or \"replay\".", modeString)
+			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\".", modeString)
 		}
 	})
 
-	customMux.HandleFunc("/pb/cassette/load", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: does previous cassette have to be ejected explcitly?
-		// if we allow implicitly, we should make sure to call eject so that cleanup happens
-		// get cassette
-		filepath, ok := r.URL.Query()["filepath"]
-
-		if !ok {
-			w.WriteHeader(400)
-			fmt.Fprint(w, "\"filepath\" query param must be present.")
-			return
-		}
-		fmt.Println("/pb/cassette/load: Loading cassette ", filepath)
-
-		if rr.recordMode {
-			fileHandle, err := os.Create(filepath[0])
-			if err != nil {
-				handleErrorInHandler(w, err)
-			}
-
-			err = rr.httpRecorder.LoadCassette(fileHandle)
-			if err != nil {
-				handleErrorInHandler(w, err)
-			}
-		} else {
-			fileHandle, err := os.Open(filepath[0])
-			if err != nil {
-				handleErrorInHandler(w, err)
-			}
-
-			err = rr.httpReplayer.LoadCassette(fileHandle)
-			if err != nil {
-				handleErrorInHandler(w, err)
-			}
-		}
-
-		rr.cassetteLoaded = true
-
-	})
+	customMux.HandleFunc("/pb/cassette/load", rr.loadCassetteHandler)
 
 	customMux.HandleFunc("/pb/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
-		if rr.recordMode {
+		if !rr.cassetteLoaded {
+			fmt.Println("Tried to eject when no cassette is loaded.")
+			w.WriteHeader(400)
+			return
+		}
+
+		switch rr.mode {
+		case Record:
 			err := rr.httpRecorder.recorder.Close()
 			if err != nil {
-				handleErrorInHandler(w, err)
+				handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err))
+			}
+		case Replay:
+			// nothing
+		case Auto:
+			if rr.isRecordingInAutoMode {
+				err := rr.httpRecorder.recorder.Close()
+				if err != nil {
+					handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err))
+				}
 			}
 		}
+
 		rr.cassetteLoaded = false
 
 		fmt.Println("/pb/cassette/eject: Ejected cassette")
