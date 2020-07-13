@@ -41,11 +41,13 @@ recording the request/response pairs in a cassette file.
 
 If run in replay mode, requests are terminated at the playback server, and responses are played back from a cassette file.
 
+Currently, stripe playback only supports serving over HTTP.
+
 Playback Server Control via HTTP Endpoints:
 /pb/stop: stops recording and writes the current session to cassette`,
 		Example: `stripe playback
   stripe playback --replaymode
-  stripe playback --https --cassette "my_cassette.yaml"`,
+  stripe playback --cassette "my_cassette.yaml"`,
 		RunE: pc.runPlaybackCmd,
 	}
 
@@ -53,7 +55,7 @@ Playback Server Control via HTTP Endpoints:
 	pc.cmd.Flags().StringVar(&pc.address, "address", fmt.Sprintf("localhost:%d", defaultPort), "Address to serve on")
 	pc.cmd.Flags().StringVar(&pc.webhookAddress, "forward-to", fmt.Sprintf("localhost:%d", defaultWebhookPort), "Address to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
-	pc.cmd.Flags().BoolVar(&pc.serveHTTPS, "https", false, "Serve over HTTPS (default: HTTP")
+	// pc.cmd.Flags().BoolVar(&pc.serveHTTPS, "https", false, "Serve over HTTPS (default: HTTP")
 
 	// // Hidden configuration flags, useful for dev/debugging
 	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "Sets the API base URL")
@@ -71,7 +73,12 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	recordMode := !pc.replayMode
 	remoteURL := pc.apiBaseURL
 
+	// TODO: disable HTTPS for now. it needs more work to be able to run in a released version of the stripe-cli
+	// eg: how should we package cert.pem and key.pem? (see stripe-mock's implementation)
+	pc.serveHTTPS = false
+
 	var webhookAddress string
+
 	if pc.serveHTTPS {
 		webhookAddress = "https://" + pc.webhookAddress
 	} else {
