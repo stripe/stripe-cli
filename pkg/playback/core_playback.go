@@ -1,4 +1,4 @@
-package vcr
+package playback
 
 import (
 	"bytes"
@@ -27,13 +27,13 @@ type Serializable interface {
 	fromBytes(bytes *bytes.Buffer) (val interface{}, err error)
 }
 
-type VcrRecorder struct {
+type Recorder struct {
 	writer       io.Writer
 	interactions []CassettePair
 }
 
-func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
-	recorder = &VcrRecorder{}
+func NewRecorder(writer io.Writer) (recorder *Recorder, err error) {
+	recorder = &Recorder{}
 
 	recorder.writer = writer
 
@@ -43,7 +43,7 @@ func NewVcrRecorder(writer io.Writer) (recorder *VcrRecorder, err error) {
 }
 
 // takes a generic struct
-func (recorder *VcrRecorder) Write(interactionType InteractionType, req Serializable, resp Serializable) error {
+func (recorder *Recorder) Write(interactionType InteractionType, req Serializable, resp Serializable) error {
 	reqBytes, err := req.toBytes()
 
 	if err != nil {
@@ -91,7 +91,7 @@ type CassetteYaml struct {
 	Interactions []CassettePair
 }
 
-func (recorder *VcrRecorder) Close() error {
+func (recorder *Recorder) Close() error {
 	// Write everything to a YAML File
 
 	// Put everything in a wrapping CassetteYaml struct that can be marshalled
@@ -109,7 +109,7 @@ func (recorder *VcrRecorder) Close() error {
 	// return recorder.fileHandle.Close()
 }
 
-type VcrReplayer struct {
+type Replayer struct {
 	reader       io.Reader
 	historyIndex int
 	comparator   RequestComparator
@@ -118,8 +118,8 @@ type VcrReplayer struct {
 	respType     Serializable
 }
 
-func NewVcrReplayer(reader io.Reader, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer *VcrReplayer, err error) {
-	replayer = &VcrReplayer{}
+func NewReplayer(reader io.Reader, reqType Serializable, respType Serializable, comparator RequestComparator) (replayer *Replayer, err error) {
+	replayer = &Replayer{}
 	replayer.historyIndex = 0
 	replayer.comparator = comparator
 	replayer.reqType = reqType
@@ -139,7 +139,7 @@ func NewVcrReplayer(reader io.Reader, reqType Serializable, respType Serializabl
 
 }
 
-func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err error) {
+func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error) {
 	if len(replayer.cassette.Interactions) == 0 {
 		return nil, errors.New("Nothing left in cassette to replay.")
 	}
@@ -189,11 +189,11 @@ func (replayer *VcrReplayer) Write(req Serializable) (resp *interface{}, err err
 	return nil, errors.New("No matching events.")
 }
 
-func (replayer *VcrReplayer) InteractionsRemaining() int {
+func (replayer *Replayer) InteractionsRemaining() int {
 	return len(replayer.cassette.Interactions)
 }
 
-func (replayer *VcrReplayer) PeekFront() (interaction CassettePair, err error) {
+func (replayer *Replayer) PeekFront() (interaction CassettePair, err error) {
 	if len(replayer.cassette.Interactions) == 0 {
 		return CassettePair{}, errors.New("Nothing left in cassette to replay.")
 	}
@@ -201,7 +201,7 @@ func (replayer *VcrReplayer) PeekFront() (interaction CassettePair, err error) {
 	return replayer.cassette.Interactions[0], nil
 }
 
-func (replayer *VcrReplayer) PopFront() (interaction CassettePair, err error) {
+func (replayer *Replayer) PopFront() (interaction CassettePair, err error) {
 	if len(replayer.cassette.Interactions) == 0 {
 		return CassettePair{}, errors.New("Nothing left in cassette to replay.")
 	}
@@ -211,6 +211,6 @@ func (replayer *VcrReplayer) PopFront() (interaction CassettePair, err error) {
 	return first, nil
 }
 
-func (replayer *VcrReplayer) Close() {
+func (replayer *Replayer) Close() {
 
 }

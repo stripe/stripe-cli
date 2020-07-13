@@ -1,4 +1,4 @@
-package vcr
+package playback
 
 import (
 	"bufio"

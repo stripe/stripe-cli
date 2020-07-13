@@ -1,4 +1,4 @@
-package vcr
+package playback
 
 import (
 	"bytes"
@@ -24,15 +24,10 @@ func handleErrorInHandler(w http.ResponseWriter, err error) {
 	fmt.Println("\n<-- 500 error: ", err)
 }
 
-// Interface for a http server that implements VCR functionality (record or replay)
-type VcrHttpServer interface {
-	InitializeServer(address string) *http.Server
-}
-
-// HTTP VCR *record* server that proxies requests to a remote host, and records all interactions.
-// The core VCR logic is handled by VcrRecorder.
+// HTTP *record* server that proxies requests to a remote host, and records all interactions.
+// The core recording logic is handled by playback.Recorder.
 type HttpRecorder struct {
-	recorder   *VcrRecorder
+	recorder   *Recorder
 	remoteURL  string
 	webhookURL string
 }
@@ -46,11 +41,11 @@ func NewHttpRecorder(remoteURL string, webhookURL string) (httpRecorder HttpReco
 }
 
 func (httpRecorder *HttpRecorder) LoadCassette(writer io.Writer) error {
-	vcrRecorder, err := NewVcrRecorder(writer)
+	recorder, err := NewRecorder(writer)
 	if err != nil {
 		return err
 	}
-	httpRecorder.recorder = vcrRecorder
+	httpRecorder.recorder = recorder
 
 	return nil
 }
@@ -158,25 +153,24 @@ func (httpRecorder *HttpRecorder) InitializeServer(address string) *http.Server 
 	customMux := http.NewServeMux()
 	server := &http.Server{Addr: address, Handler: customMux}
 
-	// --- VCR control handlers
-	// TODO: only stops recording, does not shutdown the server
-	customMux.HandleFunc("/vcr/stop", func(w http.ResponseWriter, r *http.Request) {
+	// --- Recorder control handlers
+	customMux.HandleFunc("/pb/stop", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println()
-		fmt.Println("Received /vcr/stop. Stopping...")
+		fmt.Println("Received /pb/stop. Stopping...")
 
 		httpRecorder.recorder.Close()
 	})
 
-	// --- Default VCR catch-all handler
+	// --- Default handler that proxies request and returns response from the remote
 	customMux.HandleFunc("/", httpRecorder.handler)
 
 	return server
 }
 
-// HTTP VCR *replay* server that intercepts incoming requests, and replays recorded responses from the provided cassette.
-// The core VCR logic is handled by VcrReplayer.
+// HTTP *replay* server that intercepts incoming requests, and replays recorded responses from the provided cassette.
+// The core replay logic is handled by playback.Replayer.
 type HttpReplayer struct {
-	replayer   *VcrReplayer
+	replayer   *Replayer
 	webhookURL string
 	replayLock *sync.WaitGroup // used to
 }
@@ -195,12 +189,12 @@ func (httpReplayer *HttpReplayer) LoadCassette(reader io.Reader) error {
 		return true, true
 	}
 
-	vcrReplayer, err := NewVcrReplayer(reader, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
+	replayer, err := NewReplayer(reader, HttpRequestSerializable{}, HttpResponseSerializable{}, sequentialComparator)
 	if err != nil {
 		return err
 	}
 
-	httpReplayer.replayer = vcrReplayer
+	httpReplayer.replayer = replayer
 
 	return nil
 }
@@ -438,15 +432,15 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 	server := &http.Server{Addr: address, Handler: customMux}
 
 	// --- Webhook endpoint
-	customMux.HandleFunc("/vcr/webhooks", rr.webhookHandler)
+	customMux.HandleFunc("/pb/webhooks", rr.webhookHandler)
 
-	// --- VCR control handlers
-	customMux.HandleFunc("/vcr/mode/", func(w http.ResponseWriter, r *http.Request) {
+	// --- Replay control handlers
+	customMux.HandleFunc("/pb/mode/", func(w http.ResponseWriter, r *http.Request) {
 
 		// get mode
-		modeString := strings.TrimPrefix(r.URL.Path, "/vcr/mode/")
+		modeString := strings.TrimPrefix(r.URL.Path, "/pb/mode/")
 
-		fmt.Println("/vcr/mode/: Setting mode to ", modeString)
+		fmt.Println("/pb/mode/: Setting mode to ", modeString)
 
 		if strings.EqualFold("record", modeString) {
 			rr.recordMode = true
@@ -456,11 +450,11 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 			w.WriteHeader(200)
 		} else {
 			w.WriteHeader(400)
-			fmt.Fprintf(w, "\"%s\" is not a valid VCR mode. Must be \"record\" or \"replay\".", modeString)
+			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\" or \"replay\".", modeString)
 		}
 	})
 
-	customMux.HandleFunc("/vcr/cassette/load", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/pb/cassette/load", func(w http.ResponseWriter, r *http.Request) {
 		// TODO: does previous cassette have to be ejected explcitly?
 		// if we allow implicitly, we should make sure to call eject so that cleanup happens
 		// get cassette
@@ -471,7 +465,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 			fmt.Fprint(w, "\"filepath\" query param must be present.")
 			return
 		}
-		fmt.Println("/vcr/cassette/load: Loading cassette ", filepath)
+		fmt.Println("/pb/cassette/load: Loading cassette ", filepath)
 
 		if rr.recordMode {
 			fileHandle, err := os.Create(filepath[0])
@@ -499,7 +493,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 
 	})
 
-	customMux.HandleFunc("/vcr/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/pb/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
 		if rr.recordMode {
 			err := rr.httpRecorder.recorder.Close()
 			if err != nil {
@@ -508,13 +502,13 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		}
 		rr.cassetteLoaded = false
 
-		fmt.Println("/vcr/cassette/eject: Ejected cassette")
+		fmt.Println("/pb/cassette/eject: Ejected cassette")
 		fmt.Println("")
 		fmt.Println("=======")
 		fmt.Println("")
 	})
 
-	// --- Default VCR catch-all handler
+	// --- Default handler
 	customMux.HandleFunc("/", rr.handler)
 
 	return server

@@ -1,4 +1,4 @@
-package vcr
+package playback
 
 import (
 	"bytes"
@@ -57,7 +57,7 @@ func TestSequentialPlayback(t *testing.T) {
 
 	// --- Set up recording
 	var writeBuffer bytes.Buffer
-	recorder, err := NewVcrRecorder(&writeBuffer)
+	recorder, err := NewRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -84,7 +84,7 @@ func TestSequentialPlayback(t *testing.T) {
 
 	// --- Load cassette and replay: matching on sequence
 	fmt.Println(writeBuffer.Len())
-	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, sequentialComparator)
+	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, sequentialComparator)
 
 	fmt.Println("Replaying...")
 	// feed the requests in *backwards* order, but responses come back in original order
@@ -124,7 +124,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 
 	// -- Set up recorder
 	var writeBuffer bytes.Buffer
-	recorder, err := NewVcrRecorder(&writeBuffer)
+	recorder, err := NewRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -150,7 +150,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	// --- Replay - returning the first match
-	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, firstMatchingComparator)
+	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, firstMatchingComparator)
 
 	fmt.Println("Replaying...")
 
@@ -183,7 +183,7 @@ func TestLastMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := NewVcrRecorder(&writeBuffer)
+	recorder, err := NewRecorder(&writeBuffer)
 
 	if err != nil {
 		panic(err)
@@ -212,7 +212,7 @@ func TestLastMatchingEvent(t *testing.T) {
 		panic(err)
 	}
 
-	replayer, err := NewVcrReplayer(&writeBuffer, Event{}, Event{}, lastMatchingComparator)
+	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, lastMatchingComparator)
 
 	fmt.Println("Replaying...")
 	fmt.Println("Should return last matching event to \"Event 1\"")

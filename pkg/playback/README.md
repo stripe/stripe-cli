@@ -1,7 +1,7 @@
 # Setup
 If you want to serve over HTTPS, you'll need to generate a self-signed certificate for the TLS server.
 
-`cd pkg/vcr`
+`cd pkg/playback`
 
 `./setup_for_https.sh`
 
@@ -39,14 +39,14 @@ When running in both record/replay mode, the server will print out interactions 
 <-- 200 OK from CASSETTE
 ```
 
-## Controlling the VCR server
+## Controlling the playback server
 Besides the command line flags at startup, there are also HTTP endpoints that allow you to control and modify the server's behavior while it is running.
 
-`GET:` `vcr/mode/[record, replay]`: Switch to the specified VCR mode.
+`GET:` `/pb/mode/[record, replay]`: Switch to the specified mode.
 
-`GET:` `vcr/cassette/load?filepath=[filepath]`: Read/write from/to (depending on mode) to the cassette at `filepath`.
+`GET:` `/pb/cassette/load?filepath=[filepath]`: Read/write from/to (depending on mode) to the cassette at `filepath`.
 
-`GET:` `vcr/casette/eject`: Eject the cassette. In `record` mode this writes the recorded interactions to the loaded cassette file. In `replay` mode this is a no-op.
+`GET:` `/pb/casette/eject`: Eject the cassette. In `record` mode this writes the recorded interactions to the loaded cassette file. In `replay` mode this is a no-op.
 
 
 ## Example
@@ -67,7 +67,7 @@ Record some test interactions using the stripe CLI, but proxy through the `strip
 
 Stop recording:
 
-`curl http://localhost:13111/vcr/stop`
+`curl http://localhost:13111/pb/stop`
 
 ### In Window 1:
 Ctrl-C the record server to shut it down.
@@ -98,8 +98,8 @@ Skeleton demo of functionality:
 
 Seting up playback server...
 
-/vcr/mode/: Setting mode to  record
-/vcr/cassette/load: Loading cassette  [default_cassette.yaml]
+/pb/mode/: Setting mode to  record
+/pb/cassette/load: Loading cassette  [default_cassette.yaml]
 
 ------ Server Running ------
 Recording...
@@ -115,7 +115,7 @@ Forwarding webhooks to http://localhost:13112
 # Terminal 2
 # Use stripe listen to forward webhooks to the playback server's webhook endpoint
 
-> stripe listen --forward-to localhost:13111/vcr/webhooks
+> stripe listen --forward-to localhost:13111/pb/webhooks
 ```
 
 
@@ -147,5 +147,5 @@ Then, rerun the same commands in the same order in Terminal 4, and you should se
 
 
 # Testing
-Some of the tests require a `.env` file to be present at `/pkg/vcr/.env` containing
+Some of the tests require a `.env` file to be present at `/pkg/playback/.env` containing
 `STRIPE_SECRET_KEY="sk_test_..."`. To run the tests, create this file and define your own secret testmode key in it.

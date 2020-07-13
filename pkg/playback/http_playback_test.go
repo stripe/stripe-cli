@@ -1,4 +1,4 @@
-package vcr
+package playback
 
 import (
 	"bytes"
@@ -59,7 +59,7 @@ func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 
 // Integration test for HTTP wrapper against simple HTTP serving remote
 func TestGetFromSimpleWebsite(t *testing.T) {
-	// Spin up an instance of the HTTP vcr server in record mode
+	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://gobyexample.com"
@@ -91,7 +91,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.Equal(t, 200, res3.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/vcr/stop")
+	_, err = http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 
@@ -129,7 +129,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 // Integration test for HTTP wrapper against Stripe
 // TODO: all the stripe tests should just use the SDK
 func TestStripeSimpleGet(t *testing.T) {
-	// Spin up an instance of the HTTP vcr server in record mode
+	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
@@ -158,16 +158,16 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.Equal(t, 200, res1.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/vcr/stop")
+	_, err = http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer(webhookURL)
-	err = replayVcr.LoadCassette(&cassetteBuffer)
+	replayer := NewHttpReplayer(webhookURL)
+	err = replayer.LoadCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayVcr.InitializeServer(addressString)
+	replayServer := replayer.InitializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -189,7 +189,7 @@ func TestStripeSimpleGet(t *testing.T) {
 
 // If we make a Stripe request without the Authorization header, we should get a 401 Unauthorized
 func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
-	// Spin up an instance of the HTTP vcr server in record mode
+	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
@@ -217,16 +217,16 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.Equal(t, 401, res1.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/vcr/stop")
+	_, err = http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer(webhookURL)
-	err = replayVcr.LoadCassette(&cassetteBuffer)
+	replayer := NewHttpReplayer(webhookURL)
+	err = replayer.LoadCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayVcr.InitializeServer(addressString)
+	replayServer := replayer.InitializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -246,7 +246,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 }
 
 func TestStripeSimpleGetWithHttps(t *testing.T) {
-	// Spin up an instance of the HTTP vcr server in record mode
+	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
 	remoteURL := "https://api.stripe.com"
@@ -280,18 +280,18 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 	assert.Equal(t, 200, res1.StatusCode)
 
 	// Shutdown record server
-	shutdownReq, err := http.NewRequest("GET", "https://localhost:8080/vcr/stop", nil)
+	shutdownReq, err := http.NewRequest("GET", "https://localhost:8080/pb/stop", nil)
 	assert.NoError(t, err)
 	_, err = client.Do(shutdownReq)
 	assert.NoError(t, err)
 	recordServer.Shutdown(context.TODO())
 
 	// --- Set up a replay server
-	replayVcr := NewHttpReplayer(webhookURL)
-	err = replayVcr.LoadCassette(&cassetteBuffer)
+	replayer := NewHttpReplayer(webhookURL)
+	err = replayer.LoadCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayVcr.InitializeServer(addressString)
+	replayServer := replayer.InitializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServeTLS("cert.pem", "key.pem"); err != http.ErrServerClosed {
 			// unexpected error
@@ -316,7 +316,7 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 
 // Test the full server by switchign between modes, loading and ejecting cassettes, and sending real stripe requests
 func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
-	// -- Setup VCR server
+	// -- Setup Playback server
 	addressString := "localhost:13111"
 	filepath := "test_record_replay_single_run.yaml"
 	webhookURL := "localhost:8888" // not used in this test
@@ -330,15 +330,15 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 	fullAddressString := "http://" + addressString
 
-	resp, err := http.Get(fullAddressString + "/vcr/mode/record")
+	resp, err := http.Get(fullAddressString + "/pb/mode/record")
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/vcr/cassette/load?filepath=" + filepath)
+	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	// --- We'll use the stripe-go SDK in this test. Configure it to point to the VCR server
+	// --- We'll use the stripe-go SDK in this test. Configure it to point to the server
 	stripe.Key = stripeKey
 
 	mockBackendConf := stripe.BackendConfig{
@@ -386,19 +386,19 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.Equal(t, stripe.CurrencyUSD, myCharge.Currency)
 	assert.Equal(t, "My First Test Charge (created for API docs)", myCharge.Description)
 
-	// Tell VCR server to save recording
-	resp, err = http.Get(fullAddressString + "/vcr/cassette/eject")
+	// Tell server to save recording
+	resp, err = http.Get(fullAddressString + "/pb/cassette/eject")
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// --- END RECORD MODE
 
 	// --- Start interacting in REPLAY MODE
-	resp, err = http.Get(fullAddressString + "/vcr/mode/replay")
+	resp, err = http.Get(fullAddressString + "/pb/mode/replay")
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/vcr/cassette/load?filepath=" + filepath)
+	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
@@ -429,4 +429,4 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 // TODO: create a more complicated Stripe API integration test to familiarize myself a little bit with the more complicated flows (billing, subscriptions, etc)
 
 // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
-// This is a regression test for a bug where request bodies weren't being forwarded by VCR
+// This is a regression test for a bug where request bodies weren't being forwarded by the playback proxy server
