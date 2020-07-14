@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/joho/godotenv"
@@ -318,9 +319,14 @@ func TestStripeSimpleGetWithHttps(t *testing.T) {
 func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// -- Setup Playback server
 	addressString := "localhost:13111"
-	filepath := "test_record_replay_single_run.yaml"
+	cassetteFilepath := "test_record_replay_single_run.yaml"
+
+	// for now, write cassettes to this directory. Ideally we have a test output folder
+	cassetteDirectory, err := filepath.Abs("")
+	assert.NoError(t, err)
+
 	webhookURL := "localhost:8888" // not used in this test
-	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com", webhookURL)
+	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com", webhookURL, cassetteDirectory)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -334,7 +340,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
+	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
@@ -398,7 +404,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + filepath)
+	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
 
