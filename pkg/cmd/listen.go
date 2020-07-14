@@ -93,7 +93,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !lc.printJSON {
+	if !lc.printJSON && !lc.onlyPrintSecret {
 		version.CheckLatestVersion()
 	}
 
