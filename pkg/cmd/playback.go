@@ -28,7 +28,7 @@ GET /pb/cassette/setroot?dir=[path_to_directory]
 Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
 GET /pb/cassette/load?filepath=[filepath]
-Load the cassette file at the given filepath, relative to the root directory.
+Load the cassette file at the given filepath, relative to the cassette root directory.
 
 GET /pb/cassette/eject
 Eject (unload) the current cassette and do any teardown. In record mode, this writes the recorded interactions to the cassette file.

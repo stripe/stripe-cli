@@ -1,18 +1,18 @@
 # Introduction
 `stripe playback` is a prototype feature for the Stripe CLI. It is still under development. This project is inspired by the [VCR](https://github.com/vcr/vcr) approach to testing popularized in Ruby.
 
-When using the Ruby VCR gem, you record any HTTP interactions made in your test suite (request & response). These recordings are stored in serialized format, and can be replayed in future Źests to make them "fast, deterministic, and accurate".
+For context, when using the Ruby VCR gem, you record any HTTP interactions made in your test suite (request & response). These recordings are stored in serialized format, and can be replayed in future tests to make them "fast, deterministic, and accurate".
 
-While Ruby VCR is implemented as a Gem that you can directly use and configure in your test source code - `stripe playback` runs as a separate HTTP proxy server on your machine. That means any configuration happens either at startup via the CLI, or via interprocess HTTP calls.
+While Ruby VCR is implemented as a Gem that you can directly use and configure in your test code - `stripe playback` runs as a separate HTTP proxy server on your machine. That means any configuration happens either at startup via the CLI, or via interprocess HTTP calls.
 
-This WIP document aims to give an unfamiliar developer enough information to begin using `stripe playback`.
+This WIP document aims to give a new user enough information to begin using `stripe playback`.
 # Usage
 
-You start and configure the server via the `stripe playback` command. See `stripe playback --help` for a description of the flags, which configures address, record vs replay mode, etc.
+You start and configure the server via the `stripe playback` command. See `stripe playback --help` for a description of the flags, how to control the server once it is running (via HTTP endpoints).
 
 `go run cmd/stripe/main.go playback --help`
 
-When running in both record/replay mode, the server will print out interactions with it:
+When running in both record/replay mode, the server will print out interactions with it (exact formatting of output may have changed).
 
 ```
 ### When in recordmode (playing responses from the remote API)
@@ -41,11 +41,13 @@ When running in both record/replay mode, the server will print out interactions 
 ## Controlling the playback server
 Besides the command line flags at startup, there are also HTTP endpoints that allow you to control and modify the server's behavior while it is running.
 
-`GET:` `/pb/mode/[record, replay]`: Switch to the specified mode.
+`GET:` `/pb/mode/[mode]`: Sets the server mode to one of ["auto", "record", "replay"].
 
-`GET:` `/pb/cassette/load?filepath=[filepath]`: Read/write from/to (depending on mode) to the cassette at `filepath`.
+`GET:` `/pb/cassette/setroot?dir=[path_to_directory]`: Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
-`GET:` `/pb/casette/eject`: Eject the cassette. In `record` mode this writes the recorded interactions to the loaded cassette file. In `replay` mode this is a no-op.
+`GET:` `/pb/cassette/load?filepath=[filepath]`: Load the cassette file at the given filepath, relative to the cassette root directory.
+
+`GET:` `/pb/casette/eject`: Eject (unload) the current cassette and do any teardown. In `record` mode or `auto` mode when recording to a new file, this writes the recorded interactions to the cassette file. When replaying (whether in `replay` or `auto` modes) this is a no-op.
 
 
 ## Example
