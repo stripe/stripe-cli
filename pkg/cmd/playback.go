@@ -51,7 +51,7 @@ func newPlaybackCmd() *playbackCmd {
 
 	pc.cmd = &cobra.Command{
 		// This flag doesn't actually hide the command because we use a template to display the --help text
-		// To unhide this command, see getUsageTemplate() in templates.go, where we explictly hide the `playback` cmd.
+		// To unhide this command, see getUsageTemplate() in templates.go, where we explicitly hide the `playback` cmd.
 		Hidden: true,
 		Use:    "playback",
 		Args:   validators.NoArgs,
