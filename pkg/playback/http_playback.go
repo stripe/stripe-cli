@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -21,9 +20,14 @@ func handleErrorInHandler(w http.ResponseWriter, err error, statusCode int) {
 		return
 	}
 
+	// This line will log a relatively benign 'superfluous response.WriteHeader' line if
+	// w.WriteHeader was already called on this http.ResponseWriter. Ideally, response.WriteHeader
+	// should not be called before this function is called, since the HTTP response code can only be
+	// set once.
+	// TODO: refactor usage of this function so that we do not get this 'superfluous' log message
 	w.WriteHeader(statusCode)
-	// TODO: should we crash the program or keep going?
-	fmt.Fprintf(w, "%v", err)
+
+	fmt.Fprintf(w, "%v\n", err)
 	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
 }
 
@@ -43,7 +47,7 @@ func NewHttpRecorder(remoteURL string, webhookURL string) (httpRecorder HttpReco
 	return httpRecorder
 }
 
-func (httpRecorder *HttpRecorder) LoadCassette(writer io.Writer) error {
+func (httpRecorder *HttpRecorder) InsertCassette(writer io.Writer) error {
 	recorder, err := NewRecorder(writer)
 	if err != nil {
 		return err
@@ -137,7 +141,6 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close()
 }
 
-// TODO: doesn't need to be a HttpRecorder method (can be a helper)
 func forwardRequest(request *http.Request, destinationURL string) (resp *http.Response, err error) {
 	client := &http.Client{
 		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
@@ -198,9 +201,8 @@ func NewHttpReplayer(webhookURL string) (httpReplayer HttpReplayer) {
 	return httpReplayer
 }
 
-func (httpReplayer *HttpReplayer) LoadCassette(reader io.Reader) error {
-	// TODO: should we expose matching configuration? how?
-	// TODO: how will this change with webhooks?
+func (httpReplayer *HttpReplayer) ReadCassette(reader io.Reader) error {
+	// TODO: We may want to allow different types of replay matching in the future (instead of simply sequential playback)
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
@@ -268,7 +270,8 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 
 	go func() {
 		// Note: if there are any errors in processing recorded webhooks here,
-		// we log the error and keep going. TODO: is this the appropriate behavior?
+		// we log the error and keep going.
+		// TODO: is the above the appropriate behavior?
 		httpReplayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
 		httpReplayer.replayLock.Add(1)       // acquire lock so we can send webhooks
 		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
@@ -374,30 +377,6 @@ func (httpReplayer *HttpReplayer) InitializeServer(address string) *http.Server 
 	return server
 }
 
-// TODO: currently has issues - do manually for now
-func generateSelfSignedCertificates() error {
-	gorootPath := os.Getenv("GOROOT")
-	fmt.Println("GOROOT: ", gorootPath)
-	certGenerationScript := gorootPath + "/src/crypto/tls/generate_cert.go"
-	rsaBits := "2048"
-	host := "localhost, 127.0.0.1"
-	startDate := "Jan 1 00:00:00 1970"
-	duration := "--duration=100000h"
-
-	cmd := exec.Command("go", "run", certGenerationScript, "--rsa-bits", rsaBits, "--host", host, "--ca", "--start-date", startDate, duration)
-	// cmd := exec.Command("go env")
-	// cmd := exec.Command("ls")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("generating certs failed: %w", err)
-	} else {
-		return nil
-	}
-}
-
 const (
 	// in auto mode, the server records a new cassette if the given file initially doesn't exist
 	// and replays a cassette of the file does exist.
@@ -435,7 +414,7 @@ func NewRecordReplayServer(remoteURL string, webhookURL string, cassetteDirector
 func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.")
+		fmt.Fprint(w, "No cassette is loaded.\n")
 		return
 	}
 
@@ -461,7 +440,7 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.")
+		fmt.Fprint(w, "No cassette is loaded.\n")
 		return
 	}
 
@@ -480,14 +459,11 @@ func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Requ
 }
 
 func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: does previous cassette have to be ejected explcitly?
-	// if we allow implicitly, we should make sure to call eject so that cleanup happens
-	// get cassette
 	filepathVals, ok := r.URL.Query()["filepath"]
 
 	if !ok {
 		w.WriteHeader(400)
-		fmt.Fprint(w, "\"filepath\" query param must be present.")
+		fmt.Fprint(w, "\"filepath\" query param must be present.\n")
 		return
 	}
 
@@ -497,11 +473,15 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 
 	relativeFilepath := filepathVals[0]
 
-	// TODO: what if this is a absolute path?
-
 	if !strings.HasSuffix(strings.ToLower(relativeFilepath), ".yaml") {
 		w.WriteHeader(400)
-		fmt.Fprint(w, "\"filepath\" must specify a .yaml file.")
+		fmt.Fprint(w, "\"filepath\" must specify a .yaml file.\n")
+		return
+	}
+
+	if filepath.IsAbs(relativeFilepath) {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "\"filepath\" must be a relative filepath, you provided a absolute filepath.\n")
 		return
 	}
 
@@ -535,7 +515,7 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 			handleErrorInHandler(w, err, 500)
 		}
 
-		err = rr.httpRecorder.LoadCassette(fileHandle)
+		err = rr.httpRecorder.InsertCassette(fileHandle)
 		if err != nil {
 			handleErrorInHandler(w, err, 500)
 		}
@@ -545,7 +525,7 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 			handleErrorInHandler(w, err, 500)
 		}
 
-		err = rr.httpReplayer.LoadCassette(fileHandle)
+		err = rr.httpReplayer.ReadCassette(fileHandle)
 		if err != nil {
 			handleErrorInHandler(w, err, 500)
 		}
@@ -568,28 +548,25 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		// get mode
 		modeString := strings.TrimPrefix(r.URL.Path, "/pb/mode/")
 
-		fmt.Println("/pb/mode/: Setting mode to ", modeString)
-
 		if strings.EqualFold(Record, modeString) {
+			fmt.Println("/pb/mode/: mode set to RECORD")
 			rr.mode = Record
 			w.WriteHeader(200)
 		} else if strings.EqualFold(Replay, modeString) {
+			fmt.Println("/pb/mode/: mode set to REPLAY")
 			rr.mode = Replay
 			w.WriteHeader(200)
 		} else if strings.EqualFold(Auto, modeString) {
+			fmt.Println("/pb/mode/: mode set to AUTO")
 			rr.mode = Auto
 			w.WriteHeader(200)
 		} else {
 			w.WriteHeader(400)
-			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\".", modeString)
+			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\".\n", modeString)
 		}
 	})
 
 	customMux.HandleFunc("/pb/cassette/setroot", func(w http.ResponseWriter, r *http.Request) {
-
-		// TODO: does previous cassette have to be ejected explcitly?
-		// if we allow implicitly, we should make sure to call eject so that cleanup happens
-		// get cassette
 		const queryKey = "dir"
 		directoryVals, ok := r.URL.Query()[queryKey]
 

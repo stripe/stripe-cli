@@ -25,9 +25,6 @@ func (e Event) fromBytes(bytes *bytes.Buffer) (val interface{}, err error) {
 }
 
 func toEvent(input interface{}) Event {
-	// TODO: why does the line not work?
-	// return input.(Event)
-
 	jsonString, _ := json.Marshal(input)
 	// convert json to struct
 	cast1 := Event{}
@@ -115,7 +112,6 @@ func TestSequentialPlayback(t *testing.T) {
 
 func TestFirstMatchingEvent(t *testing.T) {
 	firstMatchingComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
-		// TODO: do we really have to Marshal then Unmarshal? This just feels wrong :/
 		// convert map to json
 		cast1 := toEvent(req1)
 		cast2 := req2.(Event)

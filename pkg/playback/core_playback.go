@@ -105,8 +105,6 @@ func (recorder *Recorder) Close() error {
 
 	_, err = recorder.writer.Write(yamlBytes)
 	return err
-
-	// return recorder.fileHandle.Close()
 }
 
 type Replayer struct {
@@ -147,20 +145,21 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	// TODO: this should be optimized to do the deserialization from bytes
+	// TODO: this can be optimized to do the deserialization from bytes
 	// once per interaction, instead of every time
 	for idx, val := range replayer.cassette.Interactions {
-		// TODO: This deserialization boilerplate is messy - refactor it
+		// Deserialize the recorded request in this interaction
 		var b bytes.Buffer
 		b.Write(val.Request)
 		requestStruct, err := replayer.reqType.fromBytes(&b)
-
 		if err != nil {
 			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
 		}
 
+		// Compare it with the provided request
 		accept, shortCircuit := replayer.comparator(requestStruct, req)
 
+		// If it matches, then deserialize the matching recorded response
 		if accept {
 			var respBuffer bytes.Buffer
 			respBuffer.Write(val.Response)

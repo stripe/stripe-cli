@@ -124,7 +124,7 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 			return
 		}
 		io.Copy(w, bytes.NewBuffer(bodyBytes))
-		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}))
 
 }
@@ -147,7 +147,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.LoadCassette(&cassetteBuffer)
+	err := httpRecorder.InsertCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -178,7 +178,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 
 	// --- Set up a replay server
 	httpReplayer := NewHttpReplayer(webhookURL)
-	err = httpReplayer.LoadCassette(&cassetteBuffer)
+	err = httpReplayer.ReadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := httpReplayer.InitializeServer(addressString)
@@ -226,8 +226,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	// TODO: rename to InsertCassette()
-	err := httpRecorder.LoadCassette(&cassetteBuffer)
+	err := httpRecorder.InsertCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -255,7 +254,7 @@ func TestStripeSimpleGet(t *testing.T) {
 
 	// --- Set up a replay server
 	replayer := NewHttpReplayer(webhookURL)
-	err = replayer.LoadCassette(&cassetteBuffer)
+	err = replayer.ReadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayer.InitializeServer(addressString)
@@ -296,7 +295,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.LoadCassette(&cassetteBuffer)
+	err := httpRecorder.InsertCassette(&cassetteBuffer)
 	check(err)
 
 	server := httpRecorder.InitializeServer(addressString)
@@ -323,7 +322,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 
 	// --- Set up a replay server
 	replayer := NewHttpReplayer(webhookURL)
-	err = replayer.LoadCassette(&cassetteBuffer)
+	err = replayer.ReadCassette(&cassetteBuffer)
 	check(err)
 
 	replayServer := replayer.InitializeServer(addressString)
@@ -472,13 +471,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 }
 
-// TODO:
-// Test auto mode on the full server
-func TestRecordReplayAutoMode(t *testing.T) {
-
-}
-
-// TODO: create a more complicated Stripe API integration test to familiarize myself a little bit with the more complicated flows (billing, subscriptions, etc)
-
+// TODO: Test auto mode on the full server
+// TODO: create a more complicated Stripe API integration test
 // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
-// This is a regression test for a bug where request bodies weren't being forwarded by the playback proxy server
+//   	 this would be a regression test for a bug where request bodies weren't being forwarded by the playback proxy server
