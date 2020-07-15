@@ -50,9 +50,12 @@ func newPlaybackCmd() *playbackCmd {
 	pc := &playbackCmd{}
 
 	pc.cmd = &cobra.Command{
-		Use:   "playback",
-		Args:  validators.NoArgs,
-		Short: "Start a `playback` server",
+		// This flag doesn't actually hide the command because we use a template to display the --help text
+		// To unhide this command, see getUsageTemplate() in templates.go, where we explictly hide the `playback` cmd.
+		Hidden: true,
+		Use:    "playback",
+		Args:   validators.NoArgs,
+		Short:  "Start a `playback` server",
 		Long: `
 --- Overview ---
 The playback command starts a local proxy server that intercepts outgoing requests to the Stripe API.
