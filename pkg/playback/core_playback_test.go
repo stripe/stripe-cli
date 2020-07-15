@@ -45,13 +45,11 @@ func TestSerializableEventInterface(t *testing.T) {
 	rawBytes, err := event.toBytes()
 	check(err)
 
-	var r io.Reader
-	r = bytes.NewReader(rawBytes)
+	var r io.Reader = bytes.NewReader(rawBytes)
 
 	newEvent, err := event.fromBytes(&r)
 	check(err)
 	assert.Equal(t, event, newEvent)
-
 }
 
 func TestSequentialPlayback(t *testing.T) {
@@ -240,5 +238,4 @@ func TestLastMatchingEvent(t *testing.T) {
 	castC := toEvent(respC)
 	check(errC)
 	assert.Equal(t, r1, castC)
-
 }

@@ -3,7 +3,6 @@ package playback
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -87,12 +86,11 @@ func (httpRecorder *HttpRecorder) webhookHandler(w http.ResponseWriter, r *http.
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	defer resp.Body.Close()
 
-	err = httpRecorder.recorder.Write(IncomingInteraction, newSerializableHttpRequest(r), newSerializableHttpResponse(resp))
+	err = httpRecorder.recorder.Write(IncomingInteraction, newSerializableHTTPRequest(r), newSerializableHTTPResponse(resp))
 	if err != nil {
 		handleErrorInHandler(w, fmt.Errorf("Unexpected error writing webhook interaction to cassette: %w", err), 500)
 		return
 	}
-
 }
 
 func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request) {
@@ -130,7 +128,7 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	defer resp.Body.Close()
 
-	err = httpRecorder.recorder.Write(OutgoingInteraction, newSerializableHttpRequest(r), newSerializableHttpResponse(resp))
+	err = httpRecorder.recorder.Write(OutgoingInteraction, newSerializableHTTPRequest(r), newSerializableHTTPResponse(resp))
 	if err != nil {
 		handleErrorInHandler(w, err, 500)
 		return
@@ -292,7 +290,7 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
-			err = json.Unmarshal([]byte(webhookPayload), &evt)
+			err = json.Unmarshal(webhookPayload, &evt)
 			if err != nil {
 				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
 				continue
@@ -305,15 +303,13 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 				continue
 			}
 		}
-
 	}()
-
 }
 
 // returns error if something doesn't match the cassette
 func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
 	// the passed in request arg may not be necessary
-	responseWrapper, err := httpReplayer.replayer.Write(newSerializableHttpRequest(request))
+	responseWrapper, err := httpReplayer.replayer.Write(newSerializableHTTPRequest(request))
 	if err != nil {
 		return &http.Response{}, err
 	}
@@ -325,7 +321,6 @@ func (httpReplayer *HttpReplayer) getNextRecordedCassetteResponse(request *http.
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
 func (httpReplayer *HttpReplayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*http.Request, webhookResponses []*http.Response, err error) {
-
 	webhookBytes := make([]CassettePair, 0)
 
 	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
@@ -352,9 +347,8 @@ func (httpReplayer *HttpReplayer) readAnyPendingWebhookRecordingsFromCassette() 
 	for _, rawWebhookBytes := range webhookBytes {
 		// TODO(bwang): having to create a new instance to get at the fromBytes() method doesn't feel great.
 		// But is it unavoidable since Golang doesn't have 'static' methods? Is there some other refactoring we can do?
-		requestSerializer := newSerializableHttpRequest(&http.Request{})
-		var reqReader io.Reader
-		reqReader = bytes.NewReader(rawWebhookBytes.Request)
+		requestSerializer := newSerializableHTTPRequest(&http.Request{})
+		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
 		webhookHTTPRequest, err := requestSerializer.fromBytes(&reqReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
@@ -362,9 +356,8 @@ func (httpReplayer *HttpReplayer) readAnyPendingWebhookRecordingsFromCassette() 
 
 		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*http.Request))
 
-		responseSerializer := newSerializableHttpResponse(&http.Response{})
-		var respReader io.Reader
-		respReader = bytes.NewReader(rawWebhookBytes.Response)
+		responseSerializer := newSerializableHTTPResponse(&http.Response{})
+		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
 		webhookHTTPResponse, err := responseSerializer.fromBytes(&respReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
@@ -374,7 +367,6 @@ func (httpReplayer *HttpReplayer) readAnyPendingWebhookRecordingsFromCassette() 
 	}
 
 	return webhookRequests, webhookResponses, nil
-
 }
 
 func (httpReplayer *HttpReplayer) InitializeServer(address string) *http.Server {
@@ -407,6 +399,7 @@ type RecordReplayServer struct {
 	cassetteLoaded        bool
 }
 
+// NewRecordReplayServer instantiates a RecordReplayServer struct, representing the configuration of a playback proxy server
 func NewRecordReplayServer(remoteURL string, webhookURL string, cassetteDirectory string) (server *RecordReplayServer, err error) {
 	server = &RecordReplayServer{}
 	server.mode = Auto
@@ -440,7 +433,7 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 		}
 	default:
 		// Should never get here
-		handleErrorInHandler(w, errors.New(fmt.Sprintf("Got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\".", rr.mode)), 500)
+		handleErrorInHandler(w, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
 		return
 	}
 }
@@ -541,9 +534,9 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 	}
 
 	rr.cassetteLoaded = true
-
 }
 
+// InitializeServer sets up and returns a http.Server that acts as a playback proxy
 func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
 	server := &http.Server{Addr: address, Handler: customMux}
@@ -553,23 +546,23 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 
 	// --- Server control handlers
 	customMux.HandleFunc("/pb/mode/", func(w http.ResponseWriter, r *http.Request) {
-
 		// get mode
 		modeString := strings.TrimPrefix(r.URL.Path, "/pb/mode/")
 
-		if strings.EqualFold(Record, modeString) {
+		switch strings.ToLower(modeString) {
+		case Record:
 			fmt.Println("/pb/mode/: mode set to RECORD")
 			rr.mode = Record
 			w.WriteHeader(200)
-		} else if strings.EqualFold(Replay, modeString) {
+		case Replay:
 			fmt.Println("/pb/mode/: mode set to REPLAY")
 			rr.mode = Replay
 			w.WriteHeader(200)
-		} else if strings.EqualFold(Auto, modeString) {
+		case Auto:
 			fmt.Println("/pb/mode/: mode set to AUTO")
 			rr.mode = Auto
 			w.WriteHeader(200)
-		} else {
+		default:
 			w.WriteHeader(400)
 			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\".\n", modeString)
 		}
@@ -580,7 +573,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		directoryVals, ok := r.URL.Query()[queryKey]
 
 		if !ok {
-			handleErrorInHandler(w, errors.New(fmt.Sprintf("\"%v\" query param must be present.", queryKey)), 400)
+			handleErrorInHandler(w, fmt.Errorf("\"%v\" query param must be present", queryKey), 400)
 			return
 		}
 
@@ -593,17 +586,16 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		handle, err := os.Stat(absoluteCassetteDir)
 		if err != nil {
 			if os.IsNotExist(err) {
-				handleErrorInHandler(w, errors.New(
-					fmt.Sprintf("The directory \"%v\" does not exist. Please create it, then try again.\n", absoluteCassetteDir)), 400)
-				return
-			} else {
-				handleErrorInHandler(w, fmt.Errorf("Unexpected error when checking cassette directory: %w", err), 500)
+				handleErrorInHandler(w,
+					fmt.Errorf("the directory \"%v\" does not exist. Please create it, then try again", absoluteCassetteDir), 400)
 				return
 			}
+			handleErrorInHandler(w, fmt.Errorf("Unexpected error when checking cassette directory: %w", err), 500)
+			return
 		}
 
 		if !handle.Mode().IsDir() {
-			handleErrorInHandler(w, errors.New(fmt.Sprintf("The path \"%v\" is not a directory.", absoluteCassetteDir)), 400)
+			handleErrorInHandler(w, fmt.Errorf("the path \"%v\" is not a directory", absoluteCassetteDir), 400)
 			return
 		}
 

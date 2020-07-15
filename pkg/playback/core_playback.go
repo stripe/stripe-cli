@@ -94,7 +94,7 @@ type CassetteYaml struct {
 func (recorder *Recorder) Close() error {
 	// Write everything to a YAML File
 
-	// Put everything in a wrapping CassetteYaml struct that can be marshalled
+	// Put everything in a wrapping CassetteYaml struct that can be marshaled
 	cassette := CassetteYaml{}
 	cassette.Interactions = recorder.interactions
 
@@ -132,9 +132,7 @@ func NewReplayer(reader io.Reader, reqType Serializable, respType Serializable, 
 	if err != nil {
 		return replayer, err
 	}
-
 	return replayer, nil
-
 }
 
 func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error) {
@@ -149,8 +147,7 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 	// once per interaction, instead of every time
 	for idx, val := range replayer.cassette.Interactions {
 		// Deserialize the recorded request in this interaction
-		var reader io.Reader
-		reader = bytes.NewReader(val.Request)
+		var reader io.Reader = bytes.NewReader(val.Request)
 		requestStruct, err := replayer.reqType.fromBytes(&reader)
 		if err != nil {
 			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
@@ -161,8 +158,7 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 
 		// If it matches, then deserialize the matching recorded response
 		if accept {
-			var reader io.Reader
-			reader = bytes.NewReader(val.Response)
+			var reader io.Reader = bytes.NewReader(val.Response)
 			responseStruct, err := replayer.respType.fromBytes(&reader)
 
 			if err != nil {
@@ -176,9 +172,7 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 				break
 			}
 		}
-
 	}
-
 	if acceptedIdx != -1 {
 		// remove the matched event
 		replayer.cassette.Interactions = append(replayer.cassette.Interactions[:acceptedIdx], replayer.cassette.Interactions[acceptedIdx+1:]...)

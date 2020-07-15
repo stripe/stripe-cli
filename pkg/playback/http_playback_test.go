@@ -45,7 +45,7 @@ func init() {
 	fmt.Println("Stripe key = ", stripeKey)
 }
 
-func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http.Response) error {
+func assertHTTPResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http.Response) error {
 	// Read the response bodies
 	// resp1 body
 	bodyBytes1, err := ioutil.ReadAll(resp1.Body)
@@ -93,7 +93,7 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 		}
 
 		fixtureFileName := responseFixtureFiles[responseCount]
-		responseCount = responseCount + 1
+		responseCount++
 
 		fullPath, err := filepath.Abs(filepath.Join("test-data/", fixtureFileName))
 		if err != nil {
@@ -109,7 +109,7 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 			return
 		}
 
-		respGeneric, err := newSerializableHttpResponse(nil).fromBytes(&fileReader)
+		respGeneric, err := newSerializableHTTPResponse(nil).fromBytes(&fileReader)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Unexpected error when deserializing fixtures file: %v\n", err)
@@ -132,7 +132,6 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 		io.Copy(w, bytes.NewBuffer(bodyBytes))
 		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}))
-
 }
 
 // Integration test for HTTP wrapper against simple HTTP serving remote
@@ -200,15 +199,15 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	// Assert on the replay messages
 	replay1, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res1, replay1))
+	check(assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	replay2, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res2, replay2))
+	check(assertHTTPResponsesAreEqual(t, res2, replay2))
 
 	replay3, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res3, replay3))
+	check(assertHTTPResponsesAreEqual(t, res3, replay3))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
@@ -281,7 +280,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res1, replay1))
+	check(assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
@@ -351,13 +350,13 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.NoError(t, err)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res1, replay1))
+	check(assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
 }
 
-// Test the full server by switchign between modes, loading and ejecting cassettes, and sending real stripe requests
+// Test the full server by switching between modes, loading and ejecting cassettes, and sending real stripe requests
 func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	var remoteURL string
 	if runningInCI {
@@ -486,7 +485,6 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.Equal(t, myCharge, replayMyCharge)
 
 	// --- END REPLAY MODE
-
 }
 
 // TODO: Test auto mode on the full server

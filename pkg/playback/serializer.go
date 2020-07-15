@@ -17,7 +17,7 @@ type httpRequestSerializable struct {
 	baseRequest *http.Request
 }
 
-func newSerializableHttpRequest(r *http.Request) httpRequestSerializable {
+func newSerializableHTTPRequest(r *http.Request) httpRequestSerializable {
 	return httpRequestSerializable{r}
 }
 
@@ -37,7 +37,7 @@ type httpResponseSerializable struct {
 	baseResponse *http.Response
 }
 
-func newSerializableHttpResponse(r *http.Response) httpResponseSerializable {
+func newSerializableHTTPResponse(r *http.Response) httpResponseSerializable {
 	return httpResponseSerializable{r}
 }
 
