@@ -66,7 +66,8 @@ func (httpRecorder *HttpRecorder) webhookHandler(w http.ResponseWriter, r *http.
 	}
 
 	// --- Write response back to client
-
+	// The header *must* be written first, since writing the body with implicitly and irreversibly set
+	// the status code to 200 if not already set.
 	// Copy header
 	w.WriteHeader(resp.StatusCode)
 	copyHTTPHeader(w.Header(), resp.Header)
@@ -86,6 +87,7 @@ func (httpRecorder *HttpRecorder) webhookHandler(w http.ResponseWriter, r *http.
 		handleErrorInHandler(w, fmt.Errorf("Unexpected error writing webhook interaction to cassette: %w", err), 500)
 		return
 	}
+
 }
 
 func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +108,8 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close() // we need to close the body
 
 	// --- Write response back to client
-
+	// The header *must* be written first, since writing the body with implicitly and irreversibly set
+	// the status code to 200 if not already set.
 	// Copy header
 	w.WriteHeader(resp.StatusCode)
 	copyHTTPHeader(w.Header(), resp.Header)
@@ -125,6 +128,9 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 		handleErrorInHandler(w, err, 500)
 		return
 	}
+
+	// Reset the body reader in case we add code later that performs another read
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 }
 
 // TODO: doesn't need to be a HttpRecorder method (can be a helper)
@@ -221,9 +227,12 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 	defer resp.Body.Close() // we need to close the body
 
 	// --- Write response back to client
-	// Copy the response exactly as received, and pass on to client
+	// The header *must* be written first, since writing the body with implicitly and irreversibly set
+	// the status code to 200 if not already set.
 	w.WriteHeader(resp.StatusCode)
 	copyHTTPHeader(w.Header(), resp.Header)
+
+	// Copy the response exactly as received, and pass on to client
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		handleErrorInHandler(w, err, 500)

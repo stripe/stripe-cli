@@ -3,11 +3,12 @@ package playback
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,13 +21,23 @@ import (
 )
 
 var stripeKey string
+var runningInCI bool
 
 // setup for tests
 func init() {
+	// When running locally (not in CI), we may want to load a .env file so we
+	// can develop tests directly against testmode. But in CI we do not want to
+	// load our actual keys, so use a dummy variable.
+	// We also use the presence of a .env file to determine whether we are running locally, or in CI
 	err := godotenv.Load("./.env")
-	check(err)
+	if err != nil {
+		stripeKey = "sk_test_123"
+		runningInCI = true
+	} else {
+		stripeKey = os.Getenv("STRIPE_SECRET_KEY")
+		runningInCI = false
+	}
 
-	stripeKey = os.Getenv("STRIPE_SECRET_KEY")
 	fmt.Println("Stripe key = ", stripeKey)
 }
 
@@ -41,6 +52,10 @@ func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 
 	bodyString1 := string(bodyBytes1)
 	//reset the response body to the original unread state
+	err = resp1.Body.Close()
+	if err != nil {
+		return err
+	}
 	resp1.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes1))
 
 	// resp2 body
@@ -50,6 +65,10 @@ func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 	}
 	bodyString2 := string(bodyBytes2)
 	//reset the response body to the original unread state
+	err = resp2.Body.Close()
+	if err != nil {
+		return err
+	}
 	resp2.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes2))
 
 	assert.Equal(t, bodyString1, bodyString2, "Response bodies differ.")
@@ -58,12 +77,73 @@ func assertHttpResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 	return nil
 }
 
+func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
+	responseCount := 0
+
+	// Set up a local mock of a remote server will serve the provided http.Responses from the fixture files
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if responseCount >= len(responseFixtureFiles) {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, "Mock server ran out of http.Response fixtures to serve. Is the test case written properly?")
+			return
+		}
+
+		fixtureFileName := responseFixtureFiles[responseCount]
+		responseCount = responseCount + 1
+
+		fullPath, err := filepath.Abs(filepath.Join("test-data/", fixtureFileName))
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when joining filepath: %v", err))
+			return
+		}
+		readBytes, err := ioutil.ReadFile(fullPath)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when reading fixtures file: %v", err))
+			return
+		}
+		respGeneric, err := NewSerializableHttpResponse(nil).fromBytes(bytes.NewBuffer(readBytes))
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when deserializing fixtures file: %v", err))
+			return
+		}
+
+		resp := respGeneric.(*http.Response)
+
+		// --- Write response back to client
+		// Copy header
+		w.WriteHeader(resp.StatusCode)
+		copyHTTPHeader(w.Header(), resp.Header)
+
+		// Copy body
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			handleErrorInHandler(w, err, 500)
+			return
+		}
+		io.Copy(w, bytes.NewBuffer(bodyBytes))
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
+	}))
+
+}
+
 // Integration test for HTTP wrapper against simple HTTP serving remote
 func TestGetFromSimpleWebsite(t *testing.T) {
+	var remoteURL string
+	if runningInCI {
+		fixtureResponses := []string{"/simple-get-test/simpleRes1.bin", "/simple-get-test/simpleRes2.bin", "/simple-get-test/simpleRes3.bin"}
+		ts := startMockFixturesServer(fixtureResponses)
+		defer ts.Close()
+		remoteURL = ts.URL
+	} else {
+		remoteURL = "https://gobyexample.com"
+	}
+
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
-	remoteURL := "https://gobyexample.com"
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
@@ -130,13 +210,23 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 // Integration test for HTTP wrapper against Stripe
 // TODO: all the stripe tests should just use the SDK
 func TestStripeSimpleGet(t *testing.T) {
+	var remoteURL string
+	if runningInCI {
+		fixtureResponses := []string{"stripe-simple-get-test/res1.bin"}
+		ts := startMockFixturesServer(fixtureResponses)
+		defer ts.Close()
+		remoteURL = ts.URL
+	} else {
+		remoteURL = "https://api.stripe.com"
+	}
+
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
-	remoteURL := "https://api.stripe.com"
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
+	// TODO: rename to InsertCassette()
 	err := httpRecorder.LoadCassette(&cassetteBuffer)
 	check(err)
 
@@ -190,10 +280,19 @@ func TestStripeSimpleGet(t *testing.T) {
 
 // If we make a Stripe request without the Authorization header, we should get a 401 Unauthorized
 func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
+	var remoteURL string
+	if runningInCI {
+		fixtureResponses := []string{"/stripe-unauth-error-test/res1.bin"}
+		ts := startMockFixturesServer(fixtureResponses)
+		defer ts.Close()
+		remoteURL = ts.URL
+	} else {
+		remoteURL = "https://api.stripe.com"
+	}
+
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
 	addressString := "localhost:8080"
-	remoteURL := "https://api.stripe.com"
 	webhookURL := "http://localhost:8888" // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
@@ -246,87 +345,28 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	replayServer.Shutdown(context.TODO())
 }
 
-func TestStripeSimpleGetWithHttps(t *testing.T) {
-	// Spin up an instance of the HTTP playback server in record mode
-	var cassetteBuffer bytes.Buffer
-	addressString := "localhost:8080"
-	remoteURL := "https://api.stripe.com"
-	webhookURL := "http://localhost:8888" // not used in this test
-
-	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.LoadCassette(&cassetteBuffer)
-	check(err)
-
-	recordServer := httpRecorder.InitializeServer(addressString)
-	go func() {
-		if err := recordServer.ListenAndServeTLS("cert.pem", "key.pem"); err != http.ErrServerClosed {
-			// unexpected error
-			log.Fatalf("ListenAndServeTLS() 1: %v", err)
-		}
-	}()
-	// Initialize the http.Client used to send requests
-	// our test server uses a self-signed certificate -- configure the client to accept that
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-
-	// GET /v1/balance
-	req, err := http.NewRequest("GET", "https://localhost:8080/v1/balance", nil)
-	req.Header.Set("Authorization", "Bearer "+stripeKey)
-	res1, err := client.Do(req)
-
-	// Should record a 200 response
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res1.StatusCode)
-
-	// Shutdown record server
-	shutdownReq, err := http.NewRequest("GET", "https://localhost:8080/pb/stop", nil)
-	assert.NoError(t, err)
-	_, err = client.Do(shutdownReq)
-	assert.NoError(t, err)
-	recordServer.Shutdown(context.TODO())
-
-	// --- Set up a replay server
-	replayer := NewHttpReplayer(webhookURL)
-	err = replayer.LoadCassette(&cassetteBuffer)
-	check(err)
-
-	replayServer := replayer.InitializeServer(addressString)
-	go func() {
-		if err := replayServer.ListenAndServeTLS("cert.pem", "key.pem"); err != http.ErrServerClosed {
-			// unexpected error
-			log.Fatalf("ListenAndServeTLS() 2: %v", err)
-		}
-	}()
-
-	// Send it the same GET /v1/balance request:
-	// Assert replayed message matches
-	replayReq, err := http.NewRequest("GET", "https://localhost:8080/v1/balance", nil)
-	assert.NoError(t, err)
-
-	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
-
-	replay1, err := client.Do(replayReq)
-	assert.NoError(t, err)
-	check(assertHttpResponsesAreEqual(t, res1, replay1))
-
-	// Shutdown replay server
-	replayServer.Shutdown(context.TODO())
-}
-
 // Test the full server by switchign between modes, loading and ejecting cassettes, and sending real stripe requests
 func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
+	var remoteURL string
+	if runningInCI {
+		fixtureResponses := []string{"/create-customer-and-charge-test/res1.bin", "/create-customer-and-charge-test/res2.bin", "/create-customer-and-charge-test/res3.bin"}
+		ts := startMockFixturesServer(fixtureResponses)
+		defer ts.Close()
+		remoteURL = ts.URL
+	} else {
+		remoteURL = "https://api.stripe.com"
+	}
+
 	// -- Setup Playback server
 	addressString := "localhost:13111"
-	cassetteFilepath := "test_record_replay_single_run.yaml"
+	cassetteFilepath := "test-data/test_record_replay_single_run.yaml"
 
 	// for now, write cassettes to this directory. Ideally we have a test output folder
 	cassetteDirectory, err := filepath.Abs("")
 	assert.NoError(t, err)
 
 	webhookURL := "localhost:8888" // not used in this test
-	httpWrapper, err := NewRecordReplayServer("https://api.stripe.com", webhookURL, cassetteDirectory)
+	httpWrapper, err := NewRecordReplayServer(remoteURL, webhookURL, cassetteDirectory)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -348,7 +388,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	stripe.Key = stripeKey
 
 	mockBackendConf := stripe.BackendConfig{
-		URL: "http://localhost:13111",
+		URL: "http://" + addressString,
 	}
 	mockBackend := stripe.GetBackendWithConfig("api", &mockBackendConf)
 	stripe.SetBackend(stripe.APIBackend, mockBackend)

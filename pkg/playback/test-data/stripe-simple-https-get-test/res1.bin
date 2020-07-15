@@ -1,0 +1,27 @@
+HTTP/1.1 200 OK
+Content-Length: 323
+Content-Type: text/plain; charset=utf-8
+Date: Wed, 15 Jul 2020 14:18:53 GMT
+
+{
+  "object": "balance",
+  "available": [
+    {
+      "amount": 97561173,
+      "currency": "usd",
+      "source_types": {
+        "card": 97561173
+      }
+    }
+  ],
+  "livemode": false,
+  "pending": [
+    {
+      "amount": 70497,
+      "currency": "usd",
+      "source_types": {
+        "card": 70497
+      }
+    }
+  ]
+}
