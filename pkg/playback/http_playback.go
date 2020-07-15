@@ -74,14 +74,15 @@ func (httpRecorder *HttpRecorder) webhookHandler(w http.ResponseWriter, r *http.
 
 	// Copy body
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 	if err != nil {
 		handleErrorInHandler(w, fmt.Errorf("Unexpected error processing client webhook response: %w", err), 500)
 		return
 	}
 	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	defer resp.Body.Close()
 
-	// TODO: when reading from the cassette, we need to differentiate between webhook and non-webhook interactions (because they're replayed very differently (both in destination, and in trigger))
 	err = httpRecorder.recorder.Write(IncomingInteraction, NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
 	if err != nil {
 		handleErrorInHandler(w, fmt.Errorf("Unexpected error writing webhook interaction to cassette: %w", err), 500)
@@ -105,8 +106,6 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 	}
 	fmt.Printf("\n<-- %v from %v\n", resp.Status, strings.ToUpper(httpRecorder.remoteURL))
 
-	defer resp.Body.Close() // we need to close the body
-
 	// --- Write response back to client
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
@@ -116,12 +115,16 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 
 	// Copy body
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close() // we need to close the body
+
 	if err != nil {
 		handleErrorInHandler(w, err, 500)
 		return
 	}
 	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes)) // TODO: better understand and document why this is necessary
+	// we need to reset the reader to be able to read the body again
+	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	defer resp.Body.Close()
 
 	err = httpRecorder.recorder.Write(OutgoingInteraction, NewSerializableHttpRequest(r), NewSerializableHttpResponse(resp))
 	if err != nil {
@@ -131,6 +134,7 @@ func (httpRecorder *HttpRecorder) handler(w http.ResponseWriter, r *http.Request
 
 	// Reset the body reader in case we add code later that performs another read
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	defer resp.Body.Close()
 }
 
 // TODO: doesn't need to be a HttpRecorder method (can be a helper)
@@ -145,7 +149,10 @@ func forwardRequest(request *http.Request, destinationURL string) (resp *http.Re
 	if err != nil {
 		return nil, err
 	}
+	defer request.Body.Close()
+
 	request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	defer request.Body.Close()
 	req, err := http.NewRequest(request.Method, destinationURL, bytes.NewBuffer(bodyBytes))
 	copyHTTPHeader(req.Header, request.Header)
 
@@ -234,12 +241,15 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 
 	// Copy the response exactly as received, and pass on to client
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
 	if err != nil {
 		handleErrorInHandler(w, err, 500)
 		return
 	}
 	io.Copy(w, bytes.NewBuffer(bodyBytes))
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	defer resp.Body.Close()
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
@@ -269,6 +279,7 @@ func (httpReplayer *HttpReplayer) handler(w http.ResponseWriter, r *http.Request
 			var evt stripeEvent
 
 			webhookPayload, err := ioutil.ReadAll(webhookReq.Body)
+			defer webhookReq.Body.Close()
 			if err != nil {
 				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
 				continue
