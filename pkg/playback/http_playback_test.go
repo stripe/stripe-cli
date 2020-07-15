@@ -151,11 +151,11 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	addressString := defaultLocalAddress
 	webhookURL := defaultLocalWebhookAddress // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.InsertCassette(&cassetteBuffer)
+	httpRecorder := newRecordServer(remoteURL, webhookURL)
+	err := httpRecorder.insertCassette(&cassetteBuffer)
 	check(err)
 
-	server := httpRecorder.InitializeServer(addressString)
+	server := httpRecorder.initializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -183,11 +183,11 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
-	httpReplayer := NewHttpReplayer(webhookURL)
-	err = httpReplayer.ReadCassette(&cassetteBuffer)
+	httpReplayer := newReplayServer(webhookURL)
+	err = httpReplayer.readCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := httpReplayer.InitializeServer(addressString)
+	replayServer := httpReplayer.initializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -231,11 +231,11 @@ func TestStripeSimpleGet(t *testing.T) {
 	addressString := defaultLocalAddress
 	webhookURL := defaultLocalWebhookAddress // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.InsertCassette(&cassetteBuffer)
+	httpRecorder := newRecordServer(remoteURL, webhookURL)
+	err := httpRecorder.insertCassette(&cassetteBuffer)
 	check(err)
 
-	server := httpRecorder.InitializeServer(addressString)
+	server := httpRecorder.initializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -261,11 +261,11 @@ func TestStripeSimpleGet(t *testing.T) {
 	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
-	replayer := NewHttpReplayer(webhookURL)
-	err = replayer.ReadCassette(&cassetteBuffer)
+	replayer := newReplayServer(webhookURL)
+	err = replayer.readCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayer.InitializeServer(addressString)
+	replayServer := replayer.initializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -303,11 +303,11 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	addressString := defaultLocalAddress
 	webhookURL := defaultLocalWebhookAddress // not used in this test
 
-	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
-	err := httpRecorder.InsertCassette(&cassetteBuffer)
+	httpRecorder := newRecordServer(remoteURL, webhookURL)
+	err := httpRecorder.insertCassette(&cassetteBuffer)
 	check(err)
 
-	server := httpRecorder.InitializeServer(addressString)
+	server := httpRecorder.initializeServer(addressString)
 	go func() {
 		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
@@ -332,11 +332,11 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
-	replayer := NewHttpReplayer(webhookURL)
-	err = replayer.ReadCassette(&cassetteBuffer)
+	replayer := newReplayServer(webhookURL)
+	err = replayer.readCassette(&cassetteBuffer)
 	check(err)
 
-	replayServer := replayer.InitializeServer(addressString)
+	replayServer := replayer.initializeServer(addressString)
 	go func() {
 		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error

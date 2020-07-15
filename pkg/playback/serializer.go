@@ -50,9 +50,9 @@ func (respWrapper httpResponseSerializable) toBytes() (data []byte, err error) {
 
 func (respWrapper httpResponseSerializable) fromBytes(input *io.Reader) (val interface{}, err error) {
 	r := bufio.NewReader(*input)
-	req, err := http.ReadResponse(r, nil)
+	resp, err := http.ReadResponse(r, nil)
 	// Don't close the body here, because will be read and closed by the caller
-	return req, err
+	return resp, err
 }
 
 // func WriteHttpResponse(resp http.Response, buffer *bytes.Buffer) error {
