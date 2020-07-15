@@ -8,12 +8,7 @@ import (
 	"net/http"
 )
 
-// type Serializer interface {
-
-// 	func write()
-
-// }
-
+// A httpRequestSerializable is a wrapper around a http.Request that adds toBytes() and fromBytes() serialization methods
 type httpRequestSerializable struct {
 	baseRequest *http.Request
 }
@@ -34,6 +29,7 @@ func (reqWrapper httpRequestSerializable) fromBytes(input *io.Reader) (val inter
 	return req, err
 }
 
+// A httpResponseSerializable is a wrapper around a http.Response that adds toBytes() and fromBytes() serialization methods
 type httpResponseSerializable struct {
 	baseResponse *http.Response
 }
@@ -74,14 +70,3 @@ func (respWrapper httpResponseSerializable) fromBytes(input *io.Reader) (val int
 
 	return resp, err
 }
-
-// func WriteHttpResponse(resp http.Response, buffer *bytes.Buffer) error {
-// 	err := resp.Write(buffer)
-// 	return err
-// }
-
-// func ReadHttpResponse(buffer *bytes.Buffer) (resp *http.Response, err error) {
-// 	r := bufio.NewReader(buffer)
-// 	resp, err = http.ReadResponse(r, nil)
-// 	return resp, err
-// }

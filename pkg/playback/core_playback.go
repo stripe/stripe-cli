@@ -22,10 +22,31 @@ func check(err error) {
 // our search (return this one immediately, or keep scanning the cassette)
 type requestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
-// A struct that can be serialized/deserialized to bytes.
+// A struct that knows how to serialize and de-serialize itself
 type serializable interface {
 	toBytes() (bytes []byte, err error)
 	fromBytes(input *io.Reader) (val interface{}, err error)
+}
+
+// Contains binary data representing a generic request and response saved in a cassette.
+type interactionType int
+
+const (
+	outgoingInteraction interactionType = iota // eg: Stripe API requests
+	incomingInteraction                        // eg: webhooks
+)
+
+// cassettePairs stores info on a single request + response interaction
+type cassettePair struct {
+	// may have other fields like -- sequence number
+	Type     interactionType
+	Request  []byte
+	Response []byte
+}
+
+// cassetteYaml is used store interaction data to be serialized a YAML file
+type cassetteYaml struct {
+	Interactions []cassettePair
 }
 
 // A interactionRecorder can read in a sequence of interactions, and write them out
@@ -72,27 +93,6 @@ func (recorder *interactionRecorder) write(typeOfInteraction interactionType, re
 	// recorder.fileHandle.Write([]byte("\n"))
 
 	return err
-}
-
-// Contains binary data representing a generic request and response saved in a cassette.
-type interactionType int
-
-const (
-	outgoingInteraction interactionType = iota // eg: Stripe API requests
-	incomingInteraction                        // eg: webhooks
-)
-
-// cassettePairs stores info on a single request + response interaction
-type cassettePair struct {
-	// may have other fields like -- sequence number
-	Type     interactionType
-	Request  []byte
-	Response []byte
-}
-
-// cassetteYaml is used store interaction data to be serialized a YAML file
-type cassetteYaml struct {
-	Interactions []cassettePair
 }
 
 func (recorder *interactionRecorder) close() error {

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -95,18 +94,15 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("Seting up playback server...")
 	fmt.Println()
 
-	addressString := pc.address
-	remoteURL := pc.apiBaseURL
-
 	// --- Validate command-line args
-	// Mode is valid
+	// Check that mode is valid
 	if pc.mode != playback.Auto && pc.mode != playback.Record && pc.mode != playback.Replay {
 		return fmt.Errorf(
 			"\"%v\" is not a valid mode. It must be either \"%v\", \"%v\", or \"%v\"",
 			pc.mode, playback.Auto, playback.Record, playback.Replay)
 	}
 
-	// CassetteDir is valid or default (current working directory)
+	// Check that cassette root directory is valid
 	var absoluteCassetteDir string
 	var err error
 	if filepath.IsAbs(pc.cassetteDir) {
@@ -118,7 +114,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// check that is a valid directory
 	handle, err := os.Stat(absoluteCassetteDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -135,6 +130,11 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	// eg: how should we package cert.pem and key.pem? (see stripe-mock's implementation)
 	pc.serveHTTPS = false
 
+	// --- Start up the playback HTTP server
+	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as wcorell
+	addressString := pc.address
+	remoteURL := pc.apiBaseURL
+
 	var webhookAddress string
 	if pc.serveHTTPS {
 		webhookAddress = "https://" + pc.webhookAddress
@@ -142,7 +142,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		webhookAddress = "http://" + pc.webhookAddress
 	}
 
-	// TODO: figure out interface for webhook / stripe listen configuration
 	httpWrapper, err := playback.NewRecordReplayServer(remoteURL, webhookAddress, absoluteCassetteDir)
 	if err != nil {
 		return nil
@@ -179,12 +178,13 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		fullAddressString = "http://" + addressString
 	}
 
-	// TODO: (is this okay?) create a custom client to skip verifying our self-signed HTTPS certificate
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		// TODO: (is this okay?) create a custom client to skip verifying our self-signed HTTPS certificate
+		// TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
 
+	// --- Use the flag values to configure the server (over HTTP)
 	resp, err := client.Get(fullAddressString + "/pb/mode/" + pc.mode)
 	if err != nil {
 		return err
@@ -205,6 +205,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("Non 200 status code received during startup: " + resp.Status)
 	}
 
+	// --- Print out post-startup summary on CLI
 	fmt.Println()
 	fmt.Println("------ Server Running ------")
 
