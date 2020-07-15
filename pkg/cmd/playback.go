@@ -101,10 +101,9 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	// --- Validate command-line args
 	// Mode is valid
 	if pc.mode != playback.Auto && pc.mode != playback.Record && pc.mode != playback.Replay {
-		return errors.New(
-			fmt.Sprintf(
-				"\"%v\" is not a valid mode. It must be either \"%v\", \"%v\", or \"%v\"",
-				pc.mode, playback.Auto, playback.Record, playback.Replay))
+		return fmt.Errorf(
+			"\"%v\" is not a valid mode. It must be either \"%v\", \"%v\", or \"%v\"",
+			pc.mode, playback.Auto, playback.Record, playback.Replay)
 	}
 
 	// CassetteDir is valid or default (current working directory)
@@ -117,21 +116,19 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("Error with --cassette-root-dir: %w", err)
 		}
-
 	}
 
 	// check that is a valid directory
 	handle, err := os.Stat(absoluteCassetteDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("The directory \"%v\" does not exist. Please create it, then re-run the command.", absoluteCassetteDir)
-		} else {
-			return fmt.Errorf("Unexpected error when checking --cassette-root-dir: %w", err)
+			return fmt.Errorf("the directory \"%v\" does not exist. Please create it, then re-run the command", absoluteCassetteDir)
 		}
+		return fmt.Errorf("Unexpected error when checking --cassette-root-dir: %w", err)
 	}
 
 	if !handle.Mode().IsDir() {
-		return errors.New(fmt.Sprintf("The provided `--cassette-root-dir` option is not a valid directory: %v", absoluteCassetteDir))
+		return fmt.Errorf("The provided `--cassette-root-dir` option is not a valid directory: %v", absoluteCassetteDir)
 	}
 
 	// TODO: disable HTTPS for now. it needs more work to be able to run in a released version of the stripe-cli
@@ -169,7 +166,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		go func() {
 			server.ListenAndServeTLS(certFilepath, keyFilepath)
 		}()
-
 	} else {
 		go func() {
 			server.ListenAndServe()
@@ -193,16 +189,20 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
-		return errors.New("Non 200 status code received during startup: " + string(resp.Status))
+		return errors.New("Non 200 status code received during startup: " + resp.Status)
 	}
 
 	resp, err = client.Get(fullAddressString + "/pb/cassette/load?filepath=" + pc.filepath)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
-		return errors.New("Non 200 status code received during startup: " + string(resp.Status))
+		return errors.New("Non 200 status code received during startup: " + resp.Status)
 	}
 
 	fmt.Println()

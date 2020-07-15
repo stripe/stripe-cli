@@ -20,6 +20,10 @@ import (
 	"github.com/stripe/stripe-go/customer"
 )
 
+const stripeAPIURL = "https://api.stripe.com"
+const defaultLocalAddress = "localhost:8080"
+const defaultLocalWebhookAddress = "localhost:8888"
+
 var stripeKey string
 var runningInCI bool
 
@@ -94,19 +98,21 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 		fullPath, err := filepath.Abs(filepath.Join("test-data/", fixtureFileName))
 		if err != nil {
 			w.WriteHeader(500)
-			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when joining filepath: %v", err))
+			fmt.Fprintf(w, "Unexpected error when joining filepath: %v\n", err)
 			return
 		}
-		readBytes, err := ioutil.ReadFile(fullPath)
+		var fileReader io.Reader
+		fileReader, err = os.Open(fullPath)
 		if err != nil {
 			w.WriteHeader(500)
-			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when reading fixtures file: %v", err))
+			fmt.Fprintf(w, "Unexpected error when reading fixtures file: %v\n", err)
 			return
 		}
-		respGeneric, err := NewSerializableHttpResponse(nil).fromBytes(bytes.NewBuffer(readBytes))
+
+		respGeneric, err := newSerializableHttpResponse(nil).fromBytes(&fileReader)
 		if err != nil {
 			w.WriteHeader(500)
-			fmt.Fprintln(w, fmt.Sprintf("Unexpected error when deserializing fixtures file: %v", err))
+			fmt.Fprintf(w, "Unexpected error when deserializing fixtures file: %v\n", err)
 			return
 		}
 
@@ -143,8 +149,8 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
-	addressString := "localhost:8080"
-	webhookURL := "http://localhost:8888" // not used in this test
+	addressString := defaultLocalAddress
+	webhookURL := defaultLocalWebhookAddress // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.InsertCassette(&cassetteBuffer)
@@ -172,9 +178,10 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.Equal(t, 200, res3.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
+	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
 	httpReplayer := NewHttpReplayer(webhookURL)
@@ -217,13 +224,13 @@ func TestStripeSimpleGet(t *testing.T) {
 		defer ts.Close()
 		remoteURL = ts.URL
 	} else {
-		remoteURL = "https://api.stripe.com"
+		remoteURL = stripeAPIURL
 	}
 
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
-	addressString := "localhost:8080"
-	webhookURL := "http://localhost:8888" // not used in this test
+	addressString := defaultLocalAddress
+	webhookURL := defaultLocalWebhookAddress // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.InsertCassette(&cassetteBuffer)
@@ -240,6 +247,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	// GET /v1/balance
 	client := http.Client{}
 	req, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
+	assert.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+stripeKey)
 	res1, err := client.Do(req)
 
@@ -248,9 +256,10 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.Equal(t, 200, res1.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
+	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
 	replayer := NewHttpReplayer(webhookURL)
@@ -268,6 +277,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	// Send it the same GET /v1/balance request:
 	// Assert replayed message matches
 	replayReq, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
+	assert.NoError(t, err)
 	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
@@ -286,13 +296,13 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 		defer ts.Close()
 		remoteURL = ts.URL
 	} else {
-		remoteURL = "https://api.stripe.com"
+		remoteURL = stripeAPIURL
 	}
 
 	// Spin up an instance of the HTTP playback server in record mode
 	var cassetteBuffer bytes.Buffer
-	addressString := "localhost:8080"
-	webhookURL := "http://localhost:8888" // not used in this test
+	addressString := defaultLocalAddress
+	webhookURL := defaultLocalWebhookAddress // not used in this test
 
 	httpRecorder := NewHttpRecorder(remoteURL, webhookURL)
 	err := httpRecorder.InsertCassette(&cassetteBuffer)
@@ -309,6 +319,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	// GET /v1/balance
 	client := http.Client{}
 	req, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
+	assert.NoError(t, err)
 	res1, err := client.Do(req)
 
 	// Should record a 401 response
@@ -316,9 +327,10 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.Equal(t, 401, res1.StatusCode)
 
 	// Shutdown record server
-	_, err = http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
+	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
 	replayer := NewHttpReplayer(webhookURL)
@@ -336,6 +348,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	// Send it the same GET /v1/balance request:
 	// Assert replayed message matches
 	replayReq, err := http.NewRequest("GET", "http://localhost:8080/v1/balance", nil)
+	assert.NoError(t, err)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
 	check(assertHttpResponsesAreEqual(t, res1, replay1))
@@ -353,7 +366,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 		defer ts.Close()
 		remoteURL = ts.URL
 	} else {
-		remoteURL = "https://api.stripe.com"
+		remoteURL = stripeAPIURL
 	}
 
 	// -- Setup Playback server
@@ -364,7 +377,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	cassetteDirectory, err := filepath.Abs("")
 	assert.NoError(t, err)
 
-	webhookURL := "localhost:8888" // not used in this test
+	webhookURL := defaultLocalWebhookAddress // not used in this test
 	httpWrapper, err := NewRecordReplayServer(remoteURL, webhookURL, cassetteDirectory)
 	assert.NoError(t, err)
 
@@ -377,10 +390,12 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 	resp, err := http.Get(fullAddressString + "/pb/mode/record")
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// --- We'll use the stripe-go SDK in this test. Configure it to point to the server
@@ -434,6 +449,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// Tell server to save recording
 	resp, err = http.Get(fullAddressString + "/pb/cassette/eject")
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// --- END RECORD MODE
@@ -441,10 +457,12 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// --- Start interacting in REPLAY MODE
 	resp, err = http.Get(fullAddressString + "/pb/mode/replay")
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
+	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
 	// Make the same interactions, assert the same things

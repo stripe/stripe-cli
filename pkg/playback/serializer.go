@@ -3,6 +3,7 @@ package playback
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net/http"
 )
 
@@ -12,44 +13,45 @@ import (
 
 // }
 
-type HttpRequestSerializable struct {
+type httpRequestSerializable struct {
 	baseRequest *http.Request
 }
 
-func NewSerializableHttpRequest(r *http.Request) HttpRequestSerializable {
-	return HttpRequestSerializable{r}
+func newSerializableHttpRequest(r *http.Request) httpRequestSerializable {
+	return httpRequestSerializable{r}
 }
 
-func (reqWrapper HttpRequestSerializable) toBytes() (data []byte, err error) {
+func (reqWrapper httpRequestSerializable) toBytes() (data []byte, err error) {
 	var buffer = &bytes.Buffer{}
 	err = reqWrapper.baseRequest.Write(buffer)
 	return buffer.Bytes(), err
 }
 
-func (reqWrapper HttpRequestSerializable) fromBytes(buffer *bytes.Buffer) (val interface{}, err error) {
-	r := bufio.NewReader(buffer)
+func (reqWrapper httpRequestSerializable) fromBytes(input *io.Reader) (val interface{}, err error) {
+	r := bufio.NewReader(*input)
 	req, err := http.ReadRequest(r)
 	return req, err
 }
 
-type HttpResponseSerializable struct {
+type httpResponseSerializable struct {
 	baseResponse *http.Response
 }
 
-func NewSerializableHttpResponse(r *http.Response) HttpResponseSerializable {
-	return HttpResponseSerializable{r}
+func newSerializableHttpResponse(r *http.Response) httpResponseSerializable {
+	return httpResponseSerializable{r}
 }
 
-func (respWrapper HttpResponseSerializable) toBytes() (data []byte, err error) {
+func (respWrapper httpResponseSerializable) toBytes() (data []byte, err error) {
 	var buffer = &bytes.Buffer{}
 
 	err = respWrapper.baseResponse.Write(buffer)
 	return buffer.Bytes(), err
 }
 
-func (respWrapper HttpResponseSerializable) fromBytes(buffer *bytes.Buffer) (val interface{}, err error) {
-	r := bufio.NewReader(buffer)
+func (respWrapper httpResponseSerializable) fromBytes(input *io.Reader) (val interface{}, err error) {
+	r := bufio.NewReader(*input)
 	req, err := http.ReadResponse(r, nil)
+	// Don't close the body here, because will be read and closed by the caller
 	return req, err
 }
 

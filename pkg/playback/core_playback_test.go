@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,9 +20,13 @@ func (e Event) toBytes() (bytes []byte, err error) {
 	return json.Marshal(e)
 }
 
-func (e Event) fromBytes(bytes *bytes.Buffer) (val interface{}, err error) {
+func (e Event) fromBytes(input *io.Reader) (val interface{}, err error) {
 	out := Event{}
-	err = json.Unmarshal(bytes.Bytes(), &out)
+	bytes, err := ioutil.ReadAll(*input)
+	if err != nil {
+		return out, err
+	}
+	err = json.Unmarshal(bytes, &out)
 	return out, err
 }
 
@@ -39,9 +45,10 @@ func TestSerializableEventInterface(t *testing.T) {
 	rawBytes, err := event.toBytes()
 	check(err)
 
-	var b bytes.Buffer
-	b.Write(rawBytes)
-	newEvent, err := event.fromBytes(&b)
+	var r io.Reader
+	r = bytes.NewReader(rawBytes)
+
+	newEvent, err := event.fromBytes(&r)
 	check(err)
 	assert.Equal(t, event, newEvent)
 
@@ -82,6 +89,7 @@ func TestSequentialPlayback(t *testing.T) {
 	// --- Load cassette and replay: matching on sequence
 	fmt.Println(writeBuffer.Len())
 	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, sequentialComparator)
+	assert.NoError(t, err)
 
 	fmt.Println("Replaying...")
 	// feed the requests in *backwards* order, but responses come back in original order
@@ -147,6 +155,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 
 	// --- Replay - returning the first match
 	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, firstMatchingComparator)
+	assert.NoError(t, err)
 
 	fmt.Println("Replaying...")
 
@@ -209,6 +218,7 @@ func TestLastMatchingEvent(t *testing.T) {
 	}
 
 	replayer, err := NewReplayer(&writeBuffer, Event{}, Event{}, lastMatchingComparator)
+	assert.NoError(t, err)
 
 	fmt.Println("Replaying...")
 	fmt.Println("Should return last matching event to \"Event 1\"")

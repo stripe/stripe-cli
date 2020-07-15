@@ -24,7 +24,7 @@ type RequestComparator func(req1 interface{}, req2 interface{}) (accept bool, sh
 // A struct that can be serialized/deserialized to bytes.
 type Serializable interface {
 	toBytes() (bytes []byte, err error)
-	fromBytes(bytes *bytes.Buffer) (val interface{}, err error)
+	fromBytes(input *io.Reader) (val interface{}, err error)
 }
 
 type Recorder struct {
@@ -149,9 +149,9 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 	// once per interaction, instead of every time
 	for idx, val := range replayer.cassette.Interactions {
 		// Deserialize the recorded request in this interaction
-		var b bytes.Buffer
-		b.Write(val.Request)
-		requestStruct, err := replayer.reqType.fromBytes(&b)
+		var reader io.Reader
+		reader = bytes.NewReader(val.Request)
+		requestStruct, err := replayer.reqType.fromBytes(&reader)
 		if err != nil {
 			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
 		}
@@ -161,9 +161,9 @@ func (replayer *Replayer) Write(req Serializable) (resp *interface{}, err error)
 
 		// If it matches, then deserialize the matching recorded response
 		if accept {
-			var respBuffer bytes.Buffer
-			respBuffer.Write(val.Response)
-			responseStruct, err := replayer.respType.fromBytes(&respBuffer)
+			var reader io.Reader
+			reader = bytes.NewReader(val.Response)
+			responseStruct, err := replayer.respType.fromBytes(&reader)
 
 			if err != nil {
 				return nil, errors.New("Error when deserializing cassette.")
