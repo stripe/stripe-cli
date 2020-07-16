@@ -43,7 +43,6 @@ type playbackCmd struct {
 	cassetteDir    string
 	address        string
 	webhookAddress string
-	serveHTTPS     bool
 }
 
 func newPlaybackCmd() *playbackCmd {
@@ -81,8 +80,7 @@ Currently, stripe playback only supports serving over HTTP.
 	pc.cmd.Flags().StringVar(&pc.address, "address", fmt.Sprintf("localhost:%d", defaultPort), "Address to serve on")
 	pc.cmd.Flags().StringVar(&pc.webhookAddress, "forward-to", fmt.Sprintf("localhost:%d", defaultWebhookPort), "Address to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
-	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "", "Directory to store all cassettes in. All cassette paths are interpreted as relative to this directory.")
-	// pc.cmd.Flags().BoolVar(&pc.serveHTTPS, "https", false, "Serve over HTTPS (default: HTTP")
+	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "", "Directory to store all cassettes in. Relative cassette paths are considered relative to this directory.")
 
 	// // Hidden configuration flags, useful for dev/debugging
 	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "Sets the API base URL")
@@ -104,15 +102,9 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check that cassette root directory is valid
-	var absoluteCassetteDir string
-	var err error
-	if filepath.IsAbs(pc.cassetteDir) {
-		absoluteCassetteDir = pc.cassetteDir
-	} else {
-		absoluteCassetteDir, err = filepath.Abs(pc.cassetteDir)
-		if err != nil {
-			return fmt.Errorf("Error with --cassette-root-dir: %w", err)
-		}
+	absoluteCassetteDir, err := filepath.Abs(pc.cassetteDir)
+	if err != nil {
+		return fmt.Errorf("Error with --cassette-root-dir: %w", err)
 	}
 
 	handle, err := os.Stat(absoluteCassetteDir)
@@ -127,21 +119,12 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("The provided `--cassette-root-dir` option is not a valid directory: %v", absoluteCassetteDir)
 	}
 
-	// TODO: disable HTTPS for now. it needs more work to be able to run in a released version of the stripe-cli
-	// eg: how should we package cert.pem and key.pem? (see stripe-mock's implementation)
-	pc.serveHTTPS = false
-
 	// --- Start up the playback HTTP server
 	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
-	var webhookAddress string
-	if pc.serveHTTPS {
-		webhookAddress = "https://" + pc.webhookAddress
-	} else {
-		webhookAddress = "http://" + pc.webhookAddress
-	}
+	webhookAddress := "http://" + pc.webhookAddress
 
 	httpWrapper, err := playback.NewRecordReplayServer(remoteURL, webhookAddress, absoluteCassetteDir)
 	if err != nil {
@@ -149,41 +132,13 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
+	go func() {
+		server.ListenAndServe()
+	}()
 
-	if pc.serveHTTPS {
-		certFilepath := "pkg/playback/cert.pem"
-		keyFilepath := "pkg/playback/key.pem"
-		_, err := os.Stat(certFilepath)
-		if err != nil {
-			return fmt.Errorf("Error when loading cert.pem, are you sure it exists?: %w", err)
-		}
+	fullAddressString := "http://" + addressString
 
-		_, err = os.Stat(certFilepath)
-		if err != nil {
-			return fmt.Errorf("Error when loading key.pem, are you sure it exists?: %w", err)
-		}
-
-		go func() {
-			server.ListenAndServeTLS(certFilepath, keyFilepath)
-		}()
-	} else {
-		go func() {
-			server.ListenAndServe()
-		}()
-	}
-
-	var fullAddressString string
-	if pc.serveHTTPS {
-		fullAddressString = "https://" + addressString
-	} else {
-		fullAddressString = "http://" + addressString
-	}
-
-	tr := &http.Transport{
-		// TODO: (is this okay?) create a custom client to skip verifying our self-signed HTTPS certificate
-		// TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
+	client := &http.Client{}
 
 	// --- Use the flag values to configure the server (over HTTP)
 	resp, err := client.Get(fullAddressString + "/pb/mode/" + pc.mode)
@@ -229,11 +184,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Using cassette: \"%v\".\n", pc.filepath)
 	fmt.Println()
 
-	if pc.serveHTTPS {
-		fmt.Printf("Listening via HTTPS on %v\n", addressString)
-	} else {
-		fmt.Printf("Listening via HTTP on %v\n", addressString)
-	}
+	fmt.Printf("Listening via HTTP on %v\n", addressString)
 
 	fmt.Printf("Forwarding webhooks to %v\n", webhookAddress)
 	fmt.Println("-----------------------------")
