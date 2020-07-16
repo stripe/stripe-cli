@@ -3,6 +3,7 @@ package playback
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
 	"testing"
@@ -21,11 +22,15 @@ type basicEvent struct {
 	ID   int
 }
 
-func (e basicEvent) toBytes() (bytes []byte, err error) {
-	return json.Marshal(e)
+func BasicEventToBytes(input interface{}) (bytes []byte, err error) {
+	event, castOk := input.(basicEvent)
+	if !castOk {
+		return []byte{}, errors.New("input is not of type basicEvent")
+	}
+	return json.Marshal(event)
 }
 
-func (e basicEvent) fromBytes(input *io.Reader) (val interface{}, err error) {
+func BasicEventFromBytes(input *io.Reader) (val interface{}, err error) {
 	out := basicEvent{}
 	bytes, err := ioutil.ReadAll(*input)
 	if err != nil {
@@ -47,12 +52,12 @@ func toEvent(input interface{}) basicEvent {
 func TestSerializableEventInterface(t *testing.T) {
 	event := basicEvent{"John", 1}
 
-	rawBytes, err := event.toBytes()
+	rawBytes, err := BasicEventToBytes(event)
 	check(t, err)
 
 	var r io.Reader = bytes.NewReader(rawBytes)
 
-	newEvent, err := event.fromBytes(&r)
+	newEvent, err := BasicEventFromBytes(&r)
 	check(t, err)
 	assert.Equal(t, event, newEvent)
 }
@@ -63,7 +68,7 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer)
+	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
 
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +88,7 @@ func TestSequentialPlayback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, basicEvent{}, basicEvent{}, sequentialComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, sequentialComparator)
 	assert.NoError(t, err)
 
 	replayedResp1, err1 := replayer.write(s2)
@@ -109,7 +114,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer)
+	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
 
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +134,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, basicEvent{}, basicEvent{}, firstMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, firstMatchingComparator)
 	assert.NoError(t, err)
 
 	_, err2 := replayer.write(basicEvent{})
@@ -159,7 +164,7 @@ func TestLastMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer)
+	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
 
 	if err != nil {
 		t.Fatal(err)
@@ -183,7 +188,7 @@ func TestLastMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, basicEvent{}, basicEvent{}, lastMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, lastMatchingComparator)
 	assert.NoError(t, err)
 
 	respA, errA := replayer.write(s1)

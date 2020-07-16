@@ -109,7 +109,7 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 			return
 		}
 
-		respGeneric, err := newSerializableHTTPResponse(nil).fromBytes(&fileReader)
+		respGeneric, err := httpResponsefromBytes(&fileReader)
 		if err != nil {
 			w.WriteHeader(500)
 			fmt.Fprintf(w, "Unexpected error when deserializing fixtures file: %v\n", err)

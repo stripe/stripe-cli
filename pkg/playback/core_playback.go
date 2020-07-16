@@ -16,12 +16,6 @@ import (
 // our search (return this one immediately, or keep scanning the cassette)
 type requestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
-// A struct that knows how to serialize and de-serialize itself
-type serializable interface {
-	toBytes() (bytes []byte, err error)
-	fromBytes(input *io.Reader) (val interface{}, err error)
-}
-
 // Contains binary data representing a generic request and response saved in a cassette.
 type interactionType int
 
@@ -46,14 +40,18 @@ type cassetteYaml struct {
 // A interactionRecorder can read in a sequence of interactions, and write them out
 // in a serialized format.
 type interactionRecorder struct {
-	writer       io.Writer
-	interactions []cassettePair
+	writer         io.Writer
+	interactions   []cassettePair
+	reqSerializer  serializer
+	respSerializer serializer
 }
 
-func newInteractionRecorder(writer io.Writer) (recorder *interactionRecorder, err error) {
+func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSerializer serializer) (recorder *interactionRecorder, err error) {
 	recorder = &interactionRecorder{}
 
 	recorder.writer = writer
+	recorder.reqSerializer = reqSerializer
+	recorder.respSerializer = respSerializer
 
 	recorder.interactions = make([]cassettePair, 0)
 
@@ -61,14 +59,14 @@ func newInteractionRecorder(writer io.Writer) (recorder *interactionRecorder, er
 }
 
 // takes a generic struct
-func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req serializable, resp serializable) error {
-	reqBytes, err := req.toBytes()
+func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req interface{}, resp interface{}) error {
+	reqBytes, err := recorder.reqSerializer(req)
 
 	if err != nil {
 		return err
 	}
 
-	respBytes, err := resp.toBytes()
+	respBytes, err := recorder.respSerializer(resp)
 
 	if err != nil {
 		return err
@@ -95,19 +93,19 @@ func (recorder *interactionRecorder) saveAndClose() error {
 // A interactionReplayer contains a set of recorded interactions and exposes
 // functionality to play them back.
 type interactionReplayer struct {
-	cursor     int
-	comparator requestComparator
-	cassette   cassetteYaml
-	reqType    serializable
-	respType   serializable
+	cursor           int
+	comparator       requestComparator
+	cassette         cassetteYaml
+	respDeserializer deserializer
+	reqDeserializer  deserializer
 }
 
-func newInteractionReplayer(reader io.Reader, reqType serializable, respType serializable, comparator requestComparator) (replayer *interactionReplayer, err error) {
+func newInteractionReplayer(reader io.Reader, reqDeserializer deserializer, respDeserializer deserializer, comparator requestComparator) (replayer *interactionReplayer, err error) {
 	replayer = &interactionReplayer{}
 	replayer.cursor = 0
 	replayer.comparator = comparator
-	replayer.reqType = reqType
-	replayer.respType = respType
+	replayer.reqDeserializer = reqDeserializer
+	replayer.respDeserializer = respDeserializer
 
 	yamlBuf, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -121,7 +119,7 @@ func newInteractionReplayer(reader io.Reader, reqType serializable, respType ser
 	return replayer, nil
 }
 
-func (replayer *interactionReplayer) write(req serializable) (resp *interface{}, err error) {
+func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, err error) {
 	if len(replayer.cassette.Interactions) == 0 {
 		return nil, errors.New("nothing left in cassette to replay")
 	}
@@ -131,16 +129,16 @@ func (replayer *interactionReplayer) write(req serializable) (resp *interface{},
 
 	for idx, val := range replayer.cassette.Interactions {
 		var reader io.Reader = bytes.NewReader(val.Request)
-		requestStruct, err := replayer.reqType.fromBytes(&reader)
+		requestStruct, err := replayer.reqDeserializer(&reader)
 		if err != nil {
-			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
+			return nil, fmt.Errorf("error when deserializing cassette: %w", err)
 		}
 
 		accept, shortCircuit := replayer.comparator(requestStruct, req)
 
 		if accept {
 			var reader io.Reader = bytes.NewReader(val.Response)
-			responseStruct, err := replayer.respType.fromBytes(&reader)
+			responseStruct, err := replayer.respDeserializer(&reader)
 
 			if err != nil {
 				return nil, errors.New("error when deserializing cassette")

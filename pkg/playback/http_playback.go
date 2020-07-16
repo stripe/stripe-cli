@@ -46,7 +46,7 @@ func newRecordServer(remoteURL string, webhookURL string) (httpRecorder recordSe
 }
 
 func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
-	recorder, err := newInteractionRecorder(writer)
+	recorder, err := newInteractionRecorder(writer, httpRequestToBytes, httpResponseToBytes)
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	defer resp.Body.Close()
 
-	err = httpRecorder.recorder.write(incomingInteraction, newSerializableHTTPRequest(r), newSerializableHTTPResponse(resp))
+	err = httpRecorder.recorder.write(incomingInteraction, r, resp)
 	if err != nil {
 		handleErrorInHandler(w, fmt.Errorf("Unexpected error writing webhook interaction to cassette: %w", err), 500)
 		return
@@ -127,7 +127,7 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	defer resp.Body.Close()
 
-	err = httpRecorder.recorder.write(outgoingInteraction, newSerializableHTTPRequest(r), newSerializableHTTPResponse(resp))
+	err = httpRecorder.recorder.write(outgoingInteraction, r, resp)
 	if err != nil {
 		handleErrorInHandler(w, err, 500)
 		return
@@ -203,7 +203,7 @@ func (httpReplayer *replayServer) readCassette(reader io.Reader) error {
 		return true, true
 	}
 
-	replayer, err := newInteractionReplayer(reader, httpRequestSerializable{}, httpResponseSerializable{}, sequentialComparator)
+	replayer, err := newInteractionReplayer(reader, httpRequestfromBytes, httpResponsefromBytes, sequentialComparator)
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 // returns error if something doesn't match the cassette
 func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
 	// the passed in request arg may not be necessary
-	responseWrapper, err := httpReplayer.replayer.write(newSerializableHTTPRequest(request))
+	responseWrapper, err := httpReplayer.replayer.write(request)
 	if err != nil {
 		return &http.Response{}, err
 	}
@@ -348,20 +348,16 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 	webhookRequests = make([]*http.Request, 0)
 	webhookResponses = make([]*http.Response, 0)
 	for _, rawWebhookBytes := range webhookBytes {
-		// TODO(bwang): having to create a new instance to get at the fromBytes() method doesn't feel great.
-		// But is it unavoidable since Golang doesn't have 'static' methods? Is there some other refactoring we can do?
-		requestSerializer := newSerializableHTTPRequest(&http.Request{})
 		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
-		webhookHTTPRequest, err := requestSerializer.fromBytes(&reqReader)
+		webhookHTTPRequest, err := httpRequestfromBytes(&reqReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
 
 		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*http.Request))
 
-		responseSerializer := newSerializableHTTPResponse(&http.Response{})
 		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
-		webhookHTTPResponse, err := responseSerializer.fromBytes(&respReader)
+		webhookHTTPResponse, err := httpResponsefromBytes(&respReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
