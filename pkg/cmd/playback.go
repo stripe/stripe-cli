@@ -50,8 +50,6 @@ func newPlaybackCmd() *playbackCmd {
 	pc := &playbackCmd{}
 
 	pc.cmd = &cobra.Command{
-		// This flag doesn't actually hide the command because we use a template to display the --help text
-		// To unhide this command, see getUsageTemplate() in templates.go, where we explicitly hide the `playback` cmd.
 		Hidden: true,
 		Use:    "playback",
 		Args:   validators.NoArgs,
@@ -67,14 +65,14 @@ are written to the loaded 'cassette' file for later playback in replay mode.
 
 "replay": All received requests are terminated at the playback server, and responses are played back[1] from a cassette file. A existing cassette most be loaded.
 
-"auto": The server determines whether to run in "record" or "replay" mode on a per-cassette basis. If the cassette exists, operates in "replay" mode. If not, operates in "record" mode.
+"auto" (default): The server determines whether to run in "record" or "replay" mode on a per-cassette basis. If the cassette exists, operates in "replay" mode. If not, operates in "record" mode.
 
 Currently, stripe playback only supports serving over HTTP.
 
 [1]: requests are currently replayed sequentially in the same order they were recorded.
 ` + endpointsDocString,
 		Example: `stripe playback
-  stripe playback --replaymode
+  stripe playback --mode replay
   stripe playback --cassette "my_cassette.yaml"`,
 		RunE: pc.runPlaybackCmd,
 	}
@@ -134,7 +132,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	pc.serveHTTPS = false
 
 	// --- Start up the playback HTTP server
-	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as wcorell
+	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 

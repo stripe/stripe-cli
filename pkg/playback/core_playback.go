@@ -82,23 +82,10 @@ func (recorder *interactionRecorder) write(typeOfInteraction interactionType, re
 
 	recorder.interactions = append(recorder.interactions, cassettePair{Type: typeOfInteraction, Request: reqBytes, Response: respBytes})
 
-	// _, err = recorder.fileHandle.Write(reqBytes)
-	// recorder.fileHandle.Write([]byte("\n"))
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// _, err = recorder.fileHandle.Write(respBytes)
-	// recorder.fileHandle.Write([]byte("\n"))
-
 	return err
 }
 
 func (recorder *interactionRecorder) close() error {
-	// Write everything to a YAML File
-
-	// Put everything in a wrapping CassetteYaml struct that can be marshaled
 	cassette := cassetteYaml{}
 	cassette.Interactions = recorder.interactions
 
@@ -148,20 +135,15 @@ func (replayer *interactionReplayer) write(req serializable) (resp *interface{},
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	// TODO: this can be optimized to do the deserialization from bytes
-	// once per interaction, instead of every time
 	for idx, val := range replayer.cassette.Interactions {
-		// Deserialize the recorded request in this interaction
 		var reader io.Reader = bytes.NewReader(val.Request)
 		requestStruct, err := replayer.reqType.fromBytes(&reader)
 		if err != nil {
 			return nil, fmt.Errorf("Error when deserializing cassette: %w", err)
 		}
 
-		// Compare it with the provided request
 		accept, shortCircuit := replayer.comparator(requestStruct, req)
 
-		// If it matches, then deserialize the matching recorded response
 		if accept {
 			var reader io.Reader = bytes.NewReader(val.Response)
 			responseStruct, err := replayer.respType.fromBytes(&reader)
@@ -179,7 +161,6 @@ func (replayer *interactionReplayer) write(req serializable) (resp *interface{},
 		}
 	}
 	if acceptedIdx != -1 {
-		// remove the matched event
 		replayer.cassette.Interactions = append(replayer.cassette.Interactions[:acceptedIdx], replayer.cassette.Interactions[acceptedIdx+1:]...)
 		return &lastAccepted, nil
 	}
