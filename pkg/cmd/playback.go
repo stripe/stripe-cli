@@ -133,7 +133,9 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	server := httpWrapper.InitializeServer(addressString)
 	go func() {
-		server.ListenAndServe()
+		err = server.ListenAndServe()
+		fmt.Fprintf(os.Stderr, err.Error())
+		os.Exit(1)
 	}()
 
 	fullAddressString := "http://" + addressString
