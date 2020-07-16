@@ -17,19 +17,19 @@ const defaultPort = 13111
 const defaultWebhookPort = 13112
 const endpointsDocString = `
 --- Controlling the server ---
-You can configure the running server instance via HTTP GET endpoints (prefixed with "/pb/").
+You can configure the running server instance via HTTP GET endpoints (prefixed with "/playback/").
 
 --- List of server control endpoints ---
-GET /pb/mode/[mode]
+GET /playback/mode/[mode]
 Sets the server mode to one of ["auto", "record", "replay"]
 
-GET /pb/cassette/setroot?dir=[path_to_directory]
+GET /playback/cassette/setroot?dir=[path_to_directory]
 Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
-GET /pb/cassette/load?filepath=[filepath]
+GET /playback/cassette/load?filepath=[filepath]
 Load the cassette file at the given filepath, relative to the cassette root directory.
 
-GET /pb/cassette/eject
+GET /playback/cassette/eject
 Eject (unload) the current cassette and do any teardown. In record mode, this writes the recorded interactions to the cassette file.
 `
 
@@ -141,7 +141,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	client := &http.Client{}
 
 	// --- Use the flag values to configure the server (over HTTP)
-	resp, err := client.Get(fullAddressString + "/pb/mode/" + pc.mode)
+	resp, err := client.Get(fullAddressString + "/playback/mode/" + pc.mode)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("Non 200 status code received during startup: " + resp.Status)
 	}
 
-	resp, err = client.Get(fullAddressString + "/pb/cassette/load?filepath=" + pc.filepath)
+	resp, err = client.Get(fullAddressString + "/playback/cassette/load?filepath=" + pc.filepath)
 	if err != nil {
 		return err
 	}

@@ -41,13 +41,13 @@ When running in both record/replay mode, the server will print out interactions 
 ## Controlling the playback server
 Besides the command line flags at startup, there are also HTTP endpoints that allow you to control and modify the server's behavior while it is running.
 
-`GET:` `/pb/mode/[mode]`: Sets the server mode to one of ["auto", "record", "replay"].
+`GET:` `/playback/mode/[mode]`: Sets the server mode to one of ["auto", "record", "replay"].
 
-`GET:` `/pb/cassette/setroot?dir=[path_to_directory]`: Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
+`GET:` `/playback/cassette/setroot?dir=[path_to_directory]`: Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
-`GET:` `/pb/cassette/load?filepath=[filepath]`: Load the cassette file at the given filepath, relative to the cassette root directory.
+`GET:` `/playback/cassette/load?filepath=[filepath]`: Load the cassette file at the given filepath, relative to the cassette root directory.
 
-`GET:` `/pb/casette/eject`: Eject (unload) the current cassette and do any teardown. In `record` mode or `auto` mode when recording to a new file, this writes the recorded interactions to the cassette file. When replaying (whether in `replay` or `auto` modes) this is a no-op.
+`GET:` `/playback/casette/eject`: Eject (unload) the current cassette and do any teardown. In `record` mode or `auto` mode when recording to a new file, this writes the recorded interactions to the cassette file. When replaying (whether in `replay` or `auto` modes) this is a no-op.
 
 
 ## Example
@@ -68,7 +68,7 @@ Record some test interactions using the stripe CLI, but proxy through the `strip
 
 Stop recording:
 
-`curl http://localhost:13111/pb/stop`
+`curl http://localhost:13111/playback/stop`
 
 ### In Window 1:
 Ctrl-C the record server to shut it down.
@@ -101,8 +101,8 @@ Skeleton demo of functionality:
 
 Seting up playback server...
 
-/pb/mode/: Setting mode to  record
-/pb/cassette/load: Loading cassette  [default_cassette.yaml]
+/playback/mode/: Setting mode to  record
+/playback/cassette/load: Loading cassette  [default_cassette.yaml]
 
 ------ Server Running ------
 Recording...
@@ -118,7 +118,7 @@ Forwarding webhooks to http://localhost:13112
 # Terminal 2
 # Use stripe listen to forward webhooks to the playback server's webhook endpoint
 
-> stripe listen --forward-to localhost:13111/pb/webhooks
+> stripe listen --forward-to localhost:13111/playback/webhooks
 ```
 
 

@@ -177,7 +177,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	assert.Equal(t, 200, res3.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/playback/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
@@ -255,7 +255,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	assert.Equal(t, 200, res1.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/playback/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
@@ -326,7 +326,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.Equal(t, 401, res1.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Get("http://localhost:8080/pb/stop")
+	resShutdown, err := http.Get("http://localhost:8080/playback/stop")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
@@ -387,12 +387,12 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 	fullAddressString := "http://" + addressString
 
-	resp, err := http.Get(fullAddressString + "/pb/mode/record")
+	resp, err := http.Get(fullAddressString + "/playback/mode/record")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
+	resp, err = http.Get(fullAddressString + "/playback/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -446,7 +446,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.Equal(t, "My First Test Charge (created for API docs)", myCharge.Description)
 
 	// Tell server to save recording
-	resp, err = http.Get(fullAddressString + "/pb/cassette/eject")
+	resp, err = http.Get(fullAddressString + "/playback/cassette/eject")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -454,12 +454,12 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// --- END RECORD MODE
 
 	// --- Start interacting in REPLAY MODE
-	resp, err = http.Get(fullAddressString + "/pb/mode/replay")
+	resp, err = http.Get(fullAddressString + "/playback/mode/replay")
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/pb/cassette/load?filepath=" + cassetteFilepath)
+	resp, err = http.Get(fullAddressString + "/playback/cassette/load?filepath=" + cassetteFilepath)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)

@@ -170,9 +170,9 @@ func (httpRecorder *recordServer) initializeServer(address string) *http.Server 
 	server := &http.Server{Addr: address, Handler: customMux}
 
 	// --- Recorder control handlers
-	customMux.HandleFunc("/pb/stop", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/playback/stop", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println()
-		fmt.Println("Received /pb/stop. Stopping...")
+		fmt.Println("Received /playback/stop. Stopping...")
 
 		httpRecorder.recorder.saveAndClose()
 	})
@@ -500,19 +500,19 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 
 	switch rr.mode {
 	case Record:
-		fmt.Println("/pb/cassette/load: Recording to: ", absoluteFilepath)
+		fmt.Println("/playback/cassette/load: Recording to: ", absoluteFilepath)
 		shouldCreateNewFile = true
 	case Replay:
-		fmt.Println("/pb/cassette/load: Replaying from: ", absoluteFilepath)
+		fmt.Println("/playback/cassette/load: Replaying from: ", absoluteFilepath)
 		shouldCreateNewFile = false
 	case Auto:
 		_, err := os.Stat(absoluteFilepath)
 		if os.IsNotExist(err) {
-			fmt.Println("/pb/cassette/load: Recording to: ", absoluteFilepath)
+			fmt.Println("/playback/cassette/load: Recording to: ", absoluteFilepath)
 			shouldCreateNewFile = true
 			rr.isRecordingInAutoMode = true
 		} else {
-			fmt.Println("/pb/cassette/load: Replaying from: ", absoluteFilepath)
+			fmt.Println("/playback/cassette/load: Replaying from: ", absoluteFilepath)
 			shouldCreateNewFile = false
 			rr.isRecordingInAutoMode = false
 		}
@@ -549,24 +549,24 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 	server := &http.Server{Addr: address, Handler: customMux}
 
 	// --- Webhook endpoint
-	customMux.HandleFunc("/pb/webhooks", rr.webhookHandler)
+	customMux.HandleFunc("/playback/webhooks", rr.webhookHandler)
 
 	// --- Server control handlers
-	customMux.HandleFunc("/pb/mode/", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/playback/mode/", func(w http.ResponseWriter, r *http.Request) {
 		// get mode
-		modeString := strings.TrimPrefix(r.URL.Path, "/pb/mode/")
+		modeString := strings.TrimPrefix(r.URL.Path, "/playback/mode/")
 
 		switch strings.ToLower(modeString) {
 		case Record:
-			fmt.Println("/pb/mode/: mode set to RECORD")
+			fmt.Println("/playback/mode/: mode set to RECORD")
 			rr.mode = Record
 			w.WriteHeader(200)
 		case Replay:
-			fmt.Println("/pb/mode/: mode set to REPLAY")
+			fmt.Println("/playback/mode/: mode set to REPLAY")
 			rr.mode = Replay
 			w.WriteHeader(200)
 		case Auto:
-			fmt.Println("/pb/mode/: mode set to AUTO")
+			fmt.Println("/playback/mode/: mode set to AUTO")
 			rr.mode = Auto
 			w.WriteHeader(200)
 		default:
@@ -575,7 +575,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		}
 	})
 
-	customMux.HandleFunc("/pb/cassette/setroot", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/playback/cassette/setroot", func(w http.ResponseWriter, r *http.Request) {
 		const queryKey = "dir"
 		directoryVals, ok := r.URL.Query()[queryKey]
 
@@ -611,9 +611,9 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 		fmt.Printf("Cassette directory set to \"%v\"\n", rr.cassetteDirectory)
 	})
 
-	customMux.HandleFunc("/pb/cassette/load", rr.loadCassetteHandler)
+	customMux.HandleFunc("/playback/cassette/load", rr.loadCassetteHandler)
 
-	customMux.HandleFunc("/pb/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
+	customMux.HandleFunc("/playback/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
 		if !rr.cassetteLoaded {
 			fmt.Println("Tried to eject when no cassette is loaded.")
 			w.WriteHeader(400)
@@ -639,7 +639,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 
 		rr.cassetteLoaded = false
 
-		fmt.Println("/pb/cassette/eject: Ejected cassette")
+		fmt.Println("/playback/cassette/eject: Ejected cassette")
 		fmt.Println("")
 		fmt.Println("=======")
 		fmt.Println("")
