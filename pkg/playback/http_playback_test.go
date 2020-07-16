@@ -357,7 +357,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 }
 
 // Test the full server by switching between modes, loading and ejecting cassettes, and sending real stripe requests
-func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
+func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	var remoteURL string
 	if runningInCI {
 		fixtureResponses := []string{"/create-customer-and-charge-test/res1.bin", "/create-customer-and-charge-test/res2.bin", "/create-customer-and-charge-test/res3.bin"}
@@ -377,7 +377,7 @@ func TestRecordReplaySingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 
 	webhookURL := defaultLocalWebhookAddress // not used in this test
-	httpWrapper, err := NewRecordReplayServer(remoteURL, webhookURL, cassetteDirectory)
+	httpWrapper, err := NewServer(remoteURL, webhookURL, cassetteDirectory)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)

@@ -126,7 +126,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	webhookAddress := "http://" + pc.webhookAddress
 
-	httpWrapper, err := playback.NewRecordReplayServer(remoteURL, webhookAddress, absoluteCassetteDir)
+	httpWrapper, err := playback.NewServer(remoteURL, webhookAddress, absoluteCassetteDir)
 	if err != nil {
 		return nil
 	}

@@ -2,141 +2,14 @@ package playback
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 )
-
-func handleErrorInHandler(w http.ResponseWriter, err error, statusCode int) {
-	if err == nil {
-		return
-	}
-
-	// This line will log a relatively benign 'superfluous response.WriteHeader' line if
-	// w.WriteHeader was already called on this http.ResponseWriter. Ideally, response.WriteHeader
-	// should not be called before this function is called, since the HTTP response code can only be
-	// set once.
-	// TODO: refactor usage of this function so that we do not get this 'superfluous' log message
-	w.WriteHeader(statusCode)
-
-	fmt.Fprintf(w, "%v\n", err)
-	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
-}
-
-// A recordServer proxies requests to a remote host, and records all interactions.
-type recordServer struct {
-	recorder   *interactionRecorder
-	remoteURL  string
-	webhookURL string
-}
-
-func newRecordServer(remoteURL string, webhookURL string) (httpRecorder recordServer) {
-	httpRecorder = recordServer{}
-	httpRecorder.remoteURL = remoteURL
-	httpRecorder.webhookURL = webhookURL
-
-	return httpRecorder
-}
-
-func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
-	recorder, err := newInteractionRecorder(writer, httpRequestToBytes, httpResponseToBytes)
-	if err != nil {
-		return err
-	}
-	httpRecorder.recorder = recorder
-
-	return nil
-}
-
-func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("\n[WEBHOOK] --> STRIPE %v to %v --> POST to %v", r.Method, r.RequestURI, httpRecorder.webhookURL)
-
-	// --- Pass request to local webhook endpoint
-	resp, err := forwardRequest(r, httpRecorder.webhookURL)
-
-	// TODO: this response is going back to Stripe, what is the correct error handling logic here?
-	if err != nil {
-		handleErrorInHandler(w, fmt.Errorf("Unexpected error forwarding webhook to client: %w", err), 500)
-		return
-	}
-
-	// --- Write response back to client
-	// The header *must* be written first, since writing the body with implicitly and irreversibly set
-	// the status code to 200 if not already set.
-	// Copy header
-	w.WriteHeader(resp.StatusCode)
-	copyHTTPHeader(w.Header(), resp.Header)
-
-	// Copy body
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		handleErrorInHandler(w, fmt.Errorf("Unexpected error processing client webhook response: %w", err), 500)
-		return
-	}
-	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer resp.Body.Close()
-
-	err = httpRecorder.recorder.write(incomingInteraction, r, resp)
-	if err != nil {
-		handleErrorInHandler(w, fmt.Errorf("Unexpected error writing webhook interaction to cassette: %w", err), 500)
-		return
-	}
-}
-
-func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
-
-	// --- Pass request to remote
-	var resp *http.Response
-	var err error
-
-	resp, err = forwardRequest(r, httpRecorder.remoteURL+r.RequestURI)
-
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
-		return
-	}
-	fmt.Printf("\n<-- %v from %v\n", resp.Status, strings.ToUpper(httpRecorder.remoteURL))
-
-	// --- Write response back to client
-	// The header *must* be written first, since writing the body with implicitly and irreversibly set
-	// the status code to 200 if not already set.
-	// Copy header
-	w.WriteHeader(resp.StatusCode)
-	copyHTTPHeader(w.Header(), resp.Header)
-
-	// Copy body
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close() // we need to close the body
-
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
-		return
-	}
-	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	// we need to reset the reader to be able to read the body again
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer resp.Body.Close()
-
-	err = httpRecorder.recorder.write(outgoingInteraction, r, resp)
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
-		return
-	}
-
-	// Reset the body reader in case we add code later that performs another read
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer resp.Body.Close()
-}
 
 func forwardRequest(request *http.Request, destinationURL string) (resp *http.Response, err error) {
 	client := &http.Client{
@@ -165,217 +38,20 @@ func forwardRequest(request *http.Request, destinationURL string) (resp *http.Re
 	return res, nil
 }
 
-func (httpRecorder *recordServer) initializeServer(address string) *http.Server {
-	customMux := http.NewServeMux()
-	server := &http.Server{Addr: address, Handler: customMux}
-
-	// --- Recorder control handlers
-	customMux.HandleFunc("/playback/stop", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println()
-		fmt.Println("Received /playback/stop. Stopping...")
-
-		httpRecorder.recorder.saveAndClose()
-	})
-
-	// --- Default handler that proxies request and returns response from the remote
-	customMux.HandleFunc("/", httpRecorder.handler)
-
-	return server
-}
-
-// A replayServer is a HTTP server that intercepts incoming requests, and replays recorded responses from the provided cassette.
-type replayServer struct {
-	replayer   *interactionReplayer
-	webhookURL string
-	replayLock *sync.WaitGroup // used to
-}
-
-func newReplayServer(webhookURL string) (httpReplayer replayServer) {
-	httpReplayer = replayServer{}
-	httpReplayer.webhookURL = webhookURL
-	httpReplayer.replayLock = &sync.WaitGroup{}
-	return httpReplayer
-}
-
-func (httpReplayer *replayServer) readCassette(reader io.Reader) error {
-	// TODO: We may want to allow different types of replay matching in the future (instead of simply sequential playback)
-	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
-		return true, true
-	}
-
-	replayer, err := newInteractionReplayer(reader, httpRequestfromBytes, httpResponsefromBytes, sequentialComparator)
-	if err != nil {
-		return err
-	}
-
-	httpReplayer.replayer = replayer
-
-	return nil
-}
-
-func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request) {
-	httpReplayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
-	httpReplayer.replayLock.Add(1)       // acquire the lock so we can handle this request
-	defer httpReplayer.replayLock.Done() // release the lock when handler func is done
-
-	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
-
-	// --- Read matching response from cassette
-	var resp *http.Response
-	var err error
-	resp, err = httpReplayer.getNextRecordedCassetteResponse(r)
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
+func handleErrorInHandler(w http.ResponseWriter, err error, statusCode int) {
+	if err == nil {
 		return
 	}
-	fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
-	defer resp.Body.Close() // we need to close the body
 
-	// --- Write response back to client
-	// The header *must* be written first, since writing the body with implicitly and irreversibly set
-	// the status code to 200 if not already set.
-	w.WriteHeader(resp.StatusCode)
-	copyHTTPHeader(w.Header(), resp.Header)
+	// This line will log a relatively benign 'superfluous response.WriteHeader' line if
+	// w.WriteHeader was already called on this http.ResponseWriter. Ideally, response.WriteHeader
+	// should not be called before this function is called, since the HTTP response code can only be
+	// set once.
+	// TODO: refactor usage of this function so that we do not get this 'superfluous' log message
+	w.WriteHeader(statusCode)
 
-	// Copy the response exactly as received, and pass on to client
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
-		return
-	}
-	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer resp.Body.Close()
-
-	// --- Handle webhooks
-	// Check the cassette to see if there are pending webhooks we should fire
-
-	// Note on calling resp.Body().Close() and avoiding a resource leak: all response bodies will be closed in the goroutine below
-	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette() // nolint
-
-	if err != nil {
-		fmt.Printf("Error when checking cassette for webhooks to replay: %v\n", err)
-	}
-	fmt.Printf("Replaying %d webhooks.\n", len(webhookRequests))
-
-	// Send the webhooks
-
-	// Struct used to parse the event.Type from recorded webhook JSON bodies
-	type stripeEvent struct {
-		Type string `json:"type"`
-	}
-
-	go func() {
-		// Note: if there are any errors in processing recorded webhooks here,
-		// we log the error and keep going.
-		// TODO: is the above the appropriate behavior?
-		httpReplayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
-		httpReplayer.replayLock.Add(1)       // acquire lock so we can send webhooks
-		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
-
-		for i, webhookReq := range webhookRequests {
-			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
-			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
-				continue
-			}
-			defer resp.Body.Close()
-
-			expectedResp := webhookResponses[i]
-			var evt stripeEvent
-
-			webhookPayload, err := ioutil.ReadAll(webhookReq.Body)
-			defer webhookReq.Body.Close()
-			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
-				continue
-			}
-			err = json.Unmarshal(webhookPayload, &evt)
-			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
-				continue
-			}
-
-			fmt.Printf("	> Forwarding webhook [%v].\n", evt.Type)
-			fmt.Printf("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
-			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
-				continue
-			}
-		}
-	}()
-}
-
-// returns error if something doesn't match the cassette
-func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
-	// the passed in request arg may not be necessary
-	responseWrapper, err := httpReplayer.replayer.write(request)
-	if err != nil {
-		return &http.Response{}, err
-	}
-
-	response := (*responseWrapper).(*http.Response)
-
-	return response, err
-}
-
-// Reads any contiguous set of webhook recordings from the start of the cassette
-// The caller must call response.Body().Close() on each of the returned http.Response's, otherwise there will be a resource leak
-func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*http.Request, webhookResponses []*http.Response, err error) {
-	webhookBytes := make([]cassettePair, 0)
-
-	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
-	for httpReplayer.replayer.interactionsRemaining() > 0 {
-		interaction, err := httpReplayer.replayer.peekFront()
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error when checking webhooks: %w", err)
-		}
-
-		if interaction.Type == incomingInteraction {
-			webhookBytes = append(webhookBytes, interaction)
-			_, err = httpReplayer.replayer.popFront()
-			if err != nil {
-				return nil, nil, fmt.Errorf("Unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
-			}
-		} else {
-			break
-		}
-	}
-
-	// --- Deserialize the bytes into HTTP request & response pairs
-	webhookRequests = make([]*http.Request, 0)
-	webhookResponses = make([]*http.Response, 0)
-	for _, rawWebhookBytes := range webhookBytes {
-		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
-		webhookHTTPRequest, err := httpRequestfromBytes(&reqReader)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
-		}
-
-		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*http.Request))
-
-		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
-		webhookHTTPResponse, err := httpResponsefromBytes(&respReader)
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
-		}
-
-		// Caller of this function is expected to call .Body().Close() on each http.Response
-		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*http.Response)) // nolint
-	}
-
-	return webhookRequests, webhookResponses, nil
-}
-
-func (httpReplayer *replayServer) initializeServer(address string) *http.Server {
-	customMux := http.NewServeMux()
-	customMux.HandleFunc("/", httpReplayer.handler)
-
-	server := &http.Server{Addr: address, Handler: customMux}
-
-	return server
+	fmt.Fprintf(w, "%v\n", err)
+	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
 }
 
 // These constants define the modes the playback server can be in
@@ -387,9 +63,9 @@ const (
 	Replay string = "replay"
 )
 
-// A RecordReplayServer implements the full functionality of `stripe playback` as a HTTP server.
+// A Server implements the full functionality of `stripe playback` as a HTTP server.
 // Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
-type RecordReplayServer struct {
+type Server struct {
 	httpRecorder recordServer
 	httpReplayer replayServer
 
@@ -402,9 +78,9 @@ type RecordReplayServer struct {
 	cassetteLoaded        bool
 }
 
-// NewRecordReplayServer instantiates a RecordReplayServer struct, representing the configuration of a playback proxy server
-func NewRecordReplayServer(remoteURL string, webhookURL string, cassetteDirectory string) (server *RecordReplayServer, err error) {
-	server = &RecordReplayServer{}
+// NewServer instantiates a Server struct, representing the configuration of a playback proxy server
+func NewServer(remoteURL string, webhookURL string, cassetteDirectory string) (server *Server, err error) {
+	server = &Server{}
 	server.mode = Auto
 	server.cassetteLoaded = false
 	server.remoteURL = remoteURL
@@ -416,7 +92,7 @@ func NewRecordReplayServer(remoteURL string, webhookURL string, cassetteDirector
 	return server, nil
 }
 
-func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
+func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
 		fmt.Fprint(w, "No cassette is loaded.\n")
@@ -442,7 +118,7 @@ func (rr *RecordReplayServer) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Webhooks are handled slightly differently from outgoing API requests
-func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
+func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
 		fmt.Fprint(w, "No cassette is loaded.\n")
@@ -463,7 +139,7 @@ func (rr *RecordReplayServer) webhookHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http.Request) {
+func (rr *Server) loadCassetteHandler(w http.ResponseWriter, r *http.Request) {
 	filepathVals, ok := r.URL.Query()["filepath"]
 
 	if !ok {
@@ -540,7 +216,7 @@ func (rr *RecordReplayServer) loadCassetteHandler(w http.ResponseWriter, r *http
 }
 
 // InitializeServer sets up and returns a http.Server that acts as a playback proxy
-func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
+func (rr *Server) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
 	server := &http.Server{Addr: address, Handler: customMux}
 
