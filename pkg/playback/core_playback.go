@@ -85,7 +85,7 @@ func (recorder *interactionRecorder) write(typeOfInteraction interactionType, re
 	return err
 }
 
-func (recorder *interactionRecorder) close() error {
+func (recorder *interactionRecorder) saveAndClose() error {
 	cassette := cassetteYaml{}
 	cassette.Interactions = recorder.interactions
 
@@ -101,16 +101,16 @@ func (recorder *interactionRecorder) close() error {
 // A interactionReplayer contains a set of recorded interactions and exposes
 // functionality to play them back.
 type interactionReplayer struct {
-	historyIndex int
-	comparator   requestComparator
-	cassette     cassetteYaml
-	reqType      serializable
-	respType     serializable
+	cursor     int
+	comparator requestComparator
+	cassette   cassetteYaml
+	reqType    serializable
+	respType   serializable
 }
 
 func newInteractionReplayer(reader io.Reader, reqType serializable, respType serializable, comparator requestComparator) (replayer *interactionReplayer, err error) {
 	replayer = &interactionReplayer{}
-	replayer.historyIndex = 0
+	replayer.cursor = 0
 	replayer.comparator = comparator
 	replayer.reqType = reqType
 	replayer.respType = respType

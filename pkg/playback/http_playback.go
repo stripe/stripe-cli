@@ -174,7 +174,7 @@ func (httpRecorder *recordServer) initializeServer(address string) *http.Server 
 		fmt.Println()
 		fmt.Println("Received /pb/stop. Stopping...")
 
-		httpRecorder.recorder.close()
+		httpRecorder.recorder.saveAndClose()
 	})
 
 	// --- Default handler that proxies request and returns response from the remote
@@ -622,7 +622,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 
 		switch rr.mode {
 		case Record:
-			err := rr.httpRecorder.recorder.close()
+			err := rr.httpRecorder.recorder.saveAndClose()
 			if err != nil {
 				handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err), 500)
 			}
@@ -630,7 +630,7 @@ func (rr *RecordReplayServer) InitializeServer(address string) *http.Server {
 			// nothing
 		case Auto:
 			if rr.isRecordingInAutoMode {
-				err := rr.httpRecorder.recorder.close()
+				err := rr.httpRecorder.recorder.saveAndClose()
 				if err != nil {
 					handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err), 500)
 				}

@@ -78,7 +78,7 @@ func TestSequentialPlayback(t *testing.T) {
 	fmt.Printf("%+v | %+v\n", s2, r2)
 	recorder.write(outgoingInteraction, s2, r2)
 
-	err = recorder.close()
+	err = recorder.saveAndClose()
 
 	if err != nil {
 		panic(err)
@@ -145,7 +145,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	fmt.Printf("%+v | %+v\n", s2, r2)
 	recorder.write(outgoingInteraction, s2, r2)
 
-	err = recorder.close()
+	err = recorder.saveAndClose()
 
 	if err != nil {
 		panic(err)
@@ -209,7 +209,7 @@ func TestLastMatchingEvent(t *testing.T) {
 	fmt.Printf("%+v | %+v\n", s3, r3)
 	recorder.write(outgoingInteraction, s3, r3)
 
-	err = recorder.close()
+	err = recorder.saveAndClose()
 
 	if err != nil {
 		panic(err)
