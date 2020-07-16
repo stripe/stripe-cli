@@ -153,7 +153,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 
 	httpRecorder := newRecordServer(remoteURL, webhookURL)
 	err := httpRecorder.insertCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	server := httpRecorder.initializeServer(addressString)
 	go func() {
@@ -185,7 +185,7 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	// --- Set up a replay server
 	httpReplayer := newReplayServer(webhookURL)
 	err = httpReplayer.readCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	replayServer := httpReplayer.initializeServer(addressString)
 	go func() {
@@ -199,15 +199,15 @@ func TestGetFromSimpleWebsite(t *testing.T) {
 	// Assert on the replay messages
 	replay1, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHTTPResponsesAreEqual(t, res1, replay1))
+	check(t, assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	replay2, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHTTPResponsesAreEqual(t, res2, replay2))
+	check(t, assertHTTPResponsesAreEqual(t, res2, replay2))
 
 	replay3, err := http.Get("http://localhost:8080/")
 	assert.NoError(t, err)
-	check(assertHTTPResponsesAreEqual(t, res3, replay3))
+	check(t, assertHTTPResponsesAreEqual(t, res3, replay3))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
@@ -233,7 +233,7 @@ func TestStripeSimpleGet(t *testing.T) {
 
 	httpRecorder := newRecordServer(remoteURL, webhookURL)
 	err := httpRecorder.insertCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	server := httpRecorder.initializeServer(addressString)
 	go func() {
@@ -263,7 +263,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	// --- Set up a replay server
 	replayer := newReplayServer(webhookURL)
 	err = replayer.readCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	replayServer := replayer.initializeServer(addressString)
 	go func() {
@@ -280,7 +280,7 @@ func TestStripeSimpleGet(t *testing.T) {
 	replayReq.Header.Set("Authorization", "Bearer "+stripeKey)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
-	check(assertHTTPResponsesAreEqual(t, res1, replay1))
+	check(t, assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())
@@ -305,7 +305,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 
 	httpRecorder := newRecordServer(remoteURL, webhookURL)
 	err := httpRecorder.insertCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	server := httpRecorder.initializeServer(addressString)
 	go func() {
@@ -334,7 +334,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	// --- Set up a replay server
 	replayer := newReplayServer(webhookURL)
 	err = replayer.readCassette(&cassetteBuffer)
-	check(err)
+	check(t, err)
 
 	replayServer := replayer.initializeServer(addressString)
 	go func() {
@@ -350,7 +350,7 @@ func TestStripeUnauthorizedErrorIsPassedOn(t *testing.T) {
 	assert.NoError(t, err)
 	replay1, err := client.Do(replayReq)
 	assert.NoError(t, err)
-	check(assertHTTPResponsesAreEqual(t, res1, replay1))
+	check(t, assertHTTPResponsesAreEqual(t, res1, replay1))
 
 	// Shutdown replay server
 	replayServer.Shutdown(context.TODO())

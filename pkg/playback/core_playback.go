@@ -10,12 +10,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func check(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 // requestComparator compares 2 structs in the context of comparing a given request struct against
 // a request recorded in the request/
 // It then determines 1) whether that are equivalent 2) whether we should short-circuit
