@@ -2,6 +2,7 @@ package playback
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -38,6 +39,13 @@ func forwardRequest(request *http.Request, destinationURL string) (resp *http.Re
 	return res, nil
 }
 
+func writeErrorToHTTPResponse(w http.ResponseWriter, err error, statusCode int) {
+	w.WriteHeader(statusCode)
+	fmt.Fprintf(w, "%v\n", err)
+	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
+}
+
+// TODO: deprecate this in subsequent commit
 func handleErrorInHandler(w http.ResponseWriter, err error, statusCode int) {
 	if err == nil {
 		return
@@ -139,82 +147,6 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (rr *Server) loadCassetteHandler(w http.ResponseWriter, r *http.Request) {
-	filepathVals, ok := r.URL.Query()["filepath"]
-
-	if !ok {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "\"filepath\" query param must be present.\n")
-		return
-	}
-
-	if len(filepathVals) > 1 {
-		fmt.Printf("Multiple \"filepath\" param values given, ignoring all except first: %v\n", filepathVals[0])
-	}
-
-	relativeFilepath := filepathVals[0]
-
-	if !strings.HasSuffix(strings.ToLower(relativeFilepath), ".yaml") {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "\"filepath\" must specify a .yaml file.\n")
-		return
-	}
-
-	if filepath.IsAbs(relativeFilepath) {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "\"filepath\" must be a relative filepath, you provided a absolute filepath.\n")
-		return
-	}
-
-	absoluteFilepath := filepath.Join(rr.cassetteDirectory, relativeFilepath)
-
-	var shouldCreateNewFile bool
-
-	switch rr.mode {
-	case Record:
-		fmt.Println("/playback/cassette/load: Recording to: ", absoluteFilepath)
-		shouldCreateNewFile = true
-	case Replay:
-		fmt.Println("/playback/cassette/load: Replaying from: ", absoluteFilepath)
-		shouldCreateNewFile = false
-	case Auto:
-		_, err := os.Stat(absoluteFilepath)
-		if os.IsNotExist(err) {
-			fmt.Println("/playback/cassette/load: Recording to: ", absoluteFilepath)
-			shouldCreateNewFile = true
-			rr.isRecordingInAutoMode = true
-		} else {
-			fmt.Println("/playback/cassette/load: Replaying from: ", absoluteFilepath)
-			shouldCreateNewFile = false
-			rr.isRecordingInAutoMode = false
-		}
-	}
-
-	if shouldCreateNewFile {
-		fileHandle, err := os.Create(absoluteFilepath)
-		if err != nil {
-			handleErrorInHandler(w, err, 500)
-		}
-
-		err = rr.httpRecorder.insertCassette(fileHandle)
-		if err != nil {
-			handleErrorInHandler(w, err, 500)
-		}
-	} else {
-		fileHandle, err := os.Open(absoluteFilepath)
-		if err != nil {
-			handleErrorInHandler(w, err, 500)
-		}
-
-		err = rr.httpReplayer.readCassette(fileHandle)
-		if err != nil {
-			handleErrorInHandler(w, err, 500)
-		}
-	}
-
-	rr.cassetteLoaded = true
-}
-
 // InitializeServer sets up and returns a http.Server that acts as a playback proxy
 func (rr *Server) InitializeServer(address string) *http.Server {
 	customMux := http.NewServeMux()
@@ -228,22 +160,13 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		// get mode
 		modeString := strings.TrimPrefix(r.URL.Path, "/playback/mode/")
 
-		switch strings.ToLower(modeString) {
-		case Record:
-			fmt.Println("/playback/mode/: mode set to RECORD")
-			rr.mode = Record
-			w.WriteHeader(200)
-		case Replay:
-			fmt.Println("/playback/mode/: mode set to REPLAY")
-			rr.mode = Replay
-			w.WriteHeader(200)
-		case Auto:
-			fmt.Println("/playback/mode/: mode set to AUTO")
-			rr.mode = Auto
-			w.WriteHeader(200)
-		default:
-			w.WriteHeader(400)
-			fmt.Fprintf(w, "\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\".\n", modeString)
+		err := rr.switchMode(modeString)
+
+		if err != nil {
+			fmt.Println("Error in /playback/mode handler: ", err)
+			handleErrorInHandler(w, err, 400)
+		} else {
+			fmt.Println("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 		}
 	})
 
@@ -260,67 +183,224 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			fmt.Printf("Multiple \"value\" param values given, ignoring all except first: %v\n", directoryVals[0])
 		}
 
-		absoluteCassetteDir := directoryVals[0]
+		// directoryVal can be either a relative or absolute path - filepath.Abs() no-ops if the given path is already absolute, and converts to absolute (assuming CWD) if relative
+		absoluteCassetteDir, err := filepath.Abs(directoryVals[0])
 
-		handle, err := os.Stat(absoluteCassetteDir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				handleErrorInHandler(w,
-					fmt.Errorf("the directory \"%v\" does not exist. Please create it, then try again", absoluteCassetteDir), 400)
-				return
-			}
-			handleErrorInHandler(w, fmt.Errorf("Unexpected error when checking cassette directory: %w", err), 500)
+			fmt.Println("Error with given directory in /playback/cassette/setroot handler: ", err)
+			handleErrorInHandler(w, err, 400)
 			return
 		}
 
-		if !handle.Mode().IsDir() {
-			handleErrorInHandler(w, fmt.Errorf("the path \"%v\" is not a directory", absoluteCassetteDir), 400)
-			return
+		err = rr.setCassetteDir(absoluteCassetteDir)
+
+		if err != nil {
+			fmt.Println("Error in /playback/cassette/setroot handler: ", err)
+			handleErrorInHandler(w, err, 400)
+		} else {
+			// TODO: why is this not printing out the absolute path?
+			fmt.Printf("Cassette directory set to \"%v\"\n", rr.cassetteDirectory)
+			w.WriteHeader(200)
 		}
-
-		rr.cassetteDirectory = absoluteCassetteDir
-
-		fmt.Printf("Cassette directory set to \"%v\"\n", rr.cassetteDirectory)
 	})
 
-	customMux.HandleFunc("/playback/cassette/load", rr.loadCassetteHandler)
+	customMux.HandleFunc("/playback/cassette/load", func(w http.ResponseWriter, r *http.Request) {
+		filepathVals, ok := r.URL.Query()["filepath"]
 
-	customMux.HandleFunc("/playback/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
-		if !rr.cassetteLoaded {
-			fmt.Println("Tried to eject when no cassette is loaded.")
-			w.WriteHeader(400)
+		if !ok {
+			err := fmt.Errorf("\"filepath\" query param must be present")
+			writeErrorToHTTPResponse(w, err, 400)
 			return
 		}
 
-		switch rr.mode {
-		case Record:
-			err := rr.httpRecorder.recorder.saveAndClose()
-			if err != nil {
-				handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err), 500)
-			}
-		case Replay:
-			// nothing
-		case Auto:
-			if rr.isRecordingInAutoMode {
-				err := rr.httpRecorder.recorder.saveAndClose()
-				if err != nil {
-					handleErrorInHandler(w, fmt.Errorf("Unexpected error when writing cassette. It may have failed to write properly: %w", err), 500)
-				}
-			}
+		if len(filepathVals) > 1 {
+			fmt.Printf("Multiple \"filepath\" param values given, ignoring all except first: %v\n", filepathVals[0])
 		}
 
-		rr.cassetteLoaded = false
+		relativeFilepath := filepathVals[0]
 
-		fmt.Println("/playback/cassette/eject: Ejected cassette")
+		if !strings.HasSuffix(strings.ToLower(relativeFilepath), ".yaml") {
+			err := fmt.Errorf("%v is not a .yaml file", relativeFilepath)
+			writeErrorToHTTPResponse(w, err, 400)
+			return
+		}
+
+		if filepath.IsAbs(relativeFilepath) {
+			err := fmt.Errorf("%v must be a relative filepath. a absolute filepath was provided", relativeFilepath)
+			writeErrorToHTTPResponse(w, err, 400)
+			return
+		}
+
+		err := rr.loadCassette(relativeFilepath)
+
+		if err != nil {
+			writeErrorToHTTPResponse(w, err, 500)
+			return
+		}
+
+		var isRecording bool
+		switch rr.mode {
+		case Record:
+			isRecording = true
+		case Replay:
+			isRecording = false
+		case Auto:
+			isRecording = rr.isRecordingInAutoMode
+		default:
+			writeErrorToHTTPResponse(w, errors.New("in unexpected mode state in handler. Please restart the playback server"), 500)
+			return
+		}
+
+		var statusMsg string
+
+		if isRecording {
+			statusMsg = fmt.Sprintf("Recording to %v", relativeFilepath)
+		} else {
+			statusMsg = fmt.Sprintf("Replaying from %v", relativeFilepath)
+		}
+		fmt.Println(statusMsg)
+		w.WriteHeader(200)
+	})
+
+	customMux.HandleFunc("/playback/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
+		err := rr.ejectCassette()
+
+		if err != nil {
+			writeErrorToHTTPResponse(w, err, 500)
+		} else {
+			w.WriteHeader(200)
+			fmt.Println("/playback/cassette/eject: Ejected cassette")
+		}
 		fmt.Println("")
 		fmt.Println("=======")
 		fmt.Println("")
+	})
+
+	// Display error message for unmatched routes with a control-prefix
+	customMux.HandleFunc("/playback/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "\"%v\" is not a valid /playback/ control endpoint. Run `stripe playback --help` for a comprehensive list.\n", r.URL)
 	})
 
 	// --- Default handler
 	customMux.HandleFunc("/", rr.handler)
 
 	return server
+}
+
+func (rr *Server) switchMode(modeString string) error {
+	switch strings.ToLower(modeString) {
+	case Record:
+		rr.mode = Record
+		return nil
+	case Replay:
+		rr.mode = Replay
+		return nil
+	case Auto:
+		rr.mode = Auto
+		return nil
+	default:
+		return fmt.Errorf("\"%s\" is not a valid playback mode. It must be either \"record\", \"replay\", or \"auto\"", modeString)
+	}
+}
+
+func (rr *Server) setCassetteDir(absoluteCassetteDir string) error {
+	handle, err := os.Stat(absoluteCassetteDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("the directory \"%v\" does not exist. Please create it, then try again", absoluteCassetteDir)
+		}
+		return fmt.Errorf("inexpected error when checking cassette directory: %w", err)
+	}
+
+	if !handle.Mode().IsDir() {
+		return fmt.Errorf("the path \"%v\" is not a directory", absoluteCassetteDir)
+	}
+
+	rr.cassetteDirectory = absoluteCassetteDir
+	return nil
+}
+
+// loadCassette() takes a relative path (relative to the rr.cassetteDirectory) to a .yaml file
+// The .yaml file need not exist (unless rr.mode = Replay). If intermediate directories in the relative path do not exist, loadCassette *will* create them.
+func (rr *Server) loadCassette(relativeFilepath string) error {
+	absoluteFilepath := filepath.Join(rr.cassetteDirectory, relativeFilepath)
+
+	var shouldCreateNewFile bool
+
+	switch rr.mode {
+	case Record:
+		shouldCreateNewFile = true
+	case Replay:
+		shouldCreateNewFile = false
+	case Auto:
+		_, err := os.Stat(absoluteFilepath)
+		if os.IsNotExist(err) {
+			shouldCreateNewFile = true
+			rr.isRecordingInAutoMode = true
+		} else {
+			shouldCreateNewFile = false
+			rr.isRecordingInAutoMode = false
+		}
+	}
+
+	if shouldCreateNewFile {
+		directoryPath := filepath.Dir(absoluteFilepath)
+		err := os.MkdirAll(directoryPath, 0644)
+		if err != nil {
+			return fmt.Errorf("Error recursively creating nested directories for cassette file: %w", err)
+		}
+
+		fileHandle, err := os.Create(absoluteFilepath)
+		if err != nil {
+			return fmt.Errorf("Error creating cassette file: %w", err)
+		}
+
+		err = rr.httpRecorder.insertCassette(fileHandle)
+		if err != nil {
+			return fmt.Errorf("Error inserting cassette file: %w", err)
+		}
+	} else {
+		fileHandle, err := os.Open(absoluteFilepath)
+		if err != nil {
+			return fmt.Errorf("Error opening cassette file: %w", err)
+		}
+
+		err = rr.httpReplayer.readCassette(fileHandle)
+		if err != nil {
+			return fmt.Errorf("Error parsing cassette file: %v", err)
+		}
+	}
+
+	rr.cassetteLoaded = true
+	return nil
+}
+
+func (rr *Server) ejectCassette() error {
+	if !rr.cassetteLoaded {
+		return fmt.Errorf("tried to eject when no cassette is loaded")
+	}
+
+	switch rr.mode {
+	case Record:
+		err := rr.httpRecorder.recorder.saveAndClose()
+		if err != nil {
+			rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
+			return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)
+		}
+	case Replay:
+		// nothing
+	case Auto:
+		if rr.isRecordingInAutoMode {
+			err := rr.httpRecorder.recorder.saveAndClose()
+			if err != nil {
+				rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
+				return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)
+			}
+		}
+	}
+	rr.cassetteLoaded = false
+	return nil
 }
 
 func copyHTTPHeader(dest, src http.Header) {
