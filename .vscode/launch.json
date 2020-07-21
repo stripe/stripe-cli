@@ -16,6 +16,15 @@
             "args": ["listen", "--log-level", "debug"]
         },
         {
+            "name": "Launch (playback)",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/stripe/main.go",
+            "env": {},
+            "args": ["playback"]
+        },
+        {
             "name": "Set config",
             "type": "go",
             "request": "launch",
