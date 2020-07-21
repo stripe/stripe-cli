@@ -126,7 +126,7 @@ func startMockFixturesServer(responseFixtureFiles []string) *httptest.Server {
 		// Copy body
 		bodyBytes, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			handleErrorInHandler(w, err, 500)
+			writeErrorToHTTPResponse(w, err, 500)
 			return
 		}
 		io.Copy(w, bytes.NewBuffer(bodyBytes))

@@ -52,26 +52,25 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	var err error
 	resp, err = httpReplayer.getNextRecordedCassetteResponse(r)
 	if err != nil {
-		handleErrorInHandler(w, err, 500)
+		writeErrorToHTTPResponse(w, err, 500)
 		return
 	}
 	fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
 	defer resp.Body.Close() // we need to close the body
 
 	// --- Write response back to client
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		writeErrorToHTTPResponse(w, err, 500)
+		return
+	}
+
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
 	w.WriteHeader(resp.StatusCode)
 	copyHTTPHeader(w.Header(), resp.Header)
-
-	// Copy the response exactly as received, and pass on to client
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-
-	if err != nil {
-		handleErrorInHandler(w, err, 500)
-		return
-	}
 	io.Copy(w, bytes.NewBuffer(bodyBytes))
 	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	defer resp.Body.Close()

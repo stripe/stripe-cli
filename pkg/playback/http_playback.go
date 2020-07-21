@@ -39,25 +39,10 @@ func forwardRequest(request *http.Request, destinationURL string) (resp *http.Re
 	return res, nil
 }
 
+// Writes to the HTTP response using the given HTTP status code and error text as the response body. Simultaneously, prints the error text to stdout.
+// Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
 func writeErrorToHTTPResponse(w http.ResponseWriter, err error, statusCode int) {
 	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, "%v\n", err)
-	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
-}
-
-// TODO: deprecate this in subsequent commit
-func handleErrorInHandler(w http.ResponseWriter, err error, statusCode int) {
-	if err == nil {
-		return
-	}
-
-	// This line will log a relatively benign 'superfluous response.WriteHeader' line if
-	// w.WriteHeader was already called on this http.ResponseWriter. Ideally, response.WriteHeader
-	// should not be called before this function is called, since the HTTP response code can only be
-	// set once.
-	// TODO: refactor usage of this function so that we do not get this 'superfluous' log message
-	w.WriteHeader(statusCode)
-
 	fmt.Fprintf(w, "%v\n", err)
 	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
 }
@@ -134,10 +119,11 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		}
 		if err != nil {
 			fmt.Println("Error in /playback/mode handler: ", err)
-			handleErrorInHandler(w, err, 400)
-		} else {
-			fmt.Println("/playback/mode: Set mode to ", strings.ToUpper(modeString))
+			writeErrorToHTTPResponse(w, err, 400)
+			return
 		}
+
+		fmt.Println("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 	})
 
 	customMux.HandleFunc("/playback/cassette/setroot", func(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +131,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		directoryVals, ok := r.URL.Query()[queryKey]
 
 		if !ok {
-			handleErrorInHandler(w, fmt.Errorf("\"%v\" query param must be present", queryKey), 400)
+			writeErrorToHTTPResponse(w, fmt.Errorf("\"%v\" query param must be present", queryKey), 400)
 			return
 		}
 
@@ -158,7 +144,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 
 		if err != nil {
 			fmt.Println("Error with given directory in /playback/cassette/setroot handler: ", err)
-			handleErrorInHandler(w, err, 400)
+			writeErrorToHTTPResponse(w, err, 400)
 			return
 		}
 
@@ -166,12 +152,12 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 
 		if err != nil {
 			fmt.Println("Error in /playback/cassette/setroot handler: ", err)
-			handleErrorInHandler(w, err, 400)
-		} else {
-			// TODO: why is this not printing out the absolute path?
-			fmt.Printf("Cassette directory set to \"%v\"\n", rr.cassetteDirectory)
-			w.WriteHeader(200)
+			writeErrorToHTTPResponse(w, err, 400)
+			return
 		}
+		// TODO: why is this not printing out the absolute path?
+		fmt.Printf("Cassette directory set to \"%v\"\n", rr.cassetteDirectory)
+		w.WriteHeader(200)
 	})
 
 	customMux.HandleFunc("/playback/cassette/load", func(w http.ResponseWriter, r *http.Request) {
@@ -277,8 +263,8 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 			rr.httpReplayer.handler(w, r)
 		}
 	default:
-		// Should never get here
-		handleErrorInHandler(w, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
+		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
+		writeErrorToHTTPResponse(w, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
 		return
 	}
 }
