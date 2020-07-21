@@ -101,7 +101,6 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 	if err != nil {
 		return server, err
 	}
-	server.cassetteLoaded = true
 
 	err = server.setCassetteDir(absCassetteDirectory)
 	if err != nil {
@@ -128,8 +127,11 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		// get mode
 		modeString := strings.TrimPrefix(r.URL.Path, "/playback/mode/")
 
+		wasCassetteLoaded := rr.cassetteLoaded
 		err := rr.switchMode(modeString)
-
+		if wasCassetteLoaded {
+			fmt.Println("/playback/mode: unloaded the cassette. Please load a new cassette before recording/replaying any new interactions.")
+		}
 		if err != nil {
 			fmt.Println("Error in /playback/mode handler: ", err)
 			handleErrorInHandler(w, err, 400)
@@ -303,7 +305,9 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// note: calling this method always sets cassetteLoaded = false
 func (rr *Server) switchMode(modeString string) error {
+	rr.cassetteLoaded = false
 	switch strings.ToLower(modeString) {
 	case Record:
 		rr.mode = Record
