@@ -377,7 +377,7 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 
 	webhookURL := defaultLocalWebhookAddress // not used in this test
-	httpWrapper, err := NewServer(remoteURL, webhookURL, cassetteDirectory)
+	httpWrapper, err := NewServer(remoteURL, webhookURL, cassetteDirectory, Auto, cassetteFilepath)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)

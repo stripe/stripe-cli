@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 
@@ -126,9 +124,9 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	webhookAddress := "http://" + pc.webhookAddress
 
-	httpWrapper, err := playback.NewServer(remoteURL, webhookAddress, absoluteCassetteDir)
+	httpWrapper, err := playback.NewServer(remoteURL, webhookAddress, absoluteCassetteDir, pc.mode, pc.filepath)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -137,31 +135,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}()
-
-	fullAddressString := "http://" + addressString
-
-	client := &http.Client{}
-
-	// --- Use the flag values to configure the server (over HTTP)
-	resp, err := client.Get(fullAddressString + "/playback/mode/" + pc.mode)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return errors.New("Non 200 status code received during startup: " + resp.Status)
-	}
-
-	resp, err = client.Get(fullAddressString + "/playback/cassette/load?filepath=" + pc.filepath)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return errors.New("Non 200 status code received during startup: " + resp.Status)
-	}
 
 	// --- Print out post-startup summary on CLI
 	fmt.Println()

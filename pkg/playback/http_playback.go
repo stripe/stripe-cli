@@ -78,7 +78,7 @@ type Server struct {
 	httpReplayer replayServer
 
 	remoteURL         string
-	cassetteDirectory string // root directory for all cassette filepaths
+	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
 
 	// state machine state
 	mode                  string // the user specified state (auto, record, replay)
@@ -86,65 +86,33 @@ type Server struct {
 	cassetteLoaded        bool
 }
 
-// NewServer instantiates a Server struct, representing the configuration of a playback proxy server
-func NewServer(remoteURL string, webhookURL string, cassetteDirectory string) (server *Server, err error) {
+// NewServer instantiates a Server struct, representing the configuration and current state of a playback proxy server
+// The cassetteDirectory param must be an absolute path
+// initialCasssetteFilepath can be a relative path (inretpreted relative to cassetteDirectory) or an absolute path
+func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string, mode string, initialCassetteFilepath string) (server *Server, err error) {
 	server = &Server{}
-	server.mode = Auto
-	server.cassetteLoaded = false
-	server.remoteURL = remoteURL
-	server.cassetteDirectory = cassetteDirectory
 
+	err = server.switchMode(mode)
+	if err != nil {
+		return server, err
+	}
+
+	err = server.loadCassette(initialCassetteFilepath)
+	if err != nil {
+		return server, err
+	}
+	server.cassetteLoaded = true
+
+	err = server.setCassetteDir(absCassetteDirectory)
+	if err != nil {
+		return server, err
+	}
+
+	server.remoteURL = remoteURL
 	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
 	server.httpReplayer = newReplayServer(webhookURL)
 
 	return server, nil
-}
-
-func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
-	if !rr.cassetteLoaded {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.\n")
-		return
-	}
-
-	switch rr.mode {
-	case Record:
-		rr.httpRecorder.handler(w, r)
-	case Replay:
-		rr.httpReplayer.handler(w, r)
-	case Auto:
-		if rr.isRecordingInAutoMode {
-			rr.httpRecorder.handler(w, r)
-		} else {
-			rr.httpReplayer.handler(w, r)
-		}
-	default:
-		// Should never get here
-		handleErrorInHandler(w, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
-		return
-	}
-}
-
-// Webhooks are handled slightly differently from outgoing API requests
-func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
-	if !rr.cassetteLoaded {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.\n")
-		return
-	}
-
-	switch rr.mode {
-	case Record:
-		rr.httpRecorder.webhookHandler(w, r)
-	case Replay:
-		fmt.Println("Error: webhook endpoint should never be called in replay mode")
-	case Auto:
-		if rr.isRecordingInAutoMode {
-			rr.httpRecorder.webhookHandler(w, r)
-		} else {
-			fmt.Println("Error: webhook endpoint should never be called in replay mode")
-		}
-	}
 }
 
 // InitializeServer sets up and returns a http.Server that acts as a playback proxy
@@ -286,6 +254,53 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	customMux.HandleFunc("/", rr.handler)
 
 	return server
+}
+
+func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
+	if !rr.cassetteLoaded {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "No cassette is loaded.\n")
+		return
+	}
+
+	switch rr.mode {
+	case Record:
+		rr.httpRecorder.handler(w, r)
+	case Replay:
+		rr.httpReplayer.handler(w, r)
+	case Auto:
+		if rr.isRecordingInAutoMode {
+			rr.httpRecorder.handler(w, r)
+		} else {
+			rr.httpReplayer.handler(w, r)
+		}
+	default:
+		// Should never get here
+		handleErrorInHandler(w, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
+		return
+	}
+}
+
+// Webhooks are handled slightly differently from outgoing API requests
+func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
+	if !rr.cassetteLoaded {
+		w.WriteHeader(400)
+		fmt.Fprint(w, "No cassette is loaded.\n")
+		return
+	}
+
+	switch rr.mode {
+	case Record:
+		rr.httpRecorder.webhookHandler(w, r)
+	case Replay:
+		fmt.Println("Error: webhook endpoint should never be called in replay mode")
+	case Auto:
+		if rr.isRecordingInAutoMode {
+			rr.httpRecorder.webhookHandler(w, r)
+		} else {
+			fmt.Println("Error: webhook endpoint should never be called in replay mode")
+		}
+	}
 }
 
 func (rr *Server) switchMode(modeString string) error {
