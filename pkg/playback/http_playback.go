@@ -77,6 +77,12 @@ type Server struct {
 func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string, mode string, initialCassetteFilepath string) (server *Server, err error) {
 	server = &Server{}
 
+	// initialize server.httpRecorder and server.httpReplayer first, since calls to methods like
+	// server.loadCassette reference them.
+	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
+	server.httpReplayer = newReplayServer(webhookURL)
+	server.remoteURL = remoteURL
+
 	err = server.switchMode(mode)
 	if err != nil {
 		return server, err
@@ -91,10 +97,6 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 	if err != nil {
 		return server, err
 	}
-
-	server.remoteURL = remoteURL
-	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
-	server.httpReplayer = newReplayServer(webhookURL)
 
 	return server, nil
 }
