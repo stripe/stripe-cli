@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,23 +11,18 @@ import (
 	"time"
 )
 
-func forwardRequest(request *http.Request, destinationURL string) (resp *http.Response, err error) {
+func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
 	client := &http.Client{
 		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
 		Timeout: time.Second * 10,
 	}
 
 	// Create a identical copy of the request
-	bodyBytes, err := ioutil.ReadAll(request.Body)
+	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
 	if err != nil {
 		return nil, err
 	}
-	defer request.Body.Close()
-
-	request.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer request.Body.Close()
-	req, err := http.NewRequest(request.Method, destinationURL, bytes.NewBuffer(bodyBytes))
-	copyHTTPHeader(req.Header, request.Header)
+	copyHTTPHeader(req.Header, wrappedRequest.Headers)
 
 	// Forward the request to the remote
 	res, err := client.Do(req)

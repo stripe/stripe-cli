@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 )
@@ -48,32 +47,22 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
 	// --- Read matching response from cassette
-	var resp *http.Response
+	var wrappedResponse *httpResponse
 	var err error
-	resp, err = httpReplayer.getNextRecordedCassetteResponse(r)
+	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err, 500)
 		return
 	}
-	fmt.Printf("\n<-- %v from %v\n", resp.Status, "CASSETTE")
-	defer resp.Body.Close() // we need to close the body
+
+	fmt.Printf("\n<-- %v from %v\n", wrappedResponse.StatusCode, "CASSETTE")
 
 	// --- Write response back to client
-	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		writeErrorToHTTPResponse(w, err, 500)
-		return
-	}
-
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
-	w.WriteHeader(resp.StatusCode)
-	copyHTTPHeader(w.Header(), resp.Header)
-	io.Copy(w, bytes.NewBuffer(bodyBytes))
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-	defer resp.Body.Close()
+	w.WriteHeader(wrappedResponse.StatusCode)
+	copyHTTPHeader(w.Header(), wrappedResponse.Headers)
+	io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
@@ -112,13 +101,11 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 			expectedResp := webhookResponses[i]
 			var evt stripeEvent
 
-			webhookPayload, err := ioutil.ReadAll(webhookReq.Body)
-			defer webhookReq.Body.Close()
 			if err != nil {
 				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
-			err = json.Unmarshal(webhookPayload, &evt)
+			err = json.Unmarshal(webhookReq.Body, &evt)
 			if err != nil {
 				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
 				continue
@@ -135,21 +122,21 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 }
 
 // returns error if something doesn't match the cassette
-func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *http.Request) (resp *http.Response, err error) {
+func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *http.Request) (response *httpResponse, err error) {
 	// the passed in request arg may not be necessary
-	responseWrapper, err := httpReplayer.replayer.write(request)
+	uncastResponse, err := httpReplayer.replayer.write(request)
 	if err != nil {
-		return &http.Response{}, err
+		return &httpResponse{}, err
 	}
 
-	response := (*responseWrapper).(*http.Response)
+	wrappedResponse := (*uncastResponse).(httpResponse)
 
-	return response, err
+	return &wrappedResponse, err
 }
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
 // The caller must call response.Body().Close() on each of the returned http.Response's, otherwise there will be a resource leak
-func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*http.Request, webhookResponses []*http.Response, err error) {
+func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
 	webhookBytes := make([]cassettePair, 0)
 
 	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
@@ -171,8 +158,8 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 	}
 
 	// --- Deserialize the bytes into HTTP request & response pairs
-	webhookRequests = make([]*http.Request, 0)
-	webhookResponses = make([]*http.Response, 0)
+	webhookRequests = make([]*httpRequest, 0)
+	webhookResponses = make([]*httpResponse, 0)
 	for _, rawWebhookBytes := range webhookBytes {
 		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
 		webhookHTTPRequest, err := httpRequestfromBytes(&reqReader)
@@ -180,7 +167,8 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
 
-		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*http.Request))
+		// TODO: test webhooks
+		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*httpRequest))
 
 		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
 		webhookHTTPResponse, err := httpResponsefromBytes(&respReader)
@@ -189,7 +177,7 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 		}
 
 		// Caller of this function is expected to call .Body().Close() on each http.Response
-		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*http.Response)) // nolint
+		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*httpResponse)) // nolint
 	}
 
 	return webhookRequests, webhookResponses, nil

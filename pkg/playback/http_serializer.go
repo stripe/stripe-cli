@@ -1,71 +1,92 @@
 package playback
 
 import (
-	"bufio"
-	"bytes"
-	"errors"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 type serializer func(input interface{}) (bytes []byte, err error)
 type deserializer func(input *io.Reader) (value interface{}, err error)
 
 func httpRequestToBytes(input interface{}) (data []byte, err error) {
-	var buffer = &bytes.Buffer{}
-	var request *http.Request
-	request, castOk := input.(*http.Request)
-
-	if !castOk {
-		return buffer.Bytes(), errors.New("input struct is not of type *http.Request")
-	}
-
-	err = request.Write(buffer)
-	return buffer.Bytes(), err
+	return json.Marshal(input)
 }
 
 func httpRequestfromBytes(input *io.Reader) (val interface{}, err error) {
-	r := bufio.NewReader(*input)
-	req, err := http.ReadRequest(r)
-	return req, err
+	output := httpRequest{}
+
+	inputBytes, err := ioutil.ReadAll(*input)
+	if err != nil {
+		return output, err
+	}
+
+	err = json.Unmarshal(inputBytes, &output)
+	return output, err
 }
 
 func httpResponseToBytes(input interface{}) (data []byte, err error) {
-	var buffer = &bytes.Buffer{}
-	var response *http.Response
-	response, castOk := input.(*http.Response)
-
-	if !castOk {
-		return buffer.Bytes(), errors.New("input struct is not of type *http.Response")
-	}
-
-	err = response.Write(buffer)
-	return buffer.Bytes(), err
+	return json.Marshal(input)
 }
 
 func httpResponsefromBytes(input *io.Reader) (val interface{}, err error) {
-	// Read data from input and parse into a http.Response
-	r := bufio.NewReader(*input)
-	resp, err := http.ReadResponse(r, nil)
+	output := httpResponse{}
+
+	inputBytes, err := ioutil.ReadAll(*input)
 	if err != nil {
-		return resp, err
+		return output, err
 	}
 
-	// We need to close the body in this scope, so first, read the bytes and
-	// reset the resp.Body so that it can be read again by the caller.
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return resp, err
-	}
-	err = resp.Body.Close()
+	err = json.Unmarshal(inputBytes, &output)
+	return output, err
+}
 
-	// This block below is necessary so that calling resp.Body() on the returned resp doesn't
-	// error
-	if err != nil {
-		return resp, err
-	}
-	resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+type httpResponse struct {
+	Headers    http.Header
+	Body       []byte
+	StatusCode int
+}
 
-	return resp, err
+func NewHttpResponse(resp *http.Response) (wrappedResponse httpResponse, err error) {
+	wrappedResponse = httpResponse{}
+
+	wrappedResponse.Headers = resp.Header
+	wrappedResponse.StatusCode = resp.StatusCode
+
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		return wrappedResponse, err
+	}
+	wrappedResponse.Body = bodyBytes
+
+	return wrappedResponse, nil
+}
+
+type httpRequest struct {
+	Method  string
+	Body    []byte
+	Headers http.Header
+	URL     url.URL
+}
+
+func NewHttpRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
+	wrappedRequest = httpRequest{}
+
+	wrappedRequest.Method = req.Method
+	wrappedRequest.Headers = req.Header
+	wrappedRequest.URL = *req.URL
+
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(req.Body)
+	defer req.Body.Close()
+	if err != nil {
+		return wrappedRequest, err
+	}
+	wrappedRequest.Body = bodyBytes
+
+	return wrappedRequest, nil
 }
