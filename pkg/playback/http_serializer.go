@@ -49,7 +49,7 @@ type httpResponse struct {
 	StatusCode int
 }
 
-func NewHttpResponse(resp *http.Response) (wrappedResponse httpResponse, err error) {
+func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err error) {
 	wrappedResponse = httpResponse{}
 
 	wrappedResponse.Headers = resp.Header
@@ -73,7 +73,7 @@ type httpRequest struct {
 	URL     url.URL
 }
 
-func NewHttpRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
+func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest = httpRequest{}
 
 	wrappedRequest.Method = req.Method

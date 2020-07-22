@@ -36,7 +36,7 @@ func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
 func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n[WEBHOOK] --> STRIPE %v to %v --> POST to %v", r.Method, r.RequestURI, httpRecorder.webhookURL)
 
-	wrappedReq, err := NewHttpRequest(r)
+	wrappedReq, err := newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error processing incoming webhook request: %w", err), 500)
 		return
@@ -49,7 +49,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error forwarding webhook to client: %w", err), 500)
 		return
 	}
-	wrappedResp, err := NewHttpResponse(resp)
+	wrappedResp, err := newHTTPResponse(resp)
 	if err != nil {
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error forwarding webhook to client: %w", err), 500)
 		return
@@ -59,7 +59,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	wrappedReq, err = NewHttpRequest(r)
+	wrappedReq, err = newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error forwarding webhook to client: %w", err), 500)
 		return
@@ -81,7 +81,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
-	wrappedReq, err := NewHttpRequest(r)
+	wrappedReq, err := newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error processing incoming webhook request: %w", err), 500)
 		return
@@ -96,7 +96,7 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	wrappedResp, err := NewHttpResponse(resp)
+	wrappedResp, err := newHTTPResponse(resp)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err, 500)
 		return
@@ -108,7 +108,7 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	wrappedReq, err = NewHttpRequest(r)
+	wrappedReq, err = newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err, 500)
 		return
