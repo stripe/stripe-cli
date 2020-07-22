@@ -120,10 +120,10 @@ func getCharset() charset {
 
 const duration = time.Duration(100) * time.Millisecond
 
-// StartNewSpinner starts a new spinner with the given message. If the writer doesn't
-// support colors, it simply prints the message.
+// StartNewSpinner starts a new spinner with the given message. If the writer is not
+// a terminal or doesn't support colors, it simply prints the message.
 func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
-	if !shouldUseColors(w) {
+	if !isTerminal(w) || !shouldUseColors(w) {
 		fmt.Fprintln(w, msg)
 		return nil
 	}
@@ -154,10 +154,10 @@ func StartSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 	}
 }
 
-// StopSpinner stops a spinner with the given message. If the writer doesn't
-// support colors, it simply prints the message.
+// StopSpinner stops a spinner with the given message. If the writer is not
+// a terminal or doesn't support colors, it simply prints the message.
 func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
-	if !shouldUseColors(w) {
+	if !isTerminal(w) || !shouldUseColors(w) {
 		fmt.Fprintln(w, msg)
 		return
 	}
@@ -179,7 +179,7 @@ func StrikeThrough(text string) string {
 // Private functions
 //
 
-func checkIfTerminal(w io.Writer) bool {
+func isTerminal(w io.Writer) bool {
 	switch v := w.(type) {
 	case *os.File:
 		return terminal.IsTerminal(int(v.Fd()))
@@ -189,7 +189,7 @@ func checkIfTerminal(w io.Writer) bool {
 }
 
 func shouldUseColors(w io.Writer) bool {
-	useColors := ForceColors || checkIfTerminal(w)
+	useColors := ForceColors || isTerminal(w)
 
 	if EnvironmentOverrideColors {
 		force, ok := os.LookupEnv("CLICOLOR_FORCE")
