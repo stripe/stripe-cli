@@ -59,7 +59,6 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	wrappedReq, err = newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, fmt.Errorf("Unexpected error forwarding webhook to client: %w", err), 500)
 		return
@@ -108,7 +107,6 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	wrappedReq, err = newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err, 500)
 		return

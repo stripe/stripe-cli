@@ -46,10 +46,15 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 
+	wrappedRequest, err := newHTTPRequest(r)
+	if err != nil {
+		writeErrorToHTTPResponse(w, err, 500)
+		return
+	}
+
 	// --- Read matching response from cassette
 	var wrappedResponse *httpResponse
-	var err error
-	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(r)
+	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
 		writeErrorToHTTPResponse(w, err, 500)
 		return
@@ -122,7 +127,7 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 }
 
 // returns error if something doesn't match the cassette
-func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *http.Request) (response *httpResponse, err error) {
+func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *httpRequest) (response *httpResponse, err error) {
 	// the passed in request arg may not be necessary
 	uncastResponse, err := httpReplayer.replayer.write(request)
 	if err != nil {
