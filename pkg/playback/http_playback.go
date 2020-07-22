@@ -347,7 +347,7 @@ func (rr *Server) loadCassette(relativeFilepath string) error {
 
 	if shouldCreateNewFile {
 		directoryPath := filepath.Dir(absoluteFilepath)
-		err := os.MkdirAll(directoryPath, 0644)
+		err := os.MkdirAll(directoryPath, 0755)
 		if err != nil {
 			return fmt.Errorf("Error recursively creating nested directories for cassette file: %w", err)
 		}
