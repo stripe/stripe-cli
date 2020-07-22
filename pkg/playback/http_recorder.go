@@ -73,8 +73,8 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
+	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
-	copyHTTPHeader(w.Header(), wrappedResp.Headers)
 	io.Copy(w, bytes.NewBuffer(wrappedResp.Body))
 }
 
@@ -121,8 +121,8 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
+	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
-	copyHTTPHeader(w.Header(), wrappedResp.Headers)
 	io.Copy(w, bytes.NewBuffer(wrappedResp.Body))
 }
 

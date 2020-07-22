@@ -60,8 +60,8 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	// --- Write response back to client
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
+	copyHTTPHeader(w.Header(), wrappedResponse.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResponse.StatusCode)
-	copyHTTPHeader(w.Header(), wrappedResponse.Headers)
 	io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
 
 	// --- Handle webhooks

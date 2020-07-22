@@ -407,7 +407,7 @@ func (rr *Server) ejectCassette() error {
 func copyHTTPHeader(dest, src http.Header) {
 	for k, v := range src {
 		for _, subvalues := range v {
-			dest.Add(k, subvalues)
+			dest.Set(k, subvalues)
 		}
 	}
 }
