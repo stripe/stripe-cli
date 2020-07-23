@@ -71,9 +71,7 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
-
-	// Note on calling resp.Body().Close() and avoiding a resource leak: all response bodies will be closed in the goroutine below
-	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette() // nolint
+	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette()
 
 	if err != nil {
 		fmt.Printf("Error when checking cassette for webhooks to replay: %v\n", err)
@@ -140,7 +138,6 @@ func (httpReplayer *replayServer) getNextRecordedCassetteResponse(request *httpR
 }
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
-// The caller must call response.Body().Close() on each of the returned http.Response's, otherwise there will be a resource leak
 func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
 	webhookBytes := make([]cassettePair, 0)
 
@@ -181,8 +178,7 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
 
-		// Caller of this function is expected to call .Body().Close() on each http.Response
-		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*httpResponse)) // nolint
+		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*httpResponse))
 	}
 
 	return webhookRequests, webhookResponses, nil
