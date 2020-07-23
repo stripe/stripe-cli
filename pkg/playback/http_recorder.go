@@ -1,3 +1,5 @@
+// Core server logic to record HTTP interactions by acting as a proxy server
+
 package playback
 
 import (
@@ -23,6 +25,7 @@ func newRecordServer(remoteURL string, webhookURL string) (httpRecorder recordSe
 	return httpRecorder
 }
 
+// Prepare the recorder to start recording to a new cassette.
 func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
 	recorder, err := newInteractionRecorder(writer, httpRequestToBytes, httpResponseToBytes)
 	if err != nil {
@@ -33,6 +36,8 @@ func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
 	return nil
 }
 
+// Handler for the webhook endpoint that forwards incoming webhooks to the local application,
+// while recording the webhook and local app's response to the cassette.
 func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n[WEBHOOK] --> STRIPE %v to %v --> POST to %v", r.Method, r.RequestURI, httpRecorder.webhookURL)
 
@@ -77,6 +82,9 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	io.Copy(w, bytes.NewBuffer(wrappedResp.Body))
 }
 
+// Respond to incoming Stripe API requests sent to the proxy `playback` server when in REPLAY mode.
+// The incoming requests are forwarded to the real Stripe API, and the resulting response is passed along to the original client.
+// The original request and Stripe API response are recorded to the cassette.
 func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
 

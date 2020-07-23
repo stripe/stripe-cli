@@ -1,3 +1,5 @@
+// Implement a full `playback` server that can record and replay HTTP interactions
+
 package playback
 
 import (
@@ -241,6 +243,8 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	return server
 }
 
+// Handles incoming Stripe API requests sent to the `playback` server.
+// Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)
@@ -266,7 +270,8 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Webhooks are handled slightly differently from outgoing API requests
+// Handles incoming webhook requests sent from Stripe. Should only be receiving requests when in record mode.
+// Webhook requests are forwarded to the local application and recorded.
 func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
 		w.WriteHeader(400)

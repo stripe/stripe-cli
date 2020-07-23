@@ -1,3 +1,5 @@
+// Core server logic to replay previously-recorded HTTP interactions
+
 package playback
 
 import (
@@ -23,6 +25,7 @@ func newReplayServer(webhookURL string) (httpReplayer replayServer) {
 	return httpReplayer
 }
 
+// Read a previously recorded cassette into the replayer and ready it for replaying.
 func (httpReplayer *replayServer) readCassette(reader io.Reader) error {
 	// TODO: We may want to allow different types of replay matching in the future (instead of simply sequential playback)
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
@@ -39,6 +42,9 @@ func (httpReplayer *replayServer) readCassette(reader io.Reader) error {
 	return nil
 }
 
+// Respond to incoming Stripe API requests sent to the proxy `playback` server when in REPLAY mode.
+// The incoming request is compared with the request/response pairs recorded in the cassette, and the matching response is returned.
+// This handler also fires any webhooks that were recorded immediately after the matching response.
 func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request) {
 	httpReplayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
 	httpReplayer.replayLock.Add(1)       // acquire the lock so we can handle this request

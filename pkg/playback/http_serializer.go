@@ -1,3 +1,5 @@
+// Serialize, deserialize and store HTTP responses and requests.
+
 package playback
 
 import (
