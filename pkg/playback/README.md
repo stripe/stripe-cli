@@ -41,13 +41,13 @@ When running in both record/replay mode, the server will print out interactions 
 ## Controlling the playback server
 Besides the command line flags at startup, there are also HTTP endpoints that allow you to control and modify the server's behavior while it is running.
 
-`GET:` `/playback/mode/[mode]`: Sets the server mode to one of ["auto", "record", "replay"].
+`POST:` `/playback/mode/[mode]`: Sets the server mode to one of ["auto", "record", "replay"].
 
-`GET:` `/playback/cassette/setroot?dir=[path_to_directory]`: Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
+`POST:` `/playback/cassette/setroot?dir=[path_to_directory]`: Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
-`GET:` `/playback/cassette/load?filepath=[filepath]`: Load the cassette file at the given filepath, relative to the cassette root directory.
+`POST:` `/playback/cassette/load?filepath=[filepath]`: Load the cassette file at the given filepath, relative to the cassette root directory.
 
-`GET:` `/playback/casette/eject`: Eject (unload) the current cassette and do any teardown. In `record` mode or `auto` mode when recording to a new file, this writes the recorded interactions to the cassette file. When replaying (whether in `replay` or `auto` modes) this is a no-op.
+`POST:` `/playback/casette/eject`: Eject (unload) the current cassette and do any teardown. In `record` mode or `auto` mode when recording to a new file, this writes the recorded interactions to the cassette file. When replaying (whether in `replay` or `auto` modes) this is a no-op.
 
 
 ## Example

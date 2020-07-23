@@ -129,7 +129,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	assert.Equal(t, mockResponse2.StatusCode, res2.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Get("http://localhost:8080/playback/stop")
+	resShutdown, err := http.Post("http://localhost:8080/playback/stop", "text/plain", nil)
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
@@ -223,7 +223,7 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.Equal(t, mockResponse2.StatusCode, res2.StatusCode)
 
 	// Tell server to save recording
-	resp, err := http.Get(fullAddressString + "/playback/cassette/eject")
+	resp, err := http.Post(fullAddressString+"/playback/cassette/eject", "text/plain", nil)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
@@ -231,12 +231,12 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// --- END RECORD MODE
 
 	// --- Start interacting in REPLAY MODE
-	resp, err = http.Get(fullAddressString + "/playback/mode/replay")
+	resp, err = http.Post(fullAddressString+"/playback/mode/replay", "text/plain", nil)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
 
-	resp, err = http.Get(fullAddressString + "/playback/cassette/load?filepath=" + cassetteFilepath)
+	resp, err = http.Post(fullAddressString+"/playback/cassette/load?filepath="+cassetteFilepath, "text/plain", nil)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)

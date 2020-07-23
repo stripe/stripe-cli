@@ -18,16 +18,16 @@ const endpointsDocString = `
 You can configure the running server instance via HTTP GET endpoints (prefixed with "/playback/").
 
 --- List of server control endpoints ---
-GET /playback/mode/[mode]
+POST /playback/mode/[mode]
 Sets the server mode to one of ["auto", "record", "replay"]
 
-GET /playback/cassette/setroot?dir=[path_to_directory]
+POST /playback/cassette/setroot?dir=[path_to_directory]
 Set the root directory for reading/writing cassettes. All cassette paths are relative to this directory.
 
-GET /playback/cassette/load?filepath=[filepath]
+POST /playback/cassette/load?filepath=[filepath]
 Load the cassette file at the given filepath, relative to the cassette root directory.
 
-GET /playback/cassette/eject
+POST /playback/cassette/eject
 Eject (unload) the current cassette and do any teardown. In record mode, this writes the recorded interactions to the cassette file.
 `
 
