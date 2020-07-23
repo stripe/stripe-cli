@@ -4,6 +4,7 @@ package playback
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -35,12 +36,41 @@ func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *h
 	return res, nil
 }
 
-// Writes to the HTTP response using the given HTTP status code and error text as the response body. Simultaneously, prints the error text to stdout.
+// errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
+// mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
+// using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
+type errorJSONOuter struct {
+	Error errorJSONInner `json:"error"`
+}
+
+type errorJSONInner struct {
+	Code    string `json:"code"`
+	DocURL  string `json:"doc_url"`
+	Message string `json:"message"`
+	Param   string `json:"param"`
+	Type    string `json:"type"`
+}
+
+// Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints the error text to stdout.
 // Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
-func writeErrorToHTTPResponse(w http.ResponseWriter, err error, statusCode int) {
-	w.WriteHeader(statusCode)
-	fmt.Fprintf(w, "%v\n", err)
-	fmt.Printf("\n<-- %d error: %v\n", statusCode, err)
+func writeErrorToHTTPResponse(w http.ResponseWriter, errParam error, statusCode int) {
+	errorJSON := errorJSONOuter{}
+	errorJSON.Error.Message = errParam.Error()
+	errorJSON.Error.Type = "stripe_playback_error"
+	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
+
+	// Write error as json, falling back to plain text if it fails
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(statusCode)
+		fmt.Fprintf(w, "%v\n", errParam)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		w.Write(jsonBytes)
+	}
+
+	fmt.Printf("\n<-- %d error: %v\n", statusCode, errParam)
 }
 
 // These constants define the modes the playback server can be in
