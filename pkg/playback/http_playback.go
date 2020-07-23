@@ -277,8 +277,8 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 // Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.\n")
+		err := errors.New("no cassette is loaded")
+		writeErrorToHTTPResponse(w, err, 400)
 		return
 	}
 
@@ -304,8 +304,8 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 // Webhook requests are forwarded to the local application and recorded.
 func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
-		w.WriteHeader(400)
-		fmt.Fprint(w, "No cassette is loaded.\n")
+		err := errors.New("no cassette is loaded")
+		writeErrorToHTTPResponse(w, err, 400)
 		return
 	}
 
