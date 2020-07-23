@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -196,12 +195,13 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	addressString := "localhost:13111"
 	cassetteFilepath := "test_record_replay_single_run.yaml"
 
-	// for now, write cassettes to this directory. Ideally we have a test output folder
-	cassetteDirectory, err := filepath.Abs("")
+	tempCassetteDir, err := ioutil.TempDir("", "playback-test-data-")
+	defer os.RemoveAll(tempCassetteDir)
+
 	assert.NoError(t, err)
 
 	webhookURL := defaultLocalWebhookAddress // not used in this test
-	httpWrapper, err := NewServer(remoteURL, webhookURL, cassetteDirectory, Record, cassetteFilepath)
+	httpWrapper, err := NewServer(remoteURL, webhookURL, tempCassetteDir, Record, cassetteFilepath)
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -259,12 +259,6 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	bodyBytes2, err := ioutil.ReadAll(res2.Body)
 	assert.NoError(t, err)
 	assert.Equal(t, mockResponse2.Body, bodyBytes2)
-
-	// Cleanup file
-	_, err = os.Stat(cassetteFilepath)
-	if err == nil {
-		os.Remove(cassetteFilepath)
-	}
 
 	// --- END REPLAY MODE
 }

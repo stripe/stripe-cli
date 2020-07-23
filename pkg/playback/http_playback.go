@@ -82,12 +82,13 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 		return server, err
 	}
 
-	err = server.loadCassette(initialCassetteFilepath)
+	// cassette directory needs to be set before loading the initial cassette
+	err = server.setCassetteDir(absCassetteDirectory)
 	if err != nil {
 		return server, err
 	}
 
-	err = server.setCassetteDir(absCassetteDirectory)
+	err = server.loadCassette(initialCassetteFilepath)
 	if err != nil {
 		return server, err
 	}
