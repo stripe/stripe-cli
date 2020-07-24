@@ -95,12 +95,6 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	httpReplayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
 
 	// Send the webhooks
-
-	// Struct used to parse the event.Type from recorded webhook JSON bodies
-	type stripeEvent struct {
-		Type string `json:"type"`
-	}
-
 	go func() {
 		// Note: if there are any errors in processing recorded webhooks here,
 		// we log the error and keep going.
@@ -110,30 +104,31 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
 
 		for i, webhookReq := range webhookRequests {
+			var evt stripeEvent
+			err = json.Unmarshal(webhookReq.Body, &evt)
+			if err != nil {
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				continue
+			}
+
 			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
 			if err != nil {
-				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 			defer resp.Body.Close()
 
 			expectedResp := webhookResponses[i]
-			var evt stripeEvent
 
 			if err != nil {
-				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
-				continue
-			}
-			err = json.Unmarshal(webhookReq.Body, &evt)
-			if err != nil {
-				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 
 			httpReplayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
 			httpReplayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
 			if err != nil {
-				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 		}
