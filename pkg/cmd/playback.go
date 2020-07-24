@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -36,11 +37,11 @@ type playbackCmd struct {
 
 	mode string
 
-	apiBaseURL     string
-	filepath       string
-	cassetteDir    string
-	address        string
-	webhookAddress string
+	apiBaseURL  string
+	filepath    string
+	cassetteDir string
+	address     string
+	webhookURL  string
 }
 
 func newPlaybackCmd() *playbackCmd {
@@ -76,12 +77,13 @@ Currently, stripe playback only supports serving over HTTP.
 
 	pc.cmd.Flags().StringVar(&pc.mode, "mode", "auto", "Auto: record if cassette doesn't exist, replay if exists. Record: always record/re-record. Replay: always replay.")
 	pc.cmd.Flags().StringVar(&pc.address, "address", fmt.Sprintf("localhost:%d", defaultPort), "Address to serve on")
-	pc.cmd.Flags().StringVar(&pc.webhookAddress, "forward-to", fmt.Sprintf("localhost:%d", defaultWebhookPort), "Address to forward webhooks to")
+	pc.cmd.Flags().StringVar(&pc.webhookURL, "forward-to", fmt.Sprintf("http://localhost:%d", defaultWebhookPort), "URL to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
-	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "", "Directory to store all cassettes in. Relative cassette paths are considered relative to this directory.")
+	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "./", "Directory to store all cassettes in. Relative cassette paths are considered relative to this directory.")
 
 	// // Hidden configuration flags, useful for dev/debugging
-	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "Sets the API base URL")
+	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "The API base URL")
+	pc.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	return pc
 }
@@ -117,14 +119,22 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("The provided `--cassette-root-dir` option is not a valid directory: %v", absoluteCassetteDir)
 	}
 
+	// Check webhook URL specifies a protocol
+	parsedWhURL, err := url.Parse(pc.webhookURL)
+	if err != nil {
+		return fmt.Errorf("unable to parse \"%v\" as a URL. it should be a valid URL of the form [scheme]://[host]:[port]", pc.webhookURL)
+	}
+
+	if parsedWhURL.Scheme != "http" && parsedWhURL.Scheme != "https" {
+		return fmt.Errorf("unsupported protocol scheme \"%v\". must be \"http\" or \"https\"", parsedWhURL.Scheme)
+	}
+
 	// --- Start up the playback HTTP server
 	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
-	webhookAddress := "http://" + pc.webhookAddress
-
-	httpWrapper, err := playback.NewServer(remoteURL, webhookAddress, absoluteCassetteDir, pc.mode, pc.filepath)
+	httpWrapper, err := playback.NewServer(remoteURL, pc.webhookURL, absoluteCassetteDir, pc.mode, pc.filepath)
 	if err != nil {
 		return err
 	}
@@ -161,7 +171,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Listening via HTTP on %v\n", addressString)
 
-	fmt.Printf("Forwarding webhooks to %v\n", webhookAddress)
+	fmt.Printf("Forwarding webhooks to %v\n", pc.webhookURL)
 	fmt.Println("-----------------------------")
 	fmt.Println()
 

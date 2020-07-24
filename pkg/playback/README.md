@@ -134,7 +134,7 @@ Finally, use the Stripe CLI to send requests and trigger webhooks to the playbac
 # Terminal 4
 
 # Send a normal request
-stripe balance retrieve --api-base "localhost:13111"
+stripe balance retrieve --api-base "http://localhost:13111"
 
 # Trigger webhooks afterwards
 stripe trigger payment_intent.created
