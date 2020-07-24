@@ -141,7 +141,7 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 			responseStruct, err := replayer.respDeserializer(&reader)
 
 			if err != nil {
-				return nil, errors.New("error when deserializing cassette")
+				return nil, fmt.Errorf("error when deserializing cassette: %w", err)
 			}
 
 			lastAccepted = responseStruct

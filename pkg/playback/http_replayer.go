@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // A replayServer is a HTTP server that intercepts incoming requests, and replays recorded responses from the provided cassette.
@@ -16,12 +18,17 @@ type replayServer struct {
 	replayer   *interactionReplayer
 	webhookURL string
 	replayLock *sync.WaitGroup // used to
+
+	log *log.Logger
 }
 
 func newReplayServer(webhookURL string) (httpReplayer replayServer) {
 	httpReplayer = replayServer{}
 	httpReplayer.webhookURL = webhookURL
 	httpReplayer.replayLock = &sync.WaitGroup{}
+
+	httpReplayer.log = log.New()
+
 	return httpReplayer
 }
 
@@ -50,11 +57,11 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	httpReplayer.replayLock.Add(1)       // acquire the lock so we can handle this request
 	defer httpReplayer.replayLock.Done() // release the lock when handler func is done
 
-	fmt.Printf("\n--> %v to %v", r.Method, r.RequestURI)
+	httpReplayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
 
 	wrappedRequest, err := newHTTPRequest(r)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err, 500)
+		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)
 		return
 	}
 
@@ -62,27 +69,30 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	var wrappedResponse *httpResponse
 	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, err, 500)
+		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)
 		return
 	}
 
-	fmt.Printf("\n<-- %v from %v\n", wrappedResponse.StatusCode, "CASSETTE")
+	httpReplayer.log.Infof("<-- %v from %v", wrappedResponse.StatusCode, "CASSETTE")
 
 	// --- Write response back to client
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
 	copyHTTPHeader(w.Header(), wrappedResponse.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResponse.StatusCode)
-	io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
+	_, err = io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
+	if err != nil {
+		httpReplayer.log.Fatal(err)
+	}
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
 	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette()
 
 	if err != nil {
-		fmt.Printf("Error when checking cassette for webhooks to replay: %v\n", err)
+		httpReplayer.log.Errorf("Error when checking cassette for webhooks to replay: %v", err)
 	}
-	fmt.Printf("Replaying %d webhooks.\n", len(webhookRequests))
+	httpReplayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
 
 	// Send the webhooks
 
@@ -102,7 +112,7 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 		for i, webhookReq := range webhookRequests {
 			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
 			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
 			defer resp.Body.Close()
@@ -111,19 +121,19 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 			var evt stripeEvent
 
 			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
 			err = json.Unmarshal(webhookReq.Body, &evt)
 			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
 
-			fmt.Printf("	> Forwarding webhook [%v].\n", evt.Type)
-			fmt.Printf("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
+			httpReplayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
+			httpReplayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
 			if err != nil {
-				fmt.Printf("ERROR when forwarding webhook requests: %v", err)
+				httpReplayer.log.Errorf("ERROR when forwarding webhook requests: %v", err)
 				continue
 			}
 		}
