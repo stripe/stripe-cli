@@ -107,7 +107,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error with --cassette-root-dir: %w", err)
 	}
 
-	handle, err := os.Stat(absoluteCassetteDir)
+	cassetteDirInfo, err := os.Stat(absoluteCassetteDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("the directory \"%v\" does not exist. Please create it, then re-run the command", absoluteCassetteDir)
@@ -115,7 +115,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Unexpected error when checking --cassette-root-dir: %w", err)
 	}
 
-	if !handle.Mode().IsDir() {
+	if !cassetteDirInfo.Mode().IsDir() {
 		return fmt.Errorf("The provided `--cassette-root-dir` option is not a valid directory: %v", absoluteCassetteDir)
 	}
 
