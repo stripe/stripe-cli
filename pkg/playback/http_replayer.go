@@ -170,21 +170,22 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 	webhookResponses = make([]*httpResponse, 0)
 	for _, rawWebhookBytes := range webhookBytes {
 		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
-		webhookHTTPRequest, err := httpRequestfromBytes(&reqReader)
+		rawWhReq, err := httpRequestfromBytes(&reqReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
+		whReq := rawWhReq.(httpRequest)
 
-		// TODO: test webhooks
-		webhookRequests = append(webhookRequests, webhookHTTPRequest.(*httpRequest))
+		webhookRequests = append(webhookRequests, &whReq)
 
 		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
-		webhookHTTPResponse, err := httpResponsefromBytes(&respReader)
+		rawWhResp, err := httpResponsefromBytes(&respReader)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
 		}
+		whResp := rawWhResp.(httpResponse)
 
-		webhookResponses = append(webhookResponses, webhookHTTPResponse.(*httpResponse))
+		webhookResponses = append(webhookResponses, &whResp)
 	}
 
 	return webhookRequests, webhookResponses, nil
