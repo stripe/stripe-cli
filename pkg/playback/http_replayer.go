@@ -156,14 +156,14 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 	for httpReplayer.replayer.interactionsRemaining() > 0 {
 		interaction, err := httpReplayer.replayer.peekFront()
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error when checking webhooks: %w", err)
+			return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
 		}
 
 		if interaction.Type == incomingInteraction {
 			webhookBytes = append(webhookBytes, interaction)
 			_, err = httpReplayer.replayer.popFront()
 			if err != nil {
-				return nil, nil, fmt.Errorf("Unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
+				return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
 			}
 		} else {
 			break
@@ -177,7 +177,7 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 		var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
 		rawWhReq, err := httpRequestfromBytes(&reqReader)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
+			return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
 		}
 		whReq := rawWhReq.(httpRequest)
 
@@ -186,7 +186,7 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 		var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
 		rawWhResp, err := httpResponsefromBytes(&respReader)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Error when deserializing cassette to replay webhooks: %w", err)
+			return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
 		}
 		whResp := rawWhResp.(httpResponse)
 

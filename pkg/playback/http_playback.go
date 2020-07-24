@@ -388,27 +388,27 @@ func (rr *Server) loadCassette(relativeFilepath string) error {
 		directoryPath := filepath.Dir(absoluteFilepath)
 		err := os.MkdirAll(directoryPath, 0755)
 		if err != nil {
-			return fmt.Errorf("Error recursively creating nested directories for cassette file: %w", err)
+			return fmt.Errorf("error recursively creating nested directories for cassette file: %w", err)
 		}
 
 		fileHandle, err := os.Create(absoluteFilepath)
 		if err != nil {
-			return fmt.Errorf("Error creating cassette file: %w", err)
+			return fmt.Errorf("error creating cassette file: %w", err)
 		}
 
 		err = rr.httpRecorder.insertCassette(fileHandle)
 		if err != nil {
-			return fmt.Errorf("Error inserting cassette file: %w", err)
+			return fmt.Errorf("error inserting cassette file: %w", err)
 		}
 	} else {
 		fileHandle, err := os.Open(absoluteFilepath)
 		if err != nil {
-			return fmt.Errorf("Error opening cassette file: %w", err)
+			return fmt.Errorf("error opening cassette file: %w", err)
 		}
 
 		err = rr.httpReplayer.readCassette(fileHandle)
 		if err != nil {
-			return fmt.Errorf("Error parsing cassette file: %v", err)
+			return fmt.Errorf("error parsing cassette file: %v", err)
 		}
 	}
 

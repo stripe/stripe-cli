@@ -53,14 +53,14 @@ type stripeEvent struct {
 func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	wrappedReq, err := newHTTPRequest(r)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error processing incoming webhook request: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming webhook request: %w", err), 500)
 		return
 	}
 
 	var evt stripeEvent
 	err = json.Unmarshal(wrappedReq.Body, &evt)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error processing incoming webhook request: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming webhook request: %w", err), 500)
 		return
 	}
 
@@ -70,12 +70,12 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	resp, err := forwardRequest(&wrappedReq, httpRecorder.webhookURL)
 	// TODO: this response is going back to Stripe, what is the correct error handling logic here?
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
 		return
 	}
 	wrappedResp, err := newHTTPResponse(resp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
 		return
 	}
 
@@ -85,7 +85,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
 	err = httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error writing [%v] webhook interaction to cassette: %w", evt.Type, err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error writing [%v] webhook interaction to cassette: %w", evt.Type, err), 500)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 
 	wrappedReq, err := newHTTPRequest(r)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error processing incoming API request: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming API request: %w", err), 500)
 		return
 	}
 
@@ -120,13 +120,13 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 
 	resp, err = forwardRequest(&wrappedReq, httpRecorder.remoteURL+r.RequestURI)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error processing incoming API request: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming API request: %w", err), 500)
 		return
 	}
 
 	wrappedResp, err := newHTTPResponse(resp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Unexpected error processing incoming API request: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming API request: %w", err), 500)
 		return
 	}
 
@@ -138,7 +138,7 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
 	err = httpRecorder.recorder.write(outgoingInteraction, wrappedReq, wrappedResp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("Error when recording HTTP response to cassette: %w", err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("error when recording HTTP response to cassette: %w", err), 500)
 		return
 	}
 	// Now we can write to the response:
