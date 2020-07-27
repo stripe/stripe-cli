@@ -263,7 +263,4 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// --- END REPLAY MODE
 }
 
-// // TODO: Test auto mode on the full server
-// // TODO: create a more complicated Stripe API integration test
-// // TODO: add a Stripe API test that depends on data sent in the request body (eg: stripe customers create)
-// //   	 this would be a regression test for a bug where request bodies weren't being forwarded by the playback proxy server
+// TODO(DX-5699, DX-5700): add more test coverage

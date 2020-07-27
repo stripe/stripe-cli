@@ -190,7 +190,6 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
-		// TODO: why is this not printing out the absolute path?
 		rr.log.Infof("Cassette directory set to \"%v\"", rr.cassetteDirectory)
 		w.WriteHeader(200)
 	})

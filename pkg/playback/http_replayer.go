@@ -34,7 +34,7 @@ func newReplayServer(webhookURL string) (httpReplayer replayServer) {
 
 // Read a previously recorded cassette into the replayer and ready it for replaying.
 func (httpReplayer *replayServer) readCassette(reader io.Reader) error {
-	// TODO: We may want to allow different types of replay matching in the future (instead of simply sequential playback)
+	// TODO(DX-5701): We may want to allow different types of replay matching in the future (instead of simply sequential playback)
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
@@ -98,7 +98,6 @@ func (httpReplayer *replayServer) handler(w http.ResponseWriter, r *http.Request
 	go func() {
 		// Note: if there are any errors in processing recorded webhooks here,
 		// we log the error and keep going.
-		// TODO: is the above the appropriate behavior?
 		httpReplayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
 		httpReplayer.replayLock.Add(1)       // acquire lock so we can send webhooks
 		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks

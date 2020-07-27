@@ -132,7 +132,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// --- Start up the playback HTTP server
-	// TODO: `playback` should handle setup (and teardown) of `stripe listen` as well
+	// TODO(DX-5702): `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
