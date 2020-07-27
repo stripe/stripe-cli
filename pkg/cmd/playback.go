@@ -56,6 +56,8 @@ func newPlaybackCmd() *playbackCmd {
 --- Overview ---
 The playback command starts a local proxy server that intercepts outgoing requests to the Stripe API.
 
+It can also intercept incoming webhooks on /playback/webhooks.
+
 There are three modes of operation:
 
 "record": Any requests received are forwarded to the api.stripe.com, and the response is returned. All interactions
@@ -170,7 +172,9 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	fmt.Printf("Listening via HTTP on %v\n", addressString)
+	fmt.Println()
 
+	fmt.Printf("Accepting webhooks on %v/%v\n", addressString, "playback/webhooks")
 	fmt.Printf("Forwarding webhooks to %v\n", pc.webhookURL)
 	fmt.Println("-----------------------------")
 	fmt.Println()

@@ -68,7 +68,9 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 	httpRecorder.log.Infof("[WEBHOOK] %v [%v] to %v --> FORWARDED to %v", r.Method, evt.Type, r.RequestURI, httpRecorder.webhookURL)
 
 	resp, err := forwardRequest(&wrappedReq, httpRecorder.webhookURL)
-	// TODO: this response is going back to Stripe, what is the correct error handling logic here?
+	// NOTE: this response is going back to Stripe, so for internal `playback` server errors - return a 500 response with an error msg in the body
+	// The details of this response will be visible on the Developer Dashboard under "Webhook CLI Responses"
+	// (^ this all assuming that playback is using `stripe listen` to receive webhooks)
 	if err != nil {
 		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
 		return
