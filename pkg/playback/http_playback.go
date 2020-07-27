@@ -229,16 +229,11 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			return
 		}
 
-		var isRecording bool
-		switch rr.mode {
-		case Record:
-			isRecording = true
-		case Replay:
-			isRecording = false
-		case Auto:
-			isRecording = rr.isRecordingInAutoMode
-		default:
-			writeErrorToHTTPResponse(w, rr.log, errors.New("in unexpected mode state in handler. Please restart the playback server"), 500)
+		isRecording, err := rr.isRecording()
+		if err != nil {
+			// We should never get here, since all mutations of rr.mode should have already validated the mode value.
+			writeErrorToHTTPResponse(w, rr.log, err, 500)
+			rr.log.Fatal(err.Error())
 			return
 		}
 
@@ -285,21 +280,18 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch rr.mode {
-	case Record:
-		rr.httpRecorder.handler(w, r)
-	case Replay:
-		rr.httpReplayer.handler(w, r)
-	case Auto:
-		if rr.isRecordingInAutoMode {
-			rr.httpRecorder.handler(w, r)
-		} else {
-			rr.httpReplayer.handler(w, r)
-		}
-	default:
+	isRecording, err := rr.isRecording()
+	if err != nil {
 		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		writeErrorToHTTPResponse(w, rr.log, fmt.Errorf("got an unexpected playback mode \"%s\". It must be either \"record\", \"replay\", or \"auto\"", rr.mode), 500)
+		writeErrorToHTTPResponse(w, rr.log, err, 500)
+		rr.log.Fatal(err.Error())
 		return
+	}
+
+	if isRecording {
+		rr.httpRecorder.handler(w, r)
+	} else {
+		rr.httpReplayer.handler(w, r)
 	}
 }
 
@@ -312,17 +304,18 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch rr.mode {
-	case Record:
+	isRecording, err := rr.isRecording()
+	if err != nil {
+		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
+		writeErrorToHTTPResponse(w, rr.log, err, 500)
+		rr.log.Fatal(err.Error())
+		return
+	}
+
+	if isRecording {
 		rr.httpRecorder.webhookHandler(w, r)
-	case Replay:
+	} else {
 		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
-	case Auto:
-		if rr.isRecordingInAutoMode {
-			rr.httpRecorder.webhookHandler(w, r)
-		} else {
-			rr.log.Error("Error: webhook endpoint should never be called in replay mode")
-		}
 	}
 }
 
@@ -431,26 +424,38 @@ func (rr *Server) ejectCassette() error {
 		return fmt.Errorf("tried to eject when no cassette is loaded")
 	}
 
-	switch rr.mode {
-	case Record:
+	isRecording, err := rr.isRecording()
+
+	if err != nil {
+		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
+		rr.log.Fatal(err.Error())
+		return err
+	}
+
+	if isRecording {
 		err := rr.httpRecorder.recorder.saveAndClose()
 		if err != nil {
 			rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
 			return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)
 		}
-	case Replay:
-		// nothing
-	case Auto:
-		if rr.isRecordingInAutoMode {
-			err := rr.httpRecorder.recorder.saveAndClose()
-			if err != nil {
-				rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
-				return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)
-			}
-		}
 	}
+	// ejecting is a no-op internally when in replay mode
+
 	rr.cassetteLoaded = false
 	return nil
+}
+
+func (rr *Server) isRecording() (isRecording bool, err error) {
+	switch rr.mode {
+	case Record:
+		return true, nil
+	case Replay:
+		return false, nil
+	case Auto:
+		return rr.isRecordingInAutoMode, nil
+	default: //throw
+		return false, fmt.Errorf("Unexpected mode \"%v\"in playback server - this likely indicates a bug in the implementation. Please try restarting the server", rr.mode)
+	}
 }
 
 func copyHTTPHeader(dest, src http.Header) {
