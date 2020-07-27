@@ -92,7 +92,7 @@ Currently, stripe playback only supports serving over HTTP.
 
 func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
-	fmt.Println("Seting up playback server...")
+	fmt.Println("Setting up playback server...")
 	fmt.Println()
 
 	// --- Validate command-line args
