@@ -124,7 +124,7 @@ func getUsageTemplate() string {
   {{rpad "payment_intents" 29}} Make requests (cancel, capture, confirm, etc) on payment intents
   {{rpad "..." 29}} %s
 
-%s{{range $index, $cmd := .Commands}}{{if (not (index $.Annotations $cmd.Name))}}
+%s{{range $index, $cmd := .Commands}}{{if (not (or (index $.Annotations $cmd.Name) $cmd.Hidden))}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}

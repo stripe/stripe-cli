@@ -33,7 +33,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.6.3
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/thedevsaddam/gojsonq v2.3.0+incompatible
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1
@@ -43,4 +43,5 @@ require (
 	golang.org/x/sys v0.0.0-20200501145240-bc7a7d42d5c3
 	gopkg.in/ini.v1 v1.55.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
+	gopkg.in/yaml.v2 v2.2.8
 )
