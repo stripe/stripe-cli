@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -111,12 +112,23 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	check(t, err)
 
 	server := httpRecorder.initializeServer(addressString)
+	serverReady := make(chan struct{})
 	go func() {
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		addr := server.Addr
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("server startup failed - Listen(): %v", err)
+		}
+
+		close(serverReady)
+
+		if err := server.Serve(ln); err != http.ErrServerClosed {
 			// unexpected error
-			log.Fatalf("ListenAndServe(): %v", err)
+			log.Fatalf("server startup failed - Serve(): %v", err)
 		}
 	}()
+
+	<-serverReady
 
 	// Send it 2 requests
 	res1, err := http.Get("http://localhost:8080/")
@@ -205,10 +217,23 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
+	serverReady := make(chan struct{})
 	go func() {
-		server.ListenAndServe()
+		addr := server.Addr
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("server startup failed - Listen(): %v", err)
+		}
+
+		close(serverReady)
+
+		if err := server.Serve(ln); err != http.ErrServerClosed {
+			// unexpected error
+			log.Fatalf("server startup failed - Serve(): %v", err)
+		}
 	}()
 	defer server.Shutdown(context.TODO())
+	<-serverReady
 
 	fullAddressString := "http://" + addressString
 	// --- Start interacting in RECORD MODE
