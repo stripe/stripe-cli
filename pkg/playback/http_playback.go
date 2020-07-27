@@ -228,16 +228,8 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			return
 		}
 
-		isRecording, err := rr.isRecording()
-		if err != nil {
-			// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-			writeErrorToHTTPResponse(w, rr.log, err, 500)
-			rr.log.Fatal(err.Error())
-			return
-		}
-
 		var statusMsg string
-
+		isRecording := rr.isRecording()
 		if isRecording {
 			statusMsg = fmt.Sprintf("Recording to %v", relativeFilepath)
 		} else {
@@ -279,14 +271,7 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isRecording, err := rr.isRecording()
-	if err != nil {
-		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		writeErrorToHTTPResponse(w, rr.log, err, 500)
-		rr.log.Fatal(err.Error())
-		return
-	}
-
+	isRecording := rr.isRecording()
 	if isRecording {
 		rr.httpRecorder.handler(w, r)
 	} else {
@@ -303,14 +288,7 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isRecording, err := rr.isRecording()
-	if err != nil {
-		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		writeErrorToHTTPResponse(w, rr.log, err, 500)
-		rr.log.Fatal(err.Error())
-		return
-	}
-
+	isRecording := rr.isRecording()
 	if isRecording {
 		rr.httpRecorder.webhookHandler(w, r)
 	} else {
@@ -423,14 +401,7 @@ func (rr *Server) ejectCassette() error {
 		return fmt.Errorf("tried to eject when no cassette is loaded")
 	}
 
-	isRecording, err := rr.isRecording()
-
-	if err != nil {
-		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		rr.log.Fatal(err.Error())
-		return err
-	}
-
+	isRecording := rr.isRecording()
 	if isRecording {
 		err := rr.httpRecorder.recorder.saveAndClose()
 		if err != nil {
@@ -444,16 +415,18 @@ func (rr *Server) ejectCassette() error {
 	return nil
 }
 
-func (rr *Server) isRecording() (isRecording bool, err error) {
+func (rr *Server) isRecording() bool {
 	switch rr.mode {
 	case Record:
-		return true, nil
+		return true
 	case Replay:
-		return false, nil
+		return false
 	case Auto:
-		return rr.isRecordingInAutoMode, nil
-	default: //throw
-		return false, fmt.Errorf("Unexpected mode \"%v\"in playback server - this likely indicates a bug in the implementation. Please try restarting the server", rr.mode)
+		return rr.isRecordingInAutoMode
+	default:
+		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
+		rr.log.Fatalf("Unexpected mode \"%v\"in playback server - this likely indicates a bug in the implementation. Please try restarting the server", rr.mode)
+		return false
 	}
 }
 
