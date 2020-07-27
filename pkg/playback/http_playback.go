@@ -425,7 +425,7 @@ func (rr *Server) isRecording() bool {
 		return rr.isRecordingInAutoMode
 	default:
 		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		rr.log.Fatalf("Unexpected mode \"%v\"in playback server - this likely indicates a bug in the implementation. Please try restarting the server", rr.mode)
+		rr.log.Fatalf("Unexpected mode \"%v\" in playback server - this likely indicates a bug in the implementation. Please try restarting the server.", rr.mode)
 		return false
 	}
 }
