@@ -361,55 +361,65 @@ func (rr *Server) setCassetteDir(absoluteCassetteDir string) error {
 	return nil
 }
 
+func (rr *Server) openCassetteFileForReplaying(absoluteFilepath string) error {
+	fileHandle, err := os.Open(absoluteFilepath)
+	if err != nil {
+		return fmt.Errorf("error opening cassette file: %w", err)
+	}
+
+	err = rr.httpReplayer.readCassette(fileHandle)
+	if err != nil {
+		return fmt.Errorf("error parsing cassette file: %v", err)
+	}
+
+	return nil
+}
+
+func (rr *Server) createCassetteFileForRecording(absoluteFilepath string) error {
+	directoryPath := filepath.Dir(absoluteFilepath)
+	err := os.MkdirAll(directoryPath, 0755)
+	if err != nil {
+		return fmt.Errorf("error recursively creating nested directories for cassette file: %w", err)
+	}
+
+	fileHandle, err := os.Create(absoluteFilepath)
+	if err != nil {
+		return fmt.Errorf("error creating cassette file: %w", err)
+	}
+
+	err = rr.httpRecorder.insertCassette(fileHandle)
+	if err != nil {
+		return fmt.Errorf("error inserting cassette file: %w", err)
+	}
+
+	return nil
+}
+
 // loadCassette() takes a relative path (relative to the rr.cassetteDirectory) to a .yaml file
 // The .yaml file need not exist (unless rr.mode = Replay). If intermediate directories in the relative path do not exist, loadCassette *will* create them.
 func (rr *Server) loadCassette(relativeFilepath string) error {
 	absoluteFilepath := filepath.Join(rr.cassetteDirectory, relativeFilepath)
 
-	var shouldCreateNewFile bool
+	var fileErr error
 
 	switch rr.mode {
 	case Record:
-		shouldCreateNewFile = true
+		fileErr = rr.createCassetteFileForRecording(absoluteFilepath)
 	case Replay:
-		shouldCreateNewFile = false
+		fileErr = rr.openCassetteFileForReplaying(absoluteFilepath)
 	case Auto:
 		_, err := os.Stat(absoluteFilepath)
 		if os.IsNotExist(err) {
-			shouldCreateNewFile = true
 			rr.isRecordingInAutoMode = true
+			fileErr = rr.createCassetteFileForRecording(absoluteFilepath)
 		} else {
-			shouldCreateNewFile = false
 			rr.isRecordingInAutoMode = false
+			fileErr = rr.openCassetteFileForReplaying(absoluteFilepath)
 		}
 	}
 
-	if shouldCreateNewFile {
-		directoryPath := filepath.Dir(absoluteFilepath)
-		err := os.MkdirAll(directoryPath, 0755)
-		if err != nil {
-			return fmt.Errorf("error recursively creating nested directories for cassette file: %w", err)
-		}
-
-		fileHandle, err := os.Create(absoluteFilepath)
-		if err != nil {
-			return fmt.Errorf("error creating cassette file: %w", err)
-		}
-
-		err = rr.httpRecorder.insertCassette(fileHandle)
-		if err != nil {
-			return fmt.Errorf("error inserting cassette file: %w", err)
-		}
-	} else {
-		fileHandle, err := os.Open(absoluteFilepath)
-		if err != nil {
-			return fmt.Errorf("error opening cassette file: %w", err)
-		}
-
-		err = rr.httpReplayer.readCassette(fileHandle)
-		if err != nil {
-			return fmt.Errorf("error parsing cassette file: %v", err)
-		}
+	if fileErr != nil {
+		return fileErr
 	}
 
 	rr.cassetteLoaded = true
