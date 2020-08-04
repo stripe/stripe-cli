@@ -3,7 +3,6 @@ package stripe
 import (
 	"context"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -114,18 +113,12 @@ func newHTTPClient(verbose bool, unixSocket string) *http.Client {
 			TLSHandshakeTimeout:   10 * time.Second,
 		}
 	} else {
-		tlsConfig, err := GetTLSConfig()
-		if err != nil {
-			log.Fatal(err)
-		}
-
 		httpTransport = &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
 				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
-			TLSClientConfig:     tlsConfig,
 			TLSHandshakeTimeout: 10 * time.Second,
 		}
 	}
