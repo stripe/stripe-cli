@@ -90,13 +90,6 @@ update-openapi-spec:
 	wget https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.sdk.json -P ./api/openapi-spec
 .PHONY: update-openapi-spec
 
-# Updates the DigiCert root certs
-update-digicert-pem:
-	rm -f ./data/certs/*.pem
-	wget https://cacerts.digicert.com/DigiCertGlobalRootCA.crt.pem -P ./data/certs
-	wget https://cacerts.digicert.com/DigiCertHighAssuranceEVRootCA.crt.pem -P ./data/certs
-.PHONY: update-digicert-pem
-
 # Releases a new version
 release:
 # This does not release anything from your local machine but creates a tag
