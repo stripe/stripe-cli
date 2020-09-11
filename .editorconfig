@@ -15,3 +15,15 @@ indent_size = 4
 [*.{json,md}]
 indent_style = space
 indent_size = 2
+brew install stripe/stripe-cli/stripe
+stripe login
+Your pairing code is: humour-nifty-finer-magic
+Press Enter to open up the browser (^C to quit)
+stripe customers create
+stripe listen
+
+Ready! Your webhook signing secret is '{{WEBHOOK_SIGNING_SECRET}}' (^C to quit)
+stripe trigger payment_intent.created
+stripe listen
+Ready! Your webhook signing secret is '{{WEBHOOK_SIGNING_SECRET}}' (^C to quit)
+YYYY-MM-DD HH:MM:SS  -->  payment_intent.created [{{WEBHOOK_EVENT_ID}}]
