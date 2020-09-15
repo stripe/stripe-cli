@@ -81,7 +81,7 @@ nfpms:
     - rpm
 brews:
   -
-    github:
+    tap:
       owner: stripe
       name: homebrew-stripe-cli
     commit_author:
