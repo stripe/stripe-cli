@@ -21,7 +21,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
 
 	// Resource commands
-	r3dSecureCmd := resource.NewResourceCmd(rootCmd, "3d_secure")
+	r3DSecureCmd := resource.NewResourceCmd(rootCmd, "3d_secure")
 	rAccountLinksCmd := resource.NewResourceCmd(rootCmd, "account_links")
 	rAccountsCmd := resource.NewResourceCmd(rootCmd, "accounts")
 	rApplePayDomainsCmd := resource.NewResourceCmd(rootCmd, "apple_pay_domains")
@@ -104,14 +104,14 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rTerminalReadersCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "readers")
 
 	// Operation commands
-	resource.NewOperationCmd(r3dSecureCmd.Cmd, "create", "/v1/3d_secure", http.MethodPost, map[string]string{
+	resource.NewOperationCmd(r3DSecureCmd.Cmd, "create", "/v1/3d_secure", http.MethodPost, map[string]string{
 		"amount":     "integer",
 		"card":       "string",
 		"currency":   "string",
 		"customer":   "string",
 		"return_url": "string",
 	}, &Config)
-	resource.NewOperationCmd(r3dSecureCmd.Cmd, "retrieve", "/v1/3d_secure/{three_d_secure}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(r3DSecureCmd.Cmd, "retrieve", "/v1/3d_secure/{three_d_secure}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rAccountLinksCmd.Cmd, "create", "/v1/account_links", http.MethodPost, map[string]string{
 		"account":     "string",
 		"collect":     "string",

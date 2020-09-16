@@ -29,7 +29,7 @@ func assertHTTPResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 	}
 
 	bodyString1 := string(bodyBytes1)
-	//reset the response body to the original unread state
+	// reset the response body to the original unread state
 	err = resp1.Body.Close()
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func assertHTTPResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http
 		return err
 	}
 	bodyString2 := string(bodyBytes2)
-	//reset the response body to the original unread state
+	// reset the response body to the original unread state
 	err = resp2.Body.Close()
 	if err != nil {
 		return err

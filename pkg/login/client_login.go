@@ -30,7 +30,7 @@ type Links struct {
 	VerificationCode string `json:"verification_code"`
 }
 
-//TODO
+// TODO
 /*
 4. Observability and associated alerting? Business metrics (how many users use this flow)?
 5. Rate limiting for each operation?
@@ -69,7 +69,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 		}
 	}
 
-	//Call poll function
+	// Call poll function
 	response, account, err := PollForKey(links.PollURL, 0, 0)
 	if err != nil {
 		return err
