@@ -21,6 +21,7 @@
           }
         ],
         "payment_intent_data": {
+          "setup_future_usage": "off_session",
           "shipping": {
             "name": "Jenny Rosen",
             "address": {
