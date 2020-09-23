@@ -95,7 +95,7 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 	}
 
 	if fxt.fixture.Meta.Version > SupportedVersions {
-		return nil, fmt.Errorf("Fixture version not supported: %s", string(fxt.fixture.Meta.Version))
+		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
 	}
 
 	return &fxt, nil
