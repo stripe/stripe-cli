@@ -180,22 +180,32 @@ func wsHeader(baseURL string, webSocketID string, webSocketAuthorizedFeature str
 	return url, header
 }
 
-func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession, dialer *ws.Dialer, noWSS bool, logger *log.Logger, pongWait time.Duration) (Connection, *http.Response, error) {
-	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, noWSS)
+type ConnectWebsocketConfig struct {
+	Dialer    *ws.Dialer
+	NoWSS     bool
+	Logger    *log.Logger
+	PongWait  time.Duration
+	WriteWait time.Duration
+}
 
-	logger.WithFields(log.Fields{
+func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig) (Connection, *http.Response, error) {
+	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, cfg.NoWSS)
+
+	cfg.Logger.WithFields(log.Fields{
 		"prefix": "websocket.connection.ConnectWebsocket",
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, resp, err := dialer.DialContext(ctx, url, header)
+	conn, resp, err := cfg.Dialer.DialContext(ctx, url, header)
 	if err != nil {
 		return nil, resp, err
 	}
 	return &connection{
-		conn:     conn,
-		log:      logger,
-		pongWait: pongWait,
+		conn:       conn,
+		log:        cfg.Logger,
+		pongWait:   cfg.PongWait,
+		writeWait:  cfg.WriteWait,
+		pingPeriod: time.Second,
 	}, resp, nil
 }
 
