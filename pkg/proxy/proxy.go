@@ -176,7 +176,13 @@ func (p *Proxy) Run(ctx context.Context) error {
 	connect := func() (websocket.Connection, error) {
 		for _ = range []int{1, 2, 3} {
 			//TODO: fix this PongWait
-			conn, resp, err := websocket.ConnectWebsocket(ctx, session, dialer, p.cfg.NoWSS, p.cfg.Log, 5*time.Second)
+			conn, resp, err := websocket.ConnectWebsocket(ctx, session, websocket.ConnectWebsocketConfig{
+				Dialer:    dialer,
+				NoWSS:     p.cfg.NoWSS,
+				Logger:    p.cfg.Log,
+				PongWait:  10 * time.Second,
+				WriteWait: 5 * time.Second,
+			})
 			if err != nil {
 				session, err = p.refreshSession(ctx, err, resp)
 				if err != nil {
