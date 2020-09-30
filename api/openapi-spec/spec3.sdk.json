@@ -621,6 +621,15 @@
             ],
             "type": "string"
           },
+          "oxxo_payments": {
+            "description": "The status of the OXXO payments capability of the account, or whether the account can directly process OXXO charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "tax_reporting_us_1099_k": {
             "description": "The status of the tax reporting 1099-K (US) capability of the account.",
             "enum": [
@@ -1914,6 +1923,13 @@
             },
             "type": "array"
           },
+          "instant_available": {
+            "description": "Funds that can be paid out using Instant Payouts.",
+            "items": {
+              "$ref": "#/components/schemas/balance_amount"
+            },
+            "type": "array"
+          },
           "issuing": {
             "$ref": "#/components/schemas/balance_detail"
           },
@@ -1947,6 +1963,7 @@
         "x-expandableFields": [
           "available",
           "connect_reserved",
+          "instant_available",
           "issuing",
           "pending"
         ],
@@ -2148,7 +2165,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Transaction type: `adjustment`, `advance`, `advance_funding`, `anticipation_repayment`, `application_fee`, `application_fee_refund`, `charge`, `connect_collection_transfer`, `issuing_authorization_hold`, `issuing_authorization_release`, `issuing_dispute`, `issuing_transaction`, `payment`, `payment_failure_refund`, `payment_refund`, `payout`, `payout_cancel`, `payout_failure`, `refund`, `refund_failure`, `reserve_transaction`, `reserved_funds`, `stripe_fee`, `stripe_fx_fee`, `tax_fee`, `topup`, `topup_reversal`, `transfer`, `transfer_cancel`, `transfer_failure`, or `transfer_refund`. [Learn more](https://stripe.com/docs/reports/balance-transaction-types) about balance transaction types and what they represent. If you are looking to classify transactions for accounting purposes, you might want to consider `reporting_category` instead.",
+            "description": "Transaction type: `adjustment`, `advance`, `advance_funding`, `anticipation_repayment`, `application_fee`, `application_fee_refund`, `charge`, `connect_collection_transfer`, `contribution`, `issuing_authorization_hold`, `issuing_authorization_release`, `issuing_dispute`, `issuing_transaction`, `payment`, `payment_failure_refund`, `payment_refund`, `payout`, `payout_cancel`, `payout_failure`, `refund`, `refund_failure`, `reserve_transaction`, `reserved_funds`, `stripe_fee`, `stripe_fx_fee`, `tax_fee`, `topup`, `topup_reversal`, `transfer`, `transfer_cancel`, `transfer_failure`, or `transfer_refund`. [Learn more](https://stripe.com/docs/reports/balance-transaction-types) about balance transaction types and what they represent. If you are looking to classify transactions for accounting purposes, you might want to consider `reporting_category` instead.",
             "enum": [
               "adjustment",
               "advance",
@@ -2158,6 +2175,7 @@
               "application_fee_refund",
               "charge",
               "connect_collection_transfer",
+              "contribution",
               "issuing_authorization_hold",
               "issuing_authorization_release",
               "issuing_dispute",
@@ -5511,7 +5529,7 @@
         "description": "Issue a credit note to adjust an invoice's amount after the invoice is finalized.\n\nRelated guide: [Credit Notes](https://stripe.com/docs/billing/invoices/credit-notes).",
         "properties": {
           "amount": {
-            "description": "The integer amount in **%s** representing the total amount of the credit note, including tax.",
+            "description": "The integer amount in %s representing the total amount of the credit note, including tax.",
             "type": "integer"
           },
           "created": {
@@ -5569,7 +5587,7 @@
             }
           },
           "discount_amount": {
-            "description": "The integer amount in **%s** representing the total amount of discount that was credited.",
+            "description": "The integer amount in %s representing the total amount of discount that was credited.",
             "type": "integer"
           },
           "discount_amounts": {
@@ -5723,7 +5741,7 @@
             "type": "string"
           },
           "subtotal": {
-            "description": "The integer amount in **%s** representing the amount of the credit note, excluding tax and invoice level discounts.",
+            "description": "The integer amount in %s representing the amount of the credit note, excluding tax and invoice level discounts.",
             "type": "integer"
           },
           "tax_amounts": {
@@ -5734,7 +5752,7 @@
             "type": "array"
           },
           "total": {
-            "description": "The integer amount in **%s** representing the total amount of the credit note, including tax and all discount.",
+            "description": "The integer amount in %s representing the total amount of the credit note, including tax and all discount.",
             "type": "integer"
           },
           "type": {
@@ -5939,7 +5957,7 @@
         "description": "",
         "properties": {
           "amount": {
-            "description": "The integer amount in **%s** representing the gross amount being credited for this line item, excluding (exclusive) tax and discounts.",
+            "description": "The integer amount in %s representing the gross amount being credited for this line item, excluding (exclusive) tax and discounts.",
             "type": "integer"
           },
           "description": {
@@ -5949,7 +5967,7 @@
             "type": "string"
           },
           "discount_amount": {
-            "description": "The integer amount in **%s** representing the discount being credited for this line item.",
+            "description": "The integer amount in %s representing the discount being credited for this line item.",
             "type": "integer"
           },
           "discount_amounts": {
@@ -11353,7 +11371,7 @@
             "type": "array"
           },
           "unit_amount": {
-            "description": "Unit Amount (in the `currency` specified) of the invoice item.",
+            "description": "Unit amount (in the `currency` specified) of the invoice item.",
             "nullable": true,
             "type": "integer"
           },
@@ -19250,6 +19268,7 @@
           "inner_classes": [
             "payment_intent_next_action",
             "payment_intent_next_action_alipay_handle_redirect",
+            "payment_intent_next_action_display_oxxo_details",
             "payment_intent_next_action_redirect_to_url",
             "payment_intent_payment_method_options",
             "transfer_data"
@@ -19261,6 +19280,9 @@
         "properties": {
           "alipay_handle_redirect": {
             "$ref": "#/components/schemas/payment_intent_next_action_alipay_handle_redirect"
+          },
+          "oxxo_display_details": {
+            "$ref": "#/components/schemas/payment_intent_next_action_display_oxxo_details"
           },
           "redirect_to_url": {
             "$ref": "#/components/schemas/payment_intent_next_action_redirect_to_url"
@@ -19282,6 +19304,7 @@
         "type": "object",
         "x-expandableFields": [
           "alipay_handle_redirect",
+          "oxxo_display_details",
           "redirect_to_url"
         ],
         "x-stripeResource": {
@@ -19333,6 +19356,43 @@
           "in_class": "payment_intent"
         }
       },
+      "payment_intent_next_action_display_oxxo_details": {
+        "description": "",
+        "properties": {
+          "expires_after": {
+            "description": "The timestamp after which the OXXO voucher expires.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "hosted_voucher_url": {
+            "description": "The URL for the hosted OXXO voucher page, which allows customers to view and print an OXXO voucher.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "number": {
+            "description": "OXXO reference number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "expires_after",
+          "hosted_voucher_url",
+          "number"
+        ],
+        "title": "PaymentIntentNextActionDisplayOxxoDetails",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "NextActionOxxoDisplayDetails",
+          "in_class": "payment_intent"
+        }
+      },
       "payment_intent_next_action_redirect_to_url": {
         "description": "",
         "properties": {
@@ -19375,6 +19435,9 @@
           "card": {
             "$ref": "#/components/schemas/payment_intent_payment_method_options_card"
           },
+          "oxxo": {
+            "$ref": "#/components/schemas/payment_method_options_oxxo"
+          },
           "sofort": {
             "$ref": "#/components/schemas/payment_method_options_sofort"
           }
@@ -19385,6 +19448,7 @@
           "alipay",
           "bancontact",
           "card",
+          "oxxo",
           "sofort"
         ],
         "x-stripeResource": {
@@ -19394,6 +19458,7 @@
             "payment_intent_payment_method_options_card",
             "payment_method_options_alipay",
             "payment_method_options_bancontact",
+            "payment_method_options_oxxo",
             "payment_method_options_sofort"
           ]
         }
@@ -19545,6 +19610,9 @@
             ],
             "type": "string"
           },
+          "oxxo": {
+            "$ref": "#/components/schemas/payment_method_oxxo"
+          },
           "p24": {
             "$ref": "#/components/schemas/payment_method_p24"
           },
@@ -19566,6 +19634,7 @@
               "fpx",
               "giropay",
               "ideal",
+              "oxxo",
               "p24",
               "sepa_debit",
               "sofort"
@@ -19600,6 +19669,7 @@
           "giropay",
           "ideal",
           "interac_present",
+          "oxxo",
           "p24",
           "sepa_debit",
           "sofort"
@@ -19756,6 +19826,7 @@
             "payment_method_giropay",
             "payment_method_ideal",
             "payment_method_interac_present",
+            "payment_method_oxxo",
             "payment_method_p24",
             "payment_method_sepa_debit",
             "payment_method_sofort"
@@ -20301,6 +20372,9 @@
           "multibanco": {
             "$ref": "#/components/schemas/payment_method_details_multibanco"
           },
+          "oxxo": {
+            "$ref": "#/components/schemas/payment_method_details_oxxo"
+          },
           "p24": {
             "$ref": "#/components/schemas/payment_method_details_p24"
           },
@@ -20347,6 +20421,7 @@
           "interac_present",
           "klarna",
           "multibanco",
+          "oxxo",
           "p24",
           "sepa_credit_transfer",
           "sepa_debit",
@@ -20374,6 +20449,7 @@
             "payment_method_details_interac_present",
             "payment_method_details_klarna",
             "payment_method_details_multibanco",
+            "payment_method_details_oxxo",
             "payment_method_details_p24",
             "payment_method_details_sepa_credit_transfer",
             "payment_method_details_sepa_debit",
@@ -21795,6 +21871,29 @@
           "in_class": "payment_method_details"
         }
       },
+      "payment_method_details_oxxo": {
+        "description": "",
+        "properties": {
+          "number": {
+            "description": "OXXO reference number",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "number"
+        ],
+        "title": "payment_method_details_oxxo",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Oxxo",
+          "in_class": "payment_method_details"
+        }
+      },
       "payment_method_details_p24": {
         "description": "",
         "properties": {
@@ -22257,6 +22356,27 @@
           ]
         }
       },
+      "payment_method_options_oxxo": {
+        "description": "",
+        "properties": {
+          "expires_after_days": {
+            "description": "The number of calendar days before an OXXO invoice expires. For example, if you create an OXXO invoice on Monday and you set expires_after_days to 2, the OXXO invoice will expire on Wednesday at 23:59 America/Mexico_City time.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expires_after_days"
+        ],
+        "title": "payment_method_options_oxxo",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Oxxo",
+          "in_class": "payment_intent_payment_method_options"
+        }
+      },
       "payment_method_options_sofort": {
         "description": "",
         "properties": {
@@ -22286,6 +22406,20 @@
         "x-stripeResource": {
           "class_name": "Sofort",
           "in_class": "payment_intent_payment_method_options"
+        }
+      },
+      "payment_method_oxxo": {
+        "description": "",
+        "properties": {
+        },
+        "title": "payment_method_oxxo",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Oxxo",
+          "in_class": "payment_method"
         }
       },
       "payment_method_p24": {
@@ -26798,6 +26932,263 @@
           ]
         }
       },
+      "setup_attempt": {
+        "description": "A SetupAttempt describes one attempted confirmation of a SetupIntent,\nwhether that confirmation was successful or unsuccessful. You can use\nSetupAttempts to inspect details of a specific attempt at setting up a\npayment method using a SetupIntent.",
+        "properties": {
+          "application": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/application"
+              }
+            ],
+            "description": "The value of [application](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-application) on the SetupIntent at the time of this confirmation.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/application"
+                }
+              ]
+            }
+          },
+          "created": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "customer": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/customer"
+              },
+              {
+                "$ref": "#/components/schemas/deleted_customer"
+              }
+            ],
+            "description": "The value of [customer](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-customer) on the SetupIntent at the time of this confirmation.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/customer"
+                },
+                {
+                  "$ref": "#/components/schemas/deleted_customer"
+                }
+              ]
+            }
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "setup_attempt"
+            ],
+            "type": "string"
+          },
+          "on_behalf_of": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/account"
+              }
+            ],
+            "description": "The value of [on_behalf_of](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-on_behalf_of) on the SetupIntent at the time of this confirmation.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/account"
+                }
+              ]
+            }
+          },
+          "payment_method": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "ID of the payment method used with this SetupAttempt.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "payment_method_details": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details"
+          },
+          "setup_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/api_errors"
+              }
+            ],
+            "description": "The error encountered during this attempt to confirm the SetupIntent, if any.",
+            "nullable": true
+          },
+          "setup_intent": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/setup_intent"
+              }
+            ],
+            "description": "ID of the SetupIntent that this attempt belongs to.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/setup_intent"
+                }
+              ]
+            }
+          },
+          "status": {
+            "description": "Status of this SetupAttempt, one of `requires_confirmation`, `requires_action`, `processing`, `succeeded`, `failed`, or `abandoned`.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "usage": {
+            "description": "The value of [usage](https://stripe.com/docs/api/setup_intents/object#setup_intent_object-usage) on the SetupIntent at the time of this confirmation, one of `off_session` or `on_session`.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "application",
+          "created",
+          "customer",
+          "id",
+          "livemode",
+          "object",
+          "on_behalf_of",
+          "payment_method",
+          "payment_method_details",
+          "setup_error",
+          "setup_intent",
+          "status",
+          "usage"
+        ],
+        "title": "PaymentFlowsSetupIntentSetupAttempt",
+        "type": "object",
+        "x-expandableFields": [
+          "application",
+          "customer",
+          "on_behalf_of",
+          "payment_method",
+          "payment_method_details",
+          "setup_error",
+          "setup_intent"
+        ],
+        "x-resourceId": "setup_attempt",
+        "x-stripeOperations": [
+          {
+            "method_name": "list",
+            "method_on": "class",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/setup_attempts"
+          },
+          {
+            "method_name": "list",
+            "method_on": "service",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/setup_attempts"
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "SetupAttempt",
+          "has_collection_class": true,
+          "in_package": "",
+          "inner_classes": [
+            "setup_attempt_payment_method_details"
+          ]
+        }
+      },
+      "setup_attempt_payment_method_details": {
+        "description": "",
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details_card"
+          },
+          "type": {
+            "description": "The type of the payment method used in the SetupIntent (e.g., `card`). An additional hash is included on `payment_method_details` with a name matching this value. It contains confirmation-specific information for the payment method.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "SetupAttemptPaymentMethodDetails",
+        "type": "object",
+        "x-expandableFields": [
+          "card"
+        ],
+        "x-stripeResource": {
+          "class_name": "PaymentMethodDetails",
+          "in_class": "setup_attempt",
+          "inner_classes": [
+            "setup_attempt_payment_method_details_card"
+          ]
+        }
+      },
+      "setup_attempt_payment_method_details_card": {
+        "description": "",
+        "properties": {
+          "three_d_secure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/three_d_secure_details"
+              }
+            ],
+            "description": "Populated if this authorization used 3D Secure authentication.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "three_d_secure"
+        ],
+        "title": "setup_attempt_payment_method_details_card",
+        "type": "object",
+        "x-expandableFields": [
+          "three_d_secure"
+        ],
+        "x-stripeResource": {
+          "class_name": "Card",
+          "in_class": "setup_attempt_payment_method_details"
+        }
+      },
       "setup_intent": {
         "description": "A SetupIntent guides you through the process of setting up and saving a customer's payment credentials for future payments.\nFor example, you could use a SetupIntent to set up and save your customer's card without immediately collecting a payment.\nLater, you can use [PaymentIntents](https://stripe.com/docs/api#payment_intents) to drive the payment flow.\n\nCreate a SetupIntent as soon as you're ready to collect your customer's payment credentials.\nDo not maintain long-lived, unconfirmed SetupIntents as they may no longer be valid.\nThe SetupIntent then transitions through multiple [statuses](https://stripe.com/docs/payments/intents#intent-statuses) as it guides\nyou through the setup process.\n\nSuccessful SetupIntents result in payment credentials that are optimized for future payments.\nFor example, cardholders in [certain regions](/guides/strong-customer-authentication) may need to be run through\n[Strong Customer Authentication](https://stripe.com/docs/strong-customer-authentication) at the time of payment method collection\nin order to streamline later [off-session payments](https://stripe.com/docs/payments/setup-intents).\nIf the SetupIntent is used with a [Customer](https://stripe.com/docs/api#setup_intent_object-customer), upon success,\nit will automatically attach the resulting payment method to that Customer.\nWe recommend using SetupIntents or [setup_future_usage](https://stripe.com/docs/api#payment_intent_object-setup_future_usage) on\nPaymentIntents to save payment methods in order to prevent saving invalid or unoptimized payment methods.\n\nBy using SetupIntents, you ensure that your customers experience the minimum set of required friction,\neven as regulations change over time.\n\nRelated guide: [Setup Intents API](https://stripe.com/docs/payments/setup-intents).",
         "properties": {
@@ -26887,6 +27278,26 @@
             ],
             "description": "The error encountered in the previous SetupIntent confirmation.",
             "nullable": true
+          },
+          "latest_attempt": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/setup_attempt"
+              }
+            ],
+            "description": "The most recent SetupAttempt for this SetupIntent.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/setup_attempt"
+                }
+              ]
+            }
           },
           "livemode": {
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
@@ -27041,6 +27452,7 @@
           "description",
           "id",
           "last_setup_error",
+          "latest_attempt",
           "livemode",
           "mandate",
           "metadata",
@@ -27060,6 +27472,7 @@
           "application",
           "customer",
           "last_setup_error",
+          "latest_attempt",
           "mandate",
           "next_action",
           "on_behalf_of",
@@ -34704,6 +35117,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "oxxo_payments": {
+                        "description": "The oxxo_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "tax_reporting_us_1099_k": {
                         "description": "The tax_reporting_us_1099_k capability.",
                         "properties": {
@@ -35857,6 +36281,17 @@
                       },
                       "legacy_payments": {
                         "description": "The legacy_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "oxxo_payments": {
+                        "description": "The oxxo_payments capability.",
                         "properties": {
                           "requested": {
                             "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
@@ -40172,7 +40607,7 @@
             "style": "form"
           },
           {
-            "description": "Only returns transactions of the given type. One of: `adjustment`, `advance`, `advance_funding`, `anticipation_repayment`, `application_fee`, `application_fee_refund`, `charge`, `connect_collection_transfer`, `issuing_authorization_hold`, `issuing_authorization_release`, `issuing_dispute`, `issuing_transaction`, `payment`, `payment_failure_refund`, `payment_refund`, `payout`, `payout_cancel`, `payout_failure`, `refund`, `refund_failure`, `reserve_transaction`, `reserved_funds`, `stripe_fee`, `stripe_fx_fee`, `tax_fee`, `topup`, `topup_reversal`, `transfer`, `transfer_cancel`, `transfer_failure`, or `transfer_refund`.",
+            "description": "Only returns transactions of the given type. One of: `adjustment`, `advance`, `advance_funding`, `anticipation_repayment`, `application_fee`, `application_fee_refund`, `charge`, `connect_collection_transfer`, `contribution`, `issuing_authorization_hold`, `issuing_authorization_release`, `issuing_dispute`, `issuing_transaction`, `payment`, `payment_failure_refund`, `payment_refund`, `payout`, `payout_cancel`, `payout_failure`, `refund`, `refund_failure`, `reserve_transaction`, `reserved_funds`, `stripe_fee`, `stripe_fx_fee`, `tax_fee`, `topup`, `topup_reversal`, `transfer`, `transfer_cancel`, `transfer_failure`, or `transfer_refund`.",
             "in": "query",
             "name": "type",
             "required": false,
@@ -42165,7 +42600,7 @@
                               "type": "integer"
                             },
                             "unit_amount_decimal": {
-                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                              "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                               "format": "decimal",
                               "type": "string"
                             }
@@ -43954,11 +44389,11 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** representing the total amount of the credit note.",
+                    "description": "The integer amount in %s representing the total amount of the credit note.",
                     "type": "integer"
                   },
                   "credit_amount": {
-                    "description": "The integer amount in **%s** representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
+                    "description": "The integer amount in %s representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
                     "type": "integer"
                   },
                   "expand": {
@@ -44026,11 +44461,11 @@
                           "type": "string"
                         },
                         "unit_amount": {
-                          "description": "The integer unit amount in **%s** of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
+                          "description": "The integer unit amount in %s of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
                           "type": "integer"
                         },
                         "unit_amount_decimal": {
-                          "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                          "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                           "format": "decimal",
                           "type": "string"
                         }
@@ -44059,7 +44494,7 @@
                     "type": "object"
                   },
                   "out_of_band_amount": {
-                    "description": "The integer amount in **%s** representing the amount that is credited outside of Stripe.",
+                    "description": "The integer amount in %s representing the amount that is credited outside of Stripe.",
                     "type": "integer"
                   },
                   "reason": {
@@ -44077,7 +44512,7 @@
                     "type": "string"
                   },
                   "refund_amount": {
-                    "description": "The integer amount in **%s** representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
+                    "description": "The integer amount in %s representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
                     "type": "integer"
                   }
                 },
@@ -44120,7 +44555,7 @@
         "operationId": "GetCreditNotesPreview",
         "parameters": [
           {
-            "description": "The integer amount in **%s** representing the total amount of the credit note.",
+            "description": "The integer amount in %s representing the total amount of the credit note.",
             "in": "query",
             "name": "amount",
             "required": false,
@@ -44130,7 +44565,7 @@
             "style": "form"
           },
           {
-            "description": "The integer amount in **%s** representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
+            "description": "The integer amount in %s representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
             "in": "query",
             "name": "credit_amount",
             "required": false,
@@ -44222,11 +44657,11 @@
                     "type": "string"
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
+                    "description": "The integer unit amount in %s of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -44270,7 +44705,7 @@
             "style": "deepObject"
           },
           {
-            "description": "The integer amount in **%s** representing the amount that is credited outside of Stripe.",
+            "description": "The integer amount in %s representing the amount that is credited outside of Stripe.",
             "in": "query",
             "name": "out_of_band_amount",
             "required": false,
@@ -44306,7 +44741,7 @@
             "style": "form"
           },
           {
-            "description": "The integer amount in **%s** representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
+            "description": "The integer amount in %s representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
             "in": "query",
             "name": "refund_amount",
             "required": false,
@@ -44361,7 +44796,7 @@
         "operationId": "GetCreditNotesPreviewLines",
         "parameters": [
           {
-            "description": "The integer amount in **%s** representing the total amount of the credit note.",
+            "description": "The integer amount in %s representing the total amount of the credit note.",
             "in": "query",
             "name": "amount",
             "required": false,
@@ -44371,7 +44806,7 @@
             "style": "form"
           },
           {
-            "description": "The integer amount in **%s** representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
+            "description": "The integer amount in %s representing the amount to credit the customer's balance, which will be automatically applied to their next invoice.",
             "in": "query",
             "name": "credit_amount",
             "required": false,
@@ -44484,11 +44919,11 @@
                     "type": "string"
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
+                    "description": "The integer unit amount in %s of the credit note line item. This `unit_amount` will be multiplied by the quantity to get the full amount to credit for this line item. Only valid when `type` is `custom_line_item`.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -44532,7 +44967,7 @@
             "style": "deepObject"
           },
           {
-            "description": "The integer amount in **%s** representing the amount that is credited outside of Stripe.",
+            "description": "The integer amount in %s representing the amount that is credited outside of Stripe.",
             "in": "query",
             "name": "out_of_band_amount",
             "required": false,
@@ -44568,7 +45003,7 @@
             "style": "form"
           },
           {
-            "description": "The integer amount in **%s** representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
+            "description": "The integer amount in %s representing the amount to refund. If set, a refund will be created for the charge associated with the invoice.",
             "in": "query",
             "name": "refund_amount",
             "required": false,
@@ -50136,7 +50571,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** of the charge to be applied to the upcoming invoice. Passing in a negative `amount` will reduce the `amount_due` on the invoice.",
+                    "description": "The integer amount in %s of the charge to be applied to the upcoming invoice. Passing in a negative `amount` will reduce the `amount_due` on the invoice.",
                     "type": "integer"
                   },
                   "currency": {
@@ -50263,7 +50698,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -50296,11 +50731,11 @@
                     }
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This `unit_amount` will be multiplied by the quantity to get the full amount. Passing in a negative `unit_amount` will reduce the `amount_due` on the invoice.",
+                    "description": "The integer unit amount in %s of the charge to be applied to the upcoming invoice. This `unit_amount` will be multiplied by the quantity to get the full amount. Passing in a negative `unit_amount` will reduce the `amount_due` on the invoice.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -50508,7 +50943,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** of the charge to be applied to the upcoming invoice. If you want to apply a credit to the customer's account, pass a negative amount.",
+                    "description": "The integer amount in %s of the charge to be applied to the upcoming invoice. If you want to apply a credit to the customer's account, pass a negative amount.",
                     "type": "integer"
                   },
                   "description": {
@@ -50621,7 +51056,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -50659,11 +51094,11 @@
                     "description": "The tax rates which apply to the invoice item. When set, the `default_tax_rates` on the invoice do not apply to this invoice item. Pass an empty string to remove previously-defined tax rates."
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
+                    "description": "The integer unit amount in %s of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -51295,7 +51730,7 @@
               "items": {
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** of previewed invoice item.",
+                    "description": "The integer amount in %s of previewed invoice item.",
                     "type": "integer"
                   },
                   "currency": {
@@ -51409,7 +51844,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -51446,11 +51881,11 @@
                     ]
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
+                    "description": "The integer unit amount in %s of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal string with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -51695,7 +52130,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -51956,7 +52391,7 @@
               "items": {
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** of previewed invoice item.",
+                    "description": "The integer amount in %s of previewed invoice item.",
                     "type": "integer"
                   },
                   "currency": {
@@ -52070,7 +52505,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -52107,11 +52542,11 @@
                     ]
                   },
                   "unit_amount": {
-                    "description": "The integer unit amount in **%s** of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
+                    "description": "The integer unit amount in %s of the charge to be applied to the upcoming invoice. This unit_amount will be multiplied by the quantity to get the full amount. If you want to apply a credit to the customer's account, pass a negative unit_amount.",
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal string with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -52377,7 +52812,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -62810,7 +63245,7 @@
                     "type": "integer"
                   },
                   "application_fee_amount": {
-                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. Must be greater than zero when provided. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).",
+                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).",
                     "type": "integer"
                   },
                   "capture_method": {
@@ -63180,6 +63615,13 @@
                         "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
                         "type": "object"
                       },
+                      "oxxo": {
+                        "description": "If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
@@ -63235,6 +63677,7 @@
                           "fpx",
                           "giropay",
                           "ideal",
+                          "oxxo",
                           "p24",
                           "sepa_debit",
                           "sofort"
@@ -63395,6 +63838,27 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "oxxo": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "expires_after_days": {
+                                "description": "The number of calendar days before an OXXO voucher expires. For example, if you create an OXXO voucher on Monday and you set expires_after_days to 2, the OXXO invoice will expire on Wednesday at 23:59 America/Mexico_City time.",
+                                "type": "integer"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -63754,7 +64218,7 @@
                         "type": "string"
                       }
                     ],
-                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. Must be greater than zero when provided. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts)."
+                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts)."
                   },
                   "currency": {
                     "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
@@ -64024,6 +64488,13 @@
                         "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
                         "type": "object"
                       },
+                      "oxxo": {
+                        "description": "If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
@@ -64079,6 +64550,7 @@
                           "fpx",
                           "giropay",
                           "ideal",
+                          "oxxo",
                           "p24",
                           "sepa_debit",
                           "sofort"
@@ -64239,6 +64711,27 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "oxxo": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "expires_after_days": {
+                                "description": "The number of calendar days before an OXXO voucher expires. For example, if you create an OXXO voucher on Monday and you set expires_after_days to 2, the OXXO invoice will expire on Wednesday at 23:59 America/Mexico_City time.",
+                                "type": "integer"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -64561,7 +65054,7 @@
                     "type": "integer"
                   },
                   "application_fee_amount": {
-                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. Must be greater than zero when provided. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).",
+                    "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).",
                     "type": "integer"
                   },
                   "expand": {
@@ -65050,6 +65543,13 @@
                         "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
                         "type": "object"
                       },
+                      "oxxo": {
+                        "description": "If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
@@ -65105,6 +65605,7 @@
                           "fpx",
                           "giropay",
                           "ideal",
+                          "oxxo",
                           "p24",
                           "sepa_debit",
                           "sofort"
@@ -65265,6 +65766,27 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "oxxo": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "expires_after_days": {
+                                "description": "The number of calendar days before an OXXO voucher expires. For example, if you create an OXXO voucher on Monday and you set expires_after_days to 2, the OXXO invoice will expire on Wednesday at 23:59 America/Mexico_City time.",
+                                "type": "integer"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -65521,11 +66043,11 @@
                 "fpx",
                 "giropay",
                 "ideal",
+                "oxxo",
                 "p24",
                 "sepa_debit",
                 "sofort"
               ],
-              "maxLength": 5000,
               "type": "string",
               "x-stripeBypassValidation": true
             },
@@ -65662,6 +66184,10 @@
                   "style": "deepObject"
                 },
                 "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "oxxo": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -65969,6 +66495,13 @@
                     "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
                     "type": "object"
                   },
+                  "oxxo": {
+                    "description": "If this is an `oxxo` PaymentMethod, this hash contains details about the OXXO payment method.",
+                    "properties": {
+                    },
+                    "title": "param",
+                    "type": "object"
+                  },
                   "p24": {
                     "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                     "properties": {
@@ -66030,6 +66563,7 @@
                       "fpx",
                       "giropay",
                       "ideal",
+                      "oxxo",
                       "p24",
                       "sepa_debit",
                       "sofort"
@@ -67404,7 +67938,7 @@
                           "type": "integer"
                         },
                         "unit_amount_decimal": {
-                          "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                          "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                           "format": "decimal",
                           "type": "string"
                         },
@@ -68186,7 +68720,7 @@
                           "type": "integer"
                         },
                         "unit_amount_decimal": {
-                          "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                          "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                           "format": "decimal",
                           "type": "string"
                         },
@@ -68257,7 +68791,7 @@
                     "type": "integer"
                   },
                   "unit_amount_decimal": {
-                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
+                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                     "format": "decimal",
                     "type": "string"
                   }
@@ -72054,6 +72588,7 @@
                           "charge_failure",
                           "connect_collection_transfer",
                           "connect_reserved_funds",
+                          "contribution",
                           "dispute",
                           "dispute_reversal",
                           "fee",
@@ -73244,6 +73779,182 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/review"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/setup_attempts": {
+      "get": {
+        "description": "<p>Returns a list of SetupAttempts associated with a provided SetupIntent.</p>",
+        "operationId": "GetSetupAttempts",
+        "parameters": [
+          {
+            "description": "A filter on the list, based on the object `created` field. The value\ncan be a string with an integer Unix timestamp, or it can be a\ndictionary with a number of different query options.",
+            "explode": true,
+            "in": "query",
+            "name": "created",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "gt": {
+                      "description": "Minimum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "gte": {
+                      "description": "Minimum value to filter by (inclusive)",
+                      "type": "integer"
+                    },
+                    "lt": {
+                      "description": "Maximum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "lte": {
+                      "description": "Maximum value to filter by (inclusive)",
+                      "type": "integer"
+                    }
+                  },
+                  "title": "range_query_specs",
+                  "type": "object"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+            "in": "query",
+            "name": "ending_before",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return SetupAttempts created by the SetupIntent specified by\nthis ID.",
+            "in": "query",
+            "name": "setup_intent",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+            "in": "query",
+            "name": "starting_after",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "",
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/setup_attempt"
+                      },
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "True if this list has another page of items after this one that can be fetched.",
+                      "type": "boolean"
+                    },
+                    "object": {
+                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
+                      "enum": [
+                        "list"
+                      ],
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL where this list can be accessed.",
+                      "maxLength": 5000,
+                      "pattern": "^/v1/setup_attempts",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more",
+                    "object",
+                    "url"
+                  ],
+                  "title": "PaymentFlowsSetupIntentSetupAttemptList",
+                  "type": "object",
+                  "x-expandableFields": [
+                    "data"
+                  ]
                 }
               }
             },
@@ -76557,7 +77268,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -76945,7 +77656,7 @@
                         "type": "integer"
                       },
                       "unit_amount_decimal": {
-                        "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                        "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                         "format": "decimal",
                         "type": "string"
                       }
@@ -77742,7 +78453,7 @@
                                     "type": "integer"
                                   },
                                   "unit_amount_decimal": {
-                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                                     "format": "decimal",
                                     "type": "string"
                                   }
@@ -77941,7 +78652,7 @@
                                     "type": "integer"
                                   },
                                   "unit_amount_decimal": {
-                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                                     "format": "decimal",
                                     "type": "string"
                                   }
@@ -78351,7 +79062,7 @@
                                     "type": "integer"
                                   },
                                   "unit_amount_decimal": {
-                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                                     "format": "decimal",
                                     "type": "string"
                                   }
@@ -78560,7 +79271,7 @@
                                     "type": "integer"
                                   },
                                   "unit_amount_decimal": {
-                                    "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                                    "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                                     "format": "decimal",
                                     "type": "string"
                                   }
@@ -79078,7 +79789,7 @@
             "style": "form"
           },
           {
-            "description": "The status of the subscriptions to retrieve. One of: `incomplete`, `incomplete_expired`, `trialing`, `active`, `past_due`, `unpaid`, `canceled`, or `all`. Passing in a value of `canceled` will return all canceled subscriptions, including those belonging to deleted customers. Passing in a value of `all` will return subscriptions of all statuses.",
+            "description": "The status of the subscriptions to retrieve. Passing in a value of `canceled` will return all canceled subscriptions, including those belonging to deleted customers. Pass `ended` to find subscriptions that are canceled and subscriptions that are expired due to [incomplete payment](https://stripe.com/docs/billing/subscriptions/overview#subscription-statuses). Passing in a value of `all` will return subscriptions of all statuses.",
             "in": "query",
             "name": "status",
             "required": false,
@@ -79245,7 +79956,7 @@
                               "type": "integer"
                             },
                             "unit_amount_decimal": {
-                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                              "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                               "format": "decimal",
                               "type": "string"
                             }
@@ -79469,7 +80180,7 @@
                               "type": "integer"
                             },
                             "unit_amount_decimal": {
-                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                              "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                               "format": "decimal",
                               "type": "string"
                             }
@@ -79906,7 +80617,7 @@
                               "type": "integer"
                             },
                             "unit_amount_decimal": {
-                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                              "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                               "format": "decimal",
                               "type": "string"
                             }
@@ -80157,7 +80868,7 @@
                               "type": "integer"
                             },
                             "unit_amount_decimal": {
-                              "description": "Same as `unit_amount`, but accepts a decimal value with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set, but at least one is required.",
+                              "description": "Same as `unit_amount`, but accepts a decimal value in %s with at most 12 decimal places. Only one of `unit_amount` and `unit_amount_decimal` can be set.",
                               "format": "decimal",
                               "type": "string"
                             }

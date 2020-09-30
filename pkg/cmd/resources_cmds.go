@@ -66,6 +66,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rRefundsCmd := resource.NewResourceCmd(rootCmd, "refunds")
 	rReviewsCmd := resource.NewResourceCmd(rootCmd, "reviews")
 	rScheduledQueryRunsCmd := resource.NewResourceCmd(rootCmd, "scheduled_query_runs")
+	rSetupAttemptsCmd := resource.NewResourceCmd(rootCmd, "setup_attempts")
 	rSetupIntentsCmd := resource.NewResourceCmd(rootCmd, "setup_intents")
 	rSkusCmd := resource.NewResourceCmd(rootCmd, "skus")
 	rSourcesCmd := resource.NewResourceCmd(rootCmd, "sources")
@@ -945,6 +946,13 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rScheduledQueryRunsCmd.Cmd, "retrieve", "/v1/sigma/scheduled_query_runs/{scheduled_query_run}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rSetupAttemptsCmd.Cmd, "list", "/v1/setup_attempts", http.MethodGet, map[string]string{
+		"created":        "integer",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"setup_intent":   "string",
+		"starting_after": "string",
+	}, &Config)
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "cancel", "/v1/setup_intents/{intent}/cancel", http.MethodPost, map[string]string{
 		"cancellation_reason": "string",
 	}, &Config)
