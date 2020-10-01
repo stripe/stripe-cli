@@ -270,7 +270,7 @@ func (c *connection) readPump(onMessage func([]byte), onDisconnect func()) {
 
 	c.conn.SetPongHandler(func(string) error {
 		c.log.WithFields(log.Fields{
-			"prefix": "websocket.Client.readPump",
+			"prefix": "websocket.Connection.readPump",
 		}).Debug("Received pong message")
 
 		err := c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
@@ -310,7 +310,7 @@ func (c *connection) readPump(onMessage func([]byte), onDisconnect func()) {
 			}
 
 			c.log.WithFields(log.Fields{
-				"prefix":  "websocket.Client.readPump",
+				"prefix":  "websocket.Connection.readPump",
 				"message": string(data),
 			}).Debug("Incoming message")
 
