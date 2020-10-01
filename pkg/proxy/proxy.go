@@ -174,7 +174,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		return err
 	}
 	connect := func() (websocket.Connection, error) {
-		for _ = range []int{1, 2, 3} {
+		for range []int{1, 2, 3} {
 			//TODO: fix this PongWait
 			conn, resp, err := websocket.ConnectWebsocket(ctx, session, websocket.ConnectWebsocketConfig{
 				Dialer:    dialer,

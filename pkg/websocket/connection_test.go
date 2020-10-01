@@ -62,12 +62,16 @@ func TestConnectionRun(t *testing.T) {
 	require.NoError(t, err)
 
 	myConn := connection{
-		conn: conn,
-		Log:  log.New(),
+		conn:       conn,
+		pongWait:   1 * time.Second,
+		writeWait:  1 * time.Second,
+		pingPeriod: 1 * time.Second,
+		log:        log.New(),
 	}
 
 	var send func(io.Reader) error
 	gotMessageFromServer := make(chan struct{})
+
 	onMessage := func(msg []byte) {
 		close(gotMessageFromServer)
 		send(bytes.NewReader([]byte("\"fromClient\"")))
@@ -107,8 +111,8 @@ func TestConnectionRunHandlesExpiredReadDeadlines(t *testing.T) {
 
 	myConn := connection{
 		conn:     conn,
-		PongWait: time.Second,
-		Log:      logger,
+		pongWait: time.Second,
+		log:      logger,
 	}
 	onMessage := func(msg []byte) {
 		t.Fatal(string(msg))
@@ -144,12 +148,12 @@ type dummyConnection struct {
 	sent              [][]byte
 	triggerError      error
 	triggeredError    chan (struct{})
-	triggerMessage    func(io.Reader)
+	triggerMessage    func([]byte)
 	triggerDisconnect func()
 	onConnect         func()
 }
 
-func (dc *dummyConnection) Run(ctx context.Context, onMessage func(io.Reader), onDisconnect func()) func(io.Reader) error {
+func (dc *dummyConnection) Run(ctx context.Context, onMessage func([]byte), onDisconnect func()) func(io.Reader) error {
 	dc.sent = [][]byte{}
 	dc.triggerDisconnect = onDisconnect
 	dc.triggerMessage = onMessage
@@ -202,8 +206,7 @@ func TestConnectionManagerRun(t *testing.T) {
 
 	var messages [][]byte
 	gotMessage := make(chan struct{})
-	onMessage := func(r io.Reader) {
-		msg, _ := ioutil.ReadAll(r)
+	onMessage := func(msg []byte) {
 		messages = append(messages, msg)
 		go func() {
 			gotMessage <- struct{}{}
@@ -233,7 +236,7 @@ func TestConnectionManagerRun(t *testing.T) {
 		// our `onMessage` handler.
 		waitFor(t, firstConnected, time.Second*1)
 		msg := []byte("foo")
-		firstConnection.triggerMessage(bytes.NewReader(msg))
+		firstConnection.triggerMessage(msg)
 		waitFor(t, gotMessage, time.Second*1)
 		require.Equal(t, 1, len(messages))
 		require.Equal(t, msg, messages[0])
@@ -270,7 +273,7 @@ func TestConnectionManagerRun(t *testing.T) {
 		sentMsg := []byte("sent")
 		receivedMsg := []byte("received")
 		send(bytes.NewReader(sentMsg))
-		secondConnection.triggerMessage(bytes.NewReader(receivedMsg))
+		secondConnection.triggerMessage(receivedMsg)
 		waitFor(t, secondConnection.gotSentMessage, time.Second)
 		waitFor(t, gotMessage, time.Second)
 		require.Equal(t, 3, len(secondConnection.sent))
