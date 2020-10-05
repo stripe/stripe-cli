@@ -85,6 +85,58 @@ func TestConnectionRun(t *testing.T) {
 	waitFor(t, gotMessageFromClient, time.Second*2)
 }
 
+func TestConnectionRunPing(t *testing.T) {
+	upgrader := ws.Upgrader{}
+	gotMessageFromClient := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+
+		msg := []byte("\"hi\"")
+
+		err = c.WriteMessage(ws.TextMessage, msg)
+		require.NoError(t, err)
+
+		go func() {
+			_, reader, err := c.NextReader()
+			require.NoError(t, err)
+			_, _ = ioutil.ReadAll(reader)
+			close(gotMessageFromClient)
+		}()
+	}))
+
+	defer ts.Close()
+	ctx := context.Background()
+	url := "ws" + strings.TrimPrefix(ts.URL, "http")
+
+	dialer := ws.Dialer{}
+	conn, _, err := dialer.DialContext(ctx, url, http.Header{})
+	require.NoError(t, err)
+
+	myConn := connection{
+		conn:       conn,
+		pongWait:   1 * time.Second,
+		writeWait:  1 * time.Second,
+		pingPeriod: 1 * time.Second,
+		log:        log.New(),
+	}
+
+	var send func(io.Reader) error
+	gotMessageFromServer := make(chan struct{})
+
+	onMessage := func(msg []byte) {
+		close(gotMessageFromServer)
+		send(bytes.NewReader([]byte("\"fromClient\"")))
+	}
+
+	onDisconnect := func() {}
+
+	send = myConn.Run(context.Background(), onMessage, onDisconnect)
+
+	waitFor(t, gotMessageFromServer, time.Second*2)
+	waitFor(t, gotMessageFromClient, time.Second*2)
+}
+
 func TestConnectionRunHandlesExpiredReadDeadlines(t *testing.T) {
 	upgrader := ws.Upgrader{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

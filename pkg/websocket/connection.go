@@ -125,6 +125,35 @@ type connection struct {
 	pingPeriod time.Duration
 }
 
+type ConnectWebsocketConfig struct {
+	Dialer    *ws.Dialer
+	NoWSS     bool
+	Logger    *log.Logger
+	PongWait  time.Duration
+	WriteWait time.Duration
+}
+
+func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig) (Connection, *http.Response, error) {
+	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, cfg.NoWSS)
+
+	cfg.Logger.WithFields(log.Fields{
+		"prefix": "websocket.connection.ConnectWebsocket",
+		"url":    url,
+	}).Debug("Dialing websocket")
+
+	conn, resp, err := cfg.Dialer.DialContext(ctx, url, header)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &connection{
+		conn:       conn,
+		log:        cfg.Logger,
+		pongWait:   cfg.PongWait,
+		writeWait:  cfg.WriteWait,
+		pingPeriod: time.Second,
+	}, resp, nil
+}
+
 // Run starts the "readPump" for dispatching incoming messages from the
 // websocket connection to the onMessage handler, and returns the "send"
 // function which can be used to send messages over this websocket connection.
@@ -238,13 +267,6 @@ func (c *connection) pingPong(sendPing func() error, onDisconnect func()) {
 				err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 				if err != nil {
 					c.log.Debug("SetWriteDeadline error: ", err)
-				}
-				if err = c.conn.WriteMessage(ws.PingMessage, nil); err != nil {
-					if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
-						c.log.Error("write error: ", err)
-					}
-					onDisconnect()
-					return
 				}
 			}
 			c.log.Debug("ticked")
