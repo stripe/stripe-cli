@@ -180,7 +180,7 @@ func wsHeader(baseURL string, webSocketID string, webSocketAuthorizedFeature str
 	return url, header
 }
 
-type ConnectWebsocketConfig struct {
+type ConnectWebsocketConfig2 struct {
 	Dialer    *ws.Dialer
 	NoWSS     bool
 	Logger    *log.Logger
@@ -188,7 +188,7 @@ type ConnectWebsocketConfig struct {
 	WriteWait time.Duration
 }
 
-func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig) (Connection, *http.Response, error) {
+func ConnectWebsocket2(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig) (Connection, *http.Response, error) {
 	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, cfg.NoWSS)
 
 	cfg.Logger.WithFields(log.Fields{
