@@ -3,7 +3,6 @@ package logtailing
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -65,7 +64,6 @@ type Tailer struct {
 	cfg *Config
 
 	stripeAuthClient *stripeauth.Client
-	webSocketClient  *websocket.Client
 
 	interruptCh chan os.Signal
 }
@@ -152,42 +150,6 @@ func readWSConnectErrorMessage(resp *http.Response) string {
 	return se.InnerError.Message
 }
 
-var unknownIDMessage string = "Unknown WebSocket ID."
-
-// ErrUnknownID can occur when the websocket session is expired or invalid
-var ErrUnknownID error = errors.New(unknownIDMessage)
-
-func isExpirationErr(err error, resp *http.Response) bool {
-	if err == nil || resp == nil {
-		return false
-	}
-	message := readWSConnectErrorMessage(resp)
-	return message == unknownIDMessage
-}
-func (t *Tailer) refreshSession() func(context.Context, error, *http.Response) (*stripeauth.StripeCLISession, error) {
-	warned := false
-	return func(ctx context.Context, err error, resp *http.Response) (*stripeauth.StripeCLISession, error) {
-		if err != nil {
-			if !isExpirationErr(err, resp) {
-				return nil, nil
-			}
-		}
-		session, err := t.createSession(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if session.DisplayConnectFilterWarning && !warned {
-			color := ansi.Color(os.Stdout)
-			fmt.Printf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.\n", color.Yellow("Warning"))
-			// Only display this warning once
-			warned = true
-		}
-
-		return session, nil
-	}
-}
-
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
 	ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
@@ -198,6 +160,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	// TODO: replace that with a ConnectionManager
 	client := websocket.NewClient(
 		&websocket.Config{
 			Log:   t.cfg.Log,
@@ -209,7 +172,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 		},
 	)
 
-	events := client.Run(ctx, t.refreshSession())
+	events := client.Run(ctx, nil)
 
 	for {
 		event := <-events
@@ -218,44 +181,6 @@ func (t *Tailer) Run(ctx context.Context) error {
 		}
 		t.processRequestLogEvent(event.Msg)
 	}
-}
-
-func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
-	var session *stripeauth.StripeCLISession
-
-	var err error
-
-	exitCh := make(chan struct{})
-
-	filters, err := jsonifyFilters(t.cfg.Filters)
-	if err != nil {
-		t.cfg.Log.Fatalf("Error while converting log filters to JSON encoding: %v", err)
-	}
-
-	go func() {
-		// Try to authorize at least 5 times before failing. Sometimes we have random
-		// transient errors that we just need to retry for.
-		for i := 0; i <= 5; i++ {
-			session, err = t.stripeAuthClient.Authorize(ctx, t.cfg.DeviceName, t.cfg.WebSocketFeature, &filters)
-
-			if err == nil {
-				exitCh <- struct{}{}
-				return
-			}
-
-			select {
-			case <-ctx.Done():
-				exitCh <- struct{}{}
-				return
-			case <-time.After(1 * time.Second):
-			}
-		}
-
-		exitCh <- struct{}{}
-	}()
-	<-exitCh
-
-	return session, err
 }
 
 func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {

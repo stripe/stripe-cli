@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -188,7 +187,7 @@ type ConnectWebsocketConfig2 struct {
 	WriteWait time.Duration
 }
 
-func ConnectWebsocket2(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig) (Connection, *http.Response, error) {
+func ConnectWebsocket2(ctx context.Context, session *stripeauth.StripeCLISession, cfg ConnectWebsocketConfig2) (Connection, *http.Response, error) {
 	url, header := wsHeader(session.WebSocketURL, session.WebSocketID, session.WebSocketAuthorizedFeature, cfg.NoWSS)
 
 	cfg.Logger.WithFields(log.Fields{
@@ -439,27 +438,4 @@ var subprotocols = [...]string{"stripecli-devproxy-v1"}
 
 func defaultGetReconnectInterval(session *stripeauth.StripeCLISession) time.Duration {
 	return 60 * time.Second
-}
-
-func NewWebSocketDialer(unixSocket string) *ws.Dialer {
-	var dialer *ws.Dialer
-
-	if unixSocket != "" {
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
-		}
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			NetDial:          dialFunc,
-			Subprotocols:     subprotocols[:],
-		}
-	} else {
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			Proxy:            http.ProxyFromEnvironment,
-			Subprotocols:     subprotocols[:],
-		}
-	}
-
-	return dialer
 }

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +18,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
+// Connection represents something such as a websocket connection, that can
+// transmit messages, receive messages and dies.
 type Connection interface {
 	// Run accepts "onMessage" and "onDisconnect" handlers, so the caller can be
 	// notified of incoming messages and disconnect events. It returns a "send"
@@ -32,7 +36,6 @@ type connection struct {
 }
 
 type ConnectWebsocketConfig struct {
-	Dialer    *ws.Dialer
 	NoWSS     bool
 	Logger    *log.Logger
 	PongWait  time.Duration
@@ -47,7 +50,8 @@ func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession,
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	conn, resp, err := cfg.Dialer.DialContext(ctx, url, header)
+	dialer := NewWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+	conn, resp, err := dialer.DialContext(ctx, url, header)
 	if err != nil {
 		return nil, resp, err
 	}
@@ -58,6 +62,29 @@ func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession,
 		writeWait:  cfg.WriteWait,
 		pingPeriod: time.Second,
 	}, resp, nil
+}
+
+func NewWebSocketDialer(unixSocket string) *ws.Dialer {
+	var dialer *ws.Dialer
+
+	if unixSocket != "" {
+		dialFunc := func(network, addr string) (net.Conn, error) {
+			return net.Dial("unix", unixSocket)
+		}
+		dialer = &ws.Dialer{
+			HandshakeTimeout: 10 * time.Second,
+			NetDial:          dialFunc,
+			Subprotocols:     subprotocols[:],
+		}
+	} else {
+		dialer = &ws.Dialer{
+			HandshakeTimeout: 10 * time.Second,
+			Proxy:            http.ProxyFromEnvironment,
+			Subprotocols:     subprotocols[:],
+		}
+	}
+
+	return dialer
 }
 
 // Run starts the "readPump" for dispatching incoming messages from the

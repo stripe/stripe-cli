@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +16,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
@@ -79,9 +77,9 @@ type Config struct {
 type Proxy struct {
 	cfg *Config
 
-	endpointClients  []*EndpointClient
-	stripeAuthClient *stripeauth.Client
-	webSocketClient  *websocket.Client
+	endpointClients []*EndpointClient
+
+	connectionManager *websocket.ConnectionManager
 
 	// Events is the supported event types for the command
 	events map[string]bool
@@ -104,97 +102,9 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 
 const maxConnectAttempts = 3
 
-type sessionRefresher = func(context.Context, error) (*stripeauth.StripeCLISession, error)
-type EventSource interface {
-	Run(context.Context, sessionRefresher) (chan websocket.IncomingMessage, error)
-}
-
-func readWSConnectErrorMessage(resp *http.Response) string {
-	if resp == nil {
-		return ""
-	}
-	if resp.Body == nil {
-		return ""
-	}
-
-	se := struct {
-		InnerError struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}{}
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return ""
-	}
-
-	err = json.Unmarshal(body, &se)
-	if err != nil {
-		return ""
-	}
-
-	return se.InnerError.Message
-}
-
-var unknownIDMessage string = "Unknown WebSocket ID."
-
-// ErrUnknownID can occur when the websocket session is expired or invalid
-var ErrUnknownID error = errors.New(unknownIDMessage)
-
-func isExpirationErr(err error, resp *http.Response) bool {
-	if err == nil || resp == nil {
-		return false
-	}
-	message := readWSConnectErrorMessage(resp)
-	return message == unknownIDMessage
-}
-
-func (p *Proxy) refreshSession(ctx context.Context, err error, resp *http.Response) (*stripeauth.StripeCLISession, error) {
-	if err != nil {
-		if !isExpirationErr(err, resp) {
-			return nil, nil
-		}
-	}
-	session, err := p.createSession(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return session, nil
-}
-
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	connectionManager := websocket.NewConnectionManager(&websocket.ConnectionManagerCfg{})
-	session, err := p.createSession(ctx)
-	dialer := websocket.NewWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
-	if err != nil {
-		return err
-	}
-	connect := func() (websocket.Connection, error) {
-		for range []int{1, 2, 3} {
-			//TODO: fix this PongWait
-			conn, resp, err := websocket.ConnectWebsocket(ctx, session, websocket.ConnectWebsocketConfig{
-				Dialer:    dialer,
-				NoWSS:     p.cfg.NoWSS,
-				Logger:    p.cfg.Log,
-				PongWait:  10 * time.Second,
-				WriteWait: 5 * time.Second,
-			})
-			if err != nil {
-				session, err = p.refreshSession(ctx, err, resp)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				return conn, nil
-			}
-		}
-		return nil, err
-	}
-
 	onMessage := func(b []byte) {
 		var msg websocket.IncomingMessage
 		if err := json.Unmarshal(b, &msg); err != nil {
@@ -204,12 +114,22 @@ func (p *Proxy) Run(ctx context.Context) error {
 		}
 		p.processWebhookEvent(msg)
 	}
+
 	onTerminate := func(err error) {
 		p.cfg.Log.Fatal("Terminating...", err)
 	}
-	send := connectionManager.Run(ctx, onMessage, onTerminate, connect)
-	responses := p.listenEndpoints()
 
+	connectionManager := websocket.NewConnectionManager(&websocket.ConnectionManagerCfg{
+		NoWSS:            p.cfg.NoWSS,
+		Logger:           p.cfg.Log,
+		DeviceName:       p.cfg.DeviceName,
+		WebSocketFeature: p.cfg.WebSocketFeature,
+		PongWait:         10 * time.Second,
+		WriteWait:        5 * time.Second,
+	})
+	sendToServer := connectionManager.Run(ctx, onMessage, onTerminate)
+
+	responses := p.listenEndpoints()
 	for {
 		response, ok := <-responses
 		if !ok {
@@ -219,52 +139,31 @@ func (p *Proxy) Run(ctx context.Context) error {
 		if err == nil {
 			b, err := json.Marshal(msg)
 			if err != nil {
-				send(bytes.NewReader(b))
+				sendToServer(bytes.NewReader(b))
 			}
 		}
 	}
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
+//
+// I don't like declaring a connectionManager here but it's kind of a edge case
+// where the listen cmd needs to create a session just to access the Secret.
+// Normally sessions are not needed without a connection, so it makes sense to
+// have this managed inside connectionManager.
 func (p *Proxy) GetSessionSecret(ctx context.Context) (string, error) {
-	session, err := p.createSession(ctx)
+	connectionManager := websocket.NewConnectionManager(&websocket.ConnectionManagerCfg{
+		NoWSS:            p.cfg.NoWSS,
+		Logger:           p.cfg.Log,
+		DeviceName:       p.cfg.DeviceName,
+		WebSocketFeature: p.cfg.WebSocketFeature,
+	})
+	session, err := connectionManager.CreateSession(ctx)
 	if err != nil {
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
+
 	return session.Secret, nil
-}
-
-func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession, error) {
-	var session *stripeauth.StripeCLISession
-
-	var err error
-
-	exitCh := make(chan struct{})
-
-	go func() {
-		// Try to authorize at least 5 times before failing. Sometimes we have random
-		// transient errors that we just need to retry for.
-		for i := 0; i <= 5; i++ {
-			session, err = p.stripeAuthClient.Authorize(ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
-
-			if err == nil {
-				exitCh <- struct{}{}
-				return
-			}
-
-			select {
-			case <-ctx.Done():
-				exitCh <- struct{}{}
-				return
-			case <-time.After(1 * time.Second):
-			}
-		}
-
-		exitCh <- struct{}{}
-	}()
-	<-exitCh
-
-	return session, err
 }
 
 func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
@@ -415,10 +314,6 @@ func New(cfg *Config, events []string) *Proxy {
 
 	p := &Proxy{
 		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
-		}),
 	}
 
 	if len(events) > 0 {
