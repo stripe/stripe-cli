@@ -567,6 +567,15 @@
             ],
             "type": "string"
           },
+          "bancontact_payments": {
+            "description": "The status of the Bancontact payments capability of the account, or whether the account can directly process Bancontact charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "card_issuing": {
             "description": "The status of the card issuing capability of the account, or whether you can use Issuing to distribute funds on cards",
             "enum": [
@@ -594,8 +603,35 @@
             ],
             "type": "string"
           },
+          "eps_payments": {
+            "description": "The status of the EPS payments capability of the account, or whether the account can directly process EPS charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "fpx_payments": {
             "description": "The status of the FPX payments capability of the account, or whether the account can directly process FPX charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "giropay_payments": {
+            "description": "The status of the giropay payments capability of the account, or whether the account can directly process giropay charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "ideal_payments": {
+            "description": "The status of the iDEAL payments capability of the account, or whether the account can directly process iDEAL charges.",
             "enum": [
               "active",
               "inactive",
@@ -623,6 +659,33 @@
           },
           "oxxo_payments": {
             "description": "The status of the OXXO payments capability of the account, or whether the account can directly process OXXO charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "p24_payments": {
+            "description": "The status of the P24 payments capability of the account, or whether the account can directly process P24 charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "sepa_debit_payments": {
+            "description": "The status of the SEPA Direct Debits payments capability of the account, or whether the account can directly process SEPA Direct Debits charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "sofort_payments": {
+            "description": "The status of the Sofort payments capability of the account, or whether the account can directly process Sofort charges.",
             "enum": [
               "active",
               "inactive",
@@ -1186,19 +1249,24 @@
         "description": "",
         "properties": {
           "date": {
-            "description": "The Unix timestamp marking when the Stripe Services Agreement was accepted by the account representative",
+            "description": "The Unix timestamp marking when the account representative accepted their service agreement",
             "format": "unix-time",
             "nullable": true,
             "type": "integer"
           },
           "ip": {
-            "description": "The IP address from which the Stripe Services Agreement was accepted by the account representative",
+            "description": "The IP address from which the account representative accepted their service agreement",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
+          "service_agreement": {
+            "description": "The user's service agreement type",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "user_agent": {
-            "description": "The user agent of the browser from which the Stripe Services Agreement was accepted by the account representative",
+            "description": "The user agent of the browser from which the account representative accepted their service agreement",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -3438,7 +3506,7 @@
             "type": "boolean"
           },
           "description": {
-            "description": "Card description. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "type": "string"
           },
@@ -3473,12 +3541,12 @@
             "type": "string"
           },
           "iin": {
-            "description": "Issuer identification number of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer identification number of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "type": "string"
           },
@@ -4497,12 +4565,12 @@
             "type": "string"
           },
           "risk_level": {
-            "description": "Stripe's evaluation of the riskiness of the payment. Possible values for evaluated payments are `normal`, `elevated`, `highest`. For non-card payments, and card-based payments predating the public assignment of risk levels, this field will have the value `not_assessed`. In the event of an error in the evaluation, this field will have the value `unknown`.",
+            "description": "Stripe Radar's evaluation of the riskiness of the payment. Possible values for evaluated payments are `normal`, `elevated`, `highest`. For non-card payments, and card-based payments predating the public assignment of risk levels, this field will have the value `not_assessed`. In the event of an error in the evaluation, this field will have the value `unknown`. This field is only available with Radar.",
             "maxLength": 5000,
             "type": "string"
           },
           "risk_score": {
-            "description": "Stripe's evaluation of the riskiness of the payment. Possible values for evaluated payments are between 0 and 100. For non-card payments, card-based payments predating the public assignment of risk scores, or in the event of an error during evaluation, this field will not be present. This field is only available with Radar for Fraud Teams.",
+            "description": "Stripe Radar's evaluation of the riskiness of the payment. Possible values for evaluated payments are between 0 and 100. For non-card payments, card-based payments predating the public assignment of risk scores, or in the event of an error during evaluation, this field will not be present. This field is only available with Radar for Fraud Teams.",
             "type": "integer"
           },
           "rule": {
@@ -5777,6 +5845,7 @@
           "customer",
           "customer_balance_transaction",
           "discount_amount",
+          "discount_amounts",
           "id",
           "invoice",
           "lines",
@@ -6041,6 +6110,7 @@
           "amount",
           "description",
           "discount_amount",
+          "discount_amounts",
           "id",
           "livemode",
           "object",
@@ -7334,6 +7404,9 @@
           "coupon",
           "customer",
           "deleted",
+          "id",
+          "invoice",
+          "invoice_item",
           "object",
           "promotion_code",
           "start",
@@ -8114,6 +8187,9 @@
           "coupon",
           "customer",
           "end",
+          "id",
+          "invoice",
+          "invoice_item",
           "object",
           "promotion_code",
           "start",
@@ -10268,7 +10344,7 @@
                 "$ref": "#/components/schemas/discount"
               }
             ],
-            "description": "Describes the current discount applied to this invoice, if there is one.",
+            "description": "Describes the current discount applied to this invoice, if there is one. Not populated if there are multiple discounts.",
             "nullable": true
           },
           "discounts": {
@@ -10578,6 +10654,7 @@
           "default_tax_rates",
           "description",
           "discount",
+          "discounts",
           "due_date",
           "ending_balance",
           "footer",
@@ -10602,6 +10679,7 @@
           "subtotal",
           "tax",
           "total",
+          "total_discount_amounts",
           "total_tax_amounts",
           "transfer_data",
           "webhooks_delivered_at"
@@ -11389,6 +11467,7 @@
           "date",
           "description",
           "discountable",
+          "discounts",
           "id",
           "invoice",
           "livemode",
@@ -17361,7 +17440,9 @@
           "amount",
           "currency",
           "description",
+          "discount_amounts",
           "discountable",
+          "discounts",
           "id",
           "livemode",
           "metadata",
@@ -19945,7 +20026,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -19970,13 +20051,13 @@
             "type": "string"
           },
           "iin": {
-            "description": "Issuer identification number of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer identification number of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20727,6 +20808,46 @@
             "nullable": true,
             "type": "string"
           },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
           "iban_last4": {
             "description": "Last four characters of the IBAN.",
             "maxLength": 5000,
@@ -20755,6 +20876,8 @@
           "bank_code",
           "bank_name",
           "bic",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
           "iban_last4",
           "preferred_language",
           "verified_name"
@@ -20762,7 +20885,8 @@
         "title": "payment_method_details_bancontact",
         "type": "object",
         "x-expandableFields": [
-
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
         ],
         "x-stripeResource": {
           "class_name": "Bancontact",
@@ -20794,7 +20918,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20820,7 +20944,7 @@
             "type": "string"
           },
           "iin": {
-            "description": "Issuer identification number of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer identification number of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20835,7 +20959,7 @@
             "nullable": true
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (Only for internal use only and not typically available in standard API requests.)",
+            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21031,6 +21155,12 @@
             "nullable": true,
             "type": "string"
           },
+          "description": {
+            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
           "emv_auth_data": {
             "description": "Authorization response cryptogram.",
             "maxLength": 5000,
@@ -21059,6 +21189,18 @@
           },
           "generated_card": {
             "description": "ID of a card PaymentMethod generated from the card_present PaymentMethod that may be attached to a Customer for future transactions. Only present if it was possible to generate a card PaymentMethod.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "iin": {
+            "description": "Issuer identification number of the card. (For internal use only and not typically available in standard API requests.)",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "issuer": {
+            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21601,6 +21743,46 @@
             "nullable": true,
             "type": "string"
           },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
           "iban_last4": {
             "description": "Last four characters of the IBAN.",
             "maxLength": 5000,
@@ -21617,13 +21799,16 @@
         "required": [
           "bank",
           "bic",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
           "iban_last4",
           "verified_name"
         ],
         "title": "payment_method_details_ideal",
         "type": "object",
         "x-expandableFields": [
-
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
         ],
         "x-stripeResource": {
           "class_name": "Ideal",
@@ -21647,6 +21832,12 @@
           },
           "country": {
             "description": "Two-letter ISO code representing the country of the card. You could use this attribute to get a sense of the international breakdown of cards you've collected.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "description": {
+            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21679,6 +21870,18 @@
           },
           "generated_card": {
             "description": "ID of a card PaymentMethod generated from the card_present PaymentMethod that may be attached to a Customer for future transactions. Only present if it was possible to generate a card PaymentMethod.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "iin": {
+            "description": "Issuer identification number of the card. (For internal use only and not typically available in standard API requests.)",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "issuer": {
+            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -22046,6 +22249,46 @@
             "nullable": true,
             "type": "string"
           },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this Charge.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
           "iban_last4": {
             "description": "Last four characters of the IBAN.",
             "maxLength": 5000,
@@ -22078,6 +22321,8 @@
           "bank_name",
           "bic",
           "country",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
           "iban_last4",
           "preferred_language",
           "verified_name"
@@ -22085,7 +22330,8 @@
         "title": "payment_method_details_sofort",
         "type": "object",
         "x-expandableFields": [
-
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
         ],
         "x-stripeResource": {
           "class_name": "Sofort",
@@ -22463,6 +22709,15 @@
             "nullable": true,
             "type": "string"
           },
+          "generated_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/sepa_debit_generated_from"
+              }
+            ],
+            "description": "Information about the object that generated this PaymentMethod.",
+            "nullable": true
+          },
           "last4": {
             "description": "Last four characters of the IBAN.",
             "maxLength": 5000,
@@ -22475,16 +22730,20 @@
           "branch_code",
           "country",
           "fingerprint",
+          "generated_from",
           "last4"
         ],
         "title": "payment_method_sepa_debit",
         "type": "object",
         "x-expandableFields": [
-
+          "generated_from"
         ],
         "x-stripeResource": {
           "class_name": "SepaDebit",
-          "in_class": "payment_method"
+          "in_class": "payment_method",
+          "inner_classes": [
+            "sepa_debit_generated_from"
+          ]
         }
       },
       "payment_method_sofort": {
@@ -23093,6 +23352,46 @@
             ],
             "type": "string"
           },
+          "original_payout": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payout"
+              }
+            ],
+            "description": "If the payout reverses another, this is the ID of the original payout.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payout"
+                }
+              ]
+            }
+          },
+          "reversed_by": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payout"
+              }
+            ],
+            "description": "If the payout was reversed, this is the ID of the payout that reverses this payout.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payout"
+                }
+              ]
+            }
+          },
           "source_type": {
             "description": "The source balance this payout came from. One of `card`, `fpx`, or `bank_account`.",
             "maxLength": 5000,
@@ -23145,7 +23444,9 @@
         "x-expandableFields": [
           "balance_transaction",
           "destination",
-          "failure_balance_transaction"
+          "failure_balance_transaction",
+          "original_payout",
+          "reversed_by"
         ],
         "x-resourceId": "payout",
         "x-stripeOperations": [
@@ -23248,6 +23549,32 @@
             "method_type": "custom",
             "operation": "post",
             "path": "/v1/payouts/{payout}/cancel",
+            "path_resource_variables": [
+              {
+                "method_parameter": "payout",
+                "name": "payout"
+              }
+            ]
+          },
+          {
+            "method_name": "reverse",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/payouts/{payout}/reverse",
+            "path_resource_variables": [
+              {
+                "name": "payout",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "reverse",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/payouts/{payout}/reverse",
             "path_resource_variables": [
               {
                 "method_parameter": "payout",
@@ -26932,6 +27259,65 @@
           ]
         }
       },
+      "sepa_debit_generated_from": {
+        "description": "",
+        "properties": {
+          "charge": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/charge"
+              }
+            ],
+            "description": "The ID of the Charge that generated this PaymentMethod, if any.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/charge"
+                }
+              ]
+            }
+          },
+          "setup_attempt": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/setup_attempt"
+              }
+            ],
+            "description": "The ID of the SetupAttempt that generated this PaymentMethod, if any.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/setup_attempt"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "charge",
+          "setup_attempt"
+        ],
+        "title": "sepa_debit_generated_from",
+        "type": "object",
+        "x-expandableFields": [
+          "charge",
+          "setup_attempt"
+        ],
+        "x-stripeResource": {
+          "class_name": "GeneratedFrom",
+          "in_class": "payment_method_sepa_debit"
+        }
+      },
       "setup_attempt": {
         "description": "A SetupAttempt describes one attempted confirmation of a SetupIntent,\nwhether that confirmation was successful or unsuccessful. You can use\nSetupAttempts to inspect details of a specific attempt at setting up a\npayment method using a SetupIntent.",
         "properties": {
@@ -27138,8 +27524,17 @@
       "setup_attempt_payment_method_details": {
         "description": "",
         "properties": {
+          "bancontact": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details_bancontact"
+          },
           "card": {
             "$ref": "#/components/schemas/setup_attempt_payment_method_details_card"
+          },
+          "ideal": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details_ideal"
+          },
+          "sofort": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details_sofort"
           },
           "type": {
             "description": "The type of the payment method used in the SetupIntent (e.g., `card`). An additional hash is included on `payment_method_details` with a name matching this value. It contains confirmation-specific information for the payment method.",
@@ -27153,14 +27548,126 @@
         "title": "SetupAttemptPaymentMethodDetails",
         "type": "object",
         "x-expandableFields": [
-          "card"
+          "bancontact",
+          "card",
+          "ideal",
+          "sofort"
         ],
         "x-stripeResource": {
           "class_name": "PaymentMethodDetails",
           "in_class": "setup_attempt",
           "inner_classes": [
-            "setup_attempt_payment_method_details_card"
+            "setup_attempt_payment_method_details_bancontact",
+            "setup_attempt_payment_method_details_card",
+            "setup_attempt_payment_method_details_ideal",
+            "setup_attempt_payment_method_details_sofort"
           ]
+        }
+      },
+      "setup_attempt_payment_method_details_bancontact": {
+        "description": "",
+        "properties": {
+          "bank_code": {
+            "description": "Bank code of bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "bank_name": {
+            "description": "Name of the bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "bic": {
+            "description": "Bank Identifier Code of the bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
+          "iban_last4": {
+            "description": "Last four characters of the IBAN.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "preferred_language": {
+            "description": "Preferred language of the Bancontact authorization page that the customer is redirected to.\nCan be one of `en`, `de`, `fr`, or `nl`",
+            "enum": [
+              "de",
+              "en",
+              "fr",
+              "nl"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "verified_name": {
+            "description": "Owner's verified full name. Values are verified or provided by Bancontact directly\n(if supported) at the time of authorization or settlement. They cannot be set or mutated.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_code",
+          "bank_name",
+          "bic",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
+          "iban_last4",
+          "preferred_language",
+          "verified_name"
+        ],
+        "title": "setup_attempt_payment_method_details_bancontact",
+        "type": "object",
+        "x-expandableFields": [
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
+        ],
+        "x-stripeResource": {
+          "class_name": "Bancontact",
+          "in_class": "setup_attempt_payment_method_details"
         }
       },
       "setup_attempt_payment_method_details_card": {
@@ -27186,6 +27693,225 @@
         ],
         "x-stripeResource": {
           "class_name": "Card",
+          "in_class": "setup_attempt_payment_method_details"
+        }
+      },
+      "setup_attempt_payment_method_details_ideal": {
+        "description": "",
+        "properties": {
+          "bank": {
+            "description": "The customer's bank. Can be one of `abn_amro`, `asn_bank`, `bunq`, `handelsbanken`, `ing`, `knab`, `moneyou`, `rabobank`, `regiobank`, `sns_bank`, `triodos_bank`, or `van_lanschot`.",
+            "enum": [
+              "abn_amro",
+              "asn_bank",
+              "bunq",
+              "handelsbanken",
+              "ing",
+              "knab",
+              "moneyou",
+              "rabobank",
+              "regiobank",
+              "sns_bank",
+              "triodos_bank",
+              "van_lanschot"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "bic": {
+            "description": "The Bank Identifier Code of the customer's bank.",
+            "enum": [
+              "ABNANL2A",
+              "ASNBNL21",
+              "BUNQNL2A",
+              "FVLBNL22",
+              "HANDNL2A",
+              "INGBNL2A",
+              "KNABNL2H",
+              "MOYONL21",
+              "RABONL2U",
+              "RBRBNL21",
+              "SNSBNL2A",
+              "TRIONL2U"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
+          "iban_last4": {
+            "description": "Last four characters of the IBAN.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "verified_name": {
+            "description": "Owner's verified full name. Values are verified or provided by iDEAL directly\n(if supported) at the time of authorization or settlement. They cannot be set or mutated.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank",
+          "bic",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
+          "iban_last4",
+          "verified_name"
+        ],
+        "title": "setup_attempt_payment_method_details_ideal",
+        "type": "object",
+        "x-expandableFields": [
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
+        ],
+        "x-stripeResource": {
+          "class_name": "Ideal",
+          "in_class": "setup_attempt_payment_method_details"
+        }
+      },
+      "setup_attempt_payment_method_details_sofort": {
+        "description": "",
+        "properties": {
+          "bank_code": {
+            "description": "Bank code of bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "bank_name": {
+            "description": "Name of the bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "bic": {
+            "description": "Bank Identifier Code of the bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "generated_sepa_debit": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_method"
+              }
+            ],
+            "description": "The ID of the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_method"
+                }
+              ]
+            }
+          },
+          "generated_sepa_debit_mandate": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/mandate"
+              }
+            ],
+            "description": "The mandate for the SEPA Direct Debit PaymentMethod which was generated by this SetupAttempt.",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/mandate"
+                }
+              ]
+            }
+          },
+          "iban_last4": {
+            "description": "Last four characters of the IBAN.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "preferred_language": {
+            "description": "Preferred language of the Sofort authorization page that the customer is redirected to.\nCan be one of `en`, `de`, `fr`, or `nl`",
+            "enum": [
+              "de",
+              "en",
+              "fr",
+              "nl"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "verified_name": {
+            "description": "Owner's verified full name. Values are verified or provided by Sofort directly\n(if supported) at the time of authorization or settlement. They cannot be set or mutated.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_code",
+          "bank_name",
+          "bic",
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate",
+          "iban_last4",
+          "preferred_language",
+          "verified_name"
+        ],
+        "title": "setup_attempt_payment_method_details_sofort",
+        "type": "object",
+        "x-expandableFields": [
+          "generated_sepa_debit",
+          "generated_sepa_debit_mandate"
+        ],
+        "x-stripeResource": {
+          "class_name": "Sofort",
           "in_class": "setup_attempt_payment_method_details"
         }
       },
@@ -35051,6 +35777,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "bancontact_payments": {
+                        "description": "The bancontact_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "card_issuing": {
                         "description": "The card_issuing capability.",
                         "properties": {
@@ -35084,8 +35821,41 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "eps_payments": {
+                        "description": "The eps_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "fpx_payments": {
                         "description": "The fpx_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "giropay_payments": {
+                        "description": "The giropay_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "ideal_payments": {
+                        "description": "The ideal_payments capability.",
                         "properties": {
                           "requested": {
                             "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
@@ -35119,6 +35889,39 @@
                       },
                       "oxxo_payments": {
                         "description": "The oxxo_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "p24_payments": {
+                        "description": "The p24_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "sepa_debit_payments": {
+                        "description": "The sepa_debit_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "sofort_payments": {
+                        "description": "The sofort_payments capability.",
                         "properties": {
                           "requested": {
                             "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
@@ -35872,16 +36675,21 @@
                     "description": "Details on the account's acceptance of the [Stripe Services Agreement](https://stripe.com/docs/connect/updating-accounts#tos-acceptance).",
                     "properties": {
                       "date": {
-                        "description": "The Unix timestamp marking when the account representative accepted the Stripe Services Agreement.",
+                        "description": "The Unix timestamp marking when the account representative accepted their service agreement.",
                         "format": "unix-time",
                         "type": "integer"
                       },
                       "ip": {
-                        "description": "The IP address from which the account representative accepted the Stripe Services Agreement.",
+                        "description": "The IP address from which the account representative accepted their service agreement.",
+                        "type": "string"
+                      },
+                      "service_agreement": {
+                        "description": "The user's service agreement type.",
+                        "maxLength": 5000,
                         "type": "string"
                       },
                       "user_agent": {
-                        "description": "The user agent of the browser from which the account representative accepted the Stripe Services Agreement.",
+                        "description": "The user agent of the browser from which the account representative accepted their service agreement.",
                         "maxLength": 5000,
                         "type": "string"
                       }
@@ -36224,6 +37032,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "bancontact_payments": {
+                        "description": "The bancontact_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "card_issuing": {
                         "description": "The card_issuing capability.",
                         "properties": {
@@ -36257,8 +37076,41 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "eps_payments": {
+                        "description": "The eps_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "fpx_payments": {
                         "description": "The fpx_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "giropay_payments": {
+                        "description": "The giropay_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "ideal_payments": {
+                        "description": "The ideal_payments capability.",
                         "properties": {
                           "requested": {
                             "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
@@ -36292,6 +37144,39 @@
                       },
                       "oxxo_payments": {
                         "description": "The oxxo_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "p24_payments": {
+                        "description": "The p24_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "sepa_debit_payments": {
+                        "description": "The sepa_debit_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
+                      "sofort_payments": {
+                        "description": "The sofort_payments capability.",
                         "properties": {
                           "requested": {
                             "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
@@ -37040,16 +37925,21 @@
                     "description": "Details on the account's acceptance of the [Stripe Services Agreement](https://stripe.com/docs/connect/updating-accounts#tos-acceptance).",
                     "properties": {
                       "date": {
-                        "description": "The Unix timestamp marking when the account representative accepted the Stripe Services Agreement.",
+                        "description": "The Unix timestamp marking when the account representative accepted their service agreement.",
                         "format": "unix-time",
                         "type": "integer"
                       },
                       "ip": {
-                        "description": "The IP address from which the account representative accepted the Stripe Services Agreement.",
+                        "description": "The IP address from which the account representative accepted their service agreement.",
+                        "type": "string"
+                      },
+                      "service_agreement": {
+                        "description": "The user's service agreement type.",
+                        "maxLength": 5000,
                         "type": "string"
                       },
                       "user_agent": {
-                        "description": "The user agent of the browser from which the account representative accepted the Stripe Services Agreement.",
+                        "description": "The user agent of the browser from which the account representative accepted their service agreement.",
                         "maxLength": 5000,
                         "type": "string"
                       }
@@ -46531,7 +47421,7 @@
     },
     "/v1/customers/{customer}/balance_transactions": {
       "get": {
-        "description": "<p>Returns a list of transactions that updated the customer’s <a href=\"/docs/api/customers/object#customer_object-balance\"><code>balance</code></a>.</p>",
+        "description": "<p>Returns a list of transactions that updated the customer’s <a href=\"/docs/billing/customer/balance\">balances</a>.</p>",
         "operationId": "GetCustomersCustomerBalanceTransactions",
         "parameters": [
           {
@@ -46667,7 +47557,7 @@
         }
       },
       "post": {
-        "description": "<p>Creates an immutable transaction that updates the customer’s <a href=\"/docs/api/customers/object#customer_object-balance\"><code>balance</code></a>.</p>",
+        "description": "<p>Creates an immutable transaction that updates the customer’s credit <a href=\"/docs/billing/customer/balance\">balance</a>.</p>",
         "operationId": "PostCustomersCustomerBalanceTransactions",
         "parameters": [
           {
@@ -46698,7 +47588,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "amount": {
-                    "description": "The integer amount in **%s** to apply to the customer's balance. Pass a negative amount to credit the customer's balance, and pass in a positive amount to debit the customer's balance.",
+                    "description": "The integer amount in **%s** to apply to the customer's credit balance.",
                     "type": "integer"
                   },
                   "currency": {
@@ -46772,7 +47662,7 @@
     },
     "/v1/customers/{customer}/balance_transactions/{transaction}": {
       "get": {
-        "description": "<p>Retrieves a specific transaction that updated the customer’s <a href=\"/docs/api/customers/object#customer_object-balance\"><code>balance</code></a>.</p>",
+        "description": "<p>Retrieves a specific customer balance transaction that updated the customer’s <a href=\"/docs/billing/customer/balance\">balances</a>.</p>",
         "operationId": "GetCustomersCustomerBalanceTransactionsTransaction",
         "parameters": [
           {
@@ -46849,7 +47739,7 @@
         }
       },
       "post": {
-        "description": "<p>Most customer balance transaction fields are immutable, but you may update its <code>description</code> and <code>metadata</code>.</p>",
+        "description": "<p>Most credit balance transaction fields are immutable, but you may update its <code>description</code> and <code>metadata</code>.</p>",
         "operationId": "PostCustomersCustomerBalanceTransactionsTransaction",
         "parameters": [
           {
@@ -51641,7 +52531,7 @@
     },
     "/v1/invoices/upcoming": {
       "get": {
-        "description": "<p>At any time, you can preview the upcoming invoice for a customer. This will show you all the charges that are pending, including subscription renewal charges, invoice item charges, etc. It will also show you any discount that is applicable to the customer.</p>\n\n<p>Note that when you are viewing an upcoming invoice, you are simply viewing a preview – the invoice has not yet been created. As such, the upcoming invoice will not show up in invoice listing calls, and you cannot use the API to pay or edit the invoice. If you want to change the amount that your customer will be billed, you can add, remove, or update pending invoice items, or update the customer’s discount.</p>\n\n<p>You can preview the effects of updating a subscription, including a preview of what proration will take place. To ensure that the actual proration is calculated exactly the same as the previewed proration, you should pass a <code>proration_date</code> parameter when doing the actual subscription update. The value passed in should be the same as the <code>subscription_proration_date</code> returned on the upcoming invoice resource. The recommended way to get only the prorations being previewed is to consider only proration line items where <code>period[start]</code> is equal to the <code>subscription_proration_date</code> on the upcoming invoice resource.</p>",
+        "description": "<p>At any time, you can preview the upcoming invoice for a customer. This will show you all the charges that are pending, including subscription renewal charges, invoice item charges, etc. It will also show you any discounts that are applicable to the invoice.</p>\n\n<p>Note that when you are viewing an upcoming invoice, you are simply viewing a preview – the invoice has not yet been created. As such, the upcoming invoice will not show up in invoice listing calls, and you cannot use the API to pay or edit the invoice. If you want to change the amount that your customer will be billed, you can add, remove, or update pending invoice items, or update the customer’s discount.</p>\n\n<p>You can preview the effects of updating a subscription, including a preview of what proration will take place. To ensure that the actual proration is calculated exactly the same as the previewed proration, you should pass a <code>proration_date</code> parameter when doing the actual subscription update. The value passed in should be the same as the <code>subscription_proration_date</code> returned on the upcoming invoice resource. The recommended way to get only the prorations being previewed is to consider only proration line items where <code>period[start]</code> is equal to the <code>subscription_proration_date</code> on the upcoming invoice resource.</p>",
         "operationId": "GetInvoicesUpcoming",
         "parameters": [
           {
@@ -51667,6 +52557,7 @@
             "style": "form"
           },
           {
+            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts.",
             "explode": true,
             "in": "query",
             "name": "discounts",
@@ -52317,6 +53208,7 @@
             "style": "form"
           },
           {
+            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts.",
             "explode": true,
             "in": "query",
             "name": "discounts",
@@ -67537,6 +68429,84 @@
                       "type": "string"
                     },
                     "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/payout"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/payouts/{payout}/reverse": {
+      "post": {
+        "description": "<p>Reverses a payout by debiting the destination bank account. Only payouts for connected accounts to US bank accounts may be reversed at this time. If the payout is in the <code>pending</code> status, <code>/v1/payouts/:id/cancel</code> should be used instead.</p>\n\n<p>By requesting a reversal via <code>/v1/payouts/:id/reverse</code>, you confirm that the authorized signatory of the selected bank account has authorized the debit on the bank account and that no other authorization is required.</p>",
+        "operationId": "PostPayoutsPayoutReverse",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payout",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "metadata": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                    "type": "object"
                   }
                 },
                 "type": "object"
@@ -85615,6 +86585,7 @@
                         "review.opened",
                         "setup_intent.canceled",
                         "setup_intent.created",
+                        "setup_intent.requires_action",
                         "setup_intent.setup_failed",
                         "setup_intent.succeeded",
                         "sigma.scheduled_query_run.created",
@@ -86021,6 +86992,7 @@
                         "review.opened",
                         "setup_intent.canceled",
                         "setup_intent.created",
+                        "setup_intent.requires_action",
                         "setup_intent.setup_failed",
                         "setup_intent.succeeded",
                         "sigma.scheduled_query_run.created",

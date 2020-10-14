@@ -134,6 +134,7 @@ var validEvents = map[string]bool{
 	"review.opened":                                true,
 	"setup_intent.canceled":                        true,
 	"setup_intent.created":                         true,
+	"setup_intent.requires_action":                 true,
 	"setup_intent.setup_failed":                    true,
 	"setup_intent.succeeded":                       true,
 	"sigma.scheduled_query_run.created":            true,
