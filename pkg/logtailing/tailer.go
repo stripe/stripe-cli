@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -15,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
@@ -63,8 +61,6 @@ type Config struct {
 type Tailer struct {
 	cfg *Config
 
-	stripeAuthClient *stripeauth.Client
-
 	interruptCh chan os.Signal
 }
 
@@ -96,16 +92,12 @@ func New(cfg *Config) *Tailer {
 	}
 
 	return &Tailer{
-		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
-		}),
+		cfg:         cfg,
 		interruptCh: make(chan os.Signal, 1),
 	}
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+func withSIGTERMCancel(ctx context.Context, onCancel func()) (context.Context, func()) {
 	// Create a context that will be canceled when Ctrl+C is pressed
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -117,69 +109,62 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 		onCancel()
 		cancel()
 	}()
-	return ctx
-}
-
-const maxConnectAttempts = 3
-
-func readWSConnectErrorMessage(resp *http.Response) string {
-	if resp == nil {
-		return ""
-	}
-	if resp.Body == nil {
-		return ""
-	}
-
-	se := struct {
-		InnerError struct {
-			Message string `json:"message"`
-		} `json:"error"`
-	}{}
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return ""
-	}
-
-	err = json.Unmarshal(body, &se)
-	if err != nil {
-		return ""
-	}
-
-	return se.InnerError.Message
+	return ctx, cancel
 }
 
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
 	ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
 
-	ctx = withSIGTERMCancel(ctx, func() {
+	ctx, cancel := withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "logtailing.Tailer.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	connectionManager := websocket.NewConnectionManager(&websocket.ConnectionManagerCfg{
+		NoWSS:            t.cfg.NoWSS,
+		Logger:           t.cfg.Log,
+		DeviceName:       t.cfg.DeviceName,
+		WebSocketFeature: t.cfg.WebSocketFeature,
+		PongWait:         10 * time.Second,
+		WriteWait:        5 * time.Second,
+	})
+
 	// TODO: replace that with a ConnectionManager
-	client := websocket.NewClient(
-		&websocket.Config{
-			Log:   t.cfg.Log,
-			NoWSS: t.cfg.NoWSS,
+	// client := websocket.NewClient(
+	// 	&websocket.Config{
+	// 		Log:   t.cfg.Log,
+	// 		NoWSS: t.cfg.NoWSS,
 
-			GetReconnectInterval: func(session *stripeauth.StripeCLISession) time.Duration {
-				return time.Duration(session.ReconnectDelay) * time.Second
-			},
-		},
-	)
+	// 		GetReconnectInterval: func(session *stripeauth.StripeCLISession) time.Duration {
+	// 			return time.Duration(session.ReconnectDelay) * time.Second
+	// 		},
+	// 	},
+	// )
 
-	events := client.Run(ctx, nil)
-
-	for {
-		event := <-events
-		if event.Err != nil {
-			return event.Err
+	onMessage := func(b []byte) {
+		var msg websocket.IncomingMessage
+		err := json.Unmarshal(b, &msg)
+		if err != nil {
+			t.cfg.Log.Debug("Received malformed message: ", err)
 		}
-		t.processRequestLogEvent(event.Msg)
+		t.processRequestLogEvent(msg)
+	}
+
+	errorCh := make(chan error)
+	onTerminate := func(err error) {
+		t.cfg.Log.Fatal("Terminating...", err)
+		cancel()
+		errorCh <- err
+	}
+
+	connectionManager.Run(ctx, onMessage, onTerminate)
+	select {
+	case err := <-errorCh:
+		return err
+	case <-ctx.Done():
+		return nil
 	}
 }
 
