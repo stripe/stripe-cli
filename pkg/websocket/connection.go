@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // Connection represents something such as a websocket connection, that can
@@ -64,29 +66,6 @@ func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession,
 	}, resp, nil
 }
 
-func newWebSocketDialer(unixSocket string) *ws.Dialer {
-	var dialer *ws.Dialer
-
-	if unixSocket != "" {
-		dialFunc := func(network, addr string) (net.Conn, error) {
-			return net.Dial("unix", unixSocket)
-		}
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			NetDial:          dialFunc,
-			Subprotocols:     subprotocols[:],
-		}
-	} else {
-		dialer = &ws.Dialer{
-			HandshakeTimeout: 10 * time.Second,
-			Proxy:            http.ProxyFromEnvironment,
-			Subprotocols:     subprotocols[:],
-		}
-	}
-
-	return dialer
-}
-
 // Run starts the "readPump" for dispatching incoming messages from the
 // websocket connection to the onMessage handler, and returns the "send"
 // function which can be used to send messages over this websocket connection.
@@ -124,6 +103,10 @@ type msg struct {
 	isPing bool
 	data   []byte
 }
+
+//
+// private functions
+//
 
 // messageSender wraps gorilla/websocket's "NextWriter" io.WriteCloser interface.
 func (c *connection) messageSender(onDisconnect func()) func(msg) error {
@@ -173,6 +156,46 @@ func (c *connection) messageSender(onDisconnect func()) func(msg) error {
 		writing = false
 		return err
 	}
+}
+
+func newWebSocketDialer(unixSocket string) *ws.Dialer {
+	var dialer *ws.Dialer
+
+	if unixSocket != "" {
+		dialFunc := func(network, addr string) (net.Conn, error) {
+			return net.Dial("unix", unixSocket)
+		}
+		dialer = &ws.Dialer{
+			HandshakeTimeout: 10 * time.Second,
+			NetDial:          dialFunc,
+			Subprotocols:     subprotocols[:],
+		}
+	} else {
+		dialer = &ws.Dialer{
+			HandshakeTimeout: 10 * time.Second,
+			Proxy:            http.ProxyFromEnvironment,
+			Subprotocols:     subprotocols[:],
+		}
+	}
+
+	return dialer
+}
+
+func wsHeader(baseURL string, webSocketID string, webSocketAuthorizedFeature string, noWSS bool) (string, http.Header) {
+	header := http.Header{}
+	// Disable compression by requiring "identity"
+	header.Set("Accept-Encoding", "identity")
+	header.Set("User-Agent", useragent.GetEncodedUserAgent())
+	header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
+	header.Set("Websocket-Id", webSocketID)
+
+	url := baseURL
+	if noWSS && strings.HasPrefix(baseURL, "wss") {
+		url = "ws" + strings.TrimPrefix(baseURL, "wss")
+	}
+
+	url = url + "?websocket_feature=" + webSocketAuthorizedFeature
+	return url, header
 }
 
 func (c *connection) pingPong(sendPing func() error, onDisconnect func()) {
@@ -270,3 +293,8 @@ func (c *connection) readPump(onMessage func([]byte), onDisconnect func()) {
 		}
 	}()
 }
+
+//
+// private variables
+//
+var subprotocols = [...]string{"stripecli-devproxy-v1"}
