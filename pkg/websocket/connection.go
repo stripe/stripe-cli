@@ -50,7 +50,7 @@ func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession,
 		"url":    url,
 	}).Debug("Dialing websocket")
 
-	dialer := NewWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+	dialer := newWebSocketDialer(os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	conn, resp, err := dialer.DialContext(ctx, url, header)
 	if err != nil {
 		return nil, resp, err
@@ -64,7 +64,7 @@ func ConnectWebsocket(ctx context.Context, session *stripeauth.StripeCLISession,
 	}, resp, nil
 }
 
-func NewWebSocketDialer(unixSocket string) *ws.Dialer {
+func newWebSocketDialer(unixSocket string) *ws.Dialer {
 	var dialer *ws.Dialer
 
 	if unixSocket != "" {
@@ -125,14 +125,7 @@ type msg struct {
 	data   []byte
 }
 
-//func (c *connection) sendData(onDisconnect func()) func(data []byte) error {
-//	return c.sendMsg(msg{
-//		isPing: false,
-//		data:   data,
-//	})
-//}
-
-// sendMsg wraps gorilla/websocket's "NextWriter" io.WriteCloser interface.
+// messageSender wraps gorilla/websocket's "NextWriter" io.WriteCloser interface.
 func (c *connection) messageSender(onDisconnect func()) func(msg) error {
 	sendIt := func(m msg) error {
 		err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
@@ -183,20 +176,16 @@ func (c *connection) messageSender(onDisconnect func()) func(msg) error {
 }
 
 func (c *connection) pingPong(sendPing func() error, onDisconnect func()) {
-	fmt.Println("START PINGPONG")
 	stop := make(chan struct{})
 	ticker := time.NewTicker(time.Millisecond * 200)
 	fmt.Printf("tricker: %+v", ticker)
 
-	fmt.Println("GO FUNC")
 	go func() {
 		defer func() {
-			fmt.Println("DEFERED")
 			ticker.Stop()
 		}()
 
 		c.log.Debug("ticking...")
-		fmt.Println("FOR")
 		for {
 			select {
 			case <-stop:
@@ -204,7 +193,6 @@ func (c *connection) pingPong(sendPing func() error, onDisconnect func()) {
 				return
 			case <-ticker.C:
 				c.log.Debug("sending ping...")
-				fmt.Println("SENDING PING")
 				sendPing()
 				err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 				if err != nil {
