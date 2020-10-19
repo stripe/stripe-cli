@@ -70,6 +70,8 @@ func NewConnectionManager(cfg *ConnectionManagerCfg) *ConnectionManager {
 		APIBaseURL: cfg.APIBaseURL,
 	})
 
+	cm.Logger = cfg.Logger
+
 	return cm
 }
 
@@ -97,8 +99,8 @@ func (c *ConnectionManager) Run(
 			}
 			onConnDisconnect := make(chan struct{})
 			sendToConn := conn.Run(ctx, onMessage, func() {
-				close(onConnDisconnect)
 			})
+			fmt.Println("HELLO")
 			c.writeLoop(writes, sendToConn, onConnDisconnect)
 		}
 	}()
@@ -146,6 +148,7 @@ func (c *ConnectionManager) connect(ctx context.Context) (Connection, error) {
 			PongWait:  c.cfg.PongWait,
 			WriteWait: c.cfg.WriteWait,
 		})
+		defer resp.Body.Close()
 		if err != nil {
 			session, err = sessionRefresher(ctx, err, resp)
 			if err != nil {

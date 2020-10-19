@@ -3,14 +3,20 @@ package websocket
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
 type dummyConnection struct {
@@ -47,6 +53,68 @@ func (dc *dummyConnection) Run(ctx context.Context, onMessage func([]byte), onDi
 	return send
 }
 
+func TestNewConnectionManager(t *testing.T) {
+	cfg := &ConnectionManagerCfg{}
+	cm := NewConnectionManager(cfg)
+	require.Equal(t, time.Second, cm.requeueBackoffDuration, "NewConnectionManager should default requeueBackoffDuration to 1 second.")
+	require.NotNil(t, cm.stripeAuthClient, "NewConnectionManager should initialize a new stripeAuthClient.")
+
+	cfg.requeueBackoffDuration = time.Minute
+	cm = NewConnectionManager(cfg)
+	require.Equal(t, time.Minute, cm.requeueBackoffDuration, "NewConnectionManager should save cfg.requeueBackoffDuration.")
+	require.Equal(t, cm.cfg, cfg, "NewConnectionManager should save the cfg in the ConnectionManager object.")
+}
+
+func TestRun(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session := stripeauth.StripeCLISession{
+			WebSocketID:                "some-id",
+			WebSocketURL:               "wss://example.com/subscribe/acct_123",
+			WebSocketAuthorizedFeature: "webhook-payloads",
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(session)
+
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "Bearer sk_test_123", r.Header.Get("Authorization"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+
+		body, err := ioutil.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.Equal(t, "device_name=my-device&websocket_feature=webhooks", string(body))
+	}))
+	defer ts.Close()
+
+	logger := log.New()
+	cm := NewConnectionManager(&ConnectionManagerCfg{
+		Logger:           logger,
+		APIBaseURL:       ts.URL,
+		DeviceName:       "my-device",
+		WebSocketFeature: "webhooks",
+		Key:              "sk_test_123",
+	})
+
+	messageReceived := make(chan struct{})
+	onMessage := func(msg []byte) {
+		close(messageReceived)
+	}
+	terminated := make(chan struct{})
+	onTerminate := func(err error) {
+		close(terminated)
+	}
+	ctx := context.Background()
+
+	cm.Run(ctx, onMessage, onTerminate)
+	select {
+	case <-messageReceived:
+		t.Fatal("message received")
+	case <-terminated:
+		t.Fatal("terminated")
+	}
+}
+
 func TestConnectionManagerRun(t *testing.T) {
 	manager := NewConnectionManager(&ConnectionManagerCfg{
 		requeueBackoffDuration: (time.Millisecond * 10),
@@ -59,18 +127,6 @@ func TestConnectionManagerRun(t *testing.T) {
 	}
 	secondConnection := dummyConnection{
 		onConnect: func() { close(secondConnected) },
-	}
-	connN := 0
-	connect := func() (Connection, error) {
-		if connN == 0 {
-			connN++
-			return &firstConnection, nil
-		}
-		if connN == 1 {
-			connN++
-			return &secondConnection, nil
-		}
-		return nil, fmt.Errorf("failed to reconnect")
 	}
 
 	var messages [][]byte
@@ -88,7 +144,7 @@ func TestConnectionManagerRun(t *testing.T) {
 		disconnectErr = err
 		close(gotDisconnect)
 	}
-	fmt.Printf("running")
+	fmt.Println("running")
 
 	// Run the connection manager.
 
@@ -96,7 +152,6 @@ func TestConnectionManagerRun(t *testing.T) {
 		context.Background(),
 		onMessage,
 		onDisconnect,
-		connect,
 	)
 
 	{

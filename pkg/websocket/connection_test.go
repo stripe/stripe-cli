@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 	ws "github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
 func waitFor(t *testing.T, done chan struct{}, timeout time.Duration) {
@@ -30,6 +33,50 @@ func waitFor(t *testing.T, done chan struct{}, timeout time.Duration) {
 	case <-timedOut:
 		t.Fatal(fmt.Printf("Timed out waiting for event. Stack:\n%s", debug.Stack()))
 	}
+}
+
+func TestConnectWebsocket(t *testing.T) {
+	upgrader := ws.Upgrader{}
+	gotMessageFromClient := make(chan struct{})
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+
+		msg := []byte("\"hi\"")
+
+		err = c.WriteMessage(ws.TextMessage, msg)
+		require.NoError(t, err)
+
+		go func() {
+			_, reader, err := c.NextReader()
+			require.NoError(t, err)
+			_, _ = ioutil.ReadAll(reader)
+			close(gotMessageFromClient)
+		}()
+	}))
+	defer ts.Close()
+
+	url := "ws" + strings.TrimPrefix(ts.URL, "http")
+	stripeSession := &stripeauth.StripeCLISession{
+		WebSocketURL:               url,
+		WebSocketID:                "1234",
+		WebSocketAuthorizedFeature: "webhook",
+	}
+	cfg := ConnectWebsocketConfig{
+		NoWSS:  false,
+		Logger: log.New(),
+	}
+	if stripeSession == nil || cfg.NoWSS == true {
+		t.Fatal("bad")
+	}
+	ctx := context.Background()
+	conn, resp, err := ConnectWebsocket(ctx, stripeSession, cfg)
+	defer resp.Body.Close()
+	if err != nil {
+		t.Fatal("Should be able to create a Connection", err)
+	}
+	require.Equal(t, "connection", reflect.TypeOf(conn).Elem().Name())
+	require.Equal(t, "Response", reflect.TypeOf(resp).Elem().Name())
 }
 
 func TestConnectionRun(t *testing.T) {
@@ -145,7 +192,8 @@ func TestConnectionRunHandlesExpiredReadDeadlines(t *testing.T) {
 	url := "ws" + strings.TrimPrefix(ts.URL, "http")
 
 	dialer := ws.Dialer{}
-	conn, _, err := dialer.DialContext(ctx, url, http.Header{})
+	conn, resp, err := dialer.DialContext(ctx, url, http.Header{})
+	defer resp.Body.Close()
 	require.NoError(t, err)
 
 	logger := log.New()
@@ -167,16 +215,16 @@ func TestConnectionRunHandlesExpiredReadDeadlines(t *testing.T) {
 
 	timedOut := make(chan struct{})
 	go func() {
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second)
 		close(timedOut)
 	}()
 	send := myConn.Run(context.Background(), onMessage, onDisconnect)
 	send(bytes.NewReader([]byte("\"fromClient\"")))
 	select {
-	case <-onDisconnectCalled:
-		return
 	case <-timedOut:
 		t.Fatal("Timed out waiting for onDisconnect to be called")
+	case <-onDisconnectCalled:
+		return
 	}
 
 	err = send(bytes.NewReader([]byte("should error")))

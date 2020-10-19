@@ -116,23 +116,15 @@ func (c *connection) messageSender(onDisconnect func()) func(msg) error {
 			return err
 		}
 
+		mt := ws.TextMessage
 		if m.isPing {
-			fmt.Println("INSIDE IS PING")
+			mt = ws.PingMessage
 			c.log.WithFields(log.Fields{
 				"prefix": "connection.sendMsg",
 			}).Debug("Sending ping message")
-			if err = c.conn.WriteMessage(ws.PingMessage, m.data); err != nil {
-				fmt.Println("ERROR SENDING PING")
-				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
-					c.log.Debug("write error: ", err)
-				}
-				onDisconnect()
-				return err
-			}
-			return nil
 		}
 
-		if err = c.conn.WriteMessage(ws.TextMessage, m.data); err != nil {
+		if err = c.conn.WriteMessage(mt, m.data); err != nil {
 			if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
 				c.log.Debug("write error: ", err)
 			}
