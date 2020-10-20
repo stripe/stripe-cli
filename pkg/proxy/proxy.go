@@ -126,6 +126,8 @@ func (p *Proxy) Run(ctx context.Context) error {
 		WebSocketFeature: p.cfg.WebSocketFeature,
 		PongWait:         10 * time.Second,
 		WriteWait:        5 * time.Second,
+		APIBaseURL:       p.cfg.APIBaseURL,
+		Key:              p.cfg.Key,
 	})
 	sendToServer := connectionManager.Run(ctx, onMessage, onTerminate)
 

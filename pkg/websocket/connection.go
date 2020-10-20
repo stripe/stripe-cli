@@ -193,7 +193,6 @@ func wsHeader(baseURL string, webSocketID string, webSocketAuthorizedFeature str
 func (c *connection) pingPong(sendPing func() error, onDisconnect func()) {
 	stop := make(chan struct{})
 	ticker := time.NewTicker(time.Millisecond * 200)
-	fmt.Printf("tricker: %+v", ticker)
 
 	go func() {
 		defer func() {

@@ -100,7 +100,6 @@ func (c *ConnectionManager) Run(
 			onConnDisconnect := make(chan struct{})
 			sendToConn := conn.Run(ctx, onMessage, func() {
 			})
-			fmt.Println("HELLO")
 			c.writeLoop(writes, sendToConn, onConnDisconnect)
 		}
 	}()

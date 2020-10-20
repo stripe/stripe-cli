@@ -51,7 +51,7 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 	form.Add("device_name", deviceName)
 	form.Add("websocket_feature", websocketFeature)
 
-	if filters != nil {
+	if filters != nil && len(*filters) > 0 {
 		form.Add("filters", *filters)
 	}
 
