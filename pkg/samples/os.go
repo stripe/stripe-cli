@@ -43,7 +43,7 @@ func (s *Samples) MakeFolder(name string) (string, error) {
 		return "", err
 	}
 	if _, err := s.Fs.Stat(appFolder); os.IsNotExist(err) {
-		err = s.Fs.Mkdir(appFolder, os.ModePerm)
+		err = s.Fs.MkdirAll(appFolder, os.ModePerm)
 		if err != nil {
 			return "", err
 		}

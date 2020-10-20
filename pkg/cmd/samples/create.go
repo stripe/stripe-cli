@@ -145,7 +145,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 		os.Exit(1)
 	}()
 
-	spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", selectedSample), os.Stdout)
+	spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", destination), os.Stdout)
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
@@ -173,7 +173,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
 	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Project configured"))
-	fmt.Println("You're all set. To get started: cd", selectedSample)
+	fmt.Println("You're all set. To get started: cd", destination)
 
 	if sample.PostInstall() != "" {
 		fmt.Println(sample.PostInstall())
