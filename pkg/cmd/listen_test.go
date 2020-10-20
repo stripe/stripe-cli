@@ -56,13 +56,20 @@ func TestBuildForwardURL(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, "http://localhost/foo/bar.php", buildForwardURL("http://localhost/", f))
+	require.Equal(t, "http://localhost/foo/bar.php", buildForwardURL("http://localhost", f))
 	require.Equal(t, "https://localhost/foo/bar.php", buildForwardURL("https://localhost/", f))
 	require.Equal(t, "http://localhost:8000/foo/bar.php", buildForwardURL("http://localhost:8000", f))
+	require.Equal(t, "http://localhost:8000/foo/bar.php", buildForwardURL("http://localhost:8000/", f))
+	require.Equal(t, "http://localhost:8000/forward/sub/path/foo/bar.php", buildForwardURL("http://localhost:8000/forward/sub/path/", f))
+	require.Equal(t, "http://localhost:8000/forward/sub/path/foo/bar.php", buildForwardURL("http://localhost:8000/forward/sub/path", f))
 
 	f, err = url.Parse("http://example.com/bar/")
 	require.NoError(t, err)
 
 	require.Equal(t, "http://localhost/bar/", buildForwardURL("http://localhost/", f))
+	require.Equal(t, "http://localhost/bar/", buildForwardURL("http://localhost", f))
 	require.Equal(t, "https://localhost/bar/", buildForwardURL("https://localhost/", f))
+	require.Equal(t, "https://localhost/bar/", buildForwardURL("https://localhost", f))
 	require.Equal(t, "http://localhost:8000/bar/", buildForwardURL("http://localhost:8000", f))
+	require.Equal(t, "http://localhost:8000/bar/", buildForwardURL("http://localhost:8000/", f))
 }
