@@ -78,6 +78,13 @@ func TestMakeFolder(t *testing.T) {
 	assert.Equal(t, expectedPath, path)
 	assert.True(t, exists)
 	assert.Nil(t, err)
+
+	absolutePath := filepath.Join(wd, "absolute/path/indeed")
+	path, err = sample.MakeFolder(absolutePath)
+	exists, _ = afero.Exists(fs, path)
+	assert.Equal(t, absolutePath, path)
+	assert.True(t, exists)
+	assert.Nil(t, err)
 }
 
 func TestMakeFolderExists(t *testing.T) {

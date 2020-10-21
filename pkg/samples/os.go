@@ -38,14 +38,12 @@ func (s *Samples) appCacheFolder(app string) (string, error) {
 
 // MakeFolder creates the folder that'll contain the Stripe app the user is creating
 func (s *Samples) MakeFolder(name string) (string, error) {
-	dir, err := os.Getwd()
+	appFolder, err := filepath.Abs(name)
 	if err != nil {
 		return "", err
 	}
-
-	appFolder := filepath.Join(dir, name)
 	if _, err := s.Fs.Stat(appFolder); os.IsNotExist(err) {
-		err = s.Fs.Mkdir(appFolder, os.ModePerm)
+		err = s.Fs.MkdirAll(appFolder, os.ModePerm)
 		if err != nil {
 			return "", err
 		}
