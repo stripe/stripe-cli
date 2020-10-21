@@ -114,7 +114,7 @@ func (rb *Base) InitFlags() {
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
 		if rb.Cmd.Flags().Lookup("limit") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "How many objects to be return, between 1 and 100 (default is 10)")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "How many objects to be returned, between 1 and 100 (default is 10)")
 		}
 
 		if rb.Cmd.Flags().Lookup("starting-after") == nil {
