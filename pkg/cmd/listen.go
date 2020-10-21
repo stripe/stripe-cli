@@ -250,5 +250,11 @@ func buildForwardURL(forwardURL string, destination *url.URL) string {
 		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
 	}
 
-	return fmt.Sprintf("%s://%s%s", f.Scheme, f.Host, destination.Path)
+	return fmt.Sprintf(
+		"%s://%s%s%s",
+		f.Scheme,
+		f.Host,
+		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
+		destination.Path,
+	)
 }
