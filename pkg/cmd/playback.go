@@ -148,6 +148,15 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}()
 
+	// --- Start up the listen server to proxy webhook endpoints to the playback server
+	lc := newListenCmd()
+	lc.forwardURL = addressString + "/playback/webhooks"
+	go func() {
+		err = lc.runListenCmd(lc.cmd, []string{})
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
+	}()
+
 	// --- Print out post-startup summary on CLI
 	fmt.Println()
 	fmt.Println("------ Server Running ------")
