@@ -95,7 +95,7 @@ type Server struct {
 
 	log *log.Logger
 
-	SwitchModeChan chan string
+	switchModeChan chan string
 
 	// state machine state
 	mode                  string // the user specified state (auto, record, replay)
@@ -114,7 +114,7 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
 	server.httpReplayer = newReplayServer(webhookURL)
 	server.remoteURL = remoteURL
-	server.SwitchModeChan = make(chan string)
+	server.switchModeChan = make(chan string)
 
 	err = server.switchMode(mode)
 	if err != nil {
@@ -161,7 +161,12 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			return
 		}
 
-		rr.SwitchModeChan <- strings.ToLower(modeString)
+		// There might be no process listening to this channel,
+		// so we need to make sure sending to it is non-blocking.
+		select {
+		case rr.switchModeChan <- strings.ToLower(modeString):
+		default:
+		}
 		rr.log.Info("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 	})
 
@@ -264,6 +269,20 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	customMux.HandleFunc("/", rr.handler)
 
 	return server
+}
+
+// OnSwitchMode blocks on the switchModeChan and returns the value it receives
+// func (rr *Server) OnSwitchMode(send chan<- string) {
+// 	mode := <-rr.switchModeChan
+// 	send <- mode
+// }
+
+// OnSwitchMode blocks on the switchModeChan and returns the value it receives
+func (rr *Server) OnSwitchMode(f func(string)) {
+	go func() {
+		mode := <-rr.switchModeChan
+		f(mode)
+	}()
 }
 
 // Handles incoming Stripe API requests sent to the `playback` server.

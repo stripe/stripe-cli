@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -149,21 +150,37 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	go func() {
-		if pc.mode != playback.Replay {
-			startListenCmd()
-		} else {
-			for {
-				mode := <-httpWrapper.SwitchModeChan
-				switch mode {
+
+	if pc.mode != playback.Replay {
+		go startListenCmd()
+	} else {
+		var listenToModeSwitch func()
+		listenToModeSwitch = func() {
+			httpWrapper.OnSwitchMode(func(mode string) {
+				switch strings.ToLower(mode) {
 				case playback.Record, playback.Auto:
-					startListenCmd()
+					go startListenCmd()
 				default:
-					continue
+					listenToModeSwitch()
 				}
-			}
+			})
 		}
-	}()
+		listenToModeSwitch()
+		// go func() {
+		// 	modeChan := make(chan string)
+		// 	httpWrapper.OnSwitchMode(modeChan)
+		// 	for {
+		// 		mode := <-modeChan
+		// 		switch strings.ToLower(mode) {
+		// 		case playback.Record, playback.Auto:
+		// 			close(modeChan)
+		// 			startListenCmd()
+		// 		default:
+		// 			continue
+		// 		}
+		// 	}
+		// }()
+	}
 
 	server := httpWrapper.InitializeServer(addressString)
 	go func() {

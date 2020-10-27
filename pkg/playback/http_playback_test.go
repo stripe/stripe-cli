@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -253,18 +252,9 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
-
 	// --- END RECORD MODE
 
 	// --- Start interacting in REPLAY MODE
-	go func() {
-		select {
-		case <-httpWrapper.SwitchModeChan:
-			return
-		case <-time.After(1 * time.Second):
-			log.Fatal("Should have broadcast mode change to SwitchModeChan, did not.")
-		}
-	}()
 	resp, err = http.Post(fullAddressString+"/playback/mode/replay", "text/plain", nil)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
