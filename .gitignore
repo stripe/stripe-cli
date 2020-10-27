@@ -1,8 +1,1 @@
-
-dist/
-bin/
 coverage.txt
-/stripe
-/stripe-darwin
-/stripe-linux
-/stripe-windows.exe
