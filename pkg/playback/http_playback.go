@@ -265,6 +265,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 // Handles incoming Stripe API requests sent to the `playback` server.
 // Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
+	// TODO: Should we be automatically loading a cassette when none is loaded?
 	if !rr.cassetteLoaded {
 		err := errors.New("no cassette is loaded")
 		writeErrorToHTTPResponse(w, rr.log, err, 400)

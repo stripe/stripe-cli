@@ -132,7 +132,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// --- Start up the playback HTTP server
-	// TODO(DX-5702): `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
@@ -144,15 +143,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	server := httpWrapper.InitializeServer(addressString)
 	go func() {
 		err = server.ListenAndServe()
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
-	}()
-
-	// --- Start up the listen server to proxy webhook endpoints to the playback server
-	lc := newListenCmd()
-	lc.forwardURL = addressString + "/playback/webhooks"
-	go func() {
-		err = lc.runListenCmd(lc.cmd, []string{})
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}()
@@ -185,8 +175,21 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Accepting webhooks on %v/%v\n", addressString, "playback/webhooks")
 	fmt.Printf("Forwarding webhooks to %v\n", pc.webhookURL)
+
 	fmt.Println("-----------------------------")
 	fmt.Println()
+
+	// --- Start up the listen server to proxy webhook endpoints to the playback server if in record mode
+	if pc.mode != playback.Record {
+		fmt.Println("Starting `stripe listen` since we are not in \"record\" mode.")
+		lc := newListenCmd()
+		lc.forwardURL = addressString + "/playback/webhooks"
+		go func() {
+			err = lc.runListenCmd(lc.cmd, []string{})
+			fmt.Fprint(os.Stderr, err.Error())
+			os.Exit(1)
+		}()
+	}
 
 	select {}
 }
