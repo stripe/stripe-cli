@@ -140,7 +140,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for changeModeChan.
+	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
 	lc := newListenCmd()
 	lc.forwardURL = addressString + "/playback/webhooks"
 	startListenCmd := func() {
