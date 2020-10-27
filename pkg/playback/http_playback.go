@@ -95,6 +95,8 @@ type Server struct {
 
 	log *log.Logger
 
+	SwitchModeChan chan string
+
 	// state machine state
 	mode                  string // the user specified state (auto, record, replay)
 	isRecordingInAutoMode bool   // internal state used when in auto mode to keep track of the state for the current cassette (either recording or replaying)
@@ -112,6 +114,7 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
 	server.httpReplayer = newReplayServer(webhookURL)
 	server.remoteURL = remoteURL
+	server.SwitchModeChan = make(chan string)
 
 	err = server.switchMode(mode)
 	if err != nil {
@@ -158,6 +161,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			return
 		}
 
+		rr.SwitchModeChan <- strings.ToLower(modeString)
 		rr.log.Info("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 	})
 

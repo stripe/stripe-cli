@@ -140,6 +140,31 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for changeModeChan.
+	lc := newListenCmd()
+	lc.forwardURL = addressString + "/playback/webhooks"
+	startListenCmd := func() {
+		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
+		err = lc.runListenCmd(lc.cmd, []string{})
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+	go func() {
+		if pc.mode != playback.Replay {
+			startListenCmd()
+		} else {
+			for {
+				mode := <-httpWrapper.SwitchModeChan
+				switch mode {
+				case playback.Record, playback.Auto:
+					startListenCmd()
+				default:
+					continue
+				}
+			}
+		}
+	}()
+
 	server := httpWrapper.InitializeServer(addressString)
 	go func() {
 		err = server.ListenAndServe()
@@ -178,18 +203,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("-----------------------------")
 	fmt.Println()
-
-	// --- Start up the listen server to proxy webhook endpoints to the playback server if in record mode
-	if pc.mode != playback.Record {
-		fmt.Println("Starting `stripe listen` since we are not in \"record\" mode.")
-		lc := newListenCmd()
-		lc.forwardURL = addressString + "/playback/webhooks"
-		go func() {
-			err = lc.runListenCmd(lc.cmd, []string{})
-			fmt.Fprint(os.Stderr, err.Error())
-			os.Exit(1)
-		}()
-	}
 
 	select {}
 }
