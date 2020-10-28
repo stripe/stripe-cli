@@ -166,20 +166,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 			})
 		}
 		listenToModeSwitch()
-		// go func() {
-		// 	modeChan := make(chan string)
-		// 	httpWrapper.OnSwitchMode(modeChan)
-		// 	for {
-		// 		mode := <-modeChan
-		// 		switch strings.ToLower(mode) {
-		// 		case playback.Record, playback.Auto:
-		// 			close(modeChan)
-		// 			startListenCmd()
-		// 		default:
-		// 			continue
-		// 		}
-		// 	}
-		// }()
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
