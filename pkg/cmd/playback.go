@@ -153,21 +153,23 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	if pc.mode != playback.Replay {
-		go startListenCmd()
-	} else {
-		var listenToModeSwitch func()
-		listenToModeSwitch = func() {
-			httpWrapper.OnSwitchMode(func(mode string) {
-				switch strings.ToLower(mode) {
-				case playback.Record, playback.Auto:
-					go startListenCmd()
-				default:
-					listenToModeSwitch()
-				}
-			})
+	if !pc.noListen {
+		if pc.mode != playback.Replay {
+			go startListenCmd()
+		} else {
+			var listenToModeSwitch func()
+			listenToModeSwitch = func() {
+				httpWrapper.OnSwitchMode(func(mode string) {
+					switch strings.ToLower(mode) {
+					case playback.Record, playback.Auto:
+						go startListenCmd()
+					default:
+						listenToModeSwitch()
+					}
+				})
+			}
+			listenToModeSwitch()
 		}
-		listenToModeSwitch()
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
