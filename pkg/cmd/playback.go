@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -132,13 +133,39 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// --- Start up the playback HTTP server
-	// TODO(DX-5702): `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
 	httpWrapper, err := playback.NewServer(remoteURL, pc.webhookURL, absoluteCassetteDir, pc.mode, pc.filepath)
 	if err != nil {
 		return err
+	}
+
+	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
+	lc := newListenCmd()
+	lc.forwardURL = addressString + "/playback/webhooks"
+	startListenCmd := func() {
+		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
+		err = lc.runListenCmd(lc.cmd, []string{})
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	if pc.mode != playback.Replay {
+		go startListenCmd()
+	} else {
+		var listenToModeSwitch func()
+		listenToModeSwitch = func() {
+			httpWrapper.OnSwitchMode(func(mode string) {
+				switch strings.ToLower(mode) {
+				case playback.Record, playback.Auto:
+					go startListenCmd()
+				default:
+					listenToModeSwitch()
+				}
+			})
+		}
+		listenToModeSwitch()
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -176,6 +203,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Accepting webhooks on %v/%v\n", addressString, "playback/webhooks")
 	fmt.Printf("Forwarding webhooks to %v\n", pc.webhookURL)
+
 	fmt.Println("-----------------------------")
 	fmt.Println()
 

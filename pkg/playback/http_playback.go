@@ -95,6 +95,8 @@ type Server struct {
 
 	log *log.Logger
 
+	switchModeChan chan string
+
 	// state machine state
 	mode                  string // the user specified state (auto, record, replay)
 	isRecordingInAutoMode bool   // internal state used when in auto mode to keep track of the state for the current cassette (either recording or replaying)
@@ -112,6 +114,7 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
 	server.httpReplayer = newReplayServer(webhookURL)
 	server.remoteURL = remoteURL
+	server.switchModeChan = make(chan string)
 
 	err = server.switchMode(mode)
 	if err != nil {
@@ -158,6 +161,12 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 			return
 		}
 
+		// There might be no process listening to this channel,
+		// so we need to make sure sending to it is non-blocking.
+		select {
+		case rr.switchModeChan <- strings.ToLower(modeString):
+		default:
+		}
 		rr.log.Info("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 	})
 
@@ -262,9 +271,24 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	return server
 }
 
+// OnSwitchMode blocks on the switchModeChan and returns the value it receives
+// func (rr *Server) OnSwitchMode(send chan<- string) {
+// 	mode := <-rr.switchModeChan
+// 	send <- mode
+// }
+
+// OnSwitchMode blocks on the switchModeChan and returns the value it receives
+func (rr *Server) OnSwitchMode(f func(string)) {
+	go func() {
+		mode := <-rr.switchModeChan
+		f(mode)
+	}()
+}
+
 // Handles incoming Stripe API requests sent to the `playback` server.
 // Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
+	// TODO: Should we be automatically loading a cassette when none is loaded?
 	if !rr.cassetteLoaded {
 		err := errors.New("no cassette is loaded")
 		writeErrorToHTTPResponse(w, rr.log, err, 400)

@@ -11,9 +11,10 @@ import (
 )
 
 // requestComparator compares 2 structs in the context of comparing a given request struct against
-// a request recorded in the request/
-// It then determines 1) whether that are equivalent 2) whether we should short-circuit
-// our search (return this one immediately, or keep scanning the cassette)
+// a request recorded in the cassette.
+// It then determines
+// 1) whether they are equivalent
+// 2) whether we should short-circuit our search (return this one immediately, or keep scanning the cassette)
 type requestComparator func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool)
 
 // Contains binary data representing a generic request and response saved in a cassette.
@@ -32,7 +33,7 @@ type cassettePair struct {
 	Response []byte
 }
 
-// cassetteYaml is used store interaction data to be serialized a YAML file
+// cassetteYaml is used to store interaction data to be serialized to a YAML file
 type cassetteYaml struct {
 	Interactions []cassettePair
 }
@@ -47,13 +48,12 @@ type interactionRecorder struct {
 }
 
 func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSerializer serializer) (recorder *interactionRecorder, err error) {
-	recorder = &interactionRecorder{}
-
-	recorder.writer = writer
-	recorder.reqSerializer = reqSerializer
-	recorder.respSerializer = respSerializer
-
-	recorder.interactions = make([]cassettePair, 0)
+	recorder = &interactionRecorder{
+		writer:         writer,
+		reqSerializer:  reqSerializer,
+		respSerializer: respSerializer,
+		interactions:   make([]cassettePair, 0),
+	}
 
 	return recorder, nil
 }

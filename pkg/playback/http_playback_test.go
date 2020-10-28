@@ -252,7 +252,6 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	assert.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, 200, resp.StatusCode)
-
 	// --- END RECORD MODE
 
 	// --- Start interacting in REPLAY MODE
