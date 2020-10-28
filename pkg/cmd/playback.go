@@ -43,6 +43,7 @@ type playbackCmd struct {
 	cassetteDir string
 	address     string
 	webhookURL  string
+	noListen    bool
 }
 
 func newPlaybackCmd() *playbackCmd {
@@ -83,6 +84,7 @@ Currently, stripe playback only supports serving over HTTP.
 	pc.cmd.Flags().StringVar(&pc.webhookURL, "forward-to", fmt.Sprintf("http://localhost:%d", defaultWebhookPort), "URL to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
 	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "./", "Directory to store all cassettes in. Relative cassette paths are considered relative to this directory.")
+	pc.cmd.Flags().BoolVar(&pc.noListen, "no-listen", false, "Do not automatically proxy and record webhook events to the cassette.")
 
 	// // Hidden configuration flags, useful for dev/debugging
 	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "The API base URL")
