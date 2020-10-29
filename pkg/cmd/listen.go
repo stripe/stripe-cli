@@ -78,10 +78,8 @@ Stripe account.`,
 
 	// renamed --load-from-webhooks-api to --use-configured-webhooks,  but want to keep backward compatibility
 	lc.cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
-		switch name {
-		case "load-from-webhooks-api":
+		if name == "load-from-webhooks-api" {
 			name = "use-configured-webhooks"
-			break
 		}
 		return pflag.NormalizedName(name)
 	})
