@@ -156,20 +156,3 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 		httpRecorder.log.Fatal(err)
 	}
 }
-
-func (httpRecorder *recordServer) initializeServer(address string) *http.Server {
-	customMux := http.NewServeMux()
-	server := &http.Server{Addr: address, Handler: customMux}
-
-	// --- Recorder control handlers
-	customMux.HandleFunc("/playback/stop", func(w http.ResponseWriter, r *http.Request) {
-		httpRecorder.log.Info("Received /playback/stop. Stopping...")
-
-		httpRecorder.recorder.saveAndClose()
-	})
-
-	// --- Default handler that proxies request and returns response from the remote
-	customMux.HandleFunc("/", httpRecorder.handler)
-
-	return server
-}

@@ -194,12 +194,3 @@ func (httpReplayer *replayServer) readAnyPendingWebhookRecordingsFromCassette() 
 
 	return webhookRequests, webhookResponses, nil
 }
-
-func (httpReplayer *replayServer) initializeServer(address string) *http.Server {
-	customMux := http.NewServeMux()
-	customMux.HandleFunc("/", httpReplayer.handler)
-
-	server := &http.Server{Addr: address, Handler: customMux}
-
-	return server
-}
