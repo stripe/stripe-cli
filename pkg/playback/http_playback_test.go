@@ -103,15 +103,13 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	remoteURL = ts.URL
 
 	// Spin up an instance of the HTTP playback server in record mode
-	var cassetteBuffer bytes.Buffer
 	addressString := defaultLocalAddress
 	webhookURL := defaultLocalWebhookAddress // not used in this test
 
-	httpRecorder := newRecordServer(remoteURL, webhookURL)
-	err := httpRecorder.insertCassette(&cassetteBuffer)
+	httpWrapper, err := NewServer(remoteURL, webhookURL, os.TempDir(), Record, "cassette.yaml")
 	check(t, err)
 
-	server := httpRecorder.initializeServer(addressString)
+	server := httpWrapper.InitializeServer(addressString)
 	serverReady := make(chan struct{})
 	go func() {
 		addr := server.Addr
@@ -140,19 +138,18 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	assert.Equal(t, mockResponse2.StatusCode, res2.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Post("http://localhost:8080/playback/stop", "text/plain", nil)
+	resShutdown, err := http.Get("http://localhost:8080/playback/cassette/eject")
 	server.Shutdown(context.TODO())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
-	httpReplayer := newReplayServer(webhookURL)
-	err = httpReplayer.readCassette(&cassetteBuffer)
+	httpWrapper, err = NewServer(remoteURL, webhookURL, os.TempDir(), Replay, "cassette.yaml")
 	check(t, err)
+	server = httpWrapper.InitializeServer(addressString)
 
-	replayServer := httpReplayer.initializeServer(addressString)
 	go func() {
-		if err := replayServer.ListenAndServe(); err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != http.ErrServerClosed {
 			// unexpected error
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
@@ -179,7 +176,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	assert.Equal(t, mockResponse2.Body, bodyBytes2)
 
 	// Shutdown replay server
-	replayServer.Shutdown(context.TODO())
+	server.Shutdown(context.TODO())
 }
 
 // Test the full server by switching between modes, loading and ejecting cassettes, and sending real stripe requests
