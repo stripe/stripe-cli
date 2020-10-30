@@ -106,7 +106,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	addressString := defaultLocalAddress
 	webhookURL := defaultLocalWebhookAddress // not used in this test
 
-	httpWrapper, err := NewServer(remoteURL, webhookURL, "/tmp", Record, "cassette.yaml")
+	httpWrapper, err := NewServer(remoteURL, webhookURL, os.TempDir(), Record, "cassette.yaml")
 	check(t, err)
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -144,7 +144,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	defer resShutdown.Body.Close()
 
 	// --- Set up a replay server
-	httpWrapper, err = NewServer(remoteURL, webhookURL, "/tmp", Replay, "cassette.yaml")
+	httpWrapper, err = NewServer(remoteURL, webhookURL, os.TempDir(), Replay, "cassette.yaml")
 	check(t, err)
 	server = httpWrapper.InitializeServer(addressString)
 
