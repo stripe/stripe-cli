@@ -1,9 +1,7 @@
 package playback
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -25,24 +23,22 @@ const (
 	incomingInteraction                        // eg: webhooks
 )
 
-// cassettePairs stores info on a single request + response interaction
-type cassettePair struct {
+// interactions stores info on a single request + response interaction
+type interaction struct {
 	// may have other fields like -- sequence number
 	Type     interactionType
-	Request  []byte
-	Response []byte
+	Request  httpRequest
+	Response httpResponse
 }
 
-// cassetteYaml is used to store interaction data to be serialized to a YAML file
-type cassetteYaml struct {
-	Interactions []cassettePair
-}
+// cassette is used to store a sequence of interactions that happened part of a single action
+type cassette []interaction
 
-// A interactionRecorder can read in a sequence of interactions, and write them out
+// An interactionRecorder can read in a cassette, and write them out
 // in a serialized format.
 type interactionRecorder struct {
 	writer         io.Writer
-	interactions   []cassettePair
+	cassette       cassette
 	reqSerializer  serializer
 	respSerializer serializer
 }
@@ -52,50 +48,49 @@ func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSeri
 		writer:         writer,
 		reqSerializer:  reqSerializer,
 		respSerializer: respSerializer,
-		interactions:   make([]cassettePair, 0),
 	}
 
 	return recorder, nil
 }
 
-// takes a generic struct
-func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req interface{}, resp interface{}) error {
-	reqBytes, err := recorder.reqSerializer(req)
+// write adds a new interaction to the current cassette.
+func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) error {
+	// reqBytes, err := recorder.reqSerializer(req)
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	respBytes, err := recorder.respSerializer(resp)
+	// respBytes, err := recorder.respSerializer(resp)
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	recorder.interactions = append(recorder.interactions, cassettePair{Type: typeOfInteraction, Request: reqBytes, Response: respBytes})
-
-	return err
+	recorder.cassette = append(recorder.cassette, interaction{Type: typeOfInteraction, Request: req, Response: resp})
+	// return err
+	return nil
 }
 
+// saveAndClose persists the cassette to the filesystem.
+// do not marshal here, have "write" use a setup serializer, in our case yaml
+// saveAndClose should just persist to the file and that's it.
 func (recorder *interactionRecorder) saveAndClose() error {
-	cassette := cassetteYaml{}
-	cassette.Interactions = recorder.interactions
-
-	yamlBytes, err := yaml.Marshal(cassette)
+	yaml, err := yaml.Marshal(recorder.cassette)
 	if err != nil {
 		return err
 	}
 
-	_, err = recorder.writer.Write(yamlBytes)
+	_, err = recorder.writer.Write(yaml)
 	return err
 }
 
-// A interactionReplayer contains a set of recorded interactions and exposes
+// An interactionReplayer contains a set of recorded interactions and exposes
 // functionality to play them back.
 type interactionReplayer struct {
 	cursor           int
 	comparator       requestComparator
-	cassette         cassetteYaml
+	cassette         cassette
 	respDeserializer deserializer
 	reqDeserializer  deserializer
 }
@@ -120,31 +115,31 @@ func newInteractionReplayer(reader io.Reader, reqDeserializer deserializer, resp
 }
 
 func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, err error) {
-	if len(replayer.cassette.Interactions) == 0 {
+	if len(replayer.cassette) == 0 {
 		return nil, errors.New("nothing left in cassette to replay")
 	}
 
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	for idx, val := range replayer.cassette.Interactions {
-		var reader io.Reader = bytes.NewReader(val.Request)
-		requestStruct, err := replayer.reqDeserializer(&reader)
-		if err != nil {
-			return nil, fmt.Errorf("error when deserializing cassette: %w", err)
-		}
+	for idx, val := range replayer.cassette {
+		// var reader io.Reader = bytes.NewReader(val.Request)
+		// requestStruct, err := replayer.reqDeserializer(&reader)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
+		// }
 
-		accept, shortCircuit := replayer.comparator(requestStruct, req)
+		accept, shortCircuit := replayer.comparator(val.Request, req)
 
 		if accept {
-			var reader io.Reader = bytes.NewReader(val.Response)
-			responseStruct, err := replayer.respDeserializer(&reader)
+			// var reader io.Reader = bytes.NewReader(val.Response)
+			// responseStruct, err := replayer.respDeserializer(&reader)
 
-			if err != nil {
-				return nil, fmt.Errorf("error when deserializing cassette: %w", err)
-			}
+			// if err != nil {
+			// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
+			// }
 
-			lastAccepted = responseStruct
+			lastAccepted = val.Response
 			acceptedIdx = idx
 
 			if shortCircuit {
@@ -153,7 +148,7 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 		}
 	}
 	if acceptedIdx != -1 {
-		replayer.cassette.Interactions = append(replayer.cassette.Interactions[:acceptedIdx], replayer.cassette.Interactions[acceptedIdx+1:]...)
+		replayer.cassette = append(replayer.cassette[:acceptedIdx], replayer.cassette[acceptedIdx+1:]...)
 		return &lastAccepted, nil
 	}
 
@@ -161,23 +156,23 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 }
 
 func (replayer *interactionReplayer) interactionsRemaining() int {
-	return len(replayer.cassette.Interactions)
+	return len(replayer.cassette)
 }
 
-func (replayer *interactionReplayer) peekFront() (interaction cassettePair, err error) {
-	if len(replayer.cassette.Interactions) == 0 {
-		return cassettePair{}, errors.New("nothing left in cassette to replay")
+func (replayer *interactionReplayer) peekFront() (interaction, error) {
+	if len(replayer.cassette) == 0 {
+		return interaction{}, errors.New("nothing left in cassette to replay")
 	}
 
-	return replayer.cassette.Interactions[0], nil
+	return replayer.cassette[0], nil
 }
 
-func (replayer *interactionReplayer) popFront() (interaction cassettePair, err error) {
-	if len(replayer.cassette.Interactions) == 0 {
-		return cassettePair{}, errors.New("nothing left in cassette to replay")
+func (replayer *interactionReplayer) popFront() (interaction, error) {
+	if len(replayer.cassette) == 0 {
+		return interaction{}, errors.New("nothing left in cassette to replay")
 	}
 
-	first := replayer.cassette.Interactions[0]
-	replayer.cassette.Interactions = replayer.cassette.Interactions[1:]
+	first := replayer.cassette[0]
+	replayer.cassette = replayer.cassette[1:]
 	return first, nil
 }

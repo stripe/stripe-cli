@@ -23,7 +23,8 @@ func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *h
 	}
 
 	// Create a identical copy of the request
-	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
+	bodyBytes, err := json.Marshal(wrappedRequest.Body)
+	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +88,8 @@ const (
 // A Server implements the full functionality of `stripe playback` as a HTTP server.
 // Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
 type Server struct {
-	httpRecorder recordServer
-	httpReplayer replayServer
+	httpRecorder HTTPRecorder
+	httpReplayer HTTPReplayer
 
 	remoteURL         string
 	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
@@ -111,8 +112,8 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 
 	// initialize server.httpRecorder and server.httpReplayer first, since calls to methods like
 	// server.loadCassette reference them.
-	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
-	server.httpReplayer = newReplayServer(webhookURL)
+	server.httpRecorder = newHTTPRecorder(remoteURL, webhookURL)
+	server.httpReplayer = newHTTPReplayer(webhookURL)
 	server.remoteURL = remoteURL
 	server.switchModeChan = make(chan string)
 

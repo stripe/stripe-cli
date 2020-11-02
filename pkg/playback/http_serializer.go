@@ -4,6 +4,7 @@ package playback
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -47,7 +48,7 @@ func httpResponsefromBytes(input *io.Reader) (val interface{}, err error) {
 
 type httpResponse struct {
 	Headers    http.Header
-	Body       []byte
+	Body       map[string]interface{}
 	StatusCode int
 }
 
@@ -57,20 +58,21 @@ func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err err
 	wrappedResponse.Headers = resp.Header
 	wrappedResponse.StatusCode = resp.StatusCode
 
-	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return wrappedResponse, err
-	}
-	wrappedResponse.Body = bodyBytes
+	// var bodyBytes []byte
+	// bodyBytes, err = ioutil.ReadAll(resp.Body)
+	// defer resp.Body.Close()
+	// if err != nil {
+	// 	return wrappedResponse, err
+	// }
+	// json.Unmarshal(bodyBytes, &wrappedResponse.Body)
+	json.NewDecoder(resp.Body).Decode(&wrappedResponse.Body)
 
 	return wrappedResponse, nil
 }
 
 type httpRequest struct {
 	Method  string
-	Body    []byte
+	Body    map[string]interface{}
 	Headers http.Header
 	URL     url.URL
 }
@@ -82,13 +84,15 @@ func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest.Headers = req.Header
 	wrappedRequest.URL = *req.URL
 
-	var bodyBytes []byte
-	bodyBytes, err = ioutil.ReadAll(req.Body)
-	defer req.Body.Close()
-	if err != nil {
-		return wrappedRequest, err
-	}
-	wrappedRequest.Body = bodyBytes
+	// var bodyBytes []byte
+	// bodyBytes, err = ioutil.ReadAll(req.Body)
+	// defer req.Body.Close()
+	// if err != nil {
+	// 	return wrappedRequest, err
+	// }
+	// wrappedRequest.Body = bodyBytes
+	json.NewDecoder(req.Body).Decode(&wrappedRequest.Body)
+	fmt.Println(wrappedRequest.Body["type"])
 
 	return wrappedRequest, nil
 }
