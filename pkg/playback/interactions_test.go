@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -201,4 +202,47 @@ func TestLastMatchingEvent(t *testing.T) {
 	castB := (*respB).(httpResponse)
 	check(t, errB)
 	assert.Equal(t, castB.StatusCode, r2.StatusCode)
+}
+
+func TestSaveAndCloseToYaml(t *testing.T) {
+	// create cassette file
+	cassetteFile, err := ioutil.TempFile(os.TempDir(), "test_cassette.yaml")
+	defer os.Remove(cassetteFile.Name())
+	check(t, err)
+
+	// create new recorder
+	recorder, err := newInteractionRecorder(cassetteFile, httpRequestToBytes, httpResponseToBytes)
+	check(t, err)
+
+	// write req/resp interaction to cassette
+	s1 := httpRequest{Method: "POST"}
+	r1 := httpResponse{StatusCode: 200}
+	recorder.write(outgoingInteraction, s1, r1)
+
+	// persist cassette to file
+	recorder.saveAndClose()
+
+	expectedYAML := `- type: 0
+  request:
+    method: POST
+    body: {}
+    headers: {}
+    url:
+      scheme: ""
+      opaque: ""
+      user: null
+      host: ""
+      path: ""
+      rawpath: ""
+      forcequery: false
+      rawquery: ""
+      fragment: ""
+  response:
+    headers: {}
+    body: {}
+    statuscode: 200
+`
+
+	dat, _ := ioutil.ReadFile(cassetteFile.Name())
+	assert.Equal(t, expectedYAML, string(dat))
 }
