@@ -81,6 +81,10 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 	copyHTTPHeader(w.Header(), wrappedResponse.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResponse.StatusCode)
 	bodyBytes, err := json.Marshal(wrappedResponse.Body)
+	if err != nil {
+		httpReplayer.log.Fatal(err)
+	}
+
 	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		httpReplayer.log.Fatal(err)

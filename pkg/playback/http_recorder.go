@@ -43,11 +43,6 @@ func (httpRecorder *HTTPRecorder) insertCassette(writer io.Writer) error {
 	return nil
 }
 
-// Struct used to parse the event.Type from recorded webhook JSON bodies
-type stripeEvent struct {
-	Type string `json:"type"`
-}
-
 // Handler for the webhook endpoint that forwards incoming webhooks to the local application,
 // while recording the webhook and local app's response to the cassette.
 func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +92,10 @@ func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.
 	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
 	bodyBytes, err := json.Marshal(wrappedResp.Body)
+	if err != nil {
+		httpRecorder.log.Fatal(err)
+	}
+
 	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
 
 	// Since at this point, we can't signal an error by writing the HTTP status code, and this is a significant failure - we log.Fatal
@@ -150,6 +149,10 @@ func (httpRecorder *HTTPRecorder) handler(w http.ResponseWriter, r *http.Request
 	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
 	bodyBytes, err := json.Marshal(wrappedResp.Body)
+	if err != nil {
+		httpRecorder.log.Fatal(err)
+	}
+
 	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
 
 	// Since at this point, we can't signal an error by writing the HTTP status code, and this is a significant failure - we log.Fatal

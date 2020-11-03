@@ -3,6 +3,7 @@ package playback
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -77,7 +78,8 @@ func startMockServer(responses []httpResponse) *httptest.Server {
 		w.WriteHeader(wrappedResponse.StatusCode)
 
 		// Copy body
-		io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
+		bodyBytes, _ := json.Marshal(wrappedResponse.Body)
+		io.Copy(w, bytes.NewBuffer(bodyBytes))
 	}))
 }
 
@@ -90,12 +92,12 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	mockResponse1.StatusCode = 200
 	mockResponse1.Headers = make(http.Header)
 	mockResponse1.Headers.Add("testHeader", "testHeaderValue")
-	mockResponse1.Body = []byte("body 1")
+	mockResponse1.Body = map[string]interface{}{"body": "1"}
 
 	mockResponse2 := httpResponse{}
 	mockResponse2.StatusCode = 402
 	mockResponse2.Headers = make(http.Header)
-	mockResponse2.Body = []byte("body 2")
+	mockResponse2.Body = map[string]interface{}{"body": "2"}
 	fixtureResponses := []httpResponse{mockResponse1, mockResponse2}
 
 	ts := startMockServer(fixtureResponses)
@@ -167,13 +169,15 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 
 	// Also sanity check that the mock server is responding with the expected responses
 	assert.Equal(t, "testHeaderValue", res1.Header.Get("testHeader"))
-	bodyBytes1, err := ioutil.ReadAll(res1.Body)
+	var bodyJSON map[string]interface{}
+	err = json.NewDecoder(res1.Body).Decode(&bodyJSON)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse1.Body, bodyBytes1)
+	assert.Equal(t, mockResponse1.Body, bodyJSON)
 
-	bodyBytes2, err := ioutil.ReadAll(res2.Body)
+	var bodyJSON2 map[string]interface{}
+	err = json.NewDecoder(res2.Body).Decode(&bodyJSON2)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse2.Body, bodyBytes2)
+	assert.Equal(t, mockResponse2.Body, bodyJSON2)
 
 	// Shutdown replay server
 	server.Shutdown(context.TODO())
@@ -188,12 +192,12 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	mockResponse1.StatusCode = 200
 	mockResponse1.Headers = make(http.Header)
 	mockResponse1.Headers.Add("testHeader", "testHeaderValue")
-	mockResponse1.Body = []byte("body 1")
+	mockResponse1.Body = map[string]interface{}{"body": "1"}
 
 	mockResponse2 := httpResponse{}
 	mockResponse2.StatusCode = 402
 	mockResponse2.Headers = make(http.Header)
-	mockResponse2.Body = []byte("body 2")
+	mockResponse2.Body = map[string]interface{}{"body": "2"}
 	fixtureResponses := []httpResponse{mockResponse1, mockResponse2}
 
 	ts := startMockServer(fixtureResponses)
@@ -273,13 +277,15 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 
 	// Also sanity check that the mock server is responding with the expected responses
 	assert.Equal(t, "testHeaderValue", res1.Header.Get("testHeader"))
-	bodyBytes1, err := ioutil.ReadAll(res1.Body)
+	var bodyJSON1 map[string]interface{}
+	err = json.NewDecoder(res1.Body).Decode(&bodyJSON1)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse1.Body, bodyBytes1)
+	assert.Equal(t, mockResponse1.Body, bodyJSON1)
 
-	bodyBytes2, err := ioutil.ReadAll(res2.Body)
+	var bodyJSON2 map[string]interface{}
+	json.NewDecoder(res2.Body).Decode(&bodyJSON2)
 	assert.NoError(t, err)
-	assert.Equal(t, mockResponse2.Body, bodyBytes2)
+	assert.Equal(t, mockResponse2.Body, bodyJSON2)
 
 	// --- END REPLAY MODE
 }
