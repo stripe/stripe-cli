@@ -222,7 +222,8 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 	// persist cassette to file
 	recorder.saveAndClose()
 
-	expectedYAML := `- type: 0
+	expectedYAML :=
+		`- type: 0
   request:
     method: POST
     body: {}
@@ -237,6 +238,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
       forcequery: false
       rawquery: ""
       fragment: ""
+      rawfragment: ""
   response:
     headers: {}
     body: {}
