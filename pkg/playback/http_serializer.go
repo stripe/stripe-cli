@@ -4,7 +4,6 @@ package playback
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -13,6 +12,19 @@ import (
 
 type serializer func(input interface{}) (bytes []byte, err error)
 type deserializer func(input *io.Reader) (value interface{}, err error)
+
+type httpRequest struct {
+	Method  string
+	Body    map[string]interface{}
+	Headers http.Header
+	URL     url.URL
+}
+
+type httpResponse struct {
+	Headers    http.Header
+	Body       map[string]interface{}
+	StatusCode int
+}
 
 func httpRequestToBytes(input interface{}) (data []byte, err error) {
 	return json.Marshal(input)
@@ -46,12 +58,6 @@ func httpResponsefromBytes(input *io.Reader) (val interface{}, err error) {
 	return output, err
 }
 
-type httpResponse struct {
-	Headers    http.Header
-	Body       map[string]interface{}
-	StatusCode int
-}
-
 func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err error) {
 	wrappedResponse = httpResponse{}
 
@@ -70,13 +76,6 @@ func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err err
 	return wrappedResponse, nil
 }
 
-type httpRequest struct {
-	Method  string
-	Body    map[string]interface{}
-	Headers http.Header
-	URL     url.URL
-}
-
 func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest = httpRequest{}
 
@@ -84,15 +83,9 @@ func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest.Headers = req.Header
 	wrappedRequest.URL = *req.URL
 
-	// var bodyBytes []byte
-	// bodyBytes, err = ioutil.ReadAll(req.Body)
-	// defer req.Body.Close()
-	// if err != nil {
-	// 	return wrappedRequest, err
-	// }
-	// wrappedRequest.Body = bodyBytes
-	json.NewDecoder(req.Body).Decode(&wrappedRequest.Body)
-	fmt.Println(wrappedRequest.Body["type"])
+	if req.Body != nil {
+		json.NewDecoder(req.Body).Decode(&wrappedRequest.Body)
+	}
 
 	return wrappedRequest, nil
 }

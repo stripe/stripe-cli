@@ -122,14 +122,14 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	for idx, val := range replayer.cassette {
+	for idx, interaction := range replayer.cassette {
 		// var reader io.Reader = bytes.NewReader(val.Request)
 		// requestStruct, err := replayer.reqDeserializer(&reader)
 		// if err != nil {
 		// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
 		// }
 
-		accept, shortCircuit := replayer.comparator(val.Request, req)
+		accept, shortCircuit := replayer.comparator(interaction.Request, req)
 
 		if accept {
 			// var reader io.Reader = bytes.NewReader(val.Response)
@@ -139,7 +139,7 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 			// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
 			// }
 
-			lastAccepted = val.Response
+			lastAccepted = interaction.Response
 			acceptedIdx = idx
 
 			if shortCircuit {
@@ -148,6 +148,7 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 		}
 	}
 	if acceptedIdx != -1 {
+		// remove interactions that were accepted from tape
 		replayer.cassette = append(replayer.cassette[:acceptedIdx], replayer.cassette[acceptedIdx+1:]...)
 		return &lastAccepted, nil
 	}
