@@ -215,7 +215,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 	check(t, err)
 
 	// write req/resp interaction to cassette
-	s1 := httpRequest{Method: "POST"}
+	s1 := httpRequest{Method: "POST", Body: []byte("hello world")}
 	r1 := httpResponse{StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
@@ -226,7 +226,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 		`- type: 0
   request:
     method: POST
-    body: {}
+    body: "hellow world"
     headers: {}
     url:
       scheme: ""
@@ -241,7 +241,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
       rawfragment: ""
   response:
     headers: {}
-    body: {}
+    body: ""
     statuscode: 200
 `
 

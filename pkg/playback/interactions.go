@@ -55,31 +55,24 @@ func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSeri
 
 // write adds a new interaction to the current cassette.
 func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) error {
-	// reqBytes, err := recorder.reqSerializer(req)
-
-	// if err != nil {
-	// 	return err
-	// }
-
-	// respBytes, err := recorder.respSerializer(resp)
-
-	// if err != nil {
-	// 	return err
-	// }
-
 	recorder.cassette = append(recorder.cassette, interaction{Type: typeOfInteraction, Request: req, Response: resp})
-	// return err
 	return nil
 }
 
 // saveAndClose persists the cassette to the filesystem.
-// do not marshal here, have "write" use a setup serializer, in our case yaml
-// saveAndClose should just persist to the file and that's it.
 func (recorder *interactionRecorder) saveAndClose() error {
-	yaml, err := yaml.Marshal(recorder.cassette)
-	if err != nil {
-		return err
-	}
+	// open cassette file
+	// loop over interactions
+	// format interactions with recorder.interactionSerializer
+	// write to file
+	// end of loop => close file
+
+	// yaml, err := yaml.Marshal(recorder.cassette)
+	// if err != nil {
+	// 	return err
+	// }
+
+	var serializedInteractions []interface{}
 
 	_, err = recorder.writer.Write(yaml)
 	return err
