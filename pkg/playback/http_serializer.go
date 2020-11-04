@@ -4,6 +4,7 @@ package playback
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -64,13 +65,6 @@ func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err err
 	wrappedResponse.Headers = resp.Header
 	wrappedResponse.StatusCode = resp.StatusCode
 
-	// var bodyBytes []byte
-	// bodyBytes, err = ioutil.ReadAll(resp.Body)
-	// defer resp.Body.Close()
-	// if err != nil {
-	// 	return wrappedResponse, err
-	// }
-	// json.Unmarshal(bodyBytes, &wrappedResponse.Body)
 	json.NewDecoder(resp.Body).Decode(&wrappedResponse.Body)
 
 	return wrappedResponse, nil
@@ -83,9 +77,13 @@ func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest.Headers = req.Header
 	wrappedRequest.URL = *req.URL
 
-	if req.Body != nil {
-		json.NewDecoder(req.Body).Decode(&wrappedRequest.Body)
-	}
+	json.NewDecoder(req.Body).Decode(&wrappedRequest.Body)
+
+	fmt.Println(req.Body)
+	bodyBytes, _ := ioutil.ReadAll(req.Body)
+	fmt.Println(string(bodyBytes))
+	fmt.Println(wrappedRequest.Body)
+	fmt.Println(wrappedRequest)
 
 	return wrappedRequest, nil
 }

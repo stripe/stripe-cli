@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewHTTPRequestReturnsWrappedRequest(t *testing.T) {
-	req, _ := http.NewRequest("GET", "http://example.com", nil)
+	req, _ := http.NewRequest("GET", "http://example.com", bytes.NewBuffer([]byte{}))
 	wrappedRequest, err := newHTTPRequest(req)
 	check(t, err)
 	assert.Equal(t, wrappedRequest.Method, req.Method)
@@ -32,4 +32,8 @@ func TestNewHTTPResponseReturnsWrappedResponse(t *testing.T) {
 	wrappedResponse, err := newHTTPResponse(&res)
 	check(t, err)
 	assert.Equal(t, wrappedResponse.StatusCode, res.StatusCode)
+	var jsonBody map[string]interface{}
+	json.NewDecoder(res.Body).Decode(&jsonBody)
+	check(t, err)
+	assert.Equal(t, wrappedResponse.Body, jsonBody)
 }
