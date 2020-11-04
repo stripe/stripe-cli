@@ -171,25 +171,25 @@ func (httpReplayer *HTTPReplayer) readAnyPendingWebhookRecordingsFromCassette() 
 	// --- Deserialize the bytes into HTTP request & response pairs
 	webhookRequests = make([]*httpRequest, 0)
 	webhookResponses = make([]*httpResponse, 0)
-	for _, interaction := range interactions {
-		// var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
-		// rawWhReq, err := httpRequestfromBytes(&reqReader)
-		// if err != nil {
-		// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
-		// }
-		// whReq := rawWhReq.(httpRequest)
+	// for _, interaction := range interactions {
+	// 	// var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
+	// 	// rawWhReq, err := httpRequestfromBytes(&reqReader)
+	// 	// if err != nil {
+	// 	// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
+	// 	// }
+	// 	// whReq := rawWhReq.(httpRequest)
 
-		webhookRequests = append(webhookRequests, &interaction.Request)
+	// 	webhookRequests = append(webhookRequests, &interaction.Request)
 
-		// var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
-		// rawWhResp, err := httpResponsefromBytes(&respReader)
-		// if err != nil {
-		// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
-		// }
-		// whResp := rawWhResp.(httpResponse)
+	// 	// var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
+	// 	// rawWhResp, err := httpResponsefromBytes(&respReader)
+	// 	// if err != nil {
+	// 	// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
+	// 	// }
+	// 	// whResp := rawWhResp.(httpResponse)
 
-		webhookResponses = append(webhookResponses, &interaction.Response)
-	}
+	// 	webhookResponses = append(webhookResponses, &interaction.Response)
+	// }
 
 	return webhookRequests, webhookResponses, nil
 }

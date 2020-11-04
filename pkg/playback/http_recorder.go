@@ -39,7 +39,7 @@ func newHTTPRecorder(remoteURL string, webhookURL string) (httpRecorder HTTPReco
 
 // Prepare the recorder to start recording to a new cassette.
 func (httpRecorder *HTTPRecorder) insertCassette(writer io.Writer) error {
-	recorder, err := newInteractionRecorder(writer, httpRequestToBytes, httpResponseToBytes)
+	recorder, err := newInteractionRecorder(writer, YAMLSerializer{})
 	if err != nil {
 		return err
 	}

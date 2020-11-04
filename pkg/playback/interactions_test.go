@@ -70,7 +70,7 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, httpRequestToBytes, httpRequestToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
@@ -116,7 +116,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +166,7 @@ func TestLastMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
@@ -211,7 +211,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 	check(t, err)
 
 	// create new recorder
-	recorder, err := newInteractionRecorder(cassetteFile, httpRequestToBytes, httpResponseToBytes)
+	recorder, err := newInteractionRecorder(cassetteFile, YAMLSerializer{})
 	check(t, err)
 
 	// write req/resp interaction to cassette
@@ -226,7 +226,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 		`- type: 0
   request:
     method: POST
-    body: "hellow world"
+    body: hello world
     headers: {}
     url:
       scheme: ""

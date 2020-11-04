@@ -2,6 +2,7 @@ package playback
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -27,8 +28,8 @@ const (
 type interaction struct {
 	// may have other fields like -- sequence number
 	Type     interactionType
-	Request  httpRequest
-	Response httpResponse
+	Request  interface{}
+	Response interface{}
 }
 
 // cassette is used to store a sequence of interactions that happened part of a single action
@@ -39,15 +40,15 @@ type cassette []interaction
 type interactionRecorder struct {
 	writer         io.Writer
 	cassette       cassette
+	serializer     YAMLSerializer
 	reqSerializer  serializer
 	respSerializer serializer
 }
 
-func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSerializer serializer) (recorder *interactionRecorder, err error) {
+func newInteractionRecorder(writer io.Writer, serializer serializer) (recorder *interactionRecorder, err error) {
 	recorder = &interactionRecorder{
-		writer:         writer,
-		reqSerializer:  reqSerializer,
-		respSerializer: respSerializer,
+		writer:     writer,
+		serializer: YAMLSerializer{},
 	}
 
 	return recorder, nil
@@ -55,26 +56,33 @@ func newInteractionRecorder(writer io.Writer, reqSerializer serializer, respSeri
 
 // write adds a new interaction to the current cassette.
 func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) error {
-	recorder.cassette = append(recorder.cassette, interaction{Type: typeOfInteraction, Request: req, Response: resp})
+	// serializedReq, _ := recorder.reqSerializer(req)
+	// var yamlReq YAMLRequest
+	// yaml.Unmarshal(serializedReq, &yamlReq)
+
+	// serializedResp, _ := recorder.respSerializer(resp)
+	// var yamlResp YAMLResponse
+	// yaml.Unmarshal(serializedResp, &yamlResp)
+
+	// recorder.cassette = append(recorder.cassette, interaction{
+	// 	Type:     typeOfInteraction,
+	// 	Request:  yamlReq,
+	// 	Response: yamlResp,
+	// })
+	recorder.cassette = append(recorder.cassette, recorder.serializer.newInteraction(typeOfInteraction, req, resp))
 	return nil
 }
 
 // saveAndClose persists the cassette to the filesystem.
 func (recorder *interactionRecorder) saveAndClose() error {
-	// open cassette file
-	// loop over interactions
-	// format interactions with recorder.interactionSerializer
-	// write to file
-	// end of loop => close file
+	output, err := recorder.serializer.encodeCassetteToBytes(recorder.cassette)
+	fmt.Println(output)
+	fmt.Println(string(output))
+	if err != nil {
+		return err
+	}
 
-	// yaml, err := yaml.Marshal(recorder.cassette)
-	// if err != nil {
-	// 	return err
-	// }
-
-	var serializedInteractions []interface{}
-
-	_, err = recorder.writer.Write(yaml)
+	_, err = recorder.writer.Write(output)
 	return err
 }
 
