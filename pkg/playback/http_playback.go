@@ -38,12 +38,7 @@ func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *h
 	}
 
 	// Create a identical copy of the request
-	bodyBytes, err := json.Marshal(wrappedRequest.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(bodyBytes))
+	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
 	if err != nil {
 		return nil, err
 	}

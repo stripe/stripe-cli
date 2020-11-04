@@ -24,16 +24,15 @@ func TestNewHTTPRequestReturnsWrappedRequest(t *testing.T) {
 }
 
 func TestNewHTTPResponseReturnsWrappedResponse(t *testing.T) {
+	body := ioutil.NopCloser(bytes.NewBuffer([]byte("Hello World")))
 	res := http.Response{
 		Header:     http.Header{},
-		Body:       ioutil.NopCloser(bytes.NewBufferString("Hello World")),
+		Body:       body,
 		StatusCode: 200,
 	}
 	wrappedResponse, err := newHTTPResponse(&res)
 	check(t, err)
+
 	assert.Equal(t, wrappedResponse.StatusCode, res.StatusCode)
-	var jsonBody map[string]interface{}
-	json.NewDecoder(res.Body).Decode(&jsonBody)
-	check(t, err)
-	assert.Equal(t, wrappedResponse.Body, jsonBody)
+	assert.Equal(t, string(wrappedResponse.Body), "Hello World")
 }

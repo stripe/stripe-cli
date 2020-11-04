@@ -77,11 +77,11 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	s1 := httpRequest{Method: "POST"}
-	r1 := httpResponse{Headers: http.Header{}, Body: map[string]interface{}{"valid": "json"}, StatusCode: 200}
+	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
 	s2 := httpRequest{Method: "GET"}
-	r2 := httpResponse{Headers: http.Header{}, Body: map[string]interface{}{"valid": "json2"}, StatusCode: 300}
+	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
 	err = recorder.saveAndClose()
@@ -123,11 +123,11 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	s1 := httpRequest{Method: "POST"}
-	r1 := httpResponse{Headers: http.Header{}, Body: map[string]interface{}{"valid": "json"}, StatusCode: 200}
+	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
 	s2 := httpRequest{Method: "GET"}
-	r2 := httpResponse{Headers: http.Header{}, Body: map[string]interface{}{"valid": "json2"}, StatusCode: 300}
+	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
 	err = recorder.saveAndClose()

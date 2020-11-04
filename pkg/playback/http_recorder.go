@@ -13,6 +13,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Struct used to parse the event.Type from recorded webhook JSON bodies
+type stripeEvent struct {
+	Type string `json:"type"`
+}
+
 // An HTTPRecorder proxies requests to a remote host, records all interactions and returns them.
 type HTTPRecorder struct {
 	recorder   *interactionRecorder
@@ -52,27 +57,27 @@ func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// var evt stripeEvent
-	// err = json.Unmarshal(wrappedReq.Body, &evt)
-	// if err != nil {
-	// 	writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming webhook request: %w", err), 500)
-	// 	return
-	// }
+	var evt stripeEvent
+	err = json.Unmarshal(wrappedReq.Body, &evt)
+	if err != nil {
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming webhook request: %w", err), 500)
+		return
+	}
 
 	// --- Pass request to local webhook endpoint
-	httpRecorder.log.Infof("[WEBHOOK] %v [%v] to %v --> FORWARDED to %v", r.Method, wrappedReq.Body["type"], r.RequestURI, httpRecorder.webhookURL)
+	httpRecorder.log.Infof("[WEBHOOK] %v [%v] to %v --> FORWARDED to %v", r.Method, evt.Type, r.RequestURI, httpRecorder.webhookURL)
 
 	resp, err := forwardRequest(&wrappedReq, httpRecorder.webhookURL)
 	// NOTE: this response is going back to Stripe, so for internal `playback` server errors - return a 500 response with an error msg in the body
 	// The details of this response will be visible on the Developer Dashboard under "Webhook CLI Responses"
 	// (^ this all assuming that playback is using `stripe listen` to receive webhooks)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", wrappedReq.Body["type"], err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
 		return
 	}
 	wrappedResp, err := newHTTPResponse(resp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", wrappedReq.Body["type"], err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error forwarding [%v] webhook to client: %w", evt.Type, err), 500)
 		return
 	}
 
@@ -82,7 +87,7 @@ func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
 	err = httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error writing [%v] webhook interaction to cassette: %w", wrappedReq.Body["type"], err), 500)
+		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error writing [%v] webhook interaction to cassette: %w", evt.Type, err), 500)
 		return
 	}
 
@@ -148,12 +153,7 @@ func (httpRecorder *HTTPRecorder) handler(w http.ResponseWriter, r *http.Request
 	// the status code to 200 if not already set.
 	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
-	bodyBytes, err := json.Marshal(wrappedResp.Body)
-	if err != nil {
-		httpRecorder.log.Fatal(err)
-	}
-
-	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
+	_, err = io.Copy(w, bytes.NewBuffer(wrappedResp.Body))
 
 	// Since at this point, we can't signal an error by writing the HTTP status code, and this is a significant failure - we log.Fatal
 	// so that the failure is clear to the user.

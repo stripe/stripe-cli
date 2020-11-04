@@ -80,12 +80,7 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 	// the status code to 200 if not already set.
 	copyHTTPHeader(w.Header(), wrappedResponse.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResponse.StatusCode)
-	bodyBytes, err := json.Marshal(wrappedResponse.Body)
-	if err != nil {
-		httpReplayer.log.Fatal(err)
-	}
-
-	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
+	_, err = io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
 	if err != nil {
 		httpReplayer.log.Fatal(err)
 	}
@@ -108,9 +103,15 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
 
 		for i, webhookReq := range webhookRequests {
+			var evt stripeEvent
+			err = json.Unmarshal(webhookReq.Body, &evt)
+			if err != nil {
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+			}
+
 			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", webhookReq.Body["type"], err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 			defer resp.Body.Close()
@@ -118,14 +119,14 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 			expectedResp := webhookResponses[i]
 
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", webhookReq.Body["type"], err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 
-			httpReplayer.log.Infof("	> Forwarding webhook [%v].\n", webhookReq.Body["type"])
+			httpReplayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
 			httpReplayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", webhookReq.Body["type"], err)
+				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 		}
