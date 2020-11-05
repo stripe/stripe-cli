@@ -167,12 +167,12 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 
 	// Also sanity check that the mock server is responding with the expected responses
 	assert.Equal(t, "testHeaderValue", res1.Header.Get("testHeader"))
-	bodyBytes, err := ioutil.ReadAll(res1.Body)
-	check(t, err)
-	assert.Equal(t, mockResponse1.Body, bodyBytes)
+	bodyBytes1, err := ioutil.ReadAll(res1.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, mockResponse1.Body, bodyBytes1)
 
 	bodyBytes2, err := ioutil.ReadAll(res2.Body)
-	check(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, mockResponse2.Body, bodyBytes2)
 
 	// Shutdown replay server
@@ -274,11 +274,11 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	// Also sanity check that the mock server is responding with the expected responses
 	assert.Equal(t, "testHeaderValue", res1.Header.Get("testHeader"))
 	bodyBytes1, err := ioutil.ReadAll(res1.Body)
-	check(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, mockResponse1.Body, bodyBytes1)
 
 	bodyBytes2, err := ioutil.ReadAll(res2.Body)
-	check(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, mockResponse2.Body, bodyBytes2)
 
 	// --- END REPLAY MODE

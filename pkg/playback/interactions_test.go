@@ -242,7 +242,7 @@ func TestSaveAndCloseToYaml(t *testing.T) {
   response:
     headers: {}
     body: ""
-    statuscode: 200
+    status_code: 200
 `
 
 	dat, _ := ioutil.ReadFile(cassetteFile.Name())

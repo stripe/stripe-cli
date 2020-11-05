@@ -2,7 +2,6 @@ package playback
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -24,7 +23,9 @@ const (
 	incomingInteraction                        // eg: webhooks
 )
 
-// interactions stores info on a single request + response interaction
+// interaction stores info on a single request + response interaction
+// interactions are on the tape ready to be persisted, so Request/Response
+// are interface{} - already encoded by the serializer, ready to be persisted.
 type interaction struct {
 	// may have other fields like -- sequence number
 	Type     interactionType
@@ -35,8 +36,7 @@ type interaction struct {
 // cassette is used to store a sequence of interactions that happened part of a single action
 type cassette []interaction
 
-// An interactionRecorder can read in a cassette, and write them out
-// in a serialized format.
+// An interactionRecorder can read and write a cassette in a serialized format.
 type interactionRecorder struct {
 	writer     io.Writer
 	cassette   cassette
@@ -53,29 +53,13 @@ func newInteractionRecorder(writer io.Writer, serializer serializer) (recorder *
 }
 
 // write adds a new interaction to the current cassette.
-func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) error {
-	// serializedReq, _ := recorder.reqSerializer(req)
-	// var yamlReq YAMLRequest
-	// yaml.Unmarshal(serializedReq, &yamlReq)
-
-	// serializedResp, _ := recorder.respSerializer(resp)
-	// var yamlResp YAMLResponse
-	// yaml.Unmarshal(serializedResp, &yamlResp)
-
-	// recorder.cassette = append(recorder.cassette, interaction{
-	// 	Type:     typeOfInteraction,
-	// 	Request:  yamlReq,
-	// 	Response: yamlResp,
-	// })
+func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) {
 	recorder.cassette = append(recorder.cassette, recorder.serializer.newInteraction(typeOfInteraction, req, resp))
-	return nil
 }
 
 // saveAndClose persists the cassette to the filesystem.
 func (recorder *interactionRecorder) saveAndClose() error {
-	output, err := recorder.serializer.encodeCassetteToBytes(recorder.cassette)
-	fmt.Println(output)
-	fmt.Println(string(output))
+	output, err := recorder.serializer.encodeCassette(recorder.cassette)
 	if err != nil {
 		return err
 	}

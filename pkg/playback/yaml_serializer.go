@@ -103,8 +103,8 @@ func (s YAMLSerializer) newInteraction(typeOfInteraction interactionType, req ht
 	}
 }
 
-// encodeCassetteToBytes takes in a cassette and return an []byte of the YAML-encoded cassette
+// encodeCassette takes in a cassette and return an []byte of the YAML-encoded cassette
 // string() can be called on the []byte for the actual human-readable YAML
-func (s YAMLSerializer) encodeCassetteToBytes(cassette cassette) ([]byte, error) {
+func (s YAMLSerializer) encodeCassette(cassette cassette) ([]byte, error) {
 	return yaml.Marshal(cassette)
 }

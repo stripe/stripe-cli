@@ -18,7 +18,7 @@ type stripeEvent struct {
 	Type string `json:"type"`
 }
 
-// An HTTPRecorder proxies requests to a remote host, records all interactions and returns them.
+// An HTTPRecorder proxies requests to a remote host and records all interactions.
 type HTTPRecorder struct {
 	recorder   *interactionRecorder
 	remoteURL  string
@@ -85,23 +85,14 @@ func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	err = httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
-	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error writing [%v] webhook interaction to cassette: %w", evt.Type, err), 500)
-		return
-	}
+	httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
 
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.
 	copyHTTPHeader(w.Header(), wrappedResp.Headers) // header map must be written before calling w.WriteHeader
 	w.WriteHeader(wrappedResp.StatusCode)
-	bodyBytes, err := json.Marshal(wrappedResp.Body)
-	if err != nil {
-		httpRecorder.log.Fatal(err)
-	}
-
-	_, err = io.Copy(w, bytes.NewBuffer(bodyBytes))
+	_, err = io.Copy(w, bytes.NewBuffer(wrappedResp.Body))
 
 	// Since at this point, we can't signal an error by writing the HTTP status code, and this is a significant failure - we log.Fatal
 	// so that the failure is clear to the user.
@@ -143,11 +134,8 @@ func (httpRecorder *HTTPRecorder) handler(w http.ResponseWriter, r *http.Request
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	err = httpRecorder.recorder.write(outgoingInteraction, wrappedReq, wrappedResp)
-	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("error when recording HTTP response to cassette: %w", err), 500)
-		return
-	}
+	httpRecorder.recorder.write(outgoingInteraction, wrappedReq, wrappedResp)
+
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.

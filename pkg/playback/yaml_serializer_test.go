@@ -121,19 +121,19 @@ func TestNewInteraction(t *testing.T) {
 	assert.Equal(t, resp.StatusCode, 200)
 }
 
-func TestEncodeCassetteToBytes(t *testing.T) {
+func TestEncodeCassette(t *testing.T) {
 	serializer := YAMLSerializer{}
 
 	interaction1 := serializer.newInteraction(1, request(), response())
 	interaction2 := serializer.newInteraction(0, request(), response())
 	cassette := cassette{interaction1, interaction2}
 
-	encoded, err := serializer.encodeCassetteToBytes(cassette)
+	encoded, err := serializer.encodeCassette(cassette)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	expected := "- type: 1\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: \"\"\n    statuscode: 200\n- type: 0\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: \"\"\n    statuscode: 200\n"
+	expected := "- type: 1\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n- type: 0\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n"
 
 	assert.Equal(t, expected, string(encoded))
 }

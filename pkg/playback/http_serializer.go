@@ -14,7 +14,7 @@ type serializer interface {
 	serializeReq(interface{}) ([]byte, error)
 	serializeResp(interface{}) ([]byte, error)
 	newInteraction(interactionType, httpRequest, httpResponse) interaction
-	encodeCassetteToBytes(cassette) ([]byte, error)
+	encodeCassette(cassette) ([]byte, error)
 }
 
 // type serializer func(input interface{}) (bytes []byte, err error)
@@ -63,7 +63,8 @@ func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err err
 	wrappedResponse.Headers = resp.Header
 	wrappedResponse.StatusCode = resp.StatusCode
 
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
 		return wrappedResponse, err
@@ -80,7 +81,8 @@ func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {
 	wrappedRequest.Headers = req.Header
 	wrappedRequest.URL = *req.URL
 
-	bodyBytes, err := ioutil.ReadAll(req.Body)
+	var bodyBytes []byte
+	bodyBytes, err = ioutil.ReadAll(req.Body)
 	defer req.Body.Close()
 	if err != nil {
 		return wrappedRequest, err
