@@ -5,6 +5,7 @@ package playback
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -31,14 +32,14 @@ func newHTTPReplayer(webhookURL string) (httpReplayer HTTPReplayer) {
 	return httpReplayer
 }
 
-// Read a previously recorded cassette into the replayer and ready it for replaying.
+// Reads a cassette file, decodes it with serializer and loads it in the cassette.
 func (httpReplayer *HTTPReplayer) readCassette(reader io.Reader) error {
 	// TODO(DX-5701): We may want to allow different types of replay matching in the future (instead of simply sequential playback)
 	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		return true, true
 	}
 
-	replayer, err := newInteractionReplayer(reader, httpRequestfromBytes, httpResponsefromBytes, sequentialComparator)
+	replayer, err := newInteractionReplayer(reader, YAMLSerializer{}, sequentialComparator)
 	if err != nil {
 		return err
 	}
@@ -66,6 +67,7 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 
 	// --- Read matching response from cassette
 	var wrappedResponse *httpResponse
+	fmt.Println("HELLO")
 	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
 		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)
@@ -140,6 +142,7 @@ func (httpReplayer *HTTPReplayer) getNextRecordedCassetteResponse(request *httpR
 		return &httpResponse{}, err
 	}
 
+	fmt.Println(*uncastResponse)
 	wrappedResponse := (*uncastResponse).(httpResponse)
 
 	return &wrappedResponse, err

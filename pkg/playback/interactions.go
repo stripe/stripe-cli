@@ -2,10 +2,9 @@ package playback
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
-
-	"gopkg.in/yaml.v2"
 )
 
 // requestComparator compares 2 structs in the context of comparing a given request struct against
@@ -29,17 +28,17 @@ const (
 type interaction struct {
 	// may have other fields like -- sequence number
 	Type     interactionType
-	Request  interface{}
-	Response interface{}
+	Request  httpRequest
+	Response httpResponse
 }
 
-// cassette is used to store a sequence of interactions that happened part of a single action
-type cassette []interaction
+// Cassette is used to store a sequence of interactions that happened part of a single action
+type Cassette []interaction
 
 // An interactionRecorder can read and write a cassette in a serialized format.
 type interactionRecorder struct {
 	writer     io.Writer
-	cassette   cassette
+	cassette   Cassette
 	serializer YAMLSerializer
 }
 
@@ -54,12 +53,17 @@ func newInteractionRecorder(writer io.Writer, serializer serializer) (recorder *
 
 // write adds a new interaction to the current cassette.
 func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) {
-	recorder.cassette = append(recorder.cassette, recorder.serializer.newInteraction(typeOfInteraction, req, resp))
+	interaction := interaction{
+		Type:     typeOfInteraction,
+		Request:  req,
+		Response: resp,
+	}
+	recorder.cassette = append(recorder.cassette, interaction)
 }
 
 // saveAndClose persists the cassette to the filesystem.
 func (recorder *interactionRecorder) saveAndClose() error {
-	output, err := recorder.serializer.encodeCassette(recorder.cassette)
+	output, err := recorder.serializer.EncodeCassette(recorder.cassette)
 	if err != nil {
 		return err
 	}
@@ -71,33 +75,36 @@ func (recorder *interactionRecorder) saveAndClose() error {
 // An interactionReplayer contains a set of recorded interactions and exposes
 // functionality to play them back.
 type interactionReplayer struct {
-	cursor           int
-	comparator       requestComparator
-	cassette         cassette
-	respDeserializer deserializer
-	reqDeserializer  deserializer
+	cursor     int
+	comparator requestComparator
+	cassette   Cassette
+	serializer serializer
 }
 
-func newInteractionReplayer(reader io.Reader, reqDeserializer deserializer, respDeserializer deserializer, comparator requestComparator) (replayer *interactionReplayer, err error) {
+// newInteractionReplayer uses the serializer to decode the cassette file and ready the cassette for reading.
+func newInteractionReplayer(reader io.Reader, serializer serializer, comparator requestComparator) (replayer *interactionReplayer, err error) {
 	replayer = &interactionReplayer{}
 	replayer.cursor = 0
 	replayer.comparator = comparator
-	replayer.reqDeserializer = reqDeserializer
-	replayer.respDeserializer = respDeserializer
+	replayer.serializer = serializer
 
-	yamlBuf, err := ioutil.ReadAll(reader)
+	buffer, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return replayer, err
 	}
 
-	err = yaml.Unmarshal(yamlBuf, &replayer.cassette)
+	cassette, err := serializer.DecodeCassette(buffer)
 	if err != nil {
 		return replayer, err
 	}
+	replayer.cassette = cassette
+
 	return replayer, nil
 }
 
-func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, err error) {
+// write parses the cassette for matching responses and returns them
+// core "replay" logic
+func (replayer *interactionReplayer) write(req *httpRequest) (resp *interface{}, err error) {
 	if len(replayer.cassette) == 0 {
 		return nil, errors.New("nothing left in cassette to replay")
 	}
@@ -105,14 +112,16 @@ func (replayer *interactionReplayer) write(req interface{}) (resp *interface{}, 
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
+	fmt.Println("WRITE HERE")
 	for idx, interaction := range replayer.cassette {
+		fmt.Println("IN LOOP")
 		// var reader io.Reader = bytes.NewReader(val.Request)
 		// requestStruct, err := replayer.reqDeserializer(&reader)
 		// if err != nil {
 		// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
 		// }
 
-		accept, shortCircuit := replayer.comparator(interaction.Request, req)
+		accept, shortCircuit := replayer.comparator(interaction.Request, *req)
 
 		if accept {
 			// var reader io.Reader = bytes.NewReader(val.Response)

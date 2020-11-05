@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
 )
 
 func request() httpRequest {
@@ -45,10 +46,11 @@ url:
 `
 
 	req := request()
-	bytes, err := serializer.serializeReq(req)
+	yamlReq, err := serializer.serializeReq(req)
 	if err != nil {
 		t.Fatal(err)
 	}
+	bytes, _ := yaml.Marshal(yamlReq)
 	assert.Equal(t, expected, string(bytes))
 }
 
@@ -61,10 +63,11 @@ status_code: 200
 `
 
 	resp := response()
-	bytes, err := serializer.serializeResp(resp)
+	yamlResp, err := serializer.serializeResp(resp)
 	if err != nil {
 		t.Fatal(err)
 	}
+	bytes, _ := yaml.Marshal(yamlResp)
 	assert.Equal(t, expected, string(bytes))
 }
 
@@ -110,25 +113,14 @@ status_code: 200
 	assert.Equal(t, response(), resp)
 }
 
-func TestNewInteraction(t *testing.T) {
-	serializer := YAMLSerializer{}
-
-	interaction := serializer.newInteraction(1, request(), response())
-	req := interaction.Request.(YAMLRequest)
-	resp := interaction.Response.(YAMLResponse)
-	assert.Equal(t, incomingInteraction, interaction.Type)
-	assert.Equal(t, req.Body, "hello world")
-	assert.Equal(t, resp.StatusCode, 200)
-}
-
 func TestEncodeCassette(t *testing.T) {
 	serializer := YAMLSerializer{}
 
-	interaction1 := serializer.newInteraction(1, request(), response())
-	interaction2 := serializer.newInteraction(0, request(), response())
-	cassette := cassette{interaction1, interaction2}
+	interaction1 := interaction{Type: 1, Request: request(), Response: response()}
+	interaction2 := interaction{Type: 0, Request: request(), Response: response()}
+	cassette := Cassette{interaction1, interaction2}
 
-	encoded, err := serializer.encodeCassette(cassette)
+	encoded, err := serializer.EncodeCassette(cassette)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,4 +128,25 @@ func TestEncodeCassette(t *testing.T) {
 	expected := "- type: 1\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n- type: 0\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n"
 
 	assert.Equal(t, expected, string(encoded))
+}
+
+func TestDecodeCassette(t *testing.T) {
+	serializer := YAMLSerializer{}
+
+	cassetteData := []byte("- type: 1\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n- type: 0\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n")
+
+	cassette, err := serializer.DecodeCassette(cassetteData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstInter := cassette[0]
+	assert.Equal(t, incomingInteraction, firstInter.Type)
+	assert.Equal(t, "POST", firstInter.Request.Method)
+	assert.Equal(t, []byte("hello world"), firstInter.Request.Body)
+
+	secondInter := cassette[1]
+	assert.Equal(t, outgoingInteraction, secondInter.Type)
+	assert.Equal(t, "POST", secondInter.Request.Method)
+	assert.Equal(t, []byte("hello world"), secondInter.Request.Body)
 }

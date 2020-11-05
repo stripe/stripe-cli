@@ -90,11 +90,11 @@ func TestSequentialPlayback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, sequentialComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, sequentialComparator)
 	assert.NoError(t, err)
 
-	replayedResp1, err1 := replayer.write(s2)
-	replayedResp2, err2 := replayer.write(s1)
+	replayedResp1, err1 := replayer.write(&s2)
+	replayedResp2, err2 := replayer.write(&s1)
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
@@ -136,14 +136,14 @@ func TestFirstMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, firstMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, firstMatchingComparator)
 	assert.NoError(t, err)
 
-	_, err2 := replayer.write(httpRequest{})
+	_, err2 := replayer.write(&httpRequest{})
 	assert.EqualError(t, err2, "no matching events")
 
-	replayedResp2, err2 := replayer.write(s2)
-	replayedResp1, err1 := replayer.write(s1)
+	replayedResp2, err2 := replayer.write(&s2)
+	replayedResp1, err1 := replayer.write(&s1)
 
 	castResp1 := (*replayedResp1).(httpResponse)
 	castResp2 := (*replayedResp2).(httpResponse)
@@ -156,11 +156,7 @@ func TestFirstMatchingEvent(t *testing.T) {
 
 func TestLastMatchingEvent(t *testing.T) {
 	lastMatchingComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
-		jsonString, _ := json.Marshal(req1)
-		// convert json to struct
-		cast1 := httpRequest{}
-		json.Unmarshal(jsonString, &cast1)
-
+		cast1 := req1.(httpRequest)
 		cast2 := req2.(httpRequest)
 		return (cast1.Method == cast2.Method), false // false to return last match
 	}
@@ -190,15 +186,15 @@ func TestLastMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, lastMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, lastMatchingComparator)
 	assert.NoError(t, err)
 
-	respA, errA := replayer.write(s1)
+	respA, errA := replayer.write(&s1)
 	castA := (*respA).(httpResponse)
 	check(t, errA)
 	assert.Equal(t, castA.StatusCode, r3.StatusCode)
 
-	respB, errB := replayer.write(s2)
+	respB, errB := replayer.write(&s2)
 	castB := (*respB).(httpResponse)
 	check(t, errB)
 	assert.Equal(t, castB.StatusCode, r2.StatusCode)
@@ -215,7 +211,9 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 	check(t, err)
 
 	// write req/resp interaction to cassette
-	s1 := httpRequest{Method: "POST", Body: []byte("hello world")}
+	header := http.Header{}
+	header.Set("test", "header 1")
+	s1 := httpRequest{Method: "POST", Body: []byte("hello world"), Headers: header}
 	r1 := httpResponse{StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
@@ -227,7 +225,9 @@ func TestSaveAndCloseToYaml(t *testing.T) {
   request:
     method: POST
     body: hello world
-    headers: {}
+    headers:
+      Test:
+      - header 1
     url:
       scheme: ""
       opaque: ""
