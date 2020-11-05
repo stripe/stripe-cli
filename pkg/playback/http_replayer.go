@@ -39,7 +39,7 @@ func (httpReplayer *HTTPReplayer) readCassette(reader io.Reader) error {
 		return true, true
 	}
 
-	replayer, err := newInteractionReplayer(reader, YAMLSerializer{}, sequentialComparator)
+	replayer, err := newInteractionReplayer(reader, httpRequestfromBytes, httpResponsefromBytes, YAMLSerializer{}, sequentialComparator)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,6 @@ func (httpReplayer *HTTPReplayer) handler(w http.ResponseWriter, r *http.Request
 
 	// --- Read matching response from cassette
 	var wrappedResponse *httpResponse
-	fmt.Println("HELLO")
 	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
 		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)

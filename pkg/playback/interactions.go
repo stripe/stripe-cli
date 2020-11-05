@@ -2,7 +2,6 @@ package playback
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 )
@@ -112,25 +111,10 @@ func (replayer *interactionReplayer) write(req *httpRequest) (resp *interface{},
 	var lastAccepted interface{}
 	acceptedIdx := -1
 
-	fmt.Println("WRITE HERE")
 	for idx, interaction := range replayer.cassette {
-		fmt.Println("IN LOOP")
-		// var reader io.Reader = bytes.NewReader(val.Request)
-		// requestStruct, err := replayer.reqDeserializer(&reader)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
-		// }
-
 		accept, shortCircuit := replayer.comparator(interaction.Request, *req)
 
 		if accept {
-			// var reader io.Reader = bytes.NewReader(val.Response)
-			// responseStruct, err := replayer.respDeserializer(&reader)
-
-			// if err != nil {
-			// 	return nil, fmt.Errorf("error when deserializing cassette: %w", err)
-			// }
-
 			lastAccepted = interaction.Response
 			acceptedIdx = idx
 
