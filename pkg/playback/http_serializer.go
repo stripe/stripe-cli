@@ -8,8 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"gopkg.in/yaml.v2"
 )
 
 type serializer interface {
@@ -29,38 +27,10 @@ type httpRequest struct {
 	URL     url.URL
 }
 
-type YAMLRequest struct {
-	Method  string      `yaml:"method"`
-	Body    string      `yaml:"body"`
-	Headers http.Header `yaml:"headers"`
-	URL     url.URL     `yaml:"url"`
-}
-
 type httpResponse struct {
 	Headers    http.Header
 	Body       []byte
 	StatusCode int
-}
-
-type YAMLResponse struct {
-	Headers    http.Header `yaml:"headers"`
-	Body       string      `yaml:"body"`
-	StatusCode int         `yaml: "status"`
-}
-
-func httpRequestToBytes(input interface{}) (data []byte, err error) {
-	return json.Marshal(input)
-}
-
-func httpRequestToYAML(input interface{}) ([]byte, error) {
-	req := input.(httpRequest)
-	yml := YAMLRequest{
-		req.Method,
-		string(req.Body),
-		req.Headers,
-		req.URL,
-	}
-	return yaml.Marshal(yml)
 }
 
 func httpRequestfromBytes(input *io.Reader) (val interface{}, err error) {
@@ -73,20 +43,6 @@ func httpRequestfromBytes(input *io.Reader) (val interface{}, err error) {
 
 	err = json.Unmarshal(inputBytes, &output)
 	return output, err
-}
-
-func httpResponseToBytes(input interface{}) (data []byte, err error) {
-	return json.Marshal(input)
-}
-
-func httpResponseToYAML(input interface{}) ([]byte, error) {
-	res := input.(httpResponse)
-	yml := YAMLResponse{
-		res.Headers,
-		string(res.Body),
-		res.StatusCode,
-	}
-	return yaml.Marshal(yml)
 }
 
 func httpResponsefromBytes(input *io.Reader) (val interface{}, err error) {

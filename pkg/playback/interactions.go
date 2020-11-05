@@ -38,11 +38,9 @@ type cassette []interaction
 // An interactionRecorder can read in a cassette, and write them out
 // in a serialized format.
 type interactionRecorder struct {
-	writer         io.Writer
-	cassette       cassette
-	serializer     YAMLSerializer
-	reqSerializer  serializer
-	respSerializer serializer
+	writer     io.Writer
+	cassette   cassette
+	serializer YAMLSerializer
 }
 
 func newInteractionRecorder(writer io.Writer, serializer serializer) (recorder *interactionRecorder, err error) {

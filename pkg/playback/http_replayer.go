@@ -5,7 +5,6 @@ package playback
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -148,25 +147,25 @@ func (httpReplayer *HTTPReplayer) getNextRecordedCassetteResponse(request *httpR
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
 func (httpReplayer *HTTPReplayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
-	interactions := make([]interaction, 0)
+	// interactions := make([]interaction, 0)
 
-	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
-	for httpReplayer.replayer.interactionsRemaining() > 0 {
-		interaction, err := httpReplayer.replayer.peekFront()
-		if err != nil {
-			return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
-		}
+	// // --- Read the pending webhook interactions (stored as raw bytes) from the cassette
+	// for httpReplayer.replayer.interactionsRemaining() > 0 {
+	// 	interaction, err := httpReplayer.replayer.peekFront()
+	// 	if err != nil {
+	// 		return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
+	// 	}
 
-		if interaction.Type == incomingInteraction {
-			interactions = append(interactions, interaction)
-			_, err = httpReplayer.replayer.popFront()
-			if err != nil {
-				return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
-			}
-		} else {
-			break
-		}
-	}
+	// 	if interaction.Type == incomingInteraction {
+	// 		interactions = append(interactions, interaction)
+	// 		_, err = httpReplayer.replayer.popFront()
+	// 		if err != nil {
+	// 			return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
+	// 		}
+	// 	} else {
+	// 		break
+	// 	}
+	// }
 
 	// --- Deserialize the bytes into HTTP request & response pairs
 	webhookRequests = make([]*httpRequest, 0)
