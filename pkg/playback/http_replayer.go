@@ -39,7 +39,7 @@ func (httpReplayer *HTTPReplayer) readCassette(reader io.Reader) error {
 		return true, true
 	}
 
-	replayer, err := newInteractionReplayer(reader, httpRequestfromBytes, httpResponsefromBytes, YAMLSerializer{}, sequentialComparator)
+	replayer, err := newInteractionReplayer(reader, YAMLSerializer{}, sequentialComparator)
 	if err != nil {
 		return err
 	}
@@ -149,48 +149,33 @@ func (httpReplayer *HTTPReplayer) getNextRecordedCassetteResponse(request *httpR
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
 func (httpReplayer *HTTPReplayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
-	// interactions := make([]interaction, 0)
+	interactions := make([]interaction, 0)
 
 	// // --- Read the pending webhook interactions (stored as raw bytes) from the cassette
-	// for httpReplayer.replayer.interactionsRemaining() > 0 {
-	// 	interaction, err := httpReplayer.replayer.peekFront()
-	// 	if err != nil {
-	// 		return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
-	// 	}
+	for httpReplayer.replayer.interactionsRemaining() > 0 {
+		interaction, err := httpReplayer.replayer.peekFront()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
+		}
 
-	// 	if interaction.Type == incomingInteraction {
-	// 		interactions = append(interactions, interaction)
-	// 		_, err = httpReplayer.replayer.popFront()
-	// 		if err != nil {
-	// 			return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
-	// 		}
-	// 	} else {
-	// 		break
-	// 	}
-	// }
+		if interaction.Type == incomingInteraction {
+			interactions = append(interactions, interaction)
+			_, err = httpReplayer.replayer.popFront()
+			if err != nil {
+				return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
+			}
+		} else {
+			break
+		}
+	}
 
 	// --- Deserialize the bytes into HTTP request & response pairs
 	webhookRequests = make([]*httpRequest, 0)
 	webhookResponses = make([]*httpResponse, 0)
-	// for _, interaction := range interactions {
-	// 	// var reqReader io.Reader = bytes.NewReader(rawWebhookBytes.Request)
-	// 	// rawWhReq, err := httpRequestfromBytes(&reqReader)
-	// 	// if err != nil {
-	// 	// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
-	// 	// }
-	// 	// whReq := rawWhReq.(httpRequest)
-
-	// 	webhookRequests = append(webhookRequests, &interaction.Request)
-
-	// 	// var respReader io.Reader = bytes.NewReader(rawWebhookBytes.Response)
-	// 	// rawWhResp, err := httpResponsefromBytes(&respReader)
-	// 	// if err != nil {
-	// 	// 	return nil, nil, fmt.Errorf("error when deserializing cassette to replay webhooks: %w", err)
-	// 	// }
-	// 	// whResp := rawWhResp.(httpResponse)
-
-	// 	webhookResponses = append(webhookResponses, &interaction.Response)
-	// }
+	for _, interaction := range interactions {
+		webhookRequests = append(webhookRequests, &interaction.Request)
+		webhookResponses = append(webhookResponses, &interaction.Response)
+	}
 
 	return webhookRequests, webhookResponses, nil
 }
