@@ -57,8 +57,7 @@ func (s YAMLSerializer) DecodeCassette(data []byte) (Cassette, error) {
 }
 
 // -------- SERIALIZATION is used to encode interfaces to YAML
-// serializeReq takes in an httpRequest and returns a []byte representing YAML
-// the []byte can be stringified to print the actual human-readable YAML
+// serializeReq takes in an httpRequest and returns a YAMLRequest
 func (s YAMLSerializer) serializeReq(req httpRequest) (interface{}, error) {
 	return YAMLRequest{
 		req.Method,
@@ -68,8 +67,7 @@ func (s YAMLSerializer) serializeReq(req httpRequest) (interface{}, error) {
 	}, nil
 }
 
-// serializeResp takes in an httpResponse and returns a []byte representing YAML
-// the []byte can be stringified to print the actual human-readable YAML
+// serializeResp takes in an httpResponse and returns a YAMLResponse
 func (s YAMLSerializer) serializeResp(res httpResponse) (interface{}, error) {
 	return YAMLResponse{
 		res.Headers,
