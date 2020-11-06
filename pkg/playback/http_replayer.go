@@ -141,7 +141,6 @@ func (httpReplayer *HTTPReplayer) getNextRecordedCassetteResponse(request *httpR
 		return &httpResponse{}, err
 	}
 
-	fmt.Println(*uncastResponse)
 	wrappedResponse := (*uncastResponse).(httpResponse)
 
 	return &wrappedResponse, err
