@@ -35,9 +35,9 @@ type listenCmd struct {
 	printJSON             bool
 	skipVerify            bool
 	onlyPrintSecret       bool
-
-	apiBaseURL string
-	noWSS      bool
+	skipUpdate            bool
+	apiBaseURL            string
+	noWSS                 bool
 }
 
 func newListenCmd() *listenCmd {
@@ -68,6 +68,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
+	lc.cmd.Flags().BoolVarP(&lc.skipUpdate, "skip-update", "s", false, "Skip checking latest version of Stripe CLI")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -102,7 +103,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !lc.printJSON && !lc.onlyPrintSecret {
+	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
 		version.CheckLatestVersion()
 	}
 
