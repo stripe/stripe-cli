@@ -150,7 +150,7 @@ func (httpReplayer *HTTPReplayer) getNextRecordedCassetteResponse(request *httpR
 func (httpReplayer *HTTPReplayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
 	interactions := make([]interaction, 0)
 
-	// // --- Read the pending webhook interactions (stored as raw bytes) from the cassette
+	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
 	for httpReplayer.replayer.interactionsRemaining() > 0 {
 		interaction, err := httpReplayer.replayer.peekFront()
 		if err != nil {
