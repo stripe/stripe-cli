@@ -89,7 +89,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	oc.Parameters.AppendData(flagParams)
 
-	if !oc.SkipConfirmation {
+	if oc.ConfirmAccount {
 		// display account information anf confirm whether user wants to proceed
 		var mode = "Test"
 		var confirmation = "y"
