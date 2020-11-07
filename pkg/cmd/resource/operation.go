@@ -89,33 +89,38 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	oc.Parameters.AppendData(flagParams)
 
-	// display account information anf confirm whether user wants to proceed
-	var mode = "Test"
-	var confirmation = "y"
-	displayName, errDisplay := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+	if !oc.SkipConfirmation {
+		// display account information anf confirm whether user wants to proceed
+		var mode = "Test"
+		var confirmation = "y"
+		displayName, errDisplay := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
 
-	if errDisplay != nil {
-		return err
+		if errDisplay != nil {
+			return err
+		}
+
+		if oc.Livemode {
+			mode = "Live"
+		}
+
+		// display account information and confirmation to proceed
+		fmt.Printf("> This command will be executed on the account with the following details\n")
+		fmt.Printf("> Mode: %s\n", mode)
+		fmt.Printf("> Account Name: %s\n", displayName)
+		fmt.Printf("> Are you sure you want to proceed? [y/n]: ")
+		fmt.Scanln(&confirmation)
+		fmt.Print("\n")
+
+		if strings.Compare(strings.ToLower(confirmation), "y") == 0 {
+			_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
+
+			return err
+		}
+		return fmt.Errorf("Operation aborted")
 	}
-
-	if oc.Livemode {
-		mode = "Live"
-	}
-
-	// display account information and confirmation to proceed
-	fmt.Printf("> This command will be executed on the account with the following details\n")
-	fmt.Printf("> Mode: %s\n", mode)
-	fmt.Printf("> Account Name: %s\n", displayName)
-	fmt.Printf("> Are you sure you want to proceed? [y/n]: ")
-	fmt.Scanln(&confirmation)
-	fmt.Print("\n")
-
-	if strings.Compare(strings.ToLower(confirmation), "y") == 0 {
-		_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
-
-		return err
-	}
-	return fmt.Errorf("Operation aborted")
+	// else
+	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
+	return err
 }
 
 //
@@ -164,10 +169,6 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	return operationCmd
 }
 
-//
-// Private functions
-//
-
 // DisplayName returns the display name for a successfully authenticated user
 func DisplayName(account *Account, baseURL string, apiKey string) (string, error) {
 	// Account will be nil if user did interactive login
@@ -183,6 +184,10 @@ func DisplayName(account *Account, baseURL string, apiKey string) (string, error
 
 	return displayName, nil
 }
+
+//
+// Private functions
+//
 
 // helper method to get the account for DisplayName
 func getUserAccount(baseURL string, apiKey string) (*Account, error) {
