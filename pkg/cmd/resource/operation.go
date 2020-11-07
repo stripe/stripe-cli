@@ -92,7 +92,11 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	// display account information anf confirm whether user wants to proceed
 	var mode = "Test"
 	var confirmation = "y"
-	displayName, err := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+	displayName, errDisplay := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+
+	if errDisplay != nil {
+		return err
+	}
 
 	if oc.Livemode {
 		mode = "Live"
