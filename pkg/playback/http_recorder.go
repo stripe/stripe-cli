@@ -13,8 +13,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// A recordServer proxies requests to a remote host, and records all interactions.
-type recordServer struct {
+// Struct used to parse the event.Type from recorded webhook JSON bodies
+type stripeEvent struct {
+	Type string `json:"type"`
+}
+
+// An HTTPRecorder proxies requests to a remote host and records all interactions.
+type HTTPRecorder struct {
 	recorder   *interactionRecorder
 	remoteURL  string
 	webhookURL string
@@ -22,8 +27,8 @@ type recordServer struct {
 	log *log.Logger
 }
 
-func newRecordServer(remoteURL string, webhookURL string) (httpRecorder recordServer) {
-	httpRecorder = recordServer{}
+func newHTTPRecorder(remoteURL string, webhookURL string) (httpRecorder HTTPRecorder) {
+	httpRecorder = HTTPRecorder{}
 	httpRecorder.remoteURL = remoteURL
 	httpRecorder.webhookURL = webhookURL
 
@@ -33,8 +38,8 @@ func newRecordServer(remoteURL string, webhookURL string) (httpRecorder recordSe
 }
 
 // Prepare the recorder to start recording to a new cassette.
-func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
-	recorder, err := newInteractionRecorder(writer, httpRequestToBytes, httpResponseToBytes)
+func (httpRecorder *HTTPRecorder) insertCassette(writer io.Writer) error {
+	recorder, err := newInteractionRecorder(writer, YAMLSerializer{})
 	if err != nil {
 		return err
 	}
@@ -43,14 +48,9 @@ func (httpRecorder *recordServer) insertCassette(writer io.Writer) error {
 	return nil
 }
 
-// Struct used to parse the event.Type from recorded webhook JSON bodies
-type stripeEvent struct {
-	Type string `json:"type"`
-}
-
 // Handler for the webhook endpoint that forwards incoming webhooks to the local application,
 // while recording the webhook and local app's response to the cassette.
-func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.Request) {
+func (httpRecorder *HTTPRecorder) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	wrappedReq, err := newHTTPRequest(r)
 	if err != nil {
 		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error processing incoming webhook request: %w", err), 500)
@@ -85,11 +85,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	err = httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
-	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("unexpected error writing [%v] webhook interaction to cassette: %w", evt.Type, err), 500)
-		return
-	}
+	httpRecorder.recorder.write(incomingInteraction, wrappedReq, wrappedResp)
 
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
@@ -108,7 +104,7 @@ func (httpRecorder *recordServer) webhookHandler(w http.ResponseWriter, r *http.
 // Respond to incoming Stripe API requests sent to the proxy `playback` server when in REPLAY mode.
 // The incoming requests are forwarded to the real Stripe API, and the resulting response is passed along to the original client.
 // The original request and Stripe API response are recorded to the cassette.
-func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request) {
+func (httpRecorder *HTTPRecorder) handler(w http.ResponseWriter, r *http.Request) {
 	httpRecorder.log.Infof("--> %v to %v", r.Method, r.RequestURI)
 
 	wrappedReq, err := newHTTPRequest(r)
@@ -138,11 +134,8 @@ func (httpRecorder *recordServer) handler(w http.ResponseWriter, r *http.Request
 
 	// We defer writing anything to the response until their final values are known, since certain fields can
 	// only be written once. (golang's implementation streams the response, and immediately writes data as it is set)
-	err = httpRecorder.recorder.write(outgoingInteraction, wrappedReq, wrappedResp)
-	if err != nil {
-		writeErrorToHTTPResponse(w, httpRecorder.log, fmt.Errorf("error when recording HTTP response to cassette: %w", err), 500)
-		return
-	}
+	httpRecorder.recorder.write(outgoingInteraction, wrappedReq, wrappedResp)
+
 	// Now we can write to the response:
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
 	// the status code to 200 if not already set.

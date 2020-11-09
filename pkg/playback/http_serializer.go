@@ -3,46 +3,23 @@
 package playback
 
 import (
-	"encoding/json"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 )
 
-type serializer func(input interface{}) (bytes []byte, err error)
-type deserializer func(input *io.Reader) (value interface{}, err error)
-
-func httpRequestToBytes(input interface{}) (data []byte, err error) {
-	return json.Marshal(input)
+type serializer interface {
+	serializeReq(httpRequest) (interface{}, error)
+	serializeResp(httpResponse) (interface{}, error)
+	EncodeCassette(Cassette) ([]byte, error)
+	DecodeCassette([]byte) (Cassette, error)
 }
 
-func httpRequestfromBytes(input *io.Reader) (val interface{}, err error) {
-	output := httpRequest{}
-
-	inputBytes, err := ioutil.ReadAll(*input)
-	if err != nil {
-		return output, err
-	}
-
-	err = json.Unmarshal(inputBytes, &output)
-	return output, err
-}
-
-func httpResponseToBytes(input interface{}) (data []byte, err error) {
-	return json.Marshal(input)
-}
-
-func httpResponsefromBytes(input *io.Reader) (val interface{}, err error) {
-	output := httpResponse{}
-
-	inputBytes, err := ioutil.ReadAll(*input)
-	if err != nil {
-		return output, err
-	}
-
-	err = json.Unmarshal(inputBytes, &output)
-	return output, err
+type httpRequest struct {
+	Method  string
+	Body    []byte
+	Headers http.Header
+	URL     url.URL
 }
 
 type httpResponse struct {
@@ -66,13 +43,6 @@ func newHTTPResponse(resp *http.Response) (wrappedResponse httpResponse, err err
 	wrappedResponse.Body = bodyBytes
 
 	return wrappedResponse, nil
-}
-
-type httpRequest struct {
-	Method  string
-	Body    []byte
-	Headers http.Header
-	URL     url.URL
 }
 
 func newHTTPRequest(req *http.Request) (wrappedRequest httpRequest, err error) {

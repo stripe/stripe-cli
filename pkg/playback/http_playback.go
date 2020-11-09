@@ -16,6 +16,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
+// mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
+// using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
+type errorJSONOuter struct {
+	Error errorJSONInner `json:"error"`
+}
+
+type errorJSONInner struct {
+	Code    string `json:"code"`
+	DocURL  string `json:"doc_url"`
+	Message string `json:"message"`
+	Param   string `json:"param"`
+	Type    string `json:"type"`
+}
+
 func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
 	client := &http.Client{
 		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
@@ -36,21 +51,6 @@ func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *h
 		return nil, err
 	}
 	return res, nil
-}
-
-// errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
-// mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
-// using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
-type errorJSONOuter struct {
-	Error errorJSONInner `json:"error"`
-}
-
-type errorJSONInner struct {
-	Code    string `json:"code"`
-	DocURL  string `json:"doc_url"`
-	Message string `json:"message"`
-	Param   string `json:"param"`
-	Type    string `json:"type"`
 }
 
 // Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
@@ -87,8 +87,8 @@ const (
 // A Server implements the full functionality of `stripe playback` as a HTTP server.
 // Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
 type Server struct {
-	httpRecorder recordServer
-	httpReplayer replayServer
+	httpRecorder HTTPRecorder
+	httpReplayer HTTPReplayer
 
 	remoteURL         string
 	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
@@ -111,8 +111,8 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 
 	// initialize server.httpRecorder and server.httpReplayer first, since calls to methods like
 	// server.loadCassette reference them.
-	server.httpRecorder = newRecordServer(remoteURL, webhookURL)
-	server.httpReplayer = newReplayServer(webhookURL)
+	server.httpRecorder = newHTTPRecorder(remoteURL, webhookURL)
+	server.httpReplayer = newHTTPReplayer(webhookURL)
 	server.remoteURL = remoteURL
 	server.switchModeChan = make(chan string)
 

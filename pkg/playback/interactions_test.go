@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,10 +42,10 @@ func BasicEventFromBytes(input *io.Reader) (val interface{}, err error) {
 	return out, err
 }
 
-func toEvent(input interface{}) basicEvent {
+func toHTTPRequest(input interface{}) httpRequest {
 	jsonString, _ := json.Marshal(input)
 	// convert json to struct
-	cast1 := basicEvent{}
+	cast1 := httpRequest{}
 	json.Unmarshal(jsonString, &cast1)
 
 	return cast1
@@ -68,18 +70,18 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	s1 := basicEvent{Name: "Request 1", ID: 23}
-	r1 := basicEvent{Name: "Response 1", ID: 23}
+	s1 := httpRequest{Method: "POST"}
+	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
-	s2 := basicEvent{Name: "Request 2", ID: 46}
-	r2 := basicEvent{Name: "Response 2", ID: 46}
+	s2 := httpRequest{Method: "GET"}
+	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
 	err = recorder.saveAndClose()
@@ -88,17 +90,17 @@ func TestSequentialPlayback(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, sequentialComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, sequentialComparator)
 	assert.NoError(t, err)
 
-	replayedResp1, err1 := replayer.write(s2)
-	replayedResp2, err2 := replayer.write(s1)
+	replayedResp1, err1 := replayer.write(&s2)
+	replayedResp2, err2 := replayer.write(&s1)
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
 
-	castResp1 := (*replayedResp1).(basicEvent)
-	castResp2 := (*replayedResp2).(basicEvent)
+	castResp1 := (*replayedResp1).(httpResponse)
+	castResp2 := (*replayedResp2).(httpResponse)
 
 	assert.Equal(t, r1, castResp1)
 
@@ -108,24 +110,24 @@ func TestSequentialPlayback(t *testing.T) {
 func TestFirstMatchingEvent(t *testing.T) {
 	firstMatchingComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
 		// convert map to json
-		cast1 := toEvent(req1)
-		cast2 := req2.(basicEvent)
-		return (cast1.Name == cast2.Name), true
+		cast1 := toHTTPRequest(req1)
+		cast2 := req2.(httpRequest)
+		return (cast1.Method == cast2.Method), true
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	s1 := basicEvent{Name: "Event 1", ID: 23}
-	r1 := basicEvent{Name: "Response 1", ID: 23}
+	s1 := httpRequest{Method: "POST"}
+	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
-	s2 := basicEvent{Name: "Event 2", ID: 46}
-	r2 := basicEvent{Name: "Response 2", ID: 46}
+	s2 := httpRequest{Method: "GET"}
+	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
 	err = recorder.saveAndClose()
@@ -134,17 +136,17 @@ func TestFirstMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, firstMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, firstMatchingComparator)
 	assert.NoError(t, err)
 
-	_, err2 := replayer.write(basicEvent{})
+	_, err2 := replayer.write(&httpRequest{})
 	assert.EqualError(t, err2, "no matching events")
 
-	replayedResp2, err2 := replayer.write(s2)
-	replayedResp1, err1 := replayer.write(s1)
+	replayedResp2, err2 := replayer.write(&s2)
+	replayedResp1, err1 := replayer.write(&s1)
 
-	castResp1 := (*replayedResp1).(basicEvent)
-	castResp2 := (*replayedResp2).(basicEvent)
+	castResp1 := (*replayedResp1).(httpResponse)
+	castResp2 := (*replayedResp2).(httpResponse)
 
 	assert.NoError(t, err2)
 	assert.NoError(t, err1)
@@ -154,32 +156,28 @@ func TestFirstMatchingEvent(t *testing.T) {
 
 func TestLastMatchingEvent(t *testing.T) {
 	lastMatchingComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
-		jsonString, _ := json.Marshal(req1)
-		// convert json to struct
-		cast1 := basicEvent{}
-		json.Unmarshal(jsonString, &cast1)
-
-		cast2 := req2.(basicEvent)
-		return (cast1.Name == cast2.Name), false // false to return last match
+		cast1 := req1.(httpRequest)
+		cast2 := req2.(httpRequest)
+		return (cast1.Method == cast2.Method), false // false to return last match
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, BasicEventToBytes, BasicEventToBytes)
+	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	s1 := basicEvent{Name: "Event 1", ID: 23}
-	r1 := basicEvent{Name: "Response 1", ID: 23}
+	s1 := httpRequest{Method: "POST"}
+	r1 := httpResponse{StatusCode: 200}
 	recorder.write(outgoingInteraction, s1, r1)
 
-	s2 := basicEvent{Name: "Event 1", ID: 46}
-	r2 := basicEvent{Name: "Response 2", ID: 46}
+	s2 := httpRequest{Method: "GET"}
+	r2 := httpResponse{StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
-	s3 := basicEvent{Name: "Event 3", ID: 52}
-	r3 := basicEvent{Name: "Response 3", ID: 52}
+	s3 := httpRequest{Method: "POST"}
+	r3 := httpResponse{StatusCode: 400}
 	recorder.write(outgoingInteraction, s3, r3)
 
 	err = recorder.saveAndClose()
@@ -188,23 +186,65 @@ func TestLastMatchingEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	replayer, err := newInteractionReplayer(&writeBuffer, BasicEventFromBytes, BasicEventFromBytes, lastMatchingComparator)
+	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, lastMatchingComparator)
 	assert.NoError(t, err)
 
-	respA, errA := replayer.write(s1)
-	castA := (*respA).(basicEvent)
-
+	respA, errA := replayer.write(&s1)
+	castA := (*respA).(httpResponse)
 	check(t, errA)
-	assert.Equal(t, castA.Name, r2.Name)
-	assert.Equal(t, castA.ID, r2.ID)
+	assert.Equal(t, castA.StatusCode, r3.StatusCode)
 
-	respB, errB := replayer.write(s3)
-	castB := (*respB).(basicEvent)
+	respB, errB := replayer.write(&s2)
+	castB := (*respB).(httpResponse)
 	check(t, errB)
-	assert.Equal(t, r3, castB)
+	assert.Equal(t, castB.StatusCode, r2.StatusCode)
+}
 
-	respC, errC := replayer.write(s1)
-	castC := toEvent(respC)
-	check(t, errC)
-	assert.Equal(t, r1, castC)
+func TestSaveAndCloseToYaml(t *testing.T) {
+	// create cassette file
+	cassetteFile, err := ioutil.TempFile(os.TempDir(), "test_cassette.yaml")
+	defer os.Remove(cassetteFile.Name())
+	check(t, err)
+
+	// create new recorder
+	recorder, err := newInteractionRecorder(cassetteFile, YAMLSerializer{})
+	check(t, err)
+
+	// write req/resp interaction to cassette
+	header := http.Header{}
+	header.Set("test", "header 1")
+	s1 := httpRequest{Method: "POST", Body: []byte("hello world"), Headers: header}
+	r1 := httpResponse{StatusCode: 200}
+	recorder.write(outgoingInteraction, s1, r1)
+
+	// persist cassette to file
+	recorder.saveAndClose()
+
+	expectedYAML :=
+		`- type: 0
+  request:
+    method: POST
+    body: hello world
+    headers:
+      Test:
+      - header 1
+    url:
+      scheme: ""
+      opaque: ""
+      user: null
+      host: ""
+      path: ""
+      rawpath: ""
+      forcequery: false
+      rawquery: ""
+      fragment: ""
+      rawfragment: ""
+  response:
+    headers: {}
+    body: ""
+    status_code: 200
+`
+
+	dat, _ := ioutil.ReadFile(cassetteFile.Name())
+	assert.Equal(t, expectedYAML, string(dat))
 }
