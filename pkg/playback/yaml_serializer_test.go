@@ -142,11 +142,11 @@ func TestDecodeCassette(t *testing.T) {
 
 	firstInter := cassette[0]
 	assert.Equal(t, incomingInteraction, firstInter.Type)
-	assert.Equal(t, "POST", firstInter.Request.Method)
-	assert.Equal(t, []byte("hello world"), firstInter.Request.Body)
+	assert.Equal(t, "POST", firstInter.Request.(httpRequest).Method)
+	assert.Equal(t, []byte("hello world"), firstInter.Request.(httpRequest).Body)
 
 	secondInter := cassette[1]
 	assert.Equal(t, outgoingInteraction, secondInter.Type)
-	assert.Equal(t, "POST", secondInter.Request.Method)
-	assert.Equal(t, []byte("hello world"), secondInter.Request.Body)
+	assert.Equal(t, "POST", secondInter.Request.(httpRequest).Method)
+	assert.Equal(t, []byte("hello world"), secondInter.Request.(httpRequest).Body)
 }

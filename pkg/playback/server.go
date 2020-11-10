@@ -27,8 +27,8 @@ const (
 // A Server implements the full functionality of `stripe playback` as a HTTP server.
 // Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
 type Server struct {
-	Recorder     Recorder
-	httpReplayer HTTPReplayer
+	recorder Recorder
+	replayer Replayer
 
 	remoteURL         string
 	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
@@ -66,8 +66,14 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 
 	// initialize server.Recorder and server.httpReplayer first, since calls to methods like
 	// server.loadCassette reference them.
-	server.Recorder = newRecorder(remoteURL, webhookURL, YAMLSerializer{})
-	server.httpReplayer = newHTTPReplayer(webhookURL)
+	server.recorder = newRecorder(remoteURL, webhookURL, YAMLSerializer{})
+
+	serializer := YAMLSerializer{}
+	// TODO(DX-5701): We may want to allow different types of replay matching in the future (instead of simply sequential playback)
+	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
+		return true, true
+	}
+	server.replayer = newReplayer(webhookURL, serializer, sequentialComparator)
 	server.remoteURL = remoteURL
 	server.switchModeChan = make(chan string)
 
@@ -238,9 +244,9 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.Recorder.handler(w, r)
+		rr.recorder.handler(w, r)
 	} else {
-		rr.httpReplayer.handler(w, r)
+		rr.replayer.handler(w, r)
 	}
 }
 
@@ -255,7 +261,7 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.Recorder.webhookHandler(w, r)
+		rr.recorder.webhookHandler(w, r)
 	} else {
 		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
 	}
@@ -363,7 +369,7 @@ func (rr *Server) openCassetteFileForReplaying(absoluteFilepath string) error {
 		return fmt.Errorf("error opening cassette file: %w", err)
 	}
 
-	err = rr.httpReplayer.readCassette(fileHandle)
+	err = rr.replayer.readCassette(fileHandle)
 	if err != nil {
 		return fmt.Errorf("error parsing cassette file: %v", err)
 	}
@@ -383,7 +389,7 @@ func (rr *Server) createCassetteFileForRecording(absoluteFilepath string) error 
 		return fmt.Errorf("error creating cassette file: %w", err)
 	}
 
-	rr.Recorder.insertCassette(fileHandle)
+	rr.recorder.insertCassette(fileHandle)
 
 	return nil
 }
@@ -427,7 +433,7 @@ func (rr *Server) ejectCassette() error {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		err := rr.Recorder.saveAndClose()
+		err := rr.recorder.saveAndClose()
 		if err != nil {
 			rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
 			return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)

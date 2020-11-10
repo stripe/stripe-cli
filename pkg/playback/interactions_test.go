@@ -83,8 +83,8 @@ func TestSequentialPlayback(t *testing.T) {
 
 	recorder.saveAndClose()
 
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, sequentialComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, sequentialComparator)
+	replayer.readCassette(&writeBuffer)
 
 	replayedResp1, err1 := replayer.write(&s2)
 	replayedResp2, err2 := replayer.write(&s1)
@@ -122,8 +122,8 @@ func TestFirstMatchingEvent(t *testing.T) {
 
 	recorder.saveAndClose()
 
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, firstMatchingComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, firstMatchingComparator)
+	replayer.readCassette(&writeBuffer)
 
 	_, err2 := replayer.write(&httpRequest{})
 	assert.EqualError(t, err2, "no matching events")
@@ -165,8 +165,8 @@ func TestLastMatchingEvent(t *testing.T) {
 
 	recorder.saveAndClose()
 
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, lastMatchingComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, lastMatchingComparator)
+	replayer.readCassette(&writeBuffer)
 
 	respA, errA := replayer.write(&s1)
 	castA := (*respA).(httpResponse)
