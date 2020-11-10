@@ -27,7 +27,7 @@ const (
 // A Server implements the full functionality of `stripe playback` as a HTTP server.
 // Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
 type Server struct {
-	httpRecorder HTTPRecorder
+	Recorder     Recorder
 	httpReplayer HTTPReplayer
 
 	remoteURL         string
@@ -64,9 +64,9 @@ type errorJSONInner struct {
 func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string, mode string, initialCassetteFilepath string) (server *Server, err error) {
 	server = &Server{}
 
-	// initialize server.httpRecorder and server.httpReplayer first, since calls to methods like
+	// initialize server.Recorder and server.httpReplayer first, since calls to methods like
 	// server.loadCassette reference them.
-	server.httpRecorder = newHTTPRecorder(remoteURL, webhookURL)
+	server.Recorder = newRecorder(remoteURL, webhookURL, YAMLSerializer{})
 	server.httpReplayer = newHTTPReplayer(webhookURL)
 	server.remoteURL = remoteURL
 	server.switchModeChan = make(chan string)
@@ -238,7 +238,7 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.httpRecorder.handler(w, r)
+		rr.Recorder.handler(w, r)
 	} else {
 		rr.httpReplayer.handler(w, r)
 	}
@@ -255,7 +255,7 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.httpRecorder.webhookHandler(w, r)
+		rr.Recorder.webhookHandler(w, r)
 	} else {
 		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
 	}
@@ -383,10 +383,7 @@ func (rr *Server) createCassetteFileForRecording(absoluteFilepath string) error 
 		return fmt.Errorf("error creating cassette file: %w", err)
 	}
 
-	err = rr.httpRecorder.insertCassette(fileHandle)
-	if err != nil {
-		return fmt.Errorf("error inserting cassette file: %w", err)
-	}
+	rr.Recorder.insertCassette(fileHandle)
 
 	return nil
 }
@@ -430,7 +427,7 @@ func (rr *Server) ejectCassette() error {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		err := rr.httpRecorder.recorder.saveAndClose()
+		err := rr.Recorder.saveAndClose()
 		if err != nil {
 			rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
 			return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)

@@ -34,43 +34,6 @@ type interaction struct {
 // Cassette is used to store a sequence of interactions that happened part of a single action
 type Cassette []interaction
 
-// An interactionRecorder can read and write a cassette in a serialized format.
-type interactionRecorder struct {
-	writer     io.Writer
-	cassette   Cassette
-	serializer YAMLSerializer
-}
-
-func newInteractionRecorder(writer io.Writer, serializer serializer) (recorder *interactionRecorder, err error) {
-	recorder = &interactionRecorder{
-		writer:     writer,
-		serializer: YAMLSerializer{},
-	}
-
-	return recorder, nil
-}
-
-// write adds a new interaction to the current cassette.
-func (recorder *interactionRecorder) write(typeOfInteraction interactionType, req httpRequest, resp httpResponse) {
-	interaction := interaction{
-		Type:     typeOfInteraction,
-		Request:  req,
-		Response: resp,
-	}
-	recorder.cassette = append(recorder.cassette, interaction)
-}
-
-// saveAndClose persists the cassette to the filesystem.
-func (recorder *interactionRecorder) saveAndClose() error {
-	output, err := recorder.serializer.EncodeCassette(recorder.cassette)
-	if err != nil {
-		return err
-	}
-
-	_, err = recorder.writer.Write(output)
-	return err
-}
-
 // An interactionReplayer contains a set of recorded interactions and exposes
 // functionality to play them back.
 type interactionReplayer struct {
