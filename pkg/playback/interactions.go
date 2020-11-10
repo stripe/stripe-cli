@@ -84,8 +84,8 @@ type interactionReplayer struct {
 func newInteractionReplayer(reader io.Reader, serializer serializer, comparator requestComparator) (replayer *interactionReplayer, err error) {
 	replayer = &interactionReplayer{}
 	replayer.cursor = 0
-	replayer.comparator = comparator
 	replayer.serializer = serializer
+	replayer.comparator = comparator
 
 	buffer, err := ioutil.ReadAll(reader)
 	if err != nil {

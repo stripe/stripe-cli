@@ -16,69 +16,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
-// mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
-// using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
-type errorJSONOuter struct {
-	Error errorJSONInner `json:"error"`
-}
-
-type errorJSONInner struct {
-	Code    string `json:"code"`
-	DocURL  string `json:"doc_url"`
-	Message string `json:"message"`
-	Param   string `json:"param"`
-	Type    string `json:"type"`
-}
-
-func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
-	client := &http.Client{
-		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
-		Timeout: time.Second * 10,
-	}
-
-	// Create a identical copy of the request
-	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
-	if err != nil {
-		return nil, err
-	}
-	copyHTTPHeader(req.Header, wrappedRequest.Headers)
-
-	// Forward the request to the remote
-	res, err := client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
-// Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
-func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
-	errorJSON := errorJSONOuter{}
-	errorJSON.Error.Message = errParam.Error()
-	errorJSON.Error.Type = "stripe_playback_error"
-	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
-
-	// Write error as json, falling back to plain text if it fails
-	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(statusCode)
-		fmt.Fprintf(w, "%v\n", errParam)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		w.Write(jsonBytes)
-	}
-
-	log.Errorf("<-- %d: %v", statusCode, errParam)
-}
-
-// These constants define the modes the playback server can be in
+// These constants define the different playback modes
+// Auto mode: If a cassette exists, replays from the cassette or else records a new cassette.
 const (
-	// in auto mode, the server records a new cassette if the given file initially doesn't exist
-	// and replays a cassette of the file does exist.
 	Auto   string = "auto"
 	Record string = "record"
 	Replay string = "replay"
@@ -103,9 +43,24 @@ type Server struct {
 	cassetteLoaded        bool
 }
 
+// errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
+// mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
+// using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
+type errorJSONOuter struct {
+	Error errorJSONInner `json:"error"`
+}
+
+type errorJSONInner struct {
+	Code    string `json:"code"`
+	DocURL  string `json:"doc_url"`
+	Message string `json:"message"`
+	Param   string `json:"param"`
+	Type    string `json:"type"`
+}
+
 // NewServer instantiates a Server struct, representing the configuration and current state of a playback proxy server
 // The cassetteDirectory param must be an absolute path
-// initialCasssetteFilepath can be a relative path (inretpreted relative to cassetteDirectory) or an absolute path
+// initialCasssetteFilepath can be a relative path (interpreted relative to cassetteDirectory) or an absolute path
 func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string, mode string, initialCassetteFilepath string) (server *Server, err error) {
 	server = &Server{}
 
@@ -271,20 +226,6 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	return server
 }
 
-// OnSwitchMode blocks on the switchModeChan and returns the value it receives
-// func (rr *Server) OnSwitchMode(send chan<- string) {
-// 	mode := <-rr.switchModeChan
-// 	send <- mode
-// }
-
-// OnSwitchMode blocks on the switchModeChan and returns the value it receives
-func (rr *Server) OnSwitchMode(f func(string)) {
-	go func() {
-		mode := <-rr.switchModeChan
-		f(mode)
-	}()
-}
-
 // Handles incoming Stripe API requests sent to the `playback` server.
 // Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
@@ -318,6 +259,67 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
 	}
+}
+
+// forwardRequest forwards a request to destinationURL and returns the response.
+func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
+	client := &http.Client{
+		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
+		Timeout: time.Second * 10,
+	}
+
+	// Create a identical copy of the request
+	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
+	if err != nil {
+		return nil, err
+	}
+	copyHTTPHeader(req.Header, wrappedRequest.Headers)
+
+	// Forward the request to the remote
+	res, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
+// Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
+func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
+	errorJSON := errorJSONOuter{}
+	errorJSON.Error.Message = errParam.Error()
+	errorJSON.Error.Type = "stripe_playback_error"
+	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
+
+	// Write error as json, falling back to plain text if it fails
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(statusCode)
+		fmt.Fprintf(w, "%v\n", errParam)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		w.Write(jsonBytes)
+	}
+
+	log.Errorf("<-- %d: %v", statusCode, errParam)
+}
+
+func copyHTTPHeader(dest, src http.Header) {
+	for k, v := range src {
+		for _, subvalues := range v {
+			dest.Set(k, subvalues)
+		}
+	}
+}
+
+// OnSwitchMode listens to the switchModeChan and calls f when it receives a mode string
+func (rr *Server) OnSwitchMode(f func(string)) {
+	go func() {
+		mode := <-rr.switchModeChan
+		f(mode)
+	}()
 }
 
 // note: calling this method always sets cassetteLoaded = false
@@ -420,6 +422,7 @@ func (rr *Server) loadCassette(relativeFilepath string) error {
 	return nil
 }
 
+// ejectCassette calls recorder.saveAndClose which persists the cassette to file and closes it.
 func (rr *Server) ejectCassette() error {
 	if !rr.cassetteLoaded {
 		return fmt.Errorf("tried to eject when no cassette is loaded")
@@ -451,13 +454,5 @@ func (rr *Server) isRecording() bool {
 		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
 		rr.log.Fatalf("Unexpected mode \"%v\" in playback server - this likely indicates a bug in the implementation. Please try restarting the server.", rr.mode)
 		return false
-	}
-}
-
-func copyHTTPHeader(dest, src http.Header) {
-	for k, v := range src {
-		for _, subvalues := range v {
-			dest.Set(k, subvalues)
-		}
 	}
 }
