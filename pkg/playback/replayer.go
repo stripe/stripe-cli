@@ -42,18 +42,18 @@ func newReplayer(webhookURL string, serializer serializer, comparator requestCom
 }
 
 // Reads a cassette file, decodes it with serializer and loads it in the cassette.
-func (httpReplayer *Replayer) readCassette(reader io.Reader) error {
+func (replayer *Replayer) readCassette(reader io.Reader) error {
 	buffer, err := ioutil.ReadAll(reader)
 	if err != nil {
 		return err
 	}
 
-	cassette, err := httpReplayer.serializer.DecodeCassette(buffer)
+	cassette, err := replayer.serializer.DecodeCassette(buffer)
 	if err != nil {
 		return err
 	}
 
-	httpReplayer.cassette = cassette
+	replayer.cassette = cassette
 
 	return nil
 }
@@ -114,28 +114,28 @@ func (replayer *Replayer) popFront() (interaction, error) {
 // Respond to incoming Stripe API requests sent to the proxy `playback` server when in REPLAY mode.
 // The incoming request is compared with the request/response pairs recorded in the cassette, and the matching response is returned.
 // This handler also fires any webhooks that were recorded immediately after the matching response.
-func (httpReplayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
-	httpReplayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
-	httpReplayer.replayLock.Add(1)       // acquire the lock so we can handle this request
-	defer httpReplayer.replayLock.Done() // release the lock when handler func is done
+func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
+	replayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
+	replayer.replayLock.Add(1)       // acquire the lock so we can handle this request
+	defer replayer.replayLock.Done() // release the lock when handler func is done
 
-	httpReplayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
+	replayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
 
 	wrappedRequest, err := newHTTPRequest(r)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)
+		writeErrorToHTTPResponse(w, replayer.log, err, 500)
 		return
 	}
 
 	// --- Read matching response from cassette
 	var wrappedResponse *httpResponse
-	wrappedResponse, err = httpReplayer.getNextRecordedCassetteResponse(&wrappedRequest)
+	wrappedResponse, err = replayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, httpReplayer.log, err, 500)
+		writeErrorToHTTPResponse(w, replayer.log, err, 500)
 		return
 	}
 
-	httpReplayer.log.Infof("<-- %v from %v", wrappedResponse.StatusCode, "CASSETTE")
+	replayer.log.Infof("<-- %v from %v", wrappedResponse.StatusCode, "CASSETTE")
 
 	// --- Write response back to client
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
@@ -144,36 +144,36 @@ func (httpReplayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(wrappedResponse.StatusCode)
 	_, err = io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
 	if err != nil {
-		httpReplayer.log.Fatal(err)
+		replayer.log.Fatal(err)
 	}
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
-	webhookRequests, webhookResponses, err := httpReplayer.readAnyPendingWebhookRecordingsFromCassette()
+	webhookRequests, webhookResponses, err := replayer.readAnyPendingWebhookRecordingsFromCassette()
 
 	if err != nil {
-		httpReplayer.log.Errorf("Error when checking cassette for webhooks to replay: %v", err)
+		replayer.log.Errorf("Error when checking cassette for webhooks to replay: %v", err)
 	}
-	httpReplayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
+	replayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
 
 	// Send the webhooks
 	go func() {
 		// Note: if there are any errors in processing recorded webhooks here,
 		// we log the error and keep going.
-		httpReplayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
-		httpReplayer.replayLock.Add(1)       // acquire lock so we can send webhooks
-		defer httpReplayer.replayLock.Done() // release lock when done sending webhooks
+		replayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
+		replayer.replayLock.Add(1)       // acquire lock so we can send webhooks
+		defer replayer.replayLock.Done() // release lock when done sending webhooks
 
 		for i, webhookReq := range webhookRequests {
 			var evt stripeEvent
 			err = json.Unmarshal(webhookReq.Body, &evt)
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 			}
 
-			resp, err := forwardRequest(webhookReq, httpReplayer.webhookURL)
+			resp, err := forwardRequest(webhookReq, replayer.webhookURL)
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 			defer resp.Body.Close()
@@ -181,14 +181,14 @@ func (httpReplayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 			expectedResp := webhookResponses[i]
 
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 
-			httpReplayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
-			httpReplayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
+			replayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
+			replayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
 			if err != nil {
-				httpReplayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 		}
@@ -196,9 +196,9 @@ func (httpReplayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 }
 
 // returns error if something doesn't match the cassette
-func (httpReplayer *Replayer) getNextRecordedCassetteResponse(request *httpRequest) (response *httpResponse, err error) {
+func (replayer *Replayer) getNextRecordedCassetteResponse(request *httpRequest) (response *httpResponse, err error) {
 	// the passed in request arg may not be necessary
-	uncastResponse, err := httpReplayer.write(request)
+	uncastResponse, err := replayer.write(request)
 	if err != nil {
 		return &httpResponse{}, err
 	}
@@ -209,19 +209,19 @@ func (httpReplayer *Replayer) getNextRecordedCassetteResponse(request *httpReque
 }
 
 // Reads any contiguous set of webhook recordings from the start of the cassette
-func (httpReplayer *Replayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
+func (replayer *Replayer) readAnyPendingWebhookRecordingsFromCassette() (webhookRequests []*httpRequest, webhookResponses []*httpResponse, err error) {
 	interactions := make([]interaction, 0)
 
 	// --- Read the pending webhook interactions (stored as raw bytes) from the cassette
-	for httpReplayer.interactionsRemaining() > 0 {
-		interaction, err := httpReplayer.peekFront()
+	for replayer.interactionsRemaining() > 0 {
+		interaction, err := replayer.peekFront()
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when checking webhooks: %w", err)
 		}
 
 		if interaction.Type == incomingInteraction {
 			interactions = append(interactions, interaction)
-			_, err = httpReplayer.popFront()
+			_, err = replayer.popFront()
 			if err != nil {
 				return nil, nil, fmt.Errorf("unexpectedly reached end of cassette when checking for pending webhooks: %w", err)
 			}
