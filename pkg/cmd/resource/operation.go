@@ -1,10 +1,7 @@
 package resource
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -13,29 +10,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 //
 // Public types
 //
-
-// Account is the most outer layer of the json response from Stripe
-type Account struct {
-	ID       string   `json:"id"`
-	Settings Settings `json:"settings"`
-}
-
-// Settings is within the Account json response from Stripe
-type Settings struct {
-	Dashboard Dashboard `json:"dashboard"`
-}
-
-// Dashboard is within the Settings json response from Stripe
-type Dashboard struct {
-	DisplayName string `json:"display_name"`
-}
 
 // OperationCmd represents operation commands. Operation commands are nested
 // under resource commands and represent a specific API operation for that
@@ -93,11 +73,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		// display account information anf confirm whether user wants to proceed
 		var mode = "Test"
 		var confirmation = "y"
-		displayName, errDisplay := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
-
-		if errDisplay != nil {
-			return err
-		}
+		displayName := oc.Profile.GetDisplayName()
 
 		if oc.Livemode {
 			mode = "Live"
@@ -169,55 +145,9 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	return operationCmd
 }
 
-// DisplayName returns the display name for a successfully authenticated user
-func DisplayName(account *Account, baseURL string, apiKey string) (string, error) {
-	// Account will be nil if user did interactive login
-	if account == nil {
-		acc, err := getUserAccount(baseURL, apiKey)
-		if err != nil {
-			return "", err
-		}
-
-		account = acc
-	}
-	displayName := account.Settings.Dashboard.DisplayName
-
-	return displayName, nil
-}
-
 //
 // Private functions
 //
-
-// helper method to get the account for DisplayName
-func getUserAccount(baseURL string, apiKey string) (*Account, error) {
-	parsedBaseURL, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
-	}
-
-	resp, err := client.PerformRequest(context.TODO(), "GET", "/v1/account", "", nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	account := &Account{}
-
-	err = json.NewDecoder(resp.Body).Decode(account)
-	if err != nil {
-		return nil, err
-	}
-
-	return account, nil
-}
 
 func extractURLParams(path string) []string {
 	re := regexp.MustCompile(`{\w+}`)

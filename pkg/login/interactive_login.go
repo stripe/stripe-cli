@@ -2,9 +2,12 @@ package login
 
 import (
 	"bufio"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,6 +30,13 @@ func InteractiveLogin(config *config.Config) error {
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
 	config.Profile.TestModeAPIKey = apiKey
+	displayName, errDisplay := DisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+
+	if errDisplay != nil {
+		return err
+	}
+
+	config.Profile.DisplayName = displayName
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
@@ -44,6 +54,52 @@ func InteractiveLogin(config *config.Config) error {
 	}
 
 	return nil
+}
+
+// DisplayName returns the display name for a successfully authenticated user
+func DisplayName(account *Account, baseURL string, apiKey string) (string, error) {
+	// Account will be nil if user did interactive login
+	if account == nil {
+		acc, err := getUserAccount(baseURL, apiKey)
+		if err != nil {
+			return "", err
+		}
+
+		account = acc
+	}
+	displayName := account.Settings.Dashboard.DisplayName
+
+	return displayName, nil
+}
+
+// helper method to get the account for DisplayName
+func getAccount(baseURL string, apiKey string) (*Account, error) {
+	parsedBaseURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
+		APIKey:  apiKey,
+	}
+
+	resp, err := client.PerformRequest(context.TODO(), "GET", "/v1/account", "", nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	account := &Account{}
+
+	err = json.NewDecoder(resp.Body).Decode(account)
+	if err != nil {
+		return nil, err
+	}
+
+	return account, nil
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
