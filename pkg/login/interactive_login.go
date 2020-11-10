@@ -60,7 +60,7 @@ func InteractiveLogin(config *config.Config) error {
 func DisplayName(account *Account, baseURL string, apiKey string) (string, error) {
 	// Account will be nil if user did interactive login
 	if account == nil {
-		acc, err := getUserAccount(baseURL, apiKey)
+		acc, err := getAccount(baseURL, apiKey)
 		if err != nil {
 			return "", err
 		}
