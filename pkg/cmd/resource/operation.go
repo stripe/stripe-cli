@@ -70,7 +70,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	oc.Parameters.AppendData(flagParams)
 
 	if oc.ConfirmAccount {
-		// display account information anf confirm whether user wants to proceed
+		// display account information and confirm whether user wants to proceed
 		var mode = "Test"
 		var confirmation = "y"
 		displayName := oc.Profile.GetDisplayName()
