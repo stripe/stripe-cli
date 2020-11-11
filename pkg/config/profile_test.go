@@ -17,6 +17,7 @@ func TestWriteProfile(t *testing.T) {
 		DeviceName:     "st-testing",
 		ProfileName:    "tests",
 		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "test-account-display-name",
 	}
 
 	c := &Config{
@@ -40,6 +41,7 @@ func TestWriteProfile(t *testing.T) {
 	expectedConfig := `
 [tests]
   device_name = "st-testing"
+  display_name = "test-account-display-name"
   test_mode_api_key = "sk_test_123"
 `
 	require.EqualValues(t, expectedConfig, string(configValues))
@@ -53,6 +55,7 @@ func TestWriteProfilesMerge(t *testing.T) {
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
 		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "test-account-display-name",
 	}
 
 	c := &Config{
@@ -78,10 +81,12 @@ func TestWriteProfilesMerge(t *testing.T) {
 	expectedConfig := `
 [tests]
   device_name = "st-testing"
+  display_name = "test-account-display-name"
   test_mode_api_key = "sk_test_123"
 
 [tests-merge]
   device_name = "st-testing"
+  display_name = "test-account-display-name"
   test_mode_api_key = "sk_test_123"
 `
 
