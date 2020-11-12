@@ -59,8 +59,6 @@ type Base struct {
 
 	autoConfirm bool
 	showHeaders bool
-
-	ConfirmAccount bool
 }
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
@@ -112,7 +110,6 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
-	rb.Cmd.Flags().BoolVar(&rb.ConfirmAccount, "confirm-account", false, "Allow user to skip confirmation of account the command is being executed on")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
@@ -181,6 +178,11 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	}
 
 	return body, nil
+}
+
+// public function to call confirmCommand() function for account confirmation
+func (rb *Base) Confirm() (bool, error) {
+	return rb.confirmCommand()
 }
 
 // Note: We converted to using two arrays to track keys and values, with our own
@@ -301,7 +303,10 @@ func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 			return false, err
 		}
 
-		return strings.Compare(strings.ToLower(input), "yes\n") == 0, nil
+		// remove whitespace from either side of the input, as ReadString returns with \n at the end
+		input = strings.ToLower(strings.Trim(input, " \r\n"))
+
+		return strings.Compare(input, "yes") == 0, nil
 	}
 
 	// Always confirm the command if it does not require explicit user confirmation

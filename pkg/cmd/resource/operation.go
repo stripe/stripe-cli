@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 
@@ -69,10 +70,9 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	oc.Parameters.AppendData(flagParams)
 
-	if oc.ConfirmAccount {
+	if oc.HTTPVerb == http.MethodDelete {
 		// display account information and confirm whether user wants to proceed
 		var mode = "Test"
-		var confirmation = "y"
 		displayName := oc.Profile.GetDisplayName()
 
 		if oc.Livemode {
@@ -80,19 +80,23 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		// display account information and confirmation to proceed
-		fmt.Printf("> This command will be executed on the account with the following details\n")
+		fmt.Printf("This command will be executed on the account with the following details:\n")
 		fmt.Printf("> Mode: %s\n", mode)
 		fmt.Printf("> Account Name: %s\n", displayName)
-		fmt.Printf("> Are you sure you want to proceed? [y/n]: ")
-		fmt.Scanln(&confirmation)
-		fmt.Print("\n")
 
-		if strings.Compare(strings.ToLower(confirmation), "y") == 0 {
-			_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
-
+		// call the confirm command from base request
+		confirmation, err := oc.Confirm()
+		if err != nil {
 			return err
+		} else if !confirmation {
+			fmt.Println("Exiting without execution. User did not confirm the command.")
+			return nil
 		}
-		return fmt.Errorf("Operation aborted")
+
+		// if confirmation is provided, make the request
+		_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
+
+		return err
 	}
 	// else
 	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
