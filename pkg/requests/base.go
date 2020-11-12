@@ -180,7 +180,7 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	return body, nil
 }
 
-// public function to call confirmCommand() function for account confirmation
+// Confirm calls the confirmCommand() function, triggering the confirmation process
 func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
 }
