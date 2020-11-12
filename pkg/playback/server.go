@@ -16,6 +16,33 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// These constants define the different playback modes
+// Auto mode: If a cassette exists, replays from the cassette or else records a new cassette.
+const (
+	Auto   string = "auto"
+	Record string = "record"
+	Replay string = "replay"
+)
+
+// A Server implements the full functionality of `stripe playback` as a HTTP server.
+// Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
+type Server struct {
+	recorder Recorder
+	replayer Replayer
+
+	remoteURL         string
+	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
+
+	log *log.Logger
+
+	switchModeChan chan string
+
+	// state machine state
+	mode                  string // the user specified state (auto, record, replay)
+	isRecordingInAutoMode bool   // internal state used when in auto mode to keep track of the state for the current cassette (either recording or replaying)
+	cassetteLoaded        bool
+}
+
 // errorJsonOuter and errorJSONInner are used to return `playback` error messages as JSON in HTTP response bodies to
 // mimic errors returned by the Stripe API. The intention is to make it easier for clients (which expect Stripe API errors)
 // using `stripe playback` to parse and display a useful error message when `stripe playback` emits errors.
@@ -31,88 +58,22 @@ type errorJSONInner struct {
 	Type    string `json:"type"`
 }
 
-func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
-	client := &http.Client{
-		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
-		Timeout: time.Second * 10,
-	}
-
-	// Create a identical copy of the request
-	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
-	if err != nil {
-		return nil, err
-	}
-	copyHTTPHeader(req.Header, wrappedRequest.Headers)
-
-	// Forward the request to the remote
-	res, err := client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
-// Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
-func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
-	errorJSON := errorJSONOuter{}
-	errorJSON.Error.Message = errParam.Error()
-	errorJSON.Error.Type = "stripe_playback_error"
-	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
-
-	// Write error as json, falling back to plain text if it fails
-	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(statusCode)
-		fmt.Fprintf(w, "%v\n", errParam)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		w.Write(jsonBytes)
-	}
-
-	log.Errorf("<-- %d: %v", statusCode, errParam)
-}
-
-// These constants define the modes the playback server can be in
-const (
-	// in auto mode, the server records a new cassette if the given file initially doesn't exist
-	// and replays a cassette of the file does exist.
-	Auto   string = "auto"
-	Record string = "record"
-	Replay string = "replay"
-)
-
-// A Server implements the full functionality of `stripe playback` as a HTTP server.
-// Acting as a proxy server for the Stripe API, it can both record and replay interactions using cassette files.
-type Server struct {
-	httpRecorder HTTPRecorder
-	httpReplayer HTTPReplayer
-
-	remoteURL         string
-	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
-
-	log *log.Logger
-
-	switchModeChan chan string
-
-	// state machine state
-	mode                  string // the user specified state (auto, record, replay)
-	isRecordingInAutoMode bool   // internal state used when in auto mode to keep track of the state for the current cassette (either recording or replaying)
-	cassetteLoaded        bool
-}
-
 // NewServer instantiates a Server struct, representing the configuration and current state of a playback proxy server
 // The cassetteDirectory param must be an absolute path
-// initialCasssetteFilepath can be a relative path (inretpreted relative to cassetteDirectory) or an absolute path
+// initialCasssetteFilepath can be a relative path (interpreted relative to cassetteDirectory) or an absolute path
 func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string, mode string, initialCassetteFilepath string) (server *Server, err error) {
 	server = &Server{}
 
-	// initialize server.httpRecorder and server.httpReplayer first, since calls to methods like
+	// initialize server.Recorder and server.httpReplayer first, since calls to methods like
 	// server.loadCassette reference them.
-	server.httpRecorder = newHTTPRecorder(remoteURL, webhookURL)
-	server.httpReplayer = newHTTPReplayer(webhookURL)
+	server.recorder = newRecorder(remoteURL, webhookURL, YAMLSerializer{})
+
+	serializer := YAMLSerializer{}
+	// TODO(DX-5701): We may want to allow different types of replay matching in the future (instead of simply sequential playback)
+	sequentialComparator := func(req1 interface{}, req2 interface{}) (accept bool, shortCircuitNow bool) {
+		return true, true
+	}
+	server.replayer = newReplayer(webhookURL, serializer, sequentialComparator)
 	server.remoteURL = remoteURL
 	server.switchModeChan = make(chan string)
 
@@ -271,20 +232,6 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	return server
 }
 
-// OnSwitchMode blocks on the switchModeChan and returns the value it receives
-// func (rr *Server) OnSwitchMode(send chan<- string) {
-// 	mode := <-rr.switchModeChan
-// 	send <- mode
-// }
-
-// OnSwitchMode blocks on the switchModeChan and returns the value it receives
-func (rr *Server) OnSwitchMode(f func(string)) {
-	go func() {
-		mode := <-rr.switchModeChan
-		f(mode)
-	}()
-}
-
 // Handles incoming Stripe API requests sent to the `playback` server.
 // Requests are handled differently depending on whether we are recording or replaying.
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
@@ -297,9 +244,9 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.httpRecorder.handler(w, r)
+		rr.recorder.handler(w, r)
 	} else {
-		rr.httpReplayer.handler(w, r)
+		rr.replayer.handler(w, r)
 	}
 }
 
@@ -314,10 +261,71 @@ func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		rr.httpRecorder.webhookHandler(w, r)
+		rr.recorder.webhookHandler(w, r)
 	} else {
 		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
 	}
+}
+
+// forwardRequest forwards a request to destinationURL and returns the response.
+func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *http.Response, err error) {
+	client := &http.Client{
+		// set Timeout explicitly, otherwise the client will wait indefinitely for a response
+		Timeout: time.Second * 10,
+	}
+
+	// Create a identical copy of the request
+	req, err := http.NewRequest(wrappedRequest.Method, destinationURL, bytes.NewBuffer(wrappedRequest.Body))
+	if err != nil {
+		return nil, err
+	}
+	copyHTTPHeader(req.Header, wrappedRequest.Headers)
+
+	// Forward the request to the remote
+	res, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
+// Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
+// Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
+func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
+	errorJSON := errorJSONOuter{}
+	errorJSON.Error.Message = errParam.Error()
+	errorJSON.Error.Type = "stripe_playback_error"
+	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
+
+	// Write error as json, falling back to plain text if it fails
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(statusCode)
+		fmt.Fprintf(w, "%v\n", errParam)
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(statusCode)
+		w.Write(jsonBytes)
+	}
+
+	log.Errorf("<-- %d: %v", statusCode, errParam)
+}
+
+func copyHTTPHeader(dest, src http.Header) {
+	for k, v := range src {
+		for _, subvalues := range v {
+			dest.Set(k, subvalues)
+		}
+	}
+}
+
+// OnSwitchMode listens to the switchModeChan and calls f when it receives a mode string
+func (rr *Server) OnSwitchMode(f func(string)) {
+	go func() {
+		mode := <-rr.switchModeChan
+		f(mode)
+	}()
 }
 
 // note: calling this method always sets cassetteLoaded = false
@@ -361,7 +369,7 @@ func (rr *Server) openCassetteFileForReplaying(absoluteFilepath string) error {
 		return fmt.Errorf("error opening cassette file: %w", err)
 	}
 
-	err = rr.httpReplayer.readCassette(fileHandle)
+	err = rr.replayer.readCassette(fileHandle)
 	if err != nil {
 		return fmt.Errorf("error parsing cassette file: %v", err)
 	}
@@ -381,10 +389,7 @@ func (rr *Server) createCassetteFileForRecording(absoluteFilepath string) error 
 		return fmt.Errorf("error creating cassette file: %w", err)
 	}
 
-	err = rr.httpRecorder.insertCassette(fileHandle)
-	if err != nil {
-		return fmt.Errorf("error inserting cassette file: %w", err)
-	}
+	rr.recorder.insertCassette(fileHandle)
 
 	return nil
 }
@@ -420,6 +425,7 @@ func (rr *Server) loadCassette(relativeFilepath string) error {
 	return nil
 }
 
+// ejectCassette calls recorder.saveAndClose which persists the cassette to file and closes it.
 func (rr *Server) ejectCassette() error {
 	if !rr.cassetteLoaded {
 		return fmt.Errorf("tried to eject when no cassette is loaded")
@@ -427,7 +433,7 @@ func (rr *Server) ejectCassette() error {
 
 	isRecording := rr.isRecording()
 	if isRecording {
-		err := rr.httpRecorder.recorder.saveAndClose()
+		err := rr.recorder.saveAndClose()
 		if err != nil {
 			rr.cassetteLoaded = false // if an error occurs, best to reset to an blank state so a new cassette can be loaded
 			return fmt.Errorf("unexpected error when writing cassette. It may have failed to write properly: %w", err)
@@ -451,13 +457,5 @@ func (rr *Server) isRecording() bool {
 		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
 		rr.log.Fatalf("Unexpected mode \"%v\" in playback server - this likely indicates a bug in the implementation. Please try restarting the server.", rr.mode)
 		return false
-	}
-}
-
-func copyHTTPHeader(dest, src http.Header) {
-	for k, v := range src {
-		for _, subvalues := range v {
-			dest.Set(k, subvalues)
-		}
 	}
 }

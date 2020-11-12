@@ -14,12 +14,14 @@ type YAMLSerializer struct{}
 func (s YAMLSerializer) EncodeCassette(cassette Cassette) ([]byte, error) {
 	var encodedCassette YAMLCassette
 	for _, inter := range cassette {
-		yamlReq, err := s.serializeReq(inter.Request)
+		req := inter.Request.(httpRequest)
+		yamlReq, err := s.serializeReq(req)
 		if err != nil {
 			return nil, err
 		}
 
-		yamlRes, err := s.serializeResp(inter.Response)
+		res := inter.Response.(httpResponse)
+		yamlRes, err := s.serializeResp(res)
 		if err != nil {
 			return nil, err
 		}
