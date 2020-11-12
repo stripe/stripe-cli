@@ -70,11 +70,8 @@ func TestSequentialPlayback(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	recorder := newRecorder("example.com", "example.com/wh", YAMLSerializer{})
+	recorder.insertCassette(&writeBuffer)
 
 	s1 := httpRequest{Method: "POST"}
 	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
@@ -84,14 +81,10 @@ func TestSequentialPlayback(t *testing.T) {
 	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
-	err = recorder.saveAndClose()
+	recorder.saveAndClose()
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, sequentialComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, sequentialComparator)
+	replayer.readCassette(&writeBuffer)
 
 	replayedResp1, err1 := replayer.write(&s2)
 	replayedResp2, err2 := replayer.write(&s1)
@@ -116,11 +109,8 @@ func TestFirstMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	recorder := newRecorder("example.com", "example.com/wh", YAMLSerializer{})
+	recorder.insertCassette(&writeBuffer)
 
 	s1 := httpRequest{Method: "POST"}
 	r1 := httpResponse{Headers: http.Header{}, Body: []byte("body 1"), StatusCode: 200}
@@ -130,14 +120,10 @@ func TestFirstMatchingEvent(t *testing.T) {
 	r2 := httpResponse{Headers: http.Header{}, Body: []byte("body 2"), StatusCode: 300}
 	recorder.write(outgoingInteraction, s2, r2)
 
-	err = recorder.saveAndClose()
+	recorder.saveAndClose()
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, firstMatchingComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, firstMatchingComparator)
+	replayer.readCassette(&writeBuffer)
 
 	_, err2 := replayer.write(&httpRequest{})
 	assert.EqualError(t, err2, "no matching events")
@@ -162,11 +148,8 @@ func TestLastMatchingEvent(t *testing.T) {
 	}
 
 	var writeBuffer bytes.Buffer
-	recorder, err := newInteractionRecorder(&writeBuffer, YAMLSerializer{})
-
-	if err != nil {
-		t.Fatal(err)
-	}
+	recorder := newRecorder("example.com", "example.com/wh", YAMLSerializer{})
+	recorder.insertCassette(&writeBuffer)
 
 	s1 := httpRequest{Method: "POST"}
 	r1 := httpResponse{StatusCode: 200}
@@ -180,14 +163,10 @@ func TestLastMatchingEvent(t *testing.T) {
 	r3 := httpResponse{StatusCode: 400}
 	recorder.write(outgoingInteraction, s3, r3)
 
-	err = recorder.saveAndClose()
+	recorder.saveAndClose()
 
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	replayer, err := newInteractionReplayer(&writeBuffer, YAMLSerializer{}, lastMatchingComparator)
-	assert.NoError(t, err)
+	replayer := newReplayer("example.com/wh", YAMLSerializer{}, lastMatchingComparator)
+	replayer.readCassette(&writeBuffer)
 
 	respA, errA := replayer.write(&s1)
 	castA := (*respA).(httpResponse)
@@ -207,8 +186,8 @@ func TestSaveAndCloseToYaml(t *testing.T) {
 	check(t, err)
 
 	// create new recorder
-	recorder, err := newInteractionRecorder(cassetteFile, YAMLSerializer{})
-	check(t, err)
+	recorder := newRecorder("example.com", "example.com/wh", YAMLSerializer{})
+	recorder.insertCassette(cassetteFile)
 
 	// write req/resp interaction to cassette
 	header := http.Header{}
