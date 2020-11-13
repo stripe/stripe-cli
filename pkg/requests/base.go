@@ -57,7 +57,7 @@ type Base struct {
 
 	Livemode bool
 
-	autoConfirm bool
+	AutoConfirm bool
 	showHeaders bool
 }
 
@@ -99,7 +99,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 // InitFlags initialize shared flags for all requests commands
 func (rb *Base) InitFlags() {
 	if rb.Cmd.Flags().Lookup("confirm") == nil {
-		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
+		rb.Cmd.Flags().BoolVarP(&rb.AutoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
 	}
 
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
@@ -294,7 +294,7 @@ func (rb *Base) confirmCommand() (bool, error) {
 }
 
 func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
-	if _, needsConfirmation := confirmationCommands[rb.Method]; needsConfirmation && !rb.autoConfirm {
+	if _, needsConfirmation := confirmationCommands[rb.Method]; needsConfirmation && !rb.AutoConfirm {
 		confirmationPrompt := fmt.Sprintf("Are you sure you want to perform the command: %s?\nEnter 'yes' to confirm: ", rb.Method)
 		fmt.Print(confirmationPrompt)
 
