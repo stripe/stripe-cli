@@ -70,7 +70,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 
 	oc.Parameters.AppendData(flagParams)
 
-	if oc.HTTPVerb == http.MethodDelete && !oc.AutoConfirm {
+	if oc.HTTPVerb == http.MethodDelete {
 		// display account information and confirm whether user wants to proceed
 		var mode = "Test"
 		displayName := oc.Profile.GetDisplayName()

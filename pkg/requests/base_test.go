@@ -132,7 +132,7 @@ func TestGetUserConfirmationRequired(t *testing.T) {
 
 	rb := Base{}
 	rb.Method = http.MethodDelete
-	rb.AutoConfirm = false
+	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
@@ -144,7 +144,7 @@ func TestGetUserConfirmationNotRequired(t *testing.T) {
 
 	rb := Base{}
 	rb.Method = http.MethodGet
-	rb.AutoConfirm = false
+	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
@@ -156,7 +156,7 @@ func TestGetUserConfirmationAutoConfirm(t *testing.T) {
 
 	rb := Base{}
 	rb.Method = http.MethodDelete
-	rb.AutoConfirm = true
+	rb.autoConfirm = true
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.True(t, confirmed)
@@ -168,7 +168,7 @@ func TestGetUserConfirmationNoConfirm(t *testing.T) {
 
 	rb := Base{}
 	rb.Method = http.MethodDelete
-	rb.AutoConfirm = false
+	rb.autoConfirm = false
 
 	confirmed, err := rb.getUserConfirmation(reader)
 	require.False(t, confirmed)
