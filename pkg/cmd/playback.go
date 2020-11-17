@@ -151,6 +151,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		startListenCmdLoop(pc.mode, addressString, httpWrapper)
 	}
 
+	// pass the signal to the server.ListenAndServe somehow
 	ctx := context.Background()
 	withSIGTERMCancel(ctx, httpWrapper)
 
