@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -151,13 +152,13 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		startListenCmdLoop(pc.mode, addressString, httpWrapper)
 	}
 
-	// pass the signal to the server.ListenAndServe somehow
-	ctx := context.Background()
-	withSIGTERMCancel(ctx, httpWrapper)
-
 	// somewhere here, use withSIGTERMCancel
 	// on cancel call httpWrapper.ejectCassette()
 	server := httpWrapper.InitializeServer(addressString)
+
+	// pass the signal to the server.ListenAndServe somehow
+	ctx := context.Background()
+	withSIGTERMCancel(ctx, httpWrapper, server)
 	go func() {
 		err = server.ListenAndServe()
 		fmt.Fprint(os.Stderr, err.Error())
@@ -199,7 +200,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	select {}
 }
 
-func withSIGTERMCancel(ctx context.Context, httpWrapper *playback.Server) context.Context {
+func withSIGTERMCancel(ctx context.Context, httpWrapper *playback.Server, server *http.Server) context.Context {
 	// Create a context that will be canceled when Ctrl+C is pressed
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -210,6 +211,7 @@ func withSIGTERMCancel(ctx context.Context, httpWrapper *playback.Server) contex
 		<-interruptCh
 		fmt.Println("ejected cassette!!")
 		cancel()
+		os.Exit(1)
 	}()
 
 	return ctx
