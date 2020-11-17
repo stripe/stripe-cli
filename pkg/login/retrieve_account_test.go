@@ -40,7 +40,7 @@ func TestGetAccount(t *testing.T) {
 	)
 }
 
-func TesGetAccountNoDisplayName(t *testing.T) {
+func TestGetAccountNoDisplayName(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 
