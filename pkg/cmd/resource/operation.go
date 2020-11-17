@@ -82,7 +82,9 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		// display account information and confirmation to proceed
 		fmt.Printf("This command will be executed on the account with the following details:\n")
 		fmt.Printf("> Mode: %s\n", mode)
-		fmt.Printf("> Account Name: %s\n", displayName)
+		if displayName != "" {
+			fmt.Printf("> Account Name: %s\n", displayName)
+		}
 
 		// call the confirm command from base request
 		confirmation, err := oc.Confirm()
