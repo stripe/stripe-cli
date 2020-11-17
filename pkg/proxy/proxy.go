@@ -97,6 +97,7 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 		onCancel()
 		cancel()
 	}()
+
 	return ctx
 }
 

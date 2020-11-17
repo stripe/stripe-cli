@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -148,6 +151,11 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		startListenCmdLoop(pc.mode, addressString, httpWrapper)
 	}
 
+	ctx := context.Background()
+	withSIGTERMCancel(ctx, httpWrapper)
+
+	// somewhere here, use withSIGTERMCancel
+	// on cancel call httpWrapper.ejectCassette()
 	server := httpWrapper.InitializeServer(addressString)
 	go func() {
 		err = server.ListenAndServe()
@@ -188,6 +196,22 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	select {}
+}
+
+func withSIGTERMCancel(ctx context.Context, httpWrapper *playback.Server) context.Context {
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(ctx)
+
+	interruptCh := make(chan os.Signal, 1)
+	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-interruptCh
+		fmt.Println("ejected cassette!!")
+		cancel()
+	}()
+
+	return ctx
 }
 
 func startListenCmdLoop(mode string, address string, httpWrapper *playback.Server) {
