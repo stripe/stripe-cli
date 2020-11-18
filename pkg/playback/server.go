@@ -210,7 +210,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 	})
 
 	customMux.HandleFunc("/playback/cassette/eject", func(w http.ResponseWriter, r *http.Request) {
-		err := rr.ejectCassette()
+		err := rr.EjectCassette()
 
 		if err != nil {
 			writeErrorToHTTPResponse(w, rr.log, err, 500)
@@ -425,8 +425,8 @@ func (rr *Server) loadCassette(relativeFilepath string) error {
 	return nil
 }
 
-// ejectCassette calls recorder.saveAndClose which persists the cassette to file and closes it.
-func (rr *Server) ejectCassette() error {
+// EjectCassette calls recorder.saveAndClose which persists the cassette to file and closes it.
+func (rr *Server) EjectCassette() error {
 	if !rr.cassetteLoaded {
 		return fmt.Errorf("tried to eject when no cassette is loaded")
 	}

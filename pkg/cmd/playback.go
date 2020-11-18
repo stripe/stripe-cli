@@ -3,17 +3,17 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/playback"
+	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -152,13 +152,17 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 		startListenCmdLoop(pc.mode, addressString, httpWrapper)
 	}
 
-	// somewhere here, use withSIGTERMCancel
-	// on cancel call httpWrapper.ejectCassette()
 	server := httpWrapper.InitializeServer(addressString)
 
-	// pass the signal to the server.ListenAndServe somehow
 	ctx := context.Background()
-	withSIGTERMCancel(ctx, httpWrapper, server)
+	proxy.WithSIGTERMCancel(ctx, func() {
+		log.WithFields(log.Fields{
+			"prefix": "playback.Playback.runPlaybackCmd",
+		}).Debug("Ctrl+C received, ejecting cassette...")
+		httpWrapper.EjectCassette()
+		os.Exit(1)
+	})
+
 	go func() {
 		err = server.ListenAndServe()
 		fmt.Fprint(os.Stderr, err.Error())
@@ -198,23 +202,6 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 
 	select {}
-}
-
-func withSIGTERMCancel(ctx context.Context, httpWrapper *playback.Server, server *http.Server) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		fmt.Println("ejected cassette!!")
-		cancel()
-		os.Exit(1)
-	}()
-
-	return ctx
 }
 
 func startListenCmdLoop(mode string, address string, httpWrapper *playback.Server) {

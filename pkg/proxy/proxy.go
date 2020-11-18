@@ -85,7 +85,8 @@ type Proxy struct {
 	events map[string]bool
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+// WithSIGTERMCancel calls onCancel and closes the context on CTRL+C
+func WithSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	// Create a context that will be canceled when Ctrl+C is pressed
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -108,7 +109,7 @@ const maxConnectAttempts = 3
 func (p *Proxy) Run(ctx context.Context) error {
 	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
 
-	ctx = withSIGTERMCancel(ctx, func() {
+	ctx = WithSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
