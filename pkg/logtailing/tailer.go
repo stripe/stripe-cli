@@ -174,7 +174,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			ansi.StopSpinner(s, "", t.cfg.Log.Out)
-			t.cfg.Log.Fatalf("Aborting")
+			return nil
 		case <-t.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
 				ansi.StartSpinner(s, "Session expired, reconnecting...", t.cfg.Log.Out)
