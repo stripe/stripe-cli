@@ -195,8 +195,7 @@ func startListenCmdLoop(mode string, address string, httpWrapper *playback.Serve
 	lc.forwardURL = address + "/playback/webhooks"
 	startListenCmd := func() {
 		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
-		err := lc.runListenCmd(lc.cmd, []string{})
-		fmt.Fprint(os.Stderr, err.Error())
+		lc.runListenCmd(lc.cmd, []string{})
 		os.Exit(1)
 	}
 
