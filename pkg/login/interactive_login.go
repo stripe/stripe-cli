@@ -27,11 +27,7 @@ func InteractiveLogin(config *config.Config) error {
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
 	config.Profile.TestModeAPIKey = apiKey
-	displayName, err := getDisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
-
-	if err != nil {
-		displayName = ""
-	}
+	displayName, _ := getDisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
 
 	config.Profile.DisplayName = displayName
 
