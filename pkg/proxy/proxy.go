@@ -146,7 +146,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf("Aborting")
+			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
 				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
