@@ -59,6 +59,7 @@ var validEvents = map[string]bool{
 	"file.created":                                 true,
 	"invoice.created":                              true,
 	"invoice.deleted":                              true,
+	"invoice.finalization_failed":                  true,
 	"invoice.finalized":                            true,
 	"invoice.marked_uncollectible":                 true,
 	"invoice.paid":                                 true,
