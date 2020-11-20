@@ -630,6 +630,15 @@
             ],
             "type": "string"
           },
+          "grabpay_payments": {
+            "description": "The status of the GrabPay payments capability of the account, or whether the account can directly process GrabPay charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "ideal_payments": {
             "description": "The status of the iDEAL payments capability of the account, or whether the account can directly process iDEAL charges.",
             "enum": [
@@ -1516,6 +1525,11 @@
           "payment_method": {
             "$ref": "#/components/schemas/payment_method"
           },
+          "payment_method_type": {
+            "description": "If the error is specific to the type of payment method, the payment method type that had a problem. This field is only populated for invoice-related errors.",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "setup_intent": {
             "$ref": "#/components/schemas/setup_intent"
           },
@@ -2365,6 +2379,9 @@
           },
           {
             "$ref": "#/components/schemas/issuing.authorization"
+          },
+          {
+            "$ref": "#/components/schemas/issuing.dispute"
           },
           {
             "$ref": "#/components/schemas/issuing.transaction"
@@ -3506,7 +3523,7 @@
             "type": "boolean"
           },
           "description": {
-            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "description": "A high-level description of the type of cards issued in this range. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "type": "string"
           },
@@ -3525,7 +3542,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number,for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -3546,7 +3563,7 @@
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
+            "description": "The name of the card's issuing bank. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "type": "string"
           },
@@ -4839,7 +4856,7 @@
             "type": "object"
           },
           "mode": {
-            "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`.",
+            "description": "The mode of the Checkout Session.",
             "enum": [
               "payment",
               "setup",
@@ -10329,7 +10346,6 @@
             "items": {
               "$ref": "#/components/schemas/tax_rate"
             },
-            "nullable": true,
             "type": "array"
           },
           "description": {
@@ -10409,6 +10425,15 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "last_finalization_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/api_errors"
+              }
+            ],
+            "description": "The error encountered during the previous attempt to finalize the invoice. This field is cleared when the invoice is successfully finalized.",
+            "nullable": true
           },
           "lines": {
             "description": "The individual line items that make up the invoice. `lines` is sorted as follows: invoice items in reverse chronological order, followed by the subscription, if any.",
@@ -10608,7 +10633,6 @@
             "items": {
               "$ref": "#/components/schemas/invoice_tax_amount"
             },
-            "nullable": true,
             "type": "array"
           },
           "transfer_data": {
@@ -10698,6 +10722,7 @@
           "default_tax_rates",
           "discount",
           "discounts",
+          "last_finalization_error",
           "lines",
           "payment_intent",
           "status_transitions",
@@ -11024,10 +11049,12 @@
         "properties": {
           "end": {
             "description": "End of the line item's billing period",
+            "format": "unix-time",
             "type": "integer"
           },
           "start": {
             "description": "Start of the line item's billing period",
+            "format": "unix-time",
             "type": "integer"
           }
         },
@@ -11614,7 +11641,7 @@
         "description": "",
         "properties": {
           "type": {
-            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, or `unknown`",
+            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ru_kpp`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `jp_rn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, or `unknown`",
             "enum": [
               "ae_trn",
               "au_abn",
@@ -11630,6 +11657,7 @@
               "id_npwp",
               "in_gst",
               "jp_cn",
+              "jp_rn",
               "kr_brn",
               "li_uid",
               "mx_rfc",
@@ -11639,6 +11667,7 @@
               "no_vat",
               "nz_gst",
               "ru_inn",
+              "ru_kpp",
               "sa_vat",
               "sg_gst",
               "sg_uen",
@@ -12879,6 +12908,9 @@
           "in_package": "Issuing",
           "inner_classes": [
             "issuing_dispute_evidence"
+          ],
+          "polymorphic_groups": [
+            "balance_transaction_source"
           ]
         }
       },
@@ -17416,7 +17448,6 @@
             "items": {
               "$ref": "#/components/schemas/invoice_tax_amount"
             },
-            "nullable": true,
             "type": "array"
           },
           "tax_rates": {
@@ -17424,7 +17455,6 @@
             "items": {
               "$ref": "#/components/schemas/tax_rate"
             },
-            "nullable": true,
             "type": "array"
           },
           "type": {
@@ -18771,7 +18801,7 @@
             }
           },
           "application_fee_amount": {
-            "description": "The amount of the application fee (if any) requested for the resulting payment. See the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts) for details.",
+            "description": "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account. The amount of the application fee collected will be capped at the total payment amount. For more information, see the PaymentIntents [use case for connected accounts](https://stripe.com/docs/payments/connected-accounts).",
             "nullable": true,
             "type": "integer"
           },
@@ -18843,7 +18873,7 @@
             ]
           },
           "client_secret": {
-            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. \n\nThe client secret can be used to complete a payment from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.\n\nRefer to our docs to [accept a payment](https://stripe.com/docs/payments/accept-a-payment) and learn about how `client_secret` should be handled.",
+            "description": "The client secret of this PaymentIntent. Used for client-side retrieval using a publishable key. \n\nThe client secret can be used to complete a payment from your frontend. It should not be stored, logged, embedded in URLs, or exposed to anyone other than the customer. Make sure that you have TLS enabled on any page that includes the client secret.\n\nRefer to our docs to [accept a payment](https://stripe.com/docs/payments/accept-a-payment?integration=elements) and learn about how `client_secret` should be handled.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -19519,6 +19549,9 @@
           "oxxo": {
             "$ref": "#/components/schemas/payment_method_options_oxxo"
           },
+          "p24": {
+            "$ref": "#/components/schemas/payment_method_options_p24"
+          },
           "sofort": {
             "$ref": "#/components/schemas/payment_method_options_sofort"
           }
@@ -19530,6 +19563,7 @@
           "bancontact",
           "card",
           "oxxo",
+          "p24",
           "sofort"
         ],
         "x-stripeResource": {
@@ -19540,6 +19574,7 @@
             "payment_method_options_alipay",
             "payment_method_options_bancontact",
             "payment_method_options_oxxo",
+            "payment_method_options_p24",
             "payment_method_options_sofort"
           ]
         }
@@ -19660,6 +19695,9 @@
           "giropay": {
             "$ref": "#/components/schemas/payment_method_giropay"
           },
+          "grabpay": {
+            "$ref": "#/components/schemas/payment_method_grabpay"
+          },
           "id": {
             "description": "Unique identifier for the object.",
             "maxLength": 5000,
@@ -19711,10 +19749,13 @@
               "bacs_debit",
               "bancontact",
               "card",
+              "card_present",
               "eps",
               "fpx",
               "giropay",
+              "grabpay",
               "ideal",
+              "interac_present",
               "oxxo",
               "p24",
               "sepa_debit",
@@ -19748,6 +19789,7 @@
           "eps",
           "fpx",
           "giropay",
+          "grabpay",
           "ideal",
           "interac_present",
           "oxxo",
@@ -19905,6 +19947,7 @@
             "payment_method_eps",
             "payment_method_fpx",
             "payment_method_giropay",
+            "payment_method_grabpay",
             "payment_method_ideal",
             "payment_method_interac_present",
             "payment_method_oxxo",
@@ -20026,7 +20069,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "description": "A high-level description of the type of cards issued in this range. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20040,7 +20083,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number,for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20057,7 +20100,7 @@
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
+            "description": "The name of the card's issuing bank. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20441,6 +20484,9 @@
           "giropay": {
             "$ref": "#/components/schemas/payment_method_details_giropay"
           },
+          "grabpay": {
+            "$ref": "#/components/schemas/payment_method_details_grabpay"
+          },
           "ideal": {
             "$ref": "#/components/schemas/payment_method_details_ideal"
           },
@@ -20498,6 +20544,7 @@
           "eps",
           "fpx",
           "giropay",
+          "grabpay",
           "ideal",
           "interac_present",
           "klarna",
@@ -20526,6 +20573,7 @@
             "payment_method_details_eps",
             "payment_method_details_fpx",
             "payment_method_details_giropay",
+            "payment_method_details_grabpay",
             "payment_method_details_ideal",
             "payment_method_details_interac_present",
             "payment_method_details_klarna",
@@ -20918,7 +20966,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "description": "A high-level description of the type of cards issued in this range. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20932,7 +20980,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number,for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -20959,7 +21007,7 @@
             "nullable": true
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
+            "description": "The name of the card's issuing bank. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21156,7 +21204,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "description": "A high-level description of the type of cards issued in this range. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21176,7 +21224,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number,for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21200,7 +21248,7 @@
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
+            "description": "The name of the card's issuing bank. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21702,6 +21750,29 @@
           "in_class": "payment_method_details"
         }
       },
+      "payment_method_details_grabpay": {
+        "description": "",
+        "properties": {
+          "transaction_id": {
+            "description": "Unique transaction id generated by GrabPay",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_id"
+        ],
+        "title": "payment_method_details_grabpay",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Grabpay",
+          "in_class": "payment_method_details"
+        }
+      },
       "payment_method_details_ideal": {
         "description": "",
         "properties": {
@@ -21837,7 +21908,7 @@
             "type": "string"
           },
           "description": {
-            "description": "Card description. (For internal use only and not typically available in standard API requests.)",
+            "description": "A high-level description of the type of cards issued in this range. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21857,7 +21928,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number,for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21881,7 +21952,7 @@
             "type": "string"
           },
           "issuer": {
-            "description": "Issuer bank name of the card. (For internal use only and not typically available in standard API requests.)",
+            "description": "The name of the card's issuing bank. (For internal use only and not typically available in standard API requests.)",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21897,6 +21968,15 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "preferred_locales": {
+            "description": "EMV tag 5F2D. Preferred languages specified by the integrated circuit chip.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "read_method": {
             "description": "How card details were read in this transaction.",
@@ -21932,6 +22012,7 @@
           "generated_card",
           "last4",
           "network",
+          "preferred_locales",
           "read_method",
           "receipt"
         ],
@@ -22447,6 +22528,20 @@
           "in_class": "payment_method"
         }
       },
+      "payment_method_grabpay": {
+        "description": "",
+        "properties": {
+        },
+        "title": "payment_method_grabpay",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Grabpay",
+          "in_class": "payment_method"
+        }
+      },
       "payment_method_ideal": {
         "description": "",
         "properties": {
@@ -22623,6 +22718,20 @@
           "in_class": "payment_intent_payment_method_options"
         }
       },
+      "payment_method_options_p24": {
+        "description": "",
+        "properties": {
+        },
+        "title": "payment_method_options_p24",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "P24",
+          "in_class": "payment_intent_payment_method_options"
+        }
+      },
       "payment_method_options_sofort": {
         "description": "",
         "properties": {
@@ -22671,7 +22780,42 @@
       "payment_method_p24": {
         "description": "",
         "properties": {
+          "bank": {
+            "description": "The customer's bank, if provided.",
+            "enum": [
+              "alior_bank",
+              "bank_millennium",
+              "bank_nowy_bfg_sa",
+              "bank_pekao_sa",
+              "banki_spbdzielcze",
+              "blik",
+              "bnp_paribas",
+              "boz",
+              "citi_handlowy",
+              "credit_agricole",
+              "envelobank",
+              "etransfer_pocztowy24",
+              "getin_bank",
+              "ideabank",
+              "ing",
+              "inteligo",
+              "mbank_mtransfer",
+              "nest_przelew",
+              "noble_pay",
+              "pbac_z_ipko",
+              "plus_bank",
+              "santander_przelew24",
+              "tmobile_usbugi_bankowe",
+              "toyota_bank",
+              "volkswagen_bank"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
         },
+        "required": [
+          "bank"
+        ],
         "title": "payment_method_p24",
         "type": "object",
         "x-expandableFields": [
@@ -23434,6 +23578,8 @@
           "metadata",
           "method",
           "object",
+          "original_payout",
+          "reversed_by",
           "source_type",
           "statement_descriptor",
           "status",
@@ -28416,18 +28562,24 @@
         "properties": {
           "card": {
             "$ref": "#/components/schemas/setup_intent_payment_method_options_card"
+          },
+          "sepa_debit": {
+            "$ref": "#/components/schemas/setup_intent_payment_method_options_sepa_debit"
           }
         },
         "title": "SetupIntentPaymentMethodOptions",
         "type": "object",
         "x-expandableFields": [
-          "card"
+          "card",
+          "sepa_debit"
         ],
         "x-stripeResource": {
           "class_name": "PaymentMethodOptions",
           "in_class": "setup_intent",
           "inner_classes": [
-            "setup_intent_payment_method_options_card"
+            "setup_intent_payment_method_options_card",
+            "setup_intent_payment_method_options_mandate_options_sepa_debit",
+            "setup_intent_payment_method_options_sepa_debit"
           ]
         }
       },
@@ -28455,6 +28607,37 @@
         ],
         "x-stripeResource": {
           "class_name": "Card",
+          "in_class": "setup_intent_payment_method_options"
+        }
+      },
+      "setup_intent_payment_method_options_mandate_options_sepa_debit": {
+        "description": "",
+        "properties": {
+        },
+        "title": "setup_intent_payment_method_options_mandate_options_sepa_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SepaDebitMandateOptions",
+          "in_class": "setup_intent_payment_method_options"
+        }
+      },
+      "setup_intent_payment_method_options_sepa_debit": {
+        "description": "",
+        "properties": {
+          "mandate_options": {
+            "$ref": "#/components/schemas/setup_intent_payment_method_options_mandate_options_sepa_debit"
+          }
+        },
+        "title": "setup_intent_payment_method_options_sepa_debit",
+        "type": "object",
+        "x-expandableFields": [
+          "mandate_options"
+        ],
+        "x-stripeResource": {
+          "class_name": "SepaDebit",
           "in_class": "setup_intent_payment_method_options"
         }
       },
@@ -30835,7 +31018,7 @@
             "type": "boolean"
           },
           "canceled_at": {
-            "description": "If the subscription has been canceled, the date of that cancellation. If the subscription was canceled with `cancel_at_period_end`, `canceled_at` will still reflect the date of the initial cancellation request, not the end of the subscription period when the subscription is automatically moved to a canceled state.",
+            "description": "If the subscription has been canceled, the date of that cancellation. If the subscription was canceled with `cancel_at_period_end`, `canceled_at` will reflect the time of the most recent update request, not the end of the subscription period when the subscription is automatically moved to a canceled state.",
             "format": "unix-time",
             "nullable": true,
             "type": "integer"
@@ -32010,6 +32193,14 @@
             "description": "The quantity of the invoice item.",
             "nullable": true,
             "type": "integer"
+          },
+          "tax_rates": {
+            "description": "The tax rates which apply to the item. When set, the `default_tax_rates` do not apply to this item.",
+            "items": {
+              "$ref": "#/components/schemas/tax_rate"
+            },
+            "nullable": true,
+            "type": "array"
           }
         },
         "required": [
@@ -32019,7 +32210,8 @@
         "title": "SubscriptionScheduleAddInvoiceItem",
         "type": "object",
         "x-expandableFields": [
-          "price"
+          "price",
+          "tax_rates"
         ],
         "x-stripeResource": {
           "class_name": "AddInvoiceItem",
@@ -32644,7 +32836,7 @@
             "type": "string"
           },
           "type": {
-            "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
+            "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
             "enum": [
               "ae_trn",
               "au_abn",
@@ -32660,6 +32852,7 @@
               "id_npwp",
               "in_gst",
               "jp_cn",
+              "jp_rn",
               "kr_brn",
               "li_uid",
               "mx_rfc",
@@ -32669,6 +32862,7 @@
               "no_vat",
               "nz_gst",
               "ru_inn",
+              "ru_kpp",
               "sa_vat",
               "sg_gst",
               "sg_uen",
@@ -35854,6 +36048,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "grabpay_payments": {
+                        "description": "The grabpay_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "ideal_payments": {
                         "description": "The ideal_payments capability.",
                         "properties": {
@@ -36121,6 +36326,11 @@
                       },
                       "phone": {
                         "description": "The company's phone number (used for verification).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "registration_number": {
+                        "description": "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong).",
                         "maxLength": 5000,
                         "type": "string"
                       },
@@ -37109,6 +37319,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "grabpay_payments": {
+                        "description": "The grabpay_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "ideal_payments": {
                         "description": "The ideal_payments capability.",
                         "properties": {
@@ -37376,6 +37597,11 @@
                       },
                       "phone": {
                         "description": "The company's phone number (used for verification).",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "registration_number": {
+                        "description": "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong).",
                         "maxLength": 5000,
                         "type": "string"
                       },
@@ -43299,6 +43525,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "discounts": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
@@ -43365,6 +43595,29 @@
                   "customer_email": {
                     "description": "If provided, this value will be used when the Customer object is created.\nIf not provided, customers will be asked to enter their email address.\nUse this parameter to prefill customer data if you already have an email\non file. To access information about the customer once a session is\ncomplete, use the `customer` field.",
                     "type": "string"
+                  },
+                  "discounts": {
+                    "description": "The coupon or promotion code to apply to this session. Currently, only up to one may be specified.",
+                    "items": {
+                      "properties": {
+                        "coupon": {
+                          "description": "The ID of the coupon to apply to this session.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "promotion_code": {
+                          "description": "The ID of a promotion code to apply to this session.",
+                          "maxLength": 5000,
+                          "type": "string"
+                        }
+                      },
+                      "title": "discount_params",
+                      "type": "object"
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "discount"
+                    }
                   },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
@@ -43579,7 +43832,7 @@
                     "type": "object"
                   },
                   "mode": {
-                    "description": "The mode of the Checkout Session, one of `payment`, `setup`, or `subscription`. Required when using prices or `setup` mode. Pass `subscription` if Checkout session includes at least one recurring item.",
+                    "description": "The mode of the Checkout Session. Required when using prices or `setup` mode. Pass `subscription` if Checkout session includes at least one recurring item.",
                     "enum": [
                       "payment",
                       "setup",
@@ -43749,6 +44002,7 @@
                         "eps",
                         "fpx",
                         "giropay",
+                        "grabpay",
                         "ideal",
                         "p24",
                         "sepa_debit",
@@ -44203,7 +44457,7 @@
             "name": "session",
             "required": true,
             "schema": {
-              "maxLength": 64,
+              "maxLength": 66,
               "type": "string"
             },
             "style": "simple"
@@ -46387,7 +46641,7 @@
             "style": "deepObject"
           },
           {
-            "description": "A filter on the list based on the customer's `email` field. The value must be a string.",
+            "description": "A case-sensitive filter on the list based on the customer's `email` field. The value must be a string.",
             "in": "query",
             "name": "email",
             "required": false,
@@ -46834,7 +47088,7 @@
                     "items": {
                       "properties": {
                         "type": {
-                          "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                          "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                           "enum": [
                             "ae_trn",
                             "au_abn",
@@ -46850,6 +47104,7 @@
                             "id_npwp",
                             "in_gst",
                             "jp_cn",
+                            "jp_rn",
                             "kr_brn",
                             "li_uid",
                             "mx_rfc",
@@ -46859,6 +47114,7 @@
                             "no_vat",
                             "nz_gst",
                             "ru_inn",
+                            "ru_kpp",
                             "sa_vat",
                             "sg_gst",
                             "sg_uen",
@@ -48778,7 +49034,7 @@
                     "type": "array"
                   },
                   "type": {
-                    "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                    "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `hk_br`, `id_npwp`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                     "enum": [
                       "ae_trn",
                       "au_abn",
@@ -48794,6 +49050,7 @@
                       "id_npwp",
                       "in_gst",
                       "jp_cn",
+                      "jp_rn",
                       "kr_brn",
                       "li_uid",
                       "mx_rfc",
@@ -48803,6 +49060,7 @@
                       "no_vat",
                       "nz_gst",
                       "ru_inn",
+                      "ru_kpp",
                       "sa_vat",
                       "sg_gst",
                       "sg_uen",
@@ -52277,7 +52535,7 @@
         }
       },
       "post": {
-        "description": "<p>This endpoint creates a draft invoice for a given customer. The draft invoice created pulls in all pending invoice items on that customer, including prorations.</p>",
+        "description": "<p>This endpoint creates a draft invoice for a given customer. The draft invoice created pulls in all pending invoice items on that customer, including prorations. The invoice remains a draft until you <a href=\"#finalize_invoice\">finalize</a> the invoice, which allows you to <a href=\"#pay_invoice\">pay</a> or <a href=\"#send_invoice\">send</a> the invoice to your customers.</p>",
         "operationId": "PostInvoices",
         "requestBody": {
           "content": {
@@ -64467,6 +64725,13 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "grabpay": {
+                        "description": "If this is a `grabpay` PaymentMethod, this hash contains details about the GrabPay payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "ideal": {
                         "description": "If this is an `ideal` PaymentMethod, this hash contains details about the iDEAL payment method.",
                         "properties": {
@@ -64517,6 +64782,38 @@
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
+                          "bank": {
+                            "description": "The customer's bank.",
+                            "enum": [
+                              "alior_bank",
+                              "bank_millennium",
+                              "bank_nowy_bfg_sa",
+                              "bank_pekao_sa",
+                              "banki_spbdzielcze",
+                              "blik",
+                              "bnp_paribas",
+                              "boz",
+                              "citi_handlowy",
+                              "credit_agricole",
+                              "envelobank",
+                              "etransfer_pocztowy24",
+                              "getin_bank",
+                              "ideabank",
+                              "ing",
+                              "inteligo",
+                              "mbank_mtransfer",
+                              "nest_przelew",
+                              "noble_pay",
+                              "pbac_z_ipko",
+                              "plus_bank",
+                              "santander_przelew24",
+                              "tmobile_usbugi_bankowe",
+                              "toyota_bank",
+                              "volkswagen_bank"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
                         },
                         "title": "param",
                         "type": "object"
@@ -64568,6 +64865,7 @@
                           "eps",
                           "fpx",
                           "giropay",
+                          "grabpay",
                           "ideal",
                           "oxxo",
                           "p24",
@@ -64635,6 +64933,11 @@
                         "anyOf": [
                           {
                             "properties": {
+                              "cvc_token": {
+                                "description": "A single-use `cvc_update` Token that represents a card CVC value. When provided, the CVC value will be verified during the card payment attempt. This parameter can only be provided during confirmation.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
                               "installments": {
                                 "description": "Installment configuration for payments attempted on this PaymentIntent (Mexico Only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
                                 "properties": {
@@ -64751,6 +65054,23 @@
                           }
                         ],
                         "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
+                      },
+                      "p24": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `p24` PaymentMethod, this sub-hash contains details about the Przelewy24 payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -65340,6 +65660,13 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "grabpay": {
+                        "description": "If this is a `grabpay` PaymentMethod, this hash contains details about the GrabPay payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "ideal": {
                         "description": "If this is an `ideal` PaymentMethod, this hash contains details about the iDEAL payment method.",
                         "properties": {
@@ -65390,6 +65717,38 @@
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
+                          "bank": {
+                            "description": "The customer's bank.",
+                            "enum": [
+                              "alior_bank",
+                              "bank_millennium",
+                              "bank_nowy_bfg_sa",
+                              "bank_pekao_sa",
+                              "banki_spbdzielcze",
+                              "blik",
+                              "bnp_paribas",
+                              "boz",
+                              "citi_handlowy",
+                              "credit_agricole",
+                              "envelobank",
+                              "etransfer_pocztowy24",
+                              "getin_bank",
+                              "ideabank",
+                              "ing",
+                              "inteligo",
+                              "mbank_mtransfer",
+                              "nest_przelew",
+                              "noble_pay",
+                              "pbac_z_ipko",
+                              "plus_bank",
+                              "santander_przelew24",
+                              "tmobile_usbugi_bankowe",
+                              "toyota_bank",
+                              "volkswagen_bank"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
                         },
                         "title": "param",
                         "type": "object"
@@ -65441,6 +65800,7 @@
                           "eps",
                           "fpx",
                           "giropay",
+                          "grabpay",
                           "ideal",
                           "oxxo",
                           "p24",
@@ -65508,6 +65868,11 @@
                         "anyOf": [
                           {
                             "properties": {
+                              "cvc_token": {
+                                "description": "A single-use `cvc_update` Token that represents a card CVC value. When provided, the CVC value will be verified during the card payment attempt. This parameter can only be provided during confirmation.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
                               "installments": {
                                 "description": "Installment configuration for payments attempted on this PaymentIntent (Mexico Only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
                                 "properties": {
@@ -65624,6 +65989,23 @@
                           }
                         ],
                         "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
+                      },
+                      "p24": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `p24` PaymentMethod, this sub-hash contains details about the Przelewy24 payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -66395,6 +66777,13 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "grabpay": {
+                        "description": "If this is a `grabpay` PaymentMethod, this hash contains details about the GrabPay payment method.",
+                        "properties": {
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "ideal": {
                         "description": "If this is an `ideal` PaymentMethod, this hash contains details about the iDEAL payment method.",
                         "properties": {
@@ -66445,6 +66834,38 @@
                       "p24": {
                         "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                         "properties": {
+                          "bank": {
+                            "description": "The customer's bank.",
+                            "enum": [
+                              "alior_bank",
+                              "bank_millennium",
+                              "bank_nowy_bfg_sa",
+                              "bank_pekao_sa",
+                              "banki_spbdzielcze",
+                              "blik",
+                              "bnp_paribas",
+                              "boz",
+                              "citi_handlowy",
+                              "credit_agricole",
+                              "envelobank",
+                              "etransfer_pocztowy24",
+                              "getin_bank",
+                              "ideabank",
+                              "ing",
+                              "inteligo",
+                              "mbank_mtransfer",
+                              "nest_przelew",
+                              "noble_pay",
+                              "pbac_z_ipko",
+                              "plus_bank",
+                              "santander_przelew24",
+                              "tmobile_usbugi_bankowe",
+                              "toyota_bank",
+                              "volkswagen_bank"
+                            ],
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
                         },
                         "title": "param",
                         "type": "object"
@@ -66496,6 +66917,7 @@
                           "eps",
                           "fpx",
                           "giropay",
+                          "grabpay",
                           "ideal",
                           "oxxo",
                           "p24",
@@ -66563,6 +66985,11 @@
                         "anyOf": [
                           {
                             "properties": {
+                              "cvc_token": {
+                                "description": "A single-use `cvc_update` Token that represents a card CVC value. When provided, the CVC value will be verified during the card payment attempt. This parameter can only be provided during confirmation.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
                               "installments": {
                                 "description": "Installment configuration for payments attempted on this PaymentIntent (Mexico Only).\n\nFor more information, see the [installments integration guide](https://stripe.com/docs/payments/installments).",
                                 "properties": {
@@ -66679,6 +67106,23 @@
                           }
                         ],
                         "description": "If this is a `oxxo` PaymentMethod, this sub-hash contains details about the OXXO payment method options."
+                      },
+                      "p24": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `p24` PaymentMethod, this sub-hash contains details about the Przelewy24 payment method options."
                       },
                       "sofort": {
                         "anyOf": [
@@ -66934,6 +67378,7 @@
                 "eps",
                 "fpx",
                 "giropay",
+                "grabpay",
                 "ideal",
                 "oxxo",
                 "p24",
@@ -67064,6 +67509,10 @@
                   "style": "deepObject"
                 },
                 "giropay": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "grabpay": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -67347,6 +67796,13 @@
                     "title": "param",
                     "type": "object"
                   },
+                  "grabpay": {
+                    "description": "If this is a `grabpay` PaymentMethod, this hash contains details about the GrabPay payment method.",
+                    "properties": {
+                    },
+                    "title": "param",
+                    "type": "object"
+                  },
                   "ideal": {
                     "description": "If this is an `ideal` PaymentMethod, this hash contains details about the iDEAL payment method.",
                     "properties": {
@@ -67397,6 +67853,38 @@
                   "p24": {
                     "description": "If this is a `p24` PaymentMethod, this hash contains details about the P24 payment method.",
                     "properties": {
+                      "bank": {
+                        "description": "The customer's bank.",
+                        "enum": [
+                          "alior_bank",
+                          "bank_millennium",
+                          "bank_nowy_bfg_sa",
+                          "bank_pekao_sa",
+                          "banki_spbdzielcze",
+                          "blik",
+                          "bnp_paribas",
+                          "boz",
+                          "citi_handlowy",
+                          "credit_agricole",
+                          "envelobank",
+                          "etransfer_pocztowy24",
+                          "getin_bank",
+                          "ideabank",
+                          "ing",
+                          "inteligo",
+                          "mbank_mtransfer",
+                          "nest_przelew",
+                          "noble_pay",
+                          "pbac_z_ipko",
+                          "plus_bank",
+                          "santander_przelew24",
+                          "tmobile_usbugi_bankowe",
+                          "toyota_bank",
+                          "volkswagen_bank"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
                     },
                     "title": "param",
                     "type": "object"
@@ -67454,6 +67942,7 @@
                       "eps",
                       "fpx",
                       "giropay",
+                      "grabpay",
                       "ideal",
                       "oxxo",
                       "p24",
@@ -75286,6 +75775,20 @@
                         },
                         "title": "setup_intent_param",
                         "type": "object"
+                      },
+                      "sepa_debit": {
+                        "description": "If this is a `sepa_debit` SetupIntent, this sub-hash contains details about the Sepa Debit payment method options.",
+                        "properties": {
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
+                        "type": "object"
                       }
                     },
                     "title": "payment_method_options_param",
@@ -75545,6 +76048,20 @@
                           }
                         },
                         "title": "setup_intent_param",
+                        "type": "object"
+                      },
+                      "sepa_debit": {
+                        "description": "If this is a `sepa_debit` SetupIntent, this sub-hash contains details about the Sepa Debit payment method options.",
+                        "properties": {
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
                         "type": "object"
                       }
                     },
@@ -75853,6 +76370,20 @@
                           }
                         },
                         "title": "setup_intent_param",
+                        "type": "object"
+                      },
+                      "sepa_debit": {
+                        "description": "If this is a `sepa_debit` SetupIntent, this sub-hash contains details about the Sepa Debit payment method options.",
+                        "properties": {
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
                         "type": "object"
                       }
                     },
@@ -76378,7 +76909,10 @@
                         "type": "string"
                       }
                     },
-                    "title": "inventory_specs",
+                    "required": [
+                      "type"
+                    ],
+                    "title": "inventory_create_specs",
                     "type": "object"
                   },
                   "metadata": {
@@ -79438,6 +79972,27 @@
                               "quantity": {
                                 "description": "Quantity for this item. Defaults to 1.",
                                 "type": "integer"
+                              },
+                              "tax_rates": {
+                                "anyOf": [
+                                  {
+                                    "items": {
+                                      "maxLength": 5000,
+                                      "type": "string"
+                                    },
+                                    "type": "array",
+                                    "x-stripeParam": {
+                                      "containee_entity_name": "tax_rate"
+                                    }
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "The tax rates which apply to the item. When set, the `default_tax_rates` do not apply to this item."
                               }
                             },
                             "title": "add_invoice_item_entry",
@@ -80047,6 +80602,27 @@
                               "quantity": {
                                 "description": "Quantity for this item. Defaults to 1.",
                                 "type": "integer"
+                              },
+                              "tax_rates": {
+                                "anyOf": [
+                                  {
+                                    "items": {
+                                      "maxLength": 5000,
+                                      "type": "string"
+                                    },
+                                    "type": "array",
+                                    "x-stripeParam": {
+                                      "containee_entity_name": "tax_rate"
+                                    }
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "The tax rates which apply to the item. When set, the `default_tax_rates` do not apply to this item."
                               }
                             },
                             "title": "add_invoice_item_entry",
@@ -80941,6 +81517,27 @@
                         "quantity": {
                           "description": "Quantity for this item. Defaults to 1.",
                           "type": "integer"
+                        },
+                        "tax_rates": {
+                          "anyOf": [
+                            {
+                              "items": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "type": "array",
+                              "x-stripeParam": {
+                                "containee_entity_name": "tax_rate"
+                              }
+                            },
+                            {
+                              "enum": [
+                                ""
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "The tax rates which apply to the item. When set, the `default_tax_rates` do not apply to this item."
                         }
                       },
                       "title": "add_invoice_item_entry",
@@ -81602,6 +82199,27 @@
                         "quantity": {
                           "description": "Quantity for this item. Defaults to 1.",
                           "type": "integer"
+                        },
+                        "tax_rates": {
+                          "anyOf": [
+                            {
+                              "items": {
+                                "maxLength": 5000,
+                                "type": "string"
+                              },
+                              "type": "array",
+                              "x-stripeParam": {
+                                "containee_entity_name": "tax_rate"
+                              }
+                            },
+                            {
+                              "enum": [
+                                ""
+                              ],
+                              "type": "string"
+                            }
+                          ],
+                          "description": "The tax rates which apply to the item. When set, the `default_tax_rates` do not apply to this item."
                         }
                       },
                       "title": "add_invoice_item_entry",
@@ -81626,8 +82244,7 @@
                       "unchanged"
                     ],
                     "maxLength": 5000,
-                    "type": "string",
-                    "x-stripeBypassValidation": true
+                    "type": "string"
                   },
                   "billing_thresholds": {
                     "anyOf": [
@@ -83659,6 +84276,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "cvc_update": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
@@ -83842,6 +84463,11 @@
                           },
                           "phone": {
                             "description": "The company's phone number (used for verification).",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "registration_number": {
+                            "description": "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong).",
                             "maxLength": 5000,
                             "type": "string"
                           },
@@ -84325,6 +84951,21 @@
                     "description": "The customer (owned by the application's account) for which to create a token. This can be used only with an [OAuth access token](https://stripe.com/docs/connect/standard-accounts) or [Stripe-Account header](https://stripe.com/docs/connect/authentication). For more details, see [Cloning Saved Payment Methods](https://stripe.com/docs/connect/cloning-saved-payment-methods).",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "cvc_update": {
+                    "description": "The updated CVC value this token will represent.",
+                    "properties": {
+                      "cvc": {
+                        "description": "The CVC value, in string form.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "cvc"
+                    ],
+                    "title": "cvc_params",
+                    "type": "object"
                   },
                   "expand": {
                     "description": "Specifies which fields in the response should be expanded.",
@@ -86510,6 +87151,7 @@
                         "file.created",
                         "invoice.created",
                         "invoice.deleted",
+                        "invoice.finalization_failed",
                         "invoice.finalized",
                         "invoice.marked_uncollectible",
                         "invoice.paid",
@@ -86917,6 +87559,7 @@
                         "file.created",
                         "invoice.created",
                         "invoice.deleted",
+                        "invoice.finalization_failed",
                         "invoice.finalized",
                         "invoice.marked_uncollectible",
                         "invoice.paid",
