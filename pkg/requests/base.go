@@ -180,6 +180,11 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	return body, nil
 }
 
+// Confirm calls the confirmCommand() function, triggering the confirmation process
+func (rb *Base) Confirm() (bool, error) {
+	return rb.confirmCommand()
+}
+
 // Note: We converted to using two arrays to track keys and values, with our own
 // implementation of Go's url.Values Encode function due to our query parameters being
 // order sensitive for API requests involving arrays like `items` for `/v1/orders`.
@@ -298,7 +303,10 @@ func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 			return false, err
 		}
 
-		return strings.Compare(strings.ToLower(input), "yes\n") == 0, nil
+		// remove whitespace from either side of the input, as ReadString returns with \n at the end
+		input = strings.ToLower(strings.Trim(input, " \r\n"))
+
+		return strings.Compare(input, "yes") == 0, nil
 	}
 
 	// Always confirm the command if it does not require explicit user confirmation

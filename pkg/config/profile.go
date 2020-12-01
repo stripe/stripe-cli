@@ -22,6 +22,7 @@ type Profile struct {
 	TestModeAPIKey         string
 	TestModePublishableKey string
 	TerminalPOSDeviceID    string
+	DisplayName            string
 }
 
 // CreateProfile creates a profile when logging in
@@ -131,6 +132,15 @@ func (p *Profile) GetPublishableKey() string {
 	return ""
 }
 
+// GetDisplayName returns the account display name of the user
+func (p *Profile) GetDisplayName() string {
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetString(p.GetConfigField("display_name"))
+	}
+
+	return ""
+}
+
 // GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
 func (p *Profile) GetTerminalPOSDeviceID() string {
 	if err := viper.ReadInConfig(); err == nil {
@@ -193,6 +203,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.TestModePublishableKey != "" {
 		runtimeViper.Set(p.GetConfigField("test_mode_publishable_key"), strings.TrimSpace(p.TestModePublishableKey))
+	}
+
+	if p.DisplayName != "" {
+		runtimeViper.Set(p.GetConfigField("display_name"), strings.TrimSpace(p.DisplayName))
 	}
 
 	runtimeViper.MergeInConfig()

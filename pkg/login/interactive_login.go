@@ -27,6 +27,9 @@ func InteractiveLogin(config *config.Config) error {
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
 	config.Profile.TestModeAPIKey = apiKey
+	displayName, _ := getDisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+
+	config.Profile.DisplayName = displayName
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
@@ -44,6 +47,22 @@ func InteractiveLogin(config *config.Config) error {
 	}
 
 	return nil
+}
+
+// getDisplayName returns the display name for a successfully authenticated user
+func getDisplayName(account *Account, baseURL string, apiKey string) (string, error) {
+	// Account will be nil if user did interactive login
+	if account == nil {
+		acc, err := GetUserAccount(baseURL, apiKey)
+		if err != nil {
+			return "", err
+		}
+
+		account = acc
+	}
+	displayName := account.Settings.Dashboard.DisplayName
+
+	return displayName, nil
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
