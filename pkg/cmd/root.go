@@ -111,6 +111,7 @@ func init() {
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newPlaybackCmd().cmd)
+	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 
 	addAllResourcesCmds(rootCmd)
 

@@ -79,6 +79,8 @@ nfpms:
     formats:
     - deb
     - rpm
+    scripts:
+      postinstall: "scripts/postinstall.sh"
 brews:
   -
     github:
@@ -104,6 +106,9 @@ brews:
           if [[ -f $e ]]; then source $e; fi
         }
       EOS
+    post_install: |
+     system bin/"stripe", "postinstall"
+     EOS
 scoop:
   bucket:
     owner: stripe
