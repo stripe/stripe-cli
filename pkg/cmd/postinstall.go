@@ -40,7 +40,7 @@ func (pic *postinstallCmd) runPostinstallCmd(cmd *cobra.Command, args []string) 
 	if err != nil {
 		welcomeIcon := color.BrightRed("❤").String()
 		welcomeText := "Thanks for installing the Stripe CLI! To get started, run `stripe login`"
-		fmt.Println(fmt.Sprintf("%s %s", welcomeIcon, welcomeText))
+		fmt.Printf("%s %s\n", welcomeIcon, welcomeText)
 	}
 
 	return nil
