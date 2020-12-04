@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -60,7 +62,19 @@ func Execute() {
 	rootCmd.SetVersionTemplate(version.Template)
 
 	if err := rootCmd.Execute(); err != nil {
-		if strings.Contains(err.Error(), "unknown command") {
+		loginRequiredErrors := []string{validators.ErrAPIKeyNotConfigured.Error(), validators.ErrDeviceNameNotConfigured.Error()}
+		isLoginRequiredError := sort.SearchStrings(loginRequiredErrors, err.Error()) < len(loginRequiredErrors)
+
+		if isLoginRequiredError {
+			fmt.Printf("%s Running `stripe login`...\n", err.Error())
+
+			loginCommand, _, err := rootCmd.Find([]string{"login"})
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			loginCommand.RunE(&cobra.Command{}, []string{})
+		} else if strings.Contains(err.Error(), "unknown command") {
 			suggStr := "\nS"
 
 			suggestions := rootCmd.SuggestionsFor(os.Args[1])
