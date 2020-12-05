@@ -9,7 +9,7 @@ import (
 
 func TestNoKey(t *testing.T) {
 	err := APIKey("")
-	require.EqualError(t, err, "you have not configured API keys yet.")
+	require.EqualError(t, err, "you have not configured API keys yet")
 }
 
 func TestKeyTooShort(t *testing.T) {

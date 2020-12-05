@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -62,19 +63,30 @@ func Execute() {
 	rootCmd.SetVersionTemplate(version.Template)
 
 	if err := rootCmd.Execute(); err != nil {
+		errString := err.Error()
 		loginRequiredErrors := []string{validators.ErrAPIKeyNotConfigured.Error(), validators.ErrDeviceNameNotConfigured.Error()}
-		isLoginRequiredError := sort.SearchStrings(loginRequiredErrors, err.Error()) < len(loginRequiredErrors)
+		isLoginRequiredError := sort.SearchStrings(loginRequiredErrors, errString) < len(loginRequiredErrors)
 
-		if isLoginRequiredError {
-			fmt.Printf("%s Running `stripe login`...\n", err.Error())
+		switch {
+		case isLoginRequiredError:
+			// capitalize first letter of error because linter
+			errRunes := []rune(errString)
+			errRunes[0] = unicode.ToUpper(errRunes[0])
 
+			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
 			loginCommand, _, err := rootCmd.Find([]string{"login"})
+
 			if err != nil {
 				fmt.Println(err)
 			}
 
-			loginCommand.RunE(&cobra.Command{}, []string{})
-		} else if strings.Contains(err.Error(), "unknown command") {
+			err = loginCommand.RunE(&cobra.Command{}, []string{})
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		case strings.Contains(errString, "unknown command"):
 			suggStr := "\nS"
 
 			suggestions := rootCmd.SuggestionsFor(os.Args[1])
@@ -85,7 +97,8 @@ func Execute() {
 			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 				"ee \"stripe --help\" for a list of available commands.",
 				os.Args[1], rootCmd.CommandPath(), suggStr))
-		} else {
+
+		default:
 			fmt.Println(err)
 		}
 
