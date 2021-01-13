@@ -79,6 +79,8 @@ nfpms:
     formats:
     - deb
     - rpm
+    scripts:
+      postinstall: "scripts/postinstall.sh"
 brews:
   -
     github:
@@ -104,6 +106,7 @@ brews:
           if [[ -f $e ]]; then source $e; fi
         }
       EOS
+    caveats: "❤ Thanks for installing the Stripe CLI! If this is your first time using the CLI, be sure to run `stripe login` first."
 scoop:
   bucket:
     owner: stripe

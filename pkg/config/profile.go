@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -70,7 +69,7 @@ func (p *Profile) GetDeviceName() (string, error) {
 		return viper.GetString(p.GetConfigField("device_name")), nil
 	}
 
-	return "", errors.New("your device name has not been configured. Use `stripe login` to set your device name")
+	return "", validators.ErrDeviceNameNotConfigured
 }
 
 // GetAPIKey will return the existing key for the given profile
@@ -116,7 +115,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		return key, nil
 	}
 
-	return "", errors.New("your API key has not been configured. Use `stripe login` to set your API key")
+	return "", validators.ErrAPIKeyNotConfigured
 }
 
 // GetPublishableKey returns the publishable key for the user
