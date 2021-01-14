@@ -1,0 +1,6 @@
+name: 'Goreleaser (Cross Compile)'
+description: 'Thin wrapper for goreleaser-xcgo to specify custom software version overrides'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+

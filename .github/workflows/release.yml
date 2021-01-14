@@ -1,0 +1,41 @@
+name: do_release
+
+on:
+  push:
+    branches:
+     - 'master'
+    tags:
+      - '*'
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Code Checkout
+        uses: actions/checkout@v2
+      -
+        name: Run goreleaser
+        uses: ./.github/actions/releaser
+        with:
+          args: '--rm-dist'
+        env:
+          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      -
+        name: Upload to Bintray
+        run: |
+          scripts/publish-deb-to-bintray.sh
+          scripts/publish-rpm-to-bintray.sh
+        shell: bash
+        env:
+          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
+      -
+        name: Upload to VirusTotal
+        run: scripts/upload-zip-to-virustotal.sh
+        shell: bash
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+
