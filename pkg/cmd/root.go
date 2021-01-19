@@ -68,6 +68,18 @@ func Execute() {
 		isLoginRequiredError := sort.SearchStrings(loginRequiredErrors, errString) < len(loginRequiredErrors)
 
 		switch {
+		case strings.Contains(errString, "unknown command"):
+			suggStr := "\nS"
+
+			suggestions := rootCmd.SuggestionsFor(os.Args[1])
+			if len(suggestions) > 0 {
+				suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
+			}
+
+			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
+				"ee \"stripe --help\" for a list of available commands.",
+				os.Args[1], rootCmd.CommandPath(), suggStr))
+
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
@@ -85,18 +97,6 @@ func Execute() {
 			if err != nil {
 				fmt.Println(err)
 			}
-
-		case strings.Contains(errString, "unknown command"):
-			suggStr := "\nS"
-
-			suggestions := rootCmd.SuggestionsFor(os.Args[1])
-			if len(suggestions) > 0 {
-				suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
-			}
-
-			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
-				"ee \"stripe --help\" for a list of available commands.",
-				os.Args[1], rootCmd.CommandPath(), suggStr))
 
 		default:
 			fmt.Println(err)
