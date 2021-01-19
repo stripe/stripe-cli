@@ -36,8 +36,6 @@ func LacksBrowser() bool {
 		return false
 	}
 
-	var err error
-
 	output, err := execCommand("xdg-settings", "get", "default-web-browser").Output()
 
 	if err != nil {
