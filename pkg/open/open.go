@@ -30,21 +30,21 @@ func Browser(url string) error {
 	return nil
 }
 
-// LacksBrowser determines if no browser is set in linux
-func LacksBrowser() bool {
-	if runtime.GOOS != "linux" {
-		return false
+// CanOpenBrowser determines if no browser is set in linux
+func CanOpenBrowser() bool {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+		return true
 	}
 
 	output, err := execCommand("xdg-settings", "get", "default-web-browser").Output()
 
 	if err != nil {
-		return true
+		return false
 	}
 
 	if string(output) == "" {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
