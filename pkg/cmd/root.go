@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -64,8 +63,7 @@ func Execute() {
 
 	if err := rootCmd.Execute(); err != nil {
 		errString := err.Error()
-		loginRequiredErrors := []string{validators.ErrAPIKeyNotConfigured.Error(), validators.ErrDeviceNameNotConfigured.Error()}
-		isLoginRequiredError := sort.SearchStrings(loginRequiredErrors, errString) < len(loginRequiredErrors)
+		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 
 		switch {
 		case isLoginRequiredError:
