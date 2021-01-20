@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,29 +46,37 @@ type EndpointRoute struct {
 type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
-
 	// Key is the API key used to authenticate with Stripe
 	Key string
-
-	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
-	EndpointRoutes []EndpointRoute
-
+	// URL to which requests are sent
 	APIBaseURL string
+
+	// URL to which events are forwarded to
+	ForwardURL string
+	// Headers to inject when forwarding events
+	ForwardHeaders []string
+	// URL to which Connect events are forwarded to
+	ForwardConnectURL string
+	// Headers to inject when forwarding Connect events
+	ForwardConnectHeaders []string
+	// UseConfiguredWebhooks loads webhooks config from user's account
+	UseConfiguredWebhooks bool
+
+	// EndpointsRoutes is a mapping of local webhook endpoint urls to the events they consume
+	EndpointRoutes []EndpointRoute
+	// List of events to listen and proxy
+	Events []string
 
 	// WebSocketFeature is the feature specified for the websocket connection
 	WebSocketFeature string
-
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
-
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
-
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
 	SkipVerify bool
-
+	// The logger used to log messages to stdin/err
 	Log *log.Logger
-
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
 }
@@ -168,8 +178,16 @@ func (p *Proxy) Run(ctx context.Context) error {
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
-func (p *Proxy) GetSessionSecret(ctx context.Context) (string, error) {
-	session, err := p.createSession(ctx)
+func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
+	p := New(&Config{
+		DeviceName:       deviceName,
+		Key:              key,
+		APIBaseURL:       baseURL,
+		EndpointRoutes:   make([]EndpointRoute, 0),
+		WebSocketFeature: "webhooks",
+	}, make([]string, 0))
+
+	session, err := p.createSession(context.Background())
 	if err != nil {
 		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
 	}
@@ -353,6 +371,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 //
 
 // New creates a new Proxy
+// DEPRECATED - use Init below instead.
 func New(cfg *Config, events []string) *Proxy {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
@@ -368,6 +387,82 @@ func New(cfg *Config, events []string) *Proxy {
 
 	if len(events) > 0 {
 		p.events = convertToMap(events)
+	}
+
+	for _, route := range cfg.EndpointRoutes {
+		// append to endpointClients
+		p.endpointClients = append(p.endpointClients, NewEndpointClient(
+			route.URL,
+			route.ForwardHeaders,
+			route.Connect,
+			route.EventTypes,
+			&EndpointConfig{
+				HTTPClient: &http.Client{
+					CheckRedirect: func(req *http.Request, via []*http.Request) error {
+						return http.ErrUseLastResponse
+					},
+					Timeout: defaultTimeout,
+					Transport: &http.Transport{
+						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
+					},
+				},
+				Log:             p.cfg.Log,
+				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
+			},
+		))
+	}
+
+	return p
+}
+
+// Init initializes a new Proxy
+// This function replaces the deprecated New function
+func Init(cfg *Config) *Proxy {
+	if cfg.Log == nil {
+		cfg.Log = &log.Logger{Out: ioutil.Discard}
+	}
+
+	// if no events are passed, listen for all events
+	if len(cfg.Events) == 0 {
+		cfg.Events = []string{"*"}
+	}
+
+	// Build endpoints routes if none have been given
+	if len(cfg.EndpointRoutes) == 0 {
+		endpointRoutes := make([]EndpointRoute, 0)
+
+		// If no Connect config is given, default to non-connect config
+		if len(cfg.ForwardConnectURL) == 0 {
+			cfg.ForwardConnectURL = cfg.ForwardURL
+		}
+		if len(cfg.ForwardConnectHeaders) == 0 {
+			cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+		}
+
+		// non-connect endpoints
+		endpointRoutes = append(endpointRoutes, EndpointRoute{
+			URL:            parseURL(cfg.ForwardURL),
+			ForwardHeaders: cfg.ForwardHeaders,
+			Connect:        false,
+			EventTypes:     cfg.Events,
+		})
+
+		// connect endpoints
+		endpointRoutes = append(endpointRoutes, EndpointRoute{
+			URL:            parseURL(cfg.ForwardConnectURL),
+			ForwardHeaders: cfg.ForwardConnectHeaders,
+			Connect:        true,
+			EventTypes:     cfg.Events,
+		})
+	}
+
+	p := &Proxy{
+		cfg: cfg,
+		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
+			Log:        cfg.Log,
+			APIBaseURL: cfg.APIBaseURL,
+		}),
+		events: convertToMap(cfg.Events),
 	}
 
 	for _, route := range cfg.EndpointRoutes {
@@ -453,4 +548,27 @@ func truncate(str string, maxByteLength int, ellipsis bool) string {
 
 func isUTF8ContinuationByte(b byte) bool {
 	return (b & 0xC0) == 0x80
+}
+
+// TODO: move to some helper somewhere
+// parseURL parses the potentially incomplete URL provided in the configuration
+// and returns a full URL
+func parseURL(url string) string {
+	_, err := strconv.Atoi(url)
+	if err == nil {
+		// If the input is just a number, assume it's a port number
+		url = "localhost:" + url
+	}
+
+	if strings.HasPrefix(url, "/") {
+		// If the input starts with a /, assume it's a relative path
+		url = "localhost" + url
+	}
+
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		// Add the protocol if it's not already there
+		url = "http://" + url
+	}
+
+	return url
 }

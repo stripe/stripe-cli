@@ -91,59 +91,38 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
+		version.CheckLatestVersion()
+	}
+
 	deviceName, err := Config.Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
-
-	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
 	key, err := Config.Profile.GetAPIKey(lc.livemode)
 	if err != nil {
 		return err
 	}
 
-	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
-		version.CheckLatestVersion()
+	// --print-secret option
+	if lc.onlyPrintSecret {
+		secret, err := proxy.GetSessionSecret(deviceName, key, lc.apiBaseURL)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", secret)
+		return nil
 	}
 
+	// TODO: move to Proxy
 	for _, event := range lc.events {
 		if _, found := validEvents[event]; !found {
 			fmt.Printf("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
 		}
 	}
 
-	if len(lc.events) == 0 {
-		lc.events = []string{"*"}
-	}
-
-	if len(lc.forwardConnectURL) == 0 {
-		lc.forwardConnectURL = lc.forwardURL
-	}
-
-	// default to non connect headers if no forward connect headers
-	if len(lc.forwardConnectHeaders) == 0 {
-		lc.forwardConnectHeaders = lc.forwardHeaders
-	}
-
-	if len(lc.forwardURL) > 0 {
-		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-			URL:            parseURL(lc.forwardURL),
-			ForwardHeaders: lc.forwardHeaders,
-			Connect:        false,
-			EventTypes:     lc.events,
-		})
-	}
-
-	if len(lc.forwardConnectURL) > 0 {
-		endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-			URL:            parseURL(lc.forwardConnectURL),
-			ForwardHeaders: lc.forwardConnectHeaders,
-			Connect:        true,
-			EventTypes:     lc.events,
-		})
-	}
-
+	var endpointRoutes []proxy.EndpointRoute
 	if lc.useConfiguredWebhooks && len(lc.forwardURL) > 0 {
 		if strings.HasPrefix(lc.forwardURL, "/") {
 			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
@@ -163,27 +142,23 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
 
-	p := proxy.New(&proxy.Config{
-		DeviceName:          deviceName,
-		Key:                 key,
-		EndpointRoutes:      endpointRoutes,
-		APIBaseURL:          lc.apiBaseURL,
-		WebSocketFeature:    webhooksWebSocketFeature,
-		PrintJSON:           lc.printJSON,
-		UseLatestAPIVersion: lc.latestAPIVersion,
-		SkipVerify:          lc.skipVerify,
-		Log:                 log.StandardLogger(),
-		NoWSS:               lc.noWSS,
-	}, lc.events)
-
-	if lc.onlyPrintSecret {
-		secret, err := p.GetSessionSecret(context.Background())
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s\n", secret)
-		return nil
-	}
+	p := proxy.Init(&proxy.Config{
+		DeviceName:            deviceName,
+		Key:                   key,
+		ForwardURL:            lc.forwardURL,
+		ForwardHeaders:        lc.forwardHeaders,
+		ForwardConnectURL:     lc.forwardConnectURL,
+		ForwardConnectHeaders: lc.forwardConnectHeaders,
+		EndpointRoutes:        endpointRoutes,
+		APIBaseURL:            lc.apiBaseURL,
+		WebSocketFeature:      webhooksWebSocketFeature,
+		PrintJSON:             lc.printJSON,
+		UseLatestAPIVersion:   lc.latestAPIVersion,
+		SkipVerify:            lc.skipVerify,
+		Log:                   log.StandardLogger(),
+		NoWSS:                 lc.noWSS,
+		Events:                lc.events,
+	})
 
 	err = p.Run(context.Background())
 	if err != nil {
@@ -193,6 +168,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// TODO: move to Proxy
 func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
 	apiBaseURL := lc.apiBaseURL
 	if apiBaseURL == "" {
@@ -202,6 +178,7 @@ func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpo
 	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &Config.Profile)
 }
 
+// TODO: move to Proxy
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
 	endpointRoutes := make([]proxy.EndpointRoute, 0)
 
@@ -232,6 +209,23 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 	return endpointRoutes
 }
 
+// TODO: move to Proxy
+func buildForwardURL(forwardURL string, destination *url.URL) string {
+	f, err := url.Parse(forwardURL)
+	if err != nil {
+		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
+	}
+
+	return fmt.Sprintf(
+		"%s://%s%s%s",
+		f.Scheme,
+		f.Host,
+		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
+		destination.Path,
+	)
+}
+
+// TODO: move to some helper somewhere
 // parseURL parses the potentially incomplete URL provided in the configuration
 // and returns a full URL
 func parseURL(url string) string {
@@ -252,19 +246,4 @@ func parseURL(url string) string {
 	}
 
 	return url
-}
-
-func buildForwardURL(forwardURL string, destination *url.URL) string {
-	f, err := url.Parse(forwardURL)
-	if err != nil {
-		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
-	}
-
-	return fmt.Sprintf(
-		"%s://%s%s%s",
-		f.Scheme,
-		f.Host,
-		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
-		destination.Path,
-	)
 }
