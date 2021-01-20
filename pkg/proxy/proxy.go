@@ -8,10 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -95,35 +93,12 @@ type Proxy struct {
 	events map[string]bool
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		onCancel()
-		cancel()
-	}()
-	return ctx
-}
-
 const maxConnectAttempts = 3
 
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	// TODO: move to CLI listen cmd
 	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
-
-	// TODO: move to CLI listen cmd
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
 
 	var nAttempts int = 0
 
@@ -149,7 +124,6 @@ func (p *Proxy) Run(ctx context.Context) error {
 		go func() {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
-			// TODO: move to CLI listen cmd through a chan?
 			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
 		}()
 
@@ -158,12 +132,10 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			// TODO: move to CLI listen cmd with a chan?
 			ansi.StopSpinner(s, "", p.cfg.Log.Out)
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				// TODO: move to CLI listen cmd with a chan?
 				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
 			} else {
 				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)

@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -154,7 +157,12 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Events:                lc.events,
 	})
 
-	err = p.Run(context.Background())
+	ctx := withSIGTERMCancel(context.Background(), func() {
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
+	err = p.Run(ctx)
 	if err != nil {
 		return err
 	}
@@ -240,4 +248,19 @@ func parseURL(url string) string {
 	}
 
 	return url
+}
+
+func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(ctx)
+
+	interruptCh := make(chan os.Signal, 1)
+	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-interruptCh
+		onCancel()
+		cancel()
+	}()
+	return ctx
 }
