@@ -115,8 +115,10 @@ const maxConnectAttempts = 3
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
+	// TODO: move to CLI listen cmd
 	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
 
+	// TODO: move to CLI listen cmd
 	ctx = withSIGTERMCancel(ctx, func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
@@ -147,6 +149,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		go func() {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
+			// TODO: move to CLI listen cmd through a chan?
 			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
 		}()
 
@@ -155,10 +158,12 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
+			// TODO: move to CLI listen cmd with a chan?
 			ansi.StopSpinner(s, "", p.cfg.Log.Out)
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
+				// TODO: move to CLI listen cmd with a chan?
 				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
 			} else {
 				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
