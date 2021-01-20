@@ -1,6 +1,6 @@
 // This file is generated; DO NOT EDIT.
 
-package cmd
+package proxy
 
 var validEvents = map[string]bool{
 	"*":                                            true,

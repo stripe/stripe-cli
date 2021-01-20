@@ -23,7 +23,7 @@ const (
 
 	pathName = "events_list.go.tpl"
 
-	pathOutput = "events_list.go"
+	pathOutput = "../proxy/events_list.go"
 )
 
 func main() {

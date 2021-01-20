@@ -115,13 +115,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// TODO: move to Proxy
-	for _, event := range lc.events {
-		if _, found := validEvents[event]; !found {
-			fmt.Printf("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
-		}
-	}
-
+	// build endpoint routes from user's config
 	var endpointRoutes []proxy.EndpointRoute
 	if lc.useConfiguredWebhooks && len(lc.forwardURL) > 0 {
 		if strings.HasPrefix(lc.forwardURL, "/") {

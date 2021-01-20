@@ -430,12 +430,17 @@ func Init(cfg *Config) *Proxy {
 	// if no events are passed, listen for all events
 	if len(cfg.Events) == 0 {
 		cfg.Events = []string{"*"}
+	} else {
+		for _, event := range cfg.Events {
+			if _, found := validEvents[event]; !found {
+				fmt.Printf("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+			}
+		}
 	}
 
 	// Build endpoints routes if none have been given
+	endpointRoutes := make([]EndpointRoute, 0)
 	if len(cfg.EndpointRoutes) == 0 {
-		endpointRoutes := make([]EndpointRoute, 0)
-
 		// If no Connect config is given, default to non-connect config
 		if len(cfg.ForwardConnectURL) == 0 {
 			cfg.ForwardConnectURL = cfg.ForwardURL
@@ -459,6 +464,8 @@ func Init(cfg *Config) *Proxy {
 			Connect:        true,
 			EventTypes:     cfg.Events,
 		})
+	} else {
+		endpointRoutes = cfg.EndpointRoutes
 	}
 
 	p := &Proxy{
@@ -470,7 +477,7 @@ func Init(cfg *Config) *Proxy {
 		events: convertToMap(cfg.Events),
 	}
 
-	for _, route := range cfg.EndpointRoutes {
+	for _, route := range endpointRoutes {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
