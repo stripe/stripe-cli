@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -159,29 +158,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// TODO: move to some helper somewhere
-// parseURL parses the potentially incomplete URL provided in the configuration
-// and returns a full URL
-func parseURL(url string) string {
-	_, err := strconv.Atoi(url)
-	if err == nil {
-		// If the input is just a number, assume it's a port number
-		url = "localhost:" + url
-	}
-
-	if strings.HasPrefix(url, "/") {
-		// If the input starts with a /, assume it's a relative path
-		url = "localhost" + url
-	}
-
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		// Add the protocol if it's not already there
-		url = "http://" + url
-	}
-
-	return url
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
