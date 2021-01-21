@@ -410,35 +410,29 @@ func Init(cfg *Config) *Proxy {
 		}
 	}
 
-	// Build endpoints routes if none have been given
-	endpointRoutes := make([]EndpointRoute, 0)
-	if len(cfg.EndpointRoutes) == 0 {
-		// If no Connect config is given, default to non-connect config
-		if len(cfg.ForwardConnectURL) == 0 {
-			cfg.ForwardConnectURL = cfg.ForwardURL
-		}
-		if len(cfg.ForwardConnectHeaders) == 0 {
-			cfg.ForwardConnectHeaders = cfg.ForwardHeaders
-		}
-
-		// non-connect endpoints
-		endpointRoutes = append(endpointRoutes, EndpointRoute{
-			URL:            parseURL(cfg.ForwardURL),
-			ForwardHeaders: cfg.ForwardHeaders,
-			Connect:        false,
-			EventTypes:     cfg.Events,
-		})
-
-		// connect endpoints
-		endpointRoutes = append(endpointRoutes, EndpointRoute{
-			URL:            parseURL(cfg.ForwardConnectURL),
-			ForwardHeaders: cfg.ForwardConnectHeaders,
-			Connect:        true,
-			EventTypes:     cfg.Events,
-		})
-	} else {
-		endpointRoutes = cfg.EndpointRoutes
+	// Build endpoints routes from forward-urls and merge with existing cfg.EndpointRoutes
+	endpointRoutes := cfg.EndpointRoutes
+	// If no Connect config is given, default to non-connect config
+	if len(cfg.ForwardConnectURL) == 0 {
+		cfg.ForwardConnectURL = cfg.ForwardURL
 	}
+	if len(cfg.ForwardConnectHeaders) == 0 {
+		cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+	}
+	// non-connect endpoints
+	endpointRoutes = append(endpointRoutes, EndpointRoute{
+		URL:            parseURL(cfg.ForwardURL),
+		ForwardHeaders: cfg.ForwardHeaders,
+		Connect:        false,
+		EventTypes:     cfg.Events,
+	})
+	// connect endpoints
+	endpointRoutes = append(endpointRoutes, EndpointRoute{
+		URL:            parseURL(cfg.ForwardConnectURL),
+		ForwardHeaders: cfg.ForwardConnectHeaders,
+		Connect:        true,
+		EventTypes:     cfg.Events,
+	})
 
 	p := &Proxy{
 		cfg: cfg,
