@@ -5,6 +5,7 @@
   "fixtures": [
     {
       "name": "payment_intent",
+      "expected_error_type": "card_error",
       "path": "/v1/payment_intents",
       "method": "post",
       "params": {

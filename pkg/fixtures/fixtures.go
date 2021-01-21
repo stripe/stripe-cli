@@ -36,10 +36,11 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name   string      `json:"name"`
-	Path   string      `json:"path"`
-	Method string      `json:"method"`
-	Params interface{} `json:"params"`
+	Name              string      `json:"name"`
+	ExpectedErrorType string      `json:"expected_error_type"`
+	Path              string      `json:"path"`
+	Method            string      `json:"method"`
+	Params            interface{} `json:"params"`
 }
 
 type fixtureQuery struct {
@@ -105,10 +106,11 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 // defined to populate the user's account
 func (fxt *Fixture) Execute() error {
 	for _, data := range fxt.fixture.Fixtures {
+		fmt.Println()
 		fmt.Printf("Setting up fixture for: %s\n", data.Name)
 
 		resp, err := fxt.makeRequest(data)
-		if err != nil {
+		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return err
 		}
 
@@ -116,6 +118,21 @@ func (fxt *Fixture) Execute() error {
 	}
 
 	return nil
+}
+
+func errWasExpected(err error, expectedErrorType string) bool {
+	if rerr, ok := err.(requests.RequestError); ok {
+		if e, ok := rerr.Body["error"].(map[string]interface{}); ok {
+			if t, ok := e["type"]; ok && t == expectedErrorType {
+				fmt.Printf("Expected Failure occurred. StatusCode: %d, Error Type: %s\n", rerr.StatusCode, t)
+				if message, ok := e["message"]; ok {
+					fmt.Printf("Error Message: %s\n", message)
+				}
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // UpdateEnv uses the results of the fixtures command just executed and

@@ -34,6 +34,7 @@
     },
     {
       "name": "invoice_pay",
+      "expected_error_type": "card_error",
       "path": "/v1/invoices/${invoice:id}/pay",
       "method": "post"
     }

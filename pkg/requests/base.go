@@ -3,6 +3,7 @@ package requests
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -37,6 +38,21 @@ func (r *RequestParameters) AppendData(data []string) {
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// RequestError captures the response of the request that resulted in an error
+type RequestError struct {
+	msg        string
+	StatusCode int
+	Body       map[string]interface{}
+}
+
+func (e RequestError) Error() string {
+	out, err := json.MarshalIndent(e.Body, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+	return fmt.Sprintf("Request failed, status=%d, body=%s", e.StatusCode, string(out))
 }
 
 // Base encapsulates the required information needed to make requests to the API
@@ -165,7 +181,9 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if errOnStatus && resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("Request failed, status=%d, body=%s", resp.StatusCode, string(body))
+		var errorBody map[string]interface{}
+		json.Unmarshal(body, &errorBody)
+		return nil, RequestError{"Request failed, ", resp.StatusCode, errorBody}
 	}
 
 	if !rb.SuppressOutput {

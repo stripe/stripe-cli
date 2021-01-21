@@ -5,6 +5,7 @@
   "fixtures": [
     {
       "name": "charge",
+      "expected_error_type": "card_error",
       "path": "/v1/charges",
       "method": "post",
       "params": {

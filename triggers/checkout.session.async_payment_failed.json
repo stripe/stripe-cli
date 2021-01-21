@@ -5,6 +5,7 @@
   "fixtures": [
     {
       "name": "checkout_session",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/checkout/sessions",
       "method": "post",
       "params": {
@@ -37,6 +38,7 @@
     },
     {
       "name": "payment_page",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/payment_pages",
       "method": "get",
       "params": {
@@ -45,6 +47,7 @@
     },
     {
       "name": "payment_method",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/payment_methods",
       "method": "post",
       "params": {
@@ -68,6 +71,7 @@
     },
     {
       "name": "payment_page_confirm",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/payment_pages/${payment_page:id}/confirm",
       "method": "post",
       "params": {
