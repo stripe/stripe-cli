@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -16,8 +15,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
-	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -118,35 +115,26 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// build endpoint routes from user's config
-	var endpointRoutes []proxy.EndpointRoute
+	// validate forward-urls args
 	if lc.useConfiguredWebhooks && len(lc.forwardURL) > 0 {
 		if strings.HasPrefix(lc.forwardURL, "/") {
 			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
 		}
-
 		if strings.HasPrefix(lc.forwardConnectURL, "/") {
 			return errors.New("--forward-connect-to cannot be a relative path when loading webhook endpoints from the API")
 		}
-
-		endpoints := lc.getEndpointsFromAPI(key)
-		if len(endpoints.Data) == 0 {
-			return errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
-		}
-
-		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL), lc.forwardHeaders, lc.forwardConnectHeaders)
 	} else if lc.useConfiguredWebhooks && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
 
-	p := proxy.Init(&proxy.Config{
+	p, err := proxy.Init(&proxy.Config{
 		DeviceName:            deviceName,
 		Key:                   key,
 		ForwardURL:            lc.forwardURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
-		EndpointRoutes:        endpointRoutes,
+		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		APIBaseURL:            lc.apiBaseURL,
 		WebSocketFeature:      webhooksWebSocketFeature,
 		PrintJSON:             lc.printJSON,
@@ -156,6 +144,9 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		NoWSS:                 lc.noWSS,
 		Events:                lc.events,
 	})
+	if err != nil {
+		return err
+	}
 
 	ctx := withSIGTERMCancel(context.Background(), func() {
 		log.WithFields(log.Fields{
@@ -168,63 +159,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-// TODO: move to Proxy
-func (lc *listenCmd) getEndpointsFromAPI(secretKey string) requests.WebhookEndpointList {
-	apiBaseURL := lc.apiBaseURL
-	if apiBaseURL == "" {
-		apiBaseURL = stripe.DefaultAPIBaseURL
-	}
-
-	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &Config.Profile)
-}
-
-// TODO: move to Proxy
-func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []proxy.EndpointRoute {
-	endpointRoutes := make([]proxy.EndpointRoute, 0)
-
-	for _, endpoint := range endpoints.Data {
-		u, err := url.Parse(endpoint.URL)
-		// Silently skip over invalid paths
-		if err == nil {
-			// Since webhooks in the dashboard may have a more generic url, only extract
-			// the path. We'll use this with `localhost` or with the `--forward-to` flag
-			if endpoint.Application == "" {
-				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:            buildForwardURL(forwardURL, u),
-					ForwardHeaders: forwardHeaders,
-					Connect:        false,
-					EventTypes:     endpoint.EnabledEvents,
-				})
-			} else {
-				endpointRoutes = append(endpointRoutes, proxy.EndpointRoute{
-					URL:            buildForwardURL(forwardConnectURL, u),
-					ForwardHeaders: forwardConnectHeaders,
-					Connect:        true,
-					EventTypes:     endpoint.EnabledEvents,
-				})
-			}
-		}
-	}
-
-	return endpointRoutes
-}
-
-// TODO: move to Proxy
-func buildForwardURL(forwardURL string, destination *url.URL) string {
-	f, err := url.Parse(forwardURL)
-	if err != nil {
-		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
-	}
-
-	return fmt.Sprintf(
-		"%s://%s%s%s",
-		f.Scheme,
-		f.Host,
-		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
-		destination.Path,
-	)
 }
 
 // TODO: move to some helper somewhere

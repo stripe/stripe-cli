@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -15,6 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -394,7 +399,7 @@ func New(cfg *Config, events []string) *Proxy {
 
 // Init initializes a new Proxy
 // This function replaces the deprecated New function
-func Init(cfg *Config) *Proxy {
+func Init(cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
@@ -410,29 +415,39 @@ func Init(cfg *Config) *Proxy {
 		}
 	}
 
-	// Build endpoints routes from forward-urls and merge with existing cfg.EndpointRoutes
-	endpointRoutes := cfg.EndpointRoutes
-	// If no Connect config is given, default to non-connect config
-	if len(cfg.ForwardConnectURL) == 0 {
-		cfg.ForwardConnectURL = cfg.ForwardURL
+	// build endpoint routes
+	var endpointRoutes []EndpointRoute
+	if cfg.UseConfiguredWebhooks {
+		// build from user's API config
+		endpoints := getEndpointsFromAPI(cfg.Key, cfg.APIBaseURL)
+		if len(endpoints.Data) == 0 {
+			// TODO: this log needs to be handled differently
+			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
+		}
+		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
+	} else {
+		// build from --forward-to urls
+		if len(cfg.ForwardConnectURL) == 0 {
+			cfg.ForwardConnectURL = cfg.ForwardURL
+		}
+		if len(cfg.ForwardConnectHeaders) == 0 {
+			cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+		}
+		// non-connect endpoints
+		endpointRoutes = append(endpointRoutes, EndpointRoute{
+			URL:            parseURL(cfg.ForwardURL),
+			ForwardHeaders: cfg.ForwardHeaders,
+			Connect:        false,
+			EventTypes:     cfg.Events,
+		})
+		// connect endpoints
+		endpointRoutes = append(endpointRoutes, EndpointRoute{
+			URL:            parseURL(cfg.ForwardConnectURL),
+			ForwardHeaders: cfg.ForwardConnectHeaders,
+			Connect:        true,
+			EventTypes:     cfg.Events,
+		})
 	}
-	if len(cfg.ForwardConnectHeaders) == 0 {
-		cfg.ForwardConnectHeaders = cfg.ForwardHeaders
-	}
-	// non-connect endpoints
-	endpointRoutes = append(endpointRoutes, EndpointRoute{
-		URL:            parseURL(cfg.ForwardURL),
-		ForwardHeaders: cfg.ForwardHeaders,
-		Connect:        false,
-		EventTypes:     cfg.Events,
-	})
-	// connect endpoints
-	endpointRoutes = append(endpointRoutes, EndpointRoute{
-		URL:            parseURL(cfg.ForwardConnectURL),
-		ForwardHeaders: cfg.ForwardConnectHeaders,
-		Connect:        true,
-		EventTypes:     cfg.Events,
-	})
 
 	p := &Proxy{
 		cfg: cfg,
@@ -466,7 +481,7 @@ func Init(cfg *Config) *Proxy {
 		))
 	}
 
-	return p
+	return p, nil
 }
 
 //
@@ -549,4 +564,57 @@ func parseURL(url string) string {
 	}
 
 	return url
+}
+
+func getEndpointsFromAPI(secretKey, apiBaseURL string) requests.WebhookEndpointList {
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+
+	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
+}
+
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []EndpointRoute {
+	endpointRoutes := make([]EndpointRoute, 0)
+
+	for _, endpoint := range endpoints.Data {
+		u, err := url.Parse(endpoint.URL)
+		// Silently skip over invalid paths
+		if err == nil {
+			// Since webhooks in the dashboard may have a more generic url, only extract
+			// the path. We'll use this with `localhost` or with the `--forward-to` flag
+			if endpoint.Application == "" {
+				endpointRoutes = append(endpointRoutes, EndpointRoute{
+					URL:            buildForwardURL(forwardURL, u),
+					ForwardHeaders: forwardHeaders,
+					Connect:        false,
+					EventTypes:     endpoint.EnabledEvents,
+				})
+			} else {
+				endpointRoutes = append(endpointRoutes, EndpointRoute{
+					URL:            buildForwardURL(forwardConnectURL, u),
+					ForwardHeaders: forwardConnectHeaders,
+					Connect:        true,
+					EventTypes:     endpoint.EnabledEvents,
+				})
+			}
+		}
+	}
+
+	return endpointRoutes
+}
+
+func buildForwardURL(forwardURL string, destination *url.URL) string {
+	f, err := url.Parse(forwardURL)
+	if err != nil {
+		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
+	}
+
+	return fmt.Sprintf(
+		"%s://%s%s%s",
+		f.Scheme,
+		f.Host,
+		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
+		destination.Path,
+	)
 }
