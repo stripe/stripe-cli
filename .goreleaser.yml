@@ -79,8 +79,6 @@ nfpms:
     formats:
     - deb
     - rpm
-    scripts:
-      postinstall: "scripts/postinstall.sh"
 brews:
   -
     github:
