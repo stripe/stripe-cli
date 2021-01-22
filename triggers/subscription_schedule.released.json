@@ -13,16 +13,23 @@
       }
     },
     {
-      "name": "plan",
-      "path": "/v1/plans",
+      "name": "product",
+      "path": "/v1/products",
       "method": "post",
       "params": {
+          "name": "myproduct",
+          "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "product": "${product:id}",
+        "unit_amount": "1500",
         "currency": "usd",
-        "interval": "month",
-        "amount": 2000,
-        "product": {
-          "name": "myproduct"
-        }
+        "recurring[interval]": "month"
       }
     },
     {
@@ -35,18 +42,18 @@
         "phases": {
           "0": {
             "iterations": 1,
-            "plans": [
+            "items": [
               {
-                "plan": "${plan:id}",
+                "price": "${price:id}",
                 "quantity": 1
               }
             ]
           },
           "1": {
             "iterations": 1,
-            "plans": [
+            "items": [
               {
-                "plan": "${plan:id}",
+                "price": "${price:id}",
                 "quantity": 2
               }
             ]
