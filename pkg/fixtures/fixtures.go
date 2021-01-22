@@ -106,7 +106,6 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 // defined to populate the user's account
 func (fxt *Fixture) Execute() error {
 	for _, data := range fxt.fixture.Fixtures {
-		fmt.Println()
 		fmt.Printf("Setting up fixture for: %s\n", data.Name)
 
 		resp, err := fxt.makeRequest(data)
@@ -122,15 +121,7 @@ func (fxt *Fixture) Execute() error {
 
 func errWasExpected(err error, expectedErrorType string) bool {
 	if rerr, ok := err.(requests.RequestError); ok {
-		if e, ok := rerr.Body["error"].(map[string]interface{}); ok {
-			if t, ok := e["type"]; ok && t == expectedErrorType {
-				fmt.Printf("Expected Failure occurred. StatusCode: %d, Error Type: %s\n", rerr.StatusCode, t)
-				if message, ok := e["message"]; ok {
-					fmt.Printf("Error Message: %s\n", message)
-				}
-				return true
-			}
-		}
+		return rerr.ErrorType == expectedErrorType
 	}
 	return false
 }

@@ -44,15 +44,12 @@ func (r *RequestParameters) SetStripeAccount(value string) {
 type RequestError struct {
 	msg        string
 	StatusCode int
-	Body       map[string]interface{}
+	ErrorType  string
+	Body       interface{} // the raw response body
 }
 
 func (e RequestError) Error() string {
-	out, err := json.MarshalIndent(e.Body, "", "  ")
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("Request failed, status=%d, body=%s", e.StatusCode, string(out))
+	return fmt.Sprintf("%s, status=%d, body=%s", e.msg, e.StatusCode, e.Body)
 }
 
 // Base encapsulates the required information needed to make requests to the API
@@ -181,9 +178,8 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if errOnStatus && resp.StatusCode >= 300 {
-		var errorBody map[string]interface{}
-		json.Unmarshal(body, &errorBody)
-		return nil, RequestError{"Request failed, ", resp.StatusCode, errorBody}
+		requestError := compileRequestError(body, resp.StatusCode)
+		return nil, requestError
 	}
 
 	if !rb.SuppressOutput {
@@ -196,6 +192,20 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	}
 
 	return body, nil
+}
+
+func compileRequestError(body []byte, statusCode int) RequestError {
+	type requestErrorContent struct {
+		Type string `json:"type"`
+	}
+
+	type requestErrorBody struct {
+		Content requestErrorContent `json:"error"`
+	}
+
+	var errorBody requestErrorBody
+	json.Unmarshal(body, &errorBody)
+	return RequestError{"Request failed", statusCode, errorBody.Content.Type, string(body)}
 }
 
 // Confirm calls the confirmCommand() function, triggering the confirmation process

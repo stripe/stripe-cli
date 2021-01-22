@@ -113,7 +113,7 @@ func TestMakeRequest(t *testing.T) {
 func TestMakeRequest_ErrOnStatus(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": ":("}`))
+		w.Write([]byte(":("))
 	}))
 	defer ts.Close()
 
@@ -124,7 +124,7 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 
 	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params, true)
 	require.Error(t, err)
-	require.Equal(t, "Request failed, status=500, body={\n  \"error\": \":(\"\n}", err.Error())
+	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }
 
 func TestGetUserConfirmationRequired(t *testing.T) {
