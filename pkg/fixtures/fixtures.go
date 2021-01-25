@@ -36,10 +36,11 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name   string      `json:"name"`
-	Path   string      `json:"path"`
-	Method string      `json:"method"`
-	Params interface{} `json:"params"`
+	Name              string      `json:"name"`
+	ExpectedErrorType string      `json:"expected_error_type"`
+	Path              string      `json:"path"`
+	Method            string      `json:"method"`
+	Params            interface{} `json:"params"`
 }
 
 type fixtureQuery struct {
@@ -108,7 +109,7 @@ func (fxt *Fixture) Execute() error {
 		fmt.Printf("Setting up fixture for: %s\n", data.Name)
 
 		resp, err := fxt.makeRequest(data)
-		if err != nil {
+		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return err
 		}
 
@@ -116,6 +117,13 @@ func (fxt *Fixture) Execute() error {
 	}
 
 	return nil
+}
+
+func errWasExpected(err error, expectedErrorType string) bool {
+	if rerr, ok := err.(requests.RequestError); ok {
+		return rerr.ErrorType == expectedErrorType
+	}
+	return false
 }
 
 // UpdateEnv uses the results of the fixtures command just executed and

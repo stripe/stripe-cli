@@ -5,6 +5,7 @@
   "fixtures": [
     {
       "name": "setup_intent",
+      "expected_error_type": "card_error",
       "path": "/v1/setup_intents",
       "method": "post",
       "params": {

@@ -56,6 +56,27 @@ const testFixture = `
 	]
 }`
 
+const failureTestFixture = `
+{
+	"_meta": {
+	  "template_version": 0
+	},
+	"fixtures": [
+	  {
+		"name": "charge_expected_failure",
+		"expected_error_type": "card_error",
+		"path": "/v1/charges",
+		"method": "post",
+		"params": {
+		  "source": "tok_chargeDeclined",
+		  "amount": 100,
+		  "currency": "usd",
+		  "description": "(created by Stripe CLI)"
+		}
+	  }
+	]
+  }`
+
 func TestParseInterface(t *testing.T) {
 	address := make(map[string]interface{})
 	address["line1"] = "1 Planet Express St"
@@ -206,6 +227,39 @@ func TestMakeRequest(t *testing.T) {
 
 	fxt.responses["char_bender"].Reset()
 	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
+}
+
+func TestMakeRequestExpectedFailure(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(402)
+		res.Write([]byte(`{"error": {"type": "card_error"}}`))
+	}))
+
+	defer func() { ts.Close() }()
+	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
+	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NoError(t, err)
+	require.NotNil(t, fxt.responses["charge_expected_failure"])
+}
+
+func TestMakeRequestUnexpectedFailure(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		res.WriteHeader(500)
+		res.Write([]byte(`{"error": "Internal Failure Occurred."}`))
+	}))
+
+	defer func() { ts.Close() }()
+	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
+	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NotNil(t, err)
 }
 
 func TestParsePathDoNothing(t *testing.T) {
