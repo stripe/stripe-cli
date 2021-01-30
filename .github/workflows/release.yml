@@ -1,16 +1,17 @@
-name: do_release
+name: publish_release
 
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   goreleaser:
+    if: ${{ github.ref == 'refs/heads/master' }}
     runs-on: ubuntu-latest
     steps:
       -
-        name: Code Checkout
+        name: Code checkout
         uses: actions/checkout@v2
       -
         name: Run goreleaser
@@ -28,6 +29,7 @@ jobs:
           scripts/publish-rpm-to-bintray.sh
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
           BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
       -
@@ -35,5 +37,6 @@ jobs:
         run: scripts/upload-zip-to-virustotal.sh
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
 
