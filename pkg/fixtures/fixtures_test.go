@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -76,6 +77,25 @@ const failureTestFixture = `
 	  }
 	]
   }`
+
+func TestParseInterfaceFromRaw(t *testing.T) {
+	var rawFixtureData = []byte(`{
+		"salary": 1000000000,
+		"email": "person@example.com"
+	}`)
+
+	parsedFixtureData := make(map[string]interface{})
+	json.Unmarshal(rawFixtureData, &parsedFixtureData)
+
+	fxt := Fixture{}
+
+	output := (fxt.parseInterface(parsedFixtureData))
+	sort.Strings(output)
+
+	require.Equal(t, len(output), 2)
+	require.Equal(t, output[0], "email=person@example.com")
+	require.Equal(t, output[1], "salary=1000000000")
+}
 
 func TestParseInterface(t *testing.T) {
 	address := make(map[string]interface{})
