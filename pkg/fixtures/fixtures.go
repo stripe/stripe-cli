@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -235,7 +236,26 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
 		case reflect.Float32, reflect.Float64:
-			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Float()))
+			/*
+				When converting fixture values to JSON, numeric values
+				reflect as float types. Thus in order to output the correct
+				value we should parse as such:
+
+				10 => 10
+				3.145 => 3.145
+				25.00 => 25
+				20.10 => 20.1
+
+				In order to preserve decimal places but strip them when
+				unnecessary (i.e 1.0), we must use strconv with the special
+				precision value of -1.
+
+				We cannot use %v here because it reverts to %g which uses
+				%e (scientific notation) for larger values otherwise %f
+				(float), which will not strip the decimal places from 4.00
+			*/
+			s64 := strconv.FormatFloat(v.Float(), 'f', -1, 64)
+			data = append(data, fmt.Sprintf("%s=%s", keyname, s64))
 		case reflect.Bool:
 			data = append(data, fmt.Sprintf("%s=%t", keyname, v.Bool()))
 		case reflect.Map:
