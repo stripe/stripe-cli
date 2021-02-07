@@ -55,17 +55,19 @@ type Fixture struct {
 	Fs            afero.Fs
 	APIKey        string
 	StripeAccount string
+	Skip          []string
 	BaseURL       string
 	responses     map[string]*gojsonq.JSONQ
 	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, baseURL string, file string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
 		StripeAccount: stripeAccount,
+		Skip:          skip,
 		BaseURL:       baseURL,
 		responses:     make(map[string]*gojsonq.JSONQ),
 	}
@@ -107,8 +109,12 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 // defined to populate the user's account
 func (fxt *Fixture) Execute() error {
 	for _, data := range fxt.fixture.Fixtures {
-		fmt.Printf("Setting up fixture for: %s\n", data.Name)
+		if isNameIn(data.Name, fxt.Skip) {
+			fmt.Printf("Skipping fixture for: %s\n", data.Name)
+			continue
+		}
 
+		fmt.Printf("Running fixture for: %s\n", data.Name)
 		resp, err := fxt.makeRequest(data)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return err
@@ -415,4 +421,15 @@ func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
 	}
 
 	return nil, false
+}
+
+// isNameIn will search if the current fixture is in the skip list
+func isNameIn(name string, skip []string) bool {
+	for _, skipName := range skip {
+		if name == skipName {
+			return true
+		}
+	}
+
+	return false
 }

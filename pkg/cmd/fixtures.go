@@ -18,6 +18,7 @@ type FixturesCmd struct {
 	Cfg *config.Config
 
 	stripeAccount string
+	skip          []string
 }
 
 func newFixturesCmd(cfg *config.Config) *FixturesCmd {
@@ -34,6 +35,7 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	}
 
 	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.skip, "skip", []string{}, "Skip specific steps in the fixture")
 
 	return fixturesCmd
 }
@@ -54,6 +56,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		afero.NewOsFs(),
 		apiKey,
 		fc.stripeAccount,
+		fc.skip,
 		stripe.DefaultAPIBaseURL,
 		args[0],
 	)

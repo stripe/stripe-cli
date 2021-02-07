@@ -228,7 +228,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -249,6 +249,32 @@ func TestMakeRequest(t *testing.T) {
 	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
 }
 
+func TestWithSkipMakeRequest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{"char_bender", "capt_bender"}, ts.URL, "test_fixture.json")
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NoError(t, err)
+
+	require.NotNil(t, fxt.responses["cust_bender"])
+	require.Nil(t, fxt.responses["char_bender"])
+	require.Nil(t, fxt.responses["capt_bender"])
+}
+
 func TestMakeRequestExpectedFailure(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -258,7 +284,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -275,7 +301,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()

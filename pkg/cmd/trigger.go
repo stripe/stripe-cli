@@ -18,6 +18,7 @@ type triggerCmd struct {
 
 	fs            afero.Fs
 	stripeAccount string
+	skip          []string
 	apiBaseURL    string
 }
 
@@ -44,6 +45,7 @@ needed to create the triggered event as well as the corresponding API objects.
 	}
 
 	tc.cmd.Flags().StringVar(&tc.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	tc.cmd.Flags().StringArrayVar(&tc.skip, "skip", []string{}, "Skip specific steps in the trigger")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -70,7 +72,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	var fixture *fixtures.Fixture
 	if file, ok := fixtures.Events[event]; ok {
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, file)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.skip, tc.apiBaseURL, file)
 		if err != nil {
 			return err
 		}
@@ -80,7 +82,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
 		}
 
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, event)
+		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.skip, tc.apiBaseURL, event)
 		if err != nil {
 			return err
 		}
