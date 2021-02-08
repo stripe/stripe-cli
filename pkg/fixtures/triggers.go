@@ -57,12 +57,15 @@ var Events = map[string]string{
 }
 
 // BuildFromFixture creates a new fixture struct for a file
-func BuildFromFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, apiBaseURL string, jsonFile string) (*Fixture, error) {
+func BuildFromFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, apiBaseURL string, jsonFile string) (*Fixture, error) {
 	fixture, err := NewFixture(
 		fs,
 		apiKey,
 		stripeAccount,
 		skip,
+		overrides,
+		additions,
+		removals,
 		apiBaseURL,
 		jsonFile,
 	)

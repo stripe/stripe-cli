@@ -56,13 +56,16 @@ type Fixture struct {
 	APIKey        string
 	StripeAccount string
 	Skip          []string
+	Overrides     map[string]interface{}
+	Additions     map[string]interface{}
+	Removals      map[string]interface{}
 	BaseURL       string
 	responses     map[string]*gojsonq.JSONQ
 	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, baseURL string, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, baseURL string, file string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -97,6 +100,13 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 	if err != nil {
 		return nil, err
 	}
+
+	overridesMap := buildRewrites(overrides)
+	fxt.Overrides = overridesMap
+	additionsMap := buildRewrites(additions)
+	fxt.Additions = additionsMap
+
+	// todo implement removals
 
 	if fxt.fixture.Meta.Version > SupportedVersions {
 		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
@@ -159,9 +169,18 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 		Parameters:     rp,
 	}
 
+	overrides, ok := fxt.Overrides[data.Name]
+	var params interface{}
+	if ok {
+		params = merge(data.Params.(map[string]interface{}), overrides.(map[string]interface{}), 32)
+	} else {
+		params = data.Params
+	}
 	path := fxt.parsePath(data)
+	// todo implement additions
+	// todo implement removals
 
-	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params), true)
+	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(params), true)
 }
 
 func (fxt *Fixture) parsePath(http fixture) string {
@@ -432,4 +451,88 @@ func isNameIn(name string, skip []string) bool {
 	}
 
 	return false
+}
+
+// buildRewrites todo
+func buildRewrites(overrides []string) map[string]interface{} {
+	builtOverrides := make(map[string]interface{})
+
+	for _, override := range overrides {
+		overrideSplit := strings.SplitN(override, "=", 2)
+		path := overrideSplit[0]
+		value := overrideSplit[1]
+
+		pathSplit := strings.SplitN(path, ":", 2)
+		name := pathSplit[0]
+		keys := pathSplit[1]
+
+		keysSplit := strings.Split(keys, ".")
+
+		keysReversed := reverse(keysSplit)
+		key, keysReversed := pop(keysReversed)
+		keyMap := make(map[string]interface{})
+		keyMap[key] = value
+
+		for _, key := range keysReversed {
+			keyMap = map[string]interface{}{
+				key: keyMap,
+			}
+		}
+		currentMap, ok := builtOverrides[name]
+		if ok {
+			builtOverrides[name] = merge(currentMap.(map[string]interface{}), keyMap, 32)
+		} else {
+			builtOverrides[name] = keyMap
+		}
+	}
+
+	return builtOverrides
+}
+
+// pop returns the first item and the rest of the list minus the first item
+// From: https://github.com/golang/go/wiki/SliceTricks#pop
+func pop(list []string) (string, []string) {
+	return list[len(list)-1], list[:len(list)-1]
+}
+
+// reverse reverses the list
+// From: https://github.com/golang/go/wiki/SliceTricks#reversing
+func reverse(list []string) []string {
+	reversed := make([]string, len(list))
+	copy(reversed, list)
+
+	for i := len(reversed)/2 - 1; i >= 0; i-- {
+		opp := len(reversed) - 1 - i
+		reversed[i], reversed[opp] = reversed[opp], reversed[i]
+	}
+
+	return reversed
+}
+
+// From https://github.com/peterbourgon/mergemap/blob/master/mergemap.go
+// todo: cleanup
+func merge(dst, src map[string]interface{}, depth int) map[string]interface{} {
+	for key, srcVal := range src {
+		if dstVal, ok := dst[key]; ok {
+			srcMap, srcMapOk := mapify(srcVal)
+			dstMap, dstMapOk := mapify(dstVal)
+			if srcMapOk && dstMapOk {
+				srcVal = merge(dstMap, srcMap, depth+1)
+			}
+		}
+		dst[key] = srcVal
+	}
+	return dst
+}
+
+func mapify(i interface{}) (map[string]interface{}, bool) {
+	value := reflect.ValueOf(i)
+	if value.Kind() == reflect.Map {
+		m := map[string]interface{}{}
+		for _, k := range value.MapKeys() {
+			m[k.String()] = value.MapIndex(k).Interface()
+		}
+		return m, true
+	}
+	return map[string]interface{}{}, false
 }
