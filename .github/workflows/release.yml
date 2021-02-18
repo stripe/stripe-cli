@@ -12,6 +12,8 @@ jobs:
       -
         name: Code checkout
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       -
         name: Run goreleaser
         uses: ./.github/actions/releaser
