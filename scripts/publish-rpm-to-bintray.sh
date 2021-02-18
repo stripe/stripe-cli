@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Adapted from https://github.com/leopardslab/dunner/blob/master/release/publish_rpm_to_bintray.sh
 
