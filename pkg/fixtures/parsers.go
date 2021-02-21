@@ -177,16 +177,12 @@ func (fxt *Fixture) parseQuery(value string) string {
 			return envValue
 		}
 
-		// Reset just in case someone else called a query here
-		fxt.responses[name].Reset()
-
-		query := query.Query
-		findResult, err := fxt.responses[name].FindR(query)
-		if err != nil {
+		result := fxt.responses[name].Get(query.Query)
+		if len(result.String()) != 0 {
+			return result.String()
+		} else {
 			return value
 		}
-		findResultString, _ := findResult.String()
-		return findResultString
 	}
 
 	return value

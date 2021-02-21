@@ -15,7 +15,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/joho/godotenv"
 	"github.com/spf13/afero"
-	"github.com/thedevsaddam/gojsonq"
+	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
@@ -55,7 +55,7 @@ type Fixture struct {
 	StripeAccount string
 	Skip          []string
 	BaseURL       string
-	responses     map[string]*gojsonq.JSONQ
+	responses     map[string]gjson.Result
 	fixture       fixtureFile
 }
 
@@ -67,7 +67,7 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 		StripeAccount: stripeAccount,
 		Skip:          skip,
 		BaseURL:       baseURL,
-		responses:     make(map[string]*gojsonq.JSONQ),
+		responses:     make(map[string]gjson.Result),
 	}
 
 	var filedata []byte
@@ -107,9 +107,7 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 func (fxt *Fixture) Override(overrides []string) {
 	data := buildRewrites(overrides)
 	for _, f := range fxt.fixture.Fixtures {
-		_, ok := data[f.Name]
-
-		if ok {
+		if _, ok := data[f.Name]; ok {
 			mergo.Merge(f.Params, data[f.Name], mergo.WithOverride)
 		}
 	}
@@ -121,9 +119,7 @@ func (fxt *Fixture) Override(overrides []string) {
 func (fxt *Fixture) Add(additions []string) {
 	data := buildRewrites(additions)
 	for _, f := range fxt.fixture.Fixtures {
-		_, ok := data[f.Name]
-
-		if ok {
+		if _, ok := data[f.Name]; ok {
 			mergo.Merge(f.Params, data[f.Name])
 		}
 	}
@@ -149,7 +145,7 @@ func (fxt *Fixture) Execute() error {
 			return err
 		}
 
-		fxt.responses[data.Name] = gojsonq.New().FromString(string(resp))
+		fxt.responses[data.Name] = gjson.ParseBytes(resp)
 	}
 
 	return nil

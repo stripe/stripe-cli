@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/thedevsaddam/gojsonq"
+	"github.com/tidwall/gjson"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -120,10 +120,10 @@ func TestParseInterface(t *testing.T) {
 }
 
 func TestParseWithQueryIgnoreDefault(t *testing.T) {
-	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789", "currency": "eur"}`)
+	jsonData := gjson.Parse(`{"id": "cust_bend123456789", "currency": "eur"}`)
 
 	fxt := Fixture{}
-	fxt.responses = make(map[string]*gojsonq.JSONQ)
+	fxt.responses = make(map[string]gjson.Result)
 	fxt.responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
@@ -143,10 +143,10 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 }
 
 func TestParseWithQueryDefaultValue(t *testing.T) {
-	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789"}`)
+	jsonData := gjson.Parse(`{"id": "cust_bend123456789"}`)
 
 	fxt := Fixture{}
-	fxt.responses = make(map[string]*gojsonq.JSONQ)
+	fxt.responses = make(map[string]gjson.Result)
 	fxt.responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
@@ -238,15 +238,9 @@ func TestMakeRequest(t *testing.T) {
 	require.NotNil(t, fxt.responses["char_bender"])
 	require.NotNil(t, fxt.responses["capt_bender"])
 
-	// After you make a `Find` request you need `Reset` the gojsonq object
-	fxt.responses["cust_bender"].Reset()
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Find("id"))
-
-	fxt.responses["char_bender"].Reset()
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Find("id"))
-
-	fxt.responses["char_bender"].Reset()
-	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
+	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").String())
+	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").String())
+	require.True(t, fxt.responses["char_bender"].Get("charge").Bool())
 }
 
 func TestWithSkipMakeRequest(t *testing.T) {
@@ -270,9 +264,9 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	err = fxt.Execute()
 	require.NoError(t, err)
 
-	require.NotNil(t, fxt.responses["cust_bender"])
-	require.Nil(t, fxt.responses["char_bender"])
-	require.Nil(t, fxt.responses["capt_bender"])
+	require.True(t, fxt.responses["cust_bender"].Exists())
+	require.False(t, fxt.responses["char_bender"].Exists())
+	require.False(t, fxt.responses["capt_bender"].Exists())
 }
 
 func TestMakeRequestExpectedFailure(t *testing.T) {
@@ -320,8 +314,8 @@ func TestParsePathDoNothing(t *testing.T) {
 
 func TestParseOneParam(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 	http := fixture{
@@ -334,8 +328,8 @@ func TestParseOneParam(t *testing.T) {
 
 func TestParseOneParamWithTrailing(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
+		responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
 		},
 	}
 	http := fixture{
@@ -348,9 +342,9 @@ func TestParseOneParamWithTrailing(t *testing.T) {
 
 func TestParseTwoParam(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
-			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
+			"cust_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 	http := fixture{
@@ -365,9 +359,9 @@ func TestUpdateEnv(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	fxt := Fixture{
 		Fs: fs,
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
-			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
+			"cust_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 
