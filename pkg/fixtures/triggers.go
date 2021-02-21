@@ -63,14 +63,23 @@ func BuildFromFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []s
 		apiKey,
 		stripeAccount,
 		skip,
-		overrides,
-		additions,
-		removals,
 		apiBaseURL,
 		jsonFile,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(overrides) != 0 {
+		fixture.Override(overrides)
+	}
+
+	if len(additions) != 0 {
+		fixture.Add(additions)
+	}
+
+	if len(removals) != 0 {
+		fixture.Remove(removals)
 	}
 
 	return fixture, nil

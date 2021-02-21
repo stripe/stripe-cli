@@ -63,14 +63,23 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		apiKey,
 		fc.stripeAccount,
 		fc.skip,
-		[]string{},
-		[]string{},
-		[]string{},
 		stripe.DefaultAPIBaseURL,
 		args[0],
 	)
 	if err != nil {
 		return err
+	}
+
+	if len(fc.override) != 0 {
+		fixture.Override(fc.override)
+	}
+
+	if len(fc.add) != 0 {
+		fixture.Add(fc.add)
+	}
+
+	if len(fc.remove) != 0 {
+		fixture.Remove(fc.remove)
 	}
 
 	err = fixture.Execute()

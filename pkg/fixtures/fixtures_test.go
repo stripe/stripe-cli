@@ -228,7 +228,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, []string{}, []string{}, []string{}, ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -264,7 +264,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{}, ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{"char_bender", "capt_bender"}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -284,7 +284,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, []string{}, []string{}, []string{}, ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()
@@ -301,7 +301,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, []string{}, []string{}, []string{}, ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	err = fxt.Execute()

@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/imdario/mergo"
 	"github.com/joho/godotenv"
 	"github.com/spf13/afero"
 	"github.com/thedevsaddam/gojsonq"
@@ -56,16 +54,13 @@ type Fixture struct {
 	APIKey        string
 	StripeAccount string
 	Skip          []string
-	Overrides     map[string]interface{}
-	Additions     map[string]interface{}
-	Removals      map[string]interface{}
 	BaseURL       string
 	responses     map[string]*gojsonq.JSONQ
 	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, baseURL string, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, baseURL string, file string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -101,18 +96,42 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 		return nil, err
 	}
 
-	overridesMap := buildRewrites(overrides)
-	fxt.Overrides = overridesMap
-	additionsMap := buildRewrites(additions)
-	fxt.Additions = additionsMap
-
-	// todo implement removals
-
 	if fxt.fixture.Meta.Version > SupportedVersions {
 		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
 	}
 
 	return &fxt, nil
+}
+
+// Override forcefully overrides fields with existing data on a fixture
+func (fxt *Fixture) Override(overrides []string) {
+	data := buildRewrites(overrides)
+	for _, f := range fxt.fixture.Fixtures {
+		_, ok := data[f.Name]
+
+		if ok {
+			mergo.Merge(f.Params, data[f.Name], mergo.WithOverride)
+		}
+	}
+}
+
+// Add safely only adds any missing fields that do not already exist.
+// If the field is already on the fixture, it does not get copied
+// over. For that, `Override` should be used
+func (fxt *Fixture) Add(additions []string) {
+	data := buildRewrites(additions)
+	for _, f := range fxt.fixture.Fixtures {
+		_, ok := data[f.Name]
+
+		if ok {
+			mergo.Merge(f.Params, data[f.Name])
+		}
+	}
+}
+
+// Remove todo implement - removes fields from the fixture
+func (fxt *Fixture) Remove(removals []string) {
+
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
@@ -169,42 +188,9 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 		Parameters:     rp,
 	}
 
-	overrides, ok := fxt.Overrides[data.Name]
-	var params interface{}
-	if ok {
-		params = merge(data.Params.(map[string]interface{}), overrides.(map[string]interface{}), 32)
-	} else {
-		params = data.Params
-	}
 	path := fxt.parsePath(data)
-	// todo implement additions
-	// todo implement removals
 
-	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(params), true)
-}
-
-func (fxt *Fixture) parsePath(http fixture) string {
-	if r, containsQuery := matchFixtureQuery(http.Path); containsQuery {
-		var newPath []string
-
-		matches := r.FindAllStringSubmatch(http.Path, -1)
-		pathParts := r.Split(http.Path, -1)
-
-		for i, match := range matches {
-			value := fxt.parseQuery(match[0])
-
-			newPath = append(newPath, pathParts[i])
-			newPath = append(newPath, value)
-		}
-
-		if len(pathParts)%2 == 0 {
-			newPath = append(newPath, pathParts[len(pathParts)-1])
-		}
-
-		return path.Join(newPath...)
-	}
-
-	return http.Path
+	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params), true)
 }
 
 func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters {
@@ -214,163 +200,6 @@ func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	return &requestParams
-}
-
-func (fxt *Fixture) parseInterface(params interface{}) []string {
-	var data []string
-
-	var cleanData []string
-
-	switch v := reflect.ValueOf(params); v.Kind() {
-	case reflect.Map:
-		m := params.(map[string]interface{})
-		data = append(data, fxt.parseMap(m, "", -1)...)
-	case reflect.Array:
-		a := params.([]interface{})
-		data = append(data, fxt.parseArray(a, "", -1)...)
-	default:
-	}
-
-	for _, d := range data {
-		if strings.TrimSpace(d) != "" {
-			cleanData = append(cleanData, strings.TrimSpace(d))
-		}
-	}
-
-	return cleanData
-}
-
-func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index int) []string {
-	data := make([]string, len(params))
-
-	var keyname string
-
-	for key, value := range params {
-		switch {
-		case parent != "" && index >= 0:
-			keyname = fmt.Sprintf("%s[%d][%s]", parent, index, key)
-		case parent != "":
-			keyname = fmt.Sprintf("%s[%s]", parent, key)
-		default:
-			keyname = key
-		}
-
-		switch v := reflect.ValueOf(value); v.Kind() {
-		case reflect.String:
-			data = append(data, fmt.Sprintf("%s=%s", keyname, fxt.parseQuery(v.String())))
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
-		case reflect.Float32, reflect.Float64:
-			/*
-				When converting fixture values to JSON, numeric values
-				reflect as float types. Thus in order to output the correct
-				value we should parse as such:
-
-				10 => 10
-				3.145 => 3.145
-				25.00 => 25
-				20.10 => 20.1
-
-				In order to preserve decimal places but strip them when
-				unnecessary (i.e 1.0), we must use strconv with the special
-				precision value of -1.
-
-				We cannot use %v here because it reverts to %g which uses
-				%e (scientific notation) for larger values otherwise %f
-				(float), which will not strip the decimal places from 4.00
-			*/
-			s64 := strconv.FormatFloat(v.Float(), 'f', -1, 64)
-			data = append(data, fmt.Sprintf("%s=%s", keyname, s64))
-		case reflect.Bool:
-			data = append(data, fmt.Sprintf("%s=%t", keyname, v.Bool()))
-		case reflect.Map:
-			m := value.(map[string]interface{})
-
-			result := fxt.parseMap(m, keyname, index)
-			data = append(data, result...)
-		case reflect.Array, reflect.Slice:
-			a := value.([]interface{})
-
-			result := fxt.parseArray(a, keyname, index)
-			data = append(data, result...)
-		default:
-			continue
-		}
-	}
-
-	return data
-}
-
-func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) []string {
-	data := make([]string, len(params))
-
-	for _, value := range params {
-		switch v := reflect.ValueOf(value); v.Kind() {
-		case reflect.String:
-			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			data = append(data, fmt.Sprintf("%s[]=%v", parent, v.Int()))
-		case reflect.Map:
-			m := value.(map[string]interface{})
-			// When we parse arrays of maps, we want to track an index for the request
-			data = append(data, fxt.parseMap(m, parent, index+1)...)
-		case reflect.Array, reflect.Slice:
-			a := value.([]interface{})
-			data = append(data, fxt.parseArray(a, parent, index)...)
-		default:
-			continue
-		}
-	}
-
-	return data
-}
-
-func (fxt *Fixture) parseQuery(value string) string {
-	if query, isQuery := toFixtureQuery(value); isQuery {
-		name := query.Name
-
-		// Check if there is a default value specified
-		if query.DefaultValue != "" {
-			value = query.DefaultValue
-		}
-
-		// Catch and insert .env values
-		if name == ".env" {
-			key := query.Query
-			// Check if env variable is present
-			envValue := os.Getenv(key)
-			if envValue == "" {
-				// Try to load from .env file
-				dir, err := os.Getwd()
-				if err != nil {
-					dir = ""
-				}
-				err = godotenv.Load(path.Join(dir, ".env"))
-				if err != nil {
-					return value
-				}
-				envValue = os.Getenv(key)
-			}
-			if envValue == "" {
-				fmt.Printf("No value for env var: %s\n", key)
-				return value
-			}
-			return envValue
-		}
-
-		// Reset just in case someone else called a query here
-		fxt.responses[name].Reset()
-
-		query := query.Query
-		findResult, err := fxt.responses[name].FindR(query)
-		if err != nil {
-			return value
-		}
-		findResultString, _ := findResult.String()
-		return findResultString
-	}
-
-	return value
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
@@ -453,14 +282,19 @@ func isNameIn(name string, skip []string) bool {
 	return false
 }
 
-// buildRewrites todo
-func buildRewrites(overrides []string) map[string]interface{} {
-	builtOverrides := make(map[string]interface{})
+// buildRewrites takes a slice of json queries and values then builds
+// them into a map to later by merged. We work through the entire
+// list at the same time because the user might pass in multiple
+// changes for the same fixture.
+//
+// The query supported is <fixture_name>:path.to.field=value
+func buildRewrites(changes []string) map[string]interface{} {
+	builtChanges := make(map[string]interface{})
 
-	for _, override := range overrides {
-		overrideSplit := strings.SplitN(override, "=", 2)
-		path := overrideSplit[0]
-		value := overrideSplit[1]
+	for _, change := range changes {
+		changeSplit := strings.SplitN(change, "=", 2)
+		path := changeSplit[0]
+		value := changeSplit[1]
 
 		pathSplit := strings.SplitN(path, ":", 2)
 		name := pathSplit[0]
@@ -478,15 +312,15 @@ func buildRewrites(overrides []string) map[string]interface{} {
 				key: keyMap,
 			}
 		}
-		currentMap, ok := builtOverrides[name]
+		currentMap, ok := builtChanges[name]
 		if ok {
-			builtOverrides[name] = merge(currentMap.(map[string]interface{}), keyMap, 32)
+			builtChanges[name] = mergo.Merge(currentMap, keyMap)
 		} else {
-			builtOverrides[name] = keyMap
+			builtChanges[name] = keyMap
 		}
 	}
 
-	return builtOverrides
+	return builtChanges
 }
 
 // pop returns the first item and the rest of the list minus the first item
@@ -507,32 +341,4 @@ func reverse(list []string) []string {
 	}
 
 	return reversed
-}
-
-// From https://github.com/peterbourgon/mergemap/blob/master/mergemap.go
-// todo: cleanup
-func merge(dst, src map[string]interface{}, depth int) map[string]interface{} {
-	for key, srcVal := range src {
-		if dstVal, ok := dst[key]; ok {
-			srcMap, srcMapOk := mapify(srcVal)
-			dstMap, dstMapOk := mapify(dstVal)
-			if srcMapOk && dstMapOk {
-				srcVal = merge(dstMap, srcMap, depth+1)
-			}
-		}
-		dst[key] = srcVal
-	}
-	return dst
-}
-
-func mapify(i interface{}) (map[string]interface{}, bool) {
-	value := reflect.ValueOf(i)
-	if value.Kind() == reflect.Map {
-		m := map[string]interface{}{}
-		for _, k := range value.MapKeys() {
-			m[k.String()] = value.MapIndex(k).Interface()
-		}
-		return m, true
-	}
-	return map[string]interface{}{}, false
 }
