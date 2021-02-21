@@ -78,9 +78,8 @@ scoop:
 dockers:
   - goos: linux
     goarch: amd64
-    binaries:
+    ids:
     - stripe
-    builds:
     - stripe-linux
     image_templates:
     - "stripe/stripe-cli:latest"

@@ -12,8 +12,6 @@ builds:
     binary: stripe
     env:
       - CGO_ENABLED=1
-      - CC=o64-clang
-      - CXX=o64-clang++
     main: ./cmd/stripe/main.go
     goos:
       - darwin
@@ -25,8 +23,6 @@ builds:
     binary: stripe
     env:
       - CGO_ENABLED=1
-      - CC=o64-clang
-      - CXX=o64-clang++
     main: ./cmd/stripe/main.go
     goos:
       - darwin
@@ -45,7 +41,7 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 brews:
   -
-    github:
+    tap:
       owner: stripe
       name: homebrew-stripe-cli
     commit_author:
