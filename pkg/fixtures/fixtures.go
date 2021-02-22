@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -35,11 +34,11 @@ type fixtureFile struct {
 }
 
 type fixture struct {
-	Name              string      `json:"name"`
-	ExpectedErrorType string      `json:"expected_error_type"`
-	Path              string      `json:"path"`
-	Method            string      `json:"method"`
-	Params            interface{} `json:"params"`
+	Name              string                 `json:"name"`
+	ExpectedErrorType string                 `json:"expected_error_type"`
+	Path              string                 `json:"path"`
+	Method            string                 `json:"method"`
+	Params            map[string]interface{} `json:"params"`
 }
 
 type fixtureQuery struct {
@@ -105,10 +104,12 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 
 // Override forcefully overrides fields with existing data on a fixture
 func (fxt *Fixture) Override(overrides []string) {
-	data := buildRewrites(overrides)
+	data := buildRewrites(overrides, false)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
-			mergo.Merge(f.Params, data[f.Name], mergo.WithOverride)
+			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverride); err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 }
@@ -117,17 +118,26 @@ func (fxt *Fixture) Override(overrides []string) {
 // If the field is already on the fixture, it does not get copied
 // over. For that, `Override` should be used
 func (fxt *Fixture) Add(additions []string) {
-	data := buildRewrites(additions)
+	data := buildRewrites(additions, false)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
-			mergo.Merge(f.Params, data[f.Name])
+			if err := mergo.Merge(&f.Params, data[f.Name]); err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 }
 
 // Remove todo implement - removes fields from the fixture
 func (fxt *Fixture) Remove(removals []string) {
-
+	data := buildRewrites(removals, true)
+	for _, f := range fxt.fixture.Fixtures {
+		if _, ok := data[f.Name]; ok {
+			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverwriteWithEmptyValue); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
@@ -236,37 +246,6 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	return nil
 }
 
-// toFixtureQuery will parse a string into a fixtureQuery struct, additionally
-// returning a bool indicating the value did contain a fixtureQuery.
-func toFixtureQuery(value string) (fixtureQuery, bool) {
-	var query fixtureQuery
-	isQuery := false
-
-	if r, didMatch := matchFixtureQuery(value); didMatch {
-		isQuery = true
-		match := r.FindStringSubmatch(value)
-		query = fixtureQuery{Name: match[1], Query: match[2], DefaultValue: match[3]}
-	}
-
-	return query, isQuery
-}
-
-// matchQuery will attempt to find matches for a fixture query pattern
-// returning a *Regexp which can be used to further parse and a boolean
-// indicating a match was found.
-func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
-	// Queries will start with `${` and end with `}`. The `:` is a
-	// separator for `name:json_path`. Additionally, default value will
-	// be specified after the `|`.
-	// example: ${name:json_path|default_value}
-	r := regexp.MustCompile(`\${([^\|}]+):([^\|}]+)\|?([^/\n]+)?}`)
-	if r.Match([]byte(value)) {
-		return r, true
-	}
-
-	return nil, false
-}
-
 // isNameIn will search if the current fixture is in the skip list
 func isNameIn(name string, skip []string) bool {
 	for _, skipName := range skip {
@@ -284,13 +263,16 @@ func isNameIn(name string, skip []string) bool {
 // changes for the same fixture.
 //
 // The query supported is <fixture_name>:path.to.field=value
-func buildRewrites(changes []string) map[string]interface{} {
+func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 	builtChanges := make(map[string]interface{})
-
 	for _, change := range changes {
 		changeSplit := strings.SplitN(change, "=", 2)
 		path := changeSplit[0]
-		value := changeSplit[1]
+
+		var value *string
+		if !toRemove {
+			value = &changeSplit[1]
+		}
 
 		pathSplit := strings.SplitN(path, ":", 2)
 		name := pathSplit[0]
