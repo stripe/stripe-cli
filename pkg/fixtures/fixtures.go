@@ -133,6 +133,10 @@ func (fxt *Fixture) Remove(removals []string) {
 	data := buildRewrites(removals, true)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
+			// Ideally we delete the keys entirely but that's a
+			// little trickier, so instead this sets a nil value that
+			// we can later skip. There should not be any cases where
+			// we try to send nil values
 			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverwriteWithEmptyValue); err != nil {
 				fmt.Println(err)
 			}
