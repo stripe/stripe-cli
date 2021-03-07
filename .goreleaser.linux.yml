@@ -44,7 +44,7 @@ archives:
     files:
     - none*
 checksum:
-  name_template: '{{ .ProjectName }}-checksums.txt'
+  name_template: '{{ .ProjectName }}-linux-checksums.txt'
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
