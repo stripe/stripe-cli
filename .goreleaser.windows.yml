@@ -21,8 +21,7 @@ builds:
       - amd64
       - 386
 archives:
-  -
-    replacements:
+  - replacements:
       windows: windows
       386: i386
       amd64: x86_64
@@ -30,17 +29,17 @@ archives:
       - goos: windows
         format: zip
     files:
-    - none*
+      - none*
 checksum:
-  name_template: '{{ .ProjectName }}-windows-checksums.txt'
+  name_template: "{{ .ProjectName }}-windows-checksums.txt"
 snapshot:
   name_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - "^docs:"
+      - "^test:"
 scoop:
   bucket:
     owner: stripe
@@ -48,6 +47,6 @@ scoop:
   commit_author:
     name: stripe-ci
     email: support@stripe.com
-  homepage:  https://stripe.com
+  homepage: https://stripe.com
   description: Stripe CLI utility
   license: Apache 2.0
