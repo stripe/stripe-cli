@@ -45,6 +45,18 @@ jobs:
           args: release -f .goreleaser.linux.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      -
+        name: Upload to Bintray
+        run: |
+          scripts/publish-deb-to-bintray.sh
+          scripts/publish-rpm-to-bintray.sh
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
 
   build-windows:
     runs-on: windows-latest
@@ -65,3 +77,10 @@ jobs:
           args: release -f .goreleaser.windows.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+      -
+        name: Upload to VirusTotal
+        run: scripts/upload-zip-to-virustotal.sh
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
