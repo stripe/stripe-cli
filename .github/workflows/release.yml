@@ -3,22 +3,19 @@ name: release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build-mac:
     runs-on: macos-latest
     steps:
-      -
-        name: Code checkout
+      - name: Code checkout
         uses: actions/checkout@v2
-      -
-        name: Set up Go
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      -
-        name: Run GoReleaser
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           version: v0.157.0
@@ -29,18 +26,15 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Code checkout
+      - name: Code checkout
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      -
-        name: Set up Go
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      -
-        name: Run GoReleaser
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           version: v0.157.0
@@ -49,8 +43,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      -
-        name: Upload to Bintray
+      - name: Upload to Bintray
         run: |
           scripts/publish-deb-to-bintray.sh
           scripts/publish-rpm-to-bintray.sh
@@ -63,24 +56,20 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      -
-        name: Code checkout
+      - name: Code checkout
         uses: actions/checkout@v2
-      -
-        name: Set up Go
+      - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.16
-      -
-        name: Run GoReleaser
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
           version: v0.157.0
           args: release -f .goreleaser/windows.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-      -
-        name: Upload to VirusTotal
+      - name: Upload to VirusTotal
         run: scripts/upload-zip-to-virustotal.sh
         shell: bash
         env:
