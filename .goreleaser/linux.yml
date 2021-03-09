@@ -24,16 +24,16 @@ archives:
       amd64: x86_64
     files:
       - none*
-checksum:
-  name_template: "{{ .ProjectName }}-linux-checksums.txt"
-snapshot:
-  name_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+checksum:
+  name_template: "{{ .ProjectName }}-linux-checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
 nfpms:
   - builds:
       - stripe-linux

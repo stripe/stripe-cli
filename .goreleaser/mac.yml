@@ -17,23 +17,18 @@ builds:
       - darwin
     goarch:
       - amd64
-  - id: stripe-darwin-arm
-    ldflags:
-      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
-    binary: stripe
-    env:
-      - CGO_ENABLED=1
-    main: ./cmd/stripe/main.go
-    goos:
-      - darwin
-    goarch:
-      - arm64
 archives:
   - replacements:
       darwin: mac-os
       amd64: x86_64
     files:
       - none*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
 checksum:
   name_template: "{{ .ProjectName }}-checksums.txt"
 snapshot:
