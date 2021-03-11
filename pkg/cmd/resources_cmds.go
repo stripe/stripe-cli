@@ -83,6 +83,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rUsageRecordsCmd := resource.NewResourceCmd(rootCmd, "usage_records")
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
 
+	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
 	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
 
 	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
@@ -522,6 +523,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":            "string",
 		"due_date":               "integer",
 		"footer":                 "string",
+		"on_behalf_of":           "string",
 		"statement_descriptor":   "string",
 		"subscription":           "string",
 	}, &Config)
@@ -593,6 +595,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":            "string",
 		"due_date":               "integer",
 		"footer":                 "string",
+		"on_behalf_of":           "string",
 		"statement_descriptor":   "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, &Config)
@@ -770,6 +773,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"last_name_kana":     "string",
 		"last_name_kanji":    "string",
 		"maiden_name":        "string",
+		"nationality":        "string",
 		"person_token":       "string",
 		"phone":              "string",
 		"political_exposure": "string",
@@ -793,6 +797,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"last_name_kana":     "string",
 		"last_name_kanji":    "string",
 		"maiden_name":        "string",
+		"nationality":        "string",
 		"person_token":       "string",
 		"phone":              "string",
 		"political_exposure": "string",
@@ -1162,11 +1167,13 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "retrieve", "/v1/customers/{customer}/tax_ids/{id}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "create", "/v1/tax_rates", http.MethodPost, map[string]string{
 		"active":       "boolean",
+		"country":      "string",
 		"description":  "string",
 		"display_name": "string",
 		"inclusive":    "boolean",
 		"jurisdiction": "string",
 		"percentage":   "number",
+		"state":        "string",
 	}, &Config)
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "list", "/v1/tax_rates", http.MethodGet, map[string]string{
 		"active":         "boolean",
@@ -1179,9 +1186,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "retrieve", "/v1/tax_rates/{tax_rate}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "update", "/v1/tax_rates/{tax_rate}", http.MethodPost, map[string]string{
 		"active":       "boolean",
+		"country":      "string",
 		"description":  "string",
 		"display_name": "string",
 		"jurisdiction": "string",
+		"state":        "string",
 	}, &Config)
 	resource.NewOperationCmd(rTokensCmd.Cmd, "create", "/v1/tokens", http.MethodPost, map[string]string{
 		"card":     "string",
@@ -1270,9 +1279,26 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"disabled":    "boolean",
 		"url":         "string",
 	}, &Config)
+	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
+		"default_return_url": "string",
+	}, &Config)
+	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "list", "/v1/billing_portal/configurations", http.MethodGet, map[string]string{
+		"active":         "boolean",
+		"ending_before":  "string",
+		"is_default":     "boolean",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "retrieve", "/v1/billing_portal/configurations/{configuration}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "update", "/v1/billing_portal/configurations/{configuration}", http.MethodPost, map[string]string{
+		"active":             "boolean",
+		"default_return_url": "string",
+	}, &Config)
 	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
-		"customer":   "string",
-		"return_url": "string",
+		"configuration": "string",
+		"customer":      "string",
+		"on_behalf_of":  "string",
+		"return_url":    "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "create", "/v1/checkout/sessions", http.MethodPost, map[string]string{
 		"allow_promotion_codes":      "boolean",
@@ -1378,6 +1404,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
+		"type":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "retrieve", "/v1/issuing/transactions/{transaction}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "update", "/v1/issuing/transactions/{transaction}", http.MethodPost, map[string]string{}, &Config)
