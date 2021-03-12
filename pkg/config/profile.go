@@ -13,15 +13,16 @@ import (
 
 // Profile handles all things related to managing the project specific configurations
 type Profile struct {
-	DeviceName             string
-	ProfileName            string
-	APIKey                 string
-	LiveModeAPIKey         string
-	LiveModePublishableKey string
-	TestModeAPIKey         string
-	TestModePublishableKey string
-	TerminalPOSDeviceID    string
-	DisplayName            string
+	DeviceName              string
+	ProfileName             string
+	APIKey                  string
+	LiveModeAPIKey          string
+	LiveModePublishableKey  string
+	TestModeAPIKey          string
+	TestModePublishableKey  string
+	TerminalPOSDeviceID     string
+	DisplayName             string
+	StripeSampleResourceIDs map[string]string
 }
 
 // CreateProfile creates a profile when logging in
@@ -140,6 +141,25 @@ func (p *Profile) GetDisplayName() string {
 	return ""
 }
 
+// GetStripeSampleResourceID gets the id from the config for a Stripe Sample "required resource"
+// with a particular name.
+func (p *Profile) GetStripeSampleResourceID(resourceName string) string {
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetString(p.GetConfigField(resourceName))
+	}
+
+	return ""
+}
+
+// SetStripeSampleResourceID sets the id in the config for a Stripe Sample "required resource"
+// with a particular name.
+func (p *Profile) SetStripeSampleResourceID(resourceName string, id string) {
+	if p.StripeSampleResourceIDs == nil {
+		p.StripeSampleResourceIDs = map[string]string{}
+	}
+	p.StripeSampleResourceIDs[resourceName] = id
+}
+
 // GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
 func (p *Profile) GetTerminalPOSDeviceID() string {
 	if err := viper.ReadInConfig(); err == nil {
@@ -206,6 +226,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.DisplayName != "" {
 		runtimeViper.Set(p.GetConfigField("display_name"), strings.TrimSpace(p.DisplayName))
+	}
+
+	for name, id := range p.StripeSampleResourceIDs {
+		runtimeViper.Set(p.GetConfigField(name), strings.TrimSpace(id))
 	}
 
 	runtimeViper.MergeInConfig()

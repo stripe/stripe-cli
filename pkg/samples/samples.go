@@ -3,9 +3,12 @@ package samples
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/manifoldco/promptui"
@@ -16,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	g "github.com/stripe/stripe-cli/pkg/git"
+	requests "github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
@@ -24,6 +28,15 @@ type sampleConfig struct {
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
 	PostInstall     map[string]string         `json:"postInstall"`
 	Integrations    []sampleConfigIntegration `json:"integrations"`
+
+	// Some samples need to be configured with the ids of
+	// particular stripe resources (typically products or prices)
+	RequiredResources []requiredResourceSampleConfig `json:"requiredResources"`
+}
+
+type requiredResourceSampleConfig struct {
+	Name   string `json:"name"`
+	EnvVar string `json:"envVar"`
 }
 
 func (sc *sampleConfig) hasIntegrations() bool {
@@ -185,6 +198,28 @@ func (s *Samples) SelectOptions() error {
 		s.server = ""
 	}
 
+	missingResources := s.MissingRequiredResources()
+
+	if len(missingResources) > 0 {
+		descs := []string{}
+		for _, r := range missingResources {
+			descs = append(descs, r.description)
+		}
+		shouldCreate, err := shouldCreateRequiredResourcesPrompt(descs)
+		if err != nil {
+			return err
+		}
+		if shouldCreate {
+			for _, r := range missingResources {
+				id, err := s.CreateRequiredResource(r.name)
+				if err != nil {
+					return err
+				}
+				s.PersistRequiredResourceID(r.name, id)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -257,6 +292,123 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
+// In order to work properly, some stripe samples require the .env file to be
+// populated with the ids of resources -- often of a product or price -- that
+// needs to exist on the user's account. The `requiredResource` struct is
+// a template for a particular kind of required resource.
+type requiredResource struct {
+	// `name` describes how the requiredResource is identified both inside
+	// the stripe sample's .cli.json and how it is persisted inside the
+	// user's stripe-cli profile.
+	name string
+	// `description` is used when prompting the user if they want the stripe-cli
+	// to automatically create the resources needed by the stripe sample.
+	description string
+	// `httpPath` and `data` describe the POST that should be made to the
+	// stripe API to create this type of required resource.
+	httpPath string
+	data     []string
+}
+
+var requiredResources []requiredResource = []requiredResource{
+	{
+		name:        "stripe_samples_price_recurring_basic_id",
+		description: "recurring price for a 'basic' plan",
+		httpPath:    "/v1/prices",
+		data: []string{
+			"currency=usd",
+			"unit_amount=1000",
+			"product_data[name]=Stripe Sample Basic",
+			"recurring[interval]=month",
+		},
+	},
+	{
+		name:        "stripe_samples_price_recurring_pro_id",
+		description: "recurring price for a 'pro' plan",
+		httpPath:    "/v1/prices",
+		data: []string{
+			"currency=usd",
+			"unit_amount=1000",
+			"product_data[name]=Stripe Sample Pro",
+			"recurring[interval]=month",
+		},
+	},
+}
+
+func getRequiredResource(name string) *requiredResource {
+	for _, rr := range requiredResources {
+		if rr.name == name {
+			return &rr
+		}
+	}
+	return nil
+}
+
+// CreateRequiredResource sends a (testmode) request to the Stripe API to create
+// the required resource with the speecified name, returning the id of the created
+// resource if the request is successful.
+func (s *Samples) CreateRequiredResource(requiredResourceName string) (string, error) {
+	rr := getRequiredResource(requiredResourceName)
+	if rr == nil {
+		return "", errors.New(fmt.Sprintf("Unexpected: tried to create unknown required resource %s", requiredResourceName))
+	}
+
+	base := requests.Base{
+		Profile:        &s.Config.Profile,
+		Method:         http.MethodPost,
+		SuppressOutput: true,
+		APIBaseURL:     "https://api.stripe.com",
+	}
+	params := requests.RequestParameters{}
+	params.AppendData(rr.data)
+	apiKey, err := s.Config.Profile.GetAPIKey(false)
+	if err != nil {
+		return "", err
+	}
+	bytes, err := base.MakeRequest(apiKey, rr.httpPath, &params, true)
+	if err != nil {
+		return "", err
+	}
+	var fields map[string]interface{}
+	err = json.Unmarshal(bytes, &fields)
+	if err != nil {
+		return "", err
+	}
+
+	id, ok := fields["id"].(string)
+	if !ok {
+		return "", errors.New(fmt.Sprintf("Unexpected response from stripe API when creating %s, did not contain ID: %s", requiredResourceName, string(bytes)))
+	}
+
+	return id, nil
+}
+
+// PersistRequiredResourceID writes the id for the required resource under the
+// user's profile in their stripe-cli config
+func (s *Samples) PersistRequiredResourceID(resourceName string, id string) error {
+	s.Config.Profile.SetStripeSampleResourceID(resourceName, id)
+	s.Config.Profile.WriteConfigField(resourceName, id)
+	return nil
+}
+
+// MissingRequiredResources returns the list of requiredResources that are
+// indicated in the stripe sample's .cli.json, but don't (yet) have an id
+// stored in the user's stripe-cli config profile.
+func (s *Samples) MissingRequiredResources() []requiredResource {
+	ret := []requiredResource{}
+	for _, rrConfig := range s.sampleConfig.RequiredResources {
+		rr := getRequiredResource(rrConfig.Name)
+		if rr == nil {
+			return nil
+		}
+		id := s.Config.Profile.GetStripeSampleResourceID(rr.name)
+		if id == "" {
+			ret = append(ret, *rr)
+		}
+	}
+	return ret
+}
+
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
@@ -304,6 +456,13 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 		dotenv["STRIPE_SECRET_KEY"] = apiKey
 		dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
 		dotenv["STATIC_DIR"] = "../client"
+
+		for _, rrConfig := range s.sampleConfig.RequiredResources {
+			id := s.Config.Profile.GetStripeSampleResourceID(rrConfig.Name)
+			if id != "" {
+				dotenv[rrConfig.EnvVar] = id
+			}
+		}
 
 		envFile := filepath.Join(sampleLocation, "server", ".env")
 
@@ -390,6 +549,21 @@ func integrationSelectPrompt(sc *sampleConfig) (*sampleConfigIntegration, error)
 	}
 
 	return selectedIntegration, nil
+}
+
+func shouldCreateRequiredResourcesPrompt(descriptions []string) (bool, error) {
+	descriptionList := strings.Join(descriptions, "\n  * ")
+	fmt.Printf("This Stripe Sample requires a few pre-existing resources to exist in test mode on your Stripe Account:\n  * %s\n", descriptionList)
+
+	label := "auto-create behavior"
+	prompt := "Would you like us to automatically create these and configure their IDs?"
+	opts := []string{"yes", "no"}
+
+	selected, err := selectOptions(label, prompt, opts)
+	if err != nil {
+		return false, err
+	}
+	return selected == "yes", nil
 }
 
 func serverSelectPrompt(servers []string) (string, error) {

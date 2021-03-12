@@ -18,6 +18,9 @@ func TestWriteProfile(t *testing.T) {
 		ProfileName:    "tests",
 		TestModeAPIKey: "sk_test_123",
 		DisplayName:    "test-account-display-name",
+		StripeSampleResourceIDs: map[string]string{
+			"stripe_samples_price_recurring_basic_id": "pr_xyz",
+		},
 	}
 
 	c := &Config{
@@ -42,6 +45,7 @@ func TestWriteProfile(t *testing.T) {
 [tests]
   device_name = "st-testing"
   display_name = "test-account-display-name"
+  stripe_samples_price_recurring_basic_id = "pr_xyz"
   test_mode_api_key = "sk_test_123"
 `
 	require.EqualValues(t, expectedConfig, string(configValues))

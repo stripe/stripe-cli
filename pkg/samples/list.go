@@ -108,7 +108,7 @@ func (s *Samples) GetSamples(mode string) map[string]*SampleData {
 		return list
 	}
 
-	// Reduce the amount of request to GitHub
+	// Reduce the number of requests to GitHub
 	var noNetwork bool
 	switch mode {
 	case "list":

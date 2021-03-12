@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 type mockGit struct {
@@ -54,6 +55,12 @@ func (mg mockGit) Clone(appCachePath, _ string) error {
 		  "clients": ["html"],
 		  "servers": ["node", "python", "ruby"]
 	  }
+  ],
+  "requiredResources": [
+	  {
+		  "name": "stripe_samples_price_recurring_basic_id",
+		  "envVar": "BASIC_PRICE_ID"
+	  }
   ]
 }`
 
@@ -85,10 +92,19 @@ func TestInitialize(t *testing.T) {
 		Git: mockGit{
 			fs: fs,
 		},
+		Config: &config.Config{
+			Profile: config.Profile{},
+		},
 	}
 
 	err := sample.Initialize(name)
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, sample.sampleConfig.integrationNames(), []string{"webhooks", "no-webhooks"})
 	assert.ElementsMatch(t, sample.sampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+	missing := sample.MissingRequiredResources()
+	missingNames := []string{}
+	for _, m := range missing {
+		missingNames = append(missingNames, m.name)
+	}
+	assert.ElementsMatch(t, missingNames, []string{"stripe_samples_price_recurring_basic_id"})
 }
