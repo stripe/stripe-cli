@@ -29,7 +29,7 @@ setVersion () {
 
 downloadWindowsArtifacts() {
   echo "Dowloading Windows artifacts..."
-  FILES=$(curl -s https://api.github.com/repos/stripe/stripe-cli/releases/latest -u $GITHUB_TOKEN: \
+  FILES=$(curl -s "https://api.github.com/repos/stripe/stripe-cli/releases/latest" -u $GITHUB_TOKEN: \
 | jq -r ".assets[].browser_download_url" \
 | grep "windows")
   echo "$FILES"
@@ -55,7 +55,7 @@ virustotalUpload () {
 
     echo "Uploading to VirusTotal..."
 
-    RESPONSE=$(curl -s https://www.virustotal.com/vtapi/v2/file/scan -X POST -F "apikey=$VIRUSTOTAL_API_KEY" -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
+    RESPONSE=$(curl -s "https://www.virustotal.com/vtapi/v2/file/scan" -X POST -F "apikey=$VIRUSTOTAL_API_KEY" -F "file=@./stripe.exe" -w "HTTPSTATUS:%{http_code}")
     BODY=$(echo $RESPONSE | sed -e 's/HTTPSTATUS\:.*//g')
     RESPONSE_CODE=$(echo $RESPONSE | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
 
@@ -69,7 +69,7 @@ virustotalUpload () {
     echo "Adding comment..."
 
     SHA256=$(echo $BODY | jq -r ".sha256")
-    RESPONSE_CODE=$(curl https://www.virustotal.com/vtapi/v2/comments/put -X POST -d "apikey=$VIRUSTOTAL_API_KEY" -d "resource=$SHA256" -d "comment=Stripe CLI $VERSION, uncompressed from $i" -o /dev/null -w "%{http_code}")
+    RESPONSE_CODE=$(curl "https://www.virustotal.com/vtapi/v2/comments/put" -X POST -d "apikey=$VIRUSTOTAL_API_KEY" -d "resource=$SHA256" -d "comment=Stripe CLI $VERSION, uncompressed from $i" -o /dev/null -w "%{http_code}")
 
     if [[ "$(echo $RESPONSE_CODE | head -c2)" != "20" ]]; then
       echo "Unable to add comment, HTTP response code: $RESPONSE_CODE"
