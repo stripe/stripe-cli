@@ -31,7 +31,8 @@ downloadWindowsArtifacts() {
   echo "Dowloading Windows artifacts..."
   FILES=$(curl -s "https://api.github.com/repos/stripe/stripe-cli/releases/latest" -u $GITHUB_TOKEN: \
 | jq -r ".assets[].browser_download_url" \
-| grep "windows")
+| grep "windows" \
+| grep "zip")
   echo "$FILES"
   for i in $FILES; do
     RESPONSE_CODE=$(curl -L -O -w "%{response_code}" "$i")
