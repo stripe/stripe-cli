@@ -32,6 +32,13 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      -
+        name: Docker Login
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -43,8 +50,6 @@ jobs:
           args: release -f .goreleaser/linux.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       - name: Upload to Bintray
         run: |
           scripts/publish-deb-to-bintray.sh
