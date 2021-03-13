@@ -17,6 +17,15 @@ builds:
       - darwin
     goarch:
       - amd64
+  - id: stripe-darwin-arm
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    main: ./cmd/stripe/main.go
+    goos:
+      - darwin
+    goarch:
+      - arm64
 archives:
   - replacements:
       darwin: mac-os
