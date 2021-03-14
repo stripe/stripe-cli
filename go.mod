@@ -11,6 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/iancoleman/strcase v0.1.1
+	github.com/imdario/mergo v0.3.12
 	github.com/joho/godotenv v1.3.0
 	github.com/kevinburke/ssh_config v0.0.0-20201106050909-4977a11b4351 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -35,7 +36,6 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.7.0
-	github.com/thedevsaddam/gojsonq v2.3.0+incompatible
 	github.com/tidwall/gjson v1.6.8
 	github.com/tidwall/pretty v1.0.5
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
