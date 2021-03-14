@@ -10,7 +10,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/logrusorgru/aurora"
 	"github.com/tidwall/pretty"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 var darkTerminalStyle = &pretty.Style{
@@ -182,7 +182,7 @@ func StrikeThrough(text string) string {
 func isTerminal(w io.Writer) bool {
 	switch v := w.(type) {
 	case *os.File:
-		return terminal.IsTerminal(int(v.Fd()))
+		return term.IsTerminal(int(v.Fd()))
 	default:
 		return false
 	}

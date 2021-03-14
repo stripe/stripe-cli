@@ -9,6 +9,7 @@ import (
 
 // Events is a mapping of pre-built trigger events and the corresponding json file
 var Events = map[string]string{
+	"account.updated":                          "/account.updated.json",
 	"balance.available":                        "/balance.available.json",
 	"charge.captured":                          "/charge.captured.json",
 	"charge.dispute.created":                   "/charge.disputed.created.json",
