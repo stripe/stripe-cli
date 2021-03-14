@@ -1,5 +1,3 @@
-//go:generate go run -tags=dev vfsgen.go
-
 package fixtures
 
 import (
@@ -75,7 +73,7 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 	var err error
 
 	if _, ok := reverseMap()[file]; ok {
-		f, err := FS.Open(file)
+		f, err := triggers.Open(file)
 		if err != nil {
 			return nil, err
 		}
