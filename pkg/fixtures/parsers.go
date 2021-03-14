@@ -112,7 +112,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	for key, value := range params {
 		// Skip any params with nil values. This is used in
 		// conjunction with the `--remove` flag
-		if reflect.ValueOf(value).IsNil() {
+		if reflect.ValueOf(value).Type() == nil {
 			continue
 		}
 
@@ -250,9 +250,9 @@ func (fxt *Fixture) parseQuery(value string) string {
 		result := fxt.responses[name].Get(query.Query)
 		if len(result.String()) != 0 {
 			return result.String()
-		} else {
-			return value
 		}
+
+		return value
 	}
 
 	return value
