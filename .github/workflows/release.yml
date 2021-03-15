@@ -20,7 +20,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: v0.157.0
+          version: v0.159.0
           args: release -f .goreleaser/mac.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -46,7 +46,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: v0.157.0
+          version: v0.159.0
           args: release -f .goreleaser/linux.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -74,10 +74,17 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
-          version: v0.157.0
+          version: v0.159.0
           args: release -f .goreleaser/windows.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+
+  upload-to-virustotal:
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v2
       - name: Upload to VirusTotal
         run: scripts/upload-zip-to-virustotal.sh
         shell: bash

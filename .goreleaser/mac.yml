@@ -39,7 +39,7 @@ changelog:
       - "^docs:"
       - "^test:"
 checksum:
-  name_template: "{{ .ProjectName }}-checksums.txt"
+  name_template: "{{ .ProjectName }}-mac-checksums.txt"
 snapshot:
   name_template: "{{ .Tag }}-next"
 brews:
