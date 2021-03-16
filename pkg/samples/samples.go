@@ -28,8 +28,7 @@ type sampleConfig struct {
 	PostInstall     map[string]string         `json:"postInstall"`
 	Integrations    []sampleConfigIntegration `json:"integrations"`
 
-	// Some samples need to be configured with the ids of
-	// particular stripe resources (typically products or prices)
+	// For auto-creating resources during `stripe samples create`.
 	RequiredResources []requiredResourceSampleConfig `json:"requiredResources"`
 }
 
@@ -291,10 +290,13 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
-// In order to work properly, some stripe samples require the .env file to be
-// populated with the ids of resources -- often of a product or price -- that
-// needs to exist on the user's account. The `RequiredResource` struct is
-// a template for a particular kind of required resource.
+// RequiredResource is for auto-creating resources during
+
+// In order to work properly, some stripe samples require the .env
+// file to be populated with the ids of resources -- often of a
+// product or price -- that needs to exist on the user's account.
+// The `RequiredResource` struct is a template for a particular
+// kind of required resource.
 type RequiredResource struct {
 	// `name` describes how the RequiredResource is identified both inside
 	// the stripe sample's .cli.json and how it is persisted inside the
