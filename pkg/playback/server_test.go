@@ -155,6 +155,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
+
 	// make sure server is ready
 	time.Sleep(10 * time.Millisecond)
 
