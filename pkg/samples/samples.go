@@ -3,7 +3,6 @@ package samples
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -294,10 +293,10 @@ func (s *Samples) Copy(target string) error {
 
 // In order to work properly, some stripe samples require the .env file to be
 // populated with the ids of resources -- often of a product or price -- that
-// needs to exist on the user's account. The `requiredResource` struct is
+// needs to exist on the user's account. The `RequiredResource` struct is
 // a template for a particular kind of required resource.
-type requiredResource struct {
-	// `name` describes how the requiredResource is identified both inside
+type RequiredResource struct {
+	// `name` describes how the RequiredResource is identified both inside
 	// the stripe sample's .cli.json and how it is persisted inside the
 	// user's stripe-cli profile.
 	name string
@@ -310,7 +309,7 @@ type requiredResource struct {
 	data     []string
 }
 
-var requiredResources []requiredResource = []requiredResource{
+var requiredResources []RequiredResource = []RequiredResource{
 	{
 		name:        "stripe_samples_price_recurring_basic_id",
 		description: "recurring price for a 'basic' plan",
@@ -335,7 +334,7 @@ var requiredResources []requiredResource = []requiredResource{
 	},
 }
 
-func getRequiredResource(name string) *requiredResource {
+func getRequiredResource(name string) *RequiredResource {
 	for _, rr := range requiredResources {
 		if rr.name == name {
 			return &rr
@@ -350,7 +349,7 @@ func getRequiredResource(name string) *requiredResource {
 func (s *Samples) CreateRequiredResource(requiredResourceName string) (string, error) {
 	rr := getRequiredResource(requiredResourceName)
 	if rr == nil {
-		return "", errors.New(fmt.Sprintf("Unexpected: tried to create unknown required resource %s", requiredResourceName))
+		return "", fmt.Errorf("Unexpected: tried to create unknown required resource %s", requiredResourceName)
 	}
 
 	base := requests.Base{
@@ -377,7 +376,7 @@ func (s *Samples) CreateRequiredResource(requiredResourceName string) (string, e
 
 	id, ok := fields["id"].(string)
 	if !ok {
-		return "", errors.New(fmt.Sprintf("Unexpected response from stripe API when creating %s, did not contain ID: %s", requiredResourceName, string(bytes)))
+		return "", fmt.Errorf("Unexpected response from stripe API when creating %s, did not contain ID: %s", requiredResourceName, string(bytes))
 	}
 
 	return id, nil
@@ -391,11 +390,11 @@ func (s *Samples) PersistRequiredResourceID(resourceName string, id string) erro
 	return nil
 }
 
-// MissingRequiredResources returns the list of requiredResources that are
+// MissingRequiredResources returns the list of RequiredResources that are
 // indicated in the stripe sample's .cli.json, but don't (yet) have an id
 // stored in the user's stripe-cli config profile.
-func (s *Samples) MissingRequiredResources() []requiredResource {
-	ret := []requiredResource{}
+func (s *Samples) MissingRequiredResources() []RequiredResource {
+	ret := []RequiredResource{}
 	for _, rrConfig := range s.sampleConfig.RequiredResources {
 		rr := getRequiredResource(rrConfig.Name)
 		if rr == nil {
