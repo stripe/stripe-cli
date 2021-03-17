@@ -59,6 +59,9 @@ type Config struct {
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
 
+	// Specifies the format to print to stdout.
+	Format string
+
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
 
@@ -230,6 +233,25 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	return false
 }
 
+// This function outputs the event payload in the format specified.
+// Currently, only supports JSON.
+func (p *Proxy) formatOutput(format string, eventPayload string) {
+	var event map[string]interface{}
+	err := json.Unmarshal([]byte(eventPayload), &event)
+	if err != nil {
+		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		return
+	}
+	switch format {
+	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
+	case outputFormatJSON:
+		outputJSON, _ := json.Marshal(event)
+		fmt.Printf("%s\n", outputJSON)
+	default:
+		fmt.Printf("Unrecognized output format %s" + format)
+	}
+}
+
 func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	if msg.WebhookEvent == nil {
 		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
@@ -263,9 +285,12 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		if p.cfg.PrintJSON {
+		switch {
+		case p.cfg.PrintJSON:
 			fmt.Println(webhookEvent.EventPayload)
-		} else {
+		case len(p.cfg.Format) > 0:
+			p.formatOutput(p.cfg.Format, webhookEvent.EventPayload)
+		default:
 			maybeConnect := ""
 			if evt.isConnect() {
 				maybeConnect = "connect "
@@ -416,6 +441,8 @@ const (
 	maxHeaderKeySize   = 50
 	maxHeaderValueSize = 200
 )
+
+const outputFormatJSON = "JSON"
 
 //
 // Private functions
