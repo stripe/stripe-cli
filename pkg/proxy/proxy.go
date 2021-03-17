@@ -234,7 +234,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 }
 
 // This function outputs the event payload in the format specified.
-// Currently, only supports JSON.
+// Currently only supports JSON.
 func (p *Proxy) formatOutput(format string, eventPayload string) {
 	var event map[string]interface{}
 	err := json.Unmarshal([]byte(eventPayload), &event)
@@ -248,7 +248,7 @@ func (p *Proxy) formatOutput(format string, eventPayload string) {
 		outputJSON, _ := json.Marshal(event)
 		fmt.Printf("%s\n", outputJSON)
 	default:
-		fmt.Printf("Unrecognized output format %s" + format)
+		fmt.Printf("Unrecognized output format %s\n" + format)
 	}
 }
 
