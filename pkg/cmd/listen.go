@@ -66,10 +66,10 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
-	lc.cmd.Flags().MarkDeprecated("print-json", " This flag is deprecated. Please use `--format JSON` instead")
-	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of request logs
+	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead")
+	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
 	Acceptable values:
-		'JSON' - Output logs in JSON format`)
+		'JSON' - Output webhook events in JSON format`)
 	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
