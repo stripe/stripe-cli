@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -154,6 +155,9 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
+
+	// make sure server is ready
+	time.Sleep(10 * time.Millisecond)
 
 	// Send it the same 2 requests:
 	replay1, err := http.Get("http://localhost:8080/")
