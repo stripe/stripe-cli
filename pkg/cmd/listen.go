@@ -66,7 +66,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
-	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead")
+	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead and use `jq` if you need to process the JSON in the terminal.")
 	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
 	Acceptable values:
 		'JSON' - Output webhook events in JSON format`)

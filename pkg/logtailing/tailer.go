@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -257,7 +258,7 @@ func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	if t.cfg.OutputFormat == outputFormatJSON {
+	if strings.ToUpper(t.cfg.OutputFormat) == outputFormatJSON {
 		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, false, os.Stdout))
 		return
 	}

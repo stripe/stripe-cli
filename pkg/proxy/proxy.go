@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -242,11 +243,11 @@ func (p *Proxy) formatOutput(format string, eventPayload string) {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return
 	}
-	switch format {
+	switch strings.ToUpper(format) {
 	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
 	case outputFormatJSON:
 		outputJSON, _ := json.Marshal(event)
-		fmt.Printf("%s\n", outputJSON)
+		fmt.Println(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
 	default:
 		fmt.Printf("Unrecognized output format %s\n" + format)
 	}
