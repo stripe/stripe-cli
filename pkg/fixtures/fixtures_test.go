@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -34,7 +35,17 @@ const testFixture = `
 				"address": {
 					"line1": "1 Planet Express St",
 					"city": "New New York"
-				}
+				},
+				"tax_id_data": [
+					{
+						"type": "type_0",
+						"value": "value_0"
+					},
+					{
+						"type": "type_1",
+						"value": "value_1"
+					}
+				]
 			}
 		},
 		{
@@ -102,21 +113,37 @@ func TestParseInterface(t *testing.T) {
 	address["line1"] = "1 Planet Express St"
 	address["city"] = "New New York"
 
+	// array of hashes
+	taxIDData := make([]interface{}, 2)
+	taxIDZero := make(map[string]interface{})
+	taxIDZero["type"] = "type_0"
+	taxIDZero["value"] = "value_0"
+	taxIDOne := make(map[string]interface{})
+	taxIDOne["type"] = "type_1"
+	taxIDOne["value"] = "value_1"
+	taxIDData[0] = taxIDZero
+	taxIDData[1] = taxIDOne
+
 	data := make(map[string]interface{})
 	data["name"] = "Bender Bending Rodriguez"
 	data["email"] = "bender@planex.com"
 	data["address"] = address
-
+	data["tax_id_data"] = taxIDData
 	fxt := Fixture{}
 
 	output := (fxt.parseInterface(data))
+	fmt.Printf("Output: %v\n", output)
 	sort.Strings(output)
 
-	require.Equal(t, len(output), 4)
+	require.Equal(t, len(output), 8)
 	require.Equal(t, output[0], "address[city]=New New York")
 	require.Equal(t, output[1], "address[line1]=1 Planet Express St")
 	require.Equal(t, output[2], "email=bender@planex.com")
 	require.Equal(t, output[3], "name=Bender Bending Rodriguez")
+	require.Equal(t, output[4], "tax_id_data[0][type]=type_0")
+	require.Equal(t, output[5], "tax_id_data[0][value]=value_0")
+	require.Equal(t, output[6], "tax_id_data[1][type]=type_1")
+	require.Equal(t, output[7], "tax_id_data[1][value]=value_1")
 }
 
 func TestParseWithQueryIgnoreDefault(t *testing.T) {
