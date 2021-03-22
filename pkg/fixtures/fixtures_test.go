@@ -2,7 +2,6 @@ package fixtures
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -35,17 +34,7 @@ const testFixture = `
 				"address": {
 					"line1": "1 Planet Express St",
 					"city": "New New York"
-				},
-				"tax_id_data": [
-					{
-						"type": "type_0",
-						"value": "value_0"
-					},
-					{
-						"type": "type_1",
-						"value": "value_1"
-					}
-				]
+				}
 			}
 		},
 		{
@@ -132,7 +121,6 @@ func TestParseInterface(t *testing.T) {
 	fxt := Fixture{}
 
 	output := (fxt.parseInterface(data))
-	fmt.Printf("Output: %v\n", output)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
