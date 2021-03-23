@@ -232,7 +232,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
-			// A string can be a regular value or a one we need to look up first, ex: ${product.id}
+			// A string can be a regular value or one we need to look up first, ex: ${product.id}
 			data = append(data, fmt.Sprintf("%s=%s", keyname, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
@@ -285,7 +285,7 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string) []string {
 	for _, value := range params {
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
-			// A string can be a regular value or a one we need to look up first, ex: ${product.id}
+			// A string can be a regular value or one we need to look up first, ex: ${product.id}
 			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s[]=%v", parent, v.Int()))
