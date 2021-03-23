@@ -274,19 +274,22 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	return data
 }
 
+// This function interates through each elemenent in the array and handles the parsing accordingly depending on the type of array.
 func (fxt *Fixture) parseArray(params []interface{}, parent string) []string {
 	data := make([]string, len(params))
+	// The index is only used for arrays of maps
 	index := -1
 	for _, value := range params {
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
+			// A string can be a regular value or a one we need to look up first, ex: ${product.id}
 			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s[]=%v", parent, v.Int()))
 		case reflect.Map:
-			index++
 			m := value.(map[string]interface{})
-			// When we parse arrays of maps, we want to track an index for the request
+			// When we parse arrays of maps, we want to track the index of the element for the request
+			index++
 			data = append(data, fxt.parseMap(m, parent, index)...)
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
