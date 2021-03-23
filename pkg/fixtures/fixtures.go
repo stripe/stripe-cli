@@ -200,7 +200,7 @@ func (fxt *Fixture) parseInterface(params interface{}) []string {
 		data = append(data, fxt.parseMap(m, "", -1)...)
 	case reflect.Array:
 		a := params.([]interface{})
-		data = append(data, fxt.parseArray(a, "", -1)...)
+		data = append(data, fxt.parseArray(a, "")...)
 	default:
 	}
 
@@ -221,8 +221,10 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	for key, value := range params {
 		switch {
 		case parent != "" && index >= 0:
+			// ex: lines[0][id] = "id_0000", lines[1][id] = "id_1234", etc.
 			keyname = fmt.Sprintf("%s[%d][%s]", parent, index, key)
 		case parent != "":
+			// ex: metadata[name] = "blah", metadata[timestamp] = 1231341525, etc.
 			keyname = fmt.Sprintf("%s[%s]", parent, key)
 		default:
 			keyname = key
@@ -230,6 +232,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
+			// A string can be a regular value or one we need to look up first, ex: ${product.id}
 			data = append(data, fmt.Sprintf("%s=%s", keyname, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s=%v", keyname, v.Int()))
@@ -264,7 +267,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
 
-			result := fxt.parseArray(a, keyname, index)
+			result := fxt.parseArray(a, keyname)
 			data = append(data, result...)
 		default:
 			continue
@@ -274,22 +277,27 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	return data
 }
 
-func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) []string {
+// This function interates through each element in the array and handles the parsing accordingly depending on the type of array.
+func (fxt *Fixture) parseArray(params []interface{}, parent string) []string {
 	data := make([]string, len(params))
-
+	// The index is only used for arrays of maps
+	index := -1
 	for _, value := range params {
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
+			// A string can be a regular value or one we need to look up first, ex: ${product.id}
 			data = append(data, fmt.Sprintf("%s[]=%s", parent, fxt.parseQuery(v.String())))
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			data = append(data, fmt.Sprintf("%s[]=%v", parent, v.Int()))
 		case reflect.Map:
 			m := value.(map[string]interface{})
-			// When we parse arrays of maps, we want to track an index for the request
-			data = append(data, fxt.parseMap(m, parent, index+1)...)
+			// When we parse arrays of maps, we want to track the index of the element for the request
+			// ex: lines[0][id] = "id_0000", lines[1][id] = "id_1234", etc.
+			index++
+			data = append(data, fxt.parseMap(m, parent, index)...)
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
-			data = append(data, fxt.parseArray(a, parent, index)...)
+			data = append(data, fxt.parseArray(a, parent)...)
 		default:
 			continue
 		}
