@@ -77,7 +77,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	} else {
 		exists, _ := afero.Exists(tc.fs, event)
 		if !exists {
-			return fmt.Errorf(fmt.Sprintf("event %s is not supported.", event))
+			return fmt.Errorf(fmt.Sprintf("The event ‘%s’ is not supported by the Stripe CLI.", event))
 		}
 
 		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, event)
