@@ -33,6 +33,7 @@ type listenCmd struct {
 	livemode              bool
 	useConfiguredWebhooks bool
 	printJSON             bool
+	format                string
 	skipVerify            bool
 	onlyPrintSecret       bool
 	skipUpdate            bool
@@ -64,7 +65,11 @@ Stripe account.`,
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
-	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout")
+	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
+	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead and use `jq` if you need to process the JSON in the terminal.")
+	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
+	Acceptable values:
+		'JSON' - Output webhook events in JSON format`)
 	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
@@ -170,6 +175,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		APIBaseURL:          lc.apiBaseURL,
 		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
+		Format:              lc.format,
 		UseLatestAPIVersion: lc.latestAPIVersion,
 		SkipVerify:          lc.skipVerify,
 		Log:                 log.StandardLogger(),
