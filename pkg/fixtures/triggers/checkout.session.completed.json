@@ -36,11 +36,8 @@
     },
     {
       "name": "payment_page",
-      "path": "/v1/payment_pages",
-      "method": "get",
-      "params": {
-        "session_id": "${checkout_session:id}"
-      }
+      "path": "/v1/payment_pages/${checkout_session:id}",
+      "method": "get"
     },
     {
       "name": "payment_method",
