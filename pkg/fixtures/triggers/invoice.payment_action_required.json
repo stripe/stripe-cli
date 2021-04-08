@@ -58,6 +58,7 @@
       "name": "pay_invoice",
       "path": "/v1/invoices/${invoice:id}/pay",
       "method": "post",
+      "expected_error_type": "card_error",
       "params": {
         "payment_method": "${payment_method:id}"
       }
