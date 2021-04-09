@@ -65,10 +65,11 @@
     },
     {
       "name": "payment_page_confirm",
-      "path": "/v1/payment_pages/${payment_page:id}/confirm",
+      "path": "/v1/payment_pages/${checkout_session:id}/confirm",
       "method": "post",
       "params": {
-        "payment_method": "${payment_method:id}"
+        "payment_method": "${payment_method:id}",
+        "expected_amount": 3000
       }
     }
   ]
