@@ -22,6 +22,7 @@ type Profile struct {
 	TestModePublishableKey string
 	TerminalPOSDeviceID    string
 	DisplayName            string
+	AccountID              string
 }
 
 // CreateProfile creates a profile when logging in
@@ -206,6 +207,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.DisplayName != "" {
 		runtimeViper.Set(p.GetConfigField("display_name"), strings.TrimSpace(p.DisplayName))
+	}
+
+	if p.AccountID != "" {
+		runtimeViper.Set(p.GetConfigField("account_id"), strings.TrimSpace(p.AccountID))
 	}
 
 	runtimeViper.MergeInConfig()

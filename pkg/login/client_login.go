@@ -86,6 +86,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	config.Profile.TestModeAPIKey = response.TestModeAPIKey
 	config.Profile.TestModePublishableKey = response.TestModePublishableKey
 	config.Profile.DisplayName = response.AccountDisplayName
+	config.Profile.AccountID = response.AccountID
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
