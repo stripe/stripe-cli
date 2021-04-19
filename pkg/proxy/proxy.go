@@ -217,7 +217,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	if msg.Endpoint.APIVersion != nil && !p.cfg.UseLatestAPIVersion {
 		p.cfg.Log.WithFields(log.Fields{
 			"prefix":      "proxy.Proxy.filterWebhookEvent",
-			"api_version": msg.Endpoint.APIVersion,
+			"api_version": getAPIVersionString(msg.Endpoint.APIVersion),
 		}).Debugf("Received event with non-default API version, ignoring")
 
 		return true
@@ -267,15 +267,24 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
-	if p.filterWebhookEvent(webhookEvent) {
-		return
-	}
-
 	var evt stripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		return
+	}
+
+	p.cfg.Log.WithFields(log.Fields{
+		"prefix":                  "proxy.Proxy.processWebhookEvent",
+		"webhook_id":              webhookEvent.WebhookID,
+		"webhook_conversation_id": webhookEvent.WebhookConversationID,
+		"event_id":                evt.ID,
+		"event_type":              evt.Type,
+		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
+	}).Trace("Webhook event trace")
+
+	if p.filterWebhookEvent(webhookEvent) {
 		return
 	}
 
@@ -481,4 +490,16 @@ func truncate(str string, maxByteLength int, ellipsis bool) string {
 
 func isUTF8ContinuationByte(b byte) bool {
 	return (b & 0xC0) == 0x80
+}
+
+func getAPIVersionString(str *string) string {
+	var APIVersion string
+
+	if str == nil {
+		APIVersion = "null"
+	} else {
+		APIVersion = *str
+	}
+
+	return APIVersion
 }
