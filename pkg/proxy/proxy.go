@@ -275,13 +275,13 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-  p.cfg.Log.WithFields(log.Fields{
-		"prefix":                   "proxy.Proxy.processWebhookEvent",
-		"webhook_id":               webhookEvent.WebhookID,
-		"webhook_conversation_id":  webhookEvent.WebhookConversationID,
-		"event_id":                 evt.ID,
-		"event_type":               evt.Type,
-		"api_version":              getAPIVersionString(msg.Endpoint.APIVersion),
+	p.cfg.Log.WithFields(log.Fields{
+		"prefix":                  "proxy.Proxy.processWebhookEvent",
+		"webhook_id":              webhookEvent.WebhookID,
+		"webhook_conversation_id": webhookEvent.WebhookConversationID,
+		"event_id":                evt.ID,
+		"event_type":              evt.Type,
+		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
 	}).Trace("Webhook event trace")
 
 	if p.filterWebhookEvent(webhookEvent) {
@@ -493,13 +493,13 @@ func isUTF8ContinuationByte(b byte) bool {
 }
 
 func getAPIVersionString(str *string) string {
-  var APIVersion string
+	var APIVersion string
 
-  if str == nil {
-    APIVersion = "null"
-  } else {
-    APIVersion = *str
-  }
+	if str == nil {
+		APIVersion = "null"
+	} else {
+		APIVersion = *str
+	}
 
-  return APIVersion
+	return APIVersion
 }
