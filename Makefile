@@ -29,7 +29,7 @@ cover: test
 
 # gofmt and goimports all go files
 fmt:
-	find . -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+	find . -path ./rpc -prune -false -o -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
 .PHONY: fmt
 
 # Run all the linters
@@ -110,5 +110,27 @@ clean:
 	rm -f coverage.txt
 	rm -rf dist/
 .PHONY: clean
+
+# Compile protobuf definitions and generate protobuf docs
+protoc: protoc-compile protoc-docs
+.PHONY: protoc
+
+# Compile protobuf definitions
+protoc-compile:
+	protoc \
+		--go_out=plugins=grpc:./rpc \
+		--go_opt=module=github.com/stripe/stripe-cli/rpc \
+		--proto_path ./rpc \
+		./rpc/*.proto
+.PHONY: protoc-compile
+
+# Generate protobuf docs
+protoc-docs:
+	protoc \
+		--doc_out=./docs/rpc \
+		--doc_opt=markdown,commands.md \
+		--proto_path ./rpc \
+		./rpc/*.proto
+.PHONY: protoc-docs
 
 .DEFAULT_GOAL := build

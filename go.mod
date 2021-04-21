@@ -39,10 +39,12 @@ require (
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
-	golang.org/x/net v0.0.0-20210220033124-5f55cee0dc0d // indirect
-	golang.org/x/sys v0.0.0-20210220050731-9a76102bfb43
+	golang.org/x/net v0.0.0-20210420072503-d25e30425868 // indirect
+	golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
-	golang.org/x/text v0.3.5 // indirect
+	google.golang.org/genproto v0.0.0-20210420162539-3c870d7478d2 // indirect
+	google.golang.org/grpc v1.37.0
+	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0
