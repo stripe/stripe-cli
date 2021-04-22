@@ -1,6 +1,7 @@
 SOURCE_FILES?=./...
 TEST_PATTERN?=.
 TEST_OPTIONS?=
+PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with code $$?. Ensure you have the latest version of protoc: https://grpc.io/docs/protoc-installation/\n"
 
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
@@ -111,32 +112,45 @@ clean:
 	rm -rf dist/
 .PHONY: clean
 
-# Compile protobuf definitions and generate protobuf docs
-protoc: protoc-compile protoc-docs
+# Handle all protobuf generation.
+protoc:
+	@go get github.com/golang/protobuf/protoc-gen-go
+	@go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+	@go mod tidy
+	make protoc-gen-all
 .PHONY: protoc
 
-# Generate all files from protobuf definitions and compare against head
-protoc-ci: protoc
+# Generate all files from protobuf definitions and compare against head.
+# Because protoc comments its version in the files, ignore comments when
+# diffing to avoid false positives.
+protoc-ci: protoc-gen-all
 	@git diff HEAD
-	@git diff-index --quiet HEAD
+	@git diff-index -G"^[^\/]|^[\/][^\/]" --quiet HEAD
 .PHONY: proto-ci
 
-# Compile protobuf definitions
-protoc-compile:
-	protoc \
+protoc-gen-all: protoc-gen-code protoc-gen-docs
+.PHONY: protoc-gen-all
+
+# Generate protobuf go code
+protoc-gen-code:
+	@protoc \
 		--go_out=plugins=grpc:./rpc \
 		--go_opt=module=github.com/stripe/stripe-cli/rpc \
 		--proto_path ./rpc \
-		./rpc/*.proto
+		./rpc/*.proto \
+	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
+	@echo "Successfully compiled proto files"
 .PHONY: protoc-compile
 
 # Generate protobuf docs
-protoc-docs:
-	protoc \
+protoc-gen-docs:
+	@protoc \
 		--doc_out=./docs/rpc \
 		--doc_opt=markdown,commands.md \
 		--proto_path ./rpc \
-		./rpc/*.proto
+		./rpc/*.proto \
+	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
+	@echo "Successfully generated proto docs"
 .PHONY: protoc-docs
 
 .DEFAULT_GOAL := build

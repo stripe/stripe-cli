@@ -38,11 +38,11 @@ require (
 	github.com/tidwall/pretty v1.0.5
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/xanzy/ssh-agent v0.3.0 // indirect
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
+	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
 	golang.org/x/net v0.0.0-20210420072503-d25e30425868 // indirect
 	golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d
-	google.golang.org/genproto v0.0.0-20210420162539-3c870d7478d2 // indirect
+	google.golang.org/genproto v0.0.0-20210422153429-2279cbceda62 // indirect
 	google.golang.org/grpc v1.37.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/ini.v1 v1.62.0 // indirect
