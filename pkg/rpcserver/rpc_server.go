@@ -87,12 +87,12 @@ func (srv *RPCServer) Run(ctx context.Context) {
 		Address: lis.Addr().String(),
 	})
 	if err != nil {
-		srv.cfg.Log.Fatalf("Failed write server config to stderr: %v", err)
+		srv.cfg.Log.Fatalf("Failed to write server config to stderr: %v", err)
 	}
 
 	fmt.Fprintln(os.Stderr, string(configOutput))
 
 	if err := grpcServer.Serve(lis); err != nil {
-		srv.cfg.Log.Fatalf("Failed to serve gRPC server %s: %v", lis.Addr().String(), err)
+		srv.cfg.Log.Fatalf("Failed to serve gRPC server on %s: %v", lis.Addr().String(), err)
 	}
 }

@@ -12,7 +12,8 @@ import (
 
 const requiredHeader = "sec-x-stripe-cli"
 
-// Only allow requests from clients with a sec-x-stripe-cli header
+// Only allow requests from clients that have the required header. This helps prevent malicious
+// websites from making requests. See https://fetch.spec.whatwg.org/#forbidden-header-name
 func authorize(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
