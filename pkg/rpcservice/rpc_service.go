@@ -1,4 +1,4 @@
-package rpcserver
+package rpcservice
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 )
 
-// Config provides the configuration for the gRPC server
+// Config provides the configuration for the RPC service
 type Config struct {
 	// Port is the port number to listen to on localhost
 	Port int
@@ -25,8 +25,8 @@ type Config struct {
 	Log *log.Logger
 }
 
-// RPCServer is the gRPC server
-type RPCServer struct {
+// RPCService is the gRPC server and implements the protobuf service
+type RPCService struct {
 	cfg *Config
 }
 
@@ -36,19 +36,19 @@ type ConfigOutput struct {
 	Address string `json:"address"`
 }
 
-// New creates a new gRPC server
-func New(cfg *Config) *RPCServer {
+// New creates a new RPC service
+func New(cfg *Config) *RPCService {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
 
-	return &RPCServer{
+	return &RPCService{
 		cfg: cfg,
 	}
 }
 
-// Run starts the gRPC server
-func (srv *RPCServer) Run(ctx context.Context) {
+// Run starts a gRPC server on localhost
+func (srv *RPCService) Run(ctx context.Context) {
 	address := "127.0.0.1:"
 	if srv.cfg.Port != 0 {
 		address = fmt.Sprintf("%s%d", address, srv.cfg.Port)

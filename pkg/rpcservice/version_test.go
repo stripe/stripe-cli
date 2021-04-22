@@ -1,4 +1,4 @@
-package rpcserver
+package rpcservice
 
 import (
 	"context"
@@ -21,9 +21,9 @@ var lis *bufconn.Listener
 func init() {
 	lis = bufconn.Listen(bufSize)
 	grpcServer := grpc.NewServer()
-	server := New(&Config{})
+	srv := New(&Config{})
 
-	rpc.RegisterStripeCLIServer(grpcServer, server)
+	rpc.RegisterStripeCLIServer(grpcServer, srv)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

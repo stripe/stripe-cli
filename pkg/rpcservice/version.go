@@ -1,4 +1,4 @@
-package rpcserver
+package rpcservice
 
 import (
 	"context"
@@ -8,6 +8,6 @@ import (
 )
 
 // Version returns the version of the Stripe CLI
-func (s *RPCServer) Version(ctx context.Context, req *rpc.VersionRequest) (*rpc.VersionResponse, error) {
+func (d *RPCService) Version(ctx context.Context, req *rpc.VersionRequest) (*rpc.VersionResponse, error) {
 	return &rpc.VersionResponse{Version: version.Version}, nil
 }

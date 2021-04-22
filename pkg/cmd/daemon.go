@@ -10,7 +10,7 @@ import (
 
 	"context"
 
-	"github.com/stripe/stripe-cli/pkg/rpcserver"
+	"github.com/stripe/stripe-cli/pkg/rpcservice"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -54,7 +54,7 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 }
 
 func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
-	srv := rpcserver.New(&rpcserver.Config{
+	srv := rpcservice.New(&rpcservice.Config{
 		Port: dc.port,
 		Log:  log.StandardLogger(),
 	})
