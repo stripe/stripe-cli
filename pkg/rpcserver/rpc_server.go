@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
-	"os/signal"
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
@@ -48,29 +47,8 @@ func New(cfg *Config) *RPCServer {
 	}
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		onCancel()
-		cancel()
-	}()
-	return ctx
-}
-
 // Run starts the gRPC server
 func (srv *RPCServer) Run(ctx context.Context) error {
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "logtailing.Tailer.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
-
 	address := "127.0.0.1:"
 	if srv.cfg.Port != 0 {
 		address = fmt.Sprintf("%s%d", address, srv.cfg.Port)
