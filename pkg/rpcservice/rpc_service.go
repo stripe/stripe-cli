@@ -16,7 +16,7 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 )
 
-// Config provides the configuration for the RPC service
+// Config provides the configuration for the RPC service.
 type Config struct {
 	// Port is the port number to listen to on localhost
 	Port int
@@ -25,12 +25,15 @@ type Config struct {
 	Log *log.Logger
 }
 
-// RPCService is the gRPC server and implements the protobuf service
+// RPCService implements the gRPC interface and starts the gRPC server.
 type RPCService struct {
 	cfg *Config
+
+	grpcServer *grpc.Server
 }
 
-// ConfigOutput is the server config written to stderr for clients to read
+// ConfigOutput is the config that clients will need to connect to the gRPC server. This is printed
+// out for clients to parse.
 type ConfigOutput struct {
 	// Address is the localhost address of the gRPC server
 	Address string `json:"address"`
@@ -42,16 +45,36 @@ func New(cfg *Config) *RPCService {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
 
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(serverUnaryInterceptor),
+		grpc.StreamInterceptor(serverStreamInterceptor),
+	)
+
 	return &RPCService{
-		cfg: cfg,
+		cfg:        cfg,
+		grpcServer: grpcServer,
 	}
 }
 
 // Run starts a gRPC server on localhost
 func (srv *RPCService) Run(ctx context.Context) {
-	address := "127.0.0.1:"
+	lis := srv.createListener()
+
+	srv.printConfig(ConfigOutput{
+		Address: lis.Addr().String(),
+	})
+
+	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
+
+	if err := srv.grpcServer.Serve(lis); err != nil {
+		srv.cfg.Log.Fatalf("Failed to serve gRPC server on %s: %v", lis.Addr().String(), err)
+	}
+}
+
+func (srv *RPCService) createListener() net.Listener {
+	address := "127.0.0.1:" // empty port => an available port is automatically chosen
 	if srv.cfg.Port != 0 {
-		address = fmt.Sprintf("%s%d", address, srv.cfg.Port)
+		address = fmt.Sprint(address, srv.cfg.Port)
 	}
 
 	lis, err := net.Listen("tcp", address)
@@ -73,26 +96,16 @@ func (srv *RPCService) Run(ctx context.Context) {
 		if errors.As(err, &syscallErr) && errors.Is(syscallErr.Err, syscall.EADDRINUSE) {
 			srv.cfg.Log.Fatalf("Failed to listen on %s. Port is already in use.", address)
 		}
+
 		srv.cfg.Log.Fatalf("Failed to listen on %s. Unexpected error: %v", address, err)
 	}
+	return lis
+}
 
-	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(serverUnaryInterceptor),
-		grpc.StreamInterceptor(serverStreamInterceptor),
-	)
-
-	rpc.RegisterStripeCLIServer(grpcServer, srv)
-
-	configOutput, err := json.Marshal(ConfigOutput{
-		Address: lis.Addr().String(),
-	})
-	if err != nil {
+func (srv *RPCService) printConfig(configOutput ConfigOutput) {
+	if configOutputMarshalled, err := json.Marshal(configOutput); err != nil {
 		srv.cfg.Log.Fatalf("Failed to write server config to stderr: %v", err)
-	}
-
-	fmt.Fprintln(os.Stderr, string(configOutput))
-
-	if err := grpcServer.Serve(lis); err != nil {
-		srv.cfg.Log.Fatalf("Failed to serve gRPC server on %s: %v", lis.Addr().String(), err)
+	} else {
+		fmt.Fprintln(os.Stderr, string(configOutputMarshalled))
 	}
 }

@@ -2,15 +2,16 @@ package rpcservice
 
 import (
 	"context"
+	"log"
 	"net"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -20,13 +21,12 @@ var lis *bufconn.Listener
 
 func init() {
 	lis = bufconn.Listen(bufSize)
-	grpcServer := grpc.NewServer()
 	srv := New(&Config{})
 
-	rpc.RegisterStripeCLIServer(grpcServer, srv)
+	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
 
 	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := srv.grpcServer.Serve(lis); err != nil {
 			log.Fatalf("Server exited with error: %v", err)
 		}
 	}()
@@ -36,8 +36,14 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()
 }
 
+func withAuth(ctx context.Context) context.Context {
+	md := metadata.New(map[string]string{requiredHeader: "1"})
+	return metadata.NewOutgoingContext(ctx, md)
+}
+
 func TestVersionReturnsCLIVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := withAuth(context.Background())
+
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
