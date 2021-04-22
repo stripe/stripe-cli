@@ -48,7 +48,7 @@ func New(cfg *Config) *RPCServer {
 }
 
 // Run starts the gRPC server
-func (srv *RPCServer) Run(ctx context.Context) error {
+func (srv *RPCServer) Run(ctx context.Context) {
 	address := "127.0.0.1:"
 	if srv.cfg.Port != 0 {
 		address = fmt.Sprintf("%s%d", address, srv.cfg.Port)
@@ -92,14 +92,7 @@ func (srv *RPCServer) Run(ctx context.Context) error {
 
 	fmt.Fprintln(os.Stderr, string(configOutput))
 
-	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
-			srv.cfg.Log.Fatalf("Failed to serve gRPC server %s: %v", lis.Addr().String(), err)
-		}
-	}()
-
-	for range ctx.Done() {
+	if err := grpcServer.Serve(lis); err != nil {
+		srv.cfg.Log.Fatalf("Failed to serve gRPC server %s: %v", lis.Addr().String(), err)
 	}
-
-	return nil
 }

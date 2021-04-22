@@ -30,7 +30,7 @@ func newDaemonCmd() *daemonCmd {
 client.
 
 Currently, stripe daemon only supports a subset of CLI commands. Documentation is not yet available.`,
-		RunE:   dc.runDaemonCmd,
+		Run:    dc.runDaemonCmd,
 		Hidden: true,
 	}
 	dc.cmd.Flags().IntVar(&dc.port, "port", 0, "The TCP port the daemon will listen to (default: an available port)")
@@ -53,7 +53,7 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
-func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) error {
+func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 	srv := rpcserver.New(&rpcserver.Config{
 		Port: dc.port,
 		Log:  log.StandardLogger(),
@@ -65,10 +65,7 @@ func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err := srv.Run(ctx)
-	if err != nil {
-		return err
-	}
+	go srv.Run(ctx)
 
-	return nil
+	<-ctx.Done()
 }
