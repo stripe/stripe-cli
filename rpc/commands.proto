@@ -2,11 +2,15 @@ syntax = "proto3";
 
 package rpc;
 
+import "samples_list.proto";
 import "version.proto";
 
 option go_package = "github.com/stripe/stripe-cli/rpc";
 
 service StripeCLI {
+  // Get a list of available Stripe samples. Like `stripe samples list`.
+  rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);
+
   // Get the version of the Stripe CLI. Like `stripe version`.
   rpc Version(VersionRequest) returns (VersionResponse);
 }

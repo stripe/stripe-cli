@@ -6,6 +6,11 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [samples_list.proto](#samples_list.proto)
+    - [SamplesListRequest](#rpc.SamplesListRequest)
+    - [SamplesListResponse](#rpc.SamplesListResponse)
+    - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
+  
 - [version.proto](#version.proto)
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
@@ -34,7 +39,66 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="samples_list.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## samples_list.proto
+
+
+
+<a name="rpc.SamplesListRequest"></a>
+
+### SamplesListRequest
+
+
+
+
+
+
+
+<a name="rpc.SamplesListResponse"></a>
+
+### SamplesListResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| samples | [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData) | repeated |  |
+
+
+
+
+
+
+<a name="rpc.SamplesListResponse.SampleData"></a>
+
+### SamplesListResponse.SampleData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
