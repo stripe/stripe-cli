@@ -89,7 +89,7 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 
 	fxt := Fixture{}
 
-	output := (fxt.parseInterface(parsedFixtureData))
+	output, _ := (fxt.parseInterface(parsedFixtureData))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 2)
@@ -120,7 +120,7 @@ func TestParseInterface(t *testing.T) {
 	data["tax_id_data"] = taxIDData
 	fxt := Fixture{}
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
@@ -147,7 +147,7 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	data["amount"] = "100"
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
@@ -167,7 +167,7 @@ func TestParseWithQueryDefaultValue(t *testing.T) {
 	data := make(map[string]interface{})
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "currency=usd", output[0])
@@ -178,7 +178,7 @@ func TestParseNoEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234567890", output[0])
@@ -196,10 +196,10 @@ func TestParseWithLocalEnv(t *testing.T) {
 		Path: "/v1/customers/${.env:CUST_ID}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/customers/cust_12345", path)
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -216,7 +216,7 @@ func TestParseWithEnvFile(t *testing.T) {
 	fxt := Fixture{}
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -303,7 +303,7 @@ func TestParsePathDoNothing(t *testing.T) {
 		Path: "/v1/charges",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, http.Path, path)
 }
 
@@ -317,7 +317,7 @@ func TestParseOneParam(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/cust_12345", path)
 }
 
@@ -331,7 +331,7 @@ func TestParseOneParamWithTrailing(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}/capture",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture", path)
 }
 
@@ -346,7 +346,7 @@ func TestParseTwoParam(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}/capture/${cust_bender:id}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
 }
 
