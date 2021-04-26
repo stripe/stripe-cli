@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message SampleConfigsRequest {
+  // Name of the sample, e.g. accept-a-card-payment
+  string sample_name = 1;
+}
+
+message SampleConfigsResponse {
+  message Integration {
+    string integration_name = 1;
+    repeated string clients = 2;
+    repeated string servers = 3;
+  }
+
+  repeated Integration integrations = 1;
+}

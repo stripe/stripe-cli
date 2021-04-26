@@ -19,18 +19,19 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-type sampleConfig struct {
+// SampleConfig is the config of the sample
+type SampleConfig struct {
 	Name            string                    `json:"name"`
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
 	PostInstall     map[string]string         `json:"postInstall"`
-	Integrations    []sampleConfigIntegration `json:"integrations"`
+	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
 
-func (sc *sampleConfig) hasIntegrations() bool {
+func (sc *SampleConfig) hasIntegrations() bool {
 	return len(sc.Integrations) > 1
 }
 
-func (sc *sampleConfig) integrationNames() []string {
+func (sc *SampleConfig) integrationNames() []string {
 	names := []string{}
 	for _, integration := range sc.Integrations {
 		names = append(names, integration.Name)
@@ -39,7 +40,7 @@ func (sc *sampleConfig) integrationNames() []string {
 	return names
 }
 
-func (sc *sampleConfig) integrationServers(name string) []string {
+func (sc *SampleConfig) integrationServers(name string) []string {
 	for _, integration := range sc.Integrations {
 		if integration.Name == name {
 			return integration.Servers
@@ -49,7 +50,8 @@ func (sc *sampleConfig) integrationServers(name string) []string {
 	return []string{}
 }
 
-type sampleConfigIntegration struct {
+// SampleConfigIntegration is the available options for a specific sample integration
+type SampleConfigIntegration struct {
 	Name string `json:"name"`
 	// Clients are the frontend clients built for each sample
 	Clients []string `json:"clients"`
@@ -57,23 +59,23 @@ type sampleConfigIntegration struct {
 	Servers []string `json:"servers"`
 }
 
-func (i *sampleConfigIntegration) hasClients() bool {
+func (i *SampleConfigIntegration) hasClients() bool {
 	return len(i.Clients) > 0
 }
 
-func (i *sampleConfigIntegration) hasServers() bool {
+func (i *SampleConfigIntegration) hasServers() bool {
 	return len(i.Servers) > 0
 }
 
-func (i *sampleConfigIntegration) hasMultipleClients() bool {
+func (i *SampleConfigIntegration) hasMultipleClients() bool {
 	return len(i.Clients) > 1
 }
 
-func (i *sampleConfigIntegration) hasMultipleServers() bool {
+func (i *SampleConfigIntegration) hasMultipleServers() bool {
 	return len(i.Servers) > 1
 }
 
-func (i *sampleConfigIntegration) name() string {
+func (i *SampleConfigIntegration) name() string {
 	if i.Name == "main" {
 		return ""
 	}
@@ -93,9 +95,9 @@ type Samples struct {
 	// source repository to clone from
 	repo string
 
-	sampleConfig sampleConfig
+	SampleConfig SampleConfig
 
-	integration *sampleConfigIntegration
+	integration *SampleConfigIntegration
 
 	client string
 	server string
@@ -150,7 +152,7 @@ func (s *Samples) Initialize(app string) error {
 		return err
 	}
 
-	err = json.Unmarshal(configFile, &s.sampleConfig)
+	err = json.Unmarshal(configFile, &s.SampleConfig)
 	if err != nil {
 		return err
 	}
@@ -163,13 +165,13 @@ func (s *Samples) Initialize(app string) error {
 func (s *Samples) SelectOptions() error {
 	var err error
 
-	if s.sampleConfig.hasIntegrations() {
-		s.integration, err = integrationSelectPrompt(&s.sampleConfig)
+	if s.SampleConfig.hasIntegrations() {
+		s.integration, err = integrationSelectPrompt(&s.SampleConfig)
 		if err != nil {
 			return err
 		}
 	} else {
-		s.integration = &s.sampleConfig.Integrations[0]
+		s.integration = &s.SampleConfig.Integrations[0]
 	}
 
 	if s.integration.hasMultipleClients() {
@@ -266,7 +268,7 @@ func (s *Samples) Copy(target string) error {
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 	if s.integration.hasServers() {
-		if !s.sampleConfig.ConfigureDotEnv {
+		if !s.SampleConfig.ConfigureDotEnv {
 			return nil
 		}
 
@@ -323,7 +325,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 // PostInstall returns any installation for post installation instructions
 func (s *Samples) PostInstall() string {
-	message := s.sampleConfig.PostInstall["message"]
+	message := s.SampleConfig.PostInstall["message"]
 	return message
 }
 
@@ -380,13 +382,13 @@ func clientSelectPrompt(clients []string) (string, error) {
 	return selected, nil
 }
 
-func integrationSelectPrompt(sc *sampleConfig) (*sampleConfigIntegration, error) {
+func integrationSelectPrompt(sc *SampleConfig) (*SampleConfigIntegration, error) {
 	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.integrationNames())
 	if err != nil {
 		return nil, err
 	}
 
-	var selectedIntegration *sampleConfigIntegration
+	var selectedIntegration *SampleConfigIntegration
 
 	for i, integration := range sc.Integrations {
 		if integration.Name == selected {

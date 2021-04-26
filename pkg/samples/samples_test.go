@@ -89,6 +89,6 @@ func TestInitialize(t *testing.T) {
 
 	err := sample.Initialize(name)
 	assert.Nil(t, err)
-	assert.ElementsMatch(t, sample.sampleConfig.integrationNames(), []string{"webhooks", "no-webhooks"})
-	assert.ElementsMatch(t, sample.sampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+	assert.ElementsMatch(t, sample.SampleConfig.integrationNames(), []string{"webhooks", "no-webhooks"})
+	assert.ElementsMatch(t, sample.SampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
 }
