@@ -44,21 +44,24 @@ func TestSamplesListReturnsList(t *testing.T) {
 
 	resp, err := client.SamplesList(ctx, &rpc.SamplesListRequest{})
 
-	assert.Equal(t, nil, err)
-	assert.Equal(t, 2, len(resp.Samples))
+	expected := rpc.SamplesListResponse{
+		Samples: []*rpc.SamplesListResponse_SampleData{
+			{
+				Name:        "accept-a-card-payment",
+				Description: "Learn how to accept a basic card payment",
+				Url:         "https://github.com/stripe-samples/accept-a-card-payment",
+			},
+			{
+				Name:        "accept-a-payment",
+				Description: "Learn how to accept a payment",
+				Url:         "https://github.com/stripe-samples/accept-a-payment",
+			},
+		},
+	}
 
-	// The order isn't well defined because we're converting a map to a slice, so look for each
-	// expected element individually.
-	assert.Contains(t, resp.Samples, &rpc.SamplesListResponse_SampleData{
-		Name:        "accept-a-card-payment",
-		Description: "Learn how to accept a basic card payment",
-		Url:         "https://github.com/stripe-samples/accept-a-card-payment",
-	})
-	assert.Contains(t, resp.Samples, &rpc.SamplesListResponse_SampleData{
-		Name:        "accept-a-payment",
-		Description: "Learn how to accept a payment",
-		Url:         "https://github.com/stripe-samples/accept-a-payment",
-	})
+	assert.Equal(t, nil, err)
+	assert.Equal(t, len(expected.Samples), len(resp.Samples))
+	assert.ElementsMatch(t, expected.Samples, resp.Samples)
 }
 
 func TestSamplesListReturnsEmptyList(t *testing.T) {
