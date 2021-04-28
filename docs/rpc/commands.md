@@ -82,7 +82,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated |  |
+| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-card-payment&#34; sample includes an integration that uses webhooks, a web client, and a node server. |
 
 
 
@@ -97,9 +97,9 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| integration_name | [string](#string) |  |  |
-| clients | [string](#string) | repeated |  |
-| servers | [string](#string) | repeated |  |
+| integration_name | [string](#string) |  | Name of an available integration for this sample, e.g. &#34;using-webhooks&#34; |
+| clients | [string](#string) | repeated | List of available languages or platforms for the sample client, e.g. [&#34;web&#34;, &#34;android&#34;, &#34;ios&#34;] |
+| servers | [string](#string) | repeated | List of available languages or platforms for the sample server, e.g. [&#34;java&#34;, &#34;node&#34;] |
 
 
 

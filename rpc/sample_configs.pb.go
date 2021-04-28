@@ -73,6 +73,8 @@ type SampleConfigsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// List of available integrations for this sample, e.g. the "accept-a-card-payment" sample
+	// includes an integration that uses webhooks, a web client, and a node server.
 	Integrations []*SampleConfigsResponse_Integration `protobuf:"bytes,1,rep,name=integrations,proto3" json:"integrations,omitempty"`
 }
 
@@ -120,9 +122,12 @@ type SampleConfigsResponse_Integration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	IntegrationName string   `protobuf:"bytes,1,opt,name=integration_name,json=integrationName,proto3" json:"integration_name,omitempty"`
-	Clients         []string `protobuf:"bytes,2,rep,name=clients,proto3" json:"clients,omitempty"`
-	Servers         []string `protobuf:"bytes,3,rep,name=servers,proto3" json:"servers,omitempty"`
+	// Name of an available integration for this sample, e.g. "using-webhooks"
+	IntegrationName string `protobuf:"bytes,1,opt,name=integration_name,json=integrationName,proto3" json:"integration_name,omitempty"`
+	// List of available languages or platforms for the sample client, e.g. ["web", "android", "ios"]
+	Clients []string `protobuf:"bytes,2,rep,name=clients,proto3" json:"clients,omitempty"`
+	// List of available languages or platforms for the sample server, e.g. ["java", "node"]
+	Servers []string `protobuf:"bytes,3,rep,name=servers,proto3" json:"servers,omitempty"`
 }
 
 func (x *SampleConfigsResponse_Integration) Reset() {
