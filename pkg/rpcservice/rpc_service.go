@@ -35,8 +35,11 @@ type RPCService struct {
 // ConfigOutput is the config that clients will need to connect to the gRPC server. This is printed
 // out for clients to parse.
 type ConfigOutput struct {
-	// Address is the localhost address of the gRPC server
-	Address string `json:"address"`
+	// Host is the IP address of the gRPC server
+	Host string `json:"host"`
+
+	// Port is port number of the gRPC server
+	Port int `json:"port"`
 }
 
 // New creates a new RPC service
@@ -60,8 +63,13 @@ func New(cfg *Config) *RPCService {
 func (srv *RPCService) Run(ctx context.Context) {
 	lis := srv.createListener()
 
+	addr, ok := lis.Addr().(*net.TCPAddr)
+	if !ok {
+		srv.cfg.Log.Fatalf("Failed to get the TCP address of the gRPC server")
+	}
 	srv.printConfig(ConfigOutput{
-		Address: lis.Addr().String(),
+		Host: addr.IP.String(),
+		Port: addr.Port,
 	})
 
 	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
@@ -72,10 +80,8 @@ func (srv *RPCService) Run(ctx context.Context) {
 }
 
 func (srv *RPCService) createListener() net.Listener {
-	address := "127.0.0.1:" // empty port => an available port is automatically chosen
-	if srv.cfg.Port != 0 {
-		address = fmt.Sprint(address, srv.cfg.Port)
-	}
+	// if port is 0, an available port is automatically chosen
+	address := fmt.Sprintf("[%s]:%d", net.IPv6loopback.String(), srv.cfg.Port)
 
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
