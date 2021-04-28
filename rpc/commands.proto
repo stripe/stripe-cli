@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package rpc;
+
+import "version.proto";
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+service StripeCLI {
+  // Get the version of the Stripe CLI. Like `stripe version`.
+  rpc Version(VersionRequest) returns (VersionResponse);
+}
