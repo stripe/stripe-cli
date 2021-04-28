@@ -63,6 +63,7 @@ type SamplesListResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// List of available Stripe samples
 	Samples []*SamplesListResponse_SampleData `protobuf:"bytes,1,rep,name=samples,proto3" json:"samples,omitempty"`
 }
 
@@ -110,8 +111,11 @@ type SamplesListResponse_SampleData struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name        string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Url         string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	// Name of the sample, e.g. accept-a-card-payment
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment
+	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	// Description of the sample, e.g. Learn how to accept a basic card payment
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
 }
 

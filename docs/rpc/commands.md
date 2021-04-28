@@ -71,7 +71,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| samples | [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData) | repeated |  |
+| samples | [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData) | repeated | List of available Stripe samples |
 
 
 
@@ -86,9 +86,9 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| url | [string](#string) |  |  |
-| description | [string](#string) |  |  |
+| name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
+| url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment |
+| description | [string](#string) |  | Description of the sample, e.g. Learn how to accept a basic card payment |
 
 
 
