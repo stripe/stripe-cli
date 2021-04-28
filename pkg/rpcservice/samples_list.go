@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
@@ -11,8 +13,8 @@ import (
 )
 
 // Make overridable for tests
-var fetchRawSamplesList = func() map[string]*samples.SampleData {
-	var sample = samples.Samples{
+var fetchRawSamplesList = func() (map[string]*samples.SampleData, error) {
+	sample := samples.Samples{
 		Fs:  afero.NewOsFs(),
 		Git: gitpkg.Operations{},
 	}
@@ -21,7 +23,10 @@ var fetchRawSamplesList = func() map[string]*samples.SampleData {
 
 // SamplesList returns a list of available Stripe samples
 func (srv *RPCService) SamplesList(ctx context.Context, req *rpc.SamplesListRequest) (*rpc.SamplesListResponse, error) {
-	rawSamplesList := fetchRawSamplesList()
+	rawSamplesList, err := fetchRawSamplesList()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to fetch Stripe samples list: %v", err)
+	}
 
 	formattedSamplesList := make([]*rpc.SamplesListResponse_SampleData, 0, len(rawSamplesList))
 	for _, v := range rawSamplesList {

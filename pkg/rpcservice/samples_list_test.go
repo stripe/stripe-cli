@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,10 +11,12 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestSamplesListReturnsList(t *testing.T) {
-	fetchRawSamplesList = func() map[string]*samples.SampleData {
+	fetchRawSamplesList = func() (map[string]*samples.SampleData, error) {
 		list := make(map[string]*samples.SampleData)
 
 		list["accept-a-card-payment"] = &samples.SampleData{
@@ -28,7 +31,7 @@ func TestSamplesListReturnsList(t *testing.T) {
 			URL:         "https://github.com/stripe-samples/accept-a-payment",
 		}
 
-		return list
+		return list, nil
 	}
 
 	ctx := withAuth(context.Background())
@@ -40,9 +43,6 @@ func TestSamplesListReturnsList(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SamplesList(ctx, &rpc.SamplesListRequest{})
-	if err != nil {
-		t.Fatalf("SamplesList failed: %v", err)
-	}
 
 	expected := rpc.SamplesListResponse{
 		Samples: []*rpc.SamplesListResponse_SampleData{
@@ -59,13 +59,14 @@ func TestSamplesListReturnsList(t *testing.T) {
 		},
 	}
 
+	assert.Equal(t, nil, err)
 	assert.EqualValues(t, expected.Samples, resp.Samples)
 }
 
 func TestSamplesListReturnsEmptyList(t *testing.T) {
-	fetchRawSamplesList = func() map[string]*samples.SampleData {
+	fetchRawSamplesList = func() (map[string]*samples.SampleData, error) {
 		list := make(map[string]*samples.SampleData)
-		return list
+		return list, nil
 	}
 
 	ctx := withAuth(context.Background())
@@ -77,9 +78,26 @@ func TestSamplesListReturnsEmptyList(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SamplesList(ctx, &rpc.SamplesListRequest{})
-	if err != nil {
-		t.Fatalf("SamplesList failed: %v", err)
+
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 0, len(resp.Samples))
+}
+
+func TestSamplesListReturnsError(t *testing.T) {
+	fetchRawSamplesList = func() (map[string]*samples.SampleData, error) {
+		return nil, errors.New("foo")
 	}
 
-	assert.Equal(t, 0, len(resp.Samples))
+	ctx := withAuth(context.Background())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	_, err = client.SamplesList(ctx, &rpc.SamplesListRequest{})
+	expected := status.Errorf(codes.Internal, "Failed to fetch Stripe samples list: %v", errors.New("foo"))
+
+	assert.Equal(t, expected.Error(), err.Error())
 }
