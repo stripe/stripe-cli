@@ -19,7 +19,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-// sampleConfig is the config of the sample
 type sampleConfig struct {
 	Name            string                    `json:"name"`
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
