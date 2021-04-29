@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/spf13/afero"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
@@ -11,18 +13,25 @@ import (
 )
 
 // Make overridable for tests
-var fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) []samples.SampleConfigIntegration {
-	var sample = samples.Samples{
+var fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) ([]samples.SampleConfigIntegration, error) {
+	sample := samples.Samples{
 		Fs:  afero.NewOsFs(),
 		Git: gitpkg.Operations{},
 	}
-	sample.Initialize(req.SampleName)
-	return sample.SampleConfig.Integrations
+	err := sample.Initialize(req.SampleName)
+	if err != nil {
+		return nil, err
+	}
+	return sample.SampleConfig.Integrations, nil
 }
 
 // SampleConfigs returns a list of available configs for a given Stripe sample.
 func (srv *RPCService) SampleConfigs(ctx context.Context, req *rpc.SampleConfigsRequest) (*rpc.SampleConfigsResponse, error) {
-	rawSampleIntegrations := fetchRawSampleIntegrations(req)
+	rawSampleIntegrations, err := fetchRawSampleIntegrations(req)
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to fetch configs for sample %s: %v", req.SampleName, err)
+	}
 
 	formattedSampleIntegrations := make([]*rpc.SampleConfigsResponse_Integration, len(rawSampleIntegrations))
 	for i, s := range rawSampleIntegrations {

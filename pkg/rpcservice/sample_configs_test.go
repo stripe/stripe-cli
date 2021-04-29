@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,10 +11,12 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestSampleConfigsReturnsListOfIntegrations(t *testing.T) {
-	fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) []samples.SampleConfigIntegration {
+	fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) ([]samples.SampleConfigIntegration, error) {
 		return []samples.SampleConfigIntegration{
 			{
 				Name:    "using-webhooks",
@@ -30,7 +33,7 @@ func TestSampleConfigsReturnsListOfIntegrations(t *testing.T) {
 				Clients: []string{"web"},
 				Servers: []string{"java", "node", "node-typescript", "php-slim", "php", "python", "ruby"},
 			},
-		}
+		}, nil
 	}
 
 	ctx := withAuth(context.Background())
@@ -70,8 +73,8 @@ func TestSampleConfigsReturnsListOfIntegrations(t *testing.T) {
 }
 
 func TestSampleConfigsReturnsEmpty(t *testing.T) {
-	fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) []samples.SampleConfigIntegration {
-		return []samples.SampleConfigIntegration{}
+	fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) ([]samples.SampleConfigIntegration, error) {
+		return []samples.SampleConfigIntegration{}, nil
 	}
 
 	ctx := withAuth(context.Background())
@@ -92,4 +95,24 @@ func TestSampleConfigsReturnsEmpty(t *testing.T) {
 	}
 
 	assert.EqualValues(t, expected.Integrations, resp.Integrations)
+}
+
+func TestSampleConfigsReturnsError(t *testing.T) {
+	fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) ([]samples.SampleConfigIntegration, error) {
+		return nil, errors.New("foo")
+	}
+
+	ctx := withAuth(context.Background())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	_, err = client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-card-payment"})
+
+	expected := status.Errorf(codes.Internal, "Failed to fetch configs for sample accept-a-card-payment: %v", errors.New("foo"))
+
+	assert.EqualValues(t, expected.Error(), err.Error())
 }
