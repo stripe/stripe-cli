@@ -3,6 +3,7 @@ package samples
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -109,6 +110,10 @@ type Samples struct {
 // 4. if the selected app does exist in the local cache folder, pull changes
 // 5. parse the sample cli config file
 func (s *Samples) Initialize(app string) error {
+	if app == "" {
+		return errors.New("Sample name is empty")
+	}
+
 	s.name = app
 
 	appPath, err := s.appCacheFolder(app)
@@ -126,7 +131,11 @@ func (s *Samples) Initialize(app string) error {
 	}
 
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = s.Git.Clone(appPath, list[app].GitRepo())
+		sampleData, ok := list[app]
+		if !ok {
+			return fmt.Errorf("Sample %s does not exist", app)
+		}
+		err = s.Git.Clone(appPath, sampleData.GitRepo())
 		if err != nil {
 			return err
 		}

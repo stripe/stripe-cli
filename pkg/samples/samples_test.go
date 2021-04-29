@@ -2,6 +2,7 @@ package samples
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -91,4 +92,36 @@ func TestInitialize(t *testing.T) {
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, sample.SampleConfig.integrationNames(), []string{"webhooks", "no-webhooks"})
 	assert.ElementsMatch(t, sample.SampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+}
+
+func TestInitializeFailsWithEmptyName(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	name := ""
+	mockGetSamples()
+
+	sample := Samples{
+		Fs: fs,
+		Git: mockGit{
+			fs: fs,
+		},
+	}
+
+	err := sample.Initialize(name)
+	assert.Equal(t, errors.New("Sample name is empty"), err)
+}
+
+func TestInitializeFailsWithNonexistantSample(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	name := "foo"
+	mockGetSamples()
+
+	sample := Samples{
+		Fs: fs,
+		Git: mockGit{
+			fs: fs,
+		},
+	}
+
+	err := sample.Initialize(name)
+	assert.Equal(t, errors.New("Sample foo does not exist"), err)
 }
