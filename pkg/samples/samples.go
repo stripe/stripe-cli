@@ -118,7 +118,12 @@ func (s *Samples) Initialize(app string) error {
 	// We still set the repo path here. There are some failure cases
 	// that we can still work with (like no updates or repo already exists)
 	s.repo = appPath
-	list := s.GetSamples("create")
+
+	list, err := s.GetSamples("create")
+	if err != nil {
+		return err
+	}
+
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
 		err = s.Git.Clone(appPath, list[app].GitRepo())
 		if err != nil {

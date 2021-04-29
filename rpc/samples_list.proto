@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message SamplesListRequest {}
+
+message SamplesListResponse {
+  message SampleData {
+    // Name of the sample, e.g. accept-a-card-payment
+    string name = 1;
+
+    // URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment
+    string url = 2;
+
+    // Description of the sample, e.g. Learn how to accept a basic card payment
+    string description = 3;
+  }
+
+  // List of available Stripe samples
+  repeated SampleData samples = 1;
+}

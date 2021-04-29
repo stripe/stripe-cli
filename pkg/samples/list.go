@@ -100,12 +100,9 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 // we want to be available in the CLI to some of their metadata.
 // TODO: what do we want to name these for it to be easier for users to select?
 // TODO: should we group them by products for easier exploring?
-func (s *Samples) GetSamples(mode string) map[string]*SampleData {
-	spinner := ansi.StartNewSpinner("Loading...", os.Stdout)
-
+func (s *Samples) GetSamples(mode string) (map[string]*SampleData, error) {
 	if len(list) != 0 {
-		ansi.StopSpinner(spinner, "", os.Stdout)
-		return list
+		return list, nil
 	}
 
 	// Reduce the amount of request to GitHub
@@ -122,9 +119,8 @@ func (s *Samples) GetSamples(mode string) map[string]*SampleData {
 	// Get the samples from the cache or GitHub
 	err := s.getFromCacheOrGithub(noNetwork)
 	if err != nil {
-		ansi.StopSpinner(spinner, "Error: please check your internet connection and try again!", os.Stdout)
+		return nil, err
 	}
 
-	ansi.StopSpinner(spinner, "", os.Stdout)
-	return list
+	return list, nil
 }

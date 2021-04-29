@@ -65,7 +65,12 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		Git:    gitpkg.Operations{},
 	}
 
-	if _, ok := sample.GetSamples("create")[args[0]]; !ok {
+	samplesResult, err := sample.GetSamples("create")
+	if err != nil {
+		return err
+	}
+
+	if _, ok := samplesResult[args[0]]; !ok {
 		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
 To see supported samples, run 'stripe samples list'`, args[0])
 		return fmt.Errorf(errorMessage)
@@ -105,7 +110,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	// depending on whether or not it's. Additionally, this
 	// identifies if the sample has multiple integrations and what
 	// languages it supports.
-	err := sample.Initialize(selectedSample)
+	err = sample.Initialize(selectedSample)
 	if err != nil {
 		switch e := err.Error(); e {
 		case git.NoErrAlreadyUpToDate.Error():
