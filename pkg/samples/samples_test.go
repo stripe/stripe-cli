@@ -110,7 +110,7 @@ func TestInitializeFailsWithEmptyName(t *testing.T) {
 	assert.Equal(t, errors.New("Sample name is empty"), err)
 }
 
-func TestInitializeFailsWithNonexistantSample(t *testing.T) {
+func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "foo"
 	mockGetSamples()
