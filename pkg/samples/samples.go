@@ -19,19 +19,19 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-// SampleConfig is the config of the sample
-type SampleConfig struct {
+// sampleConfig is the config of the sample
+type sampleConfig struct {
 	Name            string                    `json:"name"`
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
 	PostInstall     map[string]string         `json:"postInstall"`
 	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
 
-func (sc *SampleConfig) hasIntegrations() bool {
+func (sc *sampleConfig) hasIntegrations() bool {
 	return len(sc.Integrations) > 1
 }
 
-func (sc *SampleConfig) integrationNames() []string {
+func (sc *sampleConfig) integrationNames() []string {
 	names := []string{}
 	for _, integration := range sc.Integrations {
 		names = append(names, integration.Name)
@@ -40,7 +40,7 @@ func (sc *SampleConfig) integrationNames() []string {
 	return names
 }
 
-func (sc *SampleConfig) integrationServers(name string) []string {
+func (sc *sampleConfig) integrationServers(name string) []string {
 	for _, integration := range sc.Integrations {
 		if integration.Name == name {
 			return integration.Servers
@@ -95,7 +95,7 @@ type Samples struct {
 	// source repository to clone from
 	repo string
 
-	SampleConfig SampleConfig
+	SampleConfig sampleConfig
 
 	integration *SampleConfigIntegration
 
@@ -382,7 +382,7 @@ func clientSelectPrompt(clients []string) (string, error) {
 	return selected, nil
 }
 
-func integrationSelectPrompt(sc *SampleConfig) (*SampleConfigIntegration, error) {
+func integrationSelectPrompt(sc *sampleConfig) (*SampleConfigIntegration, error) {
 	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.integrationNames())
 	if err != nil {
 		return nil, err
