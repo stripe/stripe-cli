@@ -6,6 +6,11 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [samples_list.proto](#samples_list.proto)
+    - [SamplesListRequest](#rpc.SamplesListRequest)
+    - [SamplesListResponse](#rpc.SamplesListResponse)
+    - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
+  
 - [version.proto](#version.proto)
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
@@ -34,7 +39,66 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="samples_list.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## samples_list.proto
+
+
+
+<a name="rpc.SamplesListRequest"></a>
+
+### SamplesListRequest
+
+
+
+
+
+
+
+<a name="rpc.SamplesListResponse"></a>
+
+### SamplesListResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| samples | [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData) | repeated | List of available Stripe samples |
+
+
+
+
+
+
+<a name="rpc.SamplesListResponse.SampleData"></a>
+
+### SamplesListResponse.SampleData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
+| url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment |
+| description | [string](#string) |  | Description of the sample, e.g. Learn how to accept a basic card payment |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
