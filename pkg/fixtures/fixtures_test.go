@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 const testFixture = `
@@ -89,7 +92,7 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 
 	fxt := Fixture{}
 
-	output := (fxt.parseInterface(parsedFixtureData))
+	output, _ := (fxt.parseInterface(parsedFixtureData))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 2)
@@ -120,7 +123,7 @@ func TestParseInterface(t *testing.T) {
 	data["tax_id_data"] = taxIDData
 	fxt := Fixture{}
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
@@ -147,7 +150,7 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	data["amount"] = "100"
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
@@ -167,7 +170,7 @@ func TestParseWithQueryDefaultValue(t *testing.T) {
 	data := make(map[string]interface{})
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "currency=usd", output[0])
@@ -178,7 +181,7 @@ func TestParseNoEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234567890", output[0])
@@ -196,10 +199,10 @@ func TestParseWithLocalEnv(t *testing.T) {
 		Path: "/v1/customers/${.env:CUST_ID}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/customers/cust_12345", path)
 
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -216,7 +219,7 @@ func TestParseWithEnvFile(t *testing.T) {
 	fxt := Fixture{}
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
-	output := (fxt.parseInterface(data))
+	output, _ := (fxt.parseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -303,7 +306,7 @@ func TestParsePathDoNothing(t *testing.T) {
 		Path: "/v1/charges",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, http.Path, path)
 }
 
@@ -317,8 +320,90 @@ func TestParseOneParam(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/cust_12345", path)
+}
+
+func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+	http := fixture{
+		Path: "/v1/charges/${char:id}",
+	}
+
+	_, err := fxt.parsePath(http)
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("char"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+	http := fixture{
+		Path: "/v1/charges/${foo:id}",
+	}
+
+	_, err := fxt.parsePath(http)
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("foo"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+
+	_, err := fxt.parseQuery("${bender:id}")
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("bender"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+
+	_, err := fxt.parseQuery("${foo:id}")
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("foo"),
+	)
+
+	assert.Equal(t, expected, err)
 }
 
 func TestParseOneParamWithTrailing(t *testing.T) {
@@ -331,7 +416,7 @@ func TestParseOneParamWithTrailing(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}/capture",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture", path)
 }
 
@@ -346,7 +431,7 @@ func TestParseTwoParam(t *testing.T) {
 		Path: "/v1/charges/${char_bender:id}/capture/${cust_bender:id}",
 	}
 
-	path := fxt.parsePath(http)
+	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
 }
 
