@@ -6,6 +6,11 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [sample_configs.proto](#sample_configs.proto)
+    - [SampleConfigsRequest](#rpc.SampleConfigsRequest)
+    - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
+    - [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration)
+  
 - [samples_list.proto](#samples_list.proto)
     - [SamplesListRequest](#rpc.SamplesListRequest)
     - [SamplesListResponse](#rpc.SamplesListResponse)
@@ -39,8 +44,72 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="sample_configs.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## sample_configs.proto
+
+
+
+<a name="rpc.SampleConfigsRequest"></a>
+
+### SampleConfigsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
+
+
+
+
+
+
+<a name="rpc.SampleConfigsResponse"></a>
+
+### SampleConfigsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-card-payment&#34; sample includes an integration that uses webhooks, a web client, and a node server. |
+
+
+
+
+
+
+<a name="rpc.SampleConfigsResponse.Integration"></a>
+
+### SampleConfigsResponse.Integration
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| integration_name | [string](#string) |  | Name of an available integration for this sample, e.g. &#34;using-webhooks&#34; |
+| clients | [string](#string) | repeated | List of available languages or platforms for the sample client, e.g. [&#34;web&#34;, &#34;android&#34;, &#34;ios&#34;] |
+| servers | [string](#string) | repeated | List of available languages or platforms for the sample server, e.g. [&#34;java&#34;, &#34;node&#34;] |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 

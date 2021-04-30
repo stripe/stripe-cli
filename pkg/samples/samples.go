@@ -148,7 +148,6 @@ func (s *Samples) Initialize(app string) error {
 			return fmt.Errorf("Sample %s does not exist", app)
 		}
 		err = s.Git.Clone(appPath, sampleData.GitRepo())
-
 		if err != nil {
 			return err
 		}
