@@ -22,7 +22,6 @@ type TailCmd struct {
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
-	livemode   bool
 	LogFilters *logTailing.LogFilters
 	noWSS      bool
 }
@@ -54,13 +53,6 @@ HTTP methods, IP addresses, paths, response status, and more.`,
 		`Specifies the output format of request logs
 Acceptable values:
 	'JSON' - Output logs in JSON format`,
-	)
-
-	tailCmd.Cmd.Flags().BoolVar(
-		&tailCmd.livemode,
-		"live",
-		false,
-		"[WARNING: experimental] Tail live logs (default: test)",
 	)
 
 	// Log filters
@@ -142,7 +134,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	key, err := tailCmd.cfg.Profile.GetAPIKey(tailCmd.livemode)
+	key, err := tailCmd.cfg.Profile.GetAPIKey(false)
 	if err != nil {
 		return err
 	}
