@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message SampleConfigsRequest {
+  // Name of the sample, e.g. accept-a-card-payment
+  string sample_name = 1;
+}
+
+message SampleConfigsResponse {
+  message Integration {
+    // Name of an available integration for this sample, e.g. "using-webhooks"
+    string integration_name = 1;
+
+    // List of available languages or platforms for the sample client, e.g. ["web", "android", "ios"]
+    repeated string clients = 2;
+
+    // List of available languages or platforms for the sample server, e.g. ["java", "node"]
+    repeated string servers = 3;
+  }
+
+  // List of available integrations for this sample, e.g. the "accept-a-card-payment" sample
+  // includes an integration that uses webhooks, a web client, and a node server.
+  repeated Integration integrations = 1;
+}
