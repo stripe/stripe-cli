@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 const testFixture = `
@@ -319,6 +322,88 @@ func TestParseOneParam(t *testing.T) {
 
 	path, _ := fxt.parsePath(http)
 	assert.Equal(t, "/v1/charges/cust_12345", path)
+}
+
+func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+	http := fixture{
+		Path: "/v1/charges/${char:id}",
+	}
+
+	_, err := fxt.parsePath(http)
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("char"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+	http := fixture{
+		Path: "/v1/charges/${foo:id}",
+	}
+
+	_, err := fxt.parsePath(http)
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("foo"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+
+	_, err := fxt.parseQuery("${bender:id}")
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("bender"),
+	)
+
+	assert.Equal(t, expected, err)
+}
+
+func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
+	fxt := Fixture{
+		responses: map[string]*gojsonq.JSONQ{
+			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		},
+	}
+
+	_, err := fxt.parseQuery("${foo:id}")
+
+	color := ansi.Color(os.Stdout)
+	expected := fmt.Errorf(
+		"%s - an undeclared fixture name was referenced: %s",
+		color.Red("✘ Validation error").String(),
+		ansi.Bold("foo"),
+	)
+
+	assert.Equal(t, expected, err)
 }
 
 func TestParseOneParamWithTrailing(t *testing.T) {
