@@ -6,3 +6,4 @@ coverage.txt
 /stripe-darwin
 /stripe-linux
 /stripe-windows.exe
+default_cassette.yaml

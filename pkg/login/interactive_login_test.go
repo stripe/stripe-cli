@@ -1,12 +1,93 @@
 package login
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
+
+const testAccountName = "test-account-name"
+
+func TestDisplayName(t *testing.T) {
+	account := &Account{
+		ID: "acct_123",
+	}
+	account.Settings.Dashboard.DisplayName = testAccountName
+
+	displayName, err := getDisplayName(account, "", "sk_test_123")
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		testAccountName,
+		displayName,
+	)
+}
+
+func TestDisplayNameNoName(t *testing.T) {
+	account := &Account{
+		ID: "acct_123",
+	}
+
+	displayName, err := getDisplayName(account, "", "sk_test_123")
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		"",
+		displayName,
+	)
+}
+
+func TestDisplayNameGetAccount(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method)
+
+		account := &Account{
+			ID: "acct_123",
+		}
+		account.Settings.Dashboard.DisplayName = testAccountName
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(account)
+	}))
+	defer ts.Close()
+
+	displayName, err := getDisplayName(nil, ts.URL, "sk_test_123")
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		testAccountName,
+		displayName,
+	)
+}
+
+func TestDisplayNameGetAccountNoName(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method)
+
+		account := &Account{
+			ID: "acct_123",
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(account)
+	}))
+	defer ts.Close()
+
+	displayName, err := getDisplayName(nil, ts.URL, "sk_test_123")
+	require.NoError(t, err)
+	require.Equal(
+		t,
+		"",
+		displayName,
+	)
+}
 
 func TestAPIKeyInput(t *testing.T) {
 	expectedKey := "sk_test_foo1234"

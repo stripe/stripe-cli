@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -42,6 +43,7 @@ type playbackCmd struct {
 	cassetteDir string
 	address     string
 	webhookURL  string
+	noListen    bool
 }
 
 func newPlaybackCmd() *playbackCmd {
@@ -82,6 +84,7 @@ Currently, stripe playback only supports serving over HTTP.
 	pc.cmd.Flags().StringVar(&pc.webhookURL, "forward-to", fmt.Sprintf("http://localhost:%d", defaultWebhookPort), "URL to forward webhooks to")
 	pc.cmd.Flags().StringVar(&pc.filepath, "cassette", "default_cassette.yaml", "The cassette file to use")
 	pc.cmd.Flags().StringVar(&pc.cassetteDir, "cassette-root-dir", "./", "Directory to store all cassettes in. Relative cassette paths are considered relative to this directory.")
+	pc.cmd.Flags().BoolVar(&pc.noListen, "no-listen", false, "Do not automatically proxy and record webhook events to the cassette.")
 
 	// // Hidden configuration flags, useful for dev/debugging
 	pc.cmd.Flags().StringVar(&pc.apiBaseURL, "api-base", "https://api.stripe.com", "The API base URL")
@@ -132,13 +135,17 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// --- Start up the playback HTTP server
-	// TODO(DX-5702): `playback` should handle setup (and teardown) of `stripe listen` as well
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
 
 	httpWrapper, err := playback.NewServer(remoteURL, pc.webhookURL, absoluteCassetteDir, pc.mode, pc.filepath)
 	if err != nil {
 		return err
+	}
+
+	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
+	if !pc.noListen {
+		startListenCmdLoop(pc.mode, addressString, httpWrapper)
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -176,8 +183,36 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Accepting webhooks on %v/%v\n", addressString, "playback/webhooks")
 	fmt.Printf("Forwarding webhooks to %v\n", pc.webhookURL)
+
 	fmt.Println("-----------------------------")
 	fmt.Println()
 
 	select {}
+}
+
+func startListenCmdLoop(mode string, address string, httpWrapper *playback.Server) {
+	lc := newListenCmd()
+	lc.forwardURL = address + "/playback/webhooks"
+	startListenCmd := func() {
+		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
+		lc.runListenCmd(lc.cmd, []string{})
+		os.Exit(1)
+	}
+
+	if mode != playback.Replay {
+		go startListenCmd()
+	} else {
+		var listenToModeSwitch func()
+		listenToModeSwitch = func() {
+			httpWrapper.OnSwitchMode(func(mode string) {
+				switch strings.ToLower(mode) {
+				case playback.Record, playback.Auto:
+					go startListenCmd()
+				default:
+					listenToModeSwitch()
+				}
+			})
+		}
+		listenToModeSwitch()
+	}
 }

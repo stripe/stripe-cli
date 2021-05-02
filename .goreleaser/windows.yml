@@ -1,0 +1,52 @@
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+project_name: stripe
+builds:
+  - id: stripe-windows
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=1
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+    main: ./cmd/stripe/main.go
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - 386
+archives:
+  - replacements:
+      windows: windows
+      386: i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - none*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+checksum:
+  name_template: "{{ .ProjectName }}-windows-checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
+scoop:
+  bucket:
+    owner: stripe
+    name: scoop-stripe-cli
+  commit_author:
+    name: stripe-ci
+    email: support@stripe.com
+  homepage: https://stripe.com
+  description: Stripe CLI utility
+  license: Apache 2.0

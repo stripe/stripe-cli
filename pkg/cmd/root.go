@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -16,6 +17,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -60,7 +62,29 @@ func Execute() {
 	rootCmd.SetVersionTemplate(version.Template)
 
 	if err := rootCmd.Execute(); err != nil {
-		if strings.Contains(err.Error(), "unknown command") {
+		errString := err.Error()
+		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
+
+		switch {
+		case isLoginRequiredError:
+			// capitalize first letter of error because linter
+			errRunes := []rune(errString)
+			errRunes[0] = unicode.ToUpper(errRunes[0])
+
+			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
+			loginCommand, _, err := rootCmd.Find([]string{"login"})
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			err = loginCommand.RunE(&cobra.Command{}, []string{})
+
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		case strings.Contains(errString, "unknown command"):
 			suggStr := "\nS"
 
 			suggestions := rootCmd.SuggestionsFor(os.Args[1])
@@ -71,7 +95,8 @@ func Execute() {
 			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 				"ee \"stripe --help\" for a list of available commands.",
 				os.Args[1], rootCmd.CommandPath(), suggStr))
-		} else {
+
+		default:
 			fmt.Println(err)
 		}
 
@@ -86,7 +111,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
-	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
@@ -111,6 +136,7 @@ func init() {
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newPlaybackCmd().cmd)
+	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 
 	addAllResourcesCmds(rootCmd)
 

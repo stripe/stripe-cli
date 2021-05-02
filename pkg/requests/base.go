@@ -3,6 +3,7 @@ package requests
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -37,6 +38,18 @@ func (r *RequestParameters) AppendData(data []string) {
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// RequestError captures the response of the request that resulted in an error
+type RequestError struct {
+	msg        string
+	StatusCode int
+	ErrorType  string
+	Body       interface{} // the raw response body
+}
+
+func (e RequestError) Error() string {
+	return fmt.Sprintf("%s, status=%d, body=%s", e.msg, e.StatusCode, e.Body)
 }
 
 // Base encapsulates the required information needed to make requests to the API
@@ -165,7 +178,8 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if errOnStatus && resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("Request failed, status=%d, body=%s", resp.StatusCode, string(body))
+		requestError := compileRequestError(body, resp.StatusCode)
+		return nil, requestError
 	}
 
 	if !rb.SuppressOutput {
@@ -178,6 +192,25 @@ func (rb *Base) MakeRequest(apiKey, path string, params *RequestParameters, errO
 	}
 
 	return body, nil
+}
+
+func compileRequestError(body []byte, statusCode int) RequestError {
+	type requestErrorContent struct {
+		Type string `json:"type"`
+	}
+
+	type requestErrorBody struct {
+		Content requestErrorContent `json:"error"`
+	}
+
+	var errorBody requestErrorBody
+	json.Unmarshal(body, &errorBody)
+	return RequestError{"Request failed", statusCode, errorBody.Content.Type, string(body)}
+}
+
+// Confirm calls the confirmCommand() function, triggering the confirmation process
+func (rb *Base) Confirm() (bool, error) {
+	return rb.confirmCommand()
 }
 
 // Note: We converted to using two arrays to track keys and values, with our own
@@ -298,7 +331,10 @@ func (rb *Base) getUserConfirmation(reader *bufio.Reader) (bool, error) {
 			return false, err
 		}
 
-		return strings.Compare(strings.ToLower(input), "yes\n") == 0, nil
+		// remove whitespace from either side of the input, as ReadString returns with \n at the end
+		input = strings.ToLower(strings.Trim(input, " \r\n"))
+
+		return strings.Compare(input, "yes") == 0, nil
 	}
 
 	// Always confirm the command if it does not require explicit user confirmation

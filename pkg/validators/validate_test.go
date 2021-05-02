@@ -9,7 +9,7 @@ import (
 
 func TestNoKey(t *testing.T) {
 	err := APIKey("")
-	require.EqualError(t, err, "you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
+	require.EqualError(t, err, "you have not configured API keys yet")
 }
 
 func TestKeyTooShort(t *testing.T) {

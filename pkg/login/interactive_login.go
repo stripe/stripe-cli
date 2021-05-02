@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -27,6 +27,9 @@ func InteractiveLogin(config *config.Config) error {
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
 	config.Profile.TestModeAPIKey = apiKey
+	displayName, _ := getDisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+
+	config.Profile.DisplayName = displayName
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
@@ -44,6 +47,22 @@ func InteractiveLogin(config *config.Config) error {
 	}
 
 	return nil
+}
+
+// getDisplayName returns the display name for a successfully authenticated user
+func getDisplayName(account *Account, baseURL string, apiKey string) (string, error) {
+	// Account will be nil if user did interactive login
+	if account == nil {
+		acc, err := GetUserAccount(baseURL, apiKey)
+		if err != nil {
+			return "", err
+		}
+
+		account = acc
+	}
+	displayName := account.Settings.Dashboard.DisplayName
+
+	return displayName, nil
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
@@ -108,7 +127,7 @@ func securePrompt(input io.Reader) (string, error) {
 			return "", err
 		}
 
-		buf, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
+		buf, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 		if err != nil {
 			return "", err
 		}
@@ -126,7 +145,7 @@ func securePrompt(input io.Reader) (string, error) {
 }
 
 func protectTerminalState() (chan os.Signal, error) {
-	originalTerminalState, err := terminal.GetState(int(syscall.Stdin)) //nolint:unconvert
+	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +155,7 @@ func protectTerminalState() (chan os.Signal, error) {
 
 	go func() {
 		<-signalChan
-		terminal.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
+		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
 		os.Exit(1)
 	}()
 

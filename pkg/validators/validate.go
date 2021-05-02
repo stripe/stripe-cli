@@ -12,6 +12,13 @@ import (
 // error if the string is invalid, or nil otherwise.
 type ArgValidator func(string) error
 
+var (
+	// ErrAPIKeyNotConfigured is the error returned when the loaded profile is missing the api key property
+	ErrAPIKeyNotConfigured = errors.New("you have not configured API keys yet")
+	// ErrDeviceNameNotConfigured is the error returned when the loaded profile is missing the device name property
+	ErrDeviceNameNotConfigured = errors.New("you have not configured your device name yet")
+)
+
 // CallNonEmptyArray calls an argument validator on all non-empty elements of
 // a string array.
 func CallNonEmptyArray(validator ArgValidator, values []string) error {
@@ -42,7 +49,7 @@ func CallNonEmpty(validator ArgValidator, value string) error {
 // APIKey validates that a string looks like an API key.
 func APIKey(input string) error {
 	if len(input) == 0 {
-		return errors.New("you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
+		return ErrAPIKeyNotConfigured
 	} else if len(input) < 12 {
 		return errors.New("the API key provided is too short, it must be at least 12 characters long")
 	}
@@ -62,7 +69,7 @@ func APIKey(input string) error {
 // APIKeyNotRestricted validates that a string looks like a secret API key and is not a restricted key.
 func APIKeyNotRestricted(input string) error {
 	if len(input) == 0 {
-		return errors.New("you have not configured API keys yet. To do so, run `stripe login` which will configure your API keys from Stripe")
+		return ErrAPIKeyNotConfigured
 	} else if len(input) < 12 {
 		return errors.New("the API key provided is too short, it must be at least 12 characters long")
 	}

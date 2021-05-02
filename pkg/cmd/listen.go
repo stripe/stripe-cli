@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -30,13 +31,14 @@ type listenCmd struct {
 	events                []string
 	latestAPIVersion      bool
 	livemode              bool
-	loadFromWebhooksAPI   bool
+	useConfiguredWebhooks bool
 	printJSON             bool
+	format                string
 	skipVerify            bool
 	onlyPrintSecret       bool
-
-	apiBaseURL string
-	noWSS      bool
+	skipUpdate            bool
+	apiBaseURL            string
+	noWSS                 bool
 }
 
 func newListenCmd() *listenCmd {
@@ -63,10 +65,15 @@ Stripe account.`,
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
-	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout")
-	lc.cmd.Flags().BoolVarP(&lc.loadFromWebhooksAPI, "load-from-webhooks-api", "a", false, "Load webhook endpoint configuration from the webhooks API")
+	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
+	lc.cmd.Flags().MarkDeprecated("print-json", "Please use `--format JSON` instead and use `jq` if you need to process the JSON in the terminal.")
+	lc.cmd.Flags().StringVar(&lc.format, "format", "", `Specifies the output format of webhook events
+	Acceptable values:
+		'JSON' - Output webhook events in JSON format`)
+	lc.cmd.Flags().BoolVarP(&lc.useConfiguredWebhooks, "use-configured-webhooks", "a", false, "Load webhook endpoint configuration from the webhooks API/dashboard")
 	lc.cmd.Flags().BoolVarP(&lc.skipVerify, "skip-verify", "", false, "Skip certificate verification when forwarding to HTTPS endpoints")
 	lc.cmd.Flags().BoolVar(&lc.onlyPrintSecret, "print-secret", false, "Only print the webhook signing secret and exit")
+	lc.cmd.Flags().BoolVarP(&lc.skipUpdate, "skip-update", "s", false, "Skip checking latest version of Stripe CLI")
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
@@ -74,6 +81,14 @@ Stripe account.`,
 
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
+
+	// renamed --load-from-webhooks-api to --use-configured-webhooks,  but want to keep backward compatibility
+	lc.cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
+		if name == "load-from-webhooks-api" {
+			name = "use-configured-webhooks"
+		}
+		return pflag.NormalizedName(name)
+	})
 
 	return lc
 }
@@ -93,7 +108,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !lc.printJSON && !lc.onlyPrintSecret {
+	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
 		version.CheckLatestVersion()
 	}
 
@@ -134,7 +149,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	if lc.loadFromWebhooksAPI && len(lc.forwardURL) > 0 {
+	if lc.useConfiguredWebhooks && len(lc.forwardURL) > 0 {
 		if strings.HasPrefix(lc.forwardURL, "/") {
 			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
 		}
@@ -149,7 +164,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(lc.forwardURL), parseURL(lc.forwardConnectURL), lc.forwardHeaders, lc.forwardConnectHeaders)
-	} else if lc.loadFromWebhooksAPI && len(lc.forwardURL) == 0 {
+	} else if lc.useConfiguredWebhooks && len(lc.forwardURL) == 0 {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
 
@@ -160,6 +175,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		APIBaseURL:          lc.apiBaseURL,
 		WebSocketFeature:    webhooksWebSocketFeature,
 		PrintJSON:           lc.printJSON,
+		Format:              lc.format,
 		UseLatestAPIVersion: lc.latestAPIVersion,
 		SkipVerify:          lc.skipVerify,
 		Log:                 log.StandardLogger(),

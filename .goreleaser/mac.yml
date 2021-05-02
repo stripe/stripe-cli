@@ -1,0 +1,69 @@
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod download
+    - go generate ./...
+project_name: stripe
+builds:
+  - id: stripe-darwin
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=1
+    main: ./cmd/stripe/main.go
+    goos:
+      - darwin
+    goarch:
+      - amd64
+  - id: stripe-darwin-arm
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    main: ./cmd/stripe/main.go
+    goos:
+      - darwin
+    goarch:
+      - arm64
+archives:
+  - replacements:
+      darwin: mac-os
+      amd64: x86_64
+    files:
+      - none*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+checksum:
+  name_template: "{{ .ProjectName }}-mac-checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
+brews:
+  - tap:
+      owner: stripe
+      name: homebrew-stripe-cli
+    commit_author:
+      name: stripe-ci
+      email: support@stripe.com
+    homepage: https://stripe.com
+    description: Stripe CLI utility
+    install: |
+      bin.install "stripe"
+      rm Dir["#{bin}/{stripe-completion.bash,stripe-completion.zsh}"]
+      system bin/"stripe", "completion", "--shell", "bash"
+      system bin/"stripe", "completion", "--shell", "zsh"
+      bash_completion.install "stripe-completion.bash"
+      zsh_completion.install "stripe-completion.zsh"
+      (zsh_completion/"_stripe").write <<~EOS
+        #compdef stripe
+        _stripe () {
+          local e
+          e=$(dirname ${funcsourcetrace[1]%:*})/stripe-completion.zsh
+          if [[ -f $e ]]; then source $e; fi
+        }
+      EOS
+    caveats: "❤ Thanks for installing the Stripe CLI! If this is your first time using the CLI, be sure to run `stripe login` first."
