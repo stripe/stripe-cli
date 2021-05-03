@@ -47,9 +47,6 @@ func Names(list map[string]*SampleData) []string {
 	return keys
 }
 
-// Returns a list that contains a mapping of Stripe Samples
-var list = map[string]*SampleData{}
-
 func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 	listPath, err := s.appCacheFolder("samples-list")
 	if err != nil {
@@ -89,8 +86,9 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 		return err
 	}
 
+	s.SamplesList = make(map[string]*SampleData)
 	for i, sample := range allSamples.Samples {
-		list[sample.Name] = &allSamples.Samples[i]
+		s.SamplesList[sample.Name] = &allSamples.Samples[i]
 	}
 
 	return nil
@@ -100,12 +98,9 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 // we want to be available in the CLI to some of their metadata.
 // TODO: what do we want to name these for it to be easier for users to select?
 // TODO: should we group them by products for easier exploring?
-func (s *Samples) GetSamples(mode string) map[string]*SampleData {
-	spinner := ansi.StartNewSpinner("Loading...", os.Stdout)
-
-	if len(list) != 0 {
-		ansi.StopSpinner(spinner, "", os.Stdout)
-		return list
+func (s *Samples) GetSamples(mode string) (map[string]*SampleData, error) {
+	if len(s.SamplesList) != 0 {
+		return s.SamplesList, nil
 	}
 
 	// Reduce the amount of request to GitHub
@@ -122,9 +117,8 @@ func (s *Samples) GetSamples(mode string) map[string]*SampleData {
 	// Get the samples from the cache or GitHub
 	err := s.getFromCacheOrGithub(noNetwork)
 	if err != nil {
-		ansi.StopSpinner(spinner, "Error: please check your internet connection and try again!", os.Stdout)
+		return nil, err
 	}
 
-	ansi.StopSpinner(spinner, "", os.Stdout)
-	return list
+	return s.SamplesList, nil
 }

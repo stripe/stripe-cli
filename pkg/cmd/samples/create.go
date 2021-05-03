@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/manifoldco/promptui"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -65,7 +66,12 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		Git:    gitpkg.Operations{},
 	}
 
-	if _, ok := sample.GetSamples("create")[args[0]]; !ok {
+	samplesList, err := sample.GetSamples("create")
+	if err != nil {
+		return err
+	}
+
+	if _, ok := samplesList[args[0]]; !ok {
 		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
 To see supported samples, run 'stripe samples list'`, args[0])
 		return fmt.Errorf(errorMessage)
@@ -105,7 +111,7 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	// depending on whether or not it's. Additionally, this
 	// identifies if the sample has multiple integrations and what
 	// languages it supports.
-	err := sample.Initialize(selectedSample)
+	err = sample.Initialize(selectedSample)
 	if err != nil {
 		switch e := err.Error(); e {
 		case git.NoErrAlreadyUpToDate.Error():
@@ -130,10 +136,11 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	// directory, the user needs to select which integration they
 	// want to work with (if selectedSamplelicable) and which language they
 	// want to copy
-	err = sample.SelectOptions()
+	selectedConfig, err := PromptSampleConfig(sample)
 	if err != nil {
 		return err
 	}
+	sample.SelectedConfig = *selectedConfig
 
 	// Setup to intercept ctrl+c
 	c := make(chan os.Signal, 1)
@@ -180,4 +187,98 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	}
 
 	return nil
+}
+
+// PromptSampleConfig prompts the user to select the integration they want to use
+// (if available) and the language they want the integration to be.
+func PromptSampleConfig(sample samples.Samples) (*samples.SelectedConfig, error) {
+	var selectedConfig samples.SelectedConfig
+
+	if sample.SampleConfig.HasIntegrations() {
+		integration, err := integrationSelectPrompt(&sample.SampleConfig)
+		if err != nil {
+			return nil, err
+		}
+		selectedConfig.Integration = integration
+	} else {
+		selectedConfig.Integration = &sample.SampleConfig.Integrations[0]
+	}
+
+	if selectedConfig.Integration.HasMultipleClients() {
+		client, err := clientSelectPrompt(selectedConfig.Integration.Clients)
+		if err != nil {
+			return nil, err
+		}
+		selectedConfig.Client = client
+	} else {
+		selectedConfig.Client = ""
+	}
+
+	if selectedConfig.Integration.HasMultipleServers() {
+		server, err := serverSelectPrompt(selectedConfig.Integration.Servers)
+		if err != nil {
+			return nil, err
+		}
+		selectedConfig.Server = server
+	} else {
+		selectedConfig.Server = ""
+	}
+
+	return &selectedConfig, nil
+}
+
+func selectOptions(template, label string, options []string) (string, error) {
+	color := ansi.Color(os.Stdout)
+
+	templates := &promptui.SelectTemplates{
+		Selected: color.Green("✔").String() + ansi.Faint(fmt.Sprintf(" Selected %s: {{ . | bold }} ", template)),
+	}
+	prompt := promptui.Select{
+		Label:     label,
+		Items:     options,
+		Templates: templates,
+	}
+
+	_, result, err := prompt.Run()
+
+	if err != nil {
+		return "", err
+	}
+
+	return result, nil
+}
+
+func clientSelectPrompt(clients []string) (string, error) {
+	selected, err := selectOptions("client", "Which client would you like to use", clients)
+	if err != nil {
+		return "", err
+	}
+
+	return selected, nil
+}
+
+func integrationSelectPrompt(sc *samples.SampleConfig) (*samples.SampleConfigIntegration, error) {
+	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.IntegrationNames())
+	if err != nil {
+		return nil, err
+	}
+
+	var selectedIntegration *samples.SampleConfigIntegration
+
+	for i, integration := range sc.Integrations {
+		if integration.Name == selected {
+			selectedIntegration = &sc.Integrations[i]
+		}
+	}
+
+	return selectedIntegration, nil
+}
+
+func serverSelectPrompt(servers []string) (string, error) {
+	selected, err := selectOptions("server", "What server would you like to use", servers)
+	if err != nil {
+		return "", err
+	}
+
+	return selected, nil
 }
