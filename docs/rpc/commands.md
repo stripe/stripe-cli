@@ -28,6 +28,10 @@
     - [SamplesListResponse](#rpc.SamplesListResponse)
     - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
   
+- [triggers_list.proto](#triggers_list.proto)
+    - [TriggersListRequest](#rpc.TriggersListRequest)
+    - [TriggersListResponse](#rpc.TriggersListResponse)
+  
 - [version.proto](#version.proto)
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
@@ -61,6 +65,7 @@
 | SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
 | SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
+| TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
 
  
@@ -309,6 +314,47 @@
 | name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
 | url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment |
 | description | [string](#string) |  | Description of the sample, e.g. Learn how to accept a basic card payment |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="triggers_list.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## triggers_list.proto
+
+
+
+<a name="rpc.TriggersListRequest"></a>
+
+### TriggersListRequest
+
+
+
+
+
+
+
+<a name="rpc.TriggersListResponse"></a>
+
+### TriggersListResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| events | [string](#string) | repeated | A list of supported events for `Trigger`. |
 
 
 
