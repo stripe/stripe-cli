@@ -17,7 +17,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-// SampleConfig ..
+// SampleConfig contains all the configuration options for a sample
 type SampleConfig struct {
 	Name            string                    `json:"name"`
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
@@ -25,12 +25,12 @@ type SampleConfig struct {
 	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
 
-// HasIntegrations ...
+// HasIntegrations returns true if the sample has multiple integrations
 func (sc *SampleConfig) HasIntegrations() bool {
 	return len(sc.Integrations) > 1
 }
 
-// IntegrationNames ..
+// IntegrationNames returns the names of the available integrations for the sample
 func (sc *SampleConfig) IntegrationNames() []string {
 	names := []string{}
 	for _, integration := range sc.Integrations {
@@ -50,7 +50,7 @@ func (sc *SampleConfig) integrationServers(name string) []string {
 	return []string{}
 }
 
-// SampleConfigIntegration is ...
+// SampleConfigIntegration is a particular integration for a sample
 type SampleConfigIntegration struct {
 	Name string `json:"name"`
 	// Clients are the frontend clients built for each sample
@@ -67,12 +67,12 @@ func (i *SampleConfigIntegration) hasServers() bool {
 	return len(i.Servers) > 0
 }
 
-// HasMultipleClients ...
+// HasMultipleClients returns true if this integration has multiple options for the client language
 func (i *SampleConfigIntegration) HasMultipleClients() bool {
 	return len(i.Clients) > 1
 }
 
-// HasMultipleServers ...
+// HasMultipleServers returns true if this integration has multiple options for the server language
 func (i *SampleConfigIntegration) HasMultipleServers() bool {
 	return len(i.Servers) > 1
 }
@@ -85,7 +85,7 @@ func (i *SampleConfigIntegration) name() string {
 	return i.Name
 }
 
-// SelectedConfig ...
+// SelectedConfig is the sample config that the user has selected to create
 type SelectedConfig struct {
 	Integration *SampleConfigIntegration
 	Client      string
