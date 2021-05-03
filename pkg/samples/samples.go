@@ -190,7 +190,8 @@ func (s *Samples) Copy(target string) error {
 	integration := s.SelectedConfig.Integration.name()
 
 	if s.SelectedConfig.Integration.hasServers() {
-		if !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
+		// empty string is a valid option
+		if s.SelectedConfig.Server != "" && !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
 			return fmt.Errorf(
 				"Server %s doesn't exist for sample integration %s. Available servers: %v",
 				s.SelectedConfig.Server,
@@ -209,7 +210,8 @@ func (s *Samples) Copy(target string) error {
 	}
 
 	if s.SelectedConfig.Integration.hasClients() {
-		if !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
+		// empty string is a valid option
+		if s.SelectedConfig.Client != "" && !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
 			return fmt.Errorf(
 				"Client %s doesn't exist for sample integration %s. Available clients: %v",
 				s.SelectedConfig.Client,
