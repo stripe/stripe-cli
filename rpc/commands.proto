@@ -7,6 +7,7 @@ import "login_status.proto";
 import "sample_configs.proto";
 import "sample_create.proto";
 import "samples_list.proto";
+import "trigger.proto";
 import "triggers_list.proto";
 import "version.proto";
 
@@ -29,6 +30,9 @@ service StripeCLI {
 
   // Get a list of available Stripe samples. Like `stripe samples list`.
   rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);
+
+  // Trigger a webhook event. Like `stripe trigger`.
+  rpc Trigger(TriggerRequest) returns (TriggerResponse);
 
   // Get a list of supported events for `Trigger`.
   rpc TriggersList(TriggersListRequest) returns (TriggersListResponse);
