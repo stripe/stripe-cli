@@ -68,6 +68,7 @@ func Create(
 	exists, _ := afero.DirExists(sample.Fs, destination)
 	if exists {
 		resultChan <- CreationResult{Err: fmt.Errorf("Path already exists for: %s", destination)}
+		return
 	}
 
 	if forceRefresh {
@@ -105,6 +106,7 @@ func Create(
 			break
 		default:
 			resultChan <- CreationResult{Err: err}
+			return
 		}
 	}
 
@@ -130,6 +132,7 @@ func Create(
 	targetPath, err := sample.MakeFolder(destination)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
+		return
 	}
 
 	// Perform the copy of the sample given the selected options
@@ -137,6 +140,7 @@ func Create(
 	err = sample.Copy(targetPath)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
+		return
 	}
 
 	resultChan <- CreationResult{State: DidCopy}
@@ -146,6 +150,7 @@ func Create(
 	err = sample.ConfigureDotEnv(targetPath)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
+		return
 	}
 
 	resultChan <- CreationResult{State: DidConfigure}
