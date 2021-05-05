@@ -5,11 +5,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -36,16 +34,12 @@ the CLI.`,
 }
 
 func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) error {
-	sample := samples.Samples{
-		Fs:  afero.NewOsFs(),
-		Git: gitpkg.Operations{},
-	}
-
 	fmt.Println("A list of available Stripe Samples:")
 	fmt.Println()
 
 	spinner := ansi.StartNewSpinner("Loading...", os.Stdout)
-	list, err := sample.GetSamples("list")
+
+	list, err := samples.GetSamples("list")
 	if err != nil {
 		ansi.StopSpinner(spinner, "Error: please check your internet connection and try again!", os.Stdout)
 		return err

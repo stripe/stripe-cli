@@ -13,8 +13,11 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/src-d/go-git.v4"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	g "github.com/stripe/stripe-cli/pkg/git"
+	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
@@ -134,7 +137,7 @@ func (s *Samples) Initialize(app string) error {
 	// that we can still work with (like no updates or repo already exists)
 	s.repo = appPath
 
-	list, err := s.GetSamples("create")
+	list, err := s.getSamples("create")
 	if err != nil {
 		return err
 	}
@@ -363,4 +366,43 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+// GetSampleConfig returns the available config for this sample
+func GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error) {
+	sample := Samples{
+		Fs:  afero.NewOsFs(),
+		Git: gitpkg.Operations{},
+	}
+
+	if forceRefresh {
+		err := sample.DeleteCache(sampleName)
+		if err != nil {
+			logger := log.Logger{
+				Out: os.Stdout,
+			}
+
+			logger.WithFields(log.Fields{
+				"prefix": "samples.create.forceRefresh",
+				"error":  err,
+			}).Debug("Could not clear cache")
+		}
+	}
+
+	samplesList, err := sample.getSamples("create")
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := samplesList[sampleName]; !ok {
+		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
+To see supported samples, run 'stripe samples list'`, sampleName)
+		return nil, fmt.Errorf(errorMessage)
+	}
+
+	err = sample.Initialize(sampleName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sample.SampleConfig, nil
 }

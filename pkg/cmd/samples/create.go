@@ -3,21 +3,15 @@ package samples
 import (
 	"fmt"
 	"os"
-	"os/signal"
 
 	"github.com/manifoldco/promptui"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
-
-	"gopkg.in/src-d/go-git.v4"
 )
 
 // CreateCmd wraps the `create` command for samples which generates a new
@@ -60,75 +54,20 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	sample := samples.Samples{
-		Config: cc.cfg,
-		Fs:     afero.NewOsFs(),
-		Git:    gitpkg.Operations{},
-	}
-
-	samplesList, err := sample.GetSamples("create")
-	if err != nil {
-		return err
-	}
-
-	if _, ok := samplesList[args[0]]; !ok {
-		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
-To see supported samples, run 'stripe samples list'`, args[0])
-		return fmt.Errorf(errorMessage)
-	}
-
 	selectedSample := args[0]
-	color := ansi.Color(os.Stdout)
-
 	destination := selectedSample
 	if len(args) > 1 {
 		destination = args[1]
 	}
 
-	exists, _ := afero.DirExists(sample.Fs, destination)
-	if exists {
-		return fmt.Errorf("Path already exists for: %s", destination)
-	}
-
+	color := ansi.Color(os.Stdout)
 	spinner := ansi.StartNewSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
 
-	if cc.forceRefresh {
-		err := sample.DeleteCache(selectedSample)
-		if err != nil {
-			logger := log.Logger{
-				Out: os.Stdout,
-			}
-
-			logger.WithFields(log.Fields{
-				"prefix": "samples.create.forceRefresh",
-				"error":  err,
-			}).Debug("Could not clear cache")
-		}
-	}
-
-	// Initialize the selected sample in the local cache directory.
-	// This will either clone or update the specified sample,
-	// depending on whether or not it's. Additionally, this
-	// identifies if the sample has multiple integrations and what
-	// languages it supports.
-	err = sample.Initialize(selectedSample)
+	sampleConfig, err := samples.GetSampleConfig(selectedSample, cc.forceRefresh)
 	if err != nil {
-		switch e := err.Error(); e {
-		case git.NoErrAlreadyUpToDate.Error():
-			// Repo is already up to date. This isn't a program
-			// error to continue as normal
-			break
-		case git.ErrRepositoryAlreadyExists.Error():
-			// If the repository already exists and we don't pull
-			// for some reason, that's fine as we can use the existing
-			// repository
-			break
-		default:
-			ansi.StopSpinner(spinner, "An error occurred.", os.Stdout)
-			return err
-		}
+		ansi.StopSpinner(spinner, "", os.Stdout)
+		return err
 	}
-
 	ansi.StopSpinner(spinner, "", os.Stdout)
 	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Finished downloading"))
 
@@ -136,72 +75,63 @@ To see supported samples, run 'stripe samples list'`, args[0])
 	// directory, the user needs to select which integration they
 	// want to work with (if selectedSamplelicable) and which language they
 	// want to copy
-	selectedConfig, err := PromptSampleConfig(sample)
-	if err != nil {
-		return err
-	}
-	sample.SelectedConfig = *selectedConfig
-
-	// Setup to intercept ctrl+c
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-
-	go func() {
-		<-c
-		sample.Cleanup(selectedSample)
-		os.Exit(1)
-	}()
-
-	spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", destination), os.Stdout)
-	// Create the target folder to copy the sample in to. We do
-	// this here in case any of the steps above fail, minimizing
-	// the change that we create a dangling empty folder
-	targetPath, err := sample.MakeFolder(destination)
+	selectedConfig, err := promptSampleConfig(sampleConfig)
 	if err != nil {
 		return err
 	}
 
-	// Perform the copy of the sample given the selected options
-	// from the selections above
-	err = sample.Copy(targetPath)
-	if err != nil {
-		return err
-	}
+	resultChan := make(chan samples.CreationResult)
 
-	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Files copied"))
+	go samples.Create(
+		cc.cfg,
+		selectedSample,
+		selectedConfig,
+		destination,
+		cc.forceRefresh,
+		resultChan,
+	)
 
-	spinner = ansi.StartNewSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
+	for res := range resultChan {
+		if res.Err != nil {
+			ansi.StopSpinner(spinner, "", os.Stdout)
+			return res.Err
+		}
 
-	err = sample.ConfigureDotEnv(targetPath)
-	if err != nil {
-		return err
-	}
-
-	ansi.StopSpinner(spinner, "", os.Stdout)
-	fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Project configured"))
-	fmt.Println("You're all set. To get started: cd", destination)
-
-	if sample.PostInstall() != "" {
-		fmt.Println(sample.PostInstall())
+		switch res.State {
+		case samples.WillCopy:
+			spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", destination), os.Stdout)
+		case samples.DidCopy:
+			ansi.StopSpinner(spinner, "", os.Stdout)
+			fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Files copied"))
+		case samples.WillConfigure:
+			spinner = ansi.StartNewSpinner(fmt.Sprintf("Configuring your code... %s", selectedSample), os.Stdout)
+		case samples.DidConfigure:
+			ansi.StopSpinner(spinner, "", os.Stdout)
+			fmt.Printf("%s %s\n", color.Green("✔"), ansi.Faint("Project configured"))
+		case samples.Done:
+			fmt.Println("You're all set. To get started: cd", destination)
+			if res.PostInstall != "" {
+				fmt.Println(res.PostInstall)
+			}
+		}
 	}
 
 	return nil
 }
 
-// PromptSampleConfig prompts the user to select the integration they want to use
+// promptSampleConfig prompts the user to select the integration they want to use
 // (if available) and the language they want the integration to be.
-func PromptSampleConfig(sample samples.Samples) (*samples.SelectedConfig, error) {
+func promptSampleConfig(sampleConfig *samples.SampleConfig) (*samples.SelectedConfig, error) {
 	var selectedConfig samples.SelectedConfig
 
-	if sample.SampleConfig.HasIntegrations() {
-		integration, err := integrationSelectPrompt(&sample.SampleConfig)
+	if sampleConfig.HasIntegrations() {
+		integration, err := integrationSelectPrompt(sampleConfig)
 		if err != nil {
 			return nil, err
 		}
 		selectedConfig.Integration = integration
 	} else {
-		selectedConfig.Integration = &sample.SampleConfig.Integrations[0]
+		selectedConfig.Integration = &sampleConfig.Integrations[0]
 	}
 
 	if selectedConfig.Integration.HasMultipleClients() {

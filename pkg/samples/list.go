@@ -10,6 +10,7 @@ import (
 	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 )
 
 const sampleListGithubURL = "https://github.com/stripe-samples/samples-list.git"
@@ -94,11 +95,7 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 	return nil
 }
 
-// GetSamples returns a list that contains a mapping of Stripe Samples that
-// we want to be available in the CLI to some of their metadata.
-// TODO: what do we want to name these for it to be easier for users to select?
-// TODO: should we group them by products for easier exploring?
-func (s *Samples) GetSamples(mode string) (map[string]*SampleData, error) {
+func (s *Samples) getSamples(mode string) (map[string]*SampleData, error) {
 	if len(s.SamplesList) != 0 {
 		return s.SamplesList, nil
 	}
@@ -121,4 +118,17 @@ func (s *Samples) GetSamples(mode string) (map[string]*SampleData, error) {
 	}
 
 	return s.SamplesList, nil
+}
+
+// GetSamples returns a list that contains a mapping of Stripe Samples that
+// we want to be available in the CLI to some of their metadata.
+// TODO: what do we want to name these for it to be easier for users to select?
+// TODO: should we group them by products for easier exploring?
+func GetSamples(mode string) (map[string]*SampleData, error) {
+	sample := Samples{
+		Fs:  afero.NewOsFs(),
+		Git: gitpkg.Operations{},
+	}
+
+	return sample.getSamples(mode)
 }
