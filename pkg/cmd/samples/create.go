@@ -1,6 +1,7 @@
 package samples
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -113,6 +114,8 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 			if res.PostInstall != "" {
 				fmt.Println(res.PostInstall)
 			}
+		default:
+			return errors.New("an unknown error occurred during sample creation")
 		}
 	}
 
