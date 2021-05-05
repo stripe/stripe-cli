@@ -18,11 +18,11 @@ import (
 type CreationStatus int
 
 const (
-	// WillDownload means this sample will be downloaded
-	WillDownload CreationStatus = iota
+	// WillInitialize means this sample will be initialized
+	WillInitialize CreationStatus = iota
 
-	// DidDownload means this sample has finished downloading
-	DidDownload
+	// DidInitialize means this sample has finished initializing
+	DidInitialize
 
 	// WillCopy means the downloaded sample will be copied to the target path
 	WillCopy
@@ -85,7 +85,7 @@ func Create(
 		}
 	}
 
-	resultChan <- CreationResult{State: WillDownload}
+	resultChan <- CreationResult{State: WillInitialize}
 
 	// Initialize the selected sample in the local cache directory.
 	// This will either clone or update the specified sample,
@@ -110,7 +110,7 @@ func Create(
 		}
 	}
 
-	resultChan <- CreationResult{State: DidDownload}
+	resultChan <- CreationResult{State: DidInitialize}
 
 	sample.SelectedConfig = *selectedConfig
 
