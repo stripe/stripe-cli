@@ -99,6 +99,8 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 		}
 
 		switch res.State {
+		case samples.WillInitialize:
+		case samples.DidInitialize:
 		case samples.WillCopy:
 			spinner = ansi.StartNewSpinner(fmt.Sprintf("Copying files over... %s", destination), os.Stdout)
 		case samples.DidCopy:
