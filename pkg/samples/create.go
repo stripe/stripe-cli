@@ -40,7 +40,7 @@ const (
 	Done
 )
 
-// CreationResult ...
+// CreationResult is the return value sent over a channel
 type CreationResult struct {
 	State       CreationStatus
 	Path        string
@@ -48,7 +48,7 @@ type CreationResult struct {
 	Err         error
 }
 
-// Create ...
+// Create creates a sample at a destination with the selected integration, client language, and server language
 func Create(
 	config *config.Config,
 	sampleName string,
