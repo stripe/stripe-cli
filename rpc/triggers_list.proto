@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message TriggersListRequest {}
+
+message TriggersListResponse {
+  // A list of supported events for `Trigger`.
+  repeated string events = 1;
+}
