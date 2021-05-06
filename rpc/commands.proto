@@ -3,6 +3,7 @@ syntax = "proto3";
 package rpc;
 
 import "sample_configs.proto";
+import "sample_create.proto";
 import "samples_list.proto";
 import "version.proto";
 
@@ -11,6 +12,9 @@ option go_package = "github.com/stripe/stripe-cli/rpc";
 service StripeCLI {
   // Get a list of available configs for a given Stripe sample.
   rpc SampleConfigs(SampleConfigsRequest) returns (SampleConfigsResponse);
+
+  // Clone a Stripe sample. Like `stripe samples create`.
+  rpc SampleCreate(SampleCreateRequest) returns (SampleCreateResponse);
 
   // Get a list of available Stripe samples. Like `stripe samples list`.
   rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);

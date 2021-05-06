@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
@@ -23,6 +24,9 @@ type Config struct {
 
 	// Info, error, etc. logger. Unrelated to API request logs.
 	Log *log.Logger
+
+	// UserCfg is the Stripe CLI config of the user
+	UserCfg *config.Config
 }
 
 // RPCService implements the gRPC interface and starts the gRPC server.
