@@ -2,7 +2,6 @@ package rpcservice
 
 import (
 	"context"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,12 +23,6 @@ func TestTriggersListReturnsEvents(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.TriggersList(ctx, &rpc.TriggersListRequest{})
-
-	eventNames := []string{}
-	for eventName := range fixtures.Events {
-		eventNames = append(eventNames, eventName)
-	}
-	sort.Strings(eventNames)
 
 	expected := rpc.TriggersListResponse{
 		Events: fixtures.EventNames(),
