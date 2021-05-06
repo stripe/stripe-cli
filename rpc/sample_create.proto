@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message SampleCreateRequest {
+  // Name of the sample, e.g. accept-a-card-payment. Use the `SamplesList` method to get a list of
+  // available samples.
+  string sample_name = 1;
+
+  // Name of the particular integration, e.g. using-webhooks. Use the `SampleConfigs` method to get
+  // the available options.
+  string integration_name = 2;
+
+  // Platform or language for the client, e.g. web. Use the `SampleConfigs` method to get the
+  // available options.
+  string client = 3;
+
+  // Platform or language for the server, e.g. node. Use the `SampleConfigs` method to get the
+  // available options.
+  string server = 4;
+
+  // Path to clone the repo to.
+  string path = 5;
+
+  // If true, clear the local cache before creating the sample.
+  bool force_refresh = 6;
+}
+
+message SampleCreateResponse {
+  // Additional instructions for the sample after install.
+  string post_install = 1;
+
+  // Path to the sample.
+  string path = 2;
+}

@@ -10,6 +10,7 @@ import (
 
 	"context"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/rpcservice"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -17,10 +18,13 @@ import (
 type daemonCmd struct {
 	cmd  *cobra.Command
 	port int
+	cfg  *config.Config
 }
 
-func newDaemonCmd() *daemonCmd {
-	dc := &daemonCmd{}
+func newDaemonCmd(cfg *config.Config) *daemonCmd {
+	dc := &daemonCmd{
+		cfg: cfg,
+	}
 
 	dc.cmd = &cobra.Command{
 		Use:   "daemon",
@@ -55,8 +59,9 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 
 func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 	srv := rpcservice.New(&rpcservice.Config{
-		Port: dc.port,
-		Log:  log.StandardLogger(),
+		Port:    dc.port,
+		Log:     log.StandardLogger(),
+		UserCfg: dc.cfg,
 	})
 
 	ctx := withSIGTERMCancel(context.Background(), func() {
