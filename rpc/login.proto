@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message LoginRequest {
+}
+
+message LoginResponse {
+  // The URL to complete the login. The client must open this in the browser to successfully log in.
+  string url = 1;
+
+  // The pairing code to verify your authentication with Stripe, e.g. excels-champ-wins-quaint
+  string pairing_code = 2;
+}
