@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc/metadata"
@@ -17,7 +18,13 @@ var lis *bufconn.Listener
 
 func init() {
 	lis = bufconn.Listen(bufSize)
-	srv := New(&Config{})
+	srv := New(&Config{
+		UserCfg: &config.Config{
+			Profile: config.Profile{
+				APIKey: "sk_test_12345",
+			},
+		},
+	})
 
 	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
 

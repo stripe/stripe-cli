@@ -11,6 +11,10 @@
     - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
     - [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration)
   
+- [sample_create.proto](#sample_create.proto)
+    - [SampleCreateRequest](#rpc.SampleCreateRequest)
+    - [SampleCreateResponse](#rpc.SampleCreateResponse)
+  
 - [samples_list.proto](#samples_list.proto)
     - [SamplesListRequest](#rpc.SamplesListRequest)
     - [SamplesListResponse](#rpc.SamplesListResponse)
@@ -45,6 +49,7 @@
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
+| SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
 
@@ -100,6 +105,58 @@
 | integration_name | [string](#string) |  | Name of an available integration for this sample, e.g. &#34;using-webhooks&#34; |
 | clients | [string](#string) | repeated | List of available languages or platforms for the sample client, e.g. [&#34;web&#34;, &#34;android&#34;, &#34;ios&#34;] |
 | servers | [string](#string) | repeated | List of available languages or platforms for the sample server, e.g. [&#34;java&#34;, &#34;node&#34;] |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="sample_create.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## sample_create.proto
+
+
+
+<a name="rpc.SampleCreateRequest"></a>
+
+### SampleCreateRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment. Use the `SamplesList` method to get a list of available samples. |
+| integration_name | [string](#string) |  | Name of the particular integration, e.g. using-webhooks. Use the `SampleConfigs` method to get the available options. |
+| client | [string](#string) |  | Platform or language for the client, e.g. web. Use the `SampleConfigs` method to get the available options. |
+| server | [string](#string) |  | Platform or language for the server, e.g. node. Use the `SampleConfigs` method to get the available options. |
+| path | [string](#string) |  | Path to clone the repo to. |
+| force_refresh | [bool](#bool) |  | If true, clear the local cache before creating the sample. |
+
+
+
+
+
+
+<a name="rpc.SampleCreateResponse"></a>
+
+### SampleCreateResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| post_install | [string](#string) |  | Additional instructions for the sample after install. |
+| path | [string](#string) |  | Path to the sample. |
 
 
 
