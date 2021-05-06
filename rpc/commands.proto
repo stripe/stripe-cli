@@ -7,6 +7,7 @@ import "login_status.proto";
 import "sample_configs.proto";
 import "sample_create.proto";
 import "samples_list.proto";
+import "triggers_list.proto";
 import "version.proto";
 
 option go_package = "github.com/stripe/stripe-cli/rpc";
@@ -28,6 +29,9 @@ service StripeCLI {
 
   // Get a list of available Stripe samples. Like `stripe samples list`.
   rpc SamplesList(SamplesListRequest) returns (SamplesListResponse);
+
+  // Get a list of supported events for `Trigger`.
+  rpc TriggersList(TriggersListRequest) returns (TriggersListResponse);
 
   // Get the version of the Stripe CLI. Like `stripe version`.
   rpc Version(VersionRequest) returns (VersionResponse);
