@@ -6,6 +6,14 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [login.proto](#login.proto)
+    - [LoginRequest](#rpc.LoginRequest)
+    - [LoginResponse](#rpc.LoginResponse)
+  
+- [login_status.proto](#login_status.proto)
+    - [LoginStatusRequest](#rpc.LoginStatusRequest)
+    - [LoginStatusResponse](#rpc.LoginStatusResponse)
+  
 - [sample_configs.proto](#sample_configs.proto)
     - [SampleConfigsRequest](#rpc.SampleConfigsRequest)
     - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
@@ -48,10 +56,96 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
+| LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
 | SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
 | SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="login.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## login.proto
+
+
+
+<a name="rpc.LoginRequest"></a>
+
+### LoginRequest
+
+
+
+
+
+
+
+<a name="rpc.LoginResponse"></a>
+
+### LoginResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  | The URL to complete the login. The client must open this in the browser to successfully log in. |
+| pairing_code | [string](#string) |  | The pairing code to verify your authentication with Stripe, e.g. excels-champ-wins-quaint |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="login_status.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## login_status.proto
+
+
+
+<a name="rpc.LoginStatusRequest"></a>
+
+### LoginStatusRequest
+
+
+
+
+
+
+
+<a name="rpc.LoginStatusResponse"></a>
+
+### LoginStatusResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| account_id | [string](#string) |  | ID of the Stripe account, e.g. acct_123 |
+| display_name | [string](#string) |  | Display name of the Stripe account |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
