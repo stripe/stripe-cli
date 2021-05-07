@@ -7,11 +7,11 @@ package logtailing
  * - an RPC service, which wants to stream logs to a client
  */
 
-// StreamElementVisitor should implement the handlers for each type of element
-type StreamElementVisitor struct {
+// Visitor should implement the handlers for each type of element
+type Visitor struct {
 	VisitError   func(ErrorElement) error
 	VisitLog     func(LogElement) error
-	VisitStatus  func(StatusElement) error
+	VisitStatus  func(StateElement) error
 	VisitWarning func(WarningElement) error
 }
 
@@ -27,9 +27,9 @@ type LogElement struct {
 	MarshalledLog string
 }
 
-// StatusElement is the current status of the stream: loading, ready, etc.
-type StatusElement struct {
-	Status status
+// StateElement is the current state of the stream: loading, ready, etc.
+type StateElement struct {
+	State state
 }
 
 // WarningElement is a warning from the log tailer
@@ -37,15 +37,15 @@ type WarningElement struct {
 	Warning string
 }
 
-// StreamElement is an element that can be visited. This is visitor pattern boilerplate.
-type StreamElement interface {
-	Accept(v *StreamElementVisitor) error
+// IElement is an element that can be visited. This is visitor pattern boilerplate.
+type IElement interface {
+	Accept(v *Visitor) error
 }
 
 // Accept is visitor pattern boilerplate
-func (ee ErrorElement) Accept(v *StreamElementVisitor) error {
-	// This null check prevents segfaults. There isn't a good way to enforce v.VisitLog exists at
-	// compile time.
+func (ee ErrorElement) Accept(v *Visitor) error {
+	// This null check prevents segfaults. There isn't a good way to enforce the visitor method
+	// exists at compile time.
 	if v.VisitError == nil {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (ee ErrorElement) Accept(v *StreamElementVisitor) error {
 }
 
 // Accept is visitor pattern boilerplate
-func (le LogElement) Accept(v *StreamElementVisitor) error {
+func (le LogElement) Accept(v *Visitor) error {
 	if v.VisitLog == nil {
 		return nil
 	}
@@ -61,7 +61,7 @@ func (le LogElement) Accept(v *StreamElementVisitor) error {
 }
 
 // Accept is visitor pattern boilerplate
-func (we WarningElement) Accept(v *StreamElementVisitor) error {
+func (we WarningElement) Accept(v *Visitor) error {
 	if v.VisitWarning == nil {
 		return nil
 	}
@@ -69,18 +69,18 @@ func (we WarningElement) Accept(v *StreamElementVisitor) error {
 }
 
 // Accept is visitor pattern boilerplate
-func (se StatusElement) Accept(v *StreamElementVisitor) error {
+func (se StateElement) Accept(v *Visitor) error {
 	if v.VisitStatus == nil {
 		return nil
 	}
 	return v.VisitStatus(se)
 }
 
-type status int
+type state int
 
 const (
 	// Loading means the stream is being set up
-	Loading status = iota
+	Loading state = iota
 
 	// Reconnecting means the stream is reconnecting
 	Reconnecting

@@ -47,8 +47,8 @@ type Config struct {
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
 
-	// StreamElementCh is the channel to send logs and statuses to for processing in other packages
-	StreamElementCh chan StreamElement
+	// OutCh is the channel to send logs and statuses to for processing in other packages
+	OutCh chan IElement
 }
 
 // Tailer is the main interface for running the log tailing session
@@ -102,27 +102,27 @@ const maxConnectAttempts = 3
 
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
-	defer close(t.cfg.StreamElementCh)
+	defer close(t.cfg.OutCh)
 
 	var warned = false
 	var nAttempts int = 0
 
-	t.cfg.StreamElementCh <- StatusElement{
-		Status: Loading,
+	t.cfg.OutCh <- StateElement{
+		State: Loading,
 	}
 
 	for nAttempts < maxConnectAttempts {
 		session, err := t.createSession(ctx)
 
 		if err != nil {
-			t.cfg.StreamElementCh <- ErrorElement{
+			t.cfg.OutCh <- ErrorElement{
 				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
 			}
 			return err
 		}
 
 		if session.DisplayConnectFilterWarning && !warned {
-			t.cfg.StreamElementCh <- WarningElement{
+			t.cfg.OutCh <- WarningElement{
 				Warning: "you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.",
 			}
 			// Only display this warning once
@@ -144,8 +144,8 @@ func (t *Tailer) Run(ctx context.Context) error {
 		go func() {
 			<-t.webSocketClient.Connected()
 			nAttempts = 0
-			t.cfg.StreamElementCh <- StatusElement{
-				Status: Ready,
+			t.cfg.OutCh <- StateElement{
+				State: Ready,
 			}
 		}()
 
@@ -154,18 +154,18 @@ func (t *Tailer) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			t.cfg.StreamElementCh <- &StatusElement{
-				Status: Done,
+			t.cfg.OutCh <- &StateElement{
+				State: Done,
 			}
 			return nil
 		case <-t.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				t.cfg.StreamElementCh <- &StatusElement{
-					Status: Reconnecting,
+				t.cfg.OutCh <- &StateElement{
+					State: Reconnecting,
 				}
 			} else {
 				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
-				t.cfg.StreamElementCh <- ErrorElement{
+				t.cfg.OutCh <- ErrorElement{
 					Error: err,
 				}
 				return err
@@ -246,7 +246,7 @@ func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	t.cfg.StreamElementCh <- LogElement{
+	t.cfg.OutCh <- LogElement{
 		Log:           payload,
 		MarshalledLog: requestLogEvent.EventPayload,
 	}

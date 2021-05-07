@@ -167,18 +167,18 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	logger := log.StandardLogger()
 
-	streamElementVisitor := createVisitor(logger, tailCmd.format)
+	logtailingVisitor := createVisitor(logger, tailCmd.format)
 
-	streamElementCh := make(chan logTailing.StreamElement)
+	logtailingOutCh := make(chan logTailing.IElement)
 
 	tailer := logTailing.New(&logTailing.Config{
-		APIBaseURL:      tailCmd.apiBaseURL,
-		DeviceName:      deviceName,
-		Filters:         tailCmd.LogFilters,
-		Key:             key,
-		Log:             logger,
-		NoWSS:           tailCmd.noWSS,
-		StreamElementCh: streamElementCh,
+		APIBaseURL: tailCmd.apiBaseURL,
+		DeviceName: deviceName,
+		Filters:    tailCmd.LogFilters,
+		Key:        key,
+		Log:        logger,
+		NoWSS:      tailCmd.noWSS,
+		OutCh:      logtailingOutCh,
 	})
 
 	ctx := withSIGTERMCancel(context.Background(), func() {
@@ -189,8 +189,8 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	go tailer.Run(ctx)
 
-	for el := range streamElementCh {
-		err := el.Accept(streamElementVisitor)
+	for el := range logtailingOutCh {
+		err := el.Accept(logtailingVisitor)
 		if err != nil {
 			return err
 		}
@@ -244,21 +244,21 @@ func (tailCmd *TailCmd) convertArgs() error {
 	return nil
 }
 
-func createVisitor(logger *log.Logger, format string) *logtailing.StreamElementVisitor {
+func createVisitor(logger *log.Logger, format string) *logtailing.Visitor {
 	var s *spinner.Spinner
 
-	return &logtailing.StreamElementVisitor{
+	return &logtailing.Visitor{
 		VisitError: func(ee logTailing.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			return ee.Error
 		},
 		VisitWarning: func(we logTailing.WarningElement) error {
 			color := ansi.Color(os.Stdout)
-			fmt.Printf("%s%s\n", color.Yellow("Warning"), we.Warning)
+			fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
 			return nil
 		},
-		VisitStatus: func(se logTailing.StatusElement) error {
-			switch se.Status {
+		VisitStatus: func(se logTailing.StateElement) error {
+			switch se.State {
 			case logTailing.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
 			case logtailing.Reconnecting:
