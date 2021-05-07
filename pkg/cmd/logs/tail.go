@@ -190,7 +190,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	go tailer.Run(ctx)
 
 	for el := range streamElementCh {
-		err := el.Visit(streamElementVisitor)
+		err := el.Accept(streamElementVisitor)
 		if err != nil {
 			return err
 		}
@@ -244,10 +244,10 @@ func (tailCmd *TailCmd) convertArgs() error {
 	return nil
 }
 
-func createVisitor(logger *log.Logger, format string) logtailing.StreamElementVisitor {
+func createVisitor(logger *log.Logger, format string) *logtailing.StreamElementVisitor {
 	var s *spinner.Spinner
 
-	return logtailing.StreamElementVisitor{
+	return &logtailing.StreamElementVisitor{
 		VisitError: func(ee logTailing.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			return ee.Error

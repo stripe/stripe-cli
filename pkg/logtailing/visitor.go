@@ -39,35 +39,37 @@ type WarningElement struct {
 
 // StreamElement is an element that can be visited. This is visitor pattern boilerplate.
 type StreamElement interface {
-	Visit(v StreamElementVisitor) error
+	Accept(v *StreamElementVisitor) error
 }
 
-// Visit is visitor pattern boilerplate
-func (ee ErrorElement) Visit(v StreamElementVisitor) error {
+// Accept is visitor pattern boilerplate
+func (ee ErrorElement) Accept(v *StreamElementVisitor) error {
+	// This null check prevents segfaults. There isn't a good way to enforce v.VisitLog exists at
+	// compile time.
 	if v.VisitError == nil {
 		return nil
 	}
 	return v.VisitError(ee)
 }
 
-// Visit is visitor pattern boilerplate
-func (le LogElement) Visit(v StreamElementVisitor) error {
+// Accept is visitor pattern boilerplate
+func (le LogElement) Accept(v *StreamElementVisitor) error {
 	if v.VisitLog == nil {
 		return nil
 	}
 	return v.VisitLog(le)
 }
 
-// Visit is visitor pattern boilerplate
-func (we WarningElement) Visit(v StreamElementVisitor) error {
+// Accept is visitor pattern boilerplate
+func (we WarningElement) Accept(v *StreamElementVisitor) error {
 	if v.VisitWarning == nil {
 		return nil
 	}
 	return v.VisitWarning(we)
 }
 
-// Visit is visitor pattern boilerplate
-func (se StatusElement) Visit(v StreamElementVisitor) error {
+// Accept is visitor pattern boilerplate
+func (se StatusElement) Accept(v *StreamElementVisitor) error {
 	if v.VisitStatus == nil {
 		return nil
 	}
