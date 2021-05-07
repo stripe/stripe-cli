@@ -164,9 +164,11 @@ func (t *Tailer) Run(ctx context.Context) error {
 					Status: Reconnecting,
 				}
 			} else {
+				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
 				t.cfg.StreamElementCh <- ErrorElement{
-					Error: fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts),
+					Error: err,
 				}
+				return err
 			}
 		}
 	}

@@ -32,7 +32,7 @@ type StatusElement struct {
 	Status status
 }
 
-// WarningElement is a worning from the log tailer
+// WarningElement is a warning from the log tailer
 type WarningElement struct {
 	Warning string
 }
