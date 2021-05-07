@@ -55,11 +55,6 @@ needed to create the triggered event as well as the corresponding API objects.
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
-	apiKey, err := Config.Profile.GetAPIKey(false)
-	if err != nil {
-		return err
-	}
-
 	if len(args) == 0 {
 		cmd.Help()
 
@@ -68,30 +63,11 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	event := args[0]
 
-	var fixture *fixtures.Fixture
-	if file, ok := fixtures.Events[event]; ok {
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, file)
-		if err != nil {
-			return err
-		}
-	} else {
-		exists, _ := afero.Exists(tc.fs, event)
-		if !exists {
-			return fmt.Errorf(fmt.Sprintf("The event ‘%s’ is not supported by the Stripe CLI.", event))
-		}
-
-		fixture, err = fixtures.BuildFromFixture(tc.fs, apiKey, tc.stripeAccount, tc.apiBaseURL, event)
-		if err != nil {
-			return err
-		}
+	_, err := fixtures.Trigger(event, tc.stripeAccount, tc.apiBaseURL, &Config)
+	if err != nil {
+		return err
 	}
 
-	err = fixture.Execute()
-	if err == nil {
-		fmt.Println("Trigger succeeded! Check dashboard for event details.")
-	} else {
-		fmt.Printf("Trigger failed: %s\n", err)
-	}
-
-	return err
+	fmt.Println("Trigger succeeded! Check dashboard for event details.")
+	return nil
 }

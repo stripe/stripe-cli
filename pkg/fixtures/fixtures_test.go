@@ -249,7 +249,7 @@ func TestMakeRequest(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 
 	require.NotNil(t, fxt.responses["cust_bender"])
@@ -279,7 +279,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 	require.NotNil(t, fxt.responses["charge_expected_failure"])
 }
@@ -296,7 +296,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NotNil(t, err)
 }
 
@@ -521,4 +521,47 @@ func TestToFixtureQuery(t *testing.T) {
 		assert.Equal(t, test.expected, actualQuery)
 		assert.Equal(t, test.didMatch, actualDidMatch)
 	}
+}
+
+func TestExecuteReturnsRequestNames(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+		case "/v1/charges":
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+		case "/v1/charges/char_12345/capture":
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
+	require.NoError(t, err)
+
+	requestNames, err := fxt.Execute()
+	require.NoError(t, err)
+
+	require.NotNil(t, fxt.responses["cust_bender"])
+	require.NotNil(t, fxt.responses["char_bender"])
+	require.NotNil(t, fxt.responses["capt_bender"])
+
+	// After you make a `Find` request you need `Reset` the gojsonq object
+	fxt.responses["cust_bender"].Reset()
+	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Find("id"))
+
+	fxt.responses["char_bender"].Reset()
+	require.Equal(t, "char_12345", fxt.responses["char_bender"].Find("id"))
+
+	fxt.responses["char_bender"].Reset()
+	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
+
+	expectedResponseNames := []string{"cust_bender", "char_bender", "capt_bender"}
+	assert.Equal(t, expectedResponseNames, requestNames)
 }
