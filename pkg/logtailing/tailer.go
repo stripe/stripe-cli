@@ -6,20 +6,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/signal"
-	"reflect"
-	"strings"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
-const outputFormatJSON = "JSON"
+const requestLogsWebSocketFeature = "request_logs"
 
 // LogFilters contains all of the potential user-provided filters for log tailing
 type LogFilters struct {
@@ -52,11 +47,8 @@ type Config struct {
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
 
-	// Output format for request logs
-	OutputFormat string
-
-	// WebSocketFeature is the feature specified for the websocket connection
-	WebSocketFeature string
+	// OutCh is the channel to send logs and statuses to for processing in other packages
+	OutCh chan IElement
 }
 
 // Tailer is the main interface for running the log tailing session
@@ -106,47 +98,33 @@ func New(cfg *Config) *Tailer {
 	}
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		onCancel()
-		cancel()
-	}()
-	return ctx
-}
-
 const maxConnectAttempts = 3
 
 // Run sets the websocket connection
 func (t *Tailer) Run(ctx context.Context) error {
-	s := ansi.StartNewSpinner("Getting ready...", t.cfg.Log.Out)
-
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "logtailing.Tailer.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
+	defer close(t.cfg.OutCh)
 
 	var warned = false
 	var nAttempts int = 0
+
+	t.cfg.OutCh <- StateElement{
+		State: Loading,
+	}
 
 	for nAttempts < maxConnectAttempts {
 		session, err := t.createSession(ctx)
 
 		if err != nil {
-			ansi.StopSpinner(s, "", t.cfg.Log.Out)
-			t.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+			t.cfg.OutCh <- ErrorElement{
+				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
+			}
+			return err
 		}
 
 		if session.DisplayConnectFilterWarning && !warned {
-			color := ansi.Color(os.Stdout)
-			fmt.Printf("%s you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.\n", color.Yellow("Warning"))
+			t.cfg.OutCh <- WarningElement{
+				Warning: "you specified the 'account' filter for Connect accounts but are not a Connect user, so the filter will not be applied.",
+			}
 			// Only display this warning once
 			warned = true
 		}
@@ -166,7 +144,9 @@ func (t *Tailer) Run(ctx context.Context) error {
 		go func() {
 			<-t.webSocketClient.Connected()
 			nAttempts = 0
-			ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", t.cfg.Log.Out)
+			t.cfg.OutCh <- StateElement{
+				State: Ready,
+			}
 		}()
 
 		go t.webSocketClient.Run(ctx)
@@ -174,13 +154,21 @@ func (t *Tailer) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			ansi.StopSpinner(s, "", t.cfg.Log.Out)
+			t.cfg.OutCh <- &StateElement{
+				State: Done,
+			}
 			return nil
 		case <-t.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				ansi.StartSpinner(s, "Session expired, reconnecting...", t.cfg.Log.Out)
+				t.cfg.OutCh <- &StateElement{
+					State: Reconnecting,
+				}
 			} else {
-				t.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				t.cfg.OutCh <- ErrorElement{
+					Error: err,
+				}
+				return err
 			}
 		}
 	}
@@ -205,14 +193,14 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 
 	filters, err := jsonifyFilters(t.cfg.Filters)
 	if err != nil {
-		t.cfg.Log.Fatalf("Error while converting log filters to JSON encoding: %v", err)
+		return nil, fmt.Errorf("Error while converting log filters to JSON encoding: %v", err)
 	}
 
 	go func() {
 		// Try to authorize at least 5 times before failing. Sometimes we have random
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
-			session, err = t.stripeAuthClient.Authorize(ctx, t.cfg.DeviceName, t.cfg.WebSocketFeature, &filters)
+			session, err = t.stripeAuthClient.Authorize(ctx, t.cfg.DeviceName, requestLogsWebSocketFeature, &filters)
 
 			if err == nil {
 				exitCh <- struct{}{}
@@ -258,35 +246,9 @@ func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	if strings.ToUpper(t.cfg.OutputFormat) == outputFormatJSON {
-		fmt.Println(ansi.ColorizeJSON(requestLogEvent.EventPayload, false, os.Stdout))
-		return
-	}
-
-	coloredStatus := ansi.ColorizeStatus(payload.Status)
-
-	url := urlForRequestID(&payload)
-	requestLink := ansi.Linkify(payload.RequestID, url, os.Stdout)
-
-	if payload.URL == "" {
-		payload.URL = "[View path in dashboard]"
-	}
-
-	exampleLayout := "2006-01-02 15:04:05"
-	localTime := time.Unix(int64(payload.CreatedAt), 0).Format(exampleLayout)
-
-	color := ansi.Color(os.Stdout)
-	outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, payload.Method, payload.URL, requestLink)
-	fmt.Println(outputStr)
-
-	errorValues := reflect.ValueOf(&payload.Error).Elem()
-	errType := errorValues.Type()
-
-	for i := 0; i < errorValues.NumField(); i++ {
-		fieldValue := errorValues.Field(i).Interface()
-		if fieldValue != "" {
-			fmt.Printf("%s: %s\n", errType.Field(i).Name, fieldValue)
-		}
+	t.cfg.OutCh <- LogElement{
+		Log:           payload,
+		MarshalledLog: requestLogEvent.EventPayload,
 	}
 }
 
@@ -299,13 +261,4 @@ func jsonifyFilters(logFilters *LogFilters) (string, error) {
 	jsonStr := string(bytes)
 
 	return jsonStr, nil
-}
-
-func urlForRequestID(payload *EventPayload) string {
-	maybeTest := ""
-	if !payload.Livemode {
-		maybeTest = "/test"
-	}
-
-	return fmt.Sprintf("https://dashboard.stripe.com%s/logs/%s", maybeTest, payload.RequestID)
 }

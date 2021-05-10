@@ -1,20 +1,29 @@
 package logs
 
 import (
+	"fmt"
+	"os"
+	"os/signal"
+	"reflect"
 	"strings"
+	"syscall"
+	"time"
 
+	"github.com/briandowns/spinner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"context"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/logtailing"
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
-const requestLogsWebSocketFeature = "request_logs"
+const outputFormatJSON = "JSON"
 
 // TailCmd wraps the configuration for the tail command
 type TailCmd struct {
@@ -118,6 +127,21 @@ Acceptable values:
 	return tailCmd
 }
 
+func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
+	// Create a context that will be canceled when Ctrl+C is pressed
+	ctx, cancel := context.WithCancel(ctx)
+
+	interruptCh := make(chan os.Signal, 1)
+	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-interruptCh
+		onCancel()
+		cancel()
+	}()
+	return ctx
+}
+
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	err := tailCmd.validateArgs()
 	if err != nil {
@@ -141,20 +165,35 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	version.CheckLatestVersion()
 
+	logger := log.StandardLogger()
+
+	logtailingVisitor := createVisitor(logger, tailCmd.format)
+
+	logtailingOutCh := make(chan logTailing.IElement)
+
 	tailer := logTailing.New(&logTailing.Config{
-		APIBaseURL:       tailCmd.apiBaseURL,
-		DeviceName:       deviceName,
-		Filters:          tailCmd.LogFilters,
-		Key:              key,
-		Log:              log.StandardLogger(),
-		NoWSS:            tailCmd.noWSS,
-		OutputFormat:     strings.ToUpper(tailCmd.format),
-		WebSocketFeature: requestLogsWebSocketFeature,
+		APIBaseURL: tailCmd.apiBaseURL,
+		DeviceName: deviceName,
+		Filters:    tailCmd.LogFilters,
+		Key:        key,
+		Log:        logger,
+		NoWSS:      tailCmd.noWSS,
+		OutCh:      logtailingOutCh,
 	})
 
-	err = tailer.Run(context.Background())
-	if err != nil {
-		return err
+	ctx := withSIGTERMCancel(context.Background(), func() {
+		log.WithFields(log.Fields{
+			"prefix": "logtailing.Tailer.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
+
+	go tailer.Run(ctx)
+
+	for el := range logtailingOutCh {
+		err := el.Accept(logtailingVisitor)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -203,4 +242,75 @@ func (tailCmd *TailCmd) convertArgs() error {
 	}
 
 	return nil
+}
+
+func createVisitor(logger *log.Logger, format string) *logtailing.Visitor {
+	var s *spinner.Spinner
+
+	return &logtailing.Visitor{
+		VisitError: func(ee logTailing.ErrorElement) error {
+			ansi.StopSpinner(s, "", logger.Out)
+			return ee.Error
+		},
+		VisitWarning: func(we logTailing.WarningElement) error {
+			color := ansi.Color(os.Stdout)
+			fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
+			return nil
+		},
+		VisitStatus: func(se logTailing.StateElement) error {
+			switch se.State {
+			case logTailing.Loading:
+				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
+			case logtailing.Reconnecting:
+				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
+			case logtailing.Ready:
+				ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", logger.Out)
+			case logtailing.Done:
+				ansi.StopSpinner(s, "", logger.Out)
+			}
+			return nil
+		},
+		VisitLog: func(le logTailing.LogElement) error {
+			if strings.ToUpper(format) == outputFormatJSON {
+				fmt.Println(ansi.ColorizeJSON(le.MarshalledLog, false, os.Stdout))
+				return nil
+			}
+
+			coloredStatus := ansi.ColorizeStatus(le.Log.Status)
+
+			url := urlForRequestID(&le.Log)
+			requestLink := ansi.Linkify(le.Log.RequestID, url, os.Stdout)
+
+			if le.Log.URL == "" {
+				le.Log.URL = "[View path in dashboard]"
+			}
+
+			exampleLayout := "2006-01-02 15:04:05"
+			localTime := time.Unix(int64(le.Log.CreatedAt), 0).Format(exampleLayout)
+
+			color := ansi.Color(os.Stdout)
+			outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, le.Log.Method, le.Log.URL, requestLink)
+			fmt.Println(outputStr)
+
+			errorValues := reflect.ValueOf(&le.Log.Error).Elem()
+			errType := errorValues.Type()
+
+			for i := 0; i < errorValues.NumField(); i++ {
+				fieldValue := errorValues.Field(i).Interface()
+				if fieldValue != "" {
+					fmt.Printf("%s: %s\n", errType.Field(i).Name, fieldValue)
+				}
+			}
+			return nil
+		},
+	}
+}
+
+func urlForRequestID(payload *logtailing.EventPayload) string {
+	maybeTest := ""
+	if !payload.Livemode {
+		maybeTest = "/test"
+	}
+
+	return fmt.Sprintf("https://dashboard.stripe.com%s/logs/%s", maybeTest, payload.RequestID)
 }
