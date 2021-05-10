@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message TriggerRequest {
+  // An event to trigger. Use `TriggersList` to see the available events.
+  string event = 1;
+
+  // Set a header identifying the connected account
+  string stripe_account = 2;
+}
+
+message TriggerResponse {
+  // List of requests made during this trigger
+  repeated string requests = 1;
+}

@@ -28,6 +28,10 @@
     - [SamplesListResponse](#rpc.SamplesListResponse)
     - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
   
+- [trigger.proto](#trigger.proto)
+    - [TriggerRequest](#rpc.TriggerRequest)
+    - [TriggerResponse](#rpc.TriggerResponse)
+  
 - [triggers_list.proto](#triggers_list.proto)
     - [TriggersListRequest](#rpc.TriggersListRequest)
     - [TriggersListResponse](#rpc.TriggersListResponse)
@@ -65,6 +69,7 @@
 | SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
 | SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
+| Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
 
@@ -314,6 +319,53 @@
 | name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
 | url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment |
 | description | [string](#string) |  | Description of the sample, e.g. Learn how to accept a basic card payment |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="trigger.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## trigger.proto
+
+
+
+<a name="rpc.TriggerRequest"></a>
+
+### TriggerRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [string](#string) |  | An event to trigger. Use `TriggersList` to see the available events. |
+| stripe_account | [string](#string) |  | Set a header identifying the connected account |
+
+
+
+
+
+
+<a name="rpc.TriggerResponse"></a>
+
+### TriggerResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| requests | [string](#string) | repeated | List of requests made during this trigger |
 
 
 
