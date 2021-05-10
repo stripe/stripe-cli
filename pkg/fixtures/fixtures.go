@@ -104,19 +104,21 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string) (*Fixt
 
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
-func (fxt *Fixture) Execute() error {
-	for _, data := range fxt.fixture.Fixtures {
+func (fxt *Fixture) Execute() ([]string, error) {
+	requestNames := make([]string, len(fxt.fixture.Fixtures))
+	for i, data := range fxt.fixture.Fixtures {
 		fmt.Printf("Setting up fixture for: %s\n", data.Name)
+		requestNames[i] = data.Name
 
 		resp, err := fxt.makeRequest(data)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
-			return err
+			return nil, err
 		}
 
 		fxt.responses[data.Name] = gojsonq.New().FromString(string(resp))
 	}
 
-	return nil
+	return requestNames, nil
 }
 
 func errWasExpected(err error, expectedErrorType string) bool {
