@@ -64,7 +64,7 @@ func CallRabbitService(tsCtx TerminalSessionContext, method string, methodConten
 	formattedIP := strings.Join(strings.Split(tsCtx.IPAddress, "."), "-")
 	t := &Transport{}
 
-	rabbitServiceURL := fmt.Sprintf(readerURL, formattedIP)
+	rabbitServiceURL := fmt.Sprintf(readerURL, formattedIP, tsCtx.BaseURL)
 	req, err := http.NewRequest("POST", rabbitServiceURL, &payload)
 
 	if err != nil {

@@ -78,7 +78,9 @@ func ReaderNewOrExistingPrompt() (string, error) {
 
 // RegisteredReaderChoicePrompt takes a list of registered p400 readers and prompts the reader to choose one to use
 // it returns the IP address of the chosen reader
-func RegisteredReaderChoicePrompt(readerList []Reader, tsCtx TerminalSessionContext) (string, error) {
+func RegisteredReaderChoicePrompt(readerList []Reader, tsCtx TerminalSessionContext) (Reader, error) {
+	var reader Reader
+
 	templates := &promptui.SelectTemplates{
 		Label:    "{{ .Label }} ({{ .Status }}) ",
 		Active:   "▸ {{ .Label | underline }} ({{ .Status }})",
@@ -89,12 +91,12 @@ func RegisteredReaderChoicePrompt(readerList []Reader, tsCtx TerminalSessionCont
 	index, _, err := selectOptions(templates, "Select a reader:", readerList)
 
 	if err != nil {
-		return "", err
+		return reader, err
 	}
 
-	IPAddress := readerList[index].IPAddress
+	reader = readerList[index]
 
-	return IPAddress, nil
+	return reader, nil
 }
 
 func textPrompt(label string, validator promptui.ValidateFunc) (string, error) {

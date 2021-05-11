@@ -29,6 +29,7 @@ type Reader struct {
 	SerialNumber    string   `json:"serial_number"`
 	Status          string   `json:"status"`
 	Metadata        Metadata `json:"metadata"`
+	BaseURL         string   `json:"base_url"`
 }
 
 type readersResponse struct {
@@ -51,10 +52,6 @@ type getConnectionTokenResponse struct {
 	Secret string `json:"secret"`
 }
 
-type registerReaderResponse struct {
-	IPAddress string `json:"ip_address"`
-}
-
 // DiscoverReaders calls the Stripe API to get a list of currently registered P400 readers on the account
 // it returns a map of Reader types
 func DiscoverReaders(tsCtx TerminalSessionContext) ([]Reader, error) {
@@ -72,7 +69,7 @@ func DiscoverReaders(tsCtx TerminalSessionContext) ([]Reader, error) {
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey:  tsCtx.APIKey,
+		APIKey:  tsCtx.PstToken,
 		Verbose: false,
 	}
 
@@ -292,11 +289,12 @@ func CapturePaymentIntent(tsCtx TerminalSessionContext) error {
 
 // RegisterReader calls the Stripe API to register a new P400 reader to an account
 // it returns the IP address of the reader if successful
-func RegisterReader(regcode string, tsCtx TerminalSessionContext) (string, error) {
+func RegisterReader(regcode string, tsCtx TerminalSessionContext) (Reader, error) {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
+	var result Reader
 
 	if err != nil {
-		return "", err
+		return result, err
 	}
 
 	client := &stripe.Client{
@@ -311,7 +309,7 @@ func RegisterReader(regcode string, tsCtx TerminalSessionContext) (string, error
 	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeTerminalRegisterPath, data.Encode(), nil)
 
 	if err != nil {
-		return "", err
+		return result, err
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -323,15 +321,11 @@ func RegisterReader(regcode string, tsCtx TerminalSessionContext) (string, error
 			err = ErrStripeGenericResponse
 		}
 
-		return "", err
+		return result, err
 	}
-
-	var result registerReaderResponse
 
 	defer res.Body.Close()
 	json.NewDecoder(res.Body).Decode(&result)
 
-	IPAddress := result.IPAddress
-
-	return IPAddress, nil
+	return result, nil
 }
