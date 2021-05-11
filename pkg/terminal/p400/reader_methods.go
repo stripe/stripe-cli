@@ -15,6 +15,7 @@ import (
 type TerminalSessionContext struct {
 	APIKey             string
 	IPAddress          string
+	BaseUrl            string
 	LocationID         string
 	PstToken           string
 	SessionToken       string
