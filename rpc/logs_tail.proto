@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message LogsTailRequest {
+  enum Account {
+    ACCOUNT_UNSPECIFIED = 0;
+    ACCOUNT_CONNECT_IN = 1;
+    ACCOUNT_CONNECT_OUT = 2;
+    ACCOUNT_SELF = 3;
+  }
+
+  enum HttpMethod {
+    HTTP_METHOD_UNSPECIFIED = 0;
+    HTTP_METHOD_GET = 1;
+    HTTP_METHOD_POST = 2;
+    HTTP_METHOD_DELETE = 3;
+  }
+
+  enum RequestStatus {
+    REQUEST_STATUS_UNSPECIFIED = 0;
+    REQUEST_STATUS_SUCCEEDED = 1;
+    REQUEST_STATUS_FAILED = 2;
+  }
+
+  enum Source {
+    SOURCE_UNSPECIFIED = 0;
+    SOURCE_API = 1;
+    SOURCE_DASHBOARD = 2;
+  }
+
+  enum StatusCodeType {
+    STATUS_CODE_TYPE_UNSPECIFIED = 0;
+    STATUS_CODE_TYPE_2XX = 1;
+    STATUS_CODE_TYPE_4XX = 2;
+    STATUS_CODE_TYPE_5XX = 3;
+  }
+
+  // *CONNECT ONLY* Filter request logs by source and destination account
+  repeated Account filter_accounts = 1;
+
+  // Filter request logs by http method
+  repeated HttpMethod filter_http_methods = 2;
+
+  // Filter request logs by ip address
+  repeated string filter_ip_addresses = 3;
+
+  // Filter request logs by request path
+  repeated string filter_request_paths = 4;
+
+  // Filter request logs by request status
+  repeated RequestStatus filter_request_statuses = 5;
+
+  // Filter request logs by source
+  repeated Source filter_sources = 6;
+
+  // Filter request logs by status code
+  repeated string filter_status_codes = 7;
+
+  // Filter request logs by status code type
+  repeated StatusCodeType filter_status_code_types = 8;
+}
+
+message LogsTailResponse {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_LOADING = 1;
+    STATE_RECONNECTING = 2;
+    STATE_READY = 3;
+    STATE_DONE = 4;
+  }
+
+  message Log {
+    message Error {
+      string type = 1;
+      string charge = 2;
+      string code = 3;
+      string decline_code = 4;
+      string message = 5;
+      string param = 6;
+    }
+
+    bool livemode = 1;
+    string method = 2;
+    string url = 3;
+    int64 status = 4;
+    string request_id = 5;
+    int64 created_at = 6;
+    Error error = 7;
+  }
+
+  oneof content {
+    // Check if the stream ready
+    State state = 1;
+
+    // A Stripe API log
+    Log log = 2;
+  }
+}

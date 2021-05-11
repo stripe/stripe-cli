@@ -14,6 +14,19 @@
     - [LoginStatusRequest](#rpc.LoginStatusRequest)
     - [LoginStatusResponse](#rpc.LoginStatusResponse)
   
+- [logs_tail.proto](#logs_tail.proto)
+    - [LogsTailRequest](#rpc.LogsTailRequest)
+    - [LogsTailResponse](#rpc.LogsTailResponse)
+    - [LogsTailResponse.Log](#rpc.LogsTailResponse.Log)
+    - [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error)
+  
+    - [LogsTailRequest.Account](#rpc.LogsTailRequest.Account)
+    - [LogsTailRequest.HttpMethod](#rpc.LogsTailRequest.HttpMethod)
+    - [LogsTailRequest.RequestStatus](#rpc.LogsTailRequest.RequestStatus)
+    - [LogsTailRequest.Source](#rpc.LogsTailRequest.Source)
+    - [LogsTailRequest.StatusCodeType](#rpc.LogsTailRequest.StatusCodeType)
+    - [LogsTailResponse.State](#rpc.LogsTailResponse.State)
+  
 - [sample_configs.proto](#sample_configs.proto)
     - [SampleConfigsRequest](#rpc.SampleConfigsRequest)
     - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
@@ -66,6 +79,7 @@
 | ----------- | ------------ | ------------- | ------------|
 | Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
 | LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
+| LogsTail | [LogsTailRequest](#rpc.LogsTailRequest) stream | [LogsTailResponse](#rpc.LogsTailResponse) stream | Get a realtime stream of API logs. Like `stripe logs tail`. |
 | SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
 | SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
 | SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
@@ -152,6 +166,184 @@
 
 
  
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="logs_tail.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## logs_tail.proto
+
+
+
+<a name="rpc.LogsTailRequest"></a>
+
+### LogsTailRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filter_accounts | [LogsTailRequest.Account](#rpc.LogsTailRequest.Account) | repeated | CONNECT ONLY* Filter request logs by source and destination account |
+| filter_http_methods | [LogsTailRequest.HttpMethod](#rpc.LogsTailRequest.HttpMethod) | repeated | Filter request logs by http method |
+| filter_ip_addresses | [string](#string) | repeated | Filter request logs by ip address |
+| filter_request_paths | [string](#string) | repeated | Filter request logs by request path |
+| filter_request_statuses | [LogsTailRequest.RequestStatus](#rpc.LogsTailRequest.RequestStatus) | repeated | Filter request logs by request status |
+| filter_sources | [LogsTailRequest.Source](#rpc.LogsTailRequest.Source) | repeated | Filter request logs by source |
+| filter_status_codes | [string](#string) | repeated | Filter request logs by status code |
+| filter_status_code_types | [LogsTailRequest.StatusCodeType](#rpc.LogsTailRequest.StatusCodeType) | repeated | Filter request logs by status code type |
+
+
+
+
+
+
+<a name="rpc.LogsTailResponse"></a>
+
+### LogsTailResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [LogsTailResponse.State](#rpc.LogsTailResponse.State) |  | Check if the stream ready |
+| log | [LogsTailResponse.Log](#rpc.LogsTailResponse.Log) |  | A Stripe API log |
+
+
+
+
+
+
+<a name="rpc.LogsTailResponse.Log"></a>
+
+### LogsTailResponse.Log
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| livemode | [bool](#bool) |  |  |
+| method | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| status | [int64](#int64) |  |  |
+| request_id | [string](#string) |  |  |
+| created_at | [int64](#int64) |  |  |
+| error | [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error) |  |  |
+
+
+
+
+
+
+<a name="rpc.LogsTailResponse.Log.Error"></a>
+
+### LogsTailResponse.Log.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [string](#string) |  |  |
+| charge | [string](#string) |  |  |
+| code | [string](#string) |  |  |
+| decline_code | [string](#string) |  |  |
+| message | [string](#string) |  |  |
+| param | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+
+<a name="rpc.LogsTailRequest.Account"></a>
+
+### LogsTailRequest.Account
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ACCOUNT_UNSPECIFIED | 0 |  |
+| ACCOUNT_CONNECT_IN | 1 |  |
+| ACCOUNT_CONNECT_OUT | 2 |  |
+| ACCOUNT_SELF | 3 |  |
+
+
+
+<a name="rpc.LogsTailRequest.HttpMethod"></a>
+
+### LogsTailRequest.HttpMethod
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| HTTP_METHOD_UNSPECIFIED | 0 |  |
+| HTTP_METHOD_GET | 1 |  |
+| HTTP_METHOD_POST | 2 |  |
+| HTTP_METHOD_DELETE | 3 |  |
+
+
+
+<a name="rpc.LogsTailRequest.RequestStatus"></a>
+
+### LogsTailRequest.RequestStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| REQUEST_STATUS_UNSPECIFIED | 0 |  |
+| REQUEST_STATUS_SUCCEEDED | 1 |  |
+| REQUEST_STATUS_FAILED | 2 |  |
+
+
+
+<a name="rpc.LogsTailRequest.Source"></a>
+
+### LogsTailRequest.Source
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SOURCE_UNSPECIFIED | 0 |  |
+| SOURCE_API | 1 |  |
+| SOURCE_DASHBOARD | 2 |  |
+
+
+
+<a name="rpc.LogsTailRequest.StatusCodeType"></a>
+
+### LogsTailRequest.StatusCodeType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| STATUS_CODE_TYPE_UNSPECIFIED | 0 |  |
+| STATUS_CODE_TYPE_2XX | 1 |  |
+| STATUS_CODE_TYPE_4XX | 2 |  |
+| STATUS_CODE_TYPE_5XX | 3 |  |
+
+
+
+<a name="rpc.LogsTailResponse.State"></a>
+
+### LogsTailResponse.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| STATE_UNSPECIFIED | 0 |  |
+| STATE_LOADING | 1 |  |
+| STATE_RECONNECTING | 2 |  |
+| STATE_READY | 3 |  |
+| STATE_DONE | 4 |  |
+
 
  
 
