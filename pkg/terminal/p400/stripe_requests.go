@@ -29,7 +29,7 @@ type Reader struct {
 	SerialNumber    string   `json:"serial_number"`
 	Status          string   `json:"status"`
 	Metadata        Metadata `json:"metadata"`
-	BaseUrl         string   `json:"base_url"`
+	BaseURL         string   `json:"base_url"`
 }
 
 type readersResponse struct {

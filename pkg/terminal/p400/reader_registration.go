@@ -49,6 +49,11 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (Reader, err
 
 	// we need to get the reader list again in order to source the base_url attr which you don't get back after registering it
 	readerList, err := DiscoverReaders(tsCtx)
+
+	if err != nil {
+		return newReader, err
+	}
+
 	for _, reader := range readerList {
 		if reader.Label == regcode {
 			newReader = reader
@@ -113,7 +118,7 @@ func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionCon
 	}
 
 	tsCtx.IPAddress = reader.IPAddress
-	tsCtx.BaseUrl = reader.BaseUrl
+	tsCtx.BaseURL = reader.BaseURL
 
 	spinner = ansi.StartNewSpinner("Connecting to Reader...", os.Stdout)
 	tsCtx.TransactionContext = SetTransactionContext(tsCtx)
