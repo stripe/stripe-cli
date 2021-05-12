@@ -47,8 +47,8 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		Data:          req.Data,
 		Expand:        req.Expand,
 		Idempotency:   req.Idempotency,
-		Version:       req.Version,
 		StripeAccount: req.StripeAccount,
+		Version:       req.Version,
 	}
 
 	if req.WebhookEndpoint == "" {
@@ -57,8 +57,8 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		params.AppendData([]string{fmt.Sprintf("webhook_endpoint=%s", req.WebhookEndpoint)})
 	}
 
-	if req.Account == "" {
-		params.AppendData([]string{"account=%s", req.Account})
+	if req.Account != "" {
+		params.AppendData([]string{fmt.Sprintf("account=%s", req.Account)})
 	}
 
 	path := resource.FormatURL(resource.PathTemplate, []string{req.EventId})
@@ -67,7 +67,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 
 	stripeResp, err := stripeReq.MakeRequest(apiKey, path, &params, true)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
 	return &rpc.EventsResendResponse{
