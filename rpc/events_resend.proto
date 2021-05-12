@@ -25,17 +25,14 @@ message EventsResendRequest {
   // Make a live request (by default, runs in test mode).
   bool live = 6;
 
-  // Show response HTTP headers.
-  bool show_headers = 7;
-
   // Specify the Stripe account to use for this request.
-  string stripe_account = 8;
+  string stripe_account = 7;
 
   // Specify the Stripe API version to use for this request.
-  string version = 9;
+  string version = 8;
 
   // Resend the event to the given webhook endpoint ID.
-  string webhook_endpoint = 10;
+  string webhook_endpoint = 9;
 }
 
 message EventsResendResponse {

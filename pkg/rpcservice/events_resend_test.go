@@ -73,7 +73,6 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 		Expand:          []string{},
 		Idempotency:     "foo",
 		Live:            false,
-		ShowHeaders:     false,
 		StripeAccount:   "acct_12345",
 		Version:         "foo",
 		WebhookEndpoint: "foo",

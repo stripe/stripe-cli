@@ -117,7 +117,6 @@
 | expand | [string](#string) | repeated | Response attributes to expand inline (target nested values with nested[param]=value). |
 | idempotency | [string](#string) |  | Set an idempotency key for the request, preventing the same request from replaying within 24 hours. |
 | live | [bool](#bool) |  | Make a live request (by default, runs in test mode). |
-| show_headers | [bool](#bool) |  | Show response HTTP headers. |
 | stripe_account | [string](#string) |  | Specify the Stripe account to use for this request. |
 | version | [string](#string) |  | Specify the Stripe API version to use for this request. |
 | webhook_endpoint | [string](#string) |  | Resend the event to the given webhook endpoint ID. |
