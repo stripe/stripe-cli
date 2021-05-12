@@ -4,6 +4,7 @@ package rpc;
 
 import "login.proto";
 import "login_status.proto";
+import "logs_tail.proto";
 import "sample_configs.proto";
 import "sample_create.proto";
 import "samples_list.proto";
@@ -21,6 +22,9 @@ service StripeCLI {
   // Successfully returns when login has succeeded, or returns an error if login has failed or timed
   // out. Use this method after `Login` to check for success.
   rpc LoginStatus(LoginStatusRequest) returns (LoginStatusResponse);
+
+  // Get a realtime stream of API logs. Like `stripe logs tail`.
+  rpc LogsTail(LogsTailRequest) returns (stream LogsTailResponse);
 
   // Get a list of available configs for a given Stripe sample.
   rpc SampleConfigs(SampleConfigsRequest) returns (SampleConfigsResponse);
