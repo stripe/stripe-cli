@@ -21,7 +21,8 @@ func init() {
 	srv := New(&Config{
 		UserCfg: &config.Config{
 			Profile: config.Profile{
-				APIKey: "sk_test_12345",
+				APIKey:     "sk_test_12345",
+				DeviceName: "rpc_test_device_name",
 			},
 		},
 	})
