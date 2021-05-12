@@ -56,10 +56,8 @@ func TestLogsTailStreamsState(t *testing.T) {
 		}
 	}
 
-	logsTailClient, err := client.LogsTail(ctx)
+	logsTailClient, err := client.LogsTail(ctx, &rpc.LogsTailRequest{})
 	assert.Nil(t, err)
-
-	logsTailClient.Send(&rpc.LogsTailRequest{})
 
 	expectedStates := []rpc.LogsTailResponse_State{
 		rpc.LogsTailResponse_STATE_LOADING,
@@ -113,10 +111,8 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 		}
 	}
 
-	logsTailClient, err := client.LogsTail(ctx)
+	logsTailClient, err := client.LogsTail(ctx, &rpc.LogsTailRequest{})
 	assert.Nil(t, err)
-
-	logsTailClient.Send(&rpc.LogsTailRequest{})
 
 	expectedLogs := []rpc.LogsTailResponse_Log{
 		{
@@ -165,10 +161,8 @@ func TestLogsTailReturnsError(t *testing.T) {
 		}
 	}
 
-	logsTailClient, err := client.LogsTail(ctx)
+	logsTailClient, err := client.LogsTail(ctx, &rpc.LogsTailRequest{})
 	assert.Nil(t, err)
-
-	logsTailClient.Send(&rpc.LogsTailRequest{})
 
 	resp, err := logsTailClient.Recv()
 	assert.Equal(t, status.Error(codes.Unknown, "my error").Error(), err.Error())

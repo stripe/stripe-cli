@@ -24,7 +24,7 @@ service StripeCLI {
   rpc LoginStatus(LoginStatusRequest) returns (LoginStatusResponse);
 
   // Get a realtime stream of API logs. Like `stripe logs tail`.
-  rpc LogsTail(stream LogsTailRequest) returns (stream LogsTailResponse);
+  rpc LogsTail(LogsTailRequest) returns (stream LogsTailResponse);
 
   // Get a list of available configs for a given Stripe sample.
   rpc SampleConfigs(SampleConfigsRequest) returns (SampleConfigsResponse);

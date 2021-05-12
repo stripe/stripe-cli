@@ -19,18 +19,13 @@ var createTailer = func(cfg *logtailing.Config) ITailer {
 }
 
 // LogsTail returns a stream of API logs
-func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
+func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_LogsTailServer) error {
 	deviceName, err := srv.cfg.UserCfg.Profile.GetDeviceName()
 	if err != nil {
 		return err
 	}
 
 	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(false)
-	if err != nil {
-		return err
-	}
-
-	req, err := stream.Recv()
 	if err != nil {
 		return err
 	}
@@ -68,7 +63,6 @@ func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
 				return err
 			}
 		case <-stream.Context().Done():
-			logger.Trace("stream canceled")
 			return stream.Context().Err()
 		}
 	}
