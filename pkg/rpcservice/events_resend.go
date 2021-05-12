@@ -54,7 +54,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 	if req.WebhookEndpoint == "" {
 		params.AppendData([]string{"for_stripecli=true"})
 	} else {
-		params.AppendData([]string{fmt.Sprintf("webhook-endpoint=%s", req.WebhookEndpoint)})
+		params.AppendData([]string{fmt.Sprintf("webhook_endpoint=%s", req.WebhookEndpoint)})
 	}
 
 	if req.Account == "" {
