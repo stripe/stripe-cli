@@ -40,7 +40,9 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	eventsResendReq := rpc.EventsResendRequest{}
+	eventsResendReq := rpc.EventsResendRequest{
+		EventId: "evt_12345",
+	}
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
@@ -99,11 +101,37 @@ func TestEventsResendReturnsGenericError(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	eventsResendReq := rpc.EventsResendRequest{}
+	eventsResendReq := rpc.EventsResendRequest{
+		EventId: "evt_12345",
+	}
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
 	assert.Equal(t, status.Error(codes.FailedPrecondition, "my error").Error(), err.Error())
+	assert.Nil(t, resp)
+}
+
+func TestEventsResendFailsWithoutEventId(t *testing.T) {
+	getStripeReq = func() IStripeReq {
+		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
+			return nil, errors.New("my error")
+		}
+		return &mockStripeReq{}
+	}
+
+	ctx := withAuth(context.Background())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	eventsResendReq := rpc.EventsResendRequest{}
+
+	resp, err := client.EventsResend(ctx, &eventsResendReq)
+
+	assert.Equal(t, status.Error(codes.InvalidArgument, "Event ID is required").Error(), err.Error())
 	assert.Nil(t, resp)
 }
 
@@ -124,7 +152,8 @@ func TestEventsResendFailsWithMalformedData(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	eventsResendReq := rpc.EventsResendRequest{
-		Data: []string{"malformed"},
+		EventId: "evt_12345",
+		Data:    []string{"malformed"},
 	}
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)

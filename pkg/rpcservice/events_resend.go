@@ -36,6 +36,10 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, err
 	}
 
+	if req.EventId == "" {
+		return nil, status.Error(codes.InvalidArgument, "Event ID is required")
+	}
+
 	for _, datum := range req.Data {
 		split := strings.SplitN(datum, "=", 2)
 		if len(split) < 2 {
