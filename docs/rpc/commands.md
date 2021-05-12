@@ -6,6 +6,10 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [events_resend.proto](#events_resend.proto)
+    - [EventsResendRequest](#rpc.EventsResendRequest)
+    - [EventsResendResponse](#rpc.EventsResendResponse)
+  
 - [login.proto](#login.proto)
     - [LoginRequest](#rpc.LoginRequest)
     - [LoginResponse](#rpc.LoginResponse)
@@ -77,6 +81,7 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| EventsResend | [EventsResendRequest](#rpc.EventsResendRequest) | [EventsResendResponse](#rpc.EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
 | Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
 | LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
 | LogsTail | [LogsTailRequest](#rpc.LogsTailRequest) | [LogsTailResponse](#rpc.LogsTailResponse) stream | Get a realtime stream of API logs. Like `stripe logs tail`. |
@@ -86,6 +91,61 @@
 | Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="events_resend.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## events_resend.proto
+
+
+
+<a name="rpc.EventsResendRequest"></a>
+
+### EventsResendRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event_id | [string](#string) |  | The ID of the event to resend. |
+| account | [string](#string) |  | Resend the event to the given Stripe account. This is useful when testing a Connect platform. |
+| data | [string](#string) | repeated | Additional data to send with an API request. Supports setting nested values (e.g nested[param]=value). |
+| expand | [string](#string) | repeated | Response attributes to expand inline (target nested values with nested[param]=value). |
+| idempotency | [string](#string) |  | Set an idempotency key for the request, preventing the same request from replaying within 24 hours. |
+| live | [bool](#bool) |  | Make a live request (by default, runs in test mode). |
+| show_headers | [bool](#bool) |  | Show response HTTP headers. |
+| stripe_account | [string](#string) |  | Specify the Stripe account to use for this request. |
+| version | [string](#string) |  | Specify the Stripe API version to use for this request. |
+| webhook_endpoint | [string](#string) |  | Resend the event to the given webhook endpoint ID. |
+
+
+
+
+
+
+<a name="rpc.EventsResendResponse"></a>
+
+### EventsResendResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| payload | [string](#string) |  | Event data payload |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 

@@ -13,7 +13,7 @@ import (
 
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
+	params := &RequestParameters{Data: []string{"bender=robot", "fry=human"}}
 	expected := "bender=robot&fry=human"
 
 	output, _ := rb.buildDataForRequest(params)
@@ -22,7 +22,7 @@ func TestBuildDataForRequest(t *testing.T) {
 
 func TestBuildDataForRequestParamOrdering(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"fry=human", "bender=robot"}}
+	params := &RequestParameters{Data: []string{"fry=human", "bender=robot"}}
 	expected := "fry=human&bender=robot"
 
 	output, _ := rb.buildDataForRequest(params)
@@ -31,7 +31,7 @@ func TestBuildDataForRequestParamOrdering(t *testing.T) {
 
 func TestBuildDataForRequestExpand(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{expand: []string{"futurama.employees", "futurama.ships"}}
+	params := &RequestParameters{Expand: []string{"futurama.employees", "futurama.ships"}}
 	expected := "expand[]=futurama.employees&expand[]=futurama.ships"
 
 	output, _ := rb.buildDataForRequest(params)
@@ -43,9 +43,9 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
-		limit:         "10",
-		startingAfter: "bender",
-		endingBefore:  "leela",
+		Limit:         "10",
+		StartingAfter: "bender",
+		EndingBefore:  "leela",
 	}
 
 	expected := "limit=10&starting_after=bender&ending_before=leela"
@@ -59,9 +59,9 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 	rb.Method = http.MethodPost
 
 	params := &RequestParameters{
-		limit:         "10",
-		startingAfter: "bender",
-		endingBefore:  "leela",
+		Limit:         "10",
+		StartingAfter: "bender",
+		EndingBefore:  "leela",
 	}
 
 	expected := ""
@@ -72,7 +72,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
+	params := &RequestParameters{Data: []string{"bender=robot", "fry"}}
 	expected := "Invalid data argument: fry"
 
 	data, err := rb.buildDataForRequest(params)
@@ -102,8 +102,8 @@ func TestMakeRequest(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
-		data:   []string{"bender=robot", "fry=human"},
-		expand: []string{"futurama.employees", "futurama.ships"},
+		Data:   []string{"bender=robot", "fry=human"},
+		Expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
 	_, err := rb.MakeRequest("sk_test_1234", "/foo/bar", params, true)

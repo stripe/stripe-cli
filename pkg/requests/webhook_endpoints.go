@@ -22,8 +22,8 @@ type WebhookEndpoint struct {
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
 func WebhookEndpointsList(baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
-		data:    []string{"limit=30"},
-		version: apiVersion,
+		Data:    []string{"limit=30"},
+		Version: apiVersion,
 	}
 
 	base := &Base{

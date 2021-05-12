@@ -43,7 +43,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := formatURL(oc.Path, args)
+	path := FormatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
 
@@ -160,7 +160,7 @@ func extractURLParams(path string) []string {
 	return re.FindAllString(path, -1)
 }
 
-func formatURL(path string, urlParams []string) string {
+func FormatURL(path string, urlParams []string) string {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
 		s[i] = v
