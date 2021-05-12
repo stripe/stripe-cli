@@ -103,7 +103,7 @@ func TestEventsResendReturnsGenericError(t *testing.T) {
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
-	assert.Equal(t, status.Error(codes.Unknown, "my error").Error(), err.Error())
+	assert.Equal(t, status.Error(codes.FailedPrecondition, "my error").Error(), err.Error())
 	assert.Nil(t, resp)
 }
 
