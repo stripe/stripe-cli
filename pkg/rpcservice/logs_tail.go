@@ -74,26 +74,32 @@ func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *logtailing.Visitor {
 			return ee.Error
 		},
 		VisitLog: func(le logtailing.LogElement) error {
-			logError := rpc.LogsTailResponse_Log_Error{
-				Type:        le.Log.Error.Type,
-				Charge:      le.Log.Error.Charge,
-				Code:        le.Log.Error.Code,
-				DeclineCode: le.Log.Error.DeclineCode,
-				Message:     le.Log.Error.Message,
-				Param:       le.Log.Error.Param,
+			log := rpc.LogsTailResponse_Log{
+				Livemode:  le.Log.Livemode,
+				Method:    le.Log.Method,
+				Url:       le.Log.URL,
+				Status:    int64(le.Log.Status),
+				RequestId: le.Log.RequestID,
+				CreatedAt: int64(le.Log.CreatedAt),
+			}
+
+			// error struct is not empty
+			hasError := le.Log.Error != logtailing.RedactedError{}
+
+			if hasError {
+				log.Error = &rpc.LogsTailResponse_Log_Error{
+					Type:        le.Log.Error.Type,
+					Charge:      le.Log.Error.Charge,
+					Code:        le.Log.Error.Code,
+					DeclineCode: le.Log.Error.DeclineCode,
+					Message:     le.Log.Error.Message,
+					Param:       le.Log.Error.Param,
+				}
 			}
 
 			(*stream).Send(&rpc.LogsTailResponse{
 				Content: &rpc.LogsTailResponse_Log_{
-					Log: &rpc.LogsTailResponse_Log{
-						Livemode:  le.Log.Livemode,
-						Method:    le.Log.Method,
-						Url:       le.Log.URL,
-						Status:    int64(le.Log.Status),
-						RequestId: le.Log.RequestID,
-						CreatedAt: int64(le.Log.CreatedAt),
-						Error:     &logError,
-					},
+					Log: &log,
 				},
 			})
 			return nil

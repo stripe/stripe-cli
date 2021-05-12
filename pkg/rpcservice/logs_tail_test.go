@@ -117,7 +117,7 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 	expectedLogs := []rpc.LogsTailResponse_Log{
 		{
 			RequestId: "req_1",
-			Error:     &rpc.LogsTailResponse_Log_Error{},
+			Error:     nil,
 		},
 		{
 			RequestId: "req_2",
