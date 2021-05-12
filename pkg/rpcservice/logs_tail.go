@@ -41,11 +41,13 @@ func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
 
 	logtailingOutCh := make(chan logtailing.IElement)
 
+	logger := log.StandardLogger()
+
 	tailer := createTailer(&logtailing.Config{
 		DeviceName: deviceName,
 		Filters:    filters,
 		Key:        key,
-		Log:        log.StandardLogger(),
+		Log:        logger,
 		OutCh:      logtailingOutCh,
 
 		// Hidden for debugging
@@ -53,7 +55,10 @@ func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
 		NoWSS:      false,
 	})
 
-	go tailer.Run(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go tailer.Run(ctx)
 
 	for {
 		select {
@@ -63,6 +68,7 @@ func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
 				return err
 			}
 		case <-stream.Context().Done():
+			logger.Trace("stream canceled")
 			return stream.Context().Err()
 		}
 	}
