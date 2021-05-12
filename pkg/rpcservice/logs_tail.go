@@ -55,14 +55,17 @@ func (srv *RPCService) LogsTail(stream rpc.StripeCLI_LogsTailServer) error {
 
 	go tailer.Run(context.Background())
 
-	for e := range logtailingOutCh {
-		err := e.Accept(logtailingVisitor)
-		if err != nil {
-			return err
+	for {
+		select {
+		case e := <-logtailingOutCh:
+			err := e.Accept(logtailingVisitor)
+			if err != nil {
+				return err
+			}
+		case <-stream.Context().Done():
+			return stream.Context().Err()
 		}
 	}
-
-	return nil
 }
 
 func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *logtailing.Visitor {
@@ -101,7 +104,7 @@ func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *logtailing.Visitor {
 			case logtailing.Loading:
 				stateResponse = rpc.LogsTailResponse_STATE_LOADING
 			case logtailing.Reconnecting:
-				stateResponse = rpc.LogsTailResponse_STATE_DONE
+				stateResponse = rpc.LogsTailResponse_STATE_RECONNECTING
 			case logtailing.Ready:
 				stateResponse = rpc.LogsTailResponse_STATE_READY
 			case logtailing.Done:

@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,19 +11,23 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-var run func() error
+var run func(ctx context.Context) error
 
 type mockTailer struct {
+	OutCh chan logtailing.IElement
 }
 
 func (mt *mockTailer) Run(ctx context.Context) error {
-	return run()
+	return run(ctx)
 }
 
-func TestLogsTailStreamsLogs(t *testing.T) {
-	ctx := withAuth(context.Background())
+func TestLogsTailStreamsState(t *testing.T) {
+	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -30,26 +35,134 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	logtailingOutCh := make(chan logtailing.IElement)
-
-	run = func() error {
-		logtailingOutCh <- logtailing.StateElement{
-			State: logtailing.Loading,
+	createTailer = func(cfg *logtailing.Config) ITailer {
+		run = func(ctx context.Context) error {
+			cfg.OutCh <- logtailing.StateElement{
+				State: logtailing.Loading,
+			}
+			cfg.OutCh <- logtailing.StateElement{
+				State: logtailing.Reconnecting,
+			}
+			cfg.OutCh <- logtailing.StateElement{
+				State: logtailing.Ready,
+			}
+			cfg.OutCh <- logtailing.StateElement{
+				State: logtailing.Done,
+			}
+			return nil
 		}
-		logtailingOutCh <- logtailing.StateElement{
-			State: logtailing.Reconnecting,
+		return &mockTailer{
+			OutCh: cfg.OutCh,
 		}
-		logtailingOutCh <- logtailing.StateElement{
-			State: logtailing.Ready,
-		}
-		logtailingOutCh <- logtailing.StateElement{
-			State: logtailing.Done,
-		}
-		return nil
 	}
 
+	logsTailClient, err := client.LogsTail(ctx)
+	assert.Nil(t, err)
+
+	logsTailClient.Send(&rpc.LogsTailRequest{})
+
+	expectedStates := []rpc.LogsTailResponse_State{
+		rpc.LogsTailResponse_STATE_LOADING,
+		rpc.LogsTailResponse_STATE_RECONNECTING,
+		rpc.LogsTailResponse_STATE_READY,
+		rpc.LogsTailResponse_STATE_DONE,
+	}
+
+	for _, s := range expectedStates {
+		resp, err := logsTailClient.Recv()
+		assert.Nil(t, err)
+		assert.Equal(t, s, resp.GetState())
+	}
+
+	cancel()
+
+	resp, err := logsTailClient.Recv()
+	assert.Equal(t, status.Error(codes.Canceled, "context canceled").Error(), err.Error())
+	assert.Nil(t, resp)
+}
+
+func TestLogsTailStreamsLogs(t *testing.T) {
+	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
 	createTailer = func(cfg *logtailing.Config) ITailer {
-		return &mockTailer{}
+		run = func(ctx context.Context) error {
+			cfg.OutCh <- logtailing.LogElement{
+				Log: logtailing.EventPayload{
+					RequestID: "req_1",
+				},
+			}
+			cfg.OutCh <- logtailing.LogElement{
+				Log: logtailing.EventPayload{
+					RequestID: "req_2",
+					Error: logtailing.RedactedError{
+						Message: "my error",
+					},
+				},
+			}
+			return nil
+		}
+		return &mockTailer{
+			OutCh: cfg.OutCh,
+		}
+	}
+
+	logsTailClient, err := client.LogsTail(ctx)
+	assert.Nil(t, err)
+
+	logsTailClient.Send(&rpc.LogsTailRequest{})
+
+	expectedLogs := []rpc.LogsTailResponse_Log{
+		{
+			RequestId: "req_1",
+			Error:     &rpc.LogsTailResponse_Log_Error{},
+		},
+		{
+			RequestId: "req_2",
+			Error:     &rpc.LogsTailResponse_Log_Error{Message: "my error"},
+		},
+	}
+
+	for i := range expectedLogs {
+		resp, err := logsTailClient.Recv()
+		assert.Nil(t, err)
+		assert.Equal(t, &expectedLogs[i], resp.GetLog())
+	}
+
+	cancel()
+
+	resp, err := logsTailClient.Recv()
+	assert.Equal(t, status.Error(codes.Canceled, "context canceled").Error(), err.Error())
+	assert.Nil(t, resp)
+}
+
+func TestLogsTailReturnsError(t *testing.T) {
+	ctx := withAuth(context.Background())
+
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	createTailer = func(cfg *logtailing.Config) ITailer {
+		run = func(ctx context.Context) error {
+			myErr := errors.New("my error")
+			cfg.OutCh <- logtailing.ErrorElement{
+				Error: myErr,
+			}
+			return myErr
+		}
+		return &mockTailer{
+			OutCh: cfg.OutCh,
+		}
 	}
 
 	logsTailClient, err := client.LogsTail(ctx)
@@ -58,8 +171,6 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 	logsTailClient.Send(&rpc.LogsTailRequest{})
 
 	resp, err := logsTailClient.Recv()
-
-	assert.Nil(t, err.Error())
-	// assert.Nil(t, resp.GetLog())
-	assert.Nil(t, resp.GetState())
+	assert.Equal(t, status.Error(codes.Unknown, "my error").Error(), err.Error())
+	assert.Nil(t, resp)
 }
