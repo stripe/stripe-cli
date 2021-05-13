@@ -9,6 +9,7 @@
 - [events_resend.proto](#events_resend.proto)
     - [EventsResendRequest](#rpc.EventsResendRequest)
     - [EventsResendResponse](#rpc.EventsResendResponse)
+    - [EventsResendResponse.Request](#rpc.EventsResendResponse.Request)
   
 - [login.proto](#login.proto)
     - [LoginRequest](#rpc.LoginRequest)
@@ -134,7 +135,31 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| payload | [string](#string) |  | Event data payload |
+| id | [string](#string) |  | Unique identifier for the object. |
+| api_version | [string](#string) |  | The Stripe API version used to render `data`. Note: This property is populated only for events on or after October 31, 2014. |
+| data | [google.protobuf.Struct](#google.protobuf.Struct) |  | Object containing data associated with the event. |
+| request | [EventsResendResponse.Request](#rpc.EventsResendResponse.Request) |  | Information on the API request that instigated the event. |
+| type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
+| account | [string](#string) |  | CONNECT ONLY* The connected account that originated the event. |
+| created | [int64](#int64) |  | Time at which the object was created. Measured in seconds since the Unix epoch. |
+| livemode | [bool](#bool) |  | Has the value true if the object exists in live mode or the value false if the object exists in test mode. |
+| pending_webhooks | [int64](#int64) |  | Number of webhooks that have yet to be successfully delivered (i.e., to return a 20x response) to the URLs you’ve specified. |
+
+
+
+
+
+
+<a name="rpc.EventsResendResponse.Request"></a>
+
+### EventsResendResponse.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | ID of the API request that caused the event. If null, the event was automatic (e.g., Stripe’s automatic subscription handling). Request logs are available in the dashboard, but currently not in the API. |
+| idempotency_key | [string](#string) |  | The idempotency key transmitted during the request, if any. Note: This property is populated only for events on or after May 23, 2017. |
 
 
 

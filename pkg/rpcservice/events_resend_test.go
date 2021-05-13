@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type mockStripeReq struct {
@@ -27,7 +28,24 @@ func (m *mockStripeReq) MakeRequest(apiKey string, path string, params *requests
 func TestEventsResendReturnsEventPayload(t *testing.T) {
 	getStripeReq = func() IStripeReq {
 		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return []byte("event payload"), nil
+			return []byte(`{
+				"id": "evt_1IqQYIFzgcm7CokLiuFAaniT",
+				"object": "event",
+				"api_version": "2020-08-27",
+				"created": 1620858554,
+				"data": {
+				  "object": {
+					"id": "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc"
+				  }
+				},
+				"livemode": false,
+				"pending_webhooks": 1,
+				"request": {
+				  "id": null,
+				  "idempotency_key": null
+				},
+				"type": "checkout.session.completed"
+			}`), nil
 		}
 		return &mockStripeReq{}
 	}
@@ -46,14 +64,65 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
+	expected := &rpc.EventsResendResponse{
+		Id:         "evt_1IqQYIFzgcm7CokLiuFAaniT",
+		ApiVersion: "2020-08-27",
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"object": {
+					Kind: &structpb.Value_StructValue{
+						StructValue: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"id": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Request:         &rpc.EventsResendResponse_Request{},
+		Type:            "checkout.session.completed",
+		Created:         1620858554,
+		Livemode:        false,
+		PendingWebhooks: 1,
+	}
+
 	assert.Nil(t, err)
-	assert.Equal(t, "event payload", resp.Payload)
+	assert.Equal(t, expected.Id, resp.Id)
+	assert.Equal(t, expected.ApiVersion, resp.ApiVersion)
+	assert.True(t, assert.ObjectsAreEqual(expected.Data, resp.Data))
+	assert.Equal(t, expected.Request, resp.Request)
+	assert.Equal(t, expected.Type, resp.Type)
+	assert.Equal(t, expected.Created, resp.Created)
+	assert.Equal(t, expected.Livemode, resp.Livemode)
+	assert.Equal(t, expected.PendingWebhooks, resp.PendingWebhooks)
 }
 
 func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 	getStripeReq = func() IStripeReq {
 		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return []byte("event payload"), nil
+			return []byte(`{
+				"id": "evt_1IqQYIFzgcm7CokLiuFAaniT",
+				"object": "event",
+				"api_version": "2020-08-27",
+				"created": 1620858554,
+				"data": {
+				  "object": {
+					"id": "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc"
+				  }
+				},
+				"livemode": false,
+				"pending_webhooks": 1,
+				"request": {
+				  "id": null,
+				  "idempotency_key": null
+				},
+				"type": "checkout.session.completed"
+			}`), nil
 		}
 		return &mockStripeReq{}
 	}
@@ -80,8 +149,42 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
+	expected := &rpc.EventsResendResponse{
+		Id:         "evt_1IqQYIFzgcm7CokLiuFAaniT",
+		ApiVersion: "2020-08-27",
+		Data: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"object": {
+					Kind: &structpb.Value_StructValue{
+						StructValue: &structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"id": {
+									Kind: &structpb.Value_StringValue{
+										StringValue: "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Request:         &rpc.EventsResendResponse_Request{},
+		Type:            "checkout.session.completed",
+		Created:         1620858554,
+		Livemode:        false,
+		PendingWebhooks: 1,
+	}
+
 	assert.Nil(t, err)
-	assert.Equal(t, "event payload", resp.Payload)
+	assert.Equal(t, expected.Id, resp.Id)
+	assert.Equal(t, expected.ApiVersion, resp.ApiVersion)
+	assert.True(t, assert.ObjectsAreEqual(expected.Data, resp.Data))
+	assert.Equal(t, expected.Request, resp.Request)
+	assert.Equal(t, expected.Type, resp.Type)
+	assert.Equal(t, expected.Created, resp.Created)
+	assert.Equal(t, expected.Livemode, resp.Livemode)
+	assert.Equal(t, expected.PendingWebhooks, resp.PendingWebhooks)
 }
 
 func TestEventsResendReturnsGenericError(t *testing.T) {

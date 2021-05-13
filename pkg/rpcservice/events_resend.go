@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // IStripeReq enables mocking for tests
@@ -27,6 +29,23 @@ var getStripeReq = func() IStripeReq {
 		APIBaseURL:     stripe.DefaultAPIBaseURL,
 	}
 	return stripeReq
+}
+
+type stripeRequestData struct {
+	ID             string `json:"id"`
+	IdempotencyKey string `json:"idempotency_key"`
+}
+
+type stripeEvent struct {
+	Account         string                 `json:"account"`
+	APIVersion      string                 `json:"api_version"`
+	Created         int                    `json:"created"`
+	Data            map[string]interface{} `json:"data"`
+	ID              string                 `json:"id"`
+	Livemode        bool                   `json:"livemode"`
+	Request         stripeRequestData      `json:"request"`
+	PendingWebhooks int                    `json:"pending_webhooks"`
+	Type            string                 `json:"type"`
 }
 
 // EventsResend resends an event given an event ID
@@ -74,7 +93,30 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
+	var evt stripeEvent
+
+	err = json.Unmarshal(stripeResp, &evt)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := structpb.NewStruct(evt.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	return &rpc.EventsResendResponse{
-		Payload: string(stripeResp),
+		Account:    evt.Account,
+		ApiVersion: evt.APIVersion,
+		Created:    int64(evt.Created),
+		Data:       data,
+		Id:         evt.ID,
+		Request: &rpc.EventsResendResponse_Request{
+			Id:             evt.Request.ID,
+			IdempotencyKey: evt.Request.IdempotencyKey,
+		},
+		Type:            evt.Type,
+		Livemode:        evt.Livemode,
+		PendingWebhooks: int64(evt.PendingWebhooks),
 	}, nil
 }
