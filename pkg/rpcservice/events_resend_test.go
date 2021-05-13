@@ -26,26 +26,30 @@ func (m *mockStripeReq) MakeRequest(apiKey string, path string, params *requests
 }
 
 func TestEventsResendReturnsEventPayload(t *testing.T) {
+	// Setup
+
+	rawEvent := []byte(`{
+		"id": "evt_12345",
+		"object": "event",
+		"api_version": "2020-08-27",
+		"created": 1620858554,
+		"data": {
+		  "object": {
+			"id": "cs_test_12345"
+		  }
+		},
+		"livemode": false,
+		"pending_webhooks": 1,
+		"request": {
+		  "id": null,
+		  "idempotency_key": null
+		},
+		"type": "checkout.session.completed"
+	}`)
+
 	getStripeReq = func() IStripeReq {
 		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return []byte(`{
-				"id": "evt_1IqQYIFzgcm7CokLiuFAaniT",
-				"object": "event",
-				"api_version": "2020-08-27",
-				"created": 1620858554,
-				"data": {
-				  "object": {
-					"id": "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc"
-				  }
-				},
-				"livemode": false,
-				"pending_webhooks": 1,
-				"request": {
-				  "id": null,
-				  "idempotency_key": null
-				},
-				"type": "checkout.session.completed"
-			}`), nil
+			return rawEvent, nil
 		}
 		return &mockStripeReq{}
 	}
@@ -58,38 +62,35 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	eventsResendReq := rpc.EventsResendRequest{
-		EventId: "evt_12345",
+	// Create expected response
+
+	expectedData, err := structpb.NewStruct(map[string]interface{}{
+		"object": map[string]interface{}{
+			"id": "cs_test_12345",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create expected event data")
 	}
 
-	resp, err := client.EventsResend(ctx, &eventsResendReq)
-
 	expected := &rpc.EventsResendResponse{
-		Id:         "evt_1IqQYIFzgcm7CokLiuFAaniT",
-		ApiVersion: "2020-08-27",
-		Data: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"object": {
-					Kind: &structpb.Value_StructValue{
-						StructValue: &structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"id": {
-									Kind: &structpb.Value_StringValue{
-										StringValue: "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
+		Id:              "evt_12345",
+		ApiVersion:      "2020-08-27",
+		Data:            expectedData,
 		Request:         &rpc.EventsResendResponse_Request{},
 		Type:            "checkout.session.completed",
 		Created:         1620858554,
 		Livemode:        false,
 		PendingWebhooks: 1,
 	}
+
+	// Make request
+
+	resp, err := client.EventsResend(ctx, &rpc.EventsResendRequest{
+		EventId: "evt_12345",
+	})
+
+	// Assert
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected.Id, resp.Id)
@@ -103,26 +104,30 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 }
 
 func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
+	// Setup
+
+	rawEvent := []byte(`{
+		"id": "evt_12345",
+		"object": "event",
+		"api_version": "2020-08-27",
+		"created": 1620858554,
+		"data": {
+		  "object": {
+			"id": "cs_test_12345"
+		  }
+		},
+		"livemode": false,
+		"pending_webhooks": 1,
+		"request": {
+		  "id": null,
+		  "idempotency_key": null
+		},
+		"type": "checkout.session.completed"
+	}`)
+
 	getStripeReq = func() IStripeReq {
 		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return []byte(`{
-				"id": "evt_1IqQYIFzgcm7CokLiuFAaniT",
-				"object": "event",
-				"api_version": "2020-08-27",
-				"created": 1620858554,
-				"data": {
-				  "object": {
-					"id": "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc"
-				  }
-				},
-				"livemode": false,
-				"pending_webhooks": 1,
-				"request": {
-				  "id": null,
-				  "idempotency_key": null
-				},
-				"type": "checkout.session.completed"
-			}`), nil
+			return rawEvent, nil
 		}
 		return &mockStripeReq{}
 	}
@@ -135,7 +140,31 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	eventsResendReq := rpc.EventsResendRequest{
+	// Create expected response
+
+	expectedData, err := structpb.NewStruct(map[string]interface{}{
+		"object": map[string]interface{}{
+			"id": "cs_test_12345",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create expected event data")
+	}
+
+	expected := &rpc.EventsResendResponse{
+		Id:              "evt_12345",
+		ApiVersion:      "2020-08-27",
+		Data:            expectedData,
+		Request:         &rpc.EventsResendResponse_Request{},
+		Type:            "checkout.session.completed",
+		Created:         1620858554,
+		Livemode:        false,
+		PendingWebhooks: 1,
+	}
+
+	// Make request
+
+	resp, err := client.EventsResend(ctx, &rpc.EventsResendRequest{
 		Account:         "acct_12345",
 		Data:            []string{"foo=bar"},
 		EventId:         "evt_12345",
@@ -145,36 +174,9 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 		StripeAccount:   "acct_12345",
 		Version:         "foo",
 		WebhookEndpoint: "foo",
-	}
+	})
 
-	resp, err := client.EventsResend(ctx, &eventsResendReq)
-
-	expected := &rpc.EventsResendResponse{
-		Id:         "evt_1IqQYIFzgcm7CokLiuFAaniT",
-		ApiVersion: "2020-08-27",
-		Data: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"object": {
-					Kind: &structpb.Value_StructValue{
-						StructValue: &structpb.Struct{
-							Fields: map[string]*structpb.Value{
-								"id": {
-									Kind: &structpb.Value_StringValue{
-										StringValue: "cs_test_a1CJLKhOBVowYP9MvQlud4tVX3EOPnGax5St0Jr31J7nWAjnL44Drnppfc",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		Request:         &rpc.EventsResendResponse_Request{},
-		Type:            "checkout.session.completed",
-		Created:         1620858554,
-		Livemode:        false,
-		PendingWebhooks: 1,
-	}
+	// Assert
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected.Id, resp.Id)
