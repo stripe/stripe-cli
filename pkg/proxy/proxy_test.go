@@ -10,10 +10,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
-func TestInit(t *testing.T) {
-
-}
-
 func TestFilterWebhookEvent(t *testing.T) {
 	proxyUseDefault := New(&Config{UseLatestAPIVersion: false}, []string{"*"})
 	proxyUseLatest := New(&Config{UseLatestAPIVersion: true}, []string{"*"})
