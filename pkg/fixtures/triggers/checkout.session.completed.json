@@ -36,11 +36,8 @@
     },
     {
       "name": "payment_page",
-      "path": "/v1/payment_pages",
-      "method": "get",
-      "params": {
-        "session_id": "${checkout_session:id}"
-      }
+      "path": "/v1/payment_pages/${checkout_session:id}",
+      "method": "get"
     },
     {
       "name": "payment_method",
@@ -58,10 +55,11 @@
     },
     {
       "name": "payment_page_confirm",
-      "path": "/v1/payment_pages/${payment_page:id}/confirm",
+      "path": "/v1/payment_pages/${checkout_session:id}/confirm",
       "method": "post",
       "params": {
-        "payment_method": "${payment_method:id}"
+        "payment_method": "${payment_method:id}",
+        "expected_amount": 3000
       }
     }
   ]

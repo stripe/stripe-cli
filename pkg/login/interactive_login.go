@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -127,7 +127,7 @@ func securePrompt(input io.Reader) (string, error) {
 			return "", err
 		}
 
-		buf, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
+		buf, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
 		if err != nil {
 			return "", err
 		}
@@ -145,7 +145,7 @@ func securePrompt(input io.Reader) (string, error) {
 }
 
 func protectTerminalState() (chan os.Signal, error) {
-	originalTerminalState, err := terminal.GetState(int(syscall.Stdin)) //nolint:unconvert
+	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func protectTerminalState() (chan os.Signal, error) {
 
 	go func() {
 		<-signalChan
-		terminal.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
+		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
 		os.Exit(1)
 	}()
 

@@ -49,11 +49,3 @@ func TestJsonifyFiltersEmpty(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "{}", filtersStr)
 }
-
-func TestURLForRequestID(t *testing.T) {
-	evt := &EventPayload{RequestID: "req_123", Livemode: false}
-	require.Equal(t, "https://dashboard.stripe.com/test/logs/req_123", urlForRequestID(evt))
-
-	evt = &EventPayload{RequestID: "req_123", Livemode: true}
-	require.Equal(t, "https://dashboard.stripe.com/logs/req_123", urlForRequestID(evt))
-}

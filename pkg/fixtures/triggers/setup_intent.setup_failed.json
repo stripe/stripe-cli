@@ -4,13 +4,12 @@
   },
   "fixtures": [
     {
-      "name": "payment_intent",
-      "path": "/v1/payment_intents",
+      "name": "setup_intent",
+      "expected_error_type": "card_error",
+      "path": "/v1/setup_intents",
       "method": "post",
       "params": {
-        "amount": 2000,
         "confirm": "true",
-        "currency": "usd",
         "description": "(created by Stripe CLI)",
         "payment_method": "pm_card_chargeDeclined",
         "payment_method_types": ["card"]

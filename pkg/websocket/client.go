@@ -466,7 +466,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 	}
 
 	if cfg.PingPeriod == 0 {
-		cfg.PingPeriod = (cfg.PongWait * 9) / 10
+		cfg.PingPeriod = (cfg.PongWait * 2) / 10
 	}
 
 	if cfg.ReconnectInterval == 0 {

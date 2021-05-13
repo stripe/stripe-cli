@@ -1,7 +1,7 @@
 {
     "recommendations": [
-        // Go Language plugins (~required)
-        "ms-vscode.go",
+        // Go language plugin
+        "golang.go",
 
         // Highly recommended
         "eamodio.gitlens",

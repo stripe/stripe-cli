@@ -37,11 +37,8 @@
     },
     {
       "name": "payment_page",
-      "path": "/v1/payment_pages",
-      "method": "get",
-      "params": {
-        "session_id": "${checkout_session:id}"
-      }
+      "path": "/v1/payment_pages/${checkout_session:id}",
+      "method": "get"
     },
     {
       "name": "payment_method",
@@ -50,7 +47,7 @@
       "params": {
         "type": "bacs_debit",
         "bacs_debit": {
-          "account_number": "33333335",
+          "account_number": "00012345",
           "sort_code": "108800"
         },
         "billing_details": {
@@ -68,10 +65,11 @@
     },
     {
       "name": "payment_page_confirm",
-      "path": "/v1/payment_pages/${payment_page:id}/confirm",
+      "path": "/v1/payment_pages/${checkout_session:id}/confirm",
       "method": "post",
       "params": {
-        "payment_method": "${payment_method:id}"
+        "payment_method": "${payment_method:id}",
+        "expected_amount": 3000
       }
     }
   ]

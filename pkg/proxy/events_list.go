@@ -14,6 +14,8 @@ var validEvents = map[string]bool{
 	"application_fee.refund.updated":               true,
 	"application_fee.refunded":                     true,
 	"balance.available":                            true,
+	"billing_portal.configuration.created":         true,
+	"billing_portal.configuration.updated":         true,
 	"capability.updated":                           true,
 	"charge.captured":                              true,
 	"charge.dispute.closed":                        true,

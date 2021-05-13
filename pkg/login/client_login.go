@@ -20,6 +20,7 @@ import (
 )
 
 var openBrowser = open.Browser
+var canOpenBrowser = open.CanOpenBrowser
 
 const stripeCLIAuthPath = "/stripecli/auth"
 
@@ -51,7 +52,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 	var s *spinner.Spinner
 
-	if isSSH() {
+	if isSSH() || !canOpenBrowser() {
 		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
 
 		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
@@ -85,6 +86,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 	config.Profile.TestModeAPIKey = response.TestModeAPIKey
 	config.Profile.TestModePublishableKey = response.TestModePublishableKey
 	config.Profile.DisplayName = response.AccountDisplayName
+	config.Profile.AccountID = response.AccountID
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {

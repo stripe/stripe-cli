@@ -61,7 +61,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = fixture.Execute()
+	_, err = fixture.Execute()
 	if err != nil {
 		return err
 	}

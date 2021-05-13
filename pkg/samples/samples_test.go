@@ -1,7 +1,7 @@
 package samples
 
 import (
-	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,31 +14,7 @@ type mockGit struct {
 	fs afero.Fs
 }
 
-func mockGetSamples() error {
-	samplesJSON := []byte(`{
-		"samples": [
-			{
-				"name": "adding-sales-tax",
-				"description": "Learn how to use PaymentIntents to build a simple checkout flow",
-				"URL": "https://github.com/stripe-samples/adding-sales-tax"
-			}
-		]
-		}`)
-
-	var allSamples SampleList
-
-	err := json.Unmarshal(samplesJSON, &allSamples)
-	if err != nil {
-		return err
-	}
-	for i, sample := range allSamples.Samples {
-		list[sample.Name] = &allSamples.Samples[i]
-	}
-
-	return nil
-}
-
-func (mg mockGit) Clone(appCachePath, _ string) error {
+func (mg *mockGit) Clone(appCachePath, _ string) error {
 	makeRecipe(mg.fs, appCachePath, []string{"webhooks", "no-webhooks"}, []string{"node", "python", "ruby"})
 
 	json := `{
@@ -62,7 +38,7 @@ func (mg mockGit) Clone(appCachePath, _ string) error {
 	return nil
 }
 
-func (mg mockGit) Pull(appCachePath string) error {
+func (mg *mockGit) Pull(appCachePath string) error {
 	return nil
 }
 
@@ -78,17 +54,67 @@ func makeRecipe(fs afero.Fs, path string, integrations []string, languages []str
 func TestInitialize(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "adding-sales-tax"
-	mockGetSamples()
 
 	sample := Samples{
 		Fs: fs,
-		Git: mockGit{
+		Git: &mockGit{
 			fs: fs,
+		},
+		SamplesList: map[string]*SampleData{
+			"adding-sales-tax": {
+				Name:        "adding-sales-tax",
+				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
+				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			},
 		},
 	}
 
 	err := sample.Initialize(name)
 	assert.Nil(t, err)
-	assert.ElementsMatch(t, sample.sampleConfig.integrationNames(), []string{"webhooks", "no-webhooks"})
-	assert.ElementsMatch(t, sample.sampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+	assert.ElementsMatch(t, sample.SampleConfig.IntegrationNames(), []string{"webhooks", "no-webhooks"})
+	assert.ElementsMatch(t, sample.SampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+}
+
+func TestInitializeFailsWithEmptyName(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	name := ""
+
+	sample := Samples{
+		Fs: fs,
+		Git: &mockGit{
+			fs: fs,
+		},
+		SamplesList: map[string]*SampleData{
+			"adding-sales-tax": {
+				Name:        "adding-sales-tax",
+				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
+				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			},
+		},
+	}
+
+	err := sample.Initialize(name)
+	assert.Equal(t, errors.New("Sample name is empty"), err)
+}
+
+func TestInitializeFailsWithNonexistentSample(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	name := "foo"
+
+	sample := Samples{
+		Fs: fs,
+		Git: &mockGit{
+			fs: fs,
+		},
+		SamplesList: map[string]*SampleData{
+			"adding-sales-tax": {
+				Name:        "adding-sales-tax",
+				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
+				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			},
+		},
+	}
+
+	err := sample.Initialize(name)
+	assert.Equal(t, errors.New("Sample foo does not exist"), err)
 }

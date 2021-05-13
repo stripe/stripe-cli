@@ -129,6 +129,8 @@ func (c *Config) InitConfig() {
 		log.SetLevel(log.DebugLevel)
 	case "info":
 		log.SetLevel(log.InfoLevel)
+	case "trace":
+		log.SetLevel(log.TraceLevel)
 	case "warn":
 		log.SetLevel(log.WarnLevel)
 	case "error":

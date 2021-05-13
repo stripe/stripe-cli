@@ -5,6 +5,7 @@
   "fixtures": [
     {
       "name": "checkout_session",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/checkout/sessions",
       "method": "post",
       "params": {
@@ -37,20 +38,19 @@
     },
     {
       "name": "payment_page",
-      "path": "/v1/payment_pages",
-      "method": "get",
-      "params": {
-        "session_id": "${checkout_session:id}"
-      }
+      "expected_error_type": "invalid_request_error",
+      "path": "/v1/payment_pages/${checkout_session:id}",
+      "method": "get"
     },
     {
       "name": "payment_method",
+      "expected_error_type": "invalid_request_error",
       "path": "/v1/payment_methods",
       "method": "post",
       "params": {
         "type": "bacs_debit",
         "bacs_debit": {
-          "account_number": "00012345",
+          "account_number": "33333335",
           "sort_code": "108800"
         },
         "billing_details": {
@@ -68,10 +68,12 @@
     },
     {
       "name": "payment_page_confirm",
-      "path": "/v1/payment_pages/${payment_page:id}/confirm",
+      "expected_error_type": "invalid_request_error",
+      "path": "/v1/payment_pages/${checkout_session:id}/confirm",
       "method": "post",
       "params": {
-        "payment_method": "${payment_method:id}"
+        "payment_method": "${payment_method:id}",
+        "expected_amount": 3000
       }
     }
   ]

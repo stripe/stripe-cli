@@ -74,6 +74,10 @@ type Config struct {
 	WebSocketFeature string
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
+
+	// Specifies the format to print to stdout.
+	Format string
+
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
@@ -213,7 +217,7 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	if msg.Endpoint.APIVersion != nil && !p.cfg.UseLatestAPIVersion {
 		p.cfg.Log.WithFields(log.Fields{
 			"prefix":      "proxy.Proxy.filterWebhookEvent",
-			"api_version": msg.Endpoint.APIVersion,
+			"api_version": getAPIVersionString(msg.Endpoint.APIVersion),
 		}).Debugf("Received event with non-default API version, ignoring")
 
 		return true
@@ -230,6 +234,25 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	return false
 }
 
+// This function outputs the event payload in the format specified.
+// Currently only supports JSON.
+func (p *Proxy) formatOutput(format string, eventPayload string) {
+	var event map[string]interface{}
+	err := json.Unmarshal([]byte(eventPayload), &event)
+	if err != nil {
+		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		return
+	}
+	switch strings.ToUpper(format) {
+	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
+	case outputFormatJSON:
+		outputJSON, _ := json.Marshal(event)
+		fmt.Println(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
+	default:
+		fmt.Printf("Unrecognized output format %s\n" + format)
+	}
+}
+
 func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	if msg.WebhookEvent == nil {
 		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
@@ -244,15 +267,24 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
-	if p.filterWebhookEvent(webhookEvent) {
-		return
-	}
-
 	var evt stripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		return
+	}
+
+	p.cfg.Log.WithFields(log.Fields{
+		"prefix":                  "proxy.Proxy.processWebhookEvent",
+		"webhook_id":              webhookEvent.WebhookID,
+		"webhook_conversation_id": webhookEvent.WebhookConversationID,
+		"event_id":                evt.ID,
+		"event_type":              evt.Type,
+		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
+	}).Trace("Webhook event trace")
+
+	if p.filterWebhookEvent(webhookEvent) {
 		return
 	}
 
@@ -263,9 +295,12 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		if p.cfg.PrintJSON {
+		switch {
+		case p.cfg.PrintJSON:
 			fmt.Println(webhookEvent.EventPayload)
-		} else {
+		case len(p.cfg.Format) > 0:
+			p.formatOutput(p.cfg.Format, webhookEvent.EventPayload)
+		default:
 			maybeConnect := ""
 			if evt.isConnect() {
 				maybeConnect = "connect "
@@ -505,6 +540,8 @@ const (
 	maxHeaderValueSize = 200
 )
 
+const outputFormatJSON = "JSON"
+
 //
 // Private functions
 //
@@ -617,4 +654,16 @@ func buildForwardURL(forwardURL string, destination *url.URL) string {
 		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
 		destination.Path,
 	)
+}
+
+func getAPIVersionString(str *string) string {
+	var APIVersion string
+
+	if str == nil {
+		APIVersion = "null"
+	} else {
+		APIVersion = *str
+	}
+
+	return APIVersion
 }
