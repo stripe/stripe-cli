@@ -51,38 +51,6 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		}
 	}
 
-	params := requests.RequestParameters{}
-
-	if len(req.Data) > 0 {
-		params.AppendData(req.Data)
-	}
-
-	if len(req.Expand) > 0 {
-		params.AppendExpand(req.Expand)
-	}
-
-	if req.Idempotency != "" {
-		params.SetIdempotency(req.Idempotency)
-	}
-
-	if req.StripeAccount != "" {
-		params.SetStripeAccount(req.StripeAccount)
-	}
-
-	if req.Version != "" {
-		params.SetVersion(req.Version)
-	}
-
-	if req.WebhookEndpoint == "" {
-		params.AppendData([]string{"for_stripecli=true"})
-	} else {
-		params.AppendData([]string{fmt.Sprintf("webhook_endpoint=%s", req.WebhookEndpoint)})
-	}
-
-	if req.Account != "" {
-		params.AppendData([]string{fmt.Sprintf("account=%s", req.Account)})
-	}
-
 	path := resource.FormatURL(resource.PathTemplate, []string{req.EventId})
 
 	stripeReq := &requests.Base{
@@ -91,7 +59,9 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		APIBaseURL:     baseURL,
 	}
 
-	stripeResp, err := stripeReq.MakeRequest(apiKey, path, &params, true)
+	params := getParamsFromReq(req)
+
+	stripeResp, err := stripeReq.MakeRequest(apiKey, path, params, true)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
@@ -124,4 +94,40 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		PendingWebhooks: int64(evt.PendingWebhooks),
 		Request:         &request,
 	}, nil
+}
+
+func getParamsFromReq(req *rpc.EventsResendRequest) *requests.RequestParameters {
+	params := requests.RequestParameters{}
+
+	if len(req.Data) > 0 {
+		params.AppendData(req.Data)
+	}
+
+	if len(req.Expand) > 0 {
+		params.AppendExpand(req.Expand)
+	}
+
+	if req.Idempotency != "" {
+		params.SetIdempotency(req.Idempotency)
+	}
+
+	if req.StripeAccount != "" {
+		params.SetStripeAccount(req.StripeAccount)
+	}
+
+	if req.Version != "" {
+		params.SetVersion(req.Version)
+	}
+
+	if req.WebhookEndpoint == "" {
+		params.AppendData([]string{"for_stripecli=true"})
+	} else {
+		params.AppendData([]string{fmt.Sprintf("webhook_endpoint=%s", req.WebhookEndpoint)})
+	}
+
+	if req.Account != "" {
+		params.AppendData([]string{fmt.Sprintf("account=%s", req.Account)})
+	}
+
+	return &params
 }
