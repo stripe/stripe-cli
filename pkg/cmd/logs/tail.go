@@ -21,6 +21,7 @@ import (
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
+	"github.com/stripe/stripe-cli/pkg/visitor"
 )
 
 const outputFormatJSON = "JSON"
@@ -169,7 +170,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	logtailingVisitor := createVisitor(logger, tailCmd.format)
 
-	logtailingOutCh := make(chan logTailing.IElement)
+	logtailingOutCh := make(chan visitor.IElement)
 
 	tailer := logTailing.New(&logTailing.Config{
 		APIBaseURL: tailCmd.apiBaseURL,
@@ -244,55 +245,57 @@ func (tailCmd *TailCmd) convertArgs() error {
 	return nil
 }
 
-func createVisitor(logger *log.Logger, format string) *logtailing.Visitor {
+func createVisitor(logger *log.Logger, format string) *visitor.Visitor {
 	var s *spinner.Spinner
 
-	return &logtailing.Visitor{
-		VisitError: func(ee logTailing.ErrorElement) error {
+	return &visitor.Visitor{
+		VisitError: func(ee visitor.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			return ee.Error
 		},
-		VisitWarning: func(we logTailing.WarningElement) error {
+		VisitWarning: func(we visitor.WarningElement) error {
 			color := ansi.Color(os.Stdout)
 			fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
 			return nil
 		},
-		VisitStatus: func(se logTailing.StateElement) error {
+		VisitStatus: func(se visitor.StateElement) error {
 			switch se.State {
-			case logTailing.Loading:
+			case visitor.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
-			case logtailing.Reconnecting:
+			case visitor.Reconnecting:
 				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
-			case logtailing.Ready:
+			case visitor.Ready:
 				ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", logger.Out)
-			case logtailing.Done:
+			case visitor.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}
 			return nil
 		},
-		VisitLog: func(le logTailing.LogElement) error {
+		VisitLog: func(le visitor.LogElement) error {
+			log, _ := le.Log.(logtailing.EventPayload)
+
 			if strings.ToUpper(format) == outputFormatJSON {
 				fmt.Println(ansi.ColorizeJSON(le.MarshalledLog, false, os.Stdout))
 				return nil
 			}
 
-			coloredStatus := ansi.ColorizeStatus(le.Log.Status)
+			coloredStatus := ansi.ColorizeStatus(log.Status)
 
-			url := urlForRequestID(&le.Log)
-			requestLink := ansi.Linkify(le.Log.RequestID, url, os.Stdout)
+			url := urlForRequestID(&log)
+			requestLink := ansi.Linkify(log.RequestID, url, os.Stdout)
 
-			if le.Log.URL == "" {
-				le.Log.URL = "[View path in dashboard]"
+			if log.URL == "" {
+				log.URL = "[View path in dashboard]"
 			}
 
 			exampleLayout := "2006-01-02 15:04:05"
-			localTime := time.Unix(int64(le.Log.CreatedAt), 0).Format(exampleLayout)
+			localTime := time.Unix(int64(log.CreatedAt), 0).Format(exampleLayout)
 
 			color := ansi.Color(os.Stdout)
-			outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, le.Log.Method, le.Log.URL, requestLink)
+			outputStr := fmt.Sprintf("%s [%d] %s %s [%s]", color.Faint(localTime), coloredStatus, log.Method, log.URL, requestLink)
 			fmt.Println(outputStr)
 
-			errorValues := reflect.ValueOf(&le.Log.Error).Elem()
+			errorValues := reflect.ValueOf(&log.Error).Elem()
 			errType := errorValues.Type()
 
 			for i := 0; i < errorValues.NumField(); i++ {

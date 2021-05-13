@@ -179,3 +179,60 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	}()
 	return ctx
 }
+
+// IElements
+state starting
+state ready
+state done
+state reconnecting
+error
+
+
+func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.Visitor {
+	var s *spinner.Spinner
+
+	return &visitor.Visitor{
+		VisitError: func(ee visitor.ErrorElement) error {
+			ansi.StopSpinner(s, "", p.cfg.Log.Out)
+			p.cfg.Log.Fatalf(ee.Error)
+			return ee.Error
+		},
+		VisitStatus: func(se visitor.StateElement) error {
+			switch se.State {
+			case visitor.Loading:
+				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
+			case visitor.Reconnecting:
+				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
+			case visitor.Ready:
+				Oansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(Data[0])), logger.Out)
+			case visitor.Done:
+				ansi.StopSpinner(s, "", logger.Out)
+			}
+			return nil
+		},
+		VisitLog: func(le visitor.LogElement) error {
+			event, _ := le.Log.(proxy.stripeEvent)
+
+			if strings.ToUpper(format) == outputFormatJSON || printJSON {
+				fmt.Println(le.MarshalledLog)
+			} else {
+				maybeConnect := ""
+				if event.isConnect() {
+					maybeConnect = "connect "
+				}
+
+				localTime := time.Now().Format(timeLayout)
+
+				color := ansi.Color(os.Stdout)
+				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
+					color.Faint(localTime),
+					maybeConnect,
+					ansi.Linkify(ansi.Bold(event.Type), event.urlForEventType(), logger.Out),
+					ansi.Linkify(event.ID, event.urlForEventID(), logger.Out),
+				)
+				fmt.Println(outputStr)
+			}
+			return nil
+		},
+	}
+}

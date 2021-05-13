@@ -1,4 +1,4 @@
-package logtailing
+package visitor
 
 /**
  * This file contains types for processing streamed logs outside of this package. This is useful for
@@ -22,7 +22,7 @@ type ErrorElement struct {
 
 // LogElement is the log received on the stream
 type LogElement struct {
-	Log EventPayload
+	Log interface{}
 
 	MarshalledLog string
 }
@@ -30,6 +30,7 @@ type LogElement struct {
 // StateElement is the current state of the stream: loading, ready, etc.
 type StateElement struct {
 	State state
+	Data  []interface{}
 }
 
 // WarningElement is a warning from the log tailer

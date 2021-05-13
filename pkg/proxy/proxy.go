@@ -21,6 +21,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
+	"github.com/stripe/stripe-cli/pkg/visitor"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
@@ -86,6 +87,9 @@ type Config struct {
 	Log *log.Logger
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+
+	// OutCh is the channel to send logs and statuses to for processing in other packages
+	OutCh chan visitor.IElement
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -107,15 +111,22 @@ const maxConnectAttempts = 3
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
+	defer close(p.cfg.OutCh)
+
+	p.cfg.OutCh <- visitor.StateElement{
+		State: visitor.Loading,
+	}
 
 	var nAttempts int = 0
 
 	for nAttempts < maxConnectAttempts {
 		session, err := p.createSession(ctx)
+
 		if err != nil {
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+			p.cfg.OutCh <-visitor.ErrorElement{
+				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err)
+			}
+			return err
 		}
 
 		p.webSocketClient = websocket.NewClient(
@@ -133,7 +144,11 @@ func (p *Proxy) Run(ctx context.Context) error {
 		go func() {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
-			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+
+			p.cfg.OutCh <-visitor.StateElement{
+				State: visitor.Ready,
+				Data: []interface{}{session.Secret}
+			}
 		}()
 
 		go p.webSocketClient.Run(ctx)
@@ -141,13 +156,21 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
+			p.cfg.OutCh <-&visitor.StateElement{
+				State: Done,
+			}
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
+				t.cfg.OutCh <- &visitor.StateElement{
+					State: visitor.Reconnecting,
+				}
 			} else {
-				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				t.cfg.OutCh <- visitor.ErrorElement{
+					Error: err,
+				}
+				return err
 			}
 		}
 	}
@@ -173,13 +196,20 @@ func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
 		WebSocketFeature: "webhooks",
 	})
 	if err != nil {
-		p.cfg.Log.Fatalf("Error while initializing Proxy: %x", err)
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.GetSessionSecret",
+		}).Debug(err)
+		return nil, err
 	}
 
 	session, err := p.createSession(context.Background())
 	if err != nil {
-		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.GetSessionSecret",
+		}).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
+		return nil, err
 	}
+
 	return session.Secret, nil
 }
 
@@ -298,27 +328,10 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		switch {
-		case p.cfg.PrintJSON:
-			fmt.Println(webhookEvent.EventPayload)
-		case len(p.cfg.Format) > 0:
-			p.formatOutput(p.cfg.Format, webhookEvent.EventPayload)
-		default:
-			maybeConnect := ""
-			if evt.isConnect() {
-				maybeConnect = "connect "
-			}
-
-			localTime := time.Now().Format(timeLayout)
-
-			color := ansi.Color(os.Stdout)
-			outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
-				color.Faint(localTime),
-				maybeConnect,
-				ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
-				ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
-			)
-			fmt.Println(outputStr)
+		t.cfg.OutCh <- visitor.LogElement{
+			Log: evt,
+			MarshalledLog: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload)
+,
 		}
 
 		for _, endpoint := range p.endpointClients {
