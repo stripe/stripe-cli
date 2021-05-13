@@ -11,8 +11,8 @@ import (
 )
 
 func TestFilterWebhookEvent(t *testing.T) {
-	proxyUseDefault := New(&Config{UseLatestAPIVersion: false}, []string{"*"})
-	proxyUseLatest := New(&Config{UseLatestAPIVersion: true}, []string{"*"})
+	proxyUseDefault, _ := Init(&Config{UseLatestAPIVersion: false})
+	proxyUseLatest, _ := Init(&Config{UseLatestAPIVersion: true})
 
 	evtDefault := &websocket.WebhookEvent{
 		Endpoint: websocket.WebhookEndpoint{
