@@ -387,53 +387,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 // Public functions
 //
 
-// New creates a new Proxy
-// DEPRECATED - use Init below instead.
-func New(cfg *Config, events []string) *Proxy {
-	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
-	}
-
-	p := &Proxy{
-		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
-		}),
-	}
-
-	if len(events) > 0 {
-		p.events = convertToMap(events)
-	}
-
-	for _, route := range cfg.EndpointRoutes {
-		// append to endpointClients
-		p.endpointClients = append(p.endpointClients, NewEndpointClient(
-			route.URL,
-			route.ForwardHeaders,
-			route.Connect,
-			route.EventTypes,
-			&EndpointConfig{
-				HTTPClient: &http.Client{
-					CheckRedirect: func(req *http.Request, via []*http.Request) error {
-						return http.ErrUseLastResponse
-					},
-					Timeout: defaultTimeout,
-					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
-					},
-				},
-				Log:             p.cfg.Log,
-				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
-			},
-		))
-	}
-
-	return p
-}
-
 // Init initializes a new Proxy
-// This function replaces the deprecated New function
 func Init(cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
