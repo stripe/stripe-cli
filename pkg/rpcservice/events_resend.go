@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
-	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -51,7 +51,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		}
 	}
 
-	path := resource.FormatURL(resource.PathTemplate, []string{req.EventId})
+	path := formatURL("/v1/events/{event}/retry", []string{req.EventId})
 
 	stripeReq := &requests.Base{
 		Method:         strings.ToUpper(http.MethodPost),
@@ -94,6 +94,18 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		PendingWebhooks: int64(evt.PendingWebhooks),
 		Request:         &request,
 	}, nil
+}
+
+func formatURL(path string, urlParams []string) string {
+	s := make([]interface{}, len(urlParams))
+	for i, v := range urlParams {
+		s[i] = v
+	}
+
+	re := regexp.MustCompile(`{\w+}`)
+	format := re.ReplaceAllString(path, "%s")
+
+	return fmt.Sprintf(format, s...)
 }
 
 func getParamsFromReq(req *rpc.EventsResendRequest) *requests.RequestParameters {

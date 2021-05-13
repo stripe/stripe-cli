@@ -43,7 +43,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	path := FormatURL(oc.Path, args)
+	path := formatURL(oc.Path, args)
 
 	flagParams := make([]string, 0)
 
@@ -151,8 +151,16 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 	return operationCmd
 }
 
-// FormatURL takes e.g. "/v1/events/{event}/retry" and replaces {event} with urlParams
-func FormatURL(path string, urlParams []string) string {
+//
+// Private functions
+//
+
+func extractURLParams(path string) []string {
+	re := regexp.MustCompile(`{\w+}`)
+	return re.FindAllString(path, -1)
+}
+
+func formatURL(path string, urlParams []string) string {
 	s := make([]interface{}, len(urlParams))
 	for i, v := range urlParams {
 		s[i] = v
@@ -162,15 +170,6 @@ func FormatURL(path string, urlParams []string) string {
 	format := re.ReplaceAllString(path, "%s")
 
 	return fmt.Sprintf(format, s...)
-}
-
-//
-// Private functions
-//
-
-func extractURLParams(path string) []string {
-	re := regexp.MustCompile(`{\w+}`)
-	return re.FindAllString(path, -1)
 }
 
 func operationUsageTemplate(urlParams []string) string {
