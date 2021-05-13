@@ -8,6 +8,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
+// PathTemplate is the path to resend events, with a placeholder for the event ID
 const PathTemplate = "/v1/events/{event}/retry"
 
 // EventsResendCmd represents the event resend API operation command. This
