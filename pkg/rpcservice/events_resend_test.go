@@ -2,12 +2,13 @@ package rpcservice
 
 import (
 	"context"
-	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -16,43 +17,49 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type mockStripeReq struct {
-}
+const expectedPath = "/v1/events/evt_12345/retry"
 
-var makeRequest func(apiKey string, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error)
-
-func (m *mockStripeReq) MakeRequest(apiKey string, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-	return makeRequest(apiKey, path, params, errOnStatus)
-}
+var rawEvent = []byte(`{
+	"id": "evt_12345",
+	"object": "event",
+	"api_version": "2020-08-27",
+	"created": 1620858554,
+	"data": {
+	  "object": {
+		"id": "cs_test_12345"
+	  }
+	},
+	"livemode": false,
+	"pending_webhooks": 1,
+	"request": {
+	  "id": null,
+	  "idempotency_key": null
+	},
+	"type": "checkout.session.completed"
+}`)
 
 func TestEventsResendReturnsEventPayload(t *testing.T) {
-	// Setup
+	// Prepare mock Stripe response
 
-	rawEvent := []byte(`{
-		"id": "evt_12345",
-		"object": "event",
-		"api_version": "2020-08-27",
-		"created": 1620858554,
-		"data": {
-		  "object": {
-			"id": "cs_test_12345"
-		  }
-		},
-		"livemode": false,
-		"pending_webhooks": 1,
-		"request": {
-		  "id": null,
-		  "idempotency_key": null
-		},
-		"type": "checkout.session.completed"
-	}`)
-
-	getStripeReq = func() IStripeReq {
-		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return rawEvent, nil
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case expectedPath:
+			assert.Equal(t, http.MethodPost, req.Method)
+			body := make([]byte, 20)
+			n, err := req.Body.Read(body)
+			if n == 0 || (err != nil && err != io.EOF) {
+				t.Errorf("Failed to read request body")
+			}
+			assert.Equal(t, "for_stripecli=true", string(body[:n]))
+			res.Write(rawEvent)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
-		return &mockStripeReq{}
-	}
+	}))
+
+	defer func() { ts.Close() }()
+
+	baseURL = ts.URL
 
 	ctx := withAuth(context.Background())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
@@ -60,7 +67,6 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
 	defer conn.Close()
-	client := rpc.NewStripeCLIClient(conn)
 
 	// Create expected response
 
@@ -85,6 +91,8 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 	}
 
 	// Make request
+
+	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.EventsResend(ctx, &rpc.EventsResendRequest{
 		EventId: "evt_12345",
@@ -104,33 +112,27 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 }
 
 func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
-	// Setup
+	// Prepare mock Stripe response
 
-	rawEvent := []byte(`{
-		"id": "evt_12345",
-		"object": "event",
-		"api_version": "2020-08-27",
-		"created": 1620858554,
-		"data": {
-		  "object": {
-			"id": "cs_test_12345"
-		  }
-		},
-		"livemode": false,
-		"pending_webhooks": 1,
-		"request": {
-		  "id": null,
-		  "idempotency_key": null
-		},
-		"type": "checkout.session.completed"
-	}`)
-
-	getStripeReq = func() IStripeReq {
-		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return rawEvent, nil
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case expectedPath:
+			assert.Equal(t, http.MethodPost, req.Method)
+			body := make([]byte, 60)
+			n, err := req.Body.Read(body)
+			if n == 0 || (err != nil && err != io.EOF) {
+				t.Errorf("Failed to read request body")
+			}
+			assert.Equal(t, "foo=bar&webhook_endpoint=we_12345&account=acct_12345", string(body[:n]))
+			res.Write(rawEvent)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
-		return &mockStripeReq{}
-	}
+	}))
+
+	defer func() { ts.Close() }()
+
+	baseURL = ts.URL
 
 	ctx := withAuth(context.Background())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
@@ -138,7 +140,6 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
 	defer conn.Close()
-	client := rpc.NewStripeCLIClient(conn)
 
 	// Create expected response
 
@@ -164,6 +165,8 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 
 	// Make request
 
+	client := rpc.NewStripeCLIClient(conn)
+
 	resp, err := client.EventsResend(ctx, &rpc.EventsResendRequest{
 		Account:         "acct_12345",
 		Data:            []string{"foo=bar"},
@@ -172,8 +175,8 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 		Idempotency:     "foo",
 		Live:            false,
 		StripeAccount:   "acct_12345",
-		Version:         "foo",
-		WebhookEndpoint: "foo",
+		Version:         "2020-08-27",
+		WebhookEndpoint: "we_12345",
 	})
 
 	// Assert
@@ -190,12 +193,16 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 }
 
 func TestEventsResendReturnsGenericError(t *testing.T) {
-	getStripeReq = func() IStripeReq {
-		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return nil, errors.New("my error")
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case expectedPath:
+			res.WriteHeader(http.StatusBadRequest)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
-		return &mockStripeReq{}
-	}
+	}))
+
+	baseURL = ts.URL
 
 	ctx := withAuth(context.Background())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
@@ -211,17 +218,21 @@ func TestEventsResendReturnsGenericError(t *testing.T) {
 
 	resp, err := client.EventsResend(ctx, &eventsResendReq)
 
-	assert.Equal(t, status.Error(codes.FailedPrecondition, "my error").Error(), err.Error())
+	assert.Equal(t, status.Error(codes.FailedPrecondition, "Request failed, status=400, body=").Error(), err.Error())
 	assert.Nil(t, resp)
 }
 
 func TestEventsResendFailsWithoutEventId(t *testing.T) {
-	getStripeReq = func() IStripeReq {
-		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return nil, errors.New("my error")
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case expectedPath:
+			res.WriteHeader(http.StatusBadRequest)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
-		return &mockStripeReq{}
-	}
+	}))
+
+	baseURL = ts.URL
 
 	ctx := withAuth(context.Background())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
@@ -240,12 +251,16 @@ func TestEventsResendFailsWithoutEventId(t *testing.T) {
 }
 
 func TestEventsResendFailsWithMalformedData(t *testing.T) {
-	getStripeReq = func() IStripeReq {
-		makeRequest = func(apiKey, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error) {
-			return nil, errors.New("my error")
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case expectedPath:
+			res.WriteHeader(http.StatusBadRequest)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
-		return &mockStripeReq{}
-	}
+	}))
+
+	baseURL = ts.URL
 
 	ctx := withAuth(context.Background())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())

@@ -10,27 +10,12 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-// IStripeReq enables mocking for tests
-type IStripeReq interface {
-	MakeRequest(apiKey string, path string, params *requests.RequestParameters, errOnStatus bool) ([]byte, error)
-}
-
-var getStripeReq = func() IStripeReq {
-	stripeReq := &requests.Base{
-		Method:         strings.ToUpper(http.MethodPost),
-		SuppressOutput: true,
-		APIBaseURL:     stripe.DefaultAPIBaseURL,
-	}
-	return stripeReq
-}
 
 // EventsResend resends an event given an event ID
 func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRequest) (*rpc.EventsResendResponse, error) {
@@ -70,7 +55,11 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 
 	path := resource.FormatURL(resource.PathTemplate, []string{req.EventId})
 
-	stripeReq := getStripeReq()
+	stripeReq := &requests.Base{
+		Method:         strings.ToUpper(http.MethodPost),
+		SuppressOutput: true,
+		APIBaseURL:     baseURL,
+	}
 
 	stripeResp, err := stripeReq.MakeRequest(apiKey, path, &params, true)
 	if err != nil {
