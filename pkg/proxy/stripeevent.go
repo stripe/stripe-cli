@@ -2,29 +2,34 @@ package proxy
 
 import "fmt"
 
-//
-// Private types
-//
-
-// stripeEvent is a minimal representation of a Stripe `event` object, used
-// to extract the event's ID and type for logging purposes.
-type stripeEvent struct {
-	Account  string `json:"account"`
-	ID       string `json:"id"`
-	Livemode bool   `json:"livemode"`
-	Type     string `json:"type"`
-	Created  int    `json:"created"`
+type stripeRequestData struct {
+	ID             string `json:"id"`
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
-func (e *stripeEvent) isConnect() bool {
+// StripeEvent is a  representation of a Stripe `event` object, used
+// to extract the event's ID and type for logging purposes.
+type StripeEvent struct {
+	Account         string                 `json:"account"`
+	APIVersion      string                 `json:"api_version"`
+	Created         int                    `json:"created"`
+	Data            map[string]interface{} `json:"data"`
+	ID              string                 `json:"id"`
+	Livemode        bool                   `json:"livemode"`
+	Request         stripeRequestData      `json:"request"`
+	PendingWebhooks int                    `json:"pending_webhooks"`
+	Type            string                 `json:"type"`
+}
+
+func (e *StripeEvent) isConnect() bool {
 	return e.Account != ""
 }
 
-func (e *stripeEvent) urlForEventID() string {
+func (e *StripeEvent) urlForEventID() string {
 	return fmt.Sprintf("%s/events/%s", baseDashboardURL(e.Livemode, e.Account), e.ID)
 }
 
-func (e *stripeEvent) urlForEventType() string {
+func (e *StripeEvent) urlForEventType() string {
 	return fmt.Sprintf("%s/events?type=%s", baseDashboardURL(e.Livemode, e.Account), e.Type)
 }
 

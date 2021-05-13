@@ -267,7 +267,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
-	var evt stripeEvent
+	var evt StripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
@@ -438,7 +438,7 @@ func New(cfg *Config, events []string) *Proxy {
 type eventContext struct {
 	webhookID             string
 	webhookConversationID string
-	event                 *stripeEvent
+	event                 *StripeEvent
 }
 
 //

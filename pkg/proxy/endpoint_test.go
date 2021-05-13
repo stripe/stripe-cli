@@ -58,7 +58,7 @@ func TestClientHandler(t *testing.T) {
 		},
 	)
 
-	evt := &stripeEvent{
+	evt := &StripeEvent{
 		ID: "evt_123",
 	}
 	evtCtx := eventContext{
@@ -115,7 +115,7 @@ func TestClientHandler_Redirects(t *testing.T) {
 		},
 	)
 
-	evt := &stripeEvent{
+	evt := &StripeEvent{
 		ID: "evt_123",
 	}
 	evtCtx := eventContext{

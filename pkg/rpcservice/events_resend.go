@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
@@ -29,23 +30,6 @@ var getStripeReq = func() IStripeReq {
 		APIBaseURL:     stripe.DefaultAPIBaseURL,
 	}
 	return stripeReq
-}
-
-type stripeRequestData struct {
-	ID             string `json:"id"`
-	IdempotencyKey string `json:"idempotency_key"`
-}
-
-type stripeEvent struct {
-	Account         string                 `json:"account"`
-	APIVersion      string                 `json:"api_version"`
-	Created         int                    `json:"created"`
-	Data            map[string]interface{} `json:"data"`
-	ID              string                 `json:"id"`
-	Livemode        bool                   `json:"livemode"`
-	Request         stripeRequestData      `json:"request"`
-	PendingWebhooks int                    `json:"pending_webhooks"`
-	Type            string                 `json:"type"`
 }
 
 // EventsResend resends an event given an event ID
@@ -93,7 +77,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
-	var evt stripeEvent
+	var evt proxy.StripeEvent
 
 	err = json.Unmarshal(stripeResp, &evt)
 	if err != nil {
