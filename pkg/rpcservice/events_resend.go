@@ -51,12 +51,26 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		}
 	}
 
-	params := requests.RequestParameters{
-		Data:          req.Data,
-		Expand:        req.Expand,
-		Idempotency:   req.Idempotency,
-		StripeAccount: req.StripeAccount,
-		Version:       req.Version,
+	params := requests.RequestParameters{}
+
+	if len(req.Data) > 0 {
+		params.AppendData(req.Data)
+	}
+
+	if len(req.Expand) > 0 {
+		params.AppendExpand(req.Expand)
+	}
+
+	if req.Idempotency != "" {
+		params.SetIdempotency(req.Idempotency)
+	}
+
+	if req.StripeAccount != "" {
+		params.SetStripeAccount(req.StripeAccount)
+	}
+
+	if req.Version != "" {
+		params.SetVersion(req.Version)
 	}
 
 	if req.WebhookEndpoint == "" {

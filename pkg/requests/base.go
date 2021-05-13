@@ -20,24 +20,39 @@ import (
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
-	Data          []string
-	Expand        []string
-	StartingAfter string
-	EndingBefore  string
-	Idempotency   string
-	Limit         string
-	Version       string
-	StripeAccount string
+	data          []string
+	expand        []string
+	startingAfter string
+	endingBefore  string
+	idempotency   string
+	limit         string
+	version       string
+	stripeAccount string
 }
 
 // AppendData appends data to the request parameters.
 func (r *RequestParameters) AppendData(data []string) {
-	r.Data = append(r.Data, data...)
+	r.data = append(r.data, data...)
+}
+
+// AppendExpand appends fields to the expand parameter.
+func (r *RequestParameters) AppendExpand(fields []string) {
+	r.expand = append(r.expand, fields...)
+}
+
+// SetIdempotency sets the value for the `Idempotency-Key` header.
+func (r *RequestParameters) SetIdempotency(value string) {
+	r.idempotency = value
 }
 
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
-	r.StripeAccount = value
+	r.stripeAccount = value
+}
+
+// SetVersion sets the value for the `Stripe-Version` header.
+func (r *RequestParameters) SetVersion(value string) {
+	r.version = value
 }
 
 // RequestError captures the response of the request that resulted in an error
@@ -115,11 +130,11 @@ func (rb *Base) InitFlags() {
 		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
 	}
 
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.Data, "data", "d", []string{}, "Data for the API request")
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.Expand, "expand", "e", []string{}, "Response attributes to expand inline")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.Idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
-	rb.Cmd.Flags().StringVarP(&rb.Parameters.Version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
-	rb.Cmd.Flags().StringVar(&rb.Parameters.StripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
+	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
@@ -127,15 +142,15 @@ func (rb *Base) InitFlags() {
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
 		if rb.Cmd.Flags().Lookup("limit") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.Limit, "limit", "l", "", "How many objects to be returned, between 1 and 100 (default is 10)")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.limit, "limit", "l", "", "How many objects to be returned, between 1 and 100 (default is 10)")
 		}
 
 		if rb.Cmd.Flags().Lookup("starting-after") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.StartingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.startingAfter, "starting-after", "a", "", "Retrieve the next page in the list. This is a cursor for pagination and should be an object ID")
 		}
 
 		if rb.Cmd.Flags().Lookup("ending-before") == nil {
-			rb.Cmd.Flags().StringVarP(&rb.Parameters.EndingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
+			rb.Cmd.Flags().StringVarP(&rb.Parameters.endingBefore, "ending-before", "b", "", "Retrieve the previous page in the list. This is a cursor for pagination and should be an object ID")
 		}
 	}
 
@@ -223,8 +238,8 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 	keys := []string{}
 	values := []string{}
 
-	if len(params.Data) > 0 || len(params.Expand) > 0 {
-		for _, datum := range params.Data {
+	if len(params.data) > 0 || len(params.expand) > 0 {
+		for _, datum := range params.data {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
@@ -235,26 +250,26 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 			values = append(values, splitDatum[1])
 		}
 
-		for _, datum := range params.Expand {
+		for _, datum := range params.expand {
 			keys = append(keys, "expand[]")
 			values = append(values, datum)
 		}
 	}
 
 	if rb.Method == http.MethodGet {
-		if params.Limit != "" {
+		if params.limit != "" {
 			keys = append(keys, "limit")
-			values = append(values, params.Limit)
+			values = append(values, params.limit)
 		}
 
-		if params.StartingAfter != "" {
+		if params.startingAfter != "" {
 			keys = append(keys, "starting_after")
-			values = append(values, params.StartingAfter)
+			values = append(values, params.startingAfter)
 		}
 
-		if params.EndingBefore != "" {
+		if params.endingBefore != "" {
 			keys = append(keys, "ending_before")
-			values = append(values, params.EndingBefore)
+			values = append(values, params.endingBefore)
 		}
 	}
 
@@ -290,8 +305,8 @@ func encode(keys []string, values []string) string {
 }
 
 func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParameters) {
-	if params.Idempotency != "" {
-		request.Header.Set("Idempotency-Key", params.Idempotency)
+	if params.idempotency != "" {
+		request.Header.Set("Idempotency-Key", params.idempotency)
 
 		if rb.Method == http.MethodGet || rb.Method == http.MethodDelete {
 			warning := fmt.Sprintf(
@@ -305,14 +320,14 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 }
 
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters) {
-	if params.Version != "" {
-		request.Header.Set("Stripe-Version", params.Version)
+	if params.version != "" {
+		request.Header.Set("Stripe-Version", params.version)
 	}
 }
 
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
-	if params.StripeAccount != "" {
-		request.Header.Set("Stripe-Account", params.StripeAccount)
+	if params.stripeAccount != "" {
+		request.Header.Set("Stripe-Account", params.stripeAccount)
 	}
 }
 
