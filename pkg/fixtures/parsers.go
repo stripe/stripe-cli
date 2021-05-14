@@ -110,12 +110,6 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	var keyname string
 
 	for key, value := range params {
-		// Skip any params with nil values. This is used in
-		// conjunction with the `--remove` flag
-		if reflect.ValueOf(value).Type() == nil {
-			continue
-		}
-
 		// Create the key name. As we start nesting deeper into the
 		// request data, we need to nest this with brackets,
 		// otherwise the data will be created at the wrong level.
@@ -198,7 +192,9 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string, index int) [
 		case reflect.Map:
 			m := value.(map[string]interface{})
 			// When we parse arrays of maps, we want to track an index for the request
-			data = append(data, fxt.parseMap(m, parent, index+1)...)
+			// ex: lines[0][id] = "id_0000", lines[1][id] = "id_1234", etc.
+			index++
+			data = append(data, fxt.parseMap(m, parent, index)...)
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
 			data = append(data, fxt.parseArray(a, parent, index)...)

@@ -108,18 +108,18 @@ func TestParseInterface(t *testing.T) {
 	data["tax_id_data"] = taxIDData
 	fxt := Fixture{}
 
-	output := (fxt.parseInterface(data))
+	output := fxt.parseInterface(data)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
-	require.Equal(t, output[0], "address[city]=New New York")
-	require.Equal(t, output[1], "address[line1]=1 Planet Express St")
-	require.Equal(t, output[2], "email=bender@planex.com")
-	require.Equal(t, output[3], "name=Bender Bending Rodriguez")
-	require.Equal(t, output[4], "tax_id_data[0][type]=type_0")
-	require.Equal(t, output[5], "tax_id_data[0][value]=value_0")
-	require.Equal(t, output[6], "tax_id_data[1][type]=type_1")
-	require.Equal(t, output[7], "tax_id_data[1][value]=value_1")
+	require.Equal(t, "address[city]=New New York", output[0])
+	require.Equal(t, "address[line1]=1 Planet Express St", output[1])
+	require.Equal(t, "email=bender@planex.com", output[2])
+	require.Equal(t, "name=Bender Bending Rodriguez", output[3])
+	require.Equal(t, "tax_id_data[0][type]=type_0", output[4])
+	require.Equal(t, "tax_id_data[0][value]=value_0", output[5])
+	require.Equal(t, "tax_id_data[1][type]=type_1", output[6])
+	require.Equal(t, "tax_id_data[1][value]=value_1", output[7])
 }
 
 func TestParseWithQueryIgnoreDefault(t *testing.T) {
