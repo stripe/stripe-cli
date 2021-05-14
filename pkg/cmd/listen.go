@@ -235,8 +235,8 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.V
 				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 					color.Faint(localTime),
 					maybeConnect,
-					ansi.Linkify(ansi.Bold(stripeEvent.Type), stripeEvent.UrlForEventType(), logger.Out),
-					ansi.Linkify(stripeEvent.ID, stripeEvent.UrlForEventID(), logger.Out),
+					ansi.Linkify(ansi.Bold(stripeEvent.Type), stripeEvent.URLForEventType(), logger.Out),
+					ansi.Linkify(stripeEvent.ID, stripeEvent.URLForEventID(), logger.Out),
 				)
 				fmt.Println(outputStr)
 			}

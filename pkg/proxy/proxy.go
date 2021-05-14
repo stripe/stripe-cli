@@ -355,7 +355,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		ansi.ColorizeStatus(resp.StatusCode),
 		resp.Request.Method,
 		resp.Request.URL,
-		ansi.Linkify(evtCtx.event.ID, evtCtx.event.UrlForEventID(), p.cfg.Log.Out),
+		ansi.Linkify(evtCtx.event.ID, evtCtx.event.URLForEventID(), p.cfg.Log.Out),
 	)
 	fmt.Println(outputStr)
 

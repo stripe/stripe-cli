@@ -16,15 +16,18 @@ type StripeEvent struct {
 	Created  int    `json:"created"`
 }
 
+// IsConnect return true or false if *StripeEvent is connect or not.
 func (e *StripeEvent) IsConnect() bool {
 	return e.Account != ""
 }
 
-func (e *StripeEvent) UrlForEventID() string {
+// URLForEventID builds a full URL from a StripeEvent ID.
+func (e *StripeEvent) URLForEventID() string {
 	return fmt.Sprintf("%s/events/%s", baseDashboardURL(e.Livemode, e.Account), e.ID)
 }
 
-func (e *StripeEvent) UrlForEventType() string {
+// URLForEventType builds a full URL from a StripeEvent Type.
+func (e *StripeEvent) URLForEventType() string {
 	return fmt.Sprintf("%s/events?type=%s", baseDashboardURL(e.Livemode, e.Account), e.Type)
 }
 
