@@ -11,8 +11,9 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/tidwall/gjson"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 func TestParsePathDoNothing(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
