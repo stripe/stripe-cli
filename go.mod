@@ -17,7 +17,6 @@ require (
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
-	github.com/magefile/mage v1.11.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/manifoldco/promptui v0.8.0
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
