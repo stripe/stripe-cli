@@ -139,7 +139,7 @@ func (fxt *Fixture) Remove(removals []string) {
 	data := buildRewrites(removals, true)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
-			for remove, _ := range data[f.Name].(map[string]interface{}) {
+			for remove := range data[f.Name].(map[string]interface{}) {
 				delete(f.Params, remove)
 			}
 		}

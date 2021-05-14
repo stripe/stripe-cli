@@ -77,6 +77,10 @@ const failureTestFixture = `
 	]
 }`
 
+const customersPath = "/v1/customers"
+const chargePath = "/v1/charges"
+const capturePath = "/v1/charges/char_12345/capture"
+
 func TestMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -115,7 +119,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -146,17 +150,17 @@ func TestMakeRequestWithOverride(t *testing.T) {
 		}
 
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 
 			require.True(t, strings.Contains(string(body), "name=Fry"))
 			require.False(t, strings.Contains(string(body), "name=Bender"))
-		case "/v1/charges":
+		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
 
 			require.True(t, strings.Contains(string(body), "amount=3000"))
 			require.False(t, strings.Contains(string(body), "amount=100"))
-		case "/v1/charges/char_12345/capture":
+		case capturePath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -185,15 +189,15 @@ func TestMakeRequestWithAdd(t *testing.T) {
 		}
 
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 
 			require.True(t, strings.Contains(string(body), "birthdate=2996-09-04"))
-		case "/v1/charges":
+		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
 
 			require.True(t, strings.Contains(string(body), "receipt_email=prof.farnsworth%40planex.com"))
-		case "/v1/charges/char_12345/capture":
+		case capturePath:
 			// Do nothing, we just want to verify this request came in
 			res.Write([]byte(`{}`))
 
@@ -226,15 +230,15 @@ func TestMakeRequestWithRemove(t *testing.T) {
 		}
 
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 
 			require.False(t, strings.Contains(string(body), "phone"))
-		case "/v1/charges":
+		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
 
 			require.False(t, strings.Contains(string(body), "capture"))
-		case "/v1/charges/char_12345/capture":
+		case capturePath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -379,11 +383,11 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
-		case "/v1/charges":
+		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
-		case "/v1/charges/char_12345/capture":
+		case capturePath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
