@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -9,7 +10,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/playback"
+	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -149,6 +153,16 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
+
+	ctx := context.Background()
+	proxy.WithSIGTERMCancel(ctx, func() {
+		log.WithFields(log.Fields{
+			"prefix": "playback.Playback.runPlaybackCmd",
+		}).Debug("Ctrl+C received, ejecting cassette...")
+		httpWrapper.EjectCassette()
+		os.Exit(1)
+	})
+
 	go func() {
 		err = server.ListenAndServe()
 		fmt.Fprint(os.Stderr, err.Error())
