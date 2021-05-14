@@ -6,6 +6,8 @@ import (
 	"sort"
 
 	"github.com/spf13/afero"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 //go:embed triggers/*
@@ -33,6 +35,7 @@ var Events = map[string]string{
 	"customer.subscription.updated":            "triggers/customer.subscription.updated.json",
 	"invoice.created":                          "triggers/invoice.created.json",
 	"invoice.finalized":                        "triggers/invoice.finalized.json",
+	"invoice.payment_action_required":          "triggers/invoice.payment_action_required.json",
 	"invoice.payment_failed":                   "triggers/invoice.payment_failed.json",
 	"invoice.payment_succeeded":                "triggers/invoice.payment_succeeded.json",
 	"invoice.updated":                          "triggers/invoice.updated.json",
@@ -110,6 +113,41 @@ func EventNames() []string {
 	sort.Strings(names)
 
 	return names
+}
+
+// Trigger triggers a Stripe event.
+func Trigger(event string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, baseURL string, config *config.Config) ([]string, error) {
+	fs := afero.NewOsFs()
+	apiKey, err := config.Profile.GetAPIKey(false)
+	if err != nil {
+		return nil, err
+	}
+
+	var fixture *Fixture
+
+	if file, ok := Events[event]; ok {
+		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, skip, overrides, additions, removals, baseURL, file)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		exists, _ := afero.Exists(fs, event)
+		if !exists {
+			return nil, fmt.Errorf(fmt.Sprintf("The event ‘%s’ is not supported by the Stripe CLI.", event))
+		}
+
+		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, skip, overrides, additions, removals, baseURL, event)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	requestNames, err := fixture.Execute()
+	if err != nil {
+		return nil, fmt.Errorf(fmt.Sprintf("Trigger failed: %s\n", err))
+	}
+
+	return requestNames, nil
 }
 
 func reverseMap() map[string]string {

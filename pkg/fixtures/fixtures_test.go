@@ -99,7 +99,7 @@ func TestMakeRequest(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 
 	require.NotNil(t, fxt.responses["cust_bender"])
@@ -129,7 +129,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{"char_bender", "capt_bender"}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 
 	require.True(t, fxt.responses["cust_bender"].Exists())
@@ -172,7 +172,7 @@ func TestMakeRequestWithOverride(t *testing.T) {
 	fxt.Override([]string{"char_bender:amount=3000"})
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 }
 
@@ -213,7 +213,7 @@ func TestMakeRequestWithAdd(t *testing.T) {
 	fxt.Add([]string{"capt_bender:statement_descriptor=Fuel: Beer"})
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 }
 
@@ -250,7 +250,7 @@ func TestMakeRequestWithRemove(t *testing.T) {
 	fxt.Remove([]string{"char_bender:capture"})
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 }
 
@@ -266,7 +266,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NoError(t, err)
 	require.NotNil(t, fxt.responses["charge_expected_failure"])
 }
@@ -283,7 +283,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
-	err = fxt.Execute()
+	_, err = fxt.Execute()
 	require.NotNil(t, err)
 }
 
@@ -373,4 +373,41 @@ func TestToFixtureQuery(t *testing.T) {
 		assert.Equal(t, test.expected, actualQuery)
 		assert.Equal(t, test.didMatch, actualDidMatch)
 	}
+}
+
+func TestExecuteReturnsRequestNames(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+		case "/v1/charges":
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+		case "/v1/charges/char_12345/capture":
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	require.NoError(t, err)
+
+	requestNames, err := fxt.Execute()
+	require.NoError(t, err)
+
+	require.NotNil(t, fxt.responses["cust_bender"])
+	require.NotNil(t, fxt.responses["char_bender"])
+	require.NotNil(t, fxt.responses["capt_bender"])
+
+	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").Str)
+	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").Str)
+	require.Equal(t, "", fxt.responses["char_bender"].Get("charge").Str)
+
+	expectedResponseNames := []string{"cust_bender", "char_bender", "capt_bender"}
+	assert.Equal(t, expectedResponseNames, requestNames)
 }

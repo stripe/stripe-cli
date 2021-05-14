@@ -3,34 +3,39 @@ package samples
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/joho/godotenv"
-	"github.com/manifoldco/promptui"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
 	"gopkg.in/src-d/go-git.v4"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	g "github.com/stripe/stripe-cli/pkg/git"
+	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
-type sampleConfig struct {
+// SampleConfig contains all the configuration options for a sample
+type SampleConfig struct {
 	Name            string                    `json:"name"`
 	ConfigureDotEnv bool                      `json:"configureDotEnv"`
 	PostInstall     map[string]string         `json:"postInstall"`
-	Integrations    []sampleConfigIntegration `json:"integrations"`
+	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
 
-func (sc *sampleConfig) hasIntegrations() bool {
+// HasIntegrations returns true if the sample has multiple integrations
+func (sc *SampleConfig) HasIntegrations() bool {
 	return len(sc.Integrations) > 1
 }
 
-func (sc *sampleConfig) integrationNames() []string {
+// IntegrationNames returns the names of the available integrations for the sample
+func (sc *SampleConfig) IntegrationNames() []string {
 	names := []string{}
 	for _, integration := range sc.Integrations {
 		names = append(names, integration.Name)
@@ -39,7 +44,7 @@ func (sc *sampleConfig) integrationNames() []string {
 	return names
 }
 
-func (sc *sampleConfig) integrationServers(name string) []string {
+func (sc *SampleConfig) integrationServers(name string) []string {
 	for _, integration := range sc.Integrations {
 		if integration.Name == name {
 			return integration.Servers
@@ -49,7 +54,8 @@ func (sc *sampleConfig) integrationServers(name string) []string {
 	return []string{}
 }
 
-type sampleConfigIntegration struct {
+// SampleConfigIntegration is a particular integration for a sample
+type SampleConfigIntegration struct {
 	Name string `json:"name"`
 	// Clients are the frontend clients built for each sample
 	Clients []string `json:"clients"`
@@ -57,28 +63,37 @@ type sampleConfigIntegration struct {
 	Servers []string `json:"servers"`
 }
 
-func (i *sampleConfigIntegration) hasClients() bool {
+func (i *SampleConfigIntegration) hasClients() bool {
 	return len(i.Clients) > 0
 }
 
-func (i *sampleConfigIntegration) hasServers() bool {
+func (i *SampleConfigIntegration) hasServers() bool {
 	return len(i.Servers) > 0
 }
 
-func (i *sampleConfigIntegration) hasMultipleClients() bool {
+// HasMultipleClients returns true if this integration has multiple options for the client language
+func (i *SampleConfigIntegration) HasMultipleClients() bool {
 	return len(i.Clients) > 1
 }
 
-func (i *sampleConfigIntegration) hasMultipleServers() bool {
+// HasMultipleServers returns true if this integration has multiple options for the server language
+func (i *SampleConfigIntegration) HasMultipleServers() bool {
 	return len(i.Servers) > 1
 }
 
-func (i *sampleConfigIntegration) name() string {
+func (i *SampleConfigIntegration) name() string {
 	if i.Name == "main" {
 		return ""
 	}
 
 	return i.Name
+}
+
+// SelectedConfig is the sample config that the user has selected to create
+type SelectedConfig struct {
+	Integration *SampleConfigIntegration
+	Client      string
+	Server      string
 }
 
 // Samples stores the information for the selected sample in addition to the
@@ -93,12 +108,11 @@ type Samples struct {
 	// source repository to clone from
 	repo string
 
-	sampleConfig sampleConfig
+	SamplesList map[string]*SampleData
 
-	integration *sampleConfigIntegration
+	SampleConfig SampleConfig
 
-	client string
-	server string
+	SelectedConfig SelectedConfig
 }
 
 // Initialize get the sample ready for the user to copy. It:
@@ -108,6 +122,10 @@ type Samples struct {
 // 4. if the selected app does exist in the local cache folder, pull changes
 // 5. parse the sample cli config file
 func (s *Samples) Initialize(app string) error {
+	if app == "" {
+		return errors.New("Sample name is empty")
+	}
+
 	s.name = app
 
 	appPath, err := s.appCacheFolder(app)
@@ -118,9 +136,19 @@ func (s *Samples) Initialize(app string) error {
 	// We still set the repo path here. There are some failure cases
 	// that we can still work with (like no updates or repo already exists)
 	s.repo = appPath
-	list := s.GetSamples("create")
+
+	list, err := s.getSamples("create")
+	if err != nil {
+		return err
+	}
+
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
-		err = s.Git.Clone(appPath, list[app].GitRepo())
+		sampleData, ok := list[app]
+		if !ok {
+			return fmt.Errorf("Sample %s does not exist", app)
+		}
+		err = s.Git.Clone(appPath, sampleData.GitRepo())
+
 		if err != nil {
 			return err
 		}
@@ -145,44 +173,9 @@ func (s *Samples) Initialize(app string) error {
 		return err
 	}
 
-	err = json.Unmarshal(configFile, &s.sampleConfig)
+	err = json.Unmarshal(configFile, &s.SampleConfig)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// SelectOptions prompts the user to select the integration they want to use
-// (if available) and the language they want the integration to be.
-func (s *Samples) SelectOptions() error {
-	var err error
-
-	if s.sampleConfig.hasIntegrations() {
-		s.integration, err = integrationSelectPrompt(&s.sampleConfig)
-		if err != nil {
-			return err
-		}
-	} else {
-		s.integration = &s.sampleConfig.Integrations[0]
-	}
-
-	if s.integration.hasMultipleClients() {
-		s.client, err = clientSelectPrompt(s.integration.Clients)
-		if err != nil {
-			return nil
-		}
-	} else {
-		s.client = ""
-	}
-
-	if s.integration.hasMultipleServers() {
-		s.server, err = serverSelectPrompt(s.integration.Servers)
-		if err != nil {
-			return err
-		}
-	} else {
-		s.server = ""
 	}
 
 	return nil
@@ -207,10 +200,20 @@ func (s *Samples) SelectOptions() error {
 // * If the user selects an integration, mirror the structure above for the
 //   selected integration (example above)
 func (s *Samples) Copy(target string) error {
-	integration := s.integration.name()
+	integration := s.SelectedConfig.Integration.name()
 
-	if s.integration.hasServers() {
-		serverSource := filepath.Join(s.repo, integration, "server", s.server)
+	if s.SelectedConfig.Integration.hasServers() {
+		// empty string is a valid option
+		if s.SelectedConfig.Server != "" && !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
+			return fmt.Errorf(
+				"Server %s doesn't exist for sample integration %s. Available servers: %v",
+				s.SelectedConfig.Server,
+				integration,
+				s.SelectedConfig.Integration.Servers,
+			)
+		}
+
+		serverSource := filepath.Join(s.repo, integration, "server", s.SelectedConfig.Server)
 		serverDestination := filepath.Join(target, "server")
 
 		err := copy.Copy(serverSource, serverDestination)
@@ -219,8 +222,18 @@ func (s *Samples) Copy(target string) error {
 		}
 	}
 
-	if s.integration.hasClients() {
-		clientSource := filepath.Join(s.repo, integration, "client", s.client)
+	if s.SelectedConfig.Integration.hasClients() {
+		// empty string is a valid option
+		if s.SelectedConfig.Client != "" && !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
+			return fmt.Errorf(
+				"Client %s doesn't exist for sample integration %s. Available clients: %v",
+				s.SelectedConfig.Client,
+				integration,
+				s.SelectedConfig.Integration.Clients,
+			)
+		}
+
+		clientSource := filepath.Join(s.repo, integration, "client", s.SelectedConfig.Client)
 		clientDestination := filepath.Join(target, "client")
 
 		err := copy.Copy(clientSource, clientDestination)
@@ -260,8 +273,8 @@ func (s *Samples) Copy(target string) error {
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
 func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
-	if s.integration.hasServers() {
-		if !s.sampleConfig.ConfigureDotEnv {
+	if s.SelectedConfig.Integration.hasServers() {
+		if !s.SampleConfig.ConfigureDotEnv {
 			return nil
 		}
 
@@ -318,7 +331,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 // PostInstall returns any installation for post installation instructions
 func (s *Samples) PostInstall() string {
-	message := s.sampleConfig.PostInstall["message"]
+	message := s.SampleConfig.PostInstall["message"]
 	return message
 }
 
@@ -345,58 +358,51 @@ func (s *Samples) DeleteCache(sample string) error {
 	return nil
 }
 
-func selectOptions(template, label string, options []string) (string, error) {
-	color := ansi.Color(os.Stdout)
-
-	templates := &promptui.SelectTemplates{
-		Selected: color.Green("✔").String() + ansi.Faint(fmt.Sprintf(" Selected %s: {{ . | bold }} ", template)),
+// contains returns true if s contains e.
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
 	}
-	prompt := promptui.Select{
-		Label:     label,
-		Items:     options,
-		Templates: templates,
-	}
-
-	_, result, err := prompt.Run()
-
-	if err != nil {
-		return "", err
-	}
-
-	return result, nil
+	return false
 }
 
-func clientSelectPrompt(clients []string) (string, error) {
-	selected, err := selectOptions("client", "Which client would you like to use", clients)
-	if err != nil {
-		return "", err
+// GetSampleConfig returns the available config for this sample
+func GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error) {
+	sample := Samples{
+		Fs:  afero.NewOsFs(),
+		Git: gitpkg.Operations{},
 	}
 
-	return selected, nil
-}
+	if forceRefresh {
+		err := sample.DeleteCache(sampleName)
+		if err != nil {
+			logger := log.Logger{
+				Out: os.Stdout,
+			}
 
-func integrationSelectPrompt(sc *sampleConfig) (*sampleConfigIntegration, error) {
-	selected, err := selectOptions("integration", "What type of integration would you like to use", sc.integrationNames())
+			logger.WithFields(log.Fields{
+				"prefix": "samples.create.forceRefresh",
+				"error":  err,
+			}).Debug("Could not clear cache")
+		}
+	}
+
+	samplesList, err := sample.getSamples("create")
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := samplesList[sampleName]; !ok {
+		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
+To see supported samples, run 'stripe samples list'`, sampleName)
+		return nil, fmt.Errorf(errorMessage)
+	}
+
+	err = sample.Initialize(sampleName)
 	if err != nil {
 		return nil, err
 	}
 
-	var selectedIntegration *sampleConfigIntegration
-
-	for i, integration := range sc.Integrations {
-		if integration.Name == selected {
-			selectedIntegration = &sc.Integrations[i]
-		}
-	}
-
-	return selectedIntegration, nil
-}
-
-func serverSelectPrompt(servers []string) (string, error) {
-	selected, err := selectOptions("server", "What server would you like to use", servers)
-	if err != nil {
-		return "", err
-	}
-
-	return selected, nil
+	return &sample.SampleConfig, nil
 }

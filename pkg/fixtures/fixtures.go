@@ -148,23 +148,27 @@ func (fxt *Fixture) Remove(removals []string) {
 
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
-func (fxt *Fixture) Execute() error {
-	for _, data := range fxt.fixture.Fixtures {
+func (fxt *Fixture) Execute() ([]string, error) {
+	requestNames := make([]string, len(fxt.fixture.Fixtures))
+	for i, data := range fxt.fixture.Fixtures {
 		if isNameIn(data.Name, fxt.Skip) {
 			fmt.Printf("Skipping fixture for: %s\n", data.Name)
 			continue
 		}
 
+		fmt.Printf("Setting up fixture for: %s\n", data.Name)
+		requestNames[i] = data.Name
+
 		fmt.Printf("Running fixture for: %s\n", data.Name)
 		resp, err := fxt.makeRequest(data)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
-			return err
+			return nil, err
 		}
 
 		fxt.responses[data.Name] = gjson.ParseBytes(resp)
 	}
 
-	return nil
+	return requestNames, nil
 }
 
 func errWasExpected(err error, expectedErrorType string) bool {
@@ -200,18 +204,32 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 		Parameters:     rp,
 	}
 
-	path := fxt.parsePath(data)
+	path, err := fxt.parsePath(data)
 
-	return req.MakeRequest(fxt.APIKey, path, fxt.createParams(data.Params), true)
+	if err != nil {
+		return make([]byte, 0), err
+	}
+
+	params, err := fxt.createParams(data.Params)
+
+	if err != nil {
+		return make([]byte, 0), err
+	}
+
+	return req.MakeRequest(fxt.APIKey, path, params, true)
 }
 
-func (fxt *Fixture) createParams(params interface{}) *requests.RequestParameters {
+func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	requestParams.AppendData(fxt.parseInterface(params))
+	parsed, err := fxt.parseInterface(params)
+	if err != nil {
+		return &requestParams, err
+	}
+	requestParams.AppendData(parsed)
 
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
-	return &requestParams
+	return &requestParams, nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
@@ -239,7 +257,12 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	}
 
 	for key, value := range env {
-		dotenv[key] = fxt.parseQuery(value)
+		parsed, err := fxt.parseQuery(value)
+		if err != nil {
+			return err
+		}
+
+		dotenv[key] = parsed
 	}
 
 	content, err := godotenv.Marshal(dotenv)

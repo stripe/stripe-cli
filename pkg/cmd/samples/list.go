@@ -2,12 +2,12 @@ package samples
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -27,22 +27,25 @@ func NewListCmd() *ListCmd {
 		Short: "List Stripe Samples supported by the CLI",
 		Long: `A list of available Stripe Sample integrations that can be setup and bootstrap by
 the CLI.`,
-		Run: listCmd.runListCmd,
+		RunE: listCmd.runListCmd,
 	}
 
 	return listCmd
 }
 
-func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
-	sample := samples.Samples{
-		Fs:  afero.NewOsFs(),
-		Git: gitpkg.Operations{},
-	}
-
+func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("A list of available Stripe Samples:")
 	fmt.Println()
 
-	list := sample.GetSamples("list")
+	spinner := ansi.StartNewSpinner("Loading...", os.Stdout)
+
+	list, err := samples.GetSamples("list")
+	if err != nil {
+		ansi.StopSpinner(spinner, "Error: please check your internet connection and try again!", os.Stdout)
+		return err
+	}
+	ansi.StopSpinner(spinner, "", os.Stdout)
+
 	names := samples.Names(list)
 	sort.Strings(names)
 
@@ -52,4 +55,6 @@ func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) {
 		fmt.Printf("Repo: %s\n", list[name].URL)
 		fmt.Println()
 	}
+
+	return nil
 }
