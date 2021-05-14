@@ -424,7 +424,6 @@ func Init(cfg *Config) (*Proxy, error) {
 		// build from user's API config
 		endpoints := getEndpointsFromAPI(cfg.Key, cfg.APIBaseURL)
 		if len(endpoints.Data) == 0 {
-			// TODO: this log needs to be handled differently
 			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
 		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
