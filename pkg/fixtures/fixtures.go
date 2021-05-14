@@ -93,6 +93,14 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 		return nil, err
 	}
 
+	// If the method is `post` and params are nil, initialize them
+	// in case the user wants to add something dynamically using `Add`
+	for i, data := range fxt.fixture.Fixtures {
+		if data.Method == "post" && data.Params == nil {
+			fxt.fixture.Fixtures[i].Params = make(map[string]interface{})
+		}
+	}
+
 	if fxt.fixture.Meta.Version > SupportedVersions {
 		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
 	}
@@ -131,12 +139,8 @@ func (fxt *Fixture) Remove(removals []string) {
 	data := buildRewrites(removals, true)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
-			// Ideally we delete the keys entirely but that's a
-			// little trickier, so instead this sets a nil value that
-			// we can later skip. There should not be any cases where
-			// we try to send nil values
-			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverwriteWithEmptyValue); err != nil {
-				fmt.Println(err)
+			for remove, _ := range data[f.Name].(map[string]interface{}) {
+				delete(f.Params, remove)
 			}
 		}
 	}
@@ -271,9 +275,11 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 		changeSplit := strings.SplitN(change, "=", 2)
 		path := changeSplit[0]
 
-		var value *string
+		// When removing a field there will be no value so we set a default
+		// empty string or trying to get the split value from above
+		var value string
 		if !toRemove {
-			value = &changeSplit[1]
+			value = changeSplit[1]
 		}
 
 		pathSplit := strings.SplitN(path, ":", 2)
@@ -292,9 +298,11 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 				key: keyMap,
 			}
 		}
-		currentMap, ok := builtChanges[name]
+		_, ok := builtChanges[name]
 		if ok {
-			builtChanges[name] = mergo.Merge(currentMap, keyMap)
+			if err := mergo.Merge(builtChanges[name], keyMap); err != nil {
+				fmt.Println(err)
+			}
 		} else {
 			builtChanges[name] = keyMap
 		}

@@ -1,10 +1,12 @@
 package fixtures
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -133,6 +135,123 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	require.True(t, fxt.responses["cust_bender"].Exists())
 	require.False(t, fxt.responses["char_bender"].Exists())
 	require.False(t, fxt.responses["capt_bender"].Exists())
+}
+
+func TestMakeRequestWithOverride(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.True(t, strings.Contains(string(body), "name=Fry"))
+			require.False(t, strings.Contains(string(body), "name=Bender"))
+		case "/v1/charges":
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.True(t, strings.Contains(string(body), "amount=3000"))
+			require.False(t, strings.Contains(string(body), "amount=100"))
+		case "/v1/charges/char_12345/capture":
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Override([]string{"cust_bender:name=Fry"})
+	fxt.Override([]string{"char_bender:amount=3000"})
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NoError(t, err)
+}
+
+func TestMakeRequestWithAdd(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.True(t, strings.Contains(string(body), "birthdate=2996-09-04"))
+		case "/v1/charges":
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.True(t, strings.Contains(string(body), "receipt_email=prof.farnsworth%40planex.com"))
+		case "/v1/charges/char_12345/capture":
+			// Do nothing, we just want to verify this request came in
+			res.Write([]byte(`{}`))
+
+			require.True(t, strings.Contains(string(body), "statement_descriptor=Fuel%3A+Beer"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Add([]string{"cust_bender:birthdate=2996-09-04"})
+	fxt.Add([]string{"char_bender:receipt_email=prof.farnsworth@planex.com"})
+	fxt.Add([]string{"capt_bender:statement_descriptor=Fuel: Beer"})
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NoError(t, err)
+}
+
+func TestMakeRequestWithRemove(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case "/v1/customers":
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.False(t, strings.Contains(string(body), "phone"))
+		case "/v1/charges":
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.False(t, strings.Contains(string(body), "capture"))
+		case "/v1/charges/char_12345/capture":
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Remove([]string{"cust_bender:phone"})
+	fxt.Remove([]string{"char_bender:capture"})
+	require.NoError(t, err)
+
+	err = fxt.Execute()
+	require.NoError(t, err)
 }
 
 func TestMakeRequestExpectedFailure(t *testing.T) {
