@@ -413,7 +413,7 @@ func Init(cfg *Config) (*Proxy, error) {
 	} else {
 		for _, event := range cfg.Events {
 			if _, found := validEvents[event]; !found {
-				fmt.Printf("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
 			}
 		}
 	}
