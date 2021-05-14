@@ -8,17 +8,23 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/briandowns/spinner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
+	"github.com/stripe/stripe-cli/pkg/visitor"
 )
 
 const webhooksWebSocketFeature = "webhooks"
+const timeLayout = "2006-01-02 15:04:05"
+const outputFormatJSON = "JSON"
 
 type listenCmd struct {
 	cmd *cobra.Command
@@ -131,6 +137,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
 
+	logger := log.StandardLogger()
+	proxyVisitor := createVisitor(logger, lc.format, lc.printJSON)
+	proxyOutCh := make(chan visitor.IElement)
+
 	p, err := proxy.Init(&proxy.Config{
 		DeviceName:            deviceName,
 		Key:                   key,
@@ -144,9 +154,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		PrintJSON:             lc.printJSON,
 		UseLatestAPIVersion:   lc.latestAPIVersion,
 		SkipVerify:            lc.skipVerify,
-		Log:                   log.StandardLogger(),
+		Log:                   logger,
 		NoWSS:                 lc.noWSS,
 		Events:                lc.events,
+		OutCh:                 proxyOutCh,
 	})
 	if err != nil {
 		return err
@@ -157,9 +168,14 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
-	err = p.Run(ctx)
-	if err != nil {
-		return err
+
+	go p.Run(ctx)
+
+	for el := range proxyOutCh {
+		err := el.Accept(proxyVisitor)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -180,21 +196,13 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
-// IElements
-state starting
-state ready
-state done
-state reconnecting
-error
-
-
 func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.Visitor {
 	var s *spinner.Spinner
 
 	return &visitor.Visitor{
 		VisitError: func(ee visitor.ErrorElement) error {
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf(ee.Error)
+			ansi.StopSpinner(s, "", logger.Out)
+			logger.Fatal(ee.Error)
 			return ee.Error
 		},
 		VisitStatus: func(se visitor.StateElement) error {
@@ -204,20 +212,20 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.V
 			case visitor.Reconnecting:
 				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
 			case visitor.Ready:
-				Oansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(Data[0])), logger.Out)
+				ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(se.Data[0])), logger.Out)
 			case visitor.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}
 			return nil
 		},
 		VisitLog: func(le visitor.LogElement) error {
-			event, _ := le.Log.(proxy.stripeEvent)
+			stripeEvent, _ := le.Log.(proxy.StripeEvent)
 
 			if strings.ToUpper(format) == outputFormatJSON || printJSON {
 				fmt.Println(le.MarshalledLog)
 			} else {
 				maybeConnect := ""
-				if event.isConnect() {
+				if stripeEvent.IsConnect() {
 					maybeConnect = "connect "
 				}
 
@@ -227,8 +235,8 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.V
 				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 					color.Faint(localTime),
 					maybeConnect,
-					ansi.Linkify(ansi.Bold(event.Type), event.urlForEventType(), logger.Out),
-					ansi.Linkify(event.ID, event.urlForEventID(), logger.Out),
+					ansi.Linkify(ansi.Bold(stripeEvent.Type), stripeEvent.UrlForEventType(), logger.Out),
+					ansi.Linkify(stripeEvent.ID, stripeEvent.UrlForEventID(), logger.Out),
 				)
 				fmt.Println(outputStr)
 			}

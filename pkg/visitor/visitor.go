@@ -30,7 +30,7 @@ type LogElement struct {
 // StateElement is the current state of the stream: loading, ready, etc.
 type StateElement struct {
 	State state
-	Data  []interface{}
+	Data  []string
 }
 
 // WarningElement is a warning from the log tailer

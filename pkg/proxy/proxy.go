@@ -123,8 +123,8 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 
 		if err != nil {
-			p.cfg.OutCh <-visitor.ErrorElement{
-				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err)
+			p.cfg.OutCh <- visitor.ErrorElement{
+				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
 			}
 			return err
 		}
@@ -145,9 +145,9 @@ func (p *Proxy) Run(ctx context.Context) error {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
 
-			p.cfg.OutCh <-visitor.StateElement{
+			p.cfg.OutCh <- visitor.StateElement{
 				State: visitor.Ready,
-				Data: []interface{}{session.Secret}
+				Data:  []string{session.Secret},
 			}
 		}()
 
@@ -156,18 +156,18 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			p.cfg.OutCh <-&visitor.StateElement{
-				State: Done,
+			p.cfg.OutCh <- &visitor.StateElement{
+				State: visitor.Done,
 			}
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				t.cfg.OutCh <- &visitor.StateElement{
+				p.cfg.OutCh <- &visitor.StateElement{
 					State: visitor.Reconnecting,
 				}
 			} else {
 				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
-				t.cfg.OutCh <- visitor.ErrorElement{
+				p.cfg.OutCh <- visitor.ErrorElement{
 					Error: err,
 				}
 				return err
@@ -199,7 +199,7 @@ func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.GetSessionSecret",
 		}).Debug(err)
-		return nil, err
+		return "", err
 	}
 
 	session, err := p.createSession(context.Background())
@@ -207,7 +207,7 @@ func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.GetSessionSecret",
 		}).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
-		return nil, err
+		return "", err
 	}
 
 	return session.Secret, nil
@@ -269,20 +269,20 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 
 // This function outputs the event payload in the format specified.
 // Currently only supports JSON.
-func (p *Proxy) formatOutput(format string, eventPayload string) {
+func (p *Proxy) formatOutput(format string, eventPayload string) string {
 	var event map[string]interface{}
 	err := json.Unmarshal([]byte(eventPayload), &event)
 	if err != nil {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
-		return
+		return fmt.Sprint(err)
 	}
 	switch strings.ToUpper(format) {
 	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
 	case outputFormatJSON:
 		outputJSON, _ := json.Marshal(event)
-		fmt.Println(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
+		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
 	default:
-		fmt.Printf("Unrecognized output format %s\n" + format)
+		return fmt.Sprintf("Unrecognized output format %s\n" + format)
 	}
 }
 
@@ -300,7 +300,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
-	var evt stripeEvent
+	var evt StripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
@@ -328,14 +328,13 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		t.cfg.OutCh <- visitor.LogElement{
-			Log: evt,
-			MarshalledLog: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload)
-,
+		p.cfg.OutCh <- visitor.LogElement{
+			Log:           evt,
+			MarshalledLog: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
 		}
 
 		for _, endpoint := range p.endpointClients {
-			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
+			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) {
 				// TODO: handle errors returned by endpointClients
 				go endpoint.Post(
 					evtCtx,
@@ -356,7 +355,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		ansi.ColorizeStatus(resp.StatusCode),
 		resp.Request.Method,
 		resp.Request.URL,
-		ansi.Linkify(evtCtx.event.ID, evtCtx.event.urlForEventID(), p.cfg.Log.Out),
+		ansi.Linkify(evtCtx.event.ID, evtCtx.event.UrlForEventID(), p.cfg.Log.Out),
 	)
 	fmt.Println(outputStr)
 
@@ -500,7 +499,7 @@ func Init(cfg *Config) (*Proxy, error) {
 type eventContext struct {
 	webhookID             string
 	webhookConversationID string
-	event                 *stripeEvent
+	event                 *StripeEvent
 }
 
 //
