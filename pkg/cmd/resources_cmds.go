@@ -712,6 +712,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_group":              "string",
 	}, &Config)
+	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "attach", "/v1/payment_methods/{payment_method}/attach", http.MethodPost, map[string]string{
 		"customer": "string",
 	}, &Config)
@@ -991,6 +992,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":    "string",
 		"payment_method": "string",
 	}, &Config)
+	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSkusCmd.Cmd, "create", "/v1/skus", http.MethodPost, map[string]string{
 		"active":   "boolean",
 		"currency": "string",
@@ -1412,6 +1414,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"charge":         "string",
 		"ending_before":  "string",
 		"limit":          "integer",
+		"payment_intent": "string",
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rRadarEarlyFraudWarningsCmd.Cmd, "retrieve", "/v1/radar/early_fraud_warnings/{early_fraud_warning}", http.MethodGet, map[string]string{}, &Config)

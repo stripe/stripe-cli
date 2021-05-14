@@ -55,7 +55,7 @@
             "type": "boolean"
           },
           "email": {
-            "description": "The primary user's email address.",
+            "description": "An email address associated with the account. You can treat this as metadata: it is not used for authentication or messaging account holders.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -549,6 +549,15 @@
       "account_capabilities": {
         "description": "",
         "properties": {
+          "acss_debit_payments": {
+            "description": "The status of the ACSS Direct Debits payments capability of the account, or whether the account can directly process ACSS Direct Debits charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "afterpay_clearpay_payments": {
             "description": "The status of the Afterpay Clearpay capability of the account, or whether the account can directly process Afterpay Clearpay charges.",
             "enum": [
@@ -753,13 +762,13 @@
         "description": "",
         "properties": {
           "current_deadline": {
-            "description": "The date the fields in `currently_due` must be collected by to keep the capability enabled for the account.",
+            "description": "Date by which the fields in `currently_due` must be collected to keep the capability enabled for the account. These fields may disable the capability sooner if the next threshold is reached before they are collected.",
             "format": "unix-time",
             "nullable": true,
             "type": "integer"
           },
           "currently_due": {
-            "description": "The fields that need to be collected to keep the capability enabled. If not collected by the `current_deadline`, these fields appear in `past_due` as well, and the capability is disabled.",
+            "description": "Fields that need to be collected to keep the capability enabled. If not collected by `current_deadline`, these fields appear in `past_due` as well, and the capability is disabled.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -767,20 +776,20 @@
             "type": "array"
           },
           "disabled_reason": {
-            "description": "If the capability is disabled, this string describes why. Possible values are `requirement.fields_needed`, `pending.onboarding`, `pending.review`, `rejected_fraud`, or `rejected.other`.",
+            "description": "If the capability is disabled, this string describes why. Can be `requirements.past_due`, `requirements.pending_verification`, `listed`, `platform_paused`, `rejected.fraud`, `rejected.listed`, `rejected.terms_of_service`, `rejected.other`, `under_review`, or `other`.\n\n`rejected.unsupported_business` means that the account's business is not supported by the capability. For example, payment methods may restrict the businesses they support in their terms of service:\n\n- [Afterpay Clearpay's terms of service](/afterpay-clearpay/legal#restricted-businesses)\n\nIf you believe that the rejection is in error, please contact support@stripe.com for assistance.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "errors": {
-            "description": "The fields that are `currently_due` and need to be collected again because validation or verification failed for some reason.",
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
             "items": {
               "$ref": "#/components/schemas/account_requirements_error"
             },
             "type": "array"
           },
           "eventually_due": {
-            "description": "The fields that need to be collected assuming all volume thresholds are reached. As they become required, these fields appear in `currently_due` as well, and the `current_deadline` is set.",
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well, and `current_deadline` becomes set.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -788,7 +797,7 @@
             "type": "array"
           },
           "past_due": {
-            "description": "The fields that weren't collected by the `current_deadline`. These fields need to be collected to enable the capability for the account.",
+            "description": "Fields that weren't collected by `current_deadline`. These fields need to be collected to enable the capability on the account.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -796,7 +805,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -821,6 +830,26 @@
         "x-stripeResource": {
           "class_name": "Requirements",
           "in_class": "capability"
+        }
+      },
+      "account_card_issuing_settings": {
+        "description": "",
+        "properties": {
+          "tos_acceptance": {
+            "$ref": "#/components/schemas/card_issuing_account_terms_of_service"
+          }
+        },
+        "title": "AccountCardIssuingSettings",
+        "type": "object",
+        "x-expandableFields": [
+          "tos_acceptance"
+        ],
+        "x-stripeResource": {
+          "class_name": "SettingsCardIssuing",
+          "in_class": "account_settings",
+          "inner_classes": [
+            "card_issuing_account_terms_of_service"
+          ]
         }
       },
       "account_card_payments_settings": {
@@ -1037,13 +1066,13 @@
         "description": "",
         "properties": {
           "current_deadline": {
-            "description": "The date the fields in `currently_due` must be collected by to keep payouts enabled for the account. These fields might block payouts sooner if the next threshold is reached before these fields are collected.",
+            "description": "Date by which the fields in `currently_due` must be collected to keep the account enabled. These fields may disable the account sooner if the next threshold is reached before they are collected.",
             "format": "unix-time",
             "nullable": true,
             "type": "integer"
           },
           "currently_due": {
-            "description": "The fields that need to be collected to keep the account enabled. If not collected by the `current_deadline`, these fields appear in `past_due` as well, and the account is disabled.",
+            "description": "Fields that need to be collected to keep the account enabled. If not collected by `current_deadline`, these fields appear in `past_due` as well, and the account is disabled.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1052,13 +1081,13 @@
             "type": "array"
           },
           "disabled_reason": {
-            "description": "If the account is disabled, this string describes why the account can’t create charges or receive payouts. Can be `requirements.past_due`, `requirements.pending_verification`, `rejected.fraud`, `rejected.terms_of_service`, `rejected.listed`, `rejected.other`, `listed`, `under_review`, or `other`.",
+            "description": "If the account is disabled, this string describes why. Can be `requirements.past_due`, `requirements.pending_verification`, `listed`, `platform_paused`, `rejected.fraud`, `rejected.listed`, `rejected.terms_of_service`, `rejected.other`, `under_review`, or `other`.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
           },
           "errors": {
-            "description": "The fields that are `currently_due` and need to be collected again because validation or verification failed for some reason.",
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
             "items": {
               "$ref": "#/components/schemas/account_requirements_error"
             },
@@ -1066,7 +1095,7 @@
             "type": "array"
           },
           "eventually_due": {
-            "description": "The fields that need to be collected assuming all volume thresholds are reached. As they become required, these fields appear in `currently_due` as well, and the `current_deadline` is set.",
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well, and `current_deadline` becomes set.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1075,7 +1104,7 @@
             "type": "array"
           },
           "past_due": {
-            "description": "The fields that weren't collected by the `current_deadline`. These fields need to be collected to re-enable the account.",
+            "description": "Fields that weren't collected by `current_deadline`. These fields need to be collected to enable the account.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1084,7 +1113,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1162,7 +1191,10 @@
               "verification_failed_name_match",
               "verification_failed_other",
               "verification_failed_tax_id_match",
-              "verification_failed_tax_id_not_issued"
+              "verification_failed_tax_id_not_issued",
+              "verification_missing_executives",
+              "verification_missing_owners",
+              "verification_requires_additional_memorandum_of_associations"
             ],
             "type": "string",
             "x-stripeBypassValidation": true
@@ -1221,6 +1253,9 @@
           "branding": {
             "$ref": "#/components/schemas/account_branding_settings"
           },
+          "card_issuing": {
+            "$ref": "#/components/schemas/account_card_issuing_settings"
+          },
           "card_payments": {
             "$ref": "#/components/schemas/account_card_payments_settings"
           },
@@ -1248,6 +1283,7 @@
         "x-expandableFields": [
           "bacs_debit_payments",
           "branding",
+          "card_issuing",
           "card_payments",
           "dashboard",
           "payments",
@@ -1259,6 +1295,7 @@
           "in_class": "account",
           "inner_classes": [
             "account_bacs_debit_payments_settings",
+            "account_card_issuing_settings",
             "account_sepa_debit_payments_settings"
           ]
         }
@@ -3746,7 +3783,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.\n\n*Starting May 1, 2021, card fingerprint in India for Connect will change to allow two fingerprints for the same card --- one for India and one for the rest of the world.*",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -4016,6 +4053,40 @@
             "external_account",
             "payment_source"
           ]
+        }
+      },
+      "card_issuing_account_terms_of_service": {
+        "description": "",
+        "properties": {
+          "date": {
+            "description": "The Unix timestamp marking when the account representative accepted the service agreement.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "ip": {
+            "description": "The IP address from which the account representative accepted the service agreement.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "user_agent": {
+            "description": "The user agent of the browser from which the account representative accepted the service agreement.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "ip"
+        ],
+        "title": "CardIssuingAccountTermsOfService",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "TosAcceptance",
+          "in_class": "account_card_issuing_settings"
         }
       },
       "card_mandate_payment_method_details": {
@@ -5050,6 +5121,7 @@
               "sk",
               "sl",
               "sv",
+              "th",
               "tr",
               "zh",
               "zh-HK",
@@ -5103,6 +5175,15 @@
                 }
               ]
             }
+          },
+          "payment_method_options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/checkout_session_payment_method_options"
+              }
+            ],
+            "description": "Payment-method-specific configuration for the PaymentIntent or SetupIntent of this CheckoutSession.",
+            "nullable": true
           },
           "payment_method_types": {
             "description": "A list of the types of payment methods (e.g. card) this Checkout\nSession is allowed to accept.",
@@ -5223,6 +5304,7 @@
           "mode",
           "object",
           "payment_intent",
+          "payment_method_options",
           "payment_method_types",
           "payment_status",
           "setup_intent",
@@ -5240,6 +5322,7 @@
           "customer_details",
           "line_items",
           "payment_intent",
+          "payment_method_options",
           "setup_intent",
           "shipping",
           "shipping_address_collection",
@@ -5308,9 +5391,117 @@
           "has_collection_class": true,
           "in_package": "Checkout",
           "inner_classes": [
+            "checkout_session_payment_method_options",
             "payment_pages_checkout_session_customer_details",
             "payment_pages_checkout_session_total_details",
             "payment_pages_payment_page_resources_shipping_address_collection"
+          ]
+        }
+      },
+      "checkout_acss_debit_mandate_options": {
+        "description": "",
+        "properties": {
+          "custom_mandate_url": {
+            "description": "A URL for custom mandate text",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "interval_description": {
+            "description": "Description of the interval. Only required if 'payment_schedule' parmeter is 'interval' or 'combined'.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "payment_schedule": {
+            "description": "Payment schedule for the mandate.",
+            "enum": [
+              "combined",
+              "interval",
+              "sporadic"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "transaction_type": {
+            "description": "Transaction type of the mandate.",
+            "enum": [
+              "business",
+              "personal"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "interval_description",
+          "payment_schedule",
+          "transaction_type"
+        ],
+        "title": "CheckoutAcssDebitMandateOptions",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "MandateOptions",
+          "in_class": "checkout_acss_debit_payment_method_options"
+        }
+      },
+      "checkout_acss_debit_payment_method_options": {
+        "description": "",
+        "properties": {
+          "currency": {
+            "description": "Currency supported by the bank account. Returned when the Session is in `setup` mode.",
+            "enum": [
+              "cad",
+              "usd"
+            ],
+            "type": "string"
+          },
+          "mandate_options": {
+            "$ref": "#/components/schemas/checkout_acss_debit_mandate_options"
+          },
+          "verification_method": {
+            "description": "Bank account verification method.",
+            "enum": [
+              "automatic",
+              "instant",
+              "microdeposits"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "title": "CheckoutAcssDebitPaymentMethodOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "mandate_options"
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "checkout_session_payment_method_options",
+          "inner_classes": [
+            "checkout_acss_debit_mandate_options"
+          ]
+        }
+      },
+      "checkout_session_payment_method_options": {
+        "description": "",
+        "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/checkout_acss_debit_payment_method_options"
+          }
+        },
+        "title": "CheckoutSessionPaymentMethodOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "acss_debit"
+        ],
+        "x-stripeResource": {
+          "class_name": "PaymentMethodOptions",
+          "in_class": "checkout.session",
+          "inner_classes": [
+            "checkout_acss_debit_payment_method_options"
           ]
         }
       },
@@ -9960,8 +10151,11 @@
               "business_logo",
               "customer_signature",
               "dispute_evidence",
+              "document_provider_identity_document",
+              "finance_report_run",
               "identity_document",
               "pci_document",
+              "sigma_scheduled_query",
               "tax_document_user_upload"
             ],
             "type": "string",
@@ -10482,6 +10676,7 @@
               }
             ],
             "description": "The ID of the customer who will be billed.",
+            "nullable": true,
             "x-expansionResources": {
               "oneOf": [
                 {
@@ -10923,6 +11118,7 @@
         "required": [
           "account_country",
           "account_name",
+          "account_tax_ids",
           "amount_due",
           "amount_paid",
           "amount_remaining",
@@ -14546,12 +14742,13 @@
           "carrier": {
             "description": "The delivery company that shipped a card.",
             "enum": [
+              "dhl",
               "fedex",
+              "royal_mail",
               "usps"
             ],
             "nullable": true,
-            "type": "string",
-            "x-stripeBypassValidation": true
+            "type": "string"
           },
           "eta": {
             "description": "A unix timestamp representing a best estimate of when the card will be delivered.",
@@ -17296,6 +17493,7 @@
               "public_company",
               "public_corporation",
               "public_partnership",
+              "single_member_llc",
               "sole_proprietorship",
               "tax_exempt_government_instrumentality",
               "unincorporated_association",
@@ -18207,6 +18405,48 @@
           ]
         }
       },
+      "mandate_acss_debit": {
+        "description": "",
+        "properties": {
+          "interval_description": {
+            "description": "Description of the interval. Only required if 'payment_schedule' parmeter is 'interval' or 'combined'.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "payment_schedule": {
+            "description": "Payment schedule for the mandate.",
+            "enum": [
+              "combined",
+              "interval",
+              "sporadic"
+            ],
+            "type": "string"
+          },
+          "transaction_type": {
+            "description": "Transaction type of the mandate.",
+            "enum": [
+              "business",
+              "personal"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "interval_description",
+          "payment_schedule",
+          "transaction_type"
+        ],
+        "title": "mandate_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "mandate_payment_method_details"
+        }
+      },
       "mandate_au_becs_debit": {
         "description": "",
         "properties": {
@@ -18285,6 +18525,9 @@
       "mandate_payment_method_details": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/mandate_acss_debit"
+          },
           "au_becs_debit": {
             "$ref": "#/components/schemas/mandate_au_becs_debit"
           },
@@ -18309,6 +18552,7 @@
         "title": "mandate_payment_method_details",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "au_becs_debit",
           "bacs_debit",
           "card",
@@ -18319,6 +18563,7 @@
           "in_class": "mandate",
           "inner_classes": [
             "card_mandate_payment_method_details",
+            "mandate_acss_debit",
             "mandate_sepa_debit"
           ]
         }
@@ -19802,6 +20047,32 @@
                 "name": "intent"
               }
             ]
+          },
+          {
+            "method_name": "verify_microdeposits",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/payment_intents/{intent}/verify_microdeposits",
+            "path_resource_variables": [
+              {
+                "name": "intent",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "verify_microdeposits",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/payment_intents/{intent}/verify_microdeposits",
+            "path_resource_variables": [
+              {
+                "method_parameter": "intent",
+                "name": "intent"
+              }
+            ]
           }
         ],
         "x-stripeResource": {
@@ -19838,6 +20109,9 @@
           "use_stripe_sdk": {
             "description": "When confirming a PaymentIntent with Stripe.js, Stripe.js depends on the contents of this dictionary to invoke authentication flows. The shape of the contents is subject to change and is only intended to be used by Stripe.js.",
             "type": "object"
+          },
+          "verify_with_microdeposits": {
+            "$ref": "#/components/schemas/payment_intent_next_action_verify_with_microdeposits"
           }
         },
         "required": [
@@ -19848,11 +20122,15 @@
         "x-expandableFields": [
           "alipay_handle_redirect",
           "oxxo_display_details",
-          "redirect_to_url"
+          "redirect_to_url",
+          "verify_with_microdeposits"
         ],
         "x-stripeResource": {
           "class_name": "NextAction",
-          "in_class": "payment_intent"
+          "in_class": "payment_intent",
+          "inner_classes": [
+            "payment_intent_next_action_verify_with_microdeposits"
+          ]
         }
       },
       "payment_intent_next_action_alipay_handle_redirect": {
@@ -19966,9 +20244,43 @@
           "in_class": "payment_intent"
         }
       },
+      "payment_intent_next_action_verify_with_microdeposits": {
+        "description": "",
+        "properties": {
+          "arrival_date": {
+            "description": "The timestamp when the microdeposits are expected to land.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "hosted_verification_url": {
+            "description": "The URL for the hosted verification page, which allows customers to verify their bank account.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "arrival_date",
+          "hosted_verification_url"
+        ],
+        "title": "PaymentIntentNextActionVerifyWithMicrodeposits",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "VerifyWithMicrodeposits",
+          "in_class": "payment_intent_next_action"
+        }
+      },
       "payment_intent_payment_method_options": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/payment_intent_payment_method_options_acss_debit"
+          },
+          "afterpay_clearpay": {
+            "$ref": "#/components/schemas/payment_method_options_afterpay_clearpay"
+          },
           "alipay": {
             "$ref": "#/components/schemas/payment_method_options_alipay"
           },
@@ -19977,6 +20289,9 @@
           },
           "card": {
             "$ref": "#/components/schemas/payment_intent_payment_method_options_card"
+          },
+          "card_present": {
+            "$ref": "#/components/schemas/payment_method_options_card_present"
           },
           "oxxo": {
             "$ref": "#/components/schemas/payment_method_options_oxxo"
@@ -19994,9 +20309,12 @@
         "title": "PaymentIntentPaymentMethodOptions",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
+          "afterpay_clearpay",
           "alipay",
           "bancontact",
           "card",
+          "card_present",
           "oxxo",
           "p24",
           "sepa_debit",
@@ -20006,14 +20324,47 @@
           "class_name": "PaymentMethodOptions",
           "in_class": "payment_intent",
           "inner_classes": [
+            "payment_intent_payment_method_options_acss_debit",
             "payment_intent_payment_method_options_card",
             "payment_intent_payment_method_options_mandate_options_sepa_debit",
             "payment_intent_payment_method_options_sepa_debit",
+            "payment_method_options_afterpay_clearpay",
             "payment_method_options_alipay",
             "payment_method_options_bancontact",
+            "payment_method_options_card_present",
             "payment_method_options_oxxo",
             "payment_method_options_p24",
             "payment_method_options_sofort"
+          ]
+        }
+      },
+      "payment_intent_payment_method_options_acss_debit": {
+        "description": "",
+        "properties": {
+          "mandate_options": {
+            "$ref": "#/components/schemas/payment_intent_payment_method_options_mandate_options_acss_debit"
+          },
+          "verification_method": {
+            "description": "Bank account verification method.",
+            "enum": [
+              "automatic",
+              "instant",
+              "microdeposits"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "title": "payment_intent_payment_method_options_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+          "mandate_options"
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "payment_intent_payment_method_options",
+          "inner_classes": [
+            "payment_intent_payment_method_options_mandate_options_acss_debit"
           ]
         }
       },
@@ -20030,7 +20381,7 @@
             "nullable": true
           },
           "network": {
-            "description": "Selected network to process this PaymentIntent on. Depends on the available networks of the card attached to the PaymentIntent. Can be only set confirm-time.",
+            "description": "Selected network to process this payment intent on. Depends on the available networks of the card attached to the payment intent. Can be only set confirm-time.",
             "enum": [
               "amex",
               "cartes_bancaires",
@@ -20075,6 +20426,55 @@
           ]
         }
       },
+      "payment_intent_payment_method_options_mandate_options_acss_debit": {
+        "description": "",
+        "properties": {
+          "custom_mandate_url": {
+            "description": "A URL for custom mandate text",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "interval_description": {
+            "description": "Description of the interval. Only required if 'payment_schedule' parmeter is 'interval' or 'combined'.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "payment_schedule": {
+            "description": "Payment schedule for the mandate.",
+            "enum": [
+              "combined",
+              "interval",
+              "sporadic"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "transaction_type": {
+            "description": "Transaction type of the mandate.",
+            "enum": [
+              "business",
+              "personal"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "interval_description",
+          "payment_schedule",
+          "transaction_type"
+        ],
+        "title": "payment_intent_payment_method_options_mandate_options_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "MandateOptions",
+          "in_class": "payment_intent_payment_method_options_acss_debit"
+        }
+      },
       "payment_intent_payment_method_options_mandate_options_sepa_debit": {
         "description": "",
         "properties": {
@@ -20109,6 +20509,9 @@
       "payment_method": {
         "description": "PaymentMethod objects represent your customer's payment instruments.\nThey can be used with [PaymentIntents](https://stripe.com/docs/payments/payment-intents) to collect payments or saved to\nCustomer objects to store instrument details for future payments.\n\nRelated guides: [Payment Methods](https://stripe.com/docs/payments/payment-methods) and [More Payment Scenarios](https://stripe.com/docs/payments/more-payment-scenarios).",
         "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/payment_method_acss_debit"
+          },
           "afterpay_clearpay": {
             "$ref": "#/components/schemas/payment_method_afterpay_clearpay"
           },
@@ -20216,6 +20619,7 @@
           "type": {
             "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
             "enum": [
+              "acss_debit",
               "afterpay_clearpay",
               "alipay",
               "au_becs_debit",
@@ -20251,6 +20655,7 @@
         "title": "PaymentMethod",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "afterpay_clearpay",
           "alipay",
           "au_becs_debit",
@@ -20413,6 +20818,7 @@
           "inner_classes": [
             "billing_details",
             "payment_flows_private_payment_methods_alipay",
+            "payment_method_acss_debit",
             "payment_method_afterpay_clearpay",
             "payment_method_au_becs_debit",
             "payment_method_bacs_debit",
@@ -20430,6 +20836,57 @@
             "payment_method_sepa_debit",
             "payment_method_sofort"
           ]
+        }
+      },
+      "payment_method_acss_debit": {
+        "description": "",
+        "properties": {
+          "bank_name": {
+            "description": "Name of the bank associated with the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "fingerprint": {
+            "description": "Uniquely identifies this particular bank account. You can use this attribute to check whether two bank accounts are the same.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "institution_number": {
+            "description": "Institution number of the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "last4": {
+            "description": "Last four digits of the bank account number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "transit_number": {
+            "description": "Transit number of the bank account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "bank_name",
+          "fingerprint",
+          "institution_number",
+          "last4",
+          "transit_number"
+        ],
+        "title": "payment_method_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "payment_method"
         }
       },
       "payment_method_afterpay_clearpay": {
@@ -20572,7 +21029,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.\n\n*Starting May 1, 2021, card fingerprint in India for Connect will change to allow two fingerprints for the same card --- one for India and one for the rest of the world.*",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21010,7 +21467,7 @@
             "$ref": "#/components/schemas/payment_method_details_stripe_account"
           },
           "type": {
-            "description": "The type of transaction-specific details of the payment method used in the payment, one of `ach_credit_transfer`, `ach_debit`, `alipay`, `au_becs_debit`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `klarna`, `multibanco`, `p24`, `sepa_debit`, `sofort`, `stripe_account`, or `wechat`.\nAn additional hash is included on `payment_method_details` with a name matching this value.\nIt contains information specific to the payment method.",
+            "description": "The type of transaction-specific details of the payment method used in the payment, one of `ach_credit_transfer`, `ach_debit`, `acss_debit`, `alipay`, `au_becs_debit`, `bancontact`, `card`, `card_present`, `eps`, `giropay`, `ideal`, `klarna`, `multibanco`, `p24`, `sepa_debit`, `sofort`, `stripe_account`, or `wechat`.\nAn additional hash is included on `payment_method_details` with a name matching this value.\nIt contains information specific to the payment method.",
             "maxLength": 5000,
             "type": "string"
           },
@@ -21246,7 +21703,16 @@
       "payment_method_details_afterpay_clearpay": {
         "description": "",
         "properties": {
+          "reference": {
+            "description": "Order identifier shown to the merchant in Afterpay’s online portal.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
         },
+        "required": [
+          "reference"
+        ],
         "title": "payment_method_details_afterpay_clearpay",
         "type": "object",
         "x-expandableFields": [
@@ -21488,7 +21954,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.\n\n*Starting May 1, 2021, card fingerprint in India for Connect will change to allow two fingerprints for the same card --- one for India and one for the rest of the world.*",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -21732,7 +22198,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.\n\n*Starting May 1, 2021, card fingerprint in India for Connect will change to allow two fingerprints for the same card --- one for India and one for the rest of the world.*",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -22473,7 +22939,7 @@
             "type": "integer"
           },
           "fingerprint": {
-            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.",
+            "description": "Uniquely identifies this particular card number. You can use this attribute to check whether two customers who’ve signed up with you are using the same card number, for example. For payment methods that tokenize card information (Apple Pay, Google Pay), the tokenized number might be provided instead of the underlying card number.\n\n*Starting May 1, 2021, card fingerprint in India for Connect will change to allow two fingerprints for the same card --- one for India and one for the rest of the world.*",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -23229,6 +23695,29 @@
           "in_class": "payment_method"
         }
       },
+      "payment_method_options_afterpay_clearpay": {
+        "description": "",
+        "properties": {
+          "reference": {
+            "description": "Order identifier shown to the merchant in Afterpay’s online portal. We recommend using a value that helps you answer any questions a customer might have about\nthe payment. The identifier is limited to 128 characters and may contain only letters, digits, underscores, backslashes and dashes.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "payment_method_options_afterpay_clearpay",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AfterpayClearpay",
+          "in_class": "payment_intent_payment_method_options"
+        }
+      },
       "payment_method_options_alipay": {
         "description": "",
         "properties": {
@@ -23312,6 +23801,20 @@
           "inner_classes": [
             "payment_method_details_card_installments_plan"
           ]
+        }
+      },
+      "payment_method_options_card_present": {
+        "description": "",
+        "properties": {
+        },
+        "title": "payment_method_options_card_present",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "CardPresent",
+          "in_class": "payment_intent_payment_method_options"
         }
       },
       "payment_method_options_oxxo": {
@@ -23647,6 +24150,11 @@
             "description": "This is the sum of all the line item discounts.",
             "type": "integer"
           },
+          "amount_shipping": {
+            "description": "This is the sum of all the line item shipping amounts.",
+            "nullable": true,
+            "type": "integer"
+          },
           "amount_tax": {
             "description": "This is the sum of all the line item tax amounts.",
             "type": "integer"
@@ -23657,6 +24165,7 @@
         },
         "required": [
           "amount_discount",
+          "amount_shipping",
           "amount_tax"
         ],
         "title": "PaymentPagesCheckoutSessionTotalDetails",
@@ -24901,14 +25410,14 @@
             "type": "array"
           },
           "errors": {
-            "description": "The fields that are `currently_due` and need to be collected again because validation or verification failed for some reason.",
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
             "items": {
               "$ref": "#/components/schemas/account_requirements_error"
             },
             "type": "array"
           },
           "eventually_due": {
-            "description": "Fields that need to be collected assuming all volume thresholds are reached. As fields are needed, they are moved to `currently_due` and the account's `current_deadline` is set.",
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well, and the account's `current_deadline` becomes set.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -24916,7 +25425,7 @@
             "type": "array"
           },
           "past_due": {
-            "description": "Fields that weren't collected by the account's `current_deadline`. These fields need to be collected to enable payouts for the person's account.",
+            "description": "Fields that weren't collected by the account's `current_deadline`. These fields need to be collected to enable the person's account.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -24924,7 +25433,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. An empty array unless an asynchronous verification is pending. If verification fails, the fields in this array become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -25437,6 +25946,9 @@
           "subscription_cancel": {
             "$ref": "#/components/schemas/portal_subscription_cancel"
           },
+          "subscription_pause": {
+            "$ref": "#/components/schemas/portal_subscription_pause"
+          },
           "subscription_update": {
             "$ref": "#/components/schemas/portal_subscription_update"
           }
@@ -25446,6 +25958,7 @@
           "invoice_history",
           "payment_method_update",
           "subscription_cancel",
+          "subscription_pause",
           "subscription_update"
         ],
         "title": "PortalFeatures",
@@ -25455,6 +25968,7 @@
           "invoice_history",
           "payment_method_update",
           "subscription_cancel",
+          "subscription_pause",
           "subscription_update"
         ],
         "x-stripeResource": {
@@ -25465,6 +25979,7 @@
             "portal_invoice_list",
             "portal_payment_method_update",
             "portal_subscription_cancel",
+            "portal_subscription_pause",
             "portal_subscription_update"
           ]
         }
@@ -25548,6 +26063,27 @@
         ],
         "x-stripeResource": {
           "class_name": "SubscriptionCancel",
+          "in_class": "portal_features"
+        }
+      },
+      "portal_subscription_pause": {
+        "description": "",
+        "properties": {
+          "enabled": {
+            "description": "Whether the feature is enabled.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PortalSubscriptionPause",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SubscriptionPause",
           "in_class": "portal_features"
         }
       },
@@ -25686,7 +26222,7 @@
             "type": "object"
           },
           "nickname": {
-            "description": "A brief description of the plan, hidden from customers.",
+            "description": "A brief description of the price, hidden from customers.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -26030,11 +26566,11 @@
                 "$ref": "#/components/schemas/package_dimensions"
               }
             ],
-            "description": "The dimensions of this product for shipping purposes. A SKU associated with this product can override this value by having its own `package_dimensions`. Only applicable to products of `type=good`.",
+            "description": "The dimensions of this product for shipping purposes.",
             "nullable": true
           },
           "shippable": {
-            "description": "Whether this product is a shipped good. Only applicable to products of `type=good`.",
+            "description": "Whether this product is shipped (i.e., physical goods).",
             "nullable": true,
             "type": "boolean"
           },
@@ -26064,7 +26600,7 @@
             "type": "integer"
           },
           "url": {
-            "description": "A URL of a publicly-accessible webpage for this product. Only applicable to products of `type=good`.",
+            "description": "A URL of a publicly-accessible webpage for this product.",
             "maxLength": 2048,
             "nullable": true,
             "type": "string"
@@ -26499,6 +27035,25 @@
               "radar.early_fraud_warning"
             ],
             "type": "string"
+          },
+          "payment_intent": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/payment_intent"
+              }
+            ],
+            "description": "ID of the Payment Intent this early fraud warning is for, optionally expanded.",
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/payment_intent"
+                }
+              ]
+            }
           }
         },
         "required": [
@@ -26513,7 +27068,8 @@
         "title": "RadarEarlyFraudWarning",
         "type": "object",
         "x-expandableFields": [
-          "charge"
+          "charge",
+          "payment_intent"
         ],
         "x-resourceId": "radar.early_fraud_warning",
         "x-stripeOperations": [
@@ -27730,7 +28286,7 @@
         }
       },
       "reporting.report_run": {
-        "description": "The Report Run object represents an instance of a report type generated with\nspecific run parameters. Once the object is created, Stripe begins processing the report.\nWhen the report has finished running, it will give you a reference to a file\nwhere you can retrieve your results. For an overview, see\n[API Access to Reports](https://stripe.com/docs/reporting/statements/api).\n\nNote that reports can only be run based on your live-mode data (not test-mode\ndata), and thus related requests must be made with a\n[live-mode API key](https://stripe.com/docs/keys#test-live-modes).",
+        "description": "The Report Run object represents an instance of a report type generated with\nspecific run parameters. Once the object is created, Stripe begins processing the report.\nWhen the report has finished running, it will give you a reference to a file\nwhere you can retrieve your results. For an overview, see\n[API Access to Reports](https://stripe.com/docs/reporting/statements/api).\n\nNote that certain report types can only be run based on your live-mode data (not test-mode\ndata), and will error when queried without a [live-mode API key](https://stripe.com/docs/keys#test-live-modes).",
         "properties": {
           "created": {
             "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
@@ -27749,7 +28305,7 @@
             "type": "string"
           },
           "livemode": {
-            "description": "Always `true`: reports can only be run on live-mode data.",
+            "description": "`true` if the report is run on live mode data and `false` if it is run on test mode data.",
             "type": "boolean"
           },
           "object": {
@@ -27873,7 +28429,7 @@
         }
       },
       "reporting.report_type": {
-        "description": "The Report Type resource corresponds to a particular type of report, such as\nthe \"Activity summary\" or \"Itemized payouts\" reports. These objects are\nidentified by an ID belonging to a set of enumerated values. See\n[API Access to Reports documentation](https://stripe.com/docs/reporting/statements/api)\nfor those Report Type IDs, along with required and optional parameters.\n\nNote that reports can only be run based on your live-mode data (not test-mode\ndata), and thus related requests must be made with a\n[live-mode API key](https://stripe.com/docs/keys#test-live-modes).",
+        "description": "The Report Type resource corresponds to a particular type of report, such as\nthe \"Activity summary\" or \"Itemized payouts\" reports. These objects are\nidentified by an ID belonging to a set of enumerated values. See\n[API Access to Reports documentation](https://stripe.com/docs/reporting/statements/api)\nfor those Report Type IDs, along with required and optional parameters.\n\nNote that certain report types can only be run based on your live-mode data (not test-mode\ndata), and will error when queried without a [live-mode API key](https://stripe.com/docs/keys#test-live-modes).",
         "properties": {
           "data_available_end": {
             "description": "Most recent time for which this Report Type is available. Measured in seconds since the Unix epoch.",
@@ -28689,6 +29245,9 @@
       "setup_attempt_payment_method_details": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/setup_attempt_payment_method_details_acss_debit"
+          },
           "au_becs_debit": {
             "$ref": "#/components/schemas/setup_attempt_payment_method_details_au_becs_debit"
           },
@@ -28725,6 +29284,7 @@
         "title": "SetupAttemptPaymentMethodDetails",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "au_becs_debit",
           "bacs_debit",
           "bancontact",
@@ -28738,6 +29298,7 @@
           "class_name": "PaymentMethodDetails",
           "in_class": "setup_attempt",
           "inner_classes": [
+            "setup_attempt_payment_method_details_acss_debit",
             "setup_attempt_payment_method_details_au_becs_debit",
             "setup_attempt_payment_method_details_bacs_debit",
             "setup_attempt_payment_method_details_bancontact",
@@ -28747,6 +29308,20 @@
             "setup_attempt_payment_method_details_sepa_debit",
             "setup_attempt_payment_method_details_sofort"
           ]
+        }
+      },
+      "setup_attempt_payment_method_details_acss_debit": {
+        "description": "",
+        "properties": {
+        },
+        "title": "setup_attempt_payment_method_details_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "setup_attempt_payment_method_details"
         }
       },
       "setup_attempt_payment_method_details_au_becs_debit": {
@@ -29605,6 +30180,32 @@
                 "name": "intent"
               }
             ]
+          },
+          {
+            "method_name": "verify_microdeposits",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/setup_intents/{intent}/verify_microdeposits",
+            "path_resource_variables": [
+              {
+                "name": "intent",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "verify_microdeposits",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/setup_intents/{intent}/verify_microdeposits",
+            "path_resource_variables": [
+              {
+                "method_parameter": "intent",
+                "name": "intent"
+              }
+            ]
           }
         ],
         "x-stripeResource": {
@@ -29632,6 +30233,9 @@
           "use_stripe_sdk": {
             "description": "When confirming a SetupIntent with Stripe.js, Stripe.js depends on the contents of this dictionary to invoke authentication flows. The shape of the contents is subject to change and is only intended to be used by Stripe.js.",
             "type": "object"
+          },
+          "verify_with_microdeposits": {
+            "$ref": "#/components/schemas/setup_intent_next_action_verify_with_microdeposits"
           }
         },
         "required": [
@@ -29640,11 +30244,15 @@
         "title": "SetupIntentNextAction",
         "type": "object",
         "x-expandableFields": [
-          "redirect_to_url"
+          "redirect_to_url",
+          "verify_with_microdeposits"
         ],
         "x-stripeResource": {
           "class_name": "NextAction",
-          "in_class": "setup_intent"
+          "in_class": "setup_intent",
+          "inner_classes": [
+            "setup_intent_next_action_verify_with_microdeposits"
+          ]
         }
       },
       "setup_intent_next_action_redirect_to_url": {
@@ -29677,9 +30285,40 @@
           "in_class": "setup_intent"
         }
       },
+      "setup_intent_next_action_verify_with_microdeposits": {
+        "description": "",
+        "properties": {
+          "arrival_date": {
+            "description": "The timestamp when the microdeposits are expected to land.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "hosted_verification_url": {
+            "description": "The URL for the hosted verification page, which allows customers to verify their bank account.",
+            "maxLength": 5000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "arrival_date",
+          "hosted_verification_url"
+        ],
+        "title": "SetupIntentNextActionVerifyWithMicrodeposits",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "VerifyWithMicrodeposits",
+          "in_class": "setup_intent_next_action"
+        }
+      },
       "setup_intent_payment_method_options": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "$ref": "#/components/schemas/setup_intent_payment_method_options_acss_debit"
+          },
           "card": {
             "$ref": "#/components/schemas/setup_intent_payment_method_options_card"
           },
@@ -29690,6 +30329,7 @@
         "title": "SetupIntentPaymentMethodOptions",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "card",
           "sepa_debit"
         ],
@@ -29697,9 +30337,52 @@
           "class_name": "PaymentMethodOptions",
           "in_class": "setup_intent",
           "inner_classes": [
+            "setup_intent_payment_method_options_acss_debit",
             "setup_intent_payment_method_options_card",
             "setup_intent_payment_method_options_mandate_options_sepa_debit",
             "setup_intent_payment_method_options_sepa_debit"
+          ]
+        }
+      },
+      "setup_intent_payment_method_options_acss_debit": {
+        "description": "",
+        "properties": {
+          "currency": {
+            "description": "Currency supported by the bank account",
+            "enum": [
+              "cad",
+              "usd"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "mandate_options": {
+            "$ref": "#/components/schemas/setup_intent_payment_method_options_mandate_options_acss_debit"
+          },
+          "verification_method": {
+            "description": "Bank account verification method.",
+            "enum": [
+              "automatic",
+              "instant",
+              "microdeposits"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "required": [
+          "currency"
+        ],
+        "title": "setup_intent_payment_method_options_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+          "mandate_options"
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "setup_intent_payment_method_options",
+          "inner_classes": [
+            "setup_intent_payment_method_options_mandate_options_acss_debit"
           ]
         }
       },
@@ -29728,6 +30411,55 @@
         "x-stripeResource": {
           "class_name": "Card",
           "in_class": "setup_intent_payment_method_options"
+        }
+      },
+      "setup_intent_payment_method_options_mandate_options_acss_debit": {
+        "description": "",
+        "properties": {
+          "custom_mandate_url": {
+            "description": "A URL for custom mandate text",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "interval_description": {
+            "description": "Description of the interval. Only required if 'payment_schedule' parmeter is 'interval' or 'combined'.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "payment_schedule": {
+            "description": "Payment schedule for the mandate.",
+            "enum": [
+              "combined",
+              "interval",
+              "sporadic"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "transaction_type": {
+            "description": "Transaction type of the mandate.",
+            "enum": [
+              "business",
+              "personal"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "interval_description",
+          "payment_schedule",
+          "transaction_type"
+        ],
+        "title": "setup_intent_payment_method_options_mandate_options_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "MandateOptions",
+          "in_class": "setup_intent_payment_method_options_acss_debit"
         }
       },
       "setup_intent_payment_method_options_mandate_options_sepa_debit": {
@@ -34391,10 +35123,10 @@
         }
       },
       "terminal.connection_token": {
-        "description": "A Connection Token is used by the Stripe Terminal SDK to connect to a reader.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/readers/fleet-management#create).",
+        "description": "A Connection Token is used by the Stripe Terminal SDK to connect to a reader.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/creating-locations).",
         "properties": {
           "location": {
-            "description": "The id of the location that this connection token is scoped to.",
+            "description": "The id of the location that this connection token is scoped to. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/readers/fleet-management#connection-tokens).",
             "maxLength": 5000,
             "type": "string"
           },
@@ -34443,7 +35175,7 @@
         }
       },
       "terminal.location": {
-        "description": "A Location represents a grouping of readers.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/readers/fleet-management#create).",
+        "description": "A Location represents a grouping of readers.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/creating-locations).",
         "properties": {
           "address": {
             "$ref": "#/components/schemas/address"
@@ -34947,7 +35679,8 @@
               "not_supported",
               "processing_error"
             ],
-            "type": "string"
+            "type": "string",
+            "x-stripeBypassValidation": true
           },
           "result_reason": {
             "description": "Additional information about why 3D Secure succeeded or failed based\non the `result`.",
@@ -35011,7 +35744,7 @@
         }
       },
       "token": {
-        "description": "Tokenization is the process Stripe uses to collect sensitive card or bank\naccount details, or personally identifiable information (PII), directly from\nyour customers in a secure manner. A token representing this information is\nreturned to your server to use. You should use our\n[recommended payments integrations](https://stripe.com/docs/payments) to perform this process\nclient-side. This ensures that no sensitive card data touches your server,\nand allows your integration to operate in a PCI-compliant way.\n\nIf you cannot use client-side tokenization, you can also create tokens using\nthe API with either your publishable or secret API key. Keep in mind that if\nyour integration uses this method, you are responsible for any PCI compliance\nthat may be required, and you must keep your secret API key safe. Unlike with\nclient-side tokenization, your customer's information is not sent directly to\nStripe, so we cannot determine how it is handled or stored.\n\nTokens cannot be stored or used more than once. To store card or bank account\ninformation for later use, you can create [Customer](https://stripe.com/docs/api#customers)\nobjects or [Custom accounts](https://stripe.com/docs/api#external_accounts). Note that\n[Radar](https://stripe.com/docs/radar), our integrated solution for automatic fraud protection,\nsupports only integrations that use client-side tokenization.\n\nRelated guide: [Accept a payment](https://stripe.com/docs/payments/accept-a-payment-charges#web-create-token)",
+        "description": "Tokenization is the process Stripe uses to collect sensitive card or bank\naccount details, or personally identifiable information (PII), directly from\nyour customers in a secure manner. A token representing this information is\nreturned to your server to use. You should use our\n[recommended payments integrations](https://stripe.com/docs/payments) to perform this process\nclient-side. This ensures that no sensitive card data touches your server,\nand allows your integration to operate in a PCI-compliant way.\n\nIf you cannot use client-side tokenization, you can also create tokens using\nthe API with either your publishable or secret API key. Keep in mind that if\nyour integration uses this method, you are responsible for any PCI compliance\nthat may be required, and you must keep your secret API key safe. Unlike with\nclient-side tokenization, your customer's information is not sent directly to\nStripe, so we cannot determine how it is handled or stored.\n\nTokens cannot be stored or used more than once. To store card or bank account\ninformation for later use, you can create [Customer](https://stripe.com/docs/api#customers)\nobjects or [Custom accounts](https://stripe.com/docs/api#external_accounts). Note that\n[Radar](https://stripe.com/docs/radar), our integrated solution for automatic fraud protection,\nperforms best with integrations that use client-side tokenization.\n\nRelated guide: [Accept a payment](https://stripe.com/docs/payments/accept-a-payment-charges#web-create-token)",
         "properties": {
           "bank_account": {
             "$ref": "#/components/schemas/bank_account"
@@ -37068,8 +37801,18 @@
                         "type": "string"
                       },
                       "support_url": {
-                        "description": "A publicly available website for handling support issues.",
-                        "type": "string"
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "A publicly available website for handling support issues."
                       },
                       "url": {
                         "description": "The business's publicly available website.",
@@ -37094,6 +37837,17 @@
                   "capabilities": {
                     "description": "Each key of the dictionary represents a capability, and each capability maps to its settings (e.g. whether it has been requested or not). Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
                     "properties": {
+                      "acss_debit_payments": {
+                        "description": "The acss_debit_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "afterpay_clearpay_payments": {
                         "description": "The afterpay_clearpay_payments capability.",
                         "properties": {
@@ -37505,6 +38259,7 @@
                           "public_company",
                           "public_corporation",
                           "public_partnership",
+                          "single_member_llc",
                           "sole_proprietorship",
                           "tax_exempt_government_instrumentality",
                           "unincorporated_association",
@@ -38030,6 +38785,34 @@
                         "title": "branding_settings_specs",
                         "type": "object"
                       },
+                      "card_issuing": {
+                        "description": "Settings specific to the account's use of the Card Issuing product.",
+                        "properties": {
+                          "tos_acceptance": {
+                            "description": "Details on the account's acceptance of the [Stripe Issuing Terms and Disclosures](https://stripe.com/docs/issuing/connect/tos_acceptance).",
+                            "properties": {
+                              "date": {
+                                "description": "The Unix timestamp marking when the account representative accepted the service agreement.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "ip": {
+                                "description": "The IP address from which the account representative accepted the service agreement.",
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the account representative accepted the service agreement.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "title": "settings_terms_of_service_specs",
+                            "type": "object"
+                          }
+                        },
+                        "title": "card_issuing_settings_specs",
+                        "type": "object"
+                      },
                       "card_payments": {
                         "description": "Settings specific to card charging on the account.",
                         "properties": {
@@ -38468,8 +39251,18 @@
                         "type": "string"
                       },
                       "support_url": {
-                        "description": "A publicly available website for handling support issues.",
-                        "type": "string"
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "A publicly available website for handling support issues."
                       },
                       "url": {
                         "description": "The business's publicly available website.",
@@ -38494,6 +39287,17 @@
                   "capabilities": {
                     "description": "Each key of the dictionary represents a capability, and each capability maps to its settings (e.g. whether it has been requested or not). Each capability will be inactive until you have provided its specific requirements and Stripe has verified them. An account may have some of its requested capabilities be active and some be inactive.",
                     "properties": {
+                      "acss_debit_payments": {
+                        "description": "The acss_debit_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "afterpay_clearpay_payments": {
                         "description": "The afterpay_clearpay_payments capability.",
                         "properties": {
@@ -38905,6 +39709,7 @@
                           "public_company",
                           "public_corporation",
                           "public_partnership",
+                          "single_member_llc",
                           "sole_proprietorship",
                           "tax_exempt_government_instrumentality",
                           "unincorporated_association",
@@ -39423,6 +40228,34 @@
                           }
                         },
                         "title": "branding_settings_specs",
+                        "type": "object"
+                      },
+                      "card_issuing": {
+                        "description": "Settings specific to the account's use of the Card Issuing product.",
+                        "properties": {
+                          "tos_acceptance": {
+                            "description": "Details on the account's acceptance of the [Stripe Issuing Terms and Disclosures](https://stripe.com/docs/issuing/connect/tos_acceptance).",
+                            "properties": {
+                              "date": {
+                                "description": "The Unix timestamp marking when the account representative accepted the service agreement.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "ip": {
+                                "description": "The IP address from which the account representative accepted the service agreement.",
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the account representative accepted the service agreement.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "title": "settings_terms_of_service_specs",
+                            "type": "object"
+                          }
+                        },
+                        "title": "card_issuing_settings_specs",
                         "type": "object"
                       },
                       "card_payments": {
@@ -43609,6 +44442,17 @@
                         "title": "subscription_cancel_creation_param",
                         "type": "object"
                       },
+                      "subscription_pause": {
+                        "description": "Information about pausing subscriptions in the portal.",
+                        "properties": {
+                          "enabled": {
+                            "description": "Whether the feature is enabled.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "subscription_pause_param",
+                        "type": "object"
+                      },
                       "subscription_update": {
                         "description": "Information about updating subscriptions in the portal.",
                         "properties": {
@@ -43990,6 +44834,17 @@
                           }
                         },
                         "title": "subscription_cancel_updating_param",
+                        "type": "object"
+                      },
+                      "subscription_pause": {
+                        "description": "Information about pausing subscriptions in the portal.",
+                        "properties": {
+                          "enabled": {
+                            "description": "Whether the feature is enabled.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "subscription_pause_param",
                         "type": "object"
                       },
                       "subscription_update": {
@@ -45790,6 +46645,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "payment_method_options": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "payment_method_types": {
                   "explode": true,
                   "style": "deepObject"
@@ -45799,6 +46658,10 @@
                   "style": "deepObject"
                 },
                 "shipping_address_collection": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "shipping_rates": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -45833,7 +46696,7 @@
                     "type": "string"
                   },
                   "customer": {
-                    "description": "ID of an existing customer, if one exists. The email stored on the\ncustomer will be used to prefill the email field on the Checkout page.\nIf the customer changes their email on the Checkout page, the Customer\nobject will be updated with the new email.\nIf blank for Checkout Sessions in `payment` or `subscription` mode,\nCheckout will create a new customer object based on information\nprovided during the payment flow.",
+                    "description": "ID of an existing Customer, if one exists. In `payment` mode, the customer’s most recent card\npayment method will be used to prefill the email, name, card details, and billing address\non the Checkout page. In `subscription` mode, the customer’s [default payment method](https://stripe.com/docs/api/customers/update#update_customer-invoice_settings-default_payment_method)\nwill be used if it’s a card, and otherwise the most recent card will be used. A valid billing address is required for Checkout to prefill the customer's card details.\n\nIf the customer changes their email on the Checkout page, the Customer object will be updated with the new email.\n\nIf blank for Checkout Sessions in `payment` or `subscription` mode, Checkout will create a new Customer object based on information provided during the payment flow.\n\nYou can set [`payment_intent_data.setup_future_usage`](https://stripe.com/docs/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage) to have Checkout automatically attach the payment method to the Customer you pass in for future reuse.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -45873,7 +46736,7 @@
                     "type": "array"
                   },
                   "line_items": {
-                    "description": "A list of items the customer is purchasing. Use this parameter to pass one-time or recurring [Prices](https://stripe.com/docs/api/prices).\nOne-time Prices in `subscription` mode will be on the initial invoice only.\n\nThere is a maximum of 100 line items, however it is recommended to\nconsolidate line items if there are more than a few dozen.",
+                    "description": "A list of items the customer is purchasing. Use this parameter to pass one-time or recurring [Prices](https://stripe.com/docs/api/prices).\n\nFor `payment` mode, there is a maximum of 100 line items, however it is recommended to consolidate line items if there are more than a few dozen.\n\nFor `subscription` mode, there is a maximum of 20 line items with recurring Prices and 20 line items with one-time Prices. Line items with one-time Prices in will be on the initial invoice only.",
                     "items": {
                       "properties": {
                         "adjustable_quantity": {
@@ -46091,6 +46954,7 @@
                       "sk",
                       "sl",
                       "sv",
+                      "th",
                       "tr",
                       "zh",
                       "zh-HK",
@@ -46152,7 +47016,7 @@
                         "type": "string"
                       },
                       "setup_future_usage": {
-                        "description": "Indicates that you intend to make future payments with the payment\nmethod collected by this Checkout Session.\n\nWhen setting this to `on_session`, Checkout will show a notice to the\ncustomer that their payment details will be saved.\n\nWhen setting this to `off_session`, Checkout will show a notice to the\ncustomer that their payment details will be saved and used for future\npayments.\n\nFor both values, Checkout will attach the payment method to either the\nprovided Customer for the session, or a new Customer created by Checkout\nif one has not been provided.\n\nWhen processing card payments, Checkout also uses `setup_future_usage`\nto dynamically optimize your payment flow and comply with regional\nlegislation and network rules, such as SCA.",
+                        "description": "Indicates that you intend to [make future payments](https://stripe.com/docs/payments/payment-intents#future-usage) with the payment\nmethod collected by this Checkout Session.\n\nWhen setting this to `on_session`, Checkout will show a notice to the\ncustomer that their payment details will be saved.\n\nWhen setting this to `off_session`, Checkout will show a notice to the\ncustomer that their payment details will be saved and used for future\npayments.\n\nFor both values, Checkout will attach the payment method to either the\nprovided Customer for the session, or a new Customer created by Checkout\nif one has not been provided.\n\nWhen processing card payments, Checkout also uses `setup_future_usage`\nto dynamically optimize your payment flow and comply with regional\nlegislation and network rules, such as SCA.",
                         "enum": [
                           "off_session",
                           "on_session"
@@ -46266,10 +47130,86 @@
                     "title": "payment_intent_data_params",
                     "type": "object"
                   },
+                  "payment_method_options": {
+                    "description": "Payment-method-specific configuration.",
+                    "properties": {
+                      "acss_debit": {
+                        "description": "contains details about the ACSS Debit payment method options.",
+                        "properties": {
+                          "currency": {
+                            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                            "enum": [
+                              "cad",
+                              "usd"
+                            ],
+                            "type": "string"
+                          },
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                              "custom_mandate_url": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "interval_description": {
+                                "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "payment_schedule": {
+                                "description": "Payment schedule for the mandate.",
+                                "enum": [
+                                  "combined",
+                                  "interval",
+                                  "sporadic"
+                                ],
+                                "type": "string"
+                              },
+                              "transaction_type": {
+                                "description": "Transaction type of the mandate.",
+                                "enum": [
+                                  "business",
+                                  "personal"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          },
+                          "verification_method": {
+                            "description": "Verification method for the intent",
+                            "enum": [
+                              "automatic",
+                              "instant",
+                              "microdeposits"
+                            ],
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "payment_method_options_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "payment_method_options_param",
+                    "type": "object"
+                  },
                   "payment_method_types": {
                     "description": "A list of the types of payment methods (e.g., `card`) this Checkout Session can accept.\n\nRead more about the supported payment methods and their requirements in our [payment\nmethod details guide](/docs/payments/checkout/payment-methods).\n\nIf multiple payment methods are passed, Checkout will dynamically reorder them to\nprioritize the most relevant payment methods based on the customer's location and\nother characteristics.",
                     "items": {
                       "enum": [
+                        "acss_debit",
                         "afterpay_clearpay",
                         "alipay",
                         "bacs_debit",
@@ -46574,6 +47514,16 @@
                     "title": "shipping_address_collection_params",
                     "type": "object"
                   },
+                  "shipping_rates": {
+                    "description": "The shipping rate to apply to this Session. Currently, only up to one may be specified",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "shipping_rate"
+                    }
+                  },
                   "submit_type": {
                     "description": "Describes the type of transaction being performed by Checkout in order to customize\nrelevant text on the page, such as the submit button. `submit_type` can only be\nspecified on Checkout Sessions in `payment` mode, but not Checkout Sessions\nin `subscription` or `setup` mode.",
                     "enum": [
@@ -46648,6 +47598,24 @@
                           "type": "string"
                         },
                         "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                        "type": "object"
+                      },
+                      "transfer_data": {
+                        "description": "If specified, the funds from the subscription's invoices will be transferred to the destination and the ID of the resulting transfers will be found on the resulting charges.",
+                        "properties": {
+                          "amount_percent": {
+                            "description": "A non-negative decimal between 0 and 100, with at most two decimal places. This represents the percentage of the subscription invoice subtotal that will be transferred to the destination account. By default, the entire amount is transferred to the destination.",
+                            "type": "number"
+                          },
+                          "destination": {
+                            "description": "ID of an existing, connected Stripe account.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "destination"
+                        ],
+                        "title": "transfer_data_specs",
                         "type": "object"
                       },
                       "trial_end": {
@@ -47329,7 +48297,7 @@
                     "type": "string"
                   },
                   "duration": {
-                    "description": "Specifies how long the discount will be in effect. Can be `forever`, `once`, or `repeating`.",
+                    "description": "Specifies how long the discount will be in effect if used on a subscription. Can be `forever`, `once`, or `repeating`. Defaults to `once`.",
                     "enum": [
                       "forever",
                       "once",
@@ -47390,14 +48358,11 @@
                     "type": "integer"
                   }
                 },
-                "required": [
-                  "duration"
-                ],
                 "type": "object"
               }
             }
           },
-          "required": true
+          "required": false
         },
         "responses": {
           "200": {
@@ -55223,7 +56188,7 @@
             "style": "form"
           },
           {
-            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts.",
+            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts. To preview the upcoming invoice for a subscription that hasn't been created, use `coupon` instead.",
             "explode": true,
             "in": "query",
             "name": "discounts",
@@ -55875,7 +56840,7 @@
             "style": "form"
           },
           {
-            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts.",
+            "description": "The coupons to redeem into discounts for the invoice preview. If not specified, inherits the discount from the customer or subscription. Pass an empty string to avoid inheriting any discounts. To preview the upcoming invoice for a subscription that hasn't been created, use `coupon` instead.",
             "explode": true,
             "in": "query",
             "name": "discounts",
@@ -67115,6 +68080,33 @@
                   "payment_method_data": {
                     "description": "If provided, this hash will be used to create a PaymentMethod. The new PaymentMethod will appear\nin the [payment_method](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-payment_method)\nproperty on the PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is an `acss_debit` PaymentMethod, this hash contains details about the ACSS Debit payment method.",
+                        "properties": {
+                          "account_number": {
+                            "description": "Customer's bank account number.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "institution_number": {
+                            "description": "Institution number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "transit_number": {
+                            "description": "Transit number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "account_number",
+                          "institution_number",
+                          "transit_number"
+                        ],
+                        "title": "payment_method_param",
+                        "type": "object"
+                      },
                       "afterpay_clearpay": {
                         "description": "If this is an `AfterpayClearpay` PaymentMethod, this hash contains details about the AfterpayClearpay payment method.",
                         "properties": {
@@ -67471,6 +68463,7 @@
                       "type": {
                         "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
                         "enum": [
+                          "acss_debit",
                           "afterpay_clearpay",
                           "alipay",
                           "au_becs_debit",
@@ -67499,6 +68492,98 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "mandate_options": {
+                                "description": "Additional fields for Mandate creation",
+                                "properties": {
+                                  "custom_mandate_url": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "enum": [
+                                          ""
+                                        ],
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                                  },
+                                  "interval_description": {
+                                    "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                    "maxLength": 500,
+                                    "type": "string"
+                                  },
+                                  "payment_schedule": {
+                                    "description": "Payment schedule for the mandate.",
+                                    "enum": [
+                                      "combined",
+                                      "interval",
+                                      "sporadic"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "transaction_type": {
+                                    "description": "Transaction type of the mandate.",
+                                    "enum": [
+                                      "business",
+                                      "personal"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "title": "payment_method_options_mandate_options_param",
+                                "type": "object"
+                              },
+                              "verification_method": {
+                                "description": "Verification method for the intent",
+                                "enum": [
+                                  "automatic",
+                                  "instant",
+                                  "microdeposits"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_intent_payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `acss_debit` PaymentMethod, this sub-hash contains details about the ACSS Debit payment method options."
+                      },
+                      "afterpay_clearpay": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "reference": {
+                                "description": "Order identifier shown to the customer in Afterpay’s online portal. We recommend using a value that helps you answer any questions a customer might have about\nthe payment. The identifier is limited to 128 characters and may contain only letters, digits, underscores, backslashes and dashes.",
+                                "maxLength": 128,
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `afterpay_clearpay` PaymentMethod, this sub-hash contains details about the Afterpay Clearpay payment method options."
+                      },
                       "alipay": {
                         "anyOf": [
                           {
@@ -67647,6 +68732,23 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "card_present": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `card_present` PaymentMethod, this sub-hash contains details about the Card Present payment method options."
                       },
                       "oxxo": {
                         "anyOf": [
@@ -68121,6 +69223,33 @@
                   "payment_method_data": {
                     "description": "If provided, this hash will be used to create a PaymentMethod. The new PaymentMethod will appear\nin the [payment_method](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-payment_method)\nproperty on the PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is an `acss_debit` PaymentMethod, this hash contains details about the ACSS Debit payment method.",
+                        "properties": {
+                          "account_number": {
+                            "description": "Customer's bank account number.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "institution_number": {
+                            "description": "Institution number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "transit_number": {
+                            "description": "Transit number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "account_number",
+                          "institution_number",
+                          "transit_number"
+                        ],
+                        "title": "payment_method_param",
+                        "type": "object"
+                      },
                       "afterpay_clearpay": {
                         "description": "If this is an `AfterpayClearpay` PaymentMethod, this hash contains details about the AfterpayClearpay payment method.",
                         "properties": {
@@ -68477,6 +69606,7 @@
                       "type": {
                         "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
                         "enum": [
+                          "acss_debit",
                           "afterpay_clearpay",
                           "alipay",
                           "au_becs_debit",
@@ -68505,6 +69635,98 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "mandate_options": {
+                                "description": "Additional fields for Mandate creation",
+                                "properties": {
+                                  "custom_mandate_url": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "enum": [
+                                          ""
+                                        ],
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                                  },
+                                  "interval_description": {
+                                    "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                    "maxLength": 500,
+                                    "type": "string"
+                                  },
+                                  "payment_schedule": {
+                                    "description": "Payment schedule for the mandate.",
+                                    "enum": [
+                                      "combined",
+                                      "interval",
+                                      "sporadic"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "transaction_type": {
+                                    "description": "Transaction type of the mandate.",
+                                    "enum": [
+                                      "business",
+                                      "personal"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "title": "payment_method_options_mandate_options_param",
+                                "type": "object"
+                              },
+                              "verification_method": {
+                                "description": "Verification method for the intent",
+                                "enum": [
+                                  "automatic",
+                                  "instant",
+                                  "microdeposits"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_intent_payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `acss_debit` PaymentMethod, this sub-hash contains details about the ACSS Debit payment method options."
+                      },
+                      "afterpay_clearpay": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "reference": {
+                                "description": "Order identifier shown to the customer in Afterpay’s online portal. We recommend using a value that helps you answer any questions a customer might have about\nthe payment. The identifier is limited to 128 characters and may contain only letters, digits, underscores, backslashes and dashes.",
+                                "maxLength": 128,
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `afterpay_clearpay` PaymentMethod, this sub-hash contains details about the Afterpay Clearpay payment method options."
+                      },
                       "alipay": {
                         "anyOf": [
                           {
@@ -68653,6 +69875,23 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "card_present": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `card_present` PaymentMethod, this sub-hash contains details about the Card Present payment method options."
                       },
                       "oxxo": {
                         "anyOf": [
@@ -69309,6 +70548,33 @@
                   "payment_method_data": {
                     "description": "If provided, this hash will be used to create a PaymentMethod. The new PaymentMethod will appear\nin the [payment_method](https://stripe.com/docs/api/payment_intents/object#payment_intent_object-payment_method)\nproperty on the PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is an `acss_debit` PaymentMethod, this hash contains details about the ACSS Debit payment method.",
+                        "properties": {
+                          "account_number": {
+                            "description": "Customer's bank account number.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "institution_number": {
+                            "description": "Institution number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          },
+                          "transit_number": {
+                            "description": "Transit number of the customer's bank.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "account_number",
+                          "institution_number",
+                          "transit_number"
+                        ],
+                        "title": "payment_method_param",
+                        "type": "object"
+                      },
                       "afterpay_clearpay": {
                         "description": "If this is an `AfterpayClearpay` PaymentMethod, this hash contains details about the AfterpayClearpay payment method.",
                         "properties": {
@@ -69665,6 +70931,7 @@
                       "type": {
                         "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
                         "enum": [
+                          "acss_debit",
                           "afterpay_clearpay",
                           "alipay",
                           "au_becs_debit",
@@ -69693,6 +70960,98 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this PaymentIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "mandate_options": {
+                                "description": "Additional fields for Mandate creation",
+                                "properties": {
+                                  "custom_mandate_url": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "enum": [
+                                          ""
+                                        ],
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                                  },
+                                  "interval_description": {
+                                    "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                    "maxLength": 500,
+                                    "type": "string"
+                                  },
+                                  "payment_schedule": {
+                                    "description": "Payment schedule for the mandate.",
+                                    "enum": [
+                                      "combined",
+                                      "interval",
+                                      "sporadic"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "transaction_type": {
+                                    "description": "Transaction type of the mandate.",
+                                    "enum": [
+                                      "business",
+                                      "personal"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "title": "payment_method_options_mandate_options_param",
+                                "type": "object"
+                              },
+                              "verification_method": {
+                                "description": "Verification method for the intent",
+                                "enum": [
+                                  "automatic",
+                                  "instant",
+                                  "microdeposits"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_intent_payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `acss_debit` PaymentMethod, this sub-hash contains details about the ACSS Debit payment method options."
+                      },
+                      "afterpay_clearpay": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "reference": {
+                                "description": "Order identifier shown to the customer in Afterpay’s online portal. We recommend using a value that helps you answer any questions a customer might have about\nthe payment. The identifier is limited to 128 characters and may contain only letters, digits, underscores, backslashes and dashes.",
+                                "maxLength": 128,
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `afterpay_clearpay` PaymentMethod, this sub-hash contains details about the Afterpay Clearpay payment method options."
+                      },
                       "alipay": {
                         "anyOf": [
                           {
@@ -69841,6 +71200,23 @@
                           }
                         ],
                         "description": "Configuration for any card payments attempted on this PaymentIntent."
+                      },
+                      "card_present": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `card_present` PaymentMethod, this sub-hash contains details about the Card Present payment method options."
                       },
                       "oxxo": {
                         "anyOf": [
@@ -70085,6 +71461,90 @@
         }
       }
     },
+    "/v1/payment_intents/{intent}/verify_microdeposits": {
+      "post": {
+        "description": "<p>Verifies microdeposits on a PaymentIntent object.</p>",
+        "operationId": "PostPaymentIntentsIntentVerifyMicrodeposits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intent",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "amounts": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amounts": {
+                    "description": "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account.",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "amount"
+                    }
+                  },
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "amounts"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/payment_intent"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
     "/v1/payment_methods": {
       "get": {
         "description": "<p>Returns a list of PaymentMethods for a given Customer</p>",
@@ -70153,6 +71613,7 @@
             "required": true,
             "schema": {
               "enum": [
+                "acss_debit",
                 "afterpay_clearpay",
                 "alipay",
                 "au_becs_debit",
@@ -70257,6 +71718,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "acss_debit": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "afterpay_clearpay": {
                   "explode": true,
                   "style": "deepObject"
@@ -70337,6 +71802,33 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "acss_debit": {
+                    "description": "If this is an `acss_debit` PaymentMethod, this hash contains details about the ACSS Debit payment method.",
+                    "properties": {
+                      "account_number": {
+                        "description": "Customer's bank account number.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "institution_number": {
+                        "description": "Institution number of the customer's bank.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      "transit_number": {
+                        "description": "Transit number of the customer's bank.",
+                        "maxLength": 5000,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "account_number",
+                      "institution_number",
+                      "transit_number"
+                    ],
+                    "title": "payment_method_param",
+                    "type": "object"
+                  },
                   "afterpay_clearpay": {
                     "description": "If this is an `AfterpayClearpay` PaymentMethod, this hash contains details about the AfterpayClearpay payment method.",
                     "properties": {
@@ -70765,6 +72257,7 @@
                   "type": {
                     "description": "The type of the PaymentMethod. An additional hash is included on the PaymentMethod with a name matching this value. It contains additional information specific to the PaymentMethod type.",
                     "enum": [
+                      "acss_debit",
                       "afterpay_clearpay",
                       "alipay",
                       "au_becs_debit",
@@ -73663,7 +75156,7 @@
                     "type": "string"
                   },
                   "package_dimensions": {
-                    "description": "The dimensions of this product for shipping purposes. A SKU associated with this product can override this value by having its own `package_dimensions`. May only be set if type=`good`.",
+                    "description": "The dimensions of this product for shipping purposes.",
                     "properties": {
                       "height": {
                         "description": "Height, in inches. Maximum precision is 2 decimal places.",
@@ -73692,7 +75185,7 @@
                     "type": "object"
                   },
                   "shippable": {
-                    "description": "Whether this product is shipped (i.e., physical goods). Defaults to `true`. May only be set if type=`good`.",
+                    "description": "Whether this product is shipped (i.e., physical goods).",
                     "type": "boolean"
                   },
                   "statement_descriptor": {
@@ -73714,7 +75207,7 @@
                     "type": "string"
                   },
                   "url": {
-                    "description": "A URL of a publicly-accessible webpage for this product. May only be set if type=`good`.",
+                    "description": "A URL of a publicly-accessible webpage for this product.",
                     "maxLength": 5000,
                     "type": "string"
                   }
@@ -74054,10 +75547,10 @@
                         "type": "string"
                       }
                     ],
-                    "description": "The dimensions of this product for shipping purposes. A SKU associated with this product can override this value by having its own `package_dimensions`. May only be set if `type=good`."
+                    "description": "The dimensions of this product for shipping purposes."
                   },
                   "shippable": {
-                    "description": "Whether this product is shipped (i.e., physical goods). Defaults to `true`. May only be set if `type=good`.",
+                    "description": "Whether this product is shipped (i.e., physical goods).",
                     "type": "boolean"
                   },
                   "statement_descriptor": {
@@ -74071,7 +75564,7 @@
                     "type": "string"
                   },
                   "url": {
-                    "description": "A URL of a publicly-accessible webpage for this product. May only be set if `type=good`.",
+                    "description": "A URL of a publicly-accessible webpage for this product.",
                     "type": "string"
                   }
                 },
@@ -74638,6 +76131,17 @@
             "required": false,
             "schema": {
               "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return early fraud warnings for charges that were created by the PaymentIntent specified by this PaymentIntent ID.",
+            "in": "query",
+            "name": "payment_intent",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
             },
             "style": "form"
           },
@@ -76657,7 +78161,7 @@
     },
     "/v1/reporting/report_runs": {
       "get": {
-        "description": "<p>Returns a list of Report Runs, with the most recent appearing first. (Requires a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
+        "description": "<p>Returns a list of Report Runs, with the most recent appearing first.</p>",
         "operationId": "GetReportingReportRuns",
         "parameters": [
           {
@@ -76818,7 +78322,7 @@
         }
       },
       "post": {
-        "description": "<p>Creates a new object and begin running the report. (Requires a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
+        "description": "<p>Creates a new object and begin running the report. (Certain report types require a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
         "operationId": "PostReportingReportRuns",
         "requestBody": {
           "content": {
@@ -77567,7 +79071,7 @@
     },
     "/v1/reporting/report_runs/{report_run}": {
       "get": {
-        "description": "<p>Retrieves the details of an existing Report Run. (Requires a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
+        "description": "<p>Retrieves the details of an existing Report Run.</p>",
         "operationId": "GetReportingReportRunsReportRun",
         "parameters": [
           {
@@ -77637,7 +79141,7 @@
     },
     "/v1/reporting/report_types": {
       "get": {
-        "description": "<p>Returns a full list of Report Types. (Requires a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
+        "description": "<p>Returns a full list of Report Types.</p>",
         "operationId": "GetReportingReportTypes",
         "parameters": [
           {
@@ -77732,7 +79236,7 @@
     },
     "/v1/reporting/report_types/{report_type}": {
       "get": {
-        "description": "<p>Retrieves the details of a Report Type. (Requires a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
+        "description": "<p>Retrieves the details of a Report Type. (Certain report types require a <a href=\"https://stripe.com/docs/keys#test-live-modes\">live-mode API key</a>.)</p>",
         "operationId": "GetReportingReportTypesReportType",
         "parameters": [
           {
@@ -78598,6 +80102,74 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this SetupIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is a `acss_debit` SetupIntent, this sub-hash contains details about the ACSS Debit payment method options.",
+                        "properties": {
+                          "currency": {
+                            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                            "enum": [
+                              "cad",
+                              "usd"
+                            ],
+                            "type": "string"
+                          },
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                              "custom_mandate_url": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "interval_description": {
+                                "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "payment_schedule": {
+                                "description": "Payment schedule for the mandate.",
+                                "enum": [
+                                  "combined",
+                                  "interval",
+                                  "sporadic"
+                                ],
+                                "type": "string"
+                              },
+                              "transaction_type": {
+                                "description": "Transaction type of the mandate.",
+                                "enum": [
+                                  "business",
+                                  "personal"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          },
+                          "verification_method": {
+                            "description": "Verification method for the intent",
+                            "enum": [
+                              "automatic",
+                              "instant",
+                              "microdeposits"
+                            ],
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
+                        "type": "object"
+                      },
                       "card": {
                         "description": "Configuration for any card setup attempted on this SetupIntent.",
                         "properties": {
@@ -78872,6 +80444,74 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this SetupIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is a `acss_debit` SetupIntent, this sub-hash contains details about the ACSS Debit payment method options.",
+                        "properties": {
+                          "currency": {
+                            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                            "enum": [
+                              "cad",
+                              "usd"
+                            ],
+                            "type": "string"
+                          },
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                              "custom_mandate_url": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "interval_description": {
+                                "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "payment_schedule": {
+                                "description": "Payment schedule for the mandate.",
+                                "enum": [
+                                  "combined",
+                                  "interval",
+                                  "sporadic"
+                                ],
+                                "type": "string"
+                              },
+                              "transaction_type": {
+                                "description": "Transaction type of the mandate.",
+                                "enum": [
+                                  "business",
+                                  "personal"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          },
+                          "verification_method": {
+                            "description": "Verification method for the intent",
+                            "enum": [
+                              "automatic",
+                              "instant",
+                              "microdeposits"
+                            ],
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
+                        "type": "object"
+                      },
                       "card": {
                         "description": "Configuration for any card setup attempted on this SetupIntent.",
                         "properties": {
@@ -79194,6 +80834,74 @@
                   "payment_method_options": {
                     "description": "Payment-method-specific configuration for this SetupIntent.",
                     "properties": {
+                      "acss_debit": {
+                        "description": "If this is a `acss_debit` SetupIntent, this sub-hash contains details about the ACSS Debit payment method options.",
+                        "properties": {
+                          "currency": {
+                            "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+                            "enum": [
+                              "cad",
+                              "usd"
+                            ],
+                            "type": "string"
+                          },
+                          "mandate_options": {
+                            "description": "Additional fields for Mandate creation",
+                            "properties": {
+                              "custom_mandate_url": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "interval_description": {
+                                "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
+                                "maxLength": 500,
+                                "type": "string"
+                              },
+                              "payment_schedule": {
+                                "description": "Payment schedule for the mandate.",
+                                "enum": [
+                                  "combined",
+                                  "interval",
+                                  "sporadic"
+                                ],
+                                "type": "string"
+                              },
+                              "transaction_type": {
+                                "description": "Transaction type of the mandate.",
+                                "enum": [
+                                  "business",
+                                  "personal"
+                                ],
+                                "type": "string"
+                              }
+                            },
+                            "title": "payment_method_options_mandate_options_param",
+                            "type": "object"
+                          },
+                          "verification_method": {
+                            "description": "Verification method for the intent",
+                            "enum": [
+                              "automatic",
+                              "instant",
+                              "microdeposits"
+                            ],
+                            "type": "string",
+                            "x-stripeBypassValidation": true
+                          }
+                        },
+                        "title": "setup_intent_payment_method_options_param",
+                        "type": "object"
+                      },
                       "card": {
                         "description": "Configuration for any card setup attempted on this SetupIntent.",
                         "properties": {
@@ -79243,6 +80951,90 @@
             }
           },
           "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/setup_intent"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/setup_intents/{intent}/verify_microdeposits": {
+      "post": {
+        "description": "<p>Verifies microdeposits on a SetupIntent object.</p>",
+        "operationId": "PostSetupIntentsIntentVerifyMicrodeposits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "intent",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "amounts": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "amounts": {
+                    "description": "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account.",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "type": "array",
+                    "x-stripeParam": {
+                      "containee_entity_name": "amount"
+                    }
+                  },
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "amounts"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -81555,14 +83347,14 @@
                     "type": "object"
                   },
                   "payment_behavior": {
-                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
+                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `default_incomplete` to transition the subscription to `status=past_due` when payment is required and await explicit confirmation of the invoice's payment intent. This allows simpler management of scenarios where additional user actions are needed to pay a subscription’s invoice. Such as failed payments, [SCA regulation](https://stripe.com/docs/billing/migration/strong-customer-authentication), or collecting a mandate for a bank debit payment method.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
                     "enum": [
                       "allow_incomplete",
+                      "default_incomplete",
                       "error_if_incomplete",
                       "pending_if_incomplete"
                     ],
-                    "type": "string",
-                    "x-stripeBypassValidation": true
+                    "type": "string"
                   },
                   "plan": {
                     "description": "The identifier of the plan to add to the subscription.",
@@ -81943,14 +83735,14 @@
                     "type": "boolean"
                   },
                   "payment_behavior": {
-                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
+                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `default_incomplete` to transition the subscription to `status=past_due` when payment is required and await explicit confirmation of the invoice's payment intent. This allows simpler management of scenarios where additional user actions are needed to pay a subscription’s invoice. Such as failed payments, [SCA regulation](https://stripe.com/docs/billing/migration/strong-customer-authentication), or collecting a mandate for a bank debit payment method.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
                     "enum": [
                       "allow_incomplete",
+                      "default_incomplete",
                       "error_if_incomplete",
                       "pending_if_incomplete"
                     ],
-                    "type": "string",
-                    "x-stripeBypassValidation": true
+                    "type": "string"
                   },
                   "plan": {
                     "description": "The identifier of the new plan for this subscription item.",
@@ -82779,7 +84571,7 @@
                     "items": {
                       "properties": {
                         "add_invoice_items": {
-                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 10 items.",
+                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 20 items.",
                           "items": {
                             "properties": {
                               "price": {
@@ -83413,7 +85205,7 @@
                     "items": {
                       "properties": {
                         "add_invoice_items": {
-                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 10 items.",
+                          "description": "A list of prices and quantities that will generate invoice items appended to the next invoice. You may pass up to 20 items.",
                           "items": {
                             "properties": {
                               "price": {
@@ -84186,7 +85978,7 @@
             "style": "form"
           },
           {
-            "description": "The status of the subscriptions to retrieve. Passing in a value of `canceled` will return all canceled subscriptions, including those belonging to deleted customers. Pass `ended` to find subscriptions that are canceled and subscriptions that are expired due to [incomplete payment](https://stripe.com/docs/billing/subscriptions/overview#subscription-statuses). Passing in a value of `all` will return subscriptions of all statuses.",
+            "description": "The status of the subscriptions to retrieve. Passing in a value of `canceled` will return all canceled subscriptions, including those belonging to deleted customers. Pass `ended` to find subscriptions that are canceled and subscriptions that are expired due to [incomplete payment](https://stripe.com/docs/billing/subscriptions/overview#subscription-statuses). Passing in a value of `all` will return subscriptions of all statuses. If no value is supplied, all subscriptions that have not been canceled are returned.",
             "in": "query",
             "name": "status",
             "required": false,
@@ -84328,7 +86120,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "add_invoice_items": {
-                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 10 items.",
+                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 20 items.",
                     "items": {
                       "properties": {
                         "price": {
@@ -84667,14 +86459,14 @@
                     "type": "boolean"
                   },
                   "payment_behavior": {
-                    "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if the first invoice cannot be paid. Creating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not create a subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.\n\n`pending_if_incomplete` is only used with updates and cannot be passed when creating a subscription.",
+                    "description": "Use `allow_incomplete` to create subscriptions with `status=incomplete` if the first invoice cannot be paid. Creating subscriptions with this status allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `default_incomplete` to create Subscriptions with `status=incomplete` when the first invoice requires payment, otherwise start as active. Subscriptions transition to `status=active` when successfully confirming the payment intent on the first invoice. This allows simpler management of scenarios where additional user actions are needed to pay a subscription’s invoice. Such as failed payments, [SCA regulation](https://stripe.com/docs/billing/migration/strong-customer-authentication), or collecting a mandate for a bank debit payment method. If the payment intent is not confirmed within 23 hours subscriptions transition to `status=expired_incomplete`, which is a terminal state.\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's first invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not create a subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.\n\n`pending_if_incomplete` is only used with updates and cannot be passed when creating a subscription.",
                     "enum": [
                       "allow_incomplete",
+                      "default_incomplete",
                       "error_if_incomplete",
                       "pending_if_incomplete"
                     ],
-                    "type": "string",
-                    "x-stripeBypassValidation": true
+                    "type": "string"
                   },
                   "pending_invoice_item_interval": {
                     "anyOf": [
@@ -85010,7 +86802,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "add_invoice_items": {
-                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 10 items.",
+                    "description": "A list of prices and quantities that will generate invoice items appended to the first invoice for this subscription. You may pass up to 20 items.",
                     "items": {
                       "properties": {
                         "price": {
@@ -85410,14 +87202,14 @@
                     "description": "If specified, payment collection for this subscription will be paused."
                   },
                   "payment_behavior": {
-                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
+                    "description": "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid. This allows you to manage scenarios where additional user actions are needed to pay a subscription's invoice. For example, SCA regulation may require 3DS authentication to complete payment. See the [SCA Migration Guide](https://stripe.com/docs/billing/migration/strong-customer-authentication) for Billing to learn more. This is the default behavior.\n\nUse `default_incomplete` to transition the subscription to `status=past_due` when payment is required and await explicit confirmation of the invoice's payment intent. This allows simpler management of scenarios where additional user actions are needed to pay a subscription’s invoice. Such as failed payments, [SCA regulation](https://stripe.com/docs/billing/migration/strong-customer-authentication), or collecting a mandate for a bank debit payment method.\n\nUse `pending_if_incomplete` to update the subscription using [pending updates](https://stripe.com/docs/billing/subscriptions/pending-updates). When you use `pending_if_incomplete` you can only pass the parameters [supported by pending updates](https://stripe.com/docs/billing/pending-updates-reference#supported-attributes).\n\nUse `error_if_incomplete` if you want Stripe to return an HTTP 402 status code if a subscription's invoice cannot be paid. For example, if a payment method requires 3DS authentication due to SCA regulation and further user action is needed, this parameter does not update the subscription and returns an error instead. This was the default behavior for API versions prior to 2019-03-14. See the [changelog](https://stripe.com/docs/upgrades#2019-03-14) to learn more.",
                     "enum": [
                       "allow_incomplete",
+                      "default_incomplete",
                       "error_if_incomplete",
                       "pending_if_incomplete"
                     ],
-                    "type": "string",
-                    "x-stripeBypassValidation": true
+                    "type": "string"
                   },
                   "pending_invoice_item_interval": {
                     "anyOf": [
@@ -86106,7 +87898,7 @@
                     "type": "array"
                   },
                   "location": {
-                    "description": "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers.",
+                    "description": "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/readers/fleet-management#connection-tokens).",
                     "maxLength": 5000,
                     "type": "string"
                   }
@@ -87355,6 +89147,7 @@
                               "public_company",
                               "public_corporation",
                               "public_partnership",
+                              "single_member_llc",
                               "sole_proprietorship",
                               "tax_exempt_government_instrumentality",
                               "unincorporated_association",
