@@ -21,7 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
-	"github.com/stripe/stripe-cli/pkg/visitor"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
@@ -89,7 +88,7 @@ type Config struct {
 	NoWSS bool
 
 	// OutCh is the channel to send logs and statuses to for processing in other packages
-	OutCh chan visitor.IElement
+	OutCh chan websocket.IElement
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -113,8 +112,8 @@ const maxConnectAttempts = 3
 func (p *Proxy) Run(ctx context.Context) error {
 	defer close(p.cfg.OutCh)
 
-	p.cfg.OutCh <- visitor.StateElement{
-		State: visitor.Loading,
+	p.cfg.OutCh <- websocket.StateElement{
+		State: websocket.Loading,
 	}
 
 	var nAttempts int = 0
@@ -123,7 +122,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		session, err := p.createSession(ctx)
 
 		if err != nil {
-			p.cfg.OutCh <- visitor.ErrorElement{
+			p.cfg.OutCh <- websocket.ErrorElement{
 				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
 			}
 			return err
@@ -145,8 +144,8 @@ func (p *Proxy) Run(ctx context.Context) error {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
 
-			p.cfg.OutCh <- visitor.StateElement{
-				State: visitor.Ready,
+			p.cfg.OutCh <- websocket.StateElement{
+				State: websocket.Ready,
 				Data:  []string{session.Secret},
 			}
 		}()
@@ -156,18 +155,18 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			p.cfg.OutCh <- &visitor.StateElement{
-				State: visitor.Done,
+			p.cfg.OutCh <- &websocket.StateElement{
+				State: websocket.Done,
 			}
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				p.cfg.OutCh <- &visitor.StateElement{
-					State: visitor.Reconnecting,
+				p.cfg.OutCh <- &websocket.StateElement{
+					State: websocket.Reconnecting,
 				}
 			} else {
 				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
-				p.cfg.OutCh <- visitor.ErrorElement{
+				p.cfg.OutCh <- websocket.ErrorElement{
 					Error: err,
 				}
 				return err
@@ -328,9 +327,9 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		p.cfg.OutCh <- visitor.DataElement{
-			Data:       evt,
-			Marshalled: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
+		p.cfg.OutCh <- websocket.DataElement{
+			Data:      evt,
+			Marshaled: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
 		}
 
 		for _, endpoint := range p.endpointClients {

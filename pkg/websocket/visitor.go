@@ -1,4 +1,4 @@
-package visitor
+package websocket
 
 /**
  * This file contains types for processing streamed logs outside of this package. This is useful for
@@ -23,8 +23,8 @@ type ErrorElement struct {
 // DataElement is the data received on the stream.
 // It represents the main data model between communicated.
 type DataElement struct {
-	Data       interface{}
-	Marshalled string
+	Data      interface{}
+	Marshaled string
 }
 
 // StateElement is the current state of the stream: loading, ready, etc.

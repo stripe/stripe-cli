@@ -21,7 +21,7 @@ import (
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
-	"github.com/stripe/stripe-cli/pkg/visitor"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
 const outputFormatJSON = "JSON"
@@ -170,7 +170,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	logtailingVisitor := createVisitor(logger, tailCmd.format)
 
-	logtailingOutCh := make(chan visitor.IElement)
+	logtailingOutCh := make(chan websocket.IElement)
 
 	tailer := logTailing.New(&logTailing.Config{
 		APIBaseURL: tailCmd.apiBaseURL,
@@ -245,40 +245,40 @@ func (tailCmd *TailCmd) convertArgs() error {
 	return nil
 }
 
-func createVisitor(logger *log.Logger, format string) *visitor.Visitor {
+func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 	var s *spinner.Spinner
 
-	return &visitor.Visitor{
-		VisitError: func(ee visitor.ErrorElement) error {
+	return &websocket.Visitor{
+		VisitError: func(ee websocket.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			return ee.Error
 		},
-		VisitWarning: func(we visitor.WarningElement) error {
+		VisitWarning: func(we websocket.WarningElement) error {
 			color := ansi.Color(os.Stdout)
 			fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
 			return nil
 		},
-		VisitStatus: func(se visitor.StateElement) error {
+		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
-			case visitor.Loading:
+			case websocket.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
-			case visitor.Reconnecting:
+			case websocket.Reconnecting:
 				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
-			case visitor.Ready:
+			case websocket.Ready:
 				ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", logger.Out)
-			case visitor.Done:
+			case websocket.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}
 			return nil
 		},
-		VisitData: func(de visitor.DataElement) error {
+		VisitData: func(de websocket.DataElement) error {
 			log, ok := de.Data.(logtailing.EventPayload)
 			if !ok {
 				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
 			if strings.ToUpper(format) == outputFormatJSON {
-				fmt.Println(ansi.ColorizeJSON(de.Marshalled, false, os.Stdout))
+				fmt.Println(ansi.ColorizeJSON(de.Marshaled, false, os.Stdout))
 				return nil
 			}
 

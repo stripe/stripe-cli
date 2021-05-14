@@ -19,7 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
-	"github.com/stripe/stripe-cli/pkg/visitor"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
 const webhooksWebSocketFeature = "webhooks"
@@ -139,7 +139,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	logger := log.StandardLogger()
 	proxyVisitor := createVisitor(logger, lc.format, lc.printJSON)
-	proxyOutCh := make(chan visitor.IElement)
+	proxyOutCh := make(chan websocket.IElement)
 
 	p, err := proxy.Init(&proxy.Config{
 		DeviceName:            deviceName,
@@ -196,36 +196,36 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
-func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.Visitor {
+func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket.Visitor {
 	var s *spinner.Spinner
 
-	return &visitor.Visitor{
-		VisitError: func(ee visitor.ErrorElement) error {
+	return &websocket.Visitor{
+		VisitError: func(ee websocket.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			logger.Fatal(ee.Error)
 			return ee.Error
 		},
-		VisitStatus: func(se visitor.StateElement) error {
+		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
-			case visitor.Loading:
+			case websocket.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
-			case visitor.Reconnecting:
+			case websocket.Reconnecting:
 				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
-			case visitor.Ready:
+			case websocket.Ready:
 				ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(se.Data[0])), logger.Out)
-			case visitor.Done:
+			case websocket.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}
 			return nil
 		},
-		VisitData: func(de visitor.DataElement) error {
+		VisitData: func(de websocket.DataElement) error {
 			stripeEvent, ok := de.Data.(proxy.StripeEvent)
 			if !ok {
 				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, proxy.StripeEvent{})
 			}
 
 			if strings.ToUpper(format) == outputFormatJSON || printJSON {
-				fmt.Println(de.Marshalled)
+				fmt.Println(de.Marshaled)
 			} else {
 				maybeConnect := ""
 				if stripeEvent.IsConnect() {
