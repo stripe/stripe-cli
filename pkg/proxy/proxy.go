@@ -328,9 +328,9 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		p.cfg.OutCh <- visitor.LogElement{
-			Log:           evt,
-			MarshalledLog: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
+		p.cfg.OutCh <- visitor.DataElement{
+			Data:       evt,
+			Marshalled: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
 		}
 
 		for _, endpoint := range p.endpointClients {

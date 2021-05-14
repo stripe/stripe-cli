@@ -247,9 +247,9 @@ func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	t.cfg.OutCh <- visitor.LogElement{
-		Log:           payload,
-		MarshalledLog: requestLogEvent.EventPayload,
+	t.cfg.OutCh <- visitor.DataElement{
+		Data:       payload,
+		Marshalled: requestLogEvent.EventPayload,
 	}
 }
 

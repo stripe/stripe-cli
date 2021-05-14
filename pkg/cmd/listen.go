@@ -218,11 +218,14 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *visitor.V
 			}
 			return nil
 		},
-		VisitLog: func(le visitor.LogElement) error {
-			stripeEvent, _ := le.Log.(proxy.StripeEvent)
+		VisitData: func(de visitor.DataElement) error {
+			stripeEvent, ok := de.Data.(proxy.StripeEvent)
+			if !ok {
+				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, proxy.StripeEvent{})
+			}
 
 			if strings.ToUpper(format) == outputFormatJSON || printJSON {
-				fmt.Println(le.MarshalledLog)
+				fmt.Println(de.Marshalled)
 			} else {
 				maybeConnect := ""
 				if stripeEvent.IsConnect() {

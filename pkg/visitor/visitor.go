@@ -10,7 +10,7 @@ package visitor
 // Visitor should implement the handlers for each type of element
 type Visitor struct {
 	VisitError   func(ErrorElement) error
-	VisitLog     func(LogElement) error
+	VisitData    func(DataElement) error
 	VisitStatus  func(StateElement) error
 	VisitWarning func(WarningElement) error
 }
@@ -20,11 +20,11 @@ type ErrorElement struct {
 	Error error
 }
 
-// LogElement is the log received on the stream
-type LogElement struct {
-	Log interface{}
-
-	MarshalledLog string
+// DataElement is the data received on the stream.
+// It represents the main data model between communicated.
+type DataElement struct {
+	Data       interface{}
+	Marshalled string
 }
 
 // StateElement is the current state of the stream: loading, ready, etc.
@@ -54,11 +54,11 @@ func (ee ErrorElement) Accept(v *Visitor) error {
 }
 
 // Accept is visitor pattern boilerplate
-func (le LogElement) Accept(v *Visitor) error {
-	if v.VisitLog == nil {
+func (le DataElement) Accept(v *Visitor) error {
+	if v.VisitData == nil {
 		return nil
 	}
-	return v.VisitLog(le)
+	return v.VisitData(le)
 }
 
 // Accept is visitor pattern boilerplate

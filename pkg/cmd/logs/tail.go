@@ -271,11 +271,14 @@ func createVisitor(logger *log.Logger, format string) *visitor.Visitor {
 			}
 			return nil
 		},
-		VisitLog: func(le visitor.LogElement) error {
-			log, _ := le.Log.(logtailing.EventPayload)
+		VisitData: func(de visitor.DataElement) error {
+			log, ok := de.Data.(logtailing.EventPayload)
+			if !ok {
+				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
+			}
 
 			if strings.ToUpper(format) == outputFormatJSON {
-				fmt.Println(ansi.ColorizeJSON(le.MarshalledLog, false, os.Stdout))
+				fmt.Println(ansi.ColorizeJSON(de.Marshalled, false, os.Stdout))
 				return nil
 			}
 
