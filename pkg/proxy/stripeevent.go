@@ -6,9 +6,9 @@ import "fmt"
 // Private types
 //
 
-// stripeEvent is a minimal representation of a Stripe `event` object, used
+// StripeEvent is a minimal representation of a Stripe `event` object, used
 // to extract the event's ID and type for logging purposes.
-type stripeEvent struct {
+type StripeEvent struct {
 	Account  string `json:"account"`
 	ID       string `json:"id"`
 	Livemode bool   `json:"livemode"`
@@ -16,15 +16,18 @@ type stripeEvent struct {
 	Created  int    `json:"created"`
 }
 
-func (e *stripeEvent) isConnect() bool {
+// IsConnect return true or false if *StripeEvent is connect or not.
+func (e *StripeEvent) IsConnect() bool {
 	return e.Account != ""
 }
 
-func (e *stripeEvent) urlForEventID() string {
+// URLForEventID builds a full URL from a StripeEvent ID.
+func (e *StripeEvent) URLForEventID() string {
 	return fmt.Sprintf("%s/events/%s", baseDashboardURL(e.Livemode, e.Account), e.ID)
 }
 
-func (e *stripeEvent) urlForEventType() string {
+// URLForEventType builds a full URL from a StripeEvent Type.
+func (e *StripeEvent) URLForEventType() string {
 	return fmt.Sprintf("%s/events?type=%s", baseDashboardURL(e.Livemode, e.Account), e.Type)
 }
 

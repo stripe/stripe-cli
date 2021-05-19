@@ -4,18 +4,22 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
-	"os/signal"
+	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -45,18 +49,29 @@ type EndpointRoute struct {
 type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
-
 	// Key is the API key used to authenticate with Stripe
 	Key string
-
-	// EndpointsMap is a mapping of local webhook endpoint urls to the events they consume
-	EndpointRoutes []EndpointRoute
-
+	// URL to which requests are sent
 	APIBaseURL string
+
+	// URL to which events are forwarded to
+	ForwardURL string
+	// Headers to inject when forwarding events
+	ForwardHeaders []string
+	// URL to which Connect events are forwarded to
+	ForwardConnectURL string
+	// Headers to inject when forwarding Connect events
+	ForwardConnectHeaders []string
+	// UseConfiguredWebhooks loads webhooks config from user's account
+	UseConfiguredWebhooks bool
+
+	// EndpointsRoutes is a mapping of local webhook endpoint urls to the events they consume
+	EndpointRoutes []EndpointRoute
+	// List of events to listen and proxy
+	Events []string
 
 	// WebSocketFeature is the feature specified for the websocket connection
 	WebSocketFeature string
-
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
 
@@ -65,14 +80,15 @@ type Config struct {
 
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
-
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
 	SkipVerify bool
-
+	// The logger used to log messages to stdin/err
 	Log *log.Logger
-
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+
+	// OutCh is the channel to send logs and statuses to for processing in other packages
+	OutCh chan websocket.IElement
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -89,41 +105,27 @@ type Proxy struct {
 	events map[string]bool
 }
 
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		onCancel()
-		cancel()
-	}()
-	return ctx
-}
-
 const maxConnectAttempts = 3
 
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {
-	s := ansi.StartNewSpinner("Getting ready...", p.cfg.Log.Out)
+	defer close(p.cfg.OutCh)
 
-	ctx = withSIGTERMCancel(ctx, func() {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
+	p.cfg.OutCh <- websocket.StateElement{
+		State: websocket.Loading,
+	}
 
 	var nAttempts int = 0
 
 	for nAttempts < maxConnectAttempts {
 		session, err := p.createSession(ctx)
+
 		if err != nil {
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
-			p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+			p.cfg.OutCh <- websocket.ErrorElement{
+				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
+			}
+			return err
 		}
 
 		p.webSocketClient = websocket.NewClient(
@@ -141,7 +143,11 @@ func (p *Proxy) Run(ctx context.Context) error {
 		go func() {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
-			ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(session.Secret)), p.cfg.Log.Out)
+
+			p.cfg.OutCh <- websocket.StateElement{
+				State: websocket.Ready,
+				Data:  []string{session.Secret},
+			}
 		}()
 
 		go p.webSocketClient.Run(ctx)
@@ -149,13 +155,21 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		select {
 		case <-ctx.Done():
-			ansi.StopSpinner(s, "", p.cfg.Log.Out)
+			p.cfg.OutCh <- &websocket.StateElement{
+				State: websocket.Done,
+			}
 			return nil
 		case <-p.webSocketClient.NotifyExpired:
 			if nAttempts < maxConnectAttempts {
-				ansi.StartSpinner(s, "Session expired, reconnecting...", p.cfg.Log.Out)
+				p.cfg.OutCh <- &websocket.StateElement{
+					State: websocket.Reconnecting,
+				}
 			} else {
-				p.cfg.Log.Fatalf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				p.cfg.OutCh <- websocket.ErrorElement{
+					Error: err,
+				}
+				return err
 			}
 		}
 	}
@@ -172,11 +186,29 @@ func (p *Proxy) Run(ctx context.Context) error {
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
-func (p *Proxy) GetSessionSecret(ctx context.Context) (string, error) {
-	session, err := p.createSession(ctx)
+func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
+	p, err := Init(&Config{
+		DeviceName:       deviceName,
+		Key:              key,
+		APIBaseURL:       baseURL,
+		EndpointRoutes:   make([]EndpointRoute, 0),
+		WebSocketFeature: "webhooks",
+	})
 	if err != nil {
-		p.cfg.Log.Fatalf("Error while authenticating with Stripe: %v", err)
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.GetSessionSecret",
+		}).Debug(err)
+		return "", err
 	}
+
+	session, err := p.createSession(context.Background())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.GetSessionSecret",
+		}).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
+		return "", err
+	}
+
 	return session.Secret, nil
 }
 
@@ -236,20 +268,20 @@ func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 
 // This function outputs the event payload in the format specified.
 // Currently only supports JSON.
-func (p *Proxy) formatOutput(format string, eventPayload string) {
+func (p *Proxy) formatOutput(format string, eventPayload string) string {
 	var event map[string]interface{}
 	err := json.Unmarshal([]byte(eventPayload), &event)
 	if err != nil {
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
-		return
+		return fmt.Sprint(err)
 	}
 	switch strings.ToUpper(format) {
 	// The distinction between this and PrintJSON is that this output is stripped of all pretty format.
 	case outputFormatJSON:
 		outputJSON, _ := json.Marshal(event)
-		fmt.Println(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
+		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
 	default:
-		fmt.Printf("Unrecognized output format %s\n" + format)
+		return fmt.Sprintf("Unrecognized output format %s\n" + format)
 	}
 }
 
@@ -267,7 +299,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
 
-	var evt stripeEvent
+	var evt StripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
@@ -295,31 +327,13 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
-		switch {
-		case p.cfg.PrintJSON:
-			fmt.Println(webhookEvent.EventPayload)
-		case len(p.cfg.Format) > 0:
-			p.formatOutput(p.cfg.Format, webhookEvent.EventPayload)
-		default:
-			maybeConnect := ""
-			if evt.isConnect() {
-				maybeConnect = "connect "
-			}
-
-			localTime := time.Now().Format(timeLayout)
-
-			color := ansi.Color(os.Stdout)
-			outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
-				color.Faint(localTime),
-				maybeConnect,
-				ansi.Linkify(ansi.Bold(evt.Type), evt.urlForEventType(), p.cfg.Log.Out),
-				ansi.Linkify(evt.ID, evt.urlForEventID(), p.cfg.Log.Out),
-			)
-			fmt.Println(outputStr)
+		p.cfg.OutCh <- websocket.DataElement{
+			Data:      evt,
+			Marshaled: p.formatOutput(outputFormatJSON, webhookEvent.EventPayload),
 		}
 
 		for _, endpoint := range p.endpointClients {
-			if endpoint.SupportsEventType(evt.isConnect(), evt.Type) {
+			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) {
 				// TODO: handle errors returned by endpointClients
 				go endpoint.Post(
 					evtCtx,
@@ -340,7 +354,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		ansi.ColorizeStatus(resp.StatusCode),
 		resp.Request.Method,
 		resp.Request.URL,
-		ansi.Linkify(evtCtx.event.ID, evtCtx.event.urlForEventID(), p.cfg.Log.Out),
+		ansi.Linkify(evtCtx.event.ID, evtCtx.event.URLForEventID(), p.cfg.Log.Out),
 	)
 	fmt.Println(outputStr)
 
@@ -387,10 +401,58 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 // Public functions
 //
 
-// New creates a new Proxy
-func New(cfg *Config, events []string) *Proxy {
+// Init initializes a new Proxy
+func Init(cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
+	}
+
+	// if no events are passed, listen for all events
+	if len(cfg.Events) == 0 {
+		cfg.Events = []string{"*"}
+	} else {
+		for _, event := range cfg.Events {
+			if _, found := validEvents[event]; !found {
+				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+			}
+		}
+	}
+
+	// build endpoint routes
+	var endpointRoutes []EndpointRoute
+	if cfg.UseConfiguredWebhooks {
+		// build from user's API config
+		endpoints := getEndpointsFromAPI(cfg.Key, cfg.APIBaseURL)
+		if len(endpoints.Data) == 0 {
+			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
+		}
+		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
+	} else {
+		// build from --forward-to urls
+		if len(cfg.ForwardConnectURL) == 0 {
+			cfg.ForwardConnectURL = cfg.ForwardURL
+		}
+		if len(cfg.ForwardConnectHeaders) == 0 {
+			cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+		}
+		if len(cfg.ForwardURL) > 0 {
+			// non-connect endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:            parseURL(cfg.ForwardURL),
+				ForwardHeaders: cfg.ForwardHeaders,
+				Connect:        false,
+				EventTypes:     cfg.Events,
+			})
+		}
+		if len(cfg.ForwardConnectURL) > 0 {
+			// connect endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:            parseURL(cfg.ForwardConnectURL),
+				ForwardHeaders: cfg.ForwardConnectHeaders,
+				Connect:        true,
+				EventTypes:     cfg.Events,
+			})
+		}
 	}
 
 	p := &Proxy{
@@ -399,13 +461,10 @@ func New(cfg *Config, events []string) *Proxy {
 			Log:        cfg.Log,
 			APIBaseURL: cfg.APIBaseURL,
 		}),
+		events: convertToMap(cfg.Events),
 	}
 
-	if len(events) > 0 {
-		p.events = convertToMap(events)
-	}
-
-	for _, route := range cfg.EndpointRoutes {
+	for _, route := range endpointRoutes {
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
@@ -428,7 +487,7 @@ func New(cfg *Config, events []string) *Proxy {
 		))
 	}
 
-	return p
+	return p, nil
 }
 
 //
@@ -438,7 +497,7 @@ func New(cfg *Config, events []string) *Proxy {
 type eventContext struct {
 	webhookID             string
 	webhookConversationID string
-	event                 *stripeEvent
+	event                 *StripeEvent
 }
 
 //
@@ -490,6 +549,82 @@ func truncate(str string, maxByteLength int, ellipsis bool) string {
 
 func isUTF8ContinuationByte(b byte) bool {
 	return (b & 0xC0) == 0x80
+}
+
+// TODO: move to some helper somewhere
+// parseURL parses the potentially incomplete URL provided in the configuration
+// and returns a full URL
+func parseURL(url string) string {
+	_, err := strconv.Atoi(url)
+	if err == nil {
+		// If the input is just a number, assume it's a port number
+		url = "localhost:" + url
+	}
+
+	if strings.HasPrefix(url, "/") {
+		// If the input starts with a /, assume it's a relative path
+		url = "localhost" + url
+	}
+
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		// Add the protocol if it's not already there
+		url = "http://" + url
+	}
+
+	return url
+}
+
+func getEndpointsFromAPI(secretKey, apiBaseURL string) requests.WebhookEndpointList {
+	if apiBaseURL == "" {
+		apiBaseURL = stripe.DefaultAPIBaseURL
+	}
+
+	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
+}
+
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []EndpointRoute {
+	endpointRoutes := make([]EndpointRoute, 0)
+
+	for _, endpoint := range endpoints.Data {
+		u, err := url.Parse(endpoint.URL)
+		// Silently skip over invalid paths
+		if err == nil {
+			// Since webhooks in the dashboard may have a more generic url, only extract
+			// the path. We'll use this with `localhost` or with the `--forward-to` flag
+			if endpoint.Application == "" {
+				endpointRoutes = append(endpointRoutes, EndpointRoute{
+					URL:            buildForwardURL(forwardURL, u),
+					ForwardHeaders: forwardHeaders,
+					Connect:        false,
+					EventTypes:     endpoint.EnabledEvents,
+				})
+			} else {
+				endpointRoutes = append(endpointRoutes, EndpointRoute{
+					URL:            buildForwardURL(forwardConnectURL, u),
+					ForwardHeaders: forwardConnectHeaders,
+					Connect:        true,
+					EventTypes:     endpoint.EnabledEvents,
+				})
+			}
+		}
+	}
+
+	return endpointRoutes
+}
+
+func buildForwardURL(forwardURL string, destination *url.URL) string {
+	f, err := url.Parse(forwardURL)
+	if err != nil {
+		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
+	}
+
+	return fmt.Sprintf(
+		"%s://%s%s%s",
+		f.Scheme,
+		f.Host,
+		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
+		destination.Path,
+	)
 }
 
 func getAPIVersionString(str *string) string {
