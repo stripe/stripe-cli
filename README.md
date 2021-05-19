@@ -28,7 +28,43 @@ brew install stripe/stripe-cli/stripe
 
 ### Linux
 
-Refer to the [installation instructions](https://stripe.com/docs/stripe-cli#install) for available Linux installation options.
+Stripe CLI is available for Deb & RPM-based systems via repositories on [Balto](https://stripe.baltorepo.com/stripe-cli/):
+
+#### Debian/Ubuntu (apt)
+
+```sh
+curl https://baltocdn.com/stripe/signing.asc | sudo apt-key add -
+sudo apt-get install apt-transport-https --yes
+echo "deb https://baltocdn.com/stripe/stripe-cli/debian/ all main" | sudo tee /etc/apt/sources.list.d/stripe-stripe-cli-debian.list
+sudo apt-get update
+sudo apt-get install stripe
+```
+
+#### RedHat/CentOS (yum)
+
+```sh
+sudo yum install yum-utils
+sudo yum-config-manager --add-repo https://baltocdn.com/stripe/stripe-cli/rpm/stripe-stripe-cli-rpm-all.repo
+sudo yum install stripe
+```
+
+#### Fedora (dnf)
+
+```sh
+sudo dnf install 'dnf-command(config-manager)'
+sudo dnf config-manager --add-repo https://baltocdn.com/stripe/stripe-cli/rpm/stripe-stripe-cli-rpm-all.repo
+sudo dnf install stripe
+```
+
+#### OpenSUSE (zypper)
+
+```sh
+sudo zypper addrepo https://baltocdn.com/stripe/stripe-cli/rpm/stripe-stripe-cli-rpm-all.repo
+sudo zypper refresh
+sudo zypper install stripe
+```
+
+To use without a package manager, refer to the [installation instructions](https://stripe.com/docs/stripe-cli#install).
 
 ### Windows
 
