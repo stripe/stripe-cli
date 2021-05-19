@@ -35,9 +35,24 @@ func (r *RequestParameters) AppendData(data []string) {
 	r.data = append(r.data, data...)
 }
 
+// AppendExpand appends fields to the expand parameter.
+func (r *RequestParameters) AppendExpand(fields []string) {
+	r.expand = append(r.expand, fields...)
+}
+
+// SetIdempotency sets the value for the `Idempotency-Key` header.
+func (r *RequestParameters) SetIdempotency(value string) {
+	r.idempotency = value
+}
+
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// SetVersion sets the value for the `Stripe-Version` header.
+func (r *RequestParameters) SetVersion(value string) {
+	r.version = value
 }
 
 // RequestError captures the response of the request that resulted in an error
