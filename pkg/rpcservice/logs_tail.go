@@ -2,10 +2,12 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/logtailing"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
@@ -34,7 +36,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 
 	logtailingVisitor := createVisitor(&stream)
 
-	logtailingOutCh := make(chan logtailing.IElement)
+	logtailingOutCh := make(chan websocket.IElement)
 
 	logger := log.StandardLogger()
 
@@ -68,52 +70,57 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 	}
 }
 
-func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *logtailing.Visitor {
-	return &logtailing.Visitor{
-		VisitError: func(ee logtailing.ErrorElement) error {
+func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *websocket.Visitor {
+	return &websocket.Visitor{
+		VisitError: func(ee websocket.ErrorElement) error {
 			return ee.Error
 		},
-		VisitLog: func(le logtailing.LogElement) error {
-			log := rpc.LogsTailResponse_Log{
-				Livemode:  le.Log.Livemode,
-				Method:    le.Log.Method,
-				Url:       le.Log.URL,
-				Status:    int64(le.Log.Status),
-				RequestId: le.Log.RequestID,
-				CreatedAt: int64(le.Log.CreatedAt),
+		VisitData: func(de websocket.DataElement) error {
+			log, ok := de.Data.(logtailing.EventPayload)
+			if !ok {
+				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
+			}
+
+			logResponse := rpc.LogsTailResponse_Log{
+				Livemode:  log.Livemode,
+				Method:    log.Method,
+				Url:       log.URL,
+				Status:    int64(log.Status),
+				RequestId: log.RequestID,
+				CreatedAt: int64(log.CreatedAt),
 			}
 
 			// error struct is not empty
-			hasError := le.Log.Error != logtailing.RedactedError{}
+			hasError := log.Error != logtailing.RedactedError{}
 
 			if hasError {
-				log.Error = &rpc.LogsTailResponse_Log_Error{
-					Type:        le.Log.Error.Type,
-					Charge:      le.Log.Error.Charge,
-					Code:        le.Log.Error.Code,
-					DeclineCode: le.Log.Error.DeclineCode,
-					Message:     le.Log.Error.Message,
-					Param:       le.Log.Error.Param,
+				logResponse.Error = &rpc.LogsTailResponse_Log_Error{
+					Type:        log.Error.Type,
+					Charge:      log.Error.Charge,
+					Code:        log.Error.Code,
+					DeclineCode: log.Error.DeclineCode,
+					Message:     log.Error.Message,
+					Param:       log.Error.Param,
 				}
 			}
 
 			(*stream).Send(&rpc.LogsTailResponse{
 				Content: &rpc.LogsTailResponse_Log_{
-					Log: &log,
+					Log: &logResponse,
 				},
 			})
 			return nil
 		},
-		VisitStatus: func(se logtailing.StateElement) error {
+		VisitStatus: func(se websocket.StateElement) error {
 			var stateResponse rpc.LogsTailResponse_State
 			switch se.State {
-			case logtailing.Loading:
+			case websocket.Loading:
 				stateResponse = rpc.LogsTailResponse_STATE_LOADING
-			case logtailing.Reconnecting:
+			case websocket.Reconnecting:
 				stateResponse = rpc.LogsTailResponse_STATE_RECONNECTING
-			case logtailing.Ready:
+			case websocket.Ready:
 				stateResponse = rpc.LogsTailResponse_STATE_READY
-			case logtailing.Done:
+			case websocket.Done:
 				stateResponse = rpc.LogsTailResponse_STATE_DONE
 			}
 			(*stream).Send(&rpc.LogsTailResponse{

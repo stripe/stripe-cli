@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/logtailing"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -18,7 +19,7 @@ import (
 var run func(ctx context.Context) error
 
 type mockTailer struct {
-	OutCh chan logtailing.IElement
+	OutCh chan websocket.IElement
 }
 
 func (mt *mockTailer) Run(ctx context.Context) error {
@@ -37,17 +38,17 @@ func TestLogsTailStreamsState(t *testing.T) {
 
 	createTailer = func(cfg *logtailing.Config) ITailer {
 		run = func(ctx context.Context) error {
-			cfg.OutCh <- logtailing.StateElement{
-				State: logtailing.Loading,
+			cfg.OutCh <- websocket.StateElement{
+				State: websocket.Loading,
 			}
-			cfg.OutCh <- logtailing.StateElement{
-				State: logtailing.Reconnecting,
+			cfg.OutCh <- websocket.StateElement{
+				State: websocket.Reconnecting,
 			}
-			cfg.OutCh <- logtailing.StateElement{
-				State: logtailing.Ready,
+			cfg.OutCh <- websocket.StateElement{
+				State: websocket.Ready,
 			}
-			cfg.OutCh <- logtailing.StateElement{
-				State: logtailing.Done,
+			cfg.OutCh <- websocket.StateElement{
+				State: websocket.Done,
 			}
 			return nil
 		}
@@ -91,13 +92,13 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 
 	createTailer = func(cfg *logtailing.Config) ITailer {
 		run = func(ctx context.Context) error {
-			cfg.OutCh <- logtailing.LogElement{
-				Log: logtailing.EventPayload{
+			cfg.OutCh <- websocket.DataElement{
+				Data: logtailing.EventPayload{
 					RequestID: "req_1",
 				},
 			}
-			cfg.OutCh <- logtailing.LogElement{
-				Log: logtailing.EventPayload{
+			cfg.OutCh <- websocket.DataElement{
+				Data: logtailing.EventPayload{
 					RequestID: "req_2",
 					Error: logtailing.RedactedError{
 						Message: "my error",
@@ -151,7 +152,7 @@ func TestLogsTailReturnsError(t *testing.T) {
 	createTailer = func(cfg *logtailing.Config) ITailer {
 		run = func(ctx context.Context) error {
 			myErr := errors.New("my error")
-			cfg.OutCh <- logtailing.ErrorElement{
+			cfg.OutCh <- websocket.ErrorElement{
 				Error: myErr,
 			}
 			return myErr

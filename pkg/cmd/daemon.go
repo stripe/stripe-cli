@@ -1,10 +1,6 @@
 package cmd
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -40,21 +36,6 @@ Currently, stripe daemon only supports a subset of CLI commands. Documentation i
 	dc.cmd.Flags().IntVar(&dc.port, "port", 0, "The TCP port the daemon will listen to (default: an available port)")
 
 	return dc
-}
-
-func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
-	// Create a context that will be canceled when Ctrl+C is pressed
-	ctx, cancel := context.WithCancel(ctx)
-
-	interruptCh := make(chan os.Signal, 1)
-	signal.Notify(interruptCh, os.Interrupt, syscall.SIGTERM)
-
-	go func() {
-		<-interruptCh
-		onCancel()
-		cancel()
-	}()
-	return ctx
 }
 
 func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
