@@ -3,6 +3,7 @@ syntax = "proto3";
 package rpc;
 
 import "events_resend.proto";
+import "listen.proto";
 import "login.proto";
 import "login_status.proto";
 import "logs_tail.proto";
@@ -18,6 +19,9 @@ option go_package = "github.com/stripe/stripe-cli/rpc";
 service StripeCLI {
   // Resend an event given an event ID. Like `stripe events resend`.
   rpc EventsResend(EventsResendRequest) returns (EventsResendResponse);
+
+  // Receive webhook events from the Stripe API to your local machine. Like `stripe listen`.
+  rpc Listen(ListenRequest) returns (ListenResponse);
 
   // Get a link to log in to the Stripe CLI. The client will have to open the browser to complete
   // the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`.

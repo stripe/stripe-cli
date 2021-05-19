@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message ListenRequest {
+
+}
+
+message ListenResponse {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_LOADING = 1;
+    STATE_RECONNECTING = 2;
+    STATE_READY = 3;
+    STATE_DONE = 4;
+  }
+
+  message Log {
+    message Error {
+      string type = 1;
+      string charge = 2;
+      string code = 3;
+      string decline_code = 4;
+      string message = 5;
+      string param = 6;
+    }
+
+    bool livemode = 1;
+    string method = 2;
+    string url = 3;
+    int64 status = 4;
+    string request_id = 5;
+    int64 created_at = 6;
+    Error error = 7;
+  }
+
+  oneof content {
+    // Check if the stream ready
+    State state = 1;
+
+    // A Stripe API log
+    Log log = 2;
+  }
+}
