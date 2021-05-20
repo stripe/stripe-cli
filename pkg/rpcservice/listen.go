@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
@@ -37,18 +34,6 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
 	if err != nil {
 		return err
-	}
-
-	// validate forward-urls args
-	if req.UseConfiguredWebhooks && len(req.ForwardTo) > 0 {
-		if strings.HasPrefix(req.ForwardTo, "/") {
-			return status.Error(codes.InvalidArgument, "forward_to cannot be a relative path when loading webhook endpoints from the API")
-		}
-		if strings.HasPrefix(req.ForwardConnectTo, "/") {
-			return status.Error(codes.InvalidArgument, "forward_connect_to cannot be a relative path when loading webhook endpoints from the API")
-		}
-	} else if req.UseConfiguredWebhooks && len(req.ForwardTo) == 0 {
-		return status.Error(codes.InvalidArgument, "load_from_webhooks_api requires a location to forward to with forward_to")
 	}
 
 	logger := log.StandardLogger()

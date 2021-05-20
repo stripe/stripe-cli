@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -123,18 +122,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("%s\n", secret)
 		return nil
-	}
-
-	// validate forward-urls args
-	if lc.useConfiguredWebhooks && len(lc.forwardURL) > 0 {
-		if strings.HasPrefix(lc.forwardURL, "/") {
-			return errors.New("--forward-to cannot be a relative path when loading webhook endpoints from the API")
-		}
-		if strings.HasPrefix(lc.forwardConnectURL, "/") {
-			return errors.New("--forward-connect-to cannot be a relative path when loading webhook endpoints from the API")
-		}
-	} else if lc.useConfiguredWebhooks && len(lc.forwardURL) == 0 {
-		return errors.New("--load-from-webhooks-api requires a location to forward to with --forward-to")
 	}
 
 	logger := log.StandardLogger()
