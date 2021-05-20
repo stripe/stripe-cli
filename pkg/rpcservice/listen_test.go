@@ -139,6 +139,7 @@ func TestListenStreamsEvents(t *testing.T) {
 		Content: &rpc.ListenResponse_StripeEvent{
 			StripeEvent: &rpc.StripeEvent{
 				Id:              "evt_12345",
+				Account:         "acct_12345",
 				ApiVersion:      "2020-08-27",
 				Data:            expectedData,
 				Type:            "checkout.session.completed",
@@ -157,15 +158,7 @@ func TestListenStreamsEvents(t *testing.T) {
 	stripeEventResp := resp.GetStripeEvent()
 	expectedStripeEventResp := expected.GetStripeEvent()
 	assert.Nil(t, err)
-	assert.NotNil(t, stripeEventResp)
-	assert.Equal(t, expectedStripeEventResp.Id, stripeEventResp.Id)
-	assert.Equal(t, expectedStripeEventResp.ApiVersion, stripeEventResp.ApiVersion)
-	assert.True(t, assert.ObjectsAreEqual(expectedStripeEventResp.Data, stripeEventResp.Data))
-	assert.Equal(t, expectedStripeEventResp.Request, stripeEventResp.Request)
-	assert.Equal(t, expectedStripeEventResp.Type, stripeEventResp.Type)
-	assert.Equal(t, expectedStripeEventResp.Created, stripeEventResp.Created)
-	assert.Equal(t, expectedStripeEventResp.Livemode, stripeEventResp.Livemode)
-	assert.Equal(t, expectedStripeEventResp.PendingWebhooks, stripeEventResp.PendingWebhooks)
+	assert.Equal(t, expectedStripeEventResp, stripeEventResp)
 
 	cancel()
 
@@ -230,11 +223,7 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 	expectedEndpointResponse := expected.GetEndpointResponse().GetData()
 	assert.Nil(t, err)
 	assert.NotNil(t, endpointResponse)
-	assert.Equal(t, expectedEndpointResponse.Body, endpointResponse.Body)
-	assert.Equal(t, expectedEndpointResponse.EventId, endpointResponse.EventId)
-	assert.Equal(t, expectedEndpointResponse.HttpMethod, endpointResponse.HttpMethod)
-	assert.Equal(t, expectedEndpointResponse.Status, endpointResponse.Status)
-	assert.Equal(t, expectedEndpointResponse.Url, endpointResponse.Url)
+	assert.Equal(t, expectedEndpointResponse, endpointResponse)
 
 	cancel()
 
