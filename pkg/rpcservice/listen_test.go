@@ -335,11 +335,11 @@ func TestListenSucceedsWithAllParams(t *testing.T) {
 	}
 
 	listenRequest := rpc.ListenRequest{
-		ConnectHeaders:        []string{"foo=bar"},
+		ConnectHeaders:        []string{"foo:bar"},
 		Events:                []string{"customer.created", "checkout.session.completed"},
 		ForwardConnectTo:      "localhost:4242/webhook/connect",
 		ForwardTo:             "localhost:4242/webhook",
-		Headers:               []string{"foo=bar"},
+		Headers:               []string{"foo:bar"},
 		Latest:                true,
 		Live:                  true,
 		SkipVerify:            true,
