@@ -52,11 +52,11 @@ type EndpointResponse struct {
 
 // FailedToReadResponseError describes a failure to read the response from an endpoint
 type FailedToReadResponseError struct {
-	err error
+	Err error
 }
 
 func (f FailedToReadResponseError) Error() string {
-	return f.err.Error()
+	return f.Err.Error()
 }
 
 // Config provides the configuration of a Proxy
@@ -363,7 +363,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		p.cfg.OutCh <- websocket.ErrorElement{
-			Error: FailedToReadResponseError{err: err},
+			Error: FailedToReadResponseError{Err: err},
 		}
 		return
 	}

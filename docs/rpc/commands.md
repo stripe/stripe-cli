@@ -17,12 +17,10 @@
 - [listen.proto](#listen.proto)
     - [ListenRequest](#rpc.ListenRequest)
     - [ListenResponse](#rpc.ListenResponse)
+    - [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse)
+    - [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data)
   
-    - [ListenRequest.Account](#rpc.ListenRequest.Account)
-    - [ListenRequest.HttpMethod](#rpc.ListenRequest.HttpMethod)
-    - [ListenRequest.RequestStatus](#rpc.ListenRequest.RequestStatus)
-    - [ListenRequest.Source](#rpc.ListenRequest.Source)
-    - [ListenRequest.StatusCodeType](#rpc.ListenRequest.StatusCodeType)
+    - [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod)
     - [ListenResponse.State](#rpc.ListenResponse.State)
   
 - [login.proto](#login.proto)
@@ -261,6 +259,42 @@
 | ----- | ---- | ----- | ----------- |
 | state | [ListenResponse.State](#rpc.ListenResponse.State) |  | Check if the stream ready |
 | stripe_event | [StripeEvent](#rpc.StripeEvent) |  | A Stripe event |
+| endpoint_response | [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse) |  | A response from an endpoint |
+
+
+
+
+
+
+<a name="rpc.ListenResponse.EndpointResponse"></a>
+
+### ListenResponse.EndpointResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="rpc.ListenResponse.EndpointResponse.Data"></a>
+
+### ListenResponse.EndpointResponse.Data
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [int64](#int64) |  | HTTP status code |
+| http_method | [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod) |  | HTTP method |
+| url | [string](#string) |  | URL of the webhook endpoint |
+| event_id | [string](#string) |  | ID of the Stripe event that caused this response |
+| body | [string](#string) |  | Response body |
 
 
 
@@ -269,23 +303,9 @@
  
 
 
-<a name="rpc.ListenRequest.Account"></a>
+<a name="rpc.ListenResponse.EndpointResponse.Data.HttpMethod"></a>
 
-### ListenRequest.Account
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| ACCOUNT_UNSPECIFIED | 0 |  |
-| ACCOUNT_CONNECT_IN | 1 |  |
-| ACCOUNT_CONNECT_OUT | 2 |  |
-| ACCOUNT_SELF | 3 |  |
-
-
-
-<a name="rpc.ListenRequest.HttpMethod"></a>
-
-### ListenRequest.HttpMethod
+### ListenResponse.EndpointResponse.Data.HttpMethod
 
 
 | Name | Number | Description |
@@ -294,46 +314,6 @@
 | HTTP_METHOD_GET | 1 |  |
 | HTTP_METHOD_POST | 2 |  |
 | HTTP_METHOD_DELETE | 3 |  |
-
-
-
-<a name="rpc.ListenRequest.RequestStatus"></a>
-
-### ListenRequest.RequestStatus
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| REQUEST_STATUS_UNSPECIFIED | 0 |  |
-| REQUEST_STATUS_SUCCEEDED | 1 |  |
-| REQUEST_STATUS_FAILED | 2 |  |
-
-
-
-<a name="rpc.ListenRequest.Source"></a>
-
-### ListenRequest.Source
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| SOURCE_UNSPECIFIED | 0 |  |
-| SOURCE_API | 1 |  |
-| SOURCE_DASHBOARD | 2 |  |
-
-
-
-<a name="rpc.ListenRequest.StatusCodeType"></a>
-
-### ListenRequest.StatusCodeType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| STATUS_CODE_TYPE_UNSPECIFIED | 0 |  |
-| STATUS_CODE_TYPE_2XX | 1 |  |
-| STATUS_CODE_TYPE_4XX | 2 |  |
-| STATUS_CODE_TYPE_5XX | 3 |  |
 
 
 

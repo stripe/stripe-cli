@@ -7,43 +7,11 @@ import "common.proto";
 option go_package = "github.com/stripe/stripe-cli/rpc";
 
 message ListenRequest {
-  enum Account {
-    ACCOUNT_UNSPECIFIED = 0;
-    ACCOUNT_CONNECT_IN = 1;
-    ACCOUNT_CONNECT_OUT = 2;
-    ACCOUNT_SELF = 3;
-  }
-
-  enum HttpMethod {
-    HTTP_METHOD_UNSPECIFIED = 0;
-    HTTP_METHOD_GET = 1;
-    HTTP_METHOD_POST = 2;
-    HTTP_METHOD_DELETE = 3;
-  }
-
-  enum RequestStatus {
-    REQUEST_STATUS_UNSPECIFIED = 0;
-    REQUEST_STATUS_SUCCEEDED = 1;
-    REQUEST_STATUS_FAILED = 2;
-  }
-
-  enum Source {
-    SOURCE_UNSPECIFIED = 0;
-    SOURCE_API = 1;
-    SOURCE_DASHBOARD = 2;
-  }
-
-  enum StatusCodeType {
-    STATUS_CODE_TYPE_UNSPECIFIED = 0;
-    STATUS_CODE_TYPE_2XX = 1;
-    STATUS_CODE_TYPE_4XX = 2;
-    STATUS_CODE_TYPE_5XX = 3;
-  }
-
   // A list of custom headers to forward for Connect
   repeated string connect_headers = 1;
 
-  // A list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types (default [*])
+  // A list of specific events to listen for. For a list of all possible events, see:
+  // https://stripe.com/docs/api/events/types (default [*])
   repeated string events = 2;
 
   // The URL to forward Connect webhook events to (default: same as normal events)
@@ -55,7 +23,8 @@ message ListenRequest {
   // A list of custom headers to forward
   repeated string headers = 5;
 
-  // Receive events formatted with the latest API version (default: your account's default API version)
+  // Receive events formatted with the latest API version (default: your account's default API
+  // version)
   bool latest = 6;
 
   // Receive live events (default: test)
@@ -77,11 +46,45 @@ message ListenResponse {
     STATE_DONE = 4;
   }
 
+  message EndpointResponse {
+    message Data {
+      enum HttpMethod {
+        HTTP_METHOD_UNSPECIFIED = 0;
+        HTTP_METHOD_GET = 1;
+        HTTP_METHOD_POST = 2;
+        HTTP_METHOD_DELETE = 3;
+      }
+
+      // HTTP status code
+      int64 status = 1;
+
+      // HTTP method
+      HttpMethod http_method = 2;
+
+      // URL of the webhook endpoint
+      string url = 3;
+
+      // ID of the Stripe event that caused this response
+      string event_id = 4;
+
+      // Response body
+      string body = 5;
+    }
+
+    oneof content {
+      Data data = 1;
+      string error = 2;
+    }
+  }
+
   oneof content {
     // Check if the stream ready
     State state = 1;
 
     // A Stripe event
     StripeEvent stripe_event = 3;
+
+    // A response from an endpoint
+    EndpointResponse endpoint_response = 4;
   }
 }

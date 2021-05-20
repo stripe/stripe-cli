@@ -3,6 +3,7 @@ package rpcservice
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -99,40 +100,82 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
-			return ee.Error
+			switch ee.Error.(type) {
+			case proxy.FailedToPostError, proxy.FailedToReadResponseError:
+				// These errors shouldn't end the stream
+				(*stream).Send(&rpc.ListenResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_{
+						EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+							Content: &rpc.ListenResponse_EndpointResponse_Error{
+								Error: ee.Error.Error(),
+							},
+						},
+					},
+				})
+				return nil
+			default:
+				return ee.Error
+			}
 		},
 		VisitData: func(de websocket.DataElement) error {
-			stripeEvent, ok := de.Data.(proxy.StripeEvent)
-			if !ok {
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, proxy.StripeEvent{})
-			}
-
-			data, err := structpb.NewStruct(stripeEvent.Data)
-			if err != nil {
-				return err
-			}
-
-			request := rpc.StripeEvent_Request{
-				Id:             stripeEvent.Request.ID,
-				IdempotencyKey: stripeEvent.Request.IdempotencyKey,
-			}
-
-			(*stream).Send(&rpc.ListenResponse{
-				Content: &rpc.ListenResponse_StripeEvent{
-					StripeEvent: &rpc.StripeEvent{
-						Account:         stripeEvent.Account,
-						ApiVersion:      stripeEvent.APIVersion,
-						Created:         int64(stripeEvent.Created),
-						Data:            data,
-						Id:              stripeEvent.ID,
-						Type:            stripeEvent.Type,
-						Livemode:        stripeEvent.Livemode,
-						PendingWebhooks: int64(stripeEvent.PendingWebhooks),
-						Request:         &request,
+			switch data := de.Data.(type) {
+			case proxy.StripeEvent:
+				eventData, err := structpb.NewStruct(data.Data)
+				if err != nil {
+					return err
+				}
+				request := rpc.StripeEvent_Request{
+					Id:             data.Request.ID,
+					IdempotencyKey: data.Request.IdempotencyKey,
+				}
+				(*stream).Send(&rpc.ListenResponse{
+					Content: &rpc.ListenResponse_StripeEvent{
+						StripeEvent: &rpc.StripeEvent{
+							Account:         data.Account,
+							ApiVersion:      data.APIVersion,
+							Created:         int64(data.Created),
+							Data:            eventData,
+							Id:              data.ID,
+							Type:            data.Type,
+							Livemode:        data.Livemode,
+							PendingWebhooks: int64(data.PendingWebhooks),
+							Request:         &request,
+						},
 					},
-				},
-			})
-			return nil
+				})
+				return nil
+			case proxy.EndpointResponse:
+				var httpMethodResponse rpc.ListenResponse_EndpointResponse_Data_HttpMethod
+				switch data.Resp.Request.Method {
+				case http.MethodDelete:
+					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_DELETE
+				case http.MethodGet:
+					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_GET
+				case http.MethodPost:
+					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_POST
+				default:
+					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_UNSPECIFIED
+				}
+
+				(*stream).Send(&rpc.ListenResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_{
+						EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+							Content: &rpc.ListenResponse_EndpointResponse_Data_{
+								Data: &rpc.ListenResponse_EndpointResponse_Data{
+									Body:       data.RespBody,
+									EventId:    data.Event.ID,
+									HttpMethod: httpMethodResponse,
+									Status:     int64(data.Resp.StatusCode),
+									Url:        data.Resp.Request.URL.String(),
+								},
+							},
+						},
+					},
+				})
+				return nil
+			default:
+				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
+			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
 			var stateResponse rpc.ListenResponse_State
