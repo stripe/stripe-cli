@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -15,23 +16,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
-
-type stripeRequestData struct {
-	ID             string `json:"id"`
-	IdempotencyKey string `json:"idempotency_key"`
-}
-
-type stripeEvent struct {
-	Account         string                 `json:"account"`
-	APIVersion      string                 `json:"api_version"`
-	Created         int                    `json:"created"`
-	Data            map[string]interface{} `json:"data"`
-	ID              string                 `json:"id"`
-	Livemode        bool                   `json:"livemode"`
-	Request         stripeRequestData      `json:"request"`
-	PendingWebhooks int                    `json:"pending_webhooks"`
-	Type            string                 `json:"type"`
-}
 
 // EventsResend resends an event given an event ID
 func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRequest) (*rpc.EventsResendResponse, error) {
@@ -66,7 +50,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
 
-	var evt stripeEvent
+	var evt proxy.StripeEvent
 
 	err = json.Unmarshal(stripeResp, &evt)
 	if err != nil {
@@ -78,21 +62,23 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, err
 	}
 
-	request := rpc.EventsResendResponse_Request{
+	request := rpc.StripeEvent_Request{
 		Id:             evt.Request.ID,
 		IdempotencyKey: evt.Request.IdempotencyKey,
 	}
 
 	return &rpc.EventsResendResponse{
-		Account:         evt.Account,
-		ApiVersion:      evt.APIVersion,
-		Created:         int64(evt.Created),
-		Data:            data,
-		Id:              evt.ID,
-		Type:            evt.Type,
-		Livemode:        evt.Livemode,
-		PendingWebhooks: int64(evt.PendingWebhooks),
-		Request:         &request,
+		StripeEvent: &rpc.StripeEvent{
+			Account:         evt.Account,
+			ApiVersion:      evt.APIVersion,
+			Created:         int64(evt.Created),
+			Data:            data,
+			Id:              evt.ID,
+			Type:            evt.Type,
+			Livemode:        evt.Livemode,
+			PendingWebhooks: int64(evt.PendingWebhooks),
+			Request:         &request,
+		},
 	}, nil
 }
 

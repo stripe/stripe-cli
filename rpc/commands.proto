@@ -21,7 +21,7 @@ service StripeCLI {
   rpc EventsResend(EventsResendRequest) returns (EventsResendResponse);
 
   // Receive webhook events from the Stripe API to your local machine. Like `stripe listen`.
-  rpc Listen(ListenRequest) returns (ListenResponse);
+  rpc Listen(ListenRequest) returns (stream ListenResponse);
 
   // Get a link to log in to the Stripe CLI. The client will have to open the browser to complete
   // the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`.
