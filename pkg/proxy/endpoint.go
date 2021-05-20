@@ -2,17 +2,15 @@ package proxy
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
 //
@@ -26,6 +24,9 @@ type EndpointConfig struct {
 	Log *log.Logger
 
 	ResponseHandler EndpointResponseHandler
+
+	// OutCh is the channel to send data and statuses to for processing in other packages
+	OutCh chan websocket.IElement
 }
 
 // EndpointResponseHandler handles a response from the endpoint.
@@ -42,6 +43,15 @@ type EndpointResponseHandlerFunc func(eventContext, string, *http.Response)
 // ProcessResponse calls f(evtCtx, forwardURL, resp).
 func (f EndpointResponseHandlerFunc) ProcessResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
 	f(evtCtx, forwardURL, resp)
+}
+
+// FailedToPostError describes a failure to send a POST request to an endpoint
+type FailedToPostError struct {
+	err error
+}
+
+func (f FailedToPostError) Error() string {
+	return f.err.Error()
 }
 
 // EndpointClient is the client used to POST webhook requests to the local endpoint.
@@ -100,16 +110,9 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 
 	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
-		color := ansi.Color(os.Stdout)
-		localTime := time.Now().Format(timeLayout)
-
-		errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
-			color.Faint(localTime),
-			color.Red("ERROR"),
-			err,
-		)
-		fmt.Println(errStr)
-
+		c.cfg.OutCh <- websocket.ErrorElement{
+			Error: FailedToPostError{err: err},
+		}
 		return err
 	}
 
