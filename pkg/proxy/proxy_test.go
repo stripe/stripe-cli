@@ -63,7 +63,8 @@ func TestBuildEndpointRoutes(t *testing.T) {
 		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect},
 	}
 
-	output := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})
+	output, err := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})
+	require.NoError(t, err)
 	require.Equal(t, 2, len(output))
 	require.Equal(t, "http://localhost/hooks", output[0].URL)
 	require.Equal(t, []string{"Host: hostname"}, output[0].ForwardHeaders)
@@ -79,23 +80,42 @@ func TestBuildForwardURL(t *testing.T) {
 	f, err := url.Parse("http://example.com/foo/bar.php")
 	require.NoError(t, err)
 
-	require.Equal(t, "http://localhost/foo/bar.php", buildForwardURL("http://localhost/", f))
-	require.Equal(t, "http://localhost/foo/bar.php", buildForwardURL("http://localhost", f))
-	require.Equal(t, "https://localhost/foo/bar.php", buildForwardURL("https://localhost/", f))
-	require.Equal(t, "http://localhost:8000/foo/bar.php", buildForwardURL("http://localhost:8000", f))
-	require.Equal(t, "http://localhost:8000/foo/bar.php", buildForwardURL("http://localhost:8000/", f))
-	require.Equal(t, "http://localhost:8000/forward/sub/path/foo/bar.php", buildForwardURL("http://localhost:8000/forward/sub/path/", f))
-	require.Equal(t, "http://localhost:8000/forward/sub/path/foo/bar.php", buildForwardURL("http://localhost:8000/forward/sub/path", f))
+	// pairs of [expected, input]
+	expectedInputPairs := [][]string{
+		{"http://localhost/foo/bar.php", "http://localhost"},
+		{"https://localhost/foo/bar.php", "https://localhost/"},
+		{"http://localhost:8000/foo/bar.php", "http://localhost:8000"},
+		{"http://localhost:8000/foo/bar.php", "http://localhost:8000/"},
+		{"http://localhost:8000/forward/sub/path/foo/bar.php", "http://localhost:8000/forward/sub/path/"},
+		{"http://localhost:8000/forward/sub/path/foo/bar.php", "http://localhost:8000/forward/sub/path"},
+	}
+	for _, pair := range expectedInputPairs {
+		expected := pair[0]
+		input := pair[1]
+		forwardURL, err := buildForwardURL(input, f)
+		require.NoError(t, err)
+		require.Equal(t, expected, forwardURL)
+	}
 
 	f, err = url.Parse("http://example.com/bar/")
 	require.NoError(t, err)
 
-	require.Equal(t, "http://localhost/bar/", buildForwardURL("http://localhost/", f))
-	require.Equal(t, "http://localhost/bar/", buildForwardURL("http://localhost", f))
-	require.Equal(t, "https://localhost/bar/", buildForwardURL("https://localhost/", f))
-	require.Equal(t, "https://localhost/bar/", buildForwardURL("https://localhost", f))
-	require.Equal(t, "http://localhost:8000/bar/", buildForwardURL("http://localhost:8000", f))
-	require.Equal(t, "http://localhost:8000/bar/", buildForwardURL("http://localhost:8000/", f))
+	// pairs of [expected, input]
+	expectedInputPairs = [][]string{
+		{"http://localhost/bar/", "http://localhost/"},
+		{"http://localhost/bar/", "http://localhost"},
+		{"https://localhost/bar/", "https://localhost/"},
+		{"https://localhost/bar/", "https://localhost"},
+		{"http://localhost:8000/bar/", "http://localhost:8000"},
+		{"http://localhost:8000/bar/", "http://localhost:8000/"},
+	}
+	for _, pair := range expectedInputPairs {
+		expected := pair[0]
+		input := pair[1]
+		forwardURL, err := buildForwardURL(input, f)
+		require.NoError(t, err)
+		require.Equal(t, expected, forwardURL)
+	}
 }
 
 func TestParseUrl(t *testing.T) {

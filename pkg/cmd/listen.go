@@ -202,8 +202,37 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
-			logger.Fatal(ee.Error)
-			return ee.Error
+			switch ee.Error.(type) {
+			case proxy.FailedToPostError:
+				color := ansi.Color(os.Stdout)
+				localTime := time.Now().Format(timeLayout)
+
+				errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
+					color.Faint(localTime),
+					color.Red("ERROR"),
+					ee.Error,
+				)
+				fmt.Println(errStr)
+
+				// Don't exit program
+				return nil
+			case proxy.FailedToReadResponseError:
+				color := ansi.Color(os.Stdout)
+				localTime := time.Now().Format(timeLayout)
+
+				errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
+					color.Faint(localTime),
+					color.Red("ERROR"),
+					ee.Error,
+				)
+				log.Errorf(errStr)
+
+				// Don't exit program
+				return nil
+			default:
+				logger.Fatal(ee.Error)
+				return ee.Error
+			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
@@ -219,31 +248,46 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 			return nil
 		},
 		VisitData: func(de websocket.DataElement) error {
-			stripeEvent, ok := de.Data.(proxy.StripeEvent)
-			if !ok {
-				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, proxy.StripeEvent{})
-			}
+			switch data := de.Data.(type) {
+			case proxy.StripeEvent:
+				if strings.ToUpper(format) == outputFormatJSON || printJSON {
+					fmt.Println(de.Marshaled)
+				} else {
+					maybeConnect := ""
+					if data.IsConnect() {
+						maybeConnect = "connect "
+					}
 
-			if strings.ToUpper(format) == outputFormatJSON || printJSON {
-				fmt.Println(de.Marshaled)
-			} else {
-				maybeConnect := ""
-				if stripeEvent.IsConnect() {
-					maybeConnect = "connect "
+					localTime := time.Now().Format(timeLayout)
+
+					color := ansi.Color(os.Stdout)
+					outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
+						color.Faint(localTime),
+						maybeConnect,
+						ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
+						ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
+					)
+					fmt.Println(outputStr)
 				}
-
+				return nil
+			case proxy.EndpointResponse:
+				event := data.Event
+				resp := data.Resp
 				localTime := time.Now().Format(timeLayout)
 
 				color := ansi.Color(os.Stdout)
-				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
+				outputStr := fmt.Sprintf("%s  <--  [%d] %s %s [%s]",
 					color.Faint(localTime),
-					maybeConnect,
-					ansi.Linkify(ansi.Bold(stripeEvent.Type), stripeEvent.URLForEventType(), logger.Out),
-					ansi.Linkify(stripeEvent.ID, stripeEvent.URLForEventID(), logger.Out),
+					ansi.ColorizeStatus(resp.StatusCode),
+					resp.Request.Method,
+					resp.Request.URL,
+					ansi.Linkify(event.ID, event.URLForEventID(), logger.Out),
 				)
 				fmt.Println(outputStr)
+				return nil
+			default:
+				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
 			}
-			return nil
 		},
 	}
 }

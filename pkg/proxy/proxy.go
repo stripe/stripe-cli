@@ -24,8 +24,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
-const timeLayout = "2006-01-02 15:04:05"
-
 //
 // Public types
 //
@@ -43,6 +41,22 @@ type EndpointRoute struct {
 
 	// EventTypes is the list of event types that should be sent to the endpoint.
 	EventTypes []string
+}
+
+// EndpointResponse describes the response to a Stripe event from an endpoint
+type EndpointResponse struct {
+	Event    *StripeEvent
+	Resp     *http.Response
+	RespBody string
+}
+
+// FailedToReadResponseError describes a failure to read the response from an endpoint
+type FailedToReadResponseError struct {
+	err error
+}
+
+func (f FailedToReadResponseError) Error() string {
+	return f.err.Error()
 }
 
 // Config provides the configuration of a Proxy
@@ -346,31 +360,23 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 }
 
 func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
-	localTime := time.Now().Format(timeLayout)
-
-	color := ansi.Color(os.Stdout)
-	outputStr := fmt.Sprintf("%s  <--  [%d] %s %s [%s]",
-		color.Faint(localTime),
-		ansi.ColorizeStatus(resp.StatusCode),
-		resp.Request.Method,
-		resp.Request.URL,
-		ansi.Linkify(evtCtx.event.ID, evtCtx.event.URLForEventID(), p.cfg.Log.Out),
-	)
-	fmt.Println(outputStr)
-
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
-			color.Faint(localTime),
-			color.Red("ERROR"),
-			err,
-		)
-		log.Errorf(errStr)
-
+		p.cfg.OutCh <- websocket.ErrorElement{
+			Error: FailedToReadResponseError{err: err},
+		}
 		return
 	}
 
 	body := truncate(string(buf), maxBodySize, true)
+
+	p.cfg.OutCh <- websocket.DataElement{
+		Data: EndpointResponse{
+			Event:    evtCtx.event,
+			Resp:     resp,
+			RespBody: body,
+		},
+	}
 
 	idx := 0
 	headers := make(map[string]string)
@@ -426,7 +432,11 @@ func Init(cfg *Config) (*Proxy, error) {
 		if len(endpoints.Data) == 0 {
 			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
-		endpointRoutes = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
+		var err error
+		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// build from --forward-to urls
 		if len(cfg.ForwardConnectURL) == 0 {
@@ -483,6 +493,7 @@ func Init(cfg *Config) (*Proxy, error) {
 				},
 				Log:             p.cfg.Log,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
+				OutCh:           p.cfg.OutCh,
 			},
 		))
 	}
@@ -582,7 +593,7 @@ func getEndpointsFromAPI(secretKey, apiBaseURL string) requests.WebhookEndpointL
 	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
 }
 
-func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) []EndpointRoute {
+func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) ([]EndpointRoute, error) {
 	endpointRoutes := make([]EndpointRoute, 0)
 
 	for _, endpoint := range endpoints.Data {
@@ -592,15 +603,23 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 			// Since webhooks in the dashboard may have a more generic url, only extract
 			// the path. We'll use this with `localhost` or with the `--forward-to` flag
 			if endpoint.Application == "" {
+				url, err := buildForwardURL(forwardURL, u)
+				if err != nil {
+					return nil, err
+				}
 				endpointRoutes = append(endpointRoutes, EndpointRoute{
-					URL:            buildForwardURL(forwardURL, u),
+					URL:            url,
 					ForwardHeaders: forwardHeaders,
 					Connect:        false,
 					EventTypes:     endpoint.EnabledEvents,
 				})
 			} else {
+				url, err := buildForwardURL(forwardConnectURL, u)
+				if err != nil {
+					return nil, err
+				}
 				endpointRoutes = append(endpointRoutes, EndpointRoute{
-					URL:            buildForwardURL(forwardConnectURL, u),
+					URL:            url,
 					ForwardHeaders: forwardConnectHeaders,
 					Connect:        true,
 					EventTypes:     endpoint.EnabledEvents,
@@ -609,13 +628,13 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 		}
 	}
 
-	return endpointRoutes
+	return endpointRoutes, nil
 }
 
-func buildForwardURL(forwardURL string, destination *url.URL) string {
+func buildForwardURL(forwardURL string, destination *url.URL) (string, error) {
 	f, err := url.Parse(forwardURL)
 	if err != nil {
-		log.Fatalf("Provided forward url cannot be parsed: %s", forwardURL)
+		return "", fmt.Errorf("Provided forward url cannot be parsed: %s", forwardURL)
 	}
 
 	return fmt.Sprintf(
@@ -624,7 +643,7 @@ func buildForwardURL(forwardURL string, destination *url.URL) string {
 		f.Host,
 		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
 		destination.Path,
-	)
+	), nil
 }
 
 func getAPIVersionString(str *string) string {
