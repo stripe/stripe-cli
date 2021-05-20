@@ -52,11 +52,11 @@ type EndpointResponse struct {
 
 // FailedToReadResponseError describes a failure to read the response from an endpoint
 type FailedToReadResponseError struct {
-	err error
+	Err error
 }
 
 func (f FailedToReadResponseError) Error() string {
-	return f.err.Error()
+	return f.Err.Error()
 }
 
 // Config provides the configuration of a Proxy
@@ -363,7 +363,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 	buf, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		p.cfg.OutCh <- websocket.ErrorElement{
-			Error: FailedToReadResponseError{err: err},
+			Error: FailedToReadResponseError{Err: err},
 		}
 		return
 	}
@@ -411,6 +411,18 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 func Init(cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
+	}
+
+	// validate forward-urls args
+	if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) > 0 {
+		if strings.HasPrefix(cfg.ForwardURL, "/") {
+			return nil, errors.New("forward_to cannot be a relative path when loading webhook endpoints from the API")
+		}
+		if strings.HasPrefix(cfg.ForwardConnectURL, "/") {
+			return nil, errors.New("forward_connect_to cannot be a relative path when loading webhook endpoints from the API")
+		}
+	} else if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) == 0 {
+		return nil, errors.New("load_from_webhooks_api requires a location to forward to with forward_to")
 	}
 
 	// if no events are passed, listen for all events

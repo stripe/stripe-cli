@@ -80,14 +80,16 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 	}
 
 	expected := &rpc.EventsResendResponse{
-		Id:              "evt_12345",
-		ApiVersion:      "2020-08-27",
-		Data:            expectedData,
-		Request:         &rpc.EventsResendResponse_Request{},
-		Type:            "checkout.session.completed",
-		Created:         1620858554,
-		Livemode:        false,
-		PendingWebhooks: 1,
+		StripeEvent: &rpc.StripeEvent{
+			Id:              "evt_12345",
+			ApiVersion:      "2020-08-27",
+			Data:            expectedData,
+			Request:         &rpc.StripeEvent_Request{},
+			Type:            "checkout.session.completed",
+			Created:         1620858554,
+			Livemode:        false,
+			PendingWebhooks: 1,
+		},
 	}
 
 	// Make request
@@ -101,14 +103,14 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 	// Assert
 
 	assert.Nil(t, err)
-	assert.Equal(t, expected.Id, resp.Id)
-	assert.Equal(t, expected.ApiVersion, resp.ApiVersion)
-	assert.True(t, assert.ObjectsAreEqual(expected.Data, resp.Data))
-	assert.Equal(t, expected.Request, resp.Request)
-	assert.Equal(t, expected.Type, resp.Type)
-	assert.Equal(t, expected.Created, resp.Created)
-	assert.Equal(t, expected.Livemode, resp.Livemode)
-	assert.Equal(t, expected.PendingWebhooks, resp.PendingWebhooks)
+	assert.Equal(t, expected.StripeEvent.Id, resp.StripeEvent.Id)
+	assert.Equal(t, expected.StripeEvent.ApiVersion, resp.StripeEvent.ApiVersion)
+	assert.True(t, assert.ObjectsAreEqual(expected.StripeEvent.Data, resp.StripeEvent.Data))
+	assert.Equal(t, expected.StripeEvent.Request, resp.StripeEvent.Request)
+	assert.Equal(t, expected.StripeEvent.Type, resp.StripeEvent.Type)
+	assert.Equal(t, expected.StripeEvent.Created, resp.StripeEvent.Created)
+	assert.Equal(t, expected.StripeEvent.Livemode, resp.StripeEvent.Livemode)
+	assert.Equal(t, expected.StripeEvent.PendingWebhooks, resp.StripeEvent.PendingWebhooks)
 }
 
 func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
@@ -153,14 +155,16 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 	}
 
 	expected := &rpc.EventsResendResponse{
-		Id:              "evt_12345",
-		ApiVersion:      "2020-08-27",
-		Data:            expectedData,
-		Request:         &rpc.EventsResendResponse_Request{},
-		Type:            "checkout.session.completed",
-		Created:         1620858554,
-		Livemode:        false,
-		PendingWebhooks: 1,
+		StripeEvent: &rpc.StripeEvent{
+			Id:              "evt_12345",
+			ApiVersion:      "2020-08-27",
+			Data:            expectedData,
+			Request:         &rpc.StripeEvent_Request{},
+			Type:            "checkout.session.completed",
+			Created:         1620858554,
+			Livemode:        false,
+			PendingWebhooks: 1,
+		},
 	}
 
 	// Make request
@@ -182,14 +186,14 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 	// Assert
 
 	assert.Nil(t, err)
-	assert.Equal(t, expected.Id, resp.Id)
-	assert.Equal(t, expected.ApiVersion, resp.ApiVersion)
-	assert.True(t, assert.ObjectsAreEqual(expected.Data, resp.Data))
-	assert.Equal(t, expected.Request, resp.Request)
-	assert.Equal(t, expected.Type, resp.Type)
-	assert.Equal(t, expected.Created, resp.Created)
-	assert.Equal(t, expected.Livemode, resp.Livemode)
-	assert.Equal(t, expected.PendingWebhooks, resp.PendingWebhooks)
+	assert.Equal(t, expected.StripeEvent.Id, resp.StripeEvent.Id)
+	assert.Equal(t, expected.StripeEvent.ApiVersion, resp.StripeEvent.ApiVersion)
+	assert.True(t, assert.ObjectsAreEqual(expected.StripeEvent.Data, resp.StripeEvent.Data))
+	assert.Equal(t, expected.StripeEvent.Request, resp.StripeEvent.Request)
+	assert.Equal(t, expected.StripeEvent.Type, resp.StripeEvent.Type)
+	assert.Equal(t, expected.StripeEvent.Created, resp.StripeEvent.Created)
+	assert.Equal(t, expected.StripeEvent.Livemode, resp.StripeEvent.Livemode)
+	assert.Equal(t, expected.StripeEvent.PendingWebhooks, resp.StripeEvent.PendingWebhooks)
 }
 
 func TestEventsResendReturnsGenericError(t *testing.T) {

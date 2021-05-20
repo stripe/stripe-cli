@@ -6,10 +6,22 @@
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
   
+- [common.proto](#common.proto)
+    - [StripeEvent](#rpc.StripeEvent)
+    - [StripeEvent.Request](#rpc.StripeEvent.Request)
+  
 - [events_resend.proto](#events_resend.proto)
     - [EventsResendRequest](#rpc.EventsResendRequest)
     - [EventsResendResponse](#rpc.EventsResendResponse)
-    - [EventsResendResponse.Request](#rpc.EventsResendResponse.Request)
+  
+- [listen.proto](#listen.proto)
+    - [ListenRequest](#rpc.ListenRequest)
+    - [ListenResponse](#rpc.ListenResponse)
+    - [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse)
+    - [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data)
+  
+    - [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod)
+    - [ListenResponse.State](#rpc.ListenResponse.State)
   
 - [login.proto](#login.proto)
     - [LoginRequest](#rpc.LoginRequest)
@@ -83,6 +95,7 @@
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | EventsResend | [EventsResendRequest](#rpc.EventsResendRequest) | [EventsResendResponse](#rpc.EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
+| Listen | [ListenRequest](#rpc.ListenRequest) | [ListenResponse](#rpc.ListenResponse) stream | Receive webhook events from the Stripe API to your local machine. Like `stripe listen`. |
 | Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
 | LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
 | LogsTail | [LogsTailRequest](#rpc.LogsTailRequest) | [LogsTailResponse](#rpc.LogsTailResponse) stream | Get a realtime stream of API logs. Like `stripe logs tail`. |
@@ -92,6 +105,61 @@
 | Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+
+ 
+
+
+
+<a name="common.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## common.proto
+
+
+
+<a name="rpc.StripeEvent"></a>
+
+### StripeEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | Unique identifier for the object. |
+| api_version | [string](#string) |  | The Stripe API version used to render `data`. Note: This property is populated only for events on or after October 31, 2014. |
+| data | [google.protobuf.Struct](#google.protobuf.Struct) |  | Object containing data associated with the event. |
+| request | [StripeEvent.Request](#rpc.StripeEvent.Request) |  | Information on the API request that instigated the event. |
+| type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
+| account | [string](#string) |  | CONNECT ONLY* The connected account that originated the event. |
+| created | [int64](#int64) |  | Time at which the object was created. Measured in seconds since the Unix epoch. |
+| livemode | [bool](#bool) |  | Has the value true if the object exists in live mode or the value false if the object exists in test mode. |
+| pending_webhooks | [int64](#int64) |  | Number of webhooks that have yet to be successfully delivered (i.e., to return a 20x response) to the URLs you’ve specified. |
+
+
+
+
+
+
+<a name="rpc.StripeEvent.Request"></a>
+
+### StripeEvent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | ID of the API request that caused the event. If null, the event was automatic (e.g., Stripe’s automatic subscription handling). Request logs are available in the dashboard, but currently not in the API. |
+| idempotency_key | [string](#string) |  | The idempotency key transmitted during the request, if any. Note: This property is populated only for events on or after May 23, 2017. |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 
@@ -135,37 +203,133 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | Unique identifier for the object. |
-| api_version | [string](#string) |  | The Stripe API version used to render `data`. Note: This property is populated only for events on or after October 31, 2014. |
-| data | [google.protobuf.Struct](#google.protobuf.Struct) |  | Object containing data associated with the event. |
-| request | [EventsResendResponse.Request](#rpc.EventsResendResponse.Request) |  | Information on the API request that instigated the event. |
-| type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
-| account | [string](#string) |  | CONNECT ONLY* The connected account that originated the event. |
-| created | [int64](#int64) |  | Time at which the object was created. Measured in seconds since the Unix epoch. |
-| livemode | [bool](#bool) |  | Has the value true if the object exists in live mode or the value false if the object exists in test mode. |
-| pending_webhooks | [int64](#int64) |  | Number of webhooks that have yet to be successfully delivered (i.e., to return a 20x response) to the URLs you’ve specified. |
-
-
-
-
-
-
-<a name="rpc.EventsResendResponse.Request"></a>
-
-### EventsResendResponse.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | ID of the API request that caused the event. If null, the event was automatic (e.g., Stripe’s automatic subscription handling). Request logs are available in the dashboard, but currently not in the API. |
-| idempotency_key | [string](#string) |  | The idempotency key transmitted during the request, if any. Note: This property is populated only for events on or after May 23, 2017. |
+| stripe_event | [StripeEvent](#rpc.StripeEvent) |  |  |
 
 
 
 
 
  
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="listen.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## listen.proto
+
+
+
+<a name="rpc.ListenRequest"></a>
+
+### ListenRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| connect_headers | [string](#string) | repeated | A list of custom headers to forward for Connect |
+| events | [string](#string) | repeated | A list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types (default [*]) |
+| forward_connect_to | [string](#string) |  | The URL to forward Connect webhook events to (default: same as normal events) |
+| forward_to | [string](#string) |  | The URL to forward webhook events to |
+| headers | [string](#string) | repeated | A list of custom headers to forward |
+| latest | [bool](#bool) |  | Receive events formatted with the latest API version (default: your account&#39;s default API version) |
+| live | [bool](#bool) |  | Receive live events (default: test) |
+| skip_verify | [bool](#bool) |  | Skip certificate verification when forwarding to HTTPS endpoints |
+| use_configured_webhooks | [bool](#bool) |  | Load webhook endpoint configuration from the webhooks API/dashboard |
+
+
+
+
+
+
+<a name="rpc.ListenResponse"></a>
+
+### ListenResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [ListenResponse.State](#rpc.ListenResponse.State) |  | Check if the stream ready |
+| stripe_event | [StripeEvent](#rpc.StripeEvent) |  | A Stripe event |
+| endpoint_response | [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse) |  | A response from an endpoint |
+
+
+
+
+
+
+<a name="rpc.ListenResponse.EndpointResponse"></a>
+
+### ListenResponse.EndpointResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| data | [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="rpc.ListenResponse.EndpointResponse.Data"></a>
+
+### ListenResponse.EndpointResponse.Data
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [int64](#int64) |  | HTTP status code |
+| http_method | [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod) |  | HTTP method |
+| url | [string](#string) |  | URL of the webhook endpoint |
+| event_id | [string](#string) |  | ID of the Stripe event that caused this response |
+| body | [string](#string) |  | Response body |
+
+
+
+
+
+ 
+
+
+<a name="rpc.ListenResponse.EndpointResponse.Data.HttpMethod"></a>
+
+### ListenResponse.EndpointResponse.Data.HttpMethod
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| HTTP_METHOD_UNSPECIFIED | 0 |  |
+| HTTP_METHOD_GET | 1 |  |
+| HTTP_METHOD_POST | 2 |  |
+| HTTP_METHOD_DELETE | 3 |  |
+
+
+
+<a name="rpc.ListenResponse.State"></a>
+
+### ListenResponse.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| STATE_UNSPECIFIED | 0 |  |
+| STATE_LOADING | 1 |  |
+| STATE_RECONNECTING | 2 |  |
+| STATE_READY | 3 |  |
+| STATE_DONE | 4 |  |
+
 
  
 
