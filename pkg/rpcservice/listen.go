@@ -6,6 +6,8 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
@@ -34,12 +36,12 @@ var createProxy = func(cfg *proxy.Config) (IProxy, error) {
 func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_ListenServer) error {
 	deviceName, err := srv.cfg.UserCfg.Profile.GetDeviceName()
 	if err != nil {
-		return err
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
 	if err != nil {
-		return err
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	logger := log.StandardLogger()

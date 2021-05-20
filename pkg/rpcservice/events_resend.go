@@ -21,7 +21,7 @@ import (
 func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRequest) (*rpc.EventsResendResponse, error) {
 	apiKey, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	if req.EventId == "" {

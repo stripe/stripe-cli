@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -24,12 +26,12 @@ var createTailer = func(cfg *logtailing.Config) ITailer {
 func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_LogsTailServer) error {
 	deviceName, err := srv.cfg.UserCfg.Profile.GetDeviceName()
 	if err != nil {
-		return err
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(false)
 	if err != nil {
-		return err
+		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	filters := getFiltersFromReq(req)
