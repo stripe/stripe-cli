@@ -82,9 +82,9 @@ message ListenResponse {
     State state = 1;
 
     // A Stripe event
-    StripeEvent stripe_event = 3;
+    StripeEvent stripe_event = 2;
 
     // A response from an endpoint
-    EndpointResponse endpoint_response = 4;
+    EndpointResponse endpoint_response = 3;
   }
 }
