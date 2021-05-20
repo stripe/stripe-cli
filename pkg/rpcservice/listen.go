@@ -15,6 +15,12 @@ import (
 
 const webhooksWebSocketFeature = "webhooks"
 
+var httpMethodMap = map[string]rpc.ListenResponse_EndpointResponse_Data_HttpMethod{
+	http.MethodDelete: rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_DELETE,
+	http.MethodGet:    rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_GET,
+	http.MethodPost:   rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_POST,
+}
+
 // IProxy enables mocking a proxy object in tests
 type IProxy interface {
 	Run(context.Context) error
@@ -88,15 +94,7 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 			switch ee.Error.(type) {
 			case proxy.FailedToPostError, proxy.FailedToReadResponseError:
 				// These errors shouldn't end the stream
-				(*stream).Send(&rpc.ListenResponse{
-					Content: &rpc.ListenResponse_EndpointResponse_{
-						EndpointResponse: &rpc.ListenResponse_EndpointResponse{
-							Content: &rpc.ListenResponse_EndpointResponse_Error{
-								Error: ee.Error.Error(),
-							},
-						},
-					},
-				})
+				(*stream).Send(buildEndpointResponseErrorResp(ee.Error))
 				return nil
 			default:
 				return ee.Error
@@ -105,81 +103,110 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 		VisitData: func(de websocket.DataElement) error {
 			switch data := de.Data.(type) {
 			case proxy.StripeEvent:
-				eventData, err := structpb.NewStruct(data.Data)
+				resp, err := buildStripeEventResp(&data)
 				if err != nil {
 					return err
 				}
-				request := rpc.StripeEvent_Request{
-					Id:             data.Request.ID,
-					IdempotencyKey: data.Request.IdempotencyKey,
-				}
-				(*stream).Send(&rpc.ListenResponse{
-					Content: &rpc.ListenResponse_StripeEvent{
-						StripeEvent: &rpc.StripeEvent{
-							Account:         data.Account,
-							ApiVersion:      data.APIVersion,
-							Created:         int64(data.Created),
-							Data:            eventData,
-							Id:              data.ID,
-							Type:            data.Type,
-							Livemode:        data.Livemode,
-							PendingWebhooks: int64(data.PendingWebhooks),
-							Request:         &request,
-						},
-					},
-				})
+				(*stream).Send(resp)
 				return nil
 			case proxy.EndpointResponse:
-				var httpMethodResponse rpc.ListenResponse_EndpointResponse_Data_HttpMethod
-				switch data.Resp.Request.Method {
-				case http.MethodDelete:
-					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_DELETE
-				case http.MethodGet:
-					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_GET
-				case http.MethodPost:
-					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_POST
-				default:
-					httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_UNSPECIFIED
+				resp, err := buildEndpointResponseResp(&data)
+				if err != nil {
+					return err
 				}
-
-				(*stream).Send(&rpc.ListenResponse{
-					Content: &rpc.ListenResponse_EndpointResponse_{
-						EndpointResponse: &rpc.ListenResponse_EndpointResponse{
-							Content: &rpc.ListenResponse_EndpointResponse_Data_{
-								Data: &rpc.ListenResponse_EndpointResponse_Data{
-									Body:       data.RespBody,
-									EventId:    data.Event.ID,
-									HttpMethod: httpMethodResponse,
-									Status:     int64(data.Resp.StatusCode),
-									Url:        data.Resp.Request.URL.String(),
-								},
-							},
-						},
-					},
-				})
+				(*stream).Send(resp)
 				return nil
 			default:
 				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T", de)
 			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
-			var stateResponse rpc.ListenResponse_State
-			switch se.State {
-			case websocket.Loading:
-				stateResponse = rpc.ListenResponse_STATE_LOADING
-			case websocket.Reconnecting:
-				stateResponse = rpc.ListenResponse_STATE_RECONNECTING
-			case websocket.Ready:
-				stateResponse = rpc.ListenResponse_STATE_READY
-			case websocket.Done:
-				stateResponse = rpc.ListenResponse_STATE_DONE
-			}
-			(*stream).Send(&rpc.ListenResponse{
-				Content: &rpc.ListenResponse_State_{
-					State: stateResponse,
-				},
-			})
+			(*stream).Send(buildStateResponse(se))
 			return nil
 		},
 	}
+}
+
+func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse, error) {
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_EndpointResponse_{
+			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+				Content: &rpc.ListenResponse_EndpointResponse_Data_{
+					Data: &rpc.ListenResponse_EndpointResponse_Data{
+						Body:       raw.RespBody,
+						EventId:    raw.Event.ID,
+						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+						Status:     int64(raw.Resp.StatusCode),
+						Url:        raw.Resp.Request.URL.String(),
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func buildEndpointResponseErrorResp(raw error) *rpc.ListenResponse {
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_EndpointResponse_{
+			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+				Content: &rpc.ListenResponse_EndpointResponse_Error{
+					Error: raw.Error(),
+				},
+			},
+		},
+	}
+}
+
+func buildStateResponse(se websocket.StateElement) *rpc.ListenResponse {
+	var stateResponse rpc.ListenResponse_State
+	switch se.State {
+	case websocket.Loading:
+		stateResponse = rpc.ListenResponse_STATE_LOADING
+	case websocket.Reconnecting:
+		stateResponse = rpc.ListenResponse_STATE_RECONNECTING
+	case websocket.Ready:
+		stateResponse = rpc.ListenResponse_STATE_READY
+	case websocket.Done:
+		stateResponse = rpc.ListenResponse_STATE_DONE
+	}
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_State_{
+			State: stateResponse,
+		},
+	}
+}
+
+func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
+	eventData, err := structpb.NewStruct(raw.Data)
+	if err != nil {
+		return nil, err
+	}
+	request := rpc.StripeEvent_Request{
+		Id:             raw.Request.ID,
+		IdempotencyKey: raw.Request.IdempotencyKey,
+	}
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_StripeEvent{
+			StripeEvent: &rpc.StripeEvent{
+				Account:         raw.Account,
+				ApiVersion:      raw.APIVersion,
+				Created:         int64(raw.Created),
+				Data:            eventData,
+				Id:              raw.ID,
+				Type:            raw.Type,
+				Livemode:        raw.Livemode,
+				PendingWebhooks: int64(raw.PendingWebhooks),
+				Request:         &request,
+			},
+		},
+	}, nil
+}
+
+func getRPCMethodFromRequestMethod(raw string) rpc.ListenResponse_EndpointResponse_Data_HttpMethod {
+	var httpMethodResponse rpc.ListenResponse_EndpointResponse_Data_HttpMethod
+	httpMethodResponse, ok := httpMethodMap[raw]
+	if !ok {
+		httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_UNSPECIFIED
+	}
+	return httpMethodResponse
 }
