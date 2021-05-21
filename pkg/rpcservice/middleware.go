@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -34,6 +36,9 @@ func serverStreamInterceptor(
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler,
 ) error {
+	log.WithFields(log.Fields{
+		"prefix": "gRPC",
+	}).Debugf("Streaming method invoked: %v", info.FullMethod)
 	if err := authorize(stream.Context()); err != nil {
 		return err
 	}
@@ -47,6 +52,9 @@ func serverUnaryInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (interface{}, error) {
+	log.WithFields(log.Fields{
+		"prefix": "gRPC",
+	}).Debugf("Unary method invoked: %v, req: %v", info.FullMethod, req)
 	if err := authorize(ctx); err != nil {
 		return nil, err
 	}

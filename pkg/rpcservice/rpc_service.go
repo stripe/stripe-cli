@@ -116,6 +116,6 @@ func (srv *RPCService) printConfig(configOutput ConfigOutput) {
 	if configOutputMarshalled, err := json.Marshal(configOutput); err != nil {
 		srv.cfg.Log.Fatalf("Failed to write server config to stderr: %v", err)
 	} else {
-		fmt.Fprintln(os.Stderr, string(configOutputMarshalled))
+		fmt.Println(string(configOutputMarshalled))
 	}
 }
