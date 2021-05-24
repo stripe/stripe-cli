@@ -2,18 +2,23 @@ package proxy
 
 import "fmt"
 
-//
-// Private types
-//
-
-// StripeEvent is a minimal representation of a Stripe `event` object, used
-// to extract the event's ID and type for logging purposes.
+// StripeEvent is a representation of a Stripe `event` object
 type StripeEvent struct {
-	Account  string `json:"account"`
-	ID       string `json:"id"`
-	Livemode bool   `json:"livemode"`
-	Type     string `json:"type"`
-	Created  int    `json:"created"`
+	Account         string                 `json:"account"`
+	APIVersion      string                 `json:"api_version"`
+	Created         int                    `json:"created"`
+	Data            map[string]interface{} `json:"data"`
+	ID              string                 `json:"id"`
+	Livemode        bool                   `json:"livemode"`
+	Request         StripeRequestData      `json:"request"`
+	PendingWebhooks int                    `json:"pending_webhooks"`
+	Type            string                 `json:"type"`
+}
+
+// StripeRequestData is a representation of the Request field in a Stripe `event` object
+type StripeRequestData struct {
+	ID             string `json:"id"`
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
 // IsConnect return true or false if *StripeEvent is connect or not.

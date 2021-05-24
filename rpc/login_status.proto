@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message LoginStatusRequest {
+}
+
+message LoginStatusResponse {
+  // ID of the Stripe account, e.g. acct_123
+  string account_id = 1;
+
+  // Display name of the Stripe account
+  string display_name = 2;
+}

@@ -101,7 +101,7 @@ func TestGetLinks(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := getLinks(ts.URL, "test")
+	links, err := GetLinks(ts.URL, "test")
 	require.NoError(t, err)
 	require.Equal(t, expectedLinks, *links)
 }
@@ -114,7 +114,7 @@ func TestGetLinksHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := getLinks(ts.URL, "test")
+	links, err := GetLinks(ts.URL, "test")
 	require.EqualError(t, err, "unexpected http status code: 500 ")
 	require.Empty(t, links)
 }
@@ -132,7 +132,7 @@ func TestGetLinksRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	links, err := getLinks(ts.URL, "test")
+	links, err := GetLinks(ts.URL, "test")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errorString)
 	require.Empty(t, links)
@@ -152,7 +152,7 @@ func TestGetLinksParseError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := getLinks(ts.URL, "test")
+	links, err := GetLinks(ts.URL, "test")
 	require.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
 	require.Empty(t, links)
 }

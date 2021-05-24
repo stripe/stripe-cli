@@ -61,9 +61,14 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	apiKey, err := Config.Profile.GetAPIKey(false)
+	if err != nil {
+		return err
+	}
+
 	event := args[0]
 
-	_, err := fixtures.Trigger(event, tc.stripeAccount, tc.apiBaseURL, &Config)
+	_, err = fixtures.Trigger(event, tc.stripeAccount, tc.apiBaseURL, apiKey)
 	if err != nil {
 		return err
 	}

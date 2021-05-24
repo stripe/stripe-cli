@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package rpc;
+
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message StripeEvent {
+  message Request {
+    // ID of the API request that caused the event. If null, the event was automatic (e.g., Stripe’s
+    // automatic subscription handling). Request logs are available in the dashboard, but currently
+    // not in the API.
+    string id = 1;
+
+    // The idempotency key transmitted during the request, if any. Note: This property is populated
+    // only for events on or after May 23, 2017.
+    string idempotency_key = 2;
+  }
+
+  // Unique identifier for the object.
+  string id = 1;
+
+  // The Stripe API version used to render `data`. Note: This property is populated only for events
+  // on or after October 31, 2014.
+  string api_version = 2;
+
+  // Object containing data associated with the event.
+  google.protobuf.Struct data = 3;
+
+  // Information on the API request that instigated the event.
+  Request request = 4;
+
+  // Description of the event (e.g., invoice.created or charge.refunded).
+  string type = 5;
+
+  // *CONNECT ONLY* The connected account that originated the event.
+  string account = 6;
+
+  // Time at which the object was created. Measured in seconds since the Unix epoch.
+  int64 created = 7;
+
+  // Has the value true if the object exists in live mode or the value false if the object exists in test mode.
+  bool livemode = 8;
+
+  // Number of webhooks that have yet to be successfully delivered (i.e., to return a 20x response)
+  // to the URLs you’ve specified.
+  int64 pending_webhooks = 9;
+}
