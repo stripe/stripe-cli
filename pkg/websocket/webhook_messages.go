@@ -19,7 +19,7 @@ type WebhookEvent struct {
 // WebhookEventAck represents outgoing Ack message for a webhook event
 // received by Stripe.
 type WebhookEventAck struct {
-	Type                  string `json:"type"` // always "webhook_ack"
+	Type                  string `json:"type"` // always "webhook_event_ack"
 	WebhookConversationID string `json:"webhook_conversation_id"`
 	WebhookID             string `json:"webhook_id"` // ID of the webhook event
 }
