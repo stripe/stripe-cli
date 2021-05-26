@@ -47,6 +47,8 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 func (m OutgoingMessage) MarshalJSON() ([]byte, error) {
 	if m.WebhookResponse != nil {
 		return json.Marshal(m.WebhookResponse)
+	} else if m.WebhookEventAck != nil {
+		return json.Marshal(m.WebhookEventAck)
 	}
 
 	return json.Marshal(nil)
@@ -55,4 +57,5 @@ func (m OutgoingMessage) MarshalJSON() ([]byte, error) {
 // OutgoingMessage represents any outgoing message sent to Stripe.
 type OutgoingMessage struct {
 	*WebhookResponse
+	*WebhookEventAck
 }
