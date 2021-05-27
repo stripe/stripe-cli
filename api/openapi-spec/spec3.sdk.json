@@ -805,7 +805,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due`, `currently_due`, or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -1113,7 +1113,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due`, `currently_due`, or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -5029,7 +5029,7 @@
                 "$ref": "#/components/schemas/payment_pages_checkout_session_customer_details"
               }
             ],
-            "description": "The customer details including the customer's tax exempt status and the customer's tax IDs.",
+            "description": "The customer details including the customer's tax exempt status and the customer's tax IDs. Only present on Sessions in `payment` or `subscription` mode.",
             "nullable": true
           },
           "customer_email": {
@@ -10154,7 +10154,9 @@
               "document_provider_identity_document",
               "finance_report_run",
               "identity_document",
+              "identity_document_downloadable",
               "pci_document",
+              "selfie",
               "sigma_scheduled_query",
               "tax_document_user_upload"
             ],
@@ -10491,6 +10493,1232 @@
         "x-stripeResource": {
           "class_name": "Parameters",
           "in_class": "reporting.report_run"
+        }
+      },
+      "gelato_data_document_report_date_of_birth": {
+        "description": "Point in Time",
+        "properties": {
+          "day": {
+            "description": "Numerical day between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "Numerical month between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "GelatoDataDocumentReportDateOfBirth",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DateOfBirth",
+          "in_class": "gelato_document_report"
+        }
+      },
+      "gelato_data_document_report_expiration_date": {
+        "description": "Point in Time",
+        "properties": {
+          "day": {
+            "description": "Numerical day between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "Numerical month between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "GelatoDataDocumentReportExpirationDate",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "ExpirationDate",
+          "in_class": "gelato_document_report"
+        }
+      },
+      "gelato_data_document_report_issued_date": {
+        "description": "Point in Time",
+        "properties": {
+          "day": {
+            "description": "Numerical day between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "Numerical month between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "GelatoDataDocumentReportIssuedDate",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "IssuedDate",
+          "in_class": "gelato_document_report"
+        }
+      },
+      "gelato_data_id_number_report_date": {
+        "description": "Point in Time",
+        "properties": {
+          "day": {
+            "description": "Numerical day between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "Numerical month between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "GelatoDataIdNumberReportDate",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DateOfBirth",
+          "in_class": "gelato_id_number_report"
+        }
+      },
+      "gelato_data_verified_outputs_date": {
+        "description": "Point in Time",
+        "properties": {
+          "day": {
+            "description": "Numerical day between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "Numerical month between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "GelatoDataVerifiedOutputsDate",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DateOfBirth",
+          "in_class": "gelato_verified_outputs"
+        }
+      },
+      "gelato_document_report": {
+        "description": "Result from a document check",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/address"
+              }
+            ],
+            "description": "Address as it appears in the document.",
+            "nullable": true
+          },
+          "dob": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_data_document_report_date_of_birth"
+              }
+            ],
+            "description": "Date of birth as it appears in the document.",
+            "nullable": true
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_document_report_error"
+              }
+            ],
+            "description": "Details on the verification error. Present when status is `unverified`.",
+            "nullable": true
+          },
+          "expiration_date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_data_document_report_expiration_date"
+              }
+            ],
+            "description": "Expiration date of the document.",
+            "nullable": true
+          },
+          "files": {
+            "description": "Array of [File](https://stripe.com/docs/api/files) ids containing images for this document.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "first_name": {
+            "description": "First name as it appears in the document.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "issued_date": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_data_document_report_issued_date"
+              }
+            ],
+            "description": "Issued date of the document.",
+            "nullable": true
+          },
+          "issuing_country": {
+            "description": "Issuing country of the document.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "last_name": {
+            "description": "Last name as it appears in the document.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "number": {
+            "description": "Document ID number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "description": "Status of this `document` check.",
+            "enum": [
+              "unverified",
+              "verified"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          },
+          "type": {
+            "description": "Type of the document.",
+            "enum": [
+              "driving_license",
+              "id_card",
+              "passport"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "dob",
+          "error",
+          "expiration_date",
+          "files",
+          "first_name",
+          "issued_date",
+          "issuing_country",
+          "last_name",
+          "number",
+          "status",
+          "type"
+        ],
+        "title": "GelatoDocumentReport",
+        "type": "object",
+        "x-expandableFields": [
+          "address",
+          "dob",
+          "error",
+          "expiration_date",
+          "issued_date"
+        ],
+        "x-stripeResource": {
+          "class_name": "Document",
+          "in_class": "identity.verification_report",
+          "inner_classes": [
+            "gelato_data_document_report_date_of_birth",
+            "gelato_data_document_report_expiration_date",
+            "gelato_data_document_report_issued_date",
+            "gelato_document_report_error"
+          ]
+        }
+      },
+      "gelato_document_report_error": {
+        "description": "",
+        "properties": {
+          "code": {
+            "description": "A short machine-readable string giving the reason for the verification failure.",
+            "enum": [
+              "document_expired",
+              "document_type_not_supported",
+              "document_unverified_other"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "description": "A human-readable message giving the reason for the failure. These messages can be shown to your users.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reason"
+        ],
+        "title": "GelatoDocumentReportError",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DocumentCheckError",
+          "in_class": "gelato_document_report"
+        }
+      },
+      "gelato_id_number_report": {
+        "description": "Result from an id_number check",
+        "properties": {
+          "dob": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_data_id_number_report_date"
+              }
+            ],
+            "description": "Date of birth.",
+            "nullable": true
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_id_number_report_error"
+              }
+            ],
+            "description": "Details on the verification error. Present when status is `unverified`.",
+            "nullable": true
+          },
+          "first_name": {
+            "description": "First name.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "id_number": {
+            "description": "ID number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "id_number_type": {
+            "description": "Type of ID number.",
+            "enum": [
+              "br_cpf",
+              "sg_nric",
+              "us_ssn"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "last_name": {
+            "description": "Last name.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "description": "Status of this `id_number` check.",
+            "enum": [
+              "unverified",
+              "verified"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "required": [
+          "dob",
+          "error",
+          "first_name",
+          "id_number",
+          "id_number_type",
+          "last_name",
+          "status"
+        ],
+        "title": "GelatoIdNumberReport",
+        "type": "object",
+        "x-expandableFields": [
+          "dob",
+          "error"
+        ],
+        "x-stripeResource": {
+          "class_name": "IdNumber",
+          "in_class": "identity.verification_report",
+          "inner_classes": [
+            "gelato_data_id_number_report_date",
+            "gelato_id_number_report_error"
+          ]
+        }
+      },
+      "gelato_id_number_report_error": {
+        "description": "",
+        "properties": {
+          "code": {
+            "description": "A short machine-readable string giving the reason for the verification failure.",
+            "enum": [
+              "id_number_insufficient_document_data",
+              "id_number_mismatch",
+              "id_number_unverified_other"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "description": "A human-readable message giving the reason for the failure. These messages can be shown to your users.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reason"
+        ],
+        "title": "GelatoIdNumberReportError",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "IdNumberCheckError",
+          "in_class": "gelato_id_number_report"
+        }
+      },
+      "gelato_report_document_options": {
+        "description": "",
+        "properties": {
+          "allowed_types": {
+            "description": "Array of strings of allowed identity document types. If the provided identity document isn’t one of the allowed types, the verification check will fail with a document_type_not_allowed error code.",
+            "items": {
+              "enum": [
+                "driving_license",
+                "id_card",
+                "passport"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "require_id_number": {
+            "description": "Collect an ID number and perform an [ID number check](https://stripe.com/docs/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth.",
+            "type": "boolean"
+          },
+          "require_live_capture": {
+            "description": "Disable image uploads, identity document images have to be captured using the device’s camera.",
+            "type": "boolean"
+          },
+          "require_matching_selfie": {
+            "description": "Capture a face image and perform a [selfie check](https://stripe.com/docs/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face. [Learn more](https://stripe.com/docs/identity/selfie).",
+            "type": "boolean"
+          }
+        },
+        "title": "GelatoReportDocumentOptions",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Document",
+          "in_class": "gelato_verification_report_options"
+        }
+      },
+      "gelato_report_id_number_options": {
+        "description": "",
+        "properties": {
+        },
+        "title": "GelatoReportIdNumberOptions",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "IdNumber",
+          "in_class": "gelato_verification_report_options"
+        }
+      },
+      "gelato_selfie_report": {
+        "description": "Result from a selfie check",
+        "properties": {
+          "document": {
+            "description": "ID of the [File](https://stripe.com/docs/api/files) holding the image of the identity document used in this check.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_selfie_report_error"
+              }
+            ],
+            "description": "Details on the verification error. Present when status is `unverified`.",
+            "nullable": true
+          },
+          "selfie": {
+            "description": "ID of the [File](https://stripe.com/docs/api/files) holding the image of the selfie used in this check.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "description": "Status of this `selfie` check.",
+            "enum": [
+              "unverified",
+              "verified"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "required": [
+          "document",
+          "error",
+          "selfie",
+          "status"
+        ],
+        "title": "GelatoSelfieReport",
+        "type": "object",
+        "x-expandableFields": [
+          "error"
+        ],
+        "x-stripeResource": {
+          "class_name": "Selfie",
+          "in_class": "identity.verification_report",
+          "inner_classes": [
+            "gelato_selfie_report_error"
+          ]
+        }
+      },
+      "gelato_selfie_report_error": {
+        "description": "",
+        "properties": {
+          "code": {
+            "description": "A short machine-readable string giving the reason for the verification failure.",
+            "enum": [
+              "selfie_document_missing_photo",
+              "selfie_face_mismatch",
+              "selfie_manipulated",
+              "selfie_unverified_other"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "description": "A human-readable message giving the reason for the failure. These messages can be shown to your users.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reason"
+        ],
+        "title": "GelatoSelfieReportError",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "SelfieCheckError",
+          "in_class": "gelato_selfie_report"
+        }
+      },
+      "gelato_session_document_options": {
+        "description": "",
+        "properties": {
+          "allowed_types": {
+            "description": "Array of strings of allowed identity document types. If the provided identity document isn’t one of the allowed types, the verification check will fail with a document_type_not_allowed error code.",
+            "items": {
+              "enum": [
+                "driving_license",
+                "id_card",
+                "passport"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "require_id_number": {
+            "description": "Collect an ID number and perform an [ID number check](https://stripe.com/docs/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth.",
+            "type": "boolean"
+          },
+          "require_live_capture": {
+            "description": "Disable image uploads, identity document images have to be captured using the device’s camera.",
+            "type": "boolean"
+          },
+          "require_matching_selfie": {
+            "description": "Capture a face image and perform a [selfie check](https://stripe.com/docs/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face. [Learn more](https://stripe.com/docs/identity/selfie).",
+            "type": "boolean"
+          }
+        },
+        "title": "GelatoSessionDocumentOptions",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Document",
+          "in_class": "gelato_verification_session_options"
+        }
+      },
+      "gelato_session_id_number_options": {
+        "description": "",
+        "properties": {
+        },
+        "title": "GelatoSessionIdNumberOptions",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "IdNumber",
+          "in_class": "gelato_verification_session_options"
+        }
+      },
+      "gelato_session_last_error": {
+        "description": "Shows last VerificationSession error",
+        "properties": {
+          "code": {
+            "description": "A short machine-readable string giving the reason for the verification or user-session failure.",
+            "enum": [
+              "abandoned",
+              "consent_declined",
+              "country_not_supported",
+              "device_not_supported",
+              "document_expired",
+              "document_type_not_supported",
+              "document_unverified_other",
+              "id_number_insufficient_document_data",
+              "id_number_mismatch",
+              "id_number_unverified_other",
+              "selfie_document_missing_photo",
+              "selfie_face_mismatch",
+              "selfie_manipulated",
+              "selfie_unverified_other",
+              "under_supported_age"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "description": "A message that explains the reason for verification or user-session failure.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "reason"
+        ],
+        "title": "GelatoSessionLastError",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "LastError",
+          "in_class": "identity.verification_session"
+        }
+      },
+      "gelato_verification_report_options": {
+        "description": "",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/gelato_report_document_options"
+          },
+          "id_number": {
+            "$ref": "#/components/schemas/gelato_report_id_number_options"
+          }
+        },
+        "title": "GelatoVerificationReportOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "document",
+          "id_number"
+        ],
+        "x-stripeResource": {
+          "class_name": "Options",
+          "in_class": "identity.verification_report",
+          "inner_classes": [
+            "gelato_report_document_options",
+            "gelato_report_id_number_options"
+          ]
+        }
+      },
+      "gelato_verification_session_options": {
+        "description": "",
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/gelato_session_document_options"
+          },
+          "id_number": {
+            "$ref": "#/components/schemas/gelato_session_id_number_options"
+          }
+        },
+        "title": "GelatoVerificationSessionOptions",
+        "type": "object",
+        "x-expandableFields": [
+          "document",
+          "id_number"
+        ],
+        "x-stripeResource": {
+          "class_name": "Options",
+          "in_class": "identity.verification_session",
+          "inner_classes": [
+            "gelato_session_document_options",
+            "gelato_session_id_number_options"
+          ]
+        }
+      },
+      "gelato_verified_outputs": {
+        "description": "",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/address"
+              }
+            ],
+            "description": "The user's verified address.",
+            "nullable": true
+          },
+          "dob": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_data_verified_outputs_date"
+              }
+            ],
+            "description": "The user’s verified date of birth.",
+            "nullable": true
+          },
+          "first_name": {
+            "description": "The user's verified first name.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "id_number": {
+            "description": "The user's verified id number.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "id_number_type": {
+            "description": "The user's veriifed id number type.",
+            "enum": [
+              "br_cpf",
+              "sg_nric",
+              "us_ssn"
+            ],
+            "nullable": true,
+            "type": "string"
+          },
+          "last_name": {
+            "description": "The user's verified last name.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "address",
+          "dob",
+          "first_name",
+          "id_number",
+          "id_number_type",
+          "last_name"
+        ],
+        "title": "GelatoVerifiedOutputs",
+        "type": "object",
+        "x-expandableFields": [
+          "address",
+          "dob"
+        ],
+        "x-stripeResource": {
+          "class_name": "VerifiedOutputs",
+          "in_class": "identity.verification_session",
+          "inner_classes": [
+            "gelato_data_verified_outputs_date"
+          ]
+        }
+      },
+      "identity.verification_report": {
+        "description": "A VerificationReport is the result of an attempt to collect and verify data from a user.\nThe collection of verification checks performed is determined from the `type` and `options`\nparameters used. You can find the result of each verification check performed in the\nappropriate sub-resource: `document`, `id_number`, `selfie`.\n\nEach VerificationReport contains a copy of any data collected by the user as well as\nreference IDs which can be used to access collected images through the [FileUpload](https://stripe.com/docs/api/files)\nAPI. To configure and create VerificationReports, use the\n[VerificationSession](https://stripe.com/docs/api/identity/verification_sessions) API.\n\nRelated guides: [Accessing verification results](https://stripe.com/docs/identity/verification-sessions#results).",
+        "properties": {
+          "created": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/gelato_document_report"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "id_number": {
+            "$ref": "#/components/schemas/gelato_id_number_report"
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "identity.verification_report"
+            ],
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/gelato_verification_report_options"
+          },
+          "selfie": {
+            "$ref": "#/components/schemas/gelato_selfie_report"
+          },
+          "type": {
+            "description": "Type of report.",
+            "enum": [
+              "document",
+              "id_number"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          },
+          "verification_session": {
+            "description": "ID of the VerificationSession that created this report.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "created",
+          "id",
+          "livemode",
+          "object",
+          "options",
+          "type",
+          "verification_session"
+        ],
+        "title": "GelatoVerificationReport",
+        "type": "object",
+        "x-expandableFields": [
+          "document",
+          "id_number",
+          "options",
+          "selfie"
+        ],
+        "x-resourceId": "identity.verification_report",
+        "x-stripeOperations": [
+          {
+            "method_name": "retrieve",
+            "method_on": "class",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/identity/verification_reports/{report}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "report",
+                "name": "report"
+              }
+            ]
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "service",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/identity/verification_reports/{report}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "report",
+                "name": "report"
+              }
+            ]
+          },
+          {
+            "method_name": "list",
+            "method_on": "class",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/identity/verification_reports"
+          },
+          {
+            "method_name": "list",
+            "method_on": "service",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/identity/verification_reports"
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "VerificationReport",
+          "has_collection_class": true,
+          "in_package": "Identity",
+          "inner_classes": [
+            "gelato_document_report",
+            "gelato_id_number_report",
+            "gelato_selfie_report",
+            "gelato_verification_report_options"
+          ]
+        }
+      },
+      "identity.verification_session": {
+        "description": "A VerificationSession guides you through the process of collecting and verifying the identities\nof your users. It contains details about the type of verification, such as what [verification\ncheck](/docs/identity/verification-checks) to perform. Only create one VerificationSession for\neach verification in your system.\n\nA VerificationSession transitions through [multiple\nstatuses](/docs/identity/how-sessions-work) throughout its lifetime as it progresses through\nthe verification flow. The VerificationSession contains the user’s verified data after\nverification checks are complete.\n\nRelated guide: [The Verification Sessions API](docs/identity/verification-sessions)",
+        "properties": {
+          "client_secret": {
+            "description": "The short-lived client secret used by Stripe.js to [show a verification modal](https://stripe.com/docs/js/identity/modal) inside your app. This client secret expires after 24 hours and can only be used once. Don’t store it, log it, embed it in a URL, or expose it to anyone other than the user. Make sure that you have TLS enabled on any page that includes the client secret. Refer to our docs on [passing the client secret to the frontend](https://stripe.com/docs/identity/verification-sessions#client-secret) to learn more.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "created": {
+            "description": "Time at which the object was created. Measured in seconds since the Unix epoch.",
+            "format": "unix-time",
+            "type": "integer"
+          },
+          "id": {
+            "description": "Unique identifier for the object.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_session_last_error"
+              }
+            ],
+            "description": "If present, this property tells you the last error encountered when processing the verification.",
+            "nullable": true
+          },
+          "last_verification_report": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "$ref": "#/components/schemas/identity.verification_report"
+              }
+            ],
+            "description": "ID of the most recent VerificationReport. [Learn more about accessing detailed verification results.](https://stripe.com/docs/identity/verification-checks)",
+            "nullable": true,
+            "x-expansionResources": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/identity.verification_report"
+                }
+              ]
+            }
+          },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "maxLength": 500,
+              "type": "string"
+            },
+            "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format.",
+            "type": "object"
+          },
+          "object": {
+            "description": "String representing the object's type. Objects of the same type share the same value.",
+            "enum": [
+              "identity.verification_session"
+            ],
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/gelato_verification_session_options"
+          },
+          "redaction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/verification_session_redaction"
+              }
+            ],
+            "description": "Redaction status of this VerificationSession. If the VerificationSession is not redacted, this field will be null.",
+            "nullable": true
+          },
+          "status": {
+            "description": "Status of this VerificationSession. [Learn more about the lifecycle of sessions](https://stripe.com/docs/identity/how-sessions-work).",
+            "enum": [
+              "canceled",
+              "processing",
+              "requires_input",
+              "verified"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of [verification check](https://stripe.com/docs/identity/verification-checks) to be performed.",
+            "enum": [
+              "document",
+              "id_number"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          },
+          "url": {
+            "description": "The short-lived URL that you use to redirect a user to Stripe to submit their identity information. This URL expires after 24 hours and can only be used once. Don’t store it, log it, send it in emails or expose it to anyone other than the user. Refer to our docs on [verifying identity documents](https://stripe.com/docs/identity/verify-identity-documents?platform=web&type=redirect) to learn how to redirect users to Stripe.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "verified_outputs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/gelato_verified_outputs"
+              }
+            ],
+            "description": "The user’s verified data.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "client_secret",
+          "created",
+          "id",
+          "last_error",
+          "last_verification_report",
+          "livemode",
+          "metadata",
+          "object",
+          "options",
+          "redaction",
+          "status",
+          "type",
+          "url",
+          "verified_outputs"
+        ],
+        "title": "GelatoVerificationSession",
+        "type": "object",
+        "x-expandableFields": [
+          "last_error",
+          "last_verification_report",
+          "options",
+          "redaction",
+          "verified_outputs"
+        ],
+        "x-resourceId": "identity.verification_session",
+        "x-stripeOperations": [
+          {
+            "method_name": "create",
+            "method_on": "class",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions"
+          },
+          {
+            "method_name": "create",
+            "method_on": "service",
+            "method_type": "create",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions"
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "class",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/identity/verification_sessions/{session}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "session",
+                "name": "session"
+              }
+            ]
+          },
+          {
+            "method_name": "retrieve",
+            "method_on": "service",
+            "method_type": "retrieve",
+            "operation": "get",
+            "path": "/v1/identity/verification_sessions/{session}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "session",
+                "name": "session"
+              }
+            ]
+          },
+          {
+            "method_name": "list",
+            "method_on": "class",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/identity/verification_sessions"
+          },
+          {
+            "method_name": "list",
+            "method_on": "service",
+            "method_type": "list",
+            "operation": "get",
+            "path": "/v1/identity/verification_sessions"
+          },
+          {
+            "method_name": "cancel",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}/cancel",
+            "path_resource_variables": [
+              {
+                "name": "session",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "cancel",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}/cancel",
+            "path_resource_variables": [
+              {
+                "method_parameter": "session",
+                "name": "session"
+              }
+            ]
+          },
+          {
+            "method_name": "redact",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}/redact",
+            "path_resource_variables": [
+              {
+                "name": "session",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "redact",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}/redact",
+            "path_resource_variables": [
+              {
+                "method_parameter": "session",
+                "name": "session"
+              }
+            ]
+          },
+          {
+            "method_name": "update",
+            "method_on": "instance",
+            "method_type": "update",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}",
+            "path_resource_variables": [
+              {
+                "name": "session",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "update",
+            "method_on": "service",
+            "method_type": "update",
+            "operation": "post",
+            "path": "/v1/identity/verification_sessions/{session}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "session",
+                "name": "session"
+              }
+            ]
+          }
+        ],
+        "x-stripeResource": {
+          "class_name": "VerificationSession",
+          "has_collection_class": true,
+          "in_package": "Identity",
+          "inner_classes": [
+            "gelato_session_last_error",
+            "gelato_verification_session_options",
+            "gelato_verified_outputs",
+            "verification_session_redaction"
+          ]
         }
       },
       "inventory": {
@@ -20047,32 +21275,6 @@
                 "name": "intent"
               }
             ]
-          },
-          {
-            "method_name": "verify_microdeposits",
-            "method_on": "instance",
-            "method_type": "custom",
-            "operation": "post",
-            "path": "/v1/payment_intents/{intent}/verify_microdeposits",
-            "path_resource_variables": [
-              {
-                "name": "intent",
-                "object_property": "id"
-              }
-            ]
-          },
-          {
-            "method_name": "verify_microdeposits",
-            "method_on": "service",
-            "method_type": "custom",
-            "operation": "post",
-            "path": "/v1/payment_intents/{intent}/verify_microdeposits",
-            "path_resource_variables": [
-              {
-                "method_parameter": "intent",
-                "name": "intent"
-              }
-            ]
           }
         ],
         "x-stripeResource": {
@@ -25433,7 +26635,7 @@
             "type": "array"
           },
           "pending_verification": {
-            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields become required and move to `currently_due` or `past_due`.",
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due`, `currently_due`, or `past_due`.",
             "items": {
               "maxLength": 5000,
               "type": "string"
@@ -30174,32 +31376,6 @@
             "method_type": "custom",
             "operation": "post",
             "path": "/v1/setup_intents/{intent}/cancel",
-            "path_resource_variables": [
-              {
-                "method_parameter": "intent",
-                "name": "intent"
-              }
-            ]
-          },
-          {
-            "method_name": "verify_microdeposits",
-            "method_on": "instance",
-            "method_type": "custom",
-            "operation": "post",
-            "path": "/v1/setup_intents/{intent}/verify_microdeposits",
-            "path_resource_variables": [
-              {
-                "name": "intent",
-                "object_property": "id"
-              }
-            ]
-          },
-          {
-            "method_name": "verify_microdeposits",
-            "method_on": "service",
-            "method_type": "custom",
-            "operation": "post",
-            "path": "/v1/setup_intents/{intent}/verify_microdeposits",
             "path_resource_variables": [
               {
                 "method_parameter": "intent",
@@ -36985,6 +38161,31 @@
           ]
         }
       },
+      "verification_session_redaction": {
+        "description": "",
+        "properties": {
+          "status": {
+            "description": "Indicates whether this object and its related objects have been redacted or not.",
+            "enum": [
+              "processing",
+              "redacted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "verification_session_redaction",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Redaction",
+          "in_class": "identity.verification_session"
+        }
+      },
       "webhook_endpoint": {
         "description": "You can configure [webhook endpoints](https://stripe.com/docs/webhooks/) via the API to be\nnotified about events that happen in your Stripe account or connected\naccounts.\n\nMost users configure webhooks from [the dashboard](https://dashboard.stripe.com/webhooks), which provides a user interface for registering and testing your webhook endpoints.\n\nRelated guide: [Setting up Webhooks](https://stripe.com/docs/webhooks/configure).",
         "properties": {
@@ -41494,6 +42695,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "documents": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
@@ -41668,6 +42873,67 @@
                       }
                     ],
                     "description": "The person's date of birth."
+                  },
+                  "documents": {
+                    "description": "Documents that may be submitted to satisfy various informational requests.",
+                    "properties": {
+                      "company_authorization": {
+                        "description": "One or more documents that demonstrate proof that this person is authorized to represent the company.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      },
+                      "passport": {
+                        "description": "One or more documents showing the person's passport page with photo and personal data.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      },
+                      "visa": {
+                        "description": "One or more documents showing the person's visa required for living in the country where they are residing.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "person_documents_specs",
+                    "type": "object"
                   },
                   "email": {
                     "description": "The person's email address.",
@@ -42066,6 +43332,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "documents": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
@@ -42240,6 +43510,67 @@
                       }
                     ],
                     "description": "The person's date of birth."
+                  },
+                  "documents": {
+                    "description": "Documents that may be submitted to satisfy various informational requests.",
+                    "properties": {
+                      "company_authorization": {
+                        "description": "One or more documents that demonstrate proof that this person is authorized to represent the company.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      },
+                      "passport": {
+                        "description": "One or more documents showing the person's passport page with photo and personal data.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      },
+                      "visa": {
+                        "description": "One or more documents showing the person's visa required for living in the country where they are residing.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
+                      }
+                    },
+                    "title": "person_documents_specs",
+                    "type": "object"
                   },
                   "email": {
                     "description": "The person's email address.",
@@ -44987,7 +46318,7 @@
                 "additionalProperties": false,
                 "properties": {
                   "configuration": {
-                    "description": "The [configuration](https://stripe.com/docs/api/customer_portal/configuration) to use for this session, describing its functionality and features. If not specified, the session uses the default configuration.",
+                    "description": "The ID of an existing [configuration](https://stripe.com/docs/api/customer_portal/configuration) to use for this session, describing its functionality and features. If not specified, the session uses the default configuration.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -48286,9 +49617,6 @@
                         }
                       }
                     },
-                    "required": [
-                      "products"
-                    ],
                     "title": "applies_to_params",
                     "type": "object"
                   },
@@ -54112,7 +55440,7 @@
                     "type": "integer"
                   },
                   "file": {
-                    "description": "The ID of the file. The file's `purpose` must be one of the following: `business_icon`, `business_logo`, `customer_signature`, `dispute_evidence`, `finance_report_run`, `pci_document`, `sigma_scheduled_query`, or `tax_document_user_upload`.",
+                    "description": "The ID of the file. The file's `purpose` must be one of the following: `business_icon`, `business_logo`, `customer_signature`, `dispute_evidence`, `finance_report_run`, `identity_document_downloadable`, `pci_document`, `selfie`, `sigma_scheduled_query`, or `tax_document_user_upload`.",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -54440,7 +55768,9 @@
                 "document_provider_identity_document",
                 "finance_report_run",
                 "identity_document",
+                "identity_document_downloadable",
                 "pci_document",
+                "selfie",
                 "sigma_scheduled_query",
                 "tax_document_user_upload"
               ],
@@ -54710,6 +56040,923 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/file"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_reports": {
+      "get": {
+        "description": "<p>List all verification reports.</p>",
+        "operationId": "GetIdentityVerificationReports",
+        "parameters": [
+          {
+            "explode": true,
+            "in": "query",
+            "name": "created",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "gt": {
+                      "description": "Minimum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "gte": {
+                      "description": "Minimum value to filter by (inclusive)",
+                      "type": "integer"
+                    },
+                    "lt": {
+                      "description": "Maximum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "lte": {
+                      "description": "Maximum value to filter by (inclusive)",
+                      "type": "integer"
+                    }
+                  },
+                  "title": "range_query_specs",
+                  "type": "object"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+            "in": "query",
+            "name": "ending_before",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+            "in": "query",
+            "name": "starting_after",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return VerificationReports of this type",
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "enum": [
+                "document",
+                "id_number"
+              ],
+              "type": "string",
+              "x-stripeBypassValidation": true
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return VerificationReports created by this VerificationSession ID. It is allowed to provide a VerificationIntent ID.",
+            "in": "query",
+            "name": "verification_session",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "",
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/identity.verification_report"
+                      },
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "True if this list has another page of items after this one that can be fetched.",
+                      "type": "boolean"
+                    },
+                    "object": {
+                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
+                      "enum": [
+                        "list"
+                      ],
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL where this list can be accessed.",
+                      "maxLength": 5000,
+                      "pattern": "^/v1/identity/verification_reports",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more",
+                    "object",
+                    "url"
+                  ],
+                  "type": "object",
+                  "x-expandableFields": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_reports/{report}": {
+      "get": {
+        "description": "<p>Retrieves an existing VerificationReport</p>",
+        "operationId": "GetIdentityVerificationReportsReport",
+        "parameters": [
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "in": "path",
+            "name": "report",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_report"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_sessions": {
+      "get": {
+        "description": "<p>Returns a list of VerificationSessions</p>",
+        "operationId": "GetIdentityVerificationSessions",
+        "parameters": [
+          {
+            "explode": true,
+            "in": "query",
+            "name": "created",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "properties": {
+                    "gt": {
+                      "description": "Minimum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "gte": {
+                      "description": "Minimum value to filter by (inclusive)",
+                      "type": "integer"
+                    },
+                    "lt": {
+                      "description": "Maximum value to filter by (exclusive)",
+                      "type": "integer"
+                    },
+                    "lte": {
+                      "description": "Maximum value to filter by (inclusive)",
+                      "type": "integer"
+                    }
+                  },
+                  "title": "range_query_specs",
+                  "type": "object"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+            "in": "query",
+            "name": "ending_before",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+            "in": "query",
+            "name": "starting_after",
+            "required": false,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Only return VerificationSessions with this status. [Learn more about the lifecycle of sessions](https://stripe.com/docs/identity/how-sessions-work).",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "enum": [
+                "canceled",
+                "processing",
+                "requires_input",
+                "verified"
+              ],
+              "type": "string"
+            },
+            "style": "form"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "",
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/identity.verification_session"
+                      },
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "True if this list has another page of items after this one that can be fetched.",
+                      "type": "boolean"
+                    },
+                    "object": {
+                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
+                      "enum": [
+                        "list"
+                      ],
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL where this list can be accessed.",
+                      "maxLength": 5000,
+                      "pattern": "^/v1/identity/verification_sessions",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more",
+                    "object",
+                    "url"
+                  ],
+                  "type": "object",
+                  "x-expandableFields": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      },
+      "post": {
+        "description": "<p>Creates a VerificationSession object.</p>\n\n<p>After the VerificationSession is created, display a verification modal using the session <code>client_secret</code> or send your users to the session’s <code>url</code>.</p>\n\n<p>If your API key is in test mode, verification checks won’t actually process, though everything else will occur as if in live mode.</p>\n\n<p>Related guide: <a href=\"/docs/identity/verify-identity-documents\">Verify your users’ identity documents</a>.</p>",
+        "operationId": "PostIdentityVerificationSessions",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "options": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "metadata": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                    "type": "object"
+                  },
+                  "options": {
+                    "description": "A set of options for the session’s verification checks.",
+                    "properties": {
+                      "document": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "allowed_types": {
+                                "description": "Array of strings of allowed identity document types. If the provided identity document isn’t one of the allowed types, the verification check will fail with a document_type_not_allowed error code.",
+                                "items": {
+                                  "enum": [
+                                    "driving_license",
+                                    "id_card",
+                                    "passport"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "allowed_type"
+                                }
+                              },
+                              "require_id_number": {
+                                "description": "Collect an ID number and perform an [ID number check](https://stripe.com/docs/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth.",
+                                "type": "boolean"
+                              },
+                              "require_live_capture": {
+                                "description": "Disable image uploads, identity document images have to be captured using the device’s camera.",
+                                "type": "boolean"
+                              },
+                              "require_matching_selfie": {
+                                "description": "Capture a face image and perform a [selfie check](https://stripe.com/docs/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face. [Learn more](https://stripe.com/docs/identity/selfie).",
+                                "type": "boolean"
+                              }
+                            },
+                            "title": "document_options",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Options that apply to the [document check](https://stripe.com/docs/identity/verification-checks?type=document)."
+                      }
+                    },
+                    "title": "session_options_param",
+                    "type": "object"
+                  },
+                  "return_url": {
+                    "description": "The URL that the user will be redirected to upon completing the verification flow.",
+                    "type": "string"
+                  },
+                  "type": {
+                    "description": "The type of [verification check](https://stripe.com/docs/identity/verification-checks) to be performed.",
+                    "enum": [
+                      "document",
+                      "id_number"
+                    ],
+                    "type": "string",
+                    "x-stripeBypassValidation": true
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_session"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_sessions/{session}": {
+      "get": {
+        "description": "<p>Retrieves the details of a VerificationSession that was previously created.</p>\n\n<p>When the session status is <code>requires_input</code>, you can use this method to retrieve a valid\n<code>client_secret</code> or <code>url</code> to allow re-submission.</p>",
+        "operationId": "GetIdentityVerificationSessionsSession",
+        "parameters": [
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_session"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      },
+      "post": {
+        "description": "<p>Updates a VerificationSession object.</p>\n\n<p>When the session status is <code>requires_input</code>, you can use this method to update the\nverification check and options.</p>",
+        "operationId": "PostIdentityVerificationSessionsSession",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "metadata": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "options": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "metadata": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "description": "Set of [key-value pairs](https://stripe.com/docs/api/metadata) that you can attach to an object. This can be useful for storing additional information about the object in a structured format. Individual keys can be unset by posting an empty value to them. All keys can be unset by posting an empty value to `metadata`.",
+                    "type": "object"
+                  },
+                  "options": {
+                    "description": "A set of options for the session’s verification checks.",
+                    "properties": {
+                      "document": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "allowed_types": {
+                                "description": "Array of strings of allowed identity document types. If the provided identity document isn’t one of the allowed types, the verification check will fail with a document_type_not_allowed error code.",
+                                "items": {
+                                  "enum": [
+                                    "driving_license",
+                                    "id_card",
+                                    "passport"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "allowed_type"
+                                }
+                              },
+                              "require_id_number": {
+                                "description": "Collect an ID number and perform an [ID number check](https://stripe.com/docs/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth.",
+                                "type": "boolean"
+                              },
+                              "require_live_capture": {
+                                "description": "Disable image uploads, identity document images have to be captured using the device’s camera.",
+                                "type": "boolean"
+                              },
+                              "require_matching_selfie": {
+                                "description": "Capture a face image and perform a [selfie check](https://stripe.com/docs/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face. [Learn more](https://stripe.com/docs/identity/selfie).",
+                                "type": "boolean"
+                              }
+                            },
+                            "title": "document_options",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "Options that apply to the [document check](https://stripe.com/docs/identity/verification-checks?type=document)."
+                      }
+                    },
+                    "title": "session_options_param",
+                    "type": "object"
+                  },
+                  "type": {
+                    "description": "The type of [verification check](https://stripe.com/docs/identity/verification-checks) to be performed.",
+                    "enum": [
+                      "document",
+                      "id_number"
+                    ],
+                    "type": "string",
+                    "x-stripeBypassValidation": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_session"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_sessions/{session}/cancel": {
+      "post": {
+        "description": "<p>A VerificationSession object can be canceled when it is in <code>requires_input</code> <a href=\"/docs/identity/how-sessions-work\">status</a>.</p>\n\n<p>Once canceled, future submission attempts are disabled. This cannot be undone. <a href=\"/docs/identity/verification-sessions#cancel\">Learn more</a>.</p>",
+        "operationId": "PostIdentityVerificationSessionsSessionCancel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_session"
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
+    "/v1/identity/verification_sessions/{session}/redact": {
+      "post": {
+        "description": "<p>Redact a VerificationSession to remove all collected information from Stripe. This will redact\nthe VerificationSession and all objects related to it, including VerificationReports, Events,\nrequest logs, etc.</p>\n\n<p>A VerificationSession object can be redacted when it is in <code>requires_input</code> or <code>verified</code>\n<a href=\"/docs/identity/how-sessions-work\">status</a>. Redacting a VerificationSession in <code>requires_action</code>\nstate will automatically cancel it.</p>\n\n<p>The redaction process may take up to four days. When the redaction process is in progress, the\nVerificationSession’s <code>redaction.status</code> field will be set to <code>processing</code>; when the process is\nfinished, it will change to <code>redacted</code> and an <code>identity.verification_session.redacted</code> event\nwill be emitted.</p>\n\n<p>Redaction is irreversible. Redacted objects are still accessible in the Stripe API, but all the\nfields that contain personal data will be replaced by the string <code>[redacted]</code> or a similar\nplaceholder. The <code>metadata</code> field will also be erased. Redacted objects cannot be updated or\nused for any purpose.</p>\n\n<p><a href=\"/docs/identity/verification-sessions#redact\">Learn more</a>.</p>",
+        "operationId": "PostIdentityVerificationSessionsSessionRedact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+                "expand": {
+                  "explode": true,
+                  "style": "deepObject"
+                }
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "expand": {
+                    "description": "Specifies which fields in the response should be expanded.",
+                    "items": {
+                      "maxLength": 5000,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/identity.verification_session"
                 }
               }
             },
@@ -71461,90 +73708,6 @@
         }
       }
     },
-    "/v1/payment_intents/{intent}/verify_microdeposits": {
-      "post": {
-        "description": "<p>Verifies microdeposits on a PaymentIntent object.</p>",
-        "operationId": "PostPaymentIntentsIntentVerifyMicrodeposits",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "intent",
-            "required": true,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "simple"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "encoding": {
-                "amounts": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
-                "expand": {
-                  "explode": true,
-                  "style": "deepObject"
-                }
-              },
-              "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "amounts": {
-                    "description": "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account.",
-                    "items": {
-                      "type": "integer"
-                    },
-                    "type": "array",
-                    "x-stripeParam": {
-                      "containee_entity_name": "amount"
-                    }
-                  },
-                  "expand": {
-                    "description": "Specifies which fields in the response should be expanded.",
-                    "items": {
-                      "maxLength": 5000,
-                      "type": "string"
-                    },
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "amounts"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/payment_intent"
-                }
-              }
-            },
-            "description": "Successful response."
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            },
-            "description": "Error response."
-          }
-        }
-      }
-    },
     "/v1/payment_methods": {
       "get": {
         "description": "<p>Returns a list of PaymentMethods for a given Customer</p>",
@@ -72396,6 +74559,10 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "acss_debit": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "au_becs_debit": {
                   "explode": true,
                   "style": "deepObject"
@@ -72428,6 +74595,13 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "acss_debit": {
+                    "description": "This is a legacy parameter that will be removed in the future. It is a hash that does not accept any keys.",
+                    "properties": {
+                    },
+                    "title": "update_param",
+                    "type": "object"
+                  },
                   "au_becs_debit": {
                     "description": "This is a legacy parameter that will be removed in the future. It is a hash that does not accept any keys.",
                     "properties": {
@@ -80951,90 +83125,6 @@
             }
           },
           "required": false
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/setup_intent"
-                }
-              }
-            },
-            "description": "Successful response."
-          },
-          "default": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/error"
-                }
-              }
-            },
-            "description": "Error response."
-          }
-        }
-      }
-    },
-    "/v1/setup_intents/{intent}/verify_microdeposits": {
-      "post": {
-        "description": "<p>Verifies microdeposits on a SetupIntent object.</p>",
-        "operationId": "PostSetupIntentsIntentVerifyMicrodeposits",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "intent",
-            "required": true,
-            "schema": {
-              "maxLength": 5000,
-              "type": "string"
-            },
-            "style": "simple"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/x-www-form-urlencoded": {
-              "encoding": {
-                "amounts": {
-                  "explode": true,
-                  "style": "deepObject"
-                },
-                "expand": {
-                  "explode": true,
-                  "style": "deepObject"
-                }
-              },
-              "schema": {
-                "additionalProperties": false,
-                "properties": {
-                  "amounts": {
-                    "description": "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account.",
-                    "items": {
-                      "type": "integer"
-                    },
-                    "type": "array",
-                    "x-stripeParam": {
-                      "containee_entity_name": "amount"
-                    }
-                  },
-                  "expand": {
-                    "description": "Specifies which fields in the response should be expanded.",
-                    "items": {
-                      "maxLength": 5000,
-                      "type": "string"
-                    },
-                    "type": "array"
-                  }
-                },
-                "required": [
-                  "amounts"
-                ],
-                "type": "object"
-              }
-            }
-          },
-          "required": true
         },
         "responses": {
           "200": {
@@ -89794,6 +91884,67 @@
                         ],
                         "description": "The person's date of birth."
                       },
+                      "documents": {
+                        "description": "Documents that may be submitted to satisfy various informational requests.",
+                        "properties": {
+                          "company_authorization": {
+                            "description": "One or more documents that demonstrate proof that this person is authorized to represent the company.",
+                            "properties": {
+                              "files": {
+                                "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                                "items": {
+                                  "maxLength": 500,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "file"
+                                }
+                              }
+                            },
+                            "title": "documents_param",
+                            "type": "object"
+                          },
+                          "passport": {
+                            "description": "One or more documents showing the person's passport page with photo and personal data.",
+                            "properties": {
+                              "files": {
+                                "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                                "items": {
+                                  "maxLength": 500,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "file"
+                                }
+                              }
+                            },
+                            "title": "documents_param",
+                            "type": "object"
+                          },
+                          "visa": {
+                            "description": "One or more documents showing the person's visa required for living in the country where they are residing.",
+                            "properties": {
+                              "files": {
+                                "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                                "items": {
+                                  "maxLength": 500,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "file"
+                                }
+                              }
+                            },
+                            "title": "documents_param",
+                            "type": "object"
+                          }
+                        },
+                        "title": "person_documents_specs",
+                        "type": "object"
+                      },
                       "email": {
                         "description": "The person's email address.",
                         "type": "string"
@@ -91816,6 +93967,12 @@
                         "customer.tax_id.updated",
                         "customer.updated",
                         "file.created",
+                        "identity.verification_session.canceled",
+                        "identity.verification_session.created",
+                        "identity.verification_session.processing",
+                        "identity.verification_session.redacted",
+                        "identity.verification_session.requires_input",
+                        "identity.verification_session.verified",
                         "invoice.created",
                         "invoice.deleted",
                         "invoice.finalization_failed",
@@ -92226,6 +94383,12 @@
                         "customer.tax_id.updated",
                         "customer.updated",
                         "file.created",
+                        "identity.verification_session.canceled",
+                        "identity.verification_session.created",
+                        "identity.verification_session.processing",
+                        "identity.verification_session.redacted",
+                        "identity.verification_session.requires_input",
+                        "identity.verification_session.verified",
                         "invoice.created",
                         "invoice.deleted",
                         "invoice.finalization_failed",
