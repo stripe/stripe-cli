@@ -51,6 +51,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
       - name: Upload to Bintray
+        if: ${{ false }}  # Disable this step until a replacement is found
         run: |
           scripts/publish-deb-to-bintray.sh
           scripts/publish-rpm-to-bintray.sh
