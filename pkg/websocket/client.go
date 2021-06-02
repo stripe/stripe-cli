@@ -377,7 +377,7 @@ func (c *Client) writePump() {
 
 	for {
 		select {
-		case whResp, ok := <-c.send:
+		case outMsg, ok := <-c.send:
 			err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteWait))
 			if err != nil {
 				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
@@ -400,13 +400,13 @@ func (c *Client) writePump() {
 				"prefix": "websocket.Client.writePump",
 			}).Debug("Sending text message")
 
-			err = c.conn.WriteJSON(whResp)
+			err = c.conn.WriteJSON(outMsg)
 			if err != nil {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
 					c.cfg.Log.Error("write error: ", err)
 				}
 				// Requeue the message to be processed when writePump restarts
-				c.send <- whResp
+				c.send <- outMsg
 				c.notifyClose <- err
 
 				return

@@ -330,6 +330,10 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
 	}).Trace("Webhook event trace")
 
+	// at this point the message is valid so we can acknowledge it
+	ackMessage := websocket.NewWebhookEventAck(webhookEvent.WebhookID, webhookEvent.WebhookConversationID)
+	p.webSocketClient.SendMessage(ackMessage)
+
 	if p.filterWebhookEvent(webhookEvent) {
 		return
 	}
