@@ -47,15 +47,34 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 func (m OutgoingMessage) MarshalJSON() ([]byte, error) {
 	if m.WebhookResponse != nil {
 		return json.Marshal(m.WebhookResponse)
-	} else if m.WebhookEventAck != nil {
-		return json.Marshal(m.WebhookEventAck)
+	} else if m.EventAck != nil {
+		return json.Marshal(m.EventAck)
 	}
 
 	return json.Marshal(nil)
 }
 
+// EventAck represents outgoing Ack messages
+// for events received by Stripe.
+type EventAck struct {
+	Type                  string `json:"type"` // always "event_ack"
+	WebhookConversationID string `json:"webhook_conversation_id"`
+	EventID               string `json:"event_id"` // ID of the event
+}
+
+// NewEventAck returns a new EventAck message.
+func NewEventAck(eventID, webhookConversationID string) *OutgoingMessage {
+	return &OutgoingMessage{
+		EventAck: &EventAck{
+			EventID:               eventID,
+			WebhookConversationID: webhookConversationID,
+			Type:                  "event_ack",
+		},
+	}
+}
+
 // OutgoingMessage represents any outgoing message sent to Stripe.
 type OutgoingMessage struct {
 	*WebhookResponse
-	*WebhookEventAck
+	*EventAck
 }
