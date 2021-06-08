@@ -66,30 +66,3 @@ func TestNewWebhookResponse(t *testing.T) {
 	require.Equal(t, "foo", msg.Body)
 	require.Equal(t, "bar", msg.HTTPHeaders["Response-Header"])
 }
-
-func TestMarshalWebhookEventAck(t *testing.T) {
-	msg := NewWebhookEventAck(
-		"wh_123",
-		"wc_123",
-	)
-
-	buf, err := json.Marshal(msg)
-	require.NoError(t, err)
-
-	json := string(buf)
-	require.Equal(t, "wh_123", gjson.Get(json, "webhook_id").String())
-	require.Equal(t, "wc_123", gjson.Get(json, "webhook_conversation_id").String())
-	require.Equal(t, "webhook_event_ack", gjson.Get(json, "type").String())
-}
-
-func TestNewWebhookEventAck(t *testing.T) {
-	msg := NewWebhookEventAck(
-		"wh_123",
-		"wc_123",
-	)
-
-	require.NotNil(t, msg.WebhookEventAck)
-	require.Equal(t, "webhook_event_ack", msg.WebhookEventAck.Type)
-	require.Equal(t, "wh_123", msg.WebhookEventAck.WebhookID)
-	require.Equal(t, "wc_123", msg.WebhookEventAck.WebhookConversationID)
-}

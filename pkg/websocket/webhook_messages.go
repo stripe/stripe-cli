@@ -16,14 +16,6 @@ type WebhookEvent struct {
 	WebhookID             string            `json:"webhook_id"`
 }
 
-// WebhookEventAck represents outgoing Ack message for a webhook event
-// received by Stripe.
-type EventAck struct {
-	EventType             string `json:"type"` // always "event_ack"
-	WebhookConversationID string `json:"webhook_conversation_id"`
-	EventID               string `json:"event_token"` // ID of the webhook event
-}
-
 // WebhookResponse represents outgoing webhook response messages sent to
 // Stripe.
 type WebhookResponse struct {
@@ -47,17 +39,6 @@ func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, sta
 			Body:                  body,
 			HTTPHeaders:           headers,
 			Type:                  "webhook_response",
-		},
-	}
-}
-
-// NewWebhookEventAck returns a new WebhookEventAck message.
-func NewEventAck(eventID, webhookConversationID string) *OutgoingMessage {
-	return &OutgoingMessage{
-		EventAck: &EventAck{
-			EventID:               eventID,
-			WebhookConversationID: webhookConversationID,
-			Type:                  "event_ack",
 		},
 	}
 }
