@@ -59,7 +59,7 @@ func (m OutgoingMessage) MarshalJSON() ([]byte, error) {
 type EventAck struct {
 	Type                  string `json:"type"` // always "event_ack"
 	WebhookConversationID string `json:"webhook_conversation_id"`
-	EventID               string `json:"event_token"` // ID of the webhook event
+	EventID               string `json:"event_id"` // ID of the event
 }
 
 // NewEventAck returns a new EventAck message.

@@ -26,7 +26,7 @@ func TestMarshalWebhookEventAck(t *testing.T) {
 	require.NoError(t, err)
 
 	json := string(buf)
-	require.Equal(t, "wh_123", gjson.Get(json, "event_token").String())
+	require.Equal(t, "wh_123", gjson.Get(json, "event_id").String())
 	require.Equal(t, "wc_123", gjson.Get(json, "webhook_conversation_id").String())
 	require.Equal(t, "event_ack", gjson.Get(json, "type").String())
 }
@@ -41,7 +41,7 @@ func TestMarshalWebhookEventAckRequestLog(t *testing.T) {
 	require.NoError(t, err)
 
 	json := string(buf)
-	require.Equal(t, "wh_123", gjson.Get(json, "event_token").String())
+	require.Equal(t, "wh_123", gjson.Get(json, "event_id").String())
 	require.Equal(t, "", gjson.Get(json, "webhook_conversation_id").String())
 	require.Equal(t, "event_ack", gjson.Get(json, "type").String())
 }
