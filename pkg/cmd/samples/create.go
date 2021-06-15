@@ -37,7 +37,7 @@ func NewCreateCmd(config *config.Config) *CreateCmd {
 		Long: `The create command will locally clone a sample, let you select which integration,
 client, and server you want to run. It then automatically bootstraps the
 local configuration to let you get started faster.`,
-		Example: `stripe samples create adding-sales-tax
+		Example: `stripe samples create accept-a-payment
   stripe samples create react-elements-card-payment my-payments-form`,
 		RunE: createCmd.runCreateCmd,
 	}

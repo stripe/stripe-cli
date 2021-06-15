@@ -53,7 +53,7 @@ func makeRecipe(fs afero.Fs, path string, integrations []string, languages []str
 
 func TestInitialize(t *testing.T) {
 	fs := afero.NewMemMapFs()
-	name := "adding-sales-tax"
+	name := "accept-a-payment"
 
 	sample := Samples{
 		Fs: fs,
@@ -61,10 +61,10 @@ func TestInitialize(t *testing.T) {
 			fs: fs,
 		},
 		SamplesList: map[string]*SampleData{
-			"adding-sales-tax": {
-				Name:        "adding-sales-tax",
-				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
-				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			"accept-a-payment": {
+				Name:        "accept-a-payment",
+				Description: "Learn how to accept a payment",
+				URL:         "https://github.com/stripe-samples/accept-a-payment",
 			},
 		},
 	}
@@ -85,10 +85,10 @@ func TestInitializeFailsWithEmptyName(t *testing.T) {
 			fs: fs,
 		},
 		SamplesList: map[string]*SampleData{
-			"adding-sales-tax": {
-				Name:        "adding-sales-tax",
-				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
-				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			"accept-a-payment": {
+				Name:        "accept-a-payment",
+				Description: "Learn how to accept a payment",
+				URL:         "https://github.com/stripe-samples/accept-a-payment",
 			},
 		},
 	}
@@ -107,10 +107,10 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 			fs: fs,
 		},
 		SamplesList: map[string]*SampleData{
-			"adding-sales-tax": {
-				Name:        "adding-sales-tax",
-				Description: "Learn how to use PaymentIntents to build a simple checkout flow",
-				URL:         "https://github.com/stripe-samples/adding-sales-tax",
+			"accept-a-payment": {
+				Name:        "accept-a-payment",
+				Description: "Learn how to accept a payment",
+				URL:         "https://github.com/stripe-samples/accept-a-payment",
 			},
 		},
 	}
