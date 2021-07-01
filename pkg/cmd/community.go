@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 
