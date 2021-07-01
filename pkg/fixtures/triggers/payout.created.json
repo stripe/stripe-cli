@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "payout",
+      "path": "/v1/payouts",
+      "method": "post",
+      "params": {
+        "amount": 1100,
+        "currency": "usd",
+        "description": "(created by Stripe CLI)"
+      }
+    }
+  ]
+}
