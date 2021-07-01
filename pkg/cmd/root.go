@@ -138,6 +138,7 @@ func init() {
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newPlaybackCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
+	rootCmd.AddCommand(newCommunityCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 
