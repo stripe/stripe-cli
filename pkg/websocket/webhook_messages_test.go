@@ -58,9 +58,9 @@ func TestNewWebhookResponse(t *testing.T) {
 	)
 
 	require.NotNil(t, msg.WebhookResponse)
-	require.Equal(t, "webhook_response", msg.Type)
-	require.Equal(t, "wh_123", msg.WebhookID)
-	require.Equal(t, "wc_123", msg.WebhookConversationID)
+	require.Equal(t, "webhook_response", msg.WebhookResponse.Type)
+	require.Equal(t, "wh_123", msg.WebhookResponse.WebhookID)
+	require.Equal(t, "wc_123", msg.WebhookResponse.WebhookConversationID)
 	require.Equal(t, "http://localhost:5000/webhooks", msg.ForwardURL)
 	require.Equal(t, 200, msg.Status)
 	require.Equal(t, "foo", msg.Body)

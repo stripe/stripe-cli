@@ -15,6 +15,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	_ = resource.NewNamespaceCmd(rootCmd, "")
 	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
 	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
+	nsIdentityCmd := resource.NewNamespaceCmd(rootCmd, "identity")
 	nsIssuingCmd := resource.NewNamespaceCmd(rootCmd, "issuing")
 	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
 	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
@@ -87,6 +88,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
 
 	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
+
+	rIdentityVerificationReportsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_reports")
+	rIdentityVerificationSessionsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_sessions")
 
 	rIssuingAuthorizationsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "authorizations")
 	rIssuingCardholdersCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "cardholders")
@@ -712,7 +716,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_group":              "string",
 	}, &Config)
-	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "attach", "/v1/payment_methods/{payment_method}/attach", http.MethodPost, map[string]string{
 		"customer": "string",
 	}, &Config)
@@ -992,7 +995,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":    "string",
 		"payment_method": "string",
 	}, &Config)
-	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rSkusCmd.Cmd, "create", "/v1/skus", http.MethodPost, map[string]string{
 		"active":   "boolean",
 		"currency": "string",
@@ -1322,6 +1324,32 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"subscription":   "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "list", "/v1/identity/verification_reports", http.MethodGet, map[string]string{
+		"created":              "integer",
+		"ending_before":        "string",
+		"limit":                "integer",
+		"starting_after":       "string",
+		"type":                 "string",
+		"verification_session": "string",
+	}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "retrieve", "/v1/identity/verification_reports/{report}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "cancel", "/v1/identity/verification_sessions/{session}/cancel", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "create", "/v1/identity/verification_sessions", http.MethodPost, map[string]string{
+		"return_url": "string",
+		"type":       "string",
+	}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "list", "/v1/identity/verification_sessions", http.MethodGet, map[string]string{
+		"created":        "integer",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+		"status":         "string",
+	}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "redact", "/v1/identity/verification_sessions/{session}/redact", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "retrieve", "/v1/identity/verification_sessions/{session}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "update", "/v1/identity/verification_sessions/{session}", http.MethodPost, map[string]string{
+		"type": "string",
+	}, &Config)
 	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "approve", "/v1/issuing/authorizations/{authorization}/approve", http.MethodPost, map[string]string{
 		"amount": "integer",
 	}, &Config)
