@@ -23,8 +23,8 @@ func newCommunityCmd() *communityCmd {
 
 	cc.cmd = &cobra.Command{
 		Use:     "community",
+		Aliases: []string{"discord", "chat"},
 		Short:   "Chat with Stripe engineers and other developers",
-		Long:    "Chat with Stripe engineers and other developers in the official Stripe Developer Community Discord server",
 		Example: "stripe community",
 		RunE:    cc.runCommunityCmd,
 	}
