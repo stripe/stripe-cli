@@ -57,7 +57,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 
 		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 	} else {
-		fmt.Printf("Press Enter to open the browser (^C to quit)")
+		fmt.Printf("Press Enter to open the browser or visit %s (^C to quit)", links.BrowserURL)
 		fmt.Fscanln(input)
 
 		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
