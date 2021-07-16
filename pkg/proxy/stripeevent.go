@@ -3,6 +3,8 @@ package proxy
 import "fmt"
 
 // StripeEvent is a representation of a Stripe `event` object
+// we define RequestData as an interface for backwards compatibility
+// Request will hold the deserialized request data
 type StripeEvent struct {
 	Account         string                 `json:"account"`
 	APIVersion      string                 `json:"api_version"`
@@ -10,15 +12,16 @@ type StripeEvent struct {
 	Data            map[string]interface{} `json:"data"`
 	ID              string                 `json:"id"`
 	Livemode        bool                   `json:"livemode"`
-	Request         StripeRequestData      `json:"request"`
 	PendingWebhooks int                    `json:"pending_webhooks"`
 	Type            string                 `json:"type"`
+	RequestData     interface{}            `json:"request"`
+	Request         StripeRequest
 }
 
-// StripeRequestData is a representation of the Request field in a Stripe `event` object
-type StripeRequestData struct {
-	ID             string `json:"id"`
-	IdempotencyKey string `json:"idempotency_key"`
+// StripeRequest is a representation of the Request field in a Stripe `event` object
+type StripeRequest struct {
+	ID             string
+	IdempotencyKey string
 }
 
 // IsConnect return true or false if *StripeEvent is connect or not.

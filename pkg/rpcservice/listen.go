@@ -183,10 +183,18 @@ func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	request := rpc.StripeEvent_Request{
-		Id:             raw.Request.ID,
-		IdempotencyKey: raw.Request.IdempotencyKey,
+
+	reqData, err := proxy.ExtractRequestData(raw.RequestData)
+
+	if err != nil {
+		return nil, err
 	}
+
+	request := rpc.StripeEvent_Request{
+		Id:             reqData.ID,
+		IdempotencyKey: reqData.IdempotencyKey,
+	}
+
 	return &rpc.ListenResponse{
 		Content: &rpc.ListenResponse_StripeEvent{
 			StripeEvent: &rpc.StripeEvent{
