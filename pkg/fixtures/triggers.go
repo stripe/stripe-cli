@@ -62,6 +62,10 @@ var Events = map[string]string{
 	"subscription_schedule.created":            "triggers/subscription_schedule.created.json",
 	"subscription_schedule.released":           "triggers/subscription_schedule.released.json",
 	"subscription_schedule.updated":            "triggers/subscription_schedule.updated.json",
+	"quote.created":                            "triggers/quote.created.json",
+	"quote.canceled":                           "triggers/quote.canceled.json",
+	"quote.finalized":                          "triggers/quote.finalized.json",
+	"quote.accepted":                           "triggers/quote.accepted.json",
 }
 
 // BuildFromFixture creates a new fixture struct for a file
