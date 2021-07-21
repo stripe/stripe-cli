@@ -535,6 +535,7 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 	reqDataValue := reflect.ValueOf(data)
 	// here we check the type of the RequestData as it could be either a string or a map
 	// this depends on which API version is in use when listening to events
+	// versions including and prior to 2017-05-25 present the request field as a string
 	switch reqDataValue.Kind() {
 	case reflect.String:
 		req = StripeRequest{
@@ -545,13 +546,13 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 		reqDataMap := reqDataValue.Interface().(map[string]interface{})
 
 		var id = ""
-		if reqDataMap["id"] != nil {
-			id = reqDataMap["id"].(string)
+		if rawID, ok := reqDataMap["id"]; ok && rawID != nil {
+			id = rawID.(string)
 		}
 
 		var idempotencyKey = ""
-		if reqDataMap["idempotency_key"] != nil {
-			idempotencyKey = reqDataMap["idempotency_key"].(string)
+		if rawKey, ok := reqDataMap["idempotency_key"]; ok && rawKey != nil {
+			idempotencyKey = rawKey.(string)
 		}
 
 		req = StripeRequest{
