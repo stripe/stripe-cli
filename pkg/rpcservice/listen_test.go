@@ -110,9 +110,9 @@ func TestListenStreamsEvents(t *testing.T) {
 							"id": "cs_test_12345",
 						},
 					},
-					Request: proxy.StripeRequestData{
-						ID:             "req_12345",
-						IdempotencyKey: "foo",
+					RequestData: map[string]interface{}{
+						"id":              "req_12345",
+						"idempotency_key": "foo",
 					},
 				},
 			}
@@ -430,9 +430,9 @@ func TestBuildStripeEventResponseSucceeds(t *testing.T) {
 				"id": "cs_test_12345",
 			},
 		},
-		Request: proxy.StripeRequestData{
-			ID:             "req_12345",
-			IdempotencyKey: "foo",
+		RequestData: map[string]interface{}{
+			"id":              "req_12345",
+			"idempotency_key": "foo",
 		},
 	}
 
@@ -459,6 +459,57 @@ func TestBuildStripeEventResponseSucceeds(t *testing.T) {
 				Request: &rpc.StripeEvent_Request{
 					Id:             "req_12345",
 					IdempotencyKey: "foo",
+				},
+			},
+		},
+	}
+
+	actual, err := buildStripeEventResp(raw)
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestBuildLegacyStripeEventResponseSucceeds(t *testing.T) {
+	raw := &proxy.StripeEvent{
+		Account:         "acct_12345",
+		APIVersion:      "2017-04-06",
+		Created:         12345,
+		ID:              "evt_12345",
+		Livemode:        false,
+		PendingWebhooks: 2,
+		Type:            "checkout.session.completed",
+		Data: map[string]interface{}{
+			"object": map[string]interface{}{
+				"id": "cs_test_12345",
+			},
+		},
+		RequestData: "req_12345",
+	}
+
+	expectedData, err := structpb.NewStruct(map[string]interface{}{
+		"object": map[string]interface{}{
+			"id": "cs_test_12345",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create expected event data")
+	}
+
+	expected := &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_StripeEvent{
+			StripeEvent: &rpc.StripeEvent{
+				Id:              "evt_12345",
+				Account:         "acct_12345",
+				ApiVersion:      "2017-04-06",
+				Data:            expectedData,
+				Type:            "checkout.session.completed",
+				Created:         12345,
+				Livemode:        false,
+				PendingWebhooks: 2,
+				Request: &rpc.StripeEvent_Request{
+					Id:             "req_12345",
+					IdempotencyKey: "",
 				},
 			},
 		},

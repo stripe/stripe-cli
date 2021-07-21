@@ -62,9 +62,15 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, err
 	}
 
+	reqData, err := proxy.ExtractRequestData(evt.RequestData)
+
+	if err != nil {
+		return nil, err
+	}
+
 	request := rpc.StripeEvent_Request{
-		Id:             evt.Request.ID,
-		IdempotencyKey: evt.Request.IdempotencyKey,
+		Id:             reqData.ID,
+		IdempotencyKey: reqData.IdempotencyKey,
 	}
 
 	return &rpc.EventsResendResponse{
