@@ -167,7 +167,7 @@ func (c *Client) Run(ctx context.Context) {
 			}).Debug("Resetting the connection")
 			close(c.stopReadPump)
 			close(c.stopWritePump)
-			c.SendCloseFrame(ws.CloseServiceRestart, "Resetting the connection")
+			c.SendCloseFrame(ws.CloseNormalClosure, "Resetting the connection")
 			c.wg.Wait()
 		}
 	}
