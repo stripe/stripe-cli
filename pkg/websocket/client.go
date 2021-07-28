@@ -142,40 +142,32 @@ func (c *Client) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			close(c.send)
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-			c.SendCloseFrame(ws.CloseNormalClosure, "Connection Done")
+			c.Close(ws.CloseNormalClosure, "Connection Done")
 			return
 		case <-c.done:
 			close(c.send)
-			close(c.stopReadPump)
-			close(c.stopWritePump)
 			close(c.NotifyExpired)
-			c.SendCloseFrame(ws.CloseNormalClosure, "Connection Done")
+			c.Close(ws.CloseNormalClosure, "Connection Done")
 			return
 		case <-c.notifyClose:
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.client.Run",
 			}).Debug("Disconnected from Stripe")
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-			c.SendCloseFrame(ws.CloseGoingAway, "Server closed the connection")
+			c.Close(ws.CloseGoingAway, "Server closed the connection")
 			c.wg.Wait()
 		case <-time.After(c.cfg.ReconnectInterval):
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.Run",
 			}).Debug("Resetting the connection")
-			close(c.stopReadPump)
-			close(c.stopWritePump)
-			c.SendCloseFrame(ws.CloseNormalClosure, "Resetting the connection")
+			c.Close(ws.CloseNormalClosure, "Resetting the connection")
 			c.wg.Wait()
 		}
 	}
 }
 
-// SendCloseFrame executes a proper closure handshake then closes the connection
+// Close executes a proper closure handshake then closes the connection
 // list of close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
-func (c *Client) SendCloseFrame(closeCode int, text string) {
+func (c *Client) Close(closeCode int, text string) {
 	if c.conn != nil {
 		message := ws.FormatCloseMessage(closeCode, text)
 
@@ -188,6 +180,8 @@ func (c *Client) SendCloseFrame(closeCode int, text string) {
 		}
 		c.conn.Close()
 	}
+	close(c.stopReadPump)
+	close(c.stopWritePump)
 }
 
 // Stop stops listening for incoming webhook events.
