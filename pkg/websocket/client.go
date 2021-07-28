@@ -144,14 +144,14 @@ func (c *Client) Run(ctx context.Context) {
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
-
+			c.SendCloseFrame(ws.CloseNormalClosure, "Connection Done")
 			return
 		case <-c.done:
 			close(c.send)
 			close(c.stopReadPump)
 			close(c.stopWritePump)
 			close(c.NotifyExpired)
-
+			c.SendCloseFrame(ws.CloseNormalClosure, "Connection Done")
 			return
 		case <-c.notifyClose:
 			c.cfg.Log.WithFields(log.Fields{
@@ -159,6 +159,7 @@ func (c *Client) Run(ctx context.Context) {
 			}).Debug("Disconnected from Stripe")
 			close(c.stopReadPump)
 			close(c.stopWritePump)
+			c.SendCloseFrame(ws.CloseGoingAway, "Server closed the connection")
 			c.wg.Wait()
 		case <-time.After(c.cfg.ReconnectInterval):
 			c.cfg.Log.WithFields(log.Fields{
@@ -166,13 +167,26 @@ func (c *Client) Run(ctx context.Context) {
 			}).Debug("Resetting the connection")
 			close(c.stopReadPump)
 			close(c.stopWritePump)
-
-			if c.conn != nil {
-				c.conn.Close() // #nosec G104
-			}
-
+			c.SendCloseFrame(ws.CloseServiceRestart, "Resetting the connection")
 			c.wg.Wait()
 		}
+	}
+}
+
+// SendCloseFrame executes a proper closure handshake then closes the connection
+// list of close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
+func (c *Client) SendCloseFrame(closeCode int, text string) {
+	if c.conn != nil {
+		message := ws.FormatCloseMessage(closeCode, text)
+
+		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(time.Second))
+		if err != nil {
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.Client.Run",
+				"error":  err,
+			}).Debug("Error while trying to send close frame")
+		}
+		c.conn.Close()
 	}
 }
 
