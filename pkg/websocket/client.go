@@ -521,7 +521,7 @@ const (
 
 	defaultCloseDelayPeriod = 10 * time.Second
 
-	defaultWriteWait = 10 * time.Second
+	defaultWriteWait = 1 * time.Second
 )
 
 //
