@@ -40,6 +40,9 @@ type Config struct {
 	// Interval at which the websocket client should reset the connection
 	ReconnectInterval time.Duration
 
+	// Duration to wait before closing connection
+	CloseDelayPeriod time.Duration
+
 	WriteWait time.Duration
 
 	EventHandler EventHandler
@@ -171,13 +174,14 @@ func (c *Client) Close(closeCode int, text string) {
 	if c.conn != nil {
 		message := ws.FormatCloseMessage(closeCode, text)
 
-		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(time.Second))
+		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(c.cfg.WriteWait))
 		if err != nil {
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.Run",
 				"error":  err,
 			}).Debug("Error while trying to send close frame")
 		}
+		time.Sleep(c.cfg.CloseDelayPeriod)
 		c.conn.Close()
 	}
 	close(c.stopReadPump)
@@ -481,6 +485,10 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		cfg.ReconnectInterval = defaultReconnectInterval
 	}
 
+	if cfg.CloseDelayPeriod == 0 {
+		cfg.CloseDelayPeriod = defaultCloseDelayPeriod
+	}
+
 	if cfg.WriteWait == 0 {
 		cfg.WriteWait = defaultWriteWait
 	}
@@ -510,6 +518,8 @@ const (
 	defaultPongWait = 10 * time.Second
 
 	defaultReconnectInterval = 60 * time.Second
+
+	defaultCloseDelayPeriod = 10 * time.Second
 
 	defaultWriteWait = 10 * time.Second
 )
