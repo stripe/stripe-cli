@@ -171,6 +171,8 @@ func (c *Client) Run(ctx context.Context) {
 // Close executes a proper closure handshake then closes the connection
 // list of close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
 func (c *Client) Close(closeCode int, text string) {
+	close(c.stopReadPump)
+	close(c.stopWritePump)
 	if c.conn != nil {
 		message := ws.FormatCloseMessage(closeCode, text)
 
@@ -184,8 +186,6 @@ func (c *Client) Close(closeCode int, text string) {
 		time.Sleep(c.cfg.CloseDelayPeriod)
 		c.conn.Close()
 	}
-	close(c.stopReadPump)
-	close(c.stopWritePump)
 }
 
 // Stop stops listening for incoming webhook events.
