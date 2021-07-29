@@ -519,7 +519,7 @@ const (
 
 	defaultReconnectInterval = 60 * time.Second
 
-	defaultCloseDelayPeriod = 10 * time.Second
+	defaultCloseDelayPeriod = 1 * time.Second
 
 	defaultWriteWait = 1 * time.Second
 )
