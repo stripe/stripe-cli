@@ -227,6 +227,23 @@ func TestParseWithEnvFile(t *testing.T) {
 	fs.Remove(envPath)
 }
 
+func TestParseWithEnvSubstring(t *testing.T) {
+	fs := afero.NewOsFs()
+	wd, _ := os.Getwd()
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte(`BASE_API_URL="https://myexample.com"`), os.ModePerm)
+
+	fxt := Fixture{}
+	data := make(map[string]interface{})
+	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
+	output, _ := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
+
+	fs.Remove(envPath)
+}
+
 func TestMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -476,42 +493,42 @@ func TestToFixtureQuery(t *testing.T) {
 		},
 		{
 			"/v1/charges/${char_bender:id}/capture",
-			fixtureQuery{"char_bender", "id", ""},
+			fixtureQuery{"${char_bender:id}", "char_bender", "id", ""},
 			true,
 		},
 		{
 			"${.env:PHONE_NOT_SET|+1234567890}",
-			fixtureQuery{".env", "PHONE_NOT_SET", "+1234567890"},
+			fixtureQuery{"${.env:PHONE_NOT_SET|+1234567890}", ".env", "PHONE_NOT_SET", "+1234567890"},
 			true,
 		},
 		{
 			"/v1/customers/${.env:CUST_ID}",
-			fixtureQuery{".env", "CUST_ID", ""},
+			fixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
 			true,
 		},
 		{
 			"${.env:CUST_ID}",
-			fixtureQuery{".env", "CUST_ID", ""},
+			fixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
 			true,
 		},
 		{
 			"${cust_bender:subscriptions.data.[0].id}",
-			fixtureQuery{"cust_bender", "subscriptions.data.[0].id", ""},
+			fixtureQuery{"${cust_bender:subscriptions.data.[0].id}", "cust_bender", "subscriptions.data.[0].id", ""},
 			true,
 		},
 		{
 			"${cust_bender:subscriptions.data.[0].name|Unknown Person}",
-			fixtureQuery{"cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
+			fixtureQuery{"${cust_bender:subscriptions.data.[0].name|Unknown Person}", "cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
 			true,
 		},
 		{
 			"${cust_bender:billing_details.address.country}",
-			fixtureQuery{"cust_bender", "billing_details.address.country", ""},
+			fixtureQuery{"${cust_bender:billing_details.address.country}", "cust_bender", "billing_details.address.country", ""},
 			true,
 		},
 		{
 			"${cust_bender:billing_details.address.country|San Mateo}",
-			fixtureQuery{"cust_bender", "billing_details.address.country", "San Mateo"},
+			fixtureQuery{"${cust_bender:billing_details.address.country|San Mateo}", "cust_bender", "billing_details.address.country", "San Mateo"},
 			true,
 		},
 	}
