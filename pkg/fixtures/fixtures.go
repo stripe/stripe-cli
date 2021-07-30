@@ -44,7 +44,7 @@ type fixture struct {
 }
 
 type fixtureQuery struct {
-	Match        string
+	Match        string // The substring that matched the query pattern regex
 	Name         string
 	Query        string
 	DefaultValue string
@@ -401,7 +401,8 @@ func (fxt *Fixture) parseQuery(queryString string) (string, error) {
 				return value, nil
 			}
 
-			fmt.Printf("value:  %s\n", value)
+			// Handle the case where only a substring of the original queryString was a query.
+			// Ex: ${.env:BLAH}/blah/blah
 			value = strings.ReplaceAll(queryString, query.Match, envValue)
 			return value, nil
 		}
