@@ -44,6 +44,7 @@ type fixture struct {
 }
 
 type fixtureQuery struct {
+	Match        string // The substring that matched the query pattern regex
 	Name         string
 	Query        string
 	DefaultValue string
@@ -381,8 +382,10 @@ func findSimilarQueryNames(fxt *Fixture, name string) ([]string, bool) {
 	return keys, len(keys) > 0
 }
 
-func (fxt *Fixture) parseQuery(value string) (string, error) {
-	if query, isQuery := toFixtureQuery(value); isQuery {
+func (fxt *Fixture) parseQuery(queryString string) (string, error) {
+	value := queryString
+
+	if query, isQuery := toFixtureQuery(queryString); isQuery {
 		name := query.Name
 
 		// Check if there is a default value specified
@@ -392,26 +395,16 @@ func (fxt *Fixture) parseQuery(value string) (string, error) {
 
 		// Catch and insert .env values
 		if name == ".env" {
-			key := query.Query
 			// Check if env variable is present
-			envValue := os.Getenv(key)
-			if envValue == "" {
-				// Try to load from .env file
-				dir, err := os.Getwd()
-				if err != nil {
-					dir = ""
-				}
-				err = godotenv.Load(path.Join(dir, ".env"))
-				if err != nil {
-					return value, nil
-				}
-				envValue = os.Getenv(key)
-			}
-			if envValue == "" {
-				fmt.Printf("No value for env var: %s\n", key)
+			envValue, err := getEnvVar(query)
+			if err != nil || envValue == "" {
 				return value, nil
 			}
-			return envValue, nil
+
+			// Handle the case where only a substring of the original queryString was a query.
+			// Ex: ${.env:BLAH}/blah/blah
+			value = strings.ReplaceAll(queryString, query.Match, envValue)
+			return value, nil
 		}
 
 		if _, ok := fxt.responses[name]; ok {
@@ -452,6 +445,30 @@ func (fxt *Fixture) parseQuery(value string) (string, error) {
 	}
 
 	return value, nil
+}
+
+func getEnvVar(query fixtureQuery) (string, error) {
+	key := query.Query
+	// Check if env variable is present
+	envValue := os.Getenv(key)
+	if envValue == "" {
+		// Try to load from .env file
+		dir, err := os.Getwd()
+		if err != nil {
+			dir = ""
+		}
+		err = godotenv.Load(path.Join(dir, ".env"))
+		if err != nil {
+			return "", nil
+		}
+		envValue = os.Getenv(key)
+	}
+	if envValue == "" {
+		fmt.Printf("No value for env var: %s\n", key)
+		return "", nil
+	}
+
+	return envValue, nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
@@ -506,7 +523,7 @@ func toFixtureQuery(value string) (fixtureQuery, bool) {
 	if r, didMatch := matchFixtureQuery(value); didMatch {
 		isQuery = true
 		match := r.FindStringSubmatch(value)
-		query = fixtureQuery{Name: match[1], Query: match[2], DefaultValue: match[3]}
+		query = fixtureQuery{Match: match[0], Name: match[1], Query: match[2], DefaultValue: match[3]}
 	}
 
 	return query, isQuery
