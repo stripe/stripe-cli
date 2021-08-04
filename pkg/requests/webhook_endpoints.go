@@ -17,6 +17,7 @@ type WebhookEndpoint struct {
 	Application   string   `json:"application"`
 	EnabledEvents []string `json:"enabled_events"`
 	URL           string   `json:"url"`
+	Status        string   `json:"status"`
 }
 
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
