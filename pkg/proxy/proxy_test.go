@@ -61,16 +61,17 @@ func TestBuildEndpointRoutes(t *testing.T) {
 		Status:        "enabled",
 	}
 
-	endpointDisabled := requests.WebhookEndpoint{
-		URL:         "https://test-app-url/stripe/payment-webhook",
-		Application: "ca_123",
-		EnabledEvents: []string{"payment_intent.payment_failed",
-			"payment_intent.succeeded"},
-		Status: "disabled",
-	}
+	// endpointDisabled := requests.WebhookEndpoint{
+	// 	URL:         "https://test-app-url/stripe/payment-webhook",
+	// 	Application: "ca_123",
+	// 	EnabledEvents: []string{"payment_intent.payment_failed",
+	// 		"payment_intent.succeeded"},
+	// 	Status: "disabled",
+	// }
 
 	endpointList := requests.WebhookEndpointList{
-		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect, endpointDisabled},
+		//Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect, endpointDisabled},
+		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect},
 	}
 
 	output, err := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})
