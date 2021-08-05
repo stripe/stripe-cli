@@ -42,6 +42,9 @@ type EndpointRoute struct {
 
 	// EventTypes is the list of event types that should be sent to the endpoint.
 	EventTypes []string
+
+	// Status is whether or not the endpoint is enabled.
+	Status string
 }
 
 // EndpointResponse describes the response to a Stripe event from an endpoint
@@ -661,6 +664,11 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 	endpointRoutes := make([]EndpointRoute, 0)
 
 	for _, endpoint := range endpoints.Data {
+		// Ensure the endpoint is enabled.
+		if endpoint.Status == "disabled" {
+			continue
+		}
+
 		u, err := url.Parse(endpoint.URL)
 		// Silently skip over invalid paths
 		if err == nil {
@@ -676,6 +684,7 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 					ForwardHeaders: forwardHeaders,
 					Connect:        false,
 					EventTypes:     endpoint.EnabledEvents,
+					Status:         endpoint.Status,
 				})
 			} else {
 				url, err := buildForwardURL(forwardConnectURL, u)

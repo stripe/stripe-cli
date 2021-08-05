@@ -51,16 +51,26 @@ func TestBuildEndpointRoutes(t *testing.T) {
 		URL:           "https://planetexpress.com/hooks",
 		Application:   "",
 		EnabledEvents: []string{"*"},
+		Status:        "enabled",
 	}
 
 	endpointConnect := requests.WebhookEndpoint{
 		URL:           "https://planetexpress.com/connect-hooks",
 		Application:   "ca_123",
 		EnabledEvents: []string{"*"},
+		Status:        "enabled",
+	}
+
+	endpointDisabled := requests.WebhookEndpoint{
+		URL:         "https://test-app-url/stripe/payment-webhook",
+		Application: "ca_123",
+		EnabledEvents: []string{"payment_intent.payment_failed",
+			"payment_intent.succeeded"},
+		Status: "disabled",
 	}
 
 	endpointList := requests.WebhookEndpointList{
-		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect},
+		Data: []requests.WebhookEndpoint{endpointNormal, endpointConnect, endpointDisabled},
 	}
 
 	output, err := buildEndpointRoutes(endpointList, localURL, localURL, []string{"Host: hostname"}, []string{"Host: connecthostname"})
