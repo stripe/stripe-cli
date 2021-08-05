@@ -665,7 +665,7 @@ func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, for
 
 	for _, endpoint := range endpoints.Data {
 		// Ensure the endpoint is enabled.
-		if endpoint.Status == "enable" {
+		if endpoint.Status == "disabled" {
 			continue
 		}
 
