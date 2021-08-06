@@ -453,6 +453,14 @@ func Init(cfg *Config) (*Proxy, error) {
 		}
 	}
 
+	// build from --forward-to urls if --forward-connect-to was not provided
+	if len(cfg.ForwardConnectURL) == 0 {
+		cfg.ForwardConnectURL = cfg.ForwardURL
+	}
+	if len(cfg.ForwardConnectHeaders) == 0 {
+		cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+	}
+
 	// build endpoint routes
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
@@ -467,13 +475,6 @@ func Init(cfg *Config) (*Proxy, error) {
 			return nil, err
 		}
 	} else {
-		// build from --forward-to urls
-		if len(cfg.ForwardConnectURL) == 0 {
-			cfg.ForwardConnectURL = cfg.ForwardURL
-		}
-		if len(cfg.ForwardConnectHeaders) == 0 {
-			cfg.ForwardConnectHeaders = cfg.ForwardHeaders
-		}
 		if len(cfg.ForwardURL) > 0 {
 			// non-connect endpoints
 			endpointRoutes = append(endpointRoutes, EndpointRoute{
@@ -482,8 +483,7 @@ func Init(cfg *Config) (*Proxy, error) {
 				Connect:        false,
 				EventTypes:     cfg.Events,
 			})
-		}
-		if len(cfg.ForwardConnectURL) > 0 {
+			
 			// connect endpoints
 			endpointRoutes = append(endpointRoutes, EndpointRoute{
 				URL:            parseURL(cfg.ForwardConnectURL),
