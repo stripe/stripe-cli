@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -325,15 +324,6 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 		return
 	}
 
-	req, err := ExtractRequestData(evt.RequestData)
-
-	if err != nil {
-		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
-		return
-	}
-
-	evt.Request = req
-
 	p.cfg.Log.WithFields(log.Fields{
 		"prefix":                  "proxy.Proxy.processWebhookEvent",
 		"webhook_id":              webhookEvent.WebhookID,
@@ -528,44 +518,6 @@ func Init(cfg *Config) (*Proxy, error) {
 	}
 
 	return p, nil
-}
-
-// ExtractRequestData takes an interface with request data from a Stripe event payload
-// and properly parses it into a StripeRequest struct before returning it
-func ExtractRequestData(data interface{}) (StripeRequest, error) {
-	var req StripeRequest
-
-	reqDataValue := reflect.ValueOf(data)
-	// here we check the type of the RequestData as it could be either a string or a map
-	// this depends on which API version is in use when listening to events
-	// versions including and prior to 2017-05-25 present the request field as a string
-	switch reqDataValue.Kind() {
-	case reflect.String:
-		req = StripeRequest{
-			ID:             data.(string),
-			IdempotencyKey: "",
-		}
-	case reflect.Map:
-		reqDataMap := reqDataValue.Interface().(map[string]interface{})
-
-		var id = ""
-		if rawID, ok := reqDataMap["id"]; ok && rawID != nil {
-			id = rawID.(string)
-		}
-
-		var idempotencyKey = ""
-		if rawKey, ok := reqDataMap["idempotency_key"]; ok && rawKey != nil {
-			idempotencyKey = rawKey.(string)
-		}
-
-		req = StripeRequest{
-			ID:             id,
-			IdempotencyKey: idempotencyKey,
-		}
-	default:
-		return StripeRequest{}, errors.New("Received malformed event from Stripe")
-	}
-	return req, nil
 }
 
 //
