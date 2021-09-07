@@ -18,6 +18,10 @@ type FixturesCmd struct {
 	Cfg *config.Config
 
 	stripeAccount string
+	skip          []string
+	override      []string
+	add           []string
+	remove        []string
 }
 
 func newFixturesCmd(cfg *config.Config) *FixturesCmd {
@@ -34,6 +38,10 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	}
 
 	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.skip, "skip", []string{}, "Skip specific steps in the fixture")
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.override, "override", []string{}, "Override parameters in the fixture")
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.add, "add", []string{}, "Add parameters in the fixture")
+	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.remove, "remove", []string{}, "Remove parameters from the fixture")
 
 	return fixturesCmd
 }
@@ -54,6 +62,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		afero.NewOsFs(),
 		apiKey,
 		fc.stripeAccount,
+		fc.skip,
 		stripe.DefaultAPIBaseURL,
 		args[0],
 	)
@@ -61,7 +70,20 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if len(fc.override) != 0 {
+		fixture.Override(fc.override)
+	}
+
+	if len(fc.add) != 0 {
+		fixture.Add(fc.add)
+	}
+
+	if len(fc.remove) != 0 {
+		fixture.Remove(fc.remove)
+	}
+
 	_, err = fixture.Execute()
+
 	if err != nil {
 		return err
 	}

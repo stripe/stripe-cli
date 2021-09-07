@@ -1,23 +1,20 @@
 package fixtures
 
 import (
-	"encoding/json"
-	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/thedevsaddam/gojsonq"
+	"github.com/tidwall/gjson"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 const testFixture = `
@@ -63,186 +60,27 @@ const testFixture = `
 const failureTestFixture = `
 {
 	"_meta": {
-	  "template_version": 0
+		"template_version": 0
 	},
 	"fixtures": [
-	  {
-		"name": "charge_expected_failure",
-		"expected_error_type": "card_error",
-		"path": "/v1/charges",
-		"method": "post",
-		"params": {
-		  "source": "tok_chargeDeclined",
-		  "amount": 100,
-		  "currency": "usd",
-		  "description": "(created by Stripe CLI)"
-		}
-	  }
+		{
+			"name": "charge_expected_failure",
+			"expected_error_type": "card_error",
+			"path": "/v1/charges",
+			"method": "post",
+			"params": {
+				"source": "tok_chargeDeclined",
+				"amount": 100,
+				"currency": "usd",
+				"description": "(created by Stripe CLI)"
+			}
+	 	}
 	]
-  }`
+}`
 
-func TestParseInterfaceFromRaw(t *testing.T) {
-	var rawFixtureData = []byte(`{
-		"salary": 1000000000,
-		"email": "person@example.com"
-	}`)
-
-	parsedFixtureData := make(map[string]interface{})
-	json.Unmarshal(rawFixtureData, &parsedFixtureData)
-
-	fxt := Fixture{}
-
-	output, _ := (fxt.parseInterface(parsedFixtureData))
-	sort.Strings(output)
-
-	require.Equal(t, len(output), 2)
-	require.Equal(t, output[0], "email=person@example.com")
-	require.Equal(t, output[1], "salary=1000000000")
-}
-
-func TestParseInterface(t *testing.T) {
-	address := make(map[string]interface{})
-	address["line1"] = "1 Planet Express St"
-	address["city"] = "New New York"
-
-	// array of hashes
-	taxIDData := make([]interface{}, 2)
-	taxIDZero := make(map[string]interface{})
-	taxIDZero["type"] = "type_0"
-	taxIDZero["value"] = "value_0"
-	taxIDOne := make(map[string]interface{})
-	taxIDOne["type"] = "type_1"
-	taxIDOne["value"] = "value_1"
-	taxIDData[0] = taxIDZero
-	taxIDData[1] = taxIDOne
-
-	data := make(map[string]interface{})
-	data["name"] = "Bender Bending Rodriguez"
-	data["email"] = "bender@planex.com"
-	data["address"] = address
-	data["tax_id_data"] = taxIDData
-	fxt := Fixture{}
-
-	output, _ := (fxt.parseInterface(data))
-	sort.Strings(output)
-
-	require.Equal(t, len(output), 8)
-	require.Equal(t, output[0], "address[city]=New New York")
-	require.Equal(t, output[1], "address[line1]=1 Planet Express St")
-	require.Equal(t, output[2], "email=bender@planex.com")
-	require.Equal(t, output[3], "name=Bender Bending Rodriguez")
-	require.Equal(t, output[4], "tax_id_data[0][type]=type_0")
-	require.Equal(t, output[5], "tax_id_data[0][value]=value_0")
-	require.Equal(t, output[6], "tax_id_data[1][type]=type_1")
-	require.Equal(t, output[7], "tax_id_data[1][value]=value_1")
-}
-
-func TestParseWithQueryIgnoreDefault(t *testing.T) {
-	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789", "currency": "eur"}`)
-
-	fxt := Fixture{}
-	fxt.responses = make(map[string]*gojsonq.JSONQ)
-	fxt.responses["cust_bender"] = jsonData
-
-	data := make(map[string]interface{})
-	data["customer"] = "${cust_bender:id}"
-	data["source"] = "tok_visa"
-	data["amount"] = "100"
-	data["currency"] = "${cust_bender:currency|usd}"
-
-	output, _ := (fxt.parseInterface(data))
-	sort.Strings(output)
-
-	require.Equal(t, len(output), 4)
-	require.Equal(t, "amount=100", output[0])
-	require.Equal(t, "currency=eur", output[1])
-	require.Equal(t, "customer=cust_bend123456789", output[2])
-	require.Equal(t, "source=tok_visa", output[3])
-}
-
-func TestParseWithQueryDefaultValue(t *testing.T) {
-	jsonData := gojsonq.New().JSONString(`{"id": "cust_bend123456789"}`)
-
-	fxt := Fixture{}
-	fxt.responses = make(map[string]*gojsonq.JSONQ)
-	fxt.responses["cust_bender"] = jsonData
-
-	data := make(map[string]interface{})
-	data["currency"] = "${cust_bender:currency|usd}"
-
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "currency=usd", output[0])
-}
-
-func TestParseNoEnv(t *testing.T) {
-	fxt := Fixture{}
-	data := make(map[string]interface{})
-	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
-
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "phone=+1234567890", output[0])
-}
-
-func TestParseWithLocalEnv(t *testing.T) {
-	fxt := Fixture{}
-	data := make(map[string]interface{})
-	data["phone"] = "${.env:PHONE_LOCAL|+1234567890}"
-
-	os.Setenv("CUST_ID", "cust_12345")
-	os.Setenv("PHONE_LOCAL", "+1234")
-
-	http := fixture{
-		Path: "/v1/customers/${.env:CUST_ID}",
-	}
-
-	path, _ := fxt.parsePath(http)
-	assert.Equal(t, "/v1/customers/cust_12345", path)
-
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "phone=+1234", output[0])
-
-	os.Unsetenv("PHONE_LOCAL")
-}
-
-func TestParseWithEnvFile(t *testing.T) {
-	fs := afero.NewOsFs()
-	wd, _ := os.Getwd()
-	envPath := path.Join(wd, ".env")
-	afero.WriteFile(fs, envPath, []byte(`PHONE_FILE="+1234"`), os.ModePerm)
-
-	fxt := Fixture{}
-	data := make(map[string]interface{})
-	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "phone=+1234", output[0])
-
-	fs.Remove(envPath)
-}
-
-func TestParseWithEnvSubstring(t *testing.T) {
-	fs := afero.NewOsFs()
-	wd, _ := os.Getwd()
-	envPath := path.Join(wd, ".env")
-	afero.WriteFile(fs, envPath, []byte(`BASE_API_URL="https://myexample.com"`), os.ModePerm)
-
-	fxt := Fixture{}
-	data := make(map[string]interface{})
-	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
-
-	fs.Remove(envPath)
-}
+const customersPath = "/v1/customers"
+const chargePath = "/v1/charges"
+const capturePath = "/v1/charges/char_12345/capture"
 
 func TestMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
@@ -263,7 +101,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	_, err = fxt.Execute()
@@ -273,15 +111,169 @@ func TestMakeRequest(t *testing.T) {
 	require.NotNil(t, fxt.responses["char_bender"])
 	require.NotNil(t, fxt.responses["capt_bender"])
 
-	// After you make a `Find` request you need `Reset` the gojsonq object
-	fxt.responses["cust_bender"].Reset()
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Find("id"))
+	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").String())
+	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").String())
+	require.True(t, fxt.responses["char_bender"].Get("charge").Bool())
+}
 
-	fxt.responses["char_bender"].Reset()
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Find("id"))
+func TestWithSkipMakeRequest(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case customersPath:
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
 
-	fxt.responses["char_bender"].Reset()
-	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{"char_bender", "capt_bender"}, ts.URL, "test_fixture.json")
+	require.NoError(t, err)
+
+	_, err = fxt.Execute()
+	require.NoError(t, err)
+
+	require.True(t, fxt.responses["cust_bender"].Exists())
+	require.False(t, fxt.responses["char_bender"].Exists())
+	require.False(t, fxt.responses["capt_bender"].Exists())
+}
+
+func TestMakeRequestWithOverride(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case customersPath:
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.True(t, strings.Contains(string(body), "name=Fry"))
+			require.False(t, strings.Contains(string(body), "name=Bender"))
+		case chargePath:
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.True(t, strings.Contains(string(body), "amount=3000"))
+			require.False(t, strings.Contains(string(body), "amount=100"))
+		case capturePath:
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Override([]string{"cust_bender:name=Fry"})
+	fxt.Override([]string{"char_bender:amount=3000"})
+	require.NoError(t, err)
+
+	_, err = fxt.Execute()
+	require.NoError(t, err)
+}
+
+func TestMakeRequestWithAdd(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case customersPath:
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.True(t, strings.Contains(string(body), "birthdate=2996-09-04"))
+		case chargePath:
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.True(t, strings.Contains(string(body), "receipt_email=prof.farnsworth%40planex.com"))
+		case capturePath:
+			// Do nothing, we just want to verify this request came in
+			res.Write([]byte(`{}`))
+
+			require.True(t, strings.Contains(string(body), "statement_descriptor=Fuel%3A+Beer"))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Add([]string{"cust_bender:birthdate=2996-09-04"})
+	fxt.Add([]string{"char_bender:receipt_email=prof.farnsworth@planex.com"})
+	fxt.Add([]string{"capt_bender:statement_descriptor=Fuel: Beer"})
+	require.NoError(t, err)
+
+	_, err = fxt.Execute()
+	require.NoError(t, err)
+}
+
+func TestParseWithEnvSubstring(t *testing.T) {
+	fs := afero.NewOsFs()
+	wd, _ := os.Getwd()
+	envPath := path.Join(wd, ".env")
+	afero.WriteFile(fs, envPath, []byte(`BASE_API_URL="https://myexample.com"`), os.ModePerm)
+
+	fxt := Fixture{}
+	data := make(map[string]interface{})
+	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
+	output, _ := (fxt.parseInterface(data))
+
+	require.Equal(t, len(output), 1)
+	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
+
+	fs.Remove(envPath)
+}
+
+func TestMakeRequestWithRemove(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Errorf("Failure with request body: %s", err)
+		}
+
+		switch url := req.URL.String(); url {
+		case customersPath:
+			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
+
+			require.False(t, strings.Contains(string(body), "phone"))
+		case chargePath:
+			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
+
+			require.False(t, strings.Contains(string(body), "capture"))
+		case capturePath:
+			// Do nothing, we just want to verify this request came in
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
+
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
+	fxt.Remove([]string{"cust_bender:phone"})
+	fxt.Remove([]string{"char_bender:capture"})
+	require.NoError(t, err)
+
+	_, err = fxt.Execute()
+	require.NoError(t, err)
 }
 
 func TestMakeRequestExpectedFailure(t *testing.T) {
@@ -293,7 +285,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	_, err = fxt.Execute()
@@ -310,155 +302,20 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "failured_test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "failured_test_fixture.json")
 	require.NoError(t, err)
 
 	_, err = fxt.Execute()
 	require.NotNil(t, err)
 }
 
-func TestParsePathDoNothing(t *testing.T) {
-	fxt := Fixture{}
-	http := fixture{
-		Path: "/v1/charges",
-	}
-
-	path, _ := fxt.parsePath(http)
-	assert.Equal(t, http.Path, path)
-}
-
-func TestParseOneParam(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-	http := fixture{
-		Path: "/v1/charges/${char_bender:id}",
-	}
-
-	path, _ := fxt.parsePath(http)
-	assert.Equal(t, "/v1/charges/cust_12345", path)
-}
-
-func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-	http := fixture{
-		Path: "/v1/charges/${char:id}",
-	}
-
-	_, err := fxt.parsePath(http)
-
-	color := ansi.Color(os.Stdout)
-	expected := fmt.Errorf(
-		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
-		color.Red("✘ Validation error").String(),
-		ansi.Bold("char"),
-	)
-
-	assert.Equal(t, expected, err)
-}
-
-func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-	http := fixture{
-		Path: "/v1/charges/${foo:id}",
-	}
-
-	_, err := fxt.parsePath(http)
-
-	color := ansi.Color(os.Stdout)
-	expected := fmt.Errorf(
-		"%s - an undeclared fixture name was referenced: %s",
-		color.Red("✘ Validation error").String(),
-		ansi.Bold("foo"),
-	)
-
-	assert.Equal(t, expected, err)
-}
-
-func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-
-	_, err := fxt.parseQuery("${bender:id}")
-
-	color := ansi.Color(os.Stdout)
-	expected := fmt.Errorf(
-		"%s - an undeclared fixture name was referenced: %s\nPerhaps you meant one of the following: char_bender",
-		color.Red("✘ Validation error").String(),
-		ansi.Bold("bender"),
-	)
-
-	assert.Equal(t, expected, err)
-}
-
-func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-
-	_, err := fxt.parseQuery("${foo:id}")
-
-	color := ansi.Color(os.Stdout)
-	expected := fmt.Errorf(
-		"%s - an undeclared fixture name was referenced: %s",
-		color.Red("✘ Validation error").String(),
-		ansi.Bold("foo"),
-	)
-
-	assert.Equal(t, expected, err)
-}
-
-func TestParseOneParamWithTrailing(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
-		},
-	}
-	http := fixture{
-		Path: "/v1/charges/${char_bender:id}/capture",
-	}
-
-	path, _ := fxt.parsePath(http)
-	assert.Equal(t, "/v1/charges/char_12345/capture", path)
-}
-
-func TestParseTwoParam(t *testing.T) {
-	fxt := Fixture{
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
-			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
-		},
-	}
-	http := fixture{
-		Path: "/v1/charges/${char_bender:id}/capture/${cust_bender:id}",
-	}
-
-	path, _ := fxt.parsePath(http)
-	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
-}
-
 func TestUpdateEnv(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	fxt := Fixture{
 		Fs: fs,
-		responses: map[string]*gojsonq.JSONQ{
-			"char_bender": gojsonq.New().FromString(`{"id": "char_12345"}`),
-			"cust_bender": gojsonq.New().FromString(`{"id": "cust_12345"}`),
+		responses: map[string]gjson.Result{
+			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
+			"cust_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 
@@ -544,11 +401,11 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
-		case "/v1/customers":
+		case customersPath:
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
-		case "/v1/charges":
+		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
-		case "/v1/charges/char_12345/capture":
+		case capturePath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -559,7 +416,7 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 
 	afero.WriteFile(fs, "test_fixture.json", []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, "sk_test_1234", "", ts.URL, "test_fixture.json")
+	fxt, err := NewFixture(fs, "sk_test_1234", "", []string{}, ts.URL, "test_fixture.json")
 	require.NoError(t, err)
 
 	requestNames, err := fxt.Execute()
@@ -569,15 +426,9 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 	require.NotNil(t, fxt.responses["char_bender"])
 	require.NotNil(t, fxt.responses["capt_bender"])
 
-	// After you make a `Find` request you need `Reset` the gojsonq object
-	fxt.responses["cust_bender"].Reset()
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Find("id"))
-
-	fxt.responses["char_bender"].Reset()
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Find("id"))
-
-	fxt.responses["char_bender"].Reset()
-	require.True(t, fxt.responses["char_bender"].Find("charge").(bool))
+	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").Str)
+	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").Str)
+	require.Equal(t, "", fxt.responses["char_bender"].Get("charge").Str)
 
 	expectedResponseNames := []string{"cust_bender", "char_bender", "capt_bender"}
 	assert.Equal(t, expectedResponseNames, requestNames)
