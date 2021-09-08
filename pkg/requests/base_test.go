@@ -189,6 +189,12 @@ func TestCreateOrNormalizePath(t *testing.T) {
 	result, _ = createOrNormalizePath("cs_test_12345")
 	require.Equal(t, "/v1/checkout/sessions/cs_test_12345", result)
 
+	result, _ = createOrNormalizePath("cs_live_12345")
+	require.Equal(t, "/v1/checkout/sessions/cs_live_12345", result)
+
+	result, _ = createOrNormalizePath("sub_sched_12345")
+	require.Equal(t, "/v1/subscription_schedules/sub_sched_12345", result)
+
 	result, _ = createOrNormalizePath("/v1/charges")
 	require.Equal(t, "/v1/charges", result)
 
