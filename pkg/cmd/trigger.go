@@ -76,7 +76,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	event := args[0]
 
-	_, err := fixtures.Trigger(event, tc.stripeAccount, tc.skip, tc.override, tc.add, tc.remove, tc.apiBaseURL, &Config)
+	_, err := fixtures.Trigger(event, tc.stripeAccount, tc.skip, tc.override, tc.add, tc.remove, tc.apiBaseURL, apiKey)
 	if err != nil {
 		return err
 	}

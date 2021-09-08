@@ -120,7 +120,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(event string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, baseURL string, config *config.Config) ([]string, error) {
+func Trigger(event string, stripeAccount string, skip []string, overrides []string, additions []string, removals []string, baseURL string, apiKey string) ([]string, error) {
 	fs := afero.NewOsFs()
 
 	var fixture *Fixture

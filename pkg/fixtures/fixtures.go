@@ -136,7 +136,7 @@ func (fxt *Fixture) Add(additions []string) {
 	}
 }
 
-// Remove todo implement - removes fields from the fixture
+// Remove removes fields from the fixture
 func (fxt *Fixture) Remove(removals []string) {
 	data := buildRewrites(removals, true)
 	for _, f := range fxt.fixture.Fixtures {
@@ -312,7 +312,7 @@ func isNameIn(name string, skip []string) bool {
 }
 
 // buildRewrites takes a slice of json queries and values then builds
-// them into a map to later by merged. We work through the entire
+// them into a map to later be merged. We work through the entire
 // list at the same time because the user might pass in multiple
 // changes for the same fixture.
 //
