@@ -320,6 +320,9 @@ func isNameIn(name string, skip []string) bool {
 func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 	builtChanges := make(map[string]interface{})
 	for _, change := range changes {
+		if change == "" {
+			continue
+		}
 		changeSplit := strings.SplitN(change, "=", 2)
 		path := changeSplit[0]
 
@@ -336,8 +339,7 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 
 		keysSplit := strings.Split(keys, ".")
 
-		keysReversed := reverse(keysSplit)
-		key, keysReversed := pop(keysReversed)
+		key, keysReversed := pop(keysSplit)
 		keyMap := make(map[string]interface{})
 		keyMap[key] = value
 
@@ -359,22 +361,8 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 	return builtChanges
 }
 
-// pop returns the first item and the rest of the list minus the first item
+// pop returns the last item and the rest of the list minus the last item
 // From: https://github.com/golang/go/wiki/SliceTricks#pop
 func pop(list []string) (string, []string) {
 	return list[len(list)-1], list[:len(list)-1]
-}
-
-// reverse reverses the list
-// From: https://github.com/golang/go/wiki/SliceTricks#reversing
-func reverse(list []string) []string {
-	reversed := make([]string, len(list))
-	copy(reversed, list)
-
-	for i := len(reversed)/2 - 1; i >= 0; i-- {
-		opp := len(reversed) - 1 - i
-		reversed[i], reversed[opp] = reversed[opp], reversed[i]
-	}
-
-	return reversed
 }

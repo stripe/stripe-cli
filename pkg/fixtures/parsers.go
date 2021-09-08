@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/joho/godotenv"
-
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
@@ -272,8 +270,10 @@ func findSimilarQueryNames(fxt *Fixture, name string) ([]string, bool) {
 // parseQuery checks strings for possible queries and replaces the
 // corresponding value in its place. The supported query format is:
 // 		$<name of fixture>:dot.path.to.field
-func (fxt *Fixture) parseQuery(value string) (string, error) {
-	if query, isQuery := toFixtureQuery(value); isQuery {
+func (fxt *Fixture) parseQuery(queryString string) (string, error) {
+	value := queryString
+
+	if query, isQuery := toFixtureQuery(queryString); isQuery {
 		name := query.Name
 
 		// Check if there is a default value specified
@@ -283,26 +283,16 @@ func (fxt *Fixture) parseQuery(value string) (string, error) {
 
 		// Catch and insert .env values
 		if name == ".env" {
-			key := query.Query
 			// Check if env variable is present
-			envValue := os.Getenv(key)
-			if envValue == "" {
-				// Try to load from .env file
-				dir, err := os.Getwd()
-				if err != nil {
-					dir = ""
-				}
-				err = godotenv.Load(path.Join(dir, ".env"))
-				if err != nil {
-					return value, nil
-				}
-				envValue = os.Getenv(key)
-			}
-			if envValue == "" {
-				fmt.Printf("No value for env var: %s\n", key)
+			envValue, err := getEnvVar(query)
+			if err != nil || envValue == "" {
 				return value, nil
 			}
-			return envValue, nil
+
+			// Handle the case where only a substring of the original queryString was a query.
+			// Ex: ${.env:BLAH}/blah/blah
+			value = strings.ReplaceAll(queryString, query.Match, envValue)
+			return value, nil
 		}
 
 		if _, ok := fxt.responses[name]; !ok {
@@ -350,7 +340,7 @@ func toFixtureQuery(value string) (fixtureQuery, bool) {
 	if r, didMatch := matchFixtureQuery(value); didMatch {
 		isQuery = true
 		match := r.FindStringSubmatch(value)
-		query = fixtureQuery{Name: match[1], Query: match[2], DefaultValue: match[3]}
+		query = fixtureQuery{Match: match[0], Name: match[1], Query: match[2], DefaultValue: match[3]}
 	}
 
 	return query, isQuery

@@ -2,6 +2,8 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -20,7 +22,19 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	requestNames, err := fixtures.Trigger(req.Event, req.StripeAccount, baseURL, apiKey)
+	fmt.Println("EVELYN - pkg/rpcservice/trigger.go:Trigger")
+	fmt.Println(req)
+
+	requestNames, err := fixtures.Trigger(
+		req.Event,
+		req.StripeAccount,
+		strings.SplitN(req.Skip, " ", -1),
+		strings.SplitN(req.Override, " ", -1),
+		strings.SplitN(req.Add, " ", -1),
+		strings.SplitN(req.Remove, " ", -1),
+		baseURL,
+		apiKey,
+	)
 	if err != nil {
 		return nil, err
 	}

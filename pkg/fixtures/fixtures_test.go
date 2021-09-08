@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -220,23 +219,6 @@ func TestMakeRequestWithAdd(t *testing.T) {
 
 	_, err = fxt.Execute()
 	require.NoError(t, err)
-}
-
-func TestParseWithEnvSubstring(t *testing.T) {
-	fs := afero.NewOsFs()
-	wd, _ := os.Getwd()
-	envPath := path.Join(wd, ".env")
-	afero.WriteFile(fs, envPath, []byte(`BASE_API_URL="https://myexample.com"`), os.ModePerm)
-
-	fxt := Fixture{}
-	data := make(map[string]interface{})
-	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
-	output, _ := (fxt.parseInterface(data))
-
-	require.Equal(t, len(output), 1)
-	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
-
-	fs.Remove(envPath)
 }
 
 func TestMakeRequestWithRemove(t *testing.T) {
