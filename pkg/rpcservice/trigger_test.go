@@ -14,7 +14,7 @@ import (
 )
 
 const customerPath = "/v1/customers"
-const customerWithIdPath = "/v1/customers/cust_12345"
+const customerWithIDPath = "/v1/customers/cust_12345"
 const customerPayload = `{"id": "cust_12345", "foo": "bar"}`
 const planPath = "/v1/plans"
 const subscriptionPath = "/v1/subscriptions"
@@ -33,7 +33,7 @@ func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 		switch url := req.URL.String(); url {
 		case customerPath:
 			res.Write([]byte(customerPayload))
-		case customerWithIdPath:
+		case customerWithIDPath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -70,7 +70,7 @@ func TestTriggerSucceedsWithStripeAccount(t *testing.T) {
 		switch url := req.URL.String(); url {
 		case customerPath:
 			res.Write([]byte(customerPayload))
-		case customerWithIdPath:
+		case customerWithIDPath:
 			// Do nothing, we just want to verify this request came in
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
