@@ -350,12 +350,12 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 		}
 		_, ok := builtChanges[name]
 		if ok {
-			if err := mergo.Merge(builtChanges[name], keyMap); err != nil {
+			if err := mergo.Merge(&keyMap, builtChanges[name]); err != nil {
 				fmt.Println(err)
 			}
-		} else {
-			builtChanges[name] = keyMap
 		}
+
+		builtChanges[name] = keyMap
 	}
 
 	return builtChanges
