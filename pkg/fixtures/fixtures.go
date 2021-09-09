@@ -62,7 +62,7 @@ type Fixture struct {
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, baseURL string, file string, skip, override, add, remove []string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
