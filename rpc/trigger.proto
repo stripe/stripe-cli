@@ -12,16 +12,16 @@ message TriggerRequest {
   string stripe_account = 2;
 
   // Skip specific steps in the fixture
-  string skip = 3;
+  repeated string skip = 3;
 
   // Override parameters in the fixture
-  string override = 4;
+  repeated string override = 4;
 
   // Add parameters in the fixture
-  string add = 5;
+  repeated string add = 5;
 
   // Remove parameters from the fixture
-  string remove = 6;
+  repeated string remove = 6;
 }
 
 message TriggerResponse {

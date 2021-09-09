@@ -3,7 +3,6 @@ package rpcservice
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -28,10 +27,10 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 	requestNames, err := fixtures.Trigger(
 		req.Event,
 		req.StripeAccount,
-		strings.Split(req.Skip, " "),
-		strings.Split(req.Override, " "),
-		strings.Split(req.Add, " "),
-		strings.Split(req.Remove, " "),
+		req.Skip,
+		req.Override,
+		req.Add,
+		req.Remove,
 		baseURL,
 		apiKey,
 	)
