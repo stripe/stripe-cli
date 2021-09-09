@@ -2,7 +2,6 @@ package rpcservice
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -20,9 +19,6 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-
-	fmt.Println("EVELYN - pkg/rpcservice/trigger.go:Trigger")
-	fmt.Println(req)
 
 	requestNames, err := fixtures.Trigger(
 		req.Event,
