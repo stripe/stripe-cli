@@ -28,10 +28,10 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 	requestNames, err := fixtures.Trigger(
 		req.Event,
 		req.StripeAccount,
-		strings.SplitN(req.Skip, " ", -1),
-		strings.SplitN(req.Override, " ", -1),
-		strings.SplitN(req.Add, " ", -1),
-		strings.SplitN(req.Remove, " ", -1),
+		strings.Split(req.Skip, " "),
+		strings.Split(req.Override, " "),
+		strings.Split(req.Add, " "),
+		strings.Split(req.Remove, " "),
 		baseURL,
 		apiKey,
 	)
