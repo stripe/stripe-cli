@@ -134,7 +134,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 		State: websocket.Loading,
 	}
 
-	var nAttempts int = 0
+	nAttempts := 0
 
 	for nAttempts < maxConnectAttempts {
 		session, err := p.createSession(ctx)
