@@ -2,11 +2,14 @@ package rpcservice
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -143,11 +146,15 @@ func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, _ := io.ReadAll(req.Body)
 		switch url := req.URL.String(); url {
 		case customerPath:
+			require.True(t, strings.Contains(string(body), "name=testUser"))
+			require.True(t, strings.Contains(string(body), "email=testEmail"))
 		case planPath:
+			require.True(t, strings.Contains(string(body), "amount=500"))
 		case subscriptionPath:
-			// Do nothing, we just want to verify this request came in
+			require.False(t, strings.Contains(string(body), "description"))
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -162,7 +169,7 @@ func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
 		StripeAccount: "acct_123",
 		Skip:          []string{},
 		Override:      []string{"customer:name=testUser", "plan:amount=500"},
-		Add:           []string{"customer:email=test@example.com"},
+		Add:           []string{"customer:email=testEmail"},
 		Remove:        []string{"customer:description"},
 	})
 

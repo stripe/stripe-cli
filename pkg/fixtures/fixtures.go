@@ -53,13 +53,16 @@ type Fixture struct {
 	APIKey        string
 	StripeAccount string
 	Skip          []string
+	Overrides     map[string]interface{}
+	Additions     map[string]interface{}
+	Removals      map[string]interface{}
 	BaseURL       string
 	responses     map[string]gjson.Result
 	fixture       fixtureFile
 }
 
 // NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string, baseURL string, file string) (*Fixture, error) {
+func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, baseURL string, file string, skip, override, add, remove []string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -95,13 +98,10 @@ func NewFixture(fs afero.Fs, apiKey string, stripeAccount string, skip []string,
 		return nil, err
 	}
 
-	// If the method is `post` and params are nil, initialize them
-	// in case the user wants to add something dynamically using `Add`
-	for i, data := range fxt.fixture.Fixtures {
-		if data.Method == "post" && data.Params == nil {
-			fxt.fixture.Fixtures[i].Params = make(map[string]interface{})
-		}
-	}
+	// Customize fixture data
+	fxt.Override(override)
+	fxt.Add(add)
+	fxt.Remove(remove)
 
 	if fxt.fixture.Meta.Version > SupportedVersions {
 		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
@@ -126,6 +126,13 @@ func (fxt *Fixture) Override(overrides []string) {
 // If the field is already on the fixture, it does not get copied
 // over. For that, `Override` should be used
 func (fxt *Fixture) Add(additions []string) {
+	// If the params is empty, initialize it before merging with added data
+	for i, data := range fxt.fixture.Fixtures {
+		if data.Method == "post" && data.Params == nil {
+			fxt.fixture.Fixtures[i].Params = make(map[string]interface{})
+		}
+	}
+
 	data := buildRewrites(additions, false)
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
@@ -339,10 +346,11 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 
 		keysSplit := strings.Split(keys, ".")
 
-		key, keysReversed := pop(keysSplit)
+		field, paths := pop(keysSplit)
 		keyMap := make(map[string]interface{})
-		keyMap[key] = value
+		keyMap[field] = value
 
+		keysReversed := reverse(paths)
 		for _, key := range keysReversed {
 			keyMap = map[string]interface{}{
 				key: keyMap,
@@ -365,4 +373,17 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 // From: https://github.com/golang/go/wiki/SliceTricks#pop
 func pop(list []string) (string, []string) {
 	return list[len(list)-1], list[:len(list)-1]
+}
+
+// reverse reverses the list
+// From: https://github.com/golang/go/wiki/SliceTricks#reversing
+func reverse(list []string) []string {
+	reversed := make([]string, len(list))
+	copy(reversed, list)
+
+	for i := len(reversed)/2 - 1; i >= 0; i-- {
+		opp := len(reversed) - 1 - i
+		reversed[i], reversed[opp] = reversed[opp], reversed[i]
+	}
+	return reversed
 }

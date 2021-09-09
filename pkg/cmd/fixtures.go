@@ -62,24 +62,15 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		afero.NewOsFs(),
 		apiKey,
 		fc.stripeAccount,
-		fc.skip,
 		stripe.DefaultAPIBaseURL,
 		args[0],
+		fc.skip,
+		fc.override,
+		fc.add,
+		fc.remove,
 	)
 	if err != nil {
 		return err
-	}
-
-	if len(fc.override) != 0 {
-		fixture.Override(fc.override)
-	}
-
-	if len(fc.add) != 0 {
-		fixture.Add(fc.add)
-	}
-
-	if len(fc.remove) != 0 {
-		fixture.Remove(fc.remove)
 	}
 
 	_, err = fixture.Execute()

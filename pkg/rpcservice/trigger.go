@@ -23,12 +23,12 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 	requestNames, err := fixtures.Trigger(
 		req.Event,
 		req.StripeAccount,
+		baseURL,
+		apiKey,
 		req.Skip,
 		req.Override,
 		req.Add,
 		req.Remove,
-		baseURL,
-		apiKey,
 	)
 	if err != nil {
 		return nil, err
