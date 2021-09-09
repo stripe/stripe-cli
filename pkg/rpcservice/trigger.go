@@ -20,7 +20,16 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	requestNames, err := fixtures.Trigger(req.Event, req.StripeAccount, baseURL, apiKey)
+	requestNames, err := fixtures.Trigger(
+		req.Event,
+		req.StripeAccount,
+		baseURL,
+		apiKey,
+		req.Skip,
+		req.Override,
+		req.Add,
+		req.Remove,
+	)
 	if err != nil {
 		return nil, err
 	}

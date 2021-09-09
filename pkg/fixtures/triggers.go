@@ -69,13 +69,17 @@ var Events = map[string]string{
 }
 
 // BuildFromFixture creates a new fixture struct for a file
-func BuildFromFixture(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string) (*Fixture, error) {
+func BuildFromFixture(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string) (*Fixture, error) {
 	fixture, err := NewFixture(
 		fs,
 		apiKey,
 		stripeAccount,
 		apiBaseURL,
 		jsonFile,
+		skip,
+		override,
+		add,
+		remove,
 	)
 	if err != nil {
 		return nil, err
@@ -107,14 +111,14 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(event string, stripeAccount string, baseURL string, apiKey string) ([]string, error) {
+func Trigger(event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string) ([]string, error) {
 	fs := afero.NewOsFs()
 
 	var fixture *Fixture
 	var err error
 
 	if file, ok := Events[event]; ok {
-		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, baseURL, file)
+		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +128,7 @@ func Trigger(event string, stripeAccount string, baseURL string, apiKey string) 
 			return nil, fmt.Errorf(fmt.Sprintf("The event ‘%s’ is not supported by the Stripe CLI.", event))
 		}
 
-		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, baseURL, event)
+		fixture, err = BuildFromFixture(fs, apiKey, stripeAccount, baseURL, event, skip, override, add, remove)
 		if err != nil {
 			return nil, err
 		}
