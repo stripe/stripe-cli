@@ -2,9 +2,11 @@ package stripe
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -92,7 +94,29 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	sendTelemetryEvent(ctx, resp)
 	return resp, nil
+}
+
+func sendTelemetryEvent(ctx context.Context, response *http.Response) {
+	// RequestID of the API Request
+	requestID := response.Header.Get("Request-Id")
+	GetAnalyticsEventContextInstance().RequestID = requestID
+	// Don't throw exception if we fail to send the event
+	// Also do this asynchronously.
+	resp, err := SendEvent(ctx, "API Request", "")
+	fmt.Printf("Response: %v\n\n", resp)
+
+	res, _ := httputil.DumpResponse(resp, true)
+	fmt.Printf("Response Dump: %v\n", string(res))
+
+	req, _ := httputil.DumpRequest(resp.Request, true)
+
+	fmt.Printf("Request: %v\n", string(req))
+
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 }
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {

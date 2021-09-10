@@ -73,6 +73,19 @@ func (p *Profile) GetDeviceName() (string, error) {
 	return "", validators.ErrDeviceNameNotConfigured
 }
 
+// GetAccountID returns the accountId for the given profile.
+func (p *Profile) GetAccountID() (string, error) {
+	if p.AccountID != "" {
+		return p.AccountID, nil
+	}
+
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetString(p.GetConfigField("account_id")), nil
+	}
+
+	return "", validators.ErrAccountIdNotConfigured
+}
+
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	envKey := os.Getenv("STRIPE_API_KEY")

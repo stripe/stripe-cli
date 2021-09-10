@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"unicode"
 
@@ -51,8 +52,22 @@ var rootCmd = &cobra.Command{
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// if the device name errors, don't fail running the command
 		deviceName, _ := Config.Profile.GetDeviceName()
+		merchant, _ := Config.Profile.GetAccountID()
+
 		stripe.GetTelemetryInstance().SetDeviceName(deviceName)
 		stripe.GetTelemetryInstance().SetCommandContext(cmd)
+
+		// New telemetry stuff
+		stripe.GetAnalyticsEventContextInstance().SetInvocationId()
+		// Sets command path and generated resource
+		stripe.GetAnalyticsEventContextInstance().SetCommandContext(cmd)
+		stripe.GetAnalyticsEventContextInstance().UserAgent = "Command Line"
+		stripe.GetAnalyticsEventContextInstance().Merchant = merchant
+		stripe.GetAnalyticsEventContextInstance().CLIVersion = version.Version
+		stripe.GetAnalyticsEventContextInstance().OS = runtime.GOOS
+		// Not sure how to get this at the moment
+		stripe.GetAnalyticsEventContextInstance().LiveMode = false
+
 	},
 }
 
