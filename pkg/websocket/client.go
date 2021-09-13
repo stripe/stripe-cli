@@ -226,10 +226,10 @@ func readWSConnectErrorMessage(resp *http.Response) string {
 	return se.InnerError.Message
 }
 
-var unknownIDMessage string = "Unknown WebSocket ID."
+var unknownIDMessage = "Unknown WebSocket ID."
 
 // ErrUnknownID can occur when the websocket session is expired or invalid
-var ErrUnknownID error = errors.New(unknownIDMessage)
+var ErrUnknownID = errors.New(unknownIDMessage)
 
 // connect makes a single attempt to connect to the websocket URL. It returns
 // the success of the attempt.

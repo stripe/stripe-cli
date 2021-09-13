@@ -1,4 +1,5 @@
-//+build gen_resources
+//go:build gen_resources
+// +build gen_resources
 
 package main
 

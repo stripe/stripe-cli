@@ -9,21 +9,20 @@ linters:
     - depguard
     - dogsled
     - dupl
+    - exportloopref
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - goprintffuncname
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - misspell
     - nakedret
+    - revive
     - rowserrcheck
-    - scopelint
     - staticcheck
     - structcheck
     - typecheck

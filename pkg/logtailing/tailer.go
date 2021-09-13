@@ -104,8 +104,8 @@ const maxConnectAttempts = 3
 func (t *Tailer) Run(ctx context.Context) error {
 	defer close(t.cfg.OutCh)
 
-	var warned = false
-	var nAttempts int = 0
+	warned := false
+	nAttempts := 0
 
 	t.cfg.OutCh <- websocket.StateElement{
 		State: websocket.Loading,

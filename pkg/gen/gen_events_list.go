@@ -1,4 +1,5 @@
-//+build events_list
+//go:build events_list
+// +build events_list
 
 package main
 

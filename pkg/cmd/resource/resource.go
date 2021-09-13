@@ -18,7 +18,7 @@ import (
 //
 // Example of resources: `customers`, `payment_intents` (top-level, not
 // namespaced), `early_fraud_warnings` (namespaced under `radar`).
-type ResourceCmd struct { //nolint:golint
+type ResourceCmd struct { //nolint:revive
 	Cmd           *cobra.Command
 	Name          string
 	OperationCmds map[string]*OperationCmd
