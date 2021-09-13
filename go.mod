@@ -13,6 +13,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/websocket v1.4.2
 	github.com/iancoleman/strcase v0.2.0
+	github.com/imdario/mergo v0.3.12
 	github.com/joho/godotenv v1.3.0
 	github.com/kevinburke/ssh_config v1.1.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -34,14 +35,13 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
-	github.com/thedevsaddam/gojsonq v2.3.0+incompatible
 	github.com/tidwall/gjson v1.9.0
 	github.com/tidwall/pretty v1.2.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20210908191846-a5e095526f91 // indirect
-	golang.org/x/sys v0.0.0-20210909193231-528a39cd75f3
+	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 	google.golang.org/genproto v0.0.0-20210909211513-a8c4777a87af // indirect
 	google.golang.org/grpc v1.40.0

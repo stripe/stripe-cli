@@ -791,6 +791,10 @@
 | ----- | ---- | ----- | ----------- |
 | event | [string](#string) |  | An event to trigger. Use `TriggersList` to see the available events. |
 | stripe_account | [string](#string) |  | Set a header identifying the connected account |
+| skip | [string](#string) | repeated | Skip specific steps in the fixture |
+| override | [string](#string) | repeated | Override parameters in the fixture |
+| add | [string](#string) | repeated | Add parameters in the fixture |
+| remove | [string](#string) | repeated | Remove parameters from the fixture |
 
 
 

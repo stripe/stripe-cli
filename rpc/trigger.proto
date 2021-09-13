@@ -10,6 +10,18 @@ message TriggerRequest {
 
   // Set a header identifying the connected account
   string stripe_account = 2;
+
+  // Skip specific steps in the fixture
+  repeated string skip = 3;
+
+  // Override parameters in the fixture
+  repeated string override = 4;
+
+  // Add parameters in the fixture
+  repeated string add = 5;
+
+  // Remove parameters from the fixture
+  repeated string remove = 6;
 }
 
 message TriggerResponse {

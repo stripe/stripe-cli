@@ -18,6 +18,10 @@ type triggerCmd struct {
 
 	fs            afero.Fs
 	stripeAccount string
+	skip          []string
+	override      []string
+	add           []string
+	remove        []string
 	apiBaseURL    string
 }
 
@@ -44,6 +48,10 @@ needed to create the triggered event as well as the corresponding API objects.
 	}
 
 	tc.cmd.Flags().StringVar(&tc.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	tc.cmd.Flags().StringArrayVar(&tc.skip, "skip", []string{}, "Skip specific steps in the trigger")
+	tc.cmd.Flags().StringArrayVar(&tc.override, "override", []string{}, "Override params in the trigger")
+	tc.cmd.Flags().StringArrayVar(&tc.add, "add", []string{}, "Add params to the trigger")
+	tc.cmd.Flags().StringArrayVar(&tc.remove, "remove", []string{}, "Remove params from the trigger")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -68,7 +76,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	event := args[0]
 
-	_, err = fixtures.Trigger(event, tc.stripeAccount, tc.apiBaseURL, apiKey)
+	_, err = fixtures.Trigger(event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.add, tc.remove)
 	if err != nil {
 		return err
 	}
