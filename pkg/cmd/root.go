@@ -58,16 +58,13 @@ var rootCmd = &cobra.Command{
 		stripe.GetTelemetryInstance().SetCommandContext(cmd)
 
 		// New telemetry stuff
-		stripe.GetAnalyticsEventContextInstance().SetInvocationId()
+		stripe.GetAnalyticsEventContext().SetInvocationID()
 		// Sets command path and generated resource
-		stripe.GetAnalyticsEventContextInstance().SetCommandContext(cmd)
-		stripe.GetAnalyticsEventContextInstance().UserAgent = "Command Line"
-		stripe.GetAnalyticsEventContextInstance().Merchant = merchant
-		stripe.GetAnalyticsEventContextInstance().CLIVersion = version.Version
-		stripe.GetAnalyticsEventContextInstance().OS = runtime.GOOS
-		// Not sure how to get this at the moment
-		stripe.GetAnalyticsEventContextInstance().LiveMode = false
-
+		stripe.GetAnalyticsEventContext().SetCommandContext(cmd)
+		stripe.GetAnalyticsEventContext().UserAgent = "Command Line"
+		stripe.GetAnalyticsEventContext().Merchant = merchant
+		stripe.GetAnalyticsEventContext().CLIVersion = version.Version
+		stripe.GetAnalyticsEventContext().OS = runtime.GOOS
 	},
 }
 

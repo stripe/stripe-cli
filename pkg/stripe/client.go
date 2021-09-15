@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -75,6 +74,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	if c.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+		GetAnalyticsEventContext().LiveMode = strings.Contains(c.APIKey, "live")
 	}
 
 	if configure != nil {
@@ -94,29 +94,33 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	fmt.Printf("Sending telemetry event\n")
 	sendTelemetryEvent(ctx, resp)
+	fmt.Printf("returning response\n")
 	return resp, nil
 }
 
 func sendTelemetryEvent(ctx context.Context, response *http.Response) {
 	// RequestID of the API Request
 	requestID := response.Header.Get("Request-Id")
-	GetAnalyticsEventContextInstance().RequestID = requestID
+
+	GetAnalyticsEventContext().RequestID = requestID
 	// Don't throw exception if we fail to send the event
 	// Also do this asynchronously.
 	resp, err := SendEvent(ctx, "API Request", "")
-	fmt.Printf("Response: %v\n\n", resp)
+	// fmt.Printf("Response: %v\n\n", resp)
 
-	res, _ := httputil.DumpResponse(resp, true)
-	fmt.Printf("Response Dump: %v\n", string(res))
+	// res, _ := httputil.DumpResponse(resp, true)
+	// fmt.Printf("Response Dump: %v\n", string(res))
 
-	req, _ := httputil.DumpRequest(resp.Request, true)
+	// req, _ := httputil.DumpRequest(resp.Request, true)
 
-	fmt.Printf("Request: %v\n", string(req))
+	// fmt.Printf("Request: %v\n", string(req))
 
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
+	defer resp.Body.Close()
 }
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {
