@@ -307,7 +307,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 		authClient := stripeauth.NewClient(apiKey, nil)
 
-		authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil)
+		authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil, nil)
 		if err != nil {
 			return err
 		}

@@ -241,7 +241,12 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 		// Try to authorize at least 5 times before failing. Sometimes we have random
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
-			session, err = p.stripeAuthClient.Authorize(ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil)
+			devURLMap := stripeauth.DeviceURLMap{
+				ForwardURL:        p.cfg.ForwardURL,
+				ForwardConnectURL: p.cfg.ForwardConnectURL,
+			}
+
+			session, err = p.stripeAuthClient.Authorize(ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil, &devURLMap)
 
 			if err == nil {
 				exitCh <- struct{}{}

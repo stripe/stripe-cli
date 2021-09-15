@@ -36,8 +36,15 @@ type Client struct {
 	cfg *Config
 }
 
+// DeviceURLMap is a mapping of the urls that the device is listening
+// for forwarded events on.
+type DeviceURLMap struct {
+	ForwardURL        string
+	ForwardConnectURL string
+}
+
 // Authorize sends a request to Stripe to initiate a new CLI session.
-func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeature string, filters *string) (*StripeCLISession, error) {
+func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeature string, filters *string, devURLMap *DeviceURLMap) (*StripeCLISession, error) {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
@@ -53,6 +60,14 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 
 	if filters != nil {
 		form.Add("filters", *filters)
+	}
+
+	if devURLMap != nil && len(devURLMap.ForwardURL) > 0 {
+		form.Add("forward_to_url", devURLMap.ForwardURL)
+	}
+
+	if devURLMap != nil && len(devURLMap.ForwardConnectURL) > 0 {
+		form.Add("forward_connect_to_url", devURLMap.ForwardConnectURL)
 	}
 
 	client := &stripe.Client{
