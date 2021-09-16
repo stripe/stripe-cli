@@ -37,7 +37,7 @@ func TestAuthorize(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	session, err := client.Authorize(context.TODO(), "my-device", "webhooks", nil)
+	session, err := client.Authorize(context.TODO(), "my-device", "webhooks", nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, "some-id", session.WebSocketID)
 	require.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
@@ -55,7 +55,7 @@ func TestUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize(context.TODO(), "my-device", "webhooks", nil)
+	client.Authorize(context.TODO(), "my-device", "webhooks", nil, nil)
 }
 
 func TestStripeClientUserAgent(t *testing.T) {
@@ -78,5 +78,28 @@ func TestStripeClientUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize(context.TODO(), "my-device", "webhooks", nil)
+	client.Authorize(context.TODO(), "my-device", "webhooks", nil, nil)
+}
+
+func TestAuthorizeWithURLDeviceMap(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+
+		require.Equal(t, "my-device", r.FormValue("device_name"))
+		require.Equal(t, "webhooks", r.FormValue("websocket_feature"))
+		require.Equal(t, "http://localhost:3000/events", r.FormValue("forward_to_url"))
+		require.Equal(t, "http://localhost:3000/connect/events", r.FormValue("forward_connect_to_url"))
+	}))
+	defer ts.Close()
+
+	client := NewClient("sk_test_123", &Config{
+		APIBaseURL: ts.URL,
+	})
+
+	devURLMap := DeviceURLMap{
+		ForwardURL:        "http://localhost:3000/events",
+		ForwardConnectURL: "http://localhost:3000/connect/events",
+	}
+
+	client.Authorize(context.TODO(), "my-device", "webhooks", nil, &devURLMap)
 }
