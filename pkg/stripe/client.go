@@ -95,6 +95,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	fmt.Printf("Sending telemetry event\n")
+	// Need to wait for this process to finish, but not at this level.
 	sendTelemetryEvent(ctx, resp)
 	fmt.Printf("returning response\n")
 	return resp, nil

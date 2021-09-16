@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -61,7 +62,7 @@ var rootCmd = &cobra.Command{
 		stripe.GetAnalyticsEventContext().SetInvocationID()
 		// Sets command path and generated resource
 		stripe.GetAnalyticsEventContext().SetCommandContext(cmd)
-		stripe.GetAnalyticsEventContext().UserAgent = "Command Line"
+		stripe.GetAnalyticsEventContext().UserAgent = useragent.GetEncodedUserAgent()
 		stripe.GetAnalyticsEventContext().Merchant = merchant
 		stripe.GetAnalyticsEventContext().CLIVersion = version.Version
 		stripe.GetAnalyticsEventContext().OS = runtime.GOOS

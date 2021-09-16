@@ -39,6 +39,8 @@ type CLIAnalyticsEventContext struct {
 //
 
 // GetAnalyticsEventContext returns the CLIAnalyticsEventContext instance (initializing it  first if necessary).
+// add wait group counter here to keep track of all the telemetry we want to wait for.
+//
 func GetAnalyticsEventContext() *CLIAnalyticsEventContext {
 	telemetrySync.Do(func() {
 		telemetryInstance = &CLIAnalyticsEventContext{}
