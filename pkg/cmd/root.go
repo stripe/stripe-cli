@@ -101,6 +101,11 @@ func Execute() {
 		}
 
 		os.Exit(1)
+	} else {
+		userInput := strings.Join(os.Args[1:], " ")
+		if strings.Contains(userInput, "--") {
+			fmt.Println("You provided flags but did not specify any command.")
+		}
 	}
 }
 
