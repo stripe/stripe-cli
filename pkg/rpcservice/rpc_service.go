@@ -18,6 +18,7 @@ import (
 )
 
 // Config provides the configuration for the RPC service.
+// Maybe initialize some of the telemetry context here
 type Config struct {
 	// Port is the port number to listen to on localhost
 	Port int
@@ -81,6 +82,8 @@ func (srv *RPCService) Run(ctx context.Context) {
 	if err := srv.grpcServer.Serve(lis); err != nil {
 		srv.cfg.Log.Fatalf("Failed to serve gRPC server on %s: %v", lis.Addr().String(), err)
 	}
+
+	// defer to wait on the telemetry wait group
 }
 
 func (srv *RPCService) createListener() net.Listener {

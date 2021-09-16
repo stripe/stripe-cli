@@ -34,6 +34,8 @@ type CLIAnalyticsEventContext struct {
 	LiveMode          bool   `url:"livemode"`
 }
 
+// Add a public interface for the sendEvent
+
 //
 // Public functions
 //
@@ -79,7 +81,7 @@ func (e *CLIAnalyticsEventContext) SetInvocationID() {
 }
 
 // SendEvent sends a telemetry event to r.stripe.com
-func SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+func (e *CLIAnalyticsEventContext) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
 	time.Sleep(5 * time.Second)
 	client := newTelemetryHTTPClient(false)
 
@@ -92,7 +94,7 @@ func SendEvent(ctx context.Context, eventName string, eventValue string) (*http.
 		return nil, err
 	}
 
-	data, _ := query.Values(GetAnalyticsEventContext())
+	data, _ := query.Values(e)
 
 	data.Set("client_id", "stripe-cli")
 	data.Set("event_id", uuid.NewString())
