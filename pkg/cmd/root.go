@@ -102,9 +102,10 @@ func Execute(ctx context.Context) {
 
 		os.Exit(1)
 	} else {
-		userInput := strings.Join(os.Args[1:], " ")
-		if strings.Contains(userInput, "--") {
-			fmt.Println("You provided flags but did not specify any command.")
+		userInput := os.Args[1:]
+		// --color on/off/auto
+		if len(userInput) == 2 && userInput[0] == "--color" {
+			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
 		}
 	}
 }
