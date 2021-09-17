@@ -27,7 +27,8 @@ func TestSampleCreateSucceeds(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(ctx context.Context,
+	createSample = func(
+		ctx context.Context,
 		config *config.Config,
 		sampleName string,
 		selectedConfig *samples.SelectedConfig,
@@ -74,7 +75,8 @@ func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
 		return nil, errors.New("getSampleConfig failed")
 	}
 
-	createSample = func(ctx context.Context,
+	createSample = func(
+		ctx context.Context,
 		config *config.Config,
 		sampleName string,
 		selectedConfig *samples.SelectedConfig,
@@ -122,7 +124,8 @@ func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(ctx context.Context,
+	createSample = func(
+		ctx context.Context,
 		config *config.Config,
 		sampleName string,
 		selectedConfig *samples.SelectedConfig,
@@ -170,7 +173,8 @@ func TestSampleCreateFailsWhenCreateSampleFails(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(ctx context.Context,
+	createSample = func(
+		ctx context.Context,
 		config *config.Config,
 		sampleName string,
 		selectedConfig *samples.SelectedConfig,
