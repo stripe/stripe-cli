@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -42,7 +43,7 @@ func TestGetPathXDG(t *testing.T) {
 }
 
 func TestHelpFlag(t *testing.T) {
-	Execute()
+	Execute(context.Background())
 
 	output, err := executeCommand(rootCmd, "--help")
 

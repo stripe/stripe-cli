@@ -15,7 +15,7 @@ var getLinks = login.GetLinks
 func (srv *RPCService) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResponse, error) {
 	var err error
 
-	links, err = getLinks(stripe.DefaultDashboardBaseURL, srv.cfg.UserCfg.Profile.DeviceName)
+	links, err = getLinks(ctx, stripe.DefaultDashboardBaseURL, srv.cfg.UserCfg.Profile.DeviceName)
 	if err != nil {
 		return nil, err
 	}

@@ -57,7 +57,7 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 	}
 
 	if reader == terminal.ReaderList["verifone-p400"].Name {
-		err = terminal.QuickstartP400(cc.cfg)
+		err = terminal.QuickstartP400(cmd.Context(), cc.cfg)
 		if err != nil {
 			return fmt.Errorf(err.Error())
 		}

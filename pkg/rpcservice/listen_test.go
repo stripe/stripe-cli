@@ -40,7 +40,7 @@ func TestListenStreamsState(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			cfg.OutCh <- websocket.StateElement{
 				State: websocket.Loading,
@@ -94,7 +94,7 @@ func TestListenStreamsEvents(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			cfg.OutCh <- websocket.DataElement{
 				Data: proxy.StripeEvent{
@@ -177,7 +177,7 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			r := httptest.NewRequest(http.MethodPost, "localhost:4242/webhook", strings.NewReader(""))
 			cfg.OutCh <- websocket.DataElement{
@@ -242,7 +242,7 @@ func TestListenReturnsEndpointResponseError(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			cfg.OutCh <- websocket.ErrorElement{
 				Error: proxy.FailedToPostError{Err: errors.New("failed to post")},
@@ -283,7 +283,7 @@ func TestListenReturnsGenericError(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			myErr := errors.New("my error")
 			cfg.OutCh <- websocket.ErrorElement{
@@ -314,7 +314,7 @@ func TestListenSucceedsWithAllParams(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	createProxy = func(cfg *proxy.Config) (IProxy, error) {
+	createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
 		runProxy = func(ctx context.Context) error {
 			return nil
 		}

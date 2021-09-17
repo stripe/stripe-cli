@@ -1,6 +1,7 @@
 package p400
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -23,7 +24,7 @@ const (
 // AttemptRegisterReader prompt the user for their p400 registration code, and tries to register the reader via Stripe API
 // it tries three times before returning an error
 // returns the registered reader's IP address if successful
-func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (Reader, error) {
+func AttemptRegisterReader(ctx context.Context, tsCtx TerminalSessionContext, tries int) (Reader, error) {
 	regcode, err := ReaderRegistrationCodePrompt()
 	var newReader Reader
 
@@ -33,7 +34,7 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (Reader, err
 
 	spinner := ansi.StartNewSpinner("Registering your reader with Stripe...", os.Stdout)
 
-	newReader, err = RegisterReader(regcode, tsCtx)
+	newReader, err = RegisterReader(ctx, regcode, tsCtx)
 
 	if err != nil {
 		tries++
@@ -41,14 +42,14 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (Reader, err
 		fmt.Println("Could not register the Reader - please try your code again.")
 
 		if tries < 3 {
-			return AttemptRegisterReader(tsCtx, tries)
+			return AttemptRegisterReader(ctx, tsCtx, tries)
 		}
 
 		return newReader, ErrRegisterReaderFailed
 	}
 
 	// we need to get the reader list again in order to source the base_url attr which you don't get back after registering it
-	readerList, err := DiscoverReaders(tsCtx)
+	readerList, err := DiscoverReaders(ctx, tsCtx)
 
 	if err != nil {
 		return newReader, err
@@ -69,14 +70,14 @@ func AttemptRegisterReader(tsCtx TerminalSessionContext, tries int) (Reader, err
 // RegisterAndActivateReader prompts the user to either add a new reader or choose an existing reader on their account
 // it then calls the appropriate method to set them up and activate a reader session for them to take a test payment
 // it returns an updated TerminalSessionContext containing the session's connection token and rpc session token
-func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
+func RegisterAndActivateReader(ctx context.Context, tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
 	var (
 		reader         Reader
 		activationType string
 	)
 
 	spinner := ansi.StartNewSpinner("Requesting connection token...", os.Stdout)
-	pstToken, err := GetNewConnectionToken(tsCtx)
+	pstToken, err := GetNewConnectionToken(ctx, tsCtx)
 
 	if err != nil {
 		return tsCtx, err
@@ -86,7 +87,7 @@ func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionCon
 	ansi.StopSpinner(spinner, ansi.Faint("Received new connection token"), os.Stdout)
 
 	// check if user has a reader already registered that they might want to use
-	readerList, err := DiscoverReaders(tsCtx)
+	readerList, err := DiscoverReaders(ctx, tsCtx)
 
 	if err != nil {
 		return tsCtx, err
@@ -108,7 +109,7 @@ func RegisterAndActivateReader(tsCtx TerminalSessionContext) (TerminalSessionCon
 			return tsCtx, err
 		}
 	} else {
-		reader, err = AttemptRegisterReader(tsCtx, 0)
+		reader, err = AttemptRegisterReader(ctx, tsCtx, 0)
 
 		if err != nil {
 			return tsCtx, err

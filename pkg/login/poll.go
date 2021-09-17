@@ -28,7 +28,7 @@ type PollAPIKeyResponse struct {
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
-func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollAPIKeyResponse, *Account, error) {
+func PollForKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*PollAPIKeyResponse, *Account, error) {
 	var response PollAPIKeyResponse
 
 	if maxAttempts == 0 {
@@ -52,7 +52,7 @@ func PollForKey(pollURL string, interval time.Duration, maxAttempts int) (*PollA
 
 	var count = 0
 	for count < maxAttempts {
-		res, err := client.PerformRequest(context.TODO(), http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
+		res, err := client.PerformRequest(ctx, http.MethodGet, parsedURL.Path, parsedURL.Query().Encode(), nil)
 		if err != nil {
 			return nil, nil, err
 		}

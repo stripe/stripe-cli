@@ -182,7 +182,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		OutCh:      logtailingOutCh,
 	})
 
-	ctx := withSIGTERMCancel(context.Background(), func() {
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "logtailing.Tailer.Run",
 		}).Debug("Ctrl+C received, cleaning up...")

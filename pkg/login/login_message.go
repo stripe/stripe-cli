@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,10 +9,10 @@ import (
 )
 
 // SuccessMessage returns the display message for a successfully authenticated user
-func SuccessMessage(account *Account, baseURL string, apiKey string) (string, error) {
+func SuccessMessage(ctx context.Context, account *Account, baseURL string, apiKey string) (string, error) {
 	// Account will be nil if user did interactive login
 	if account == nil {
-		acc, err := GetUserAccount(baseURL, apiKey)
+		acc, err := GetUserAccount(ctx, baseURL, apiKey)
 		if err != nil {
 			return "", err
 		}

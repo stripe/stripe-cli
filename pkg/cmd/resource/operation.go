@@ -96,12 +96,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		// if confirmation is provided, make the request
-		_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
+		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false)
 
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(apiKey, path, &oc.Parameters, false)
+	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false)
 	return err
 }
 

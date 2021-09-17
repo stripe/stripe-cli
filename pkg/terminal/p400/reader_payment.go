@@ -1,6 +1,7 @@
 package p400
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -9,7 +10,7 @@ import (
 )
 
 // SetUpTestPayment asks the user for their payment amount / currency, then updates the reader display, then creates a new Payment Intent
-func SetUpTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
+func SetUpTestPayment(ctx context.Context, tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
 	var err error
 	tsCtx.Currency, err = ReaderChargeCurrencyPrompt()
 
@@ -37,7 +38,7 @@ func SetUpTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, err
 	ansi.StopSpinner(spinner, ansi.Faint("Reader display updated"), os.Stdout)
 	spinner = ansi.StartNewSpinner("Creating a new Payment Intent...", os.Stdout)
 
-	tsCtx.PaymentIntentID, err = CreatePaymentIntent(tsCtx)
+	tsCtx.PaymentIntentID, err = CreatePaymentIntent(ctx, tsCtx)
 
 	if err != nil {
 		return tsCtx, err
@@ -49,7 +50,7 @@ func SetUpTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, err
 }
 
 // CompleteTestPayment sets the reader into collect payment mode, waits for the payment, confirms the payment, then finally captures the Payment Intent
-func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
+func CompleteTestPayment(ctx context.Context, tsCtx TerminalSessionContext) (TerminalSessionContext, error) {
 	parentTraceID := SetParentTraceID(tsCtx.TransactionID, tsCtx.MethodID, "processPayment")
 	err := CollectPaymentMethod(tsCtx, parentTraceID)
 
@@ -76,7 +77,7 @@ func CompleteTestPayment(tsCtx TerminalSessionContext) (TerminalSessionContext, 
 
 	// manually capturing payment intent as required by terminal flow
 	spinner = ansi.StartNewSpinner("Capturing Payment Intent...", os.Stdout)
-	err = CapturePaymentIntent(tsCtx)
+	err = CapturePaymentIntent(ctx, tsCtx)
 
 	if err != nil {
 		return tsCtx, err

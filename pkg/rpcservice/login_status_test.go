@@ -22,7 +22,7 @@ func TestLoginStatusSucceeds(t *testing.T) {
 		VerificationCode: "baz",
 	}
 
-	pollForKey = func(pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
 		return &login.PollAPIKeyResponse{}, &login.Account{
 			ID: "acct_12345",
 			Settings: login.Settings{
@@ -60,7 +60,7 @@ func TestLoginStatusSucceeds(t *testing.T) {
 func TestLoginStatusFailsWhenLinksEmpty(t *testing.T) {
 	links = &login.Links{}
 
-	pollForKey = func(pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
 		return &login.PollAPIKeyResponse{}, &login.Account{
 			ID: "acct_12345",
 			Settings: login.Settings{
@@ -92,7 +92,7 @@ func TestLoginStatusFailsWhenLinksEmpty(t *testing.T) {
 func TestLoginStatusFailsWhenLinksNil(t *testing.T) {
 	links = nil
 
-	pollForKey = func(pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
 		return &login.PollAPIKeyResponse{}, &login.Account{
 			ID: "acct_12345",
 			Settings: login.Settings{
@@ -124,7 +124,7 @@ func TestLoginStatusFailsWhenLinksNil(t *testing.T) {
 func TestLoginStatusFailsWhenPollFails(t *testing.T) {
 	links = nil
 
-	pollForKey = func(pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
 		return nil, nil, errors.New("pollForKey failed")
 	}
 
@@ -149,7 +149,7 @@ func TestLoginStatusFailsWhenPollFails(t *testing.T) {
 func TestLoginStatusFailsWhenConfigureProfileFails(t *testing.T) {
 	links = nil
 
-	pollForKey = func(pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*login.PollAPIKeyResponse, *login.Account, error) {
 		return &login.PollAPIKeyResponse{}, &login.Account{
 			ID: "acct_12345",
 			Settings: login.Settings{

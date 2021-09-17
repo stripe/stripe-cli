@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"sort"
@@ -111,7 +112,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string) ([]string, error) {
 	fs := afero.NewOsFs()
 
 	var fixture *Fixture
@@ -134,7 +135,7 @@ func Trigger(event string, stripeAccount string, baseURL string, apiKey string, 
 		}
 	}
 
-	requestNames, err := fixture.Execute()
+	requestNames, err := fixture.Execute(ctx)
 	if err != nil {
 		return nil, fmt.Errorf(fmt.Sprintf("Trigger failed: %s\n", err))
 	}

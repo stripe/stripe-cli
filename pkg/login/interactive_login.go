@@ -2,6 +2,7 @@ package login
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -19,7 +20,7 @@ import (
 )
 
 // InteractiveLogin lets the user set configuration on the command line
-func InteractiveLogin(config *config.Config) error {
+func InteractiveLogin(ctx context.Context, config *config.Config) error {
 	apiKey, err := getConfigureAPIKey(os.Stdin)
 	if err != nil {
 		return err
@@ -27,7 +28,7 @@ func InteractiveLogin(config *config.Config) error {
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
 	config.Profile.TestModeAPIKey = apiKey
-	displayName, _ := getDisplayName(nil, stripe.DefaultAPIBaseURL, apiKey)
+	displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
 
 	config.Profile.DisplayName = displayName
 
@@ -39,7 +40,7 @@ func InteractiveLogin(config *config.Config) error {
 	// The '>' character is automatically included at the end of client login
 	// due to ansi spinner. Since no spinner is used with interactive login,
 	// we need to include it manually to maintain consistency in outputs.
-	message, err := SuccessMessage(nil, stripe.DefaultAPIBaseURL, apiKey)
+	message, err := SuccessMessage(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
 	if err != nil {
 		fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
 	} else {
@@ -50,10 +51,10 @@ func InteractiveLogin(config *config.Config) error {
 }
 
 // getDisplayName returns the display name for a successfully authenticated user
-func getDisplayName(account *Account, baseURL string, apiKey string) (string, error) {
+func getDisplayName(ctx context.Context, account *Account, baseURL string, apiKey string) (string, error) {
 	// Account will be nil if user did interactive login
 	if account == nil {
-		acc, err := GetUserAccount(baseURL, apiKey)
+		acc, err := GetUserAccount(ctx, baseURL, apiKey)
 		if err != nil {
 			return "", err
 		}

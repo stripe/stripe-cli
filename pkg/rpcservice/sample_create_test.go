@@ -27,7 +27,13 @@ func TestSampleCreateSucceeds(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(config *config.Config, sampleName string, selectedConfig *samples.SelectedConfig, destination string, forceRefresh bool, resultChan chan<- samples.CreationResult) {
+	createSample = func(ctx context.Context,
+		config *config.Config,
+		sampleName string,
+		selectedConfig *samples.SelectedConfig,
+		destination string,
+		forceRefresh bool,
+		resultChan chan<- samples.CreationResult) {
 		defer close(resultChan)
 		resultChan <- samples.CreationResult{
 			State:       samples.Done,
@@ -68,7 +74,12 @@ func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
 		return nil, errors.New("getSampleConfig failed")
 	}
 
-	createSample = func(config *config.Config, sampleName string, selectedConfig *samples.SelectedConfig, destination string, forceRefresh bool, resultChan chan<- samples.CreationResult) {
+	createSample = func(ctx context.Context,
+		config *config.Config,
+		sampleName string,
+		selectedConfig *samples.SelectedConfig,
+		destination string, forceRefresh bool,
+		resultChan chan<- samples.CreationResult) {
 		defer close(resultChan)
 		resultChan <- samples.CreationResult{
 			State:       samples.Done,
@@ -111,7 +122,12 @@ func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(config *config.Config, sampleName string, selectedConfig *samples.SelectedConfig, destination string, forceRefresh bool, resultChan chan<- samples.CreationResult) {
+	createSample = func(ctx context.Context,
+		config *config.Config,
+		sampleName string,
+		selectedConfig *samples.SelectedConfig,
+		destination string, forceRefresh bool,
+		resultChan chan<- samples.CreationResult) {
 		defer close(resultChan)
 		resultChan <- samples.CreationResult{
 			State:       samples.Done,
@@ -154,7 +170,13 @@ func TestSampleCreateFailsWhenCreateSampleFails(t *testing.T) {
 		}, nil
 	}
 
-	createSample = func(config *config.Config, sampleName string, selectedConfig *samples.SelectedConfig, destination string, forceRefresh bool, resultChan chan<- samples.CreationResult) {
+	createSample = func(ctx context.Context,
+		config *config.Config,
+		sampleName string,
+		selectedConfig *samples.SelectedConfig,
+		destination string,
+		forceRefresh bool,
+		resultChan chan<- samples.CreationResult) {
 		defer close(resultChan)
 		resultChan <- samples.CreationResult{
 			Err: errors.New("createSample failed"),

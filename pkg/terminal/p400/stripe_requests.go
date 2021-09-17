@@ -54,7 +54,7 @@ type getConnectionTokenResponse struct {
 
 // DiscoverReaders calls the Stripe API to get a list of currently registered P400 readers on the account
 // it returns a map of Reader types
-func DiscoverReaders(tsCtx TerminalSessionContext) ([]Reader, error) {
+func DiscoverReaders(ctx context.Context, tsCtx TerminalSessionContext) ([]Reader, error) {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
 
 	if err != nil {
@@ -73,7 +73,7 @@ func DiscoverReaders(tsCtx TerminalSessionContext) ([]Reader, error) {
 		Verbose: false,
 	}
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodGet, stripeTerminalReadersPath, "", nil)
+	res, err := client.PerformRequest(ctx, http.MethodGet, stripeTerminalReadersPath, "", nil)
 
 	if err != nil {
 		return readersList, err
@@ -161,7 +161,7 @@ func StartNewRPCSession(tsCtx TerminalSessionContext) (string, error) {
 
 // GetNewConnectionToken calls the Stripe API and requests a new connection token in order to start a new reader session
 // it returns the connection token when successful
-func GetNewConnectionToken(tsCtx TerminalSessionContext) (string, error) {
+func GetNewConnectionToken(ctx context.Context, tsCtx TerminalSessionContext) (string, error) {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
 
 	if err != nil {
@@ -174,7 +174,7 @@ func GetNewConnectionToken(tsCtx TerminalSessionContext) (string, error) {
 		Verbose: false,
 	}
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeTerminalConnectionTokensPath, "", nil)
+	res, err := client.PerformRequest(ctx, http.MethodPost, stripeTerminalConnectionTokensPath, "", nil)
 
 	if err != nil {
 		return "", err
@@ -202,7 +202,7 @@ func GetNewConnectionToken(tsCtx TerminalSessionContext) (string, error) {
 
 // CreatePaymentIntent calls the Stripe API to create a new Payment Intent in order to later attach a collected P400 payment to
 // it returns the Payment Intent Id
-func CreatePaymentIntent(tsCtx TerminalSessionContext) (string, error) {
+func CreatePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) (string, error) {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
 
 	if err != nil {
@@ -224,7 +224,7 @@ func CreatePaymentIntent(tsCtx TerminalSessionContext) (string, error) {
 	data.Set("capture_method", "manual")
 	data.Set("description", "Stripe CLI Test Payment")
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCreatePaymentIntentPath, data.Encode(), nil)
+	res, err := client.PerformRequest(ctx, http.MethodPost, stripeCreatePaymentIntentPath, data.Encode(), nil)
 
 	if err != nil {
 		return "", err
@@ -251,7 +251,7 @@ func CreatePaymentIntent(tsCtx TerminalSessionContext) (string, error) {
 }
 
 // CapturePaymentIntent manually captures the Payment Intent after a Payment Method is attached which is the required flow for collecting payments on the Terminal platform
-func CapturePaymentIntent(tsCtx TerminalSessionContext) error {
+func CapturePaymentIntent(ctx context.Context, tsCtx TerminalSessionContext) error {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
 
 	if err != nil {
@@ -266,7 +266,7 @@ func CapturePaymentIntent(tsCtx TerminalSessionContext) error {
 		Verbose: false,
 	}
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCapturePaymentIntentURL, "", nil)
+	res, err := client.PerformRequest(ctx, http.MethodPost, stripeCapturePaymentIntentURL, "", nil)
 
 	if err != nil {
 		return ErrCapturePaymentIntentFailed
@@ -289,7 +289,7 @@ func CapturePaymentIntent(tsCtx TerminalSessionContext) error {
 
 // RegisterReader calls the Stripe API to register a new P400 reader to an account
 // it returns the IP address of the reader if successful
-func RegisterReader(regcode string, tsCtx TerminalSessionContext) (Reader, error) {
+func RegisterReader(ctx context.Context, regcode string, tsCtx TerminalSessionContext) (Reader, error) {
 	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
 	var result Reader
 
@@ -306,7 +306,7 @@ func RegisterReader(regcode string, tsCtx TerminalSessionContext) (Reader, error
 	data := url.Values{}
 	data.Set("registration_code", regcode)
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeTerminalRegisterPath, data.Encode(), nil)
+	res, err := client.PerformRequest(ctx, http.MethodPost, stripeTerminalRegisterPath, data.Encode(), nil)
 
 	if err != nil {
 		return result, err

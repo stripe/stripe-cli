@@ -40,8 +40,8 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(baseURL string, config *config.Config, input io.Reader) error {
-	links, err := GetLinks(baseURL, config.Profile.DeviceName)
+func Login(ctx context.Context, baseURL string, config *config.Config, input io.Reader) error {
+	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 		}
 	}
 
-	response, account, err := PollForKey(links.PollURL, 0, 0)
+	response, account, err := PollForKey(ctx, links.PollURL, 0, 0)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func Login(baseURL string, config *config.Config, input io.Reader) error {
 		return err
 	}
 
-	message, err := SuccessMessage(account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
+	message, err := SuccessMessage(ctx, account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
 	if err != nil {
 		fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 		return err
@@ -114,7 +114,7 @@ func ConfigureProfile(config *config.Config, response *PollAPIKeyResponse) error
 }
 
 // GetLinks provides the URLs for the CLI to continue the login flow
-func GetLinks(baseURL string, deviceName string) (*Links, error) {
+func GetLinks(ctx context.Context, baseURL string, deviceName string) (*Links, error) {
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
@@ -127,7 +127,7 @@ func GetLinks(baseURL string, deviceName string) (*Links, error) {
 	data := url.Values{}
 	data.Set("device_name", deviceName)
 
-	res, err := client.PerformRequest(context.TODO(), http.MethodPost, stripeCLIAuthPath, data.Encode(), nil)
+	res, err := client.PerformRequest(ctx, http.MethodPost, stripeCLIAuthPath, data.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}

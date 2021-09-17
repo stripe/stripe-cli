@@ -54,7 +54,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 		NoWSS:      false,
 	})
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
 
 	go tailer.Run(ctx)

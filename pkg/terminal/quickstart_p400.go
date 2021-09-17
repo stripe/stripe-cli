@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -12,10 +13,10 @@ import (
 )
 
 // QuickstartP400 runs the quickstart interactive prompt sequence to walk the user through setting up a P400 reader
-func QuickstartP400(cfg *config.Config) error {
+func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 	tsCtx := SetTerminalSessionContext(cfg)
 
-	tsCtx, err := p400.RegisterAndActivateReader(tsCtx)
+	tsCtx, err := p400.RegisterAndActivateReader(ctx, tsCtx)
 
 	if err != nil {
 		if err.Error() == promptui.ErrInterrupt.Error() {
@@ -27,7 +28,7 @@ func QuickstartP400(cfg *config.Config) error {
 
 	fmt.Println("Got it!")
 
-	tsCtx, err = p400.SetUpTestPayment(tsCtx)
+	tsCtx, err = p400.SetUpTestPayment(ctx, tsCtx)
 
 	if err != nil {
 		p400.ClearReaderDisplay(tsCtx)
@@ -38,7 +39,7 @@ func QuickstartP400(cfg *config.Config) error {
 		}
 	}
 
-	tsCtx, err = p400.CompleteTestPayment(tsCtx)
+	tsCtx, err = p400.CompleteTestPayment(ctx, tsCtx)
 
 	if err != nil {
 		p400.ClearReaderDisplay(tsCtx)
