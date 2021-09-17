@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +18,7 @@ func TestSuccessMessage(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testDisplayName
 
-	msg, err := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -31,7 +32,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	msg, err := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -42,7 +43,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &Account{}
-	msg, err := SuccessMessage(account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -66,7 +67,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -89,7 +90,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,

@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -75,7 +76,7 @@ func TestLogin(t *testing.T) {
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
 	input := strings.NewReader("\n")
-	err := Login(ts.URL, c, input)
+	err := Login(context.Background(), ts.URL, c, input)
 	require.NoError(t, err)
 
 	viper.Reset()
@@ -101,7 +102,7 @@ func TestGetLinks(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(ts.URL, "test")
+	links, err := GetLinks(context.Background(), ts.URL, "test")
 	require.NoError(t, err)
 	require.Equal(t, expectedLinks, *links)
 }
@@ -114,7 +115,7 @@ func TestGetLinksHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(ts.URL, "test")
+	links, err := GetLinks(context.Background(), ts.URL, "test")
 	require.EqualError(t, err, "unexpected http status code: 500 ")
 	require.Empty(t, links)
 }
@@ -132,7 +133,7 @@ func TestGetLinksRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	links, err := GetLinks(ts.URL, "test")
+	links, err := GetLinks(context.Background(), ts.URL, "test")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errorString)
 	require.Empty(t, links)
@@ -152,7 +153,7 @@ func TestGetLinksParseError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	links, err := GetLinks(ts.URL, "test")
+	links, err := GetLinks(context.Background(), ts.URL, "test")
 	require.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
 	require.Empty(t, links)
 }

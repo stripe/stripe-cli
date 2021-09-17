@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -21,7 +22,7 @@ type WebhookEndpoint struct {
 }
 
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
-func WebhookEndpointsList(baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
+func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
 		data:    []string{"limit=30"},
 		version: apiVersion,
@@ -33,7 +34,7 @@ func WebhookEndpointsList(baseURL, apiVersion, apiKey string, profile *config.Pr
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	resp, _ := base.MakeRequest(apiKey, "/v1/webhook_endpoints", params, true)
+	resp, _ := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, true)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 

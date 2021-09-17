@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -105,7 +106,7 @@ func TestMakeRequest(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 
 	require.NotNil(t, fxt.responses["cust_bender"])
@@ -135,7 +136,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 
 	require.True(t, fxt.responses["cust_bender"].Exists())
@@ -176,7 +177,7 @@ func TestMakeRequestWithOverride(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{})
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 }
 
@@ -221,7 +222,7 @@ func TestMakeRequestWithAdd(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 }
 
@@ -259,7 +260,7 @@ func TestMakeRequestWithRemove(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 }
 
@@ -275,7 +276,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NoError(t, err)
 	require.NotNil(t, fxt.responses["charge_expected_failure"])
 }
@@ -292,7 +293,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
-	_, err = fxt.Execute()
+	_, err = fxt.Execute(context.Background())
 	require.NotNil(t, err)
 }
 
@@ -406,7 +407,7 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
-	requestNames, err := fxt.Execute()
+	requestNames, err := fxt.Execute(context.Background())
 	require.NoError(t, err)
 
 	require.NotNil(t, fxt.responses["cust_bender"])

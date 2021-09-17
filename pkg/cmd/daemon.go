@@ -4,8 +4,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"context"
-
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/rpcservice"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -45,7 +43,7 @@ func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 		UserCfg: dc.cfg,
 	})
 
-	ctx := withSIGTERMCancel(context.Background(), func() {
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.daemonCmd.runDaemonCmd",
 		}).Debug("Ctrl+C received, cleaning up...")

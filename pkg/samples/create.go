@@ -1,6 +1,7 @@
 package samples
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -50,6 +51,7 @@ type CreationResult struct {
 
 // Create creates a sample at a destination with the selected integration, client language, and server language
 func Create(
+	ctx context.Context,
 	config *config.Config,
 	sampleName string,
 	selectedConfig *SelectedConfig,
@@ -147,7 +149,7 @@ func Create(
 
 	resultChan <- CreationResult{State: WillConfigure}
 
-	err = sample.ConfigureDotEnv(targetPath)
+	err = sample.ConfigureDotEnv(ctx, targetPath)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
 		return

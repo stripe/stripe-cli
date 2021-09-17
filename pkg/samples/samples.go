@@ -271,7 +271,7 @@ func (s *Samples) Copy(target string) error {
 
 // ConfigureDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
-func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
+func (s *Samples) ConfigureDotEnv(ctx context.Context, sampleLocation string) error {
 	if s.SelectedConfig.Integration.hasServers() {
 		if !s.SampleConfig.ConfigureDotEnv {
 			return nil
@@ -307,7 +307,7 @@ func (s *Samples) ConfigureDotEnv(sampleLocation string) error {
 
 		authClient := stripeauth.NewClient(apiKey, nil)
 
-		authSession, err := authClient.Authorize(context.TODO(), deviceName, "webhooks", nil, nil)
+		authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
 		if err != nil {
 			return err
 		}

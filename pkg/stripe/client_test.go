@@ -31,7 +31,7 @@ func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodDelete, "/delete", params.Encode(), nil)
+	resp, err := client.PerformRequest(context.Background(), http.MethodDelete, "/delete", params.Encode(), nil)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -57,7 +57,7 @@ func TestPerformRequest_ParamsEncoding_Get(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodGet, "/get", params.Encode(), nil)
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", params.Encode(), nil)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -83,7 +83,7 @@ func TestPerformRequest_ParamsEncoding_Post(t *testing.T) {
 	params.Add("key_a", "value_a")
 	params.Add("key_b", "value_b")
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodPost, "/post", params.Encode(), nil)
+	resp, err := client.PerformRequest(context.Background(), http.MethodPost, "/post", params.Encode(), nil)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -101,7 +101,7 @@ func TestPerformRequest_ApiKey_Provided(t *testing.T) {
 		APIKey:  "sk_test_1234",
 	}
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodGet, "/get", "", nil)
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", nil)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -118,7 +118,7 @@ func TestPerformRequest_ApiKey_Omitted(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodGet, "/get", "", nil)
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", nil)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -135,7 +135,7 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	resp, err := client.PerformRequest(context.TODO(), http.MethodGet, "/get", "", func(r *http.Request) {
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) {
 		r.Header.Add("Stripe-Version", "2019-07-10")
 	})
 	require.NoError(t, err)

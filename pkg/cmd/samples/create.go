@@ -84,6 +84,7 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	resultChan := make(chan samples.CreationResult)
 
 	go samples.Create(
+		cmd.Context(),
 		cc.cfg,
 		selectedSample,
 		selectedConfig,

@@ -21,6 +21,7 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 	}
 
 	requestNames, err := fixtures.Trigger(
+		ctx,
 		req.Event,
 		req.StripeAccount,
 		baseURL,

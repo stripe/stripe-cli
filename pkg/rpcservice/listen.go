@@ -28,8 +28,8 @@ type IProxy interface {
 	Run(context.Context) error
 }
 
-var createProxy = func(cfg *proxy.Config) (IProxy, error) {
-	return proxy.Init(cfg)
+var createProxy = func(ctx context.Context, cfg *proxy.Config) (IProxy, error) {
+	return proxy.Init(ctx, cfg)
 }
 
 // Listen returns a stream of webhook events and forwards them to a local endpoint
@@ -48,7 +48,10 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	proxyVisitor := createProxyVisitor(&stream)
 	proxyOutCh := make(chan websocket.IElement)
 
-	p, err := createProxy(&proxy.Config{
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	p, err := createProxy(ctx, &proxy.Config{
 		DeviceName:            deviceName,
 		Key:                   key,
 		ForwardURL:            req.ForwardTo,
@@ -71,10 +74,6 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	if err != nil {
 		return err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	go p.Run(ctx)
 
 	for {

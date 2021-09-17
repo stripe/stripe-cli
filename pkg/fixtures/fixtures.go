@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -157,7 +158,7 @@ func (fxt *Fixture) Remove(removals []string) {
 
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
-func (fxt *Fixture) Execute() ([]string, error) {
+func (fxt *Fixture) Execute(ctx context.Context) ([]string, error) {
 	requestNames := make([]string, len(fxt.fixture.Fixtures))
 	for i, data := range fxt.fixture.Fixtures {
 		if isNameIn(data.Name, fxt.Skip) {
@@ -169,7 +170,7 @@ func (fxt *Fixture) Execute() ([]string, error) {
 		requestNames[i] = data.Name
 
 		fmt.Printf("Running fixture for: %s\n", data.Name)
-		resp, err := fxt.makeRequest(data)
+		resp, err := fxt.makeRequest(ctx, data)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return nil, err
 		}
@@ -197,7 +198,7 @@ func (fxt *Fixture) UpdateEnv() error {
 	return nil
 }
 
-func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
+func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, error) {
 	var rp requests.RequestParameters
 
 	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
@@ -225,7 +226,7 @@ func (fxt *Fixture) makeRequest(data fixture) ([]byte, error) {
 		return make([]byte, 0), err
 	}
 
-	return req.MakeRequest(fxt.APIKey, path, params, true)
+	return req.MakeRequest(ctx, fxt.APIKey, path, params, true)
 }
 
 func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameters, error) {

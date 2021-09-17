@@ -22,6 +22,7 @@ func (srv *RPCService) SampleCreate(ctx context.Context, req *rpc.SampleCreateRe
 
 	resultChan := make(chan samples.CreationResult)
 	go createSample(
+		ctx,
 		srv.cfg.UserCfg,
 		req.SampleName,
 		selectedConfig,

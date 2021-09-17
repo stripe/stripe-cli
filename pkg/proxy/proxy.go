@@ -204,8 +204,8 @@ func (p *Proxy) Run(ctx context.Context) error {
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
-func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
-	p, err := Init(&Config{
+func GetSessionSecret(ctx context.Context, deviceName, key, baseURL string) (string, error) {
+	p, err := Init(ctx, &Config{
 		DeviceName:       deviceName,
 		Key:              key,
 		APIBaseURL:       baseURL,
@@ -219,7 +219,7 @@ func GetSessionSecret(deviceName, key, baseURL string) (string, error) {
 		return "", err
 	}
 
-	session, err := p.createSession(context.Background())
+	session, err := p.createSession(ctx)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.GetSessionSecret",
@@ -430,7 +430,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 //
 
 // Init initializes a new Proxy
-func Init(cfg *Config) (*Proxy, error) {
+func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
@@ -470,7 +470,7 @@ func Init(cfg *Config) (*Proxy, error) {
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
 		// build from user's API config
-		endpoints := getEndpointsFromAPI(cfg.Key, cfg.APIBaseURL)
+		endpoints := getEndpointsFromAPI(ctx, cfg.Key, cfg.APIBaseURL)
 		if len(endpoints.Data) == 0 {
 			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
@@ -655,12 +655,12 @@ func parseURL(url string) string {
 	return url
 }
 
-func getEndpointsFromAPI(secretKey, apiBaseURL string) requests.WebhookEndpointList {
+func getEndpointsFromAPI(ctx context.Context, secretKey, apiBaseURL string) requests.WebhookEndpointList {
 	if apiBaseURL == "" {
 		apiBaseURL = stripe.DefaultAPIBaseURL
 	}
 
-	return requests.WebhookEndpointsList(apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
+	return requests.WebhookEndpointsList(ctx, apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) ([]EndpointRoute, error) {

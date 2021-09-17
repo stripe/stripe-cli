@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -26,7 +27,7 @@ func TestGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -54,7 +55,7 @@ func TestGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,

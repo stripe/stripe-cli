@@ -19,7 +19,7 @@ func (srv *RPCService) LoginStatus(ctx context.Context, req *rpc.LoginStatusRequ
 		return nil, status.Error(codes.FailedPrecondition, "There is no login in progress.")
 	}
 
-	response, account, err := pollForKey(links.PollURL, 0, 0)
+	response, account, err := pollForKey(ctx, links.PollURL, 0, 0)
 	if err != nil {
 		return nil, err
 	}

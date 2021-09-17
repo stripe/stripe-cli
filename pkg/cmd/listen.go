@@ -114,9 +114,15 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
+
 	// --print-secret option
 	if lc.onlyPrintSecret {
-		secret, err := proxy.GetSessionSecret(deviceName, key, lc.apiBaseURL)
+		secret, err := proxy.GetSessionSecret(ctx, deviceName, key, lc.apiBaseURL)
 		if err != nil {
 			return err
 		}
@@ -128,7 +134,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyVisitor := createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
-	p, err := proxy.Init(&proxy.Config{
+	p, err := proxy.Init(ctx, &proxy.Config{
 		DeviceName:            deviceName,
 		Key:                   key,
 		ForwardURL:            lc.forwardURL,
@@ -149,12 +155,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	ctx := withSIGTERMCancel(context.Background(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
-	})
 
 	go p.Run(ctx)
 
