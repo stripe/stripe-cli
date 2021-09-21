@@ -65,16 +65,8 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if !telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
-		telemetryHdr, err := getTelemetryHeader()
-		if err == nil {
-			req.Header.Set("Stripe-CLI-Telemetry", telemetryHdr)
-		}
-	}
-
 	if c.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
-		GetAnalyticsEventContext().LiveMode = strings.Contains(c.APIKey, "live")
 	}
 
 	if configure != nil {
@@ -96,19 +88,19 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	fmt.Printf("Sending telemetry event\n")
 	// Need to wait for this process to finish, but not at this level.
-	go sendTelemetryEvent(ctx, resp)
+	livemode := strings.Contains(c.APIKey, "live")
+	sendTelemetryEvent(ctx, resp, livemode)
 	fmt.Printf("returning response\n")
 	return resp, nil
 }
 
-func sendTelemetryEvent(ctx context.Context, response *http.Response) {
+func sendTelemetryEvent(ctx context.Context, response *http.Response, livemode bool) {
 	// RequestID of the API Request
 	requestID := response.Header.Get("Request-Id")
-
-	GetAnalyticsEventContext().RequestID = requestID
 	// Don't throw exception if we fail to send the event
 	// Also do this asynchronously.
-	resp, err := SendEvent(ctx, "API Request", "")
+	// resp, err := SendAPIRequestEvent(ctx, requestID, livemode)
+	SendAPIRequestEvent(ctx, requestID, livemode)
 	// fmt.Printf("Response: %v\n\n", resp)
 
 	// res, _ := httputil.DumpResponse(resp, true)
@@ -118,10 +110,10 @@ func sendTelemetryEvent(ctx context.Context, response *http.Response) {
 
 	// fmt.Printf("Request: %v\n", string(req))
 
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-	}
-	defer resp.Body.Close()
+	// if err != nil {
+	// 	fmt.Printf("Error: %v\n", err)
+	// }
+	// defer resp.Body.Close()
 }
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {

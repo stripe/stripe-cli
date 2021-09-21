@@ -7,18 +7,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetTelemetryInstance(t *testing.T) {
-	t1 := GetTelemetryInstance()
-	t2 := GetTelemetryInstance()
-	require.Equal(t, t1, t2)
-}
-
-func TestSetCommandContext(t *testing.T) {
-	tel := GetTelemetryInstance()
+func TestSetCobraCommandContext(t *testing.T) {
+	tel := InitContext()
 	cmd := &cobra.Command{
 		Use: "foo",
 	}
-	tel.SetCommandContext(cmd)
+	tel.SetCobraCommandContext(cmd)
 	require.Equal(t, "foo", tel.CommandPath)
 }
 

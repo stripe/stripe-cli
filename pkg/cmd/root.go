@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
 	"unicode"
 
@@ -19,13 +18,14 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // Config is the cli configuration for the user
 var Config config.Config
+
+var telemetryContext *stripe.CLIAnalyticsEventContext
 
 var fs = afero.NewOsFs()
 
@@ -51,30 +51,23 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// if the device name errors, don't fail running the command
-		deviceName, _ := Config.Profile.GetDeviceName()
+		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
-
-		stripe.GetTelemetryInstance().SetDeviceName(deviceName)
-		stripe.GetTelemetryInstance().SetCommandContext(cmd)
-
-		// New telemetry stuff
-		stripe.GetAnalyticsEventContext().SetInvocationID()
-		// Sets command path and generated resource
-		stripe.GetAnalyticsEventContext().SetCommandContext(cmd)
-		stripe.GetAnalyticsEventContext().UserAgent = useragent.GetEncodedUserAgent()
-		stripe.GetAnalyticsEventContext().Merchant = merchant
-		stripe.GetAnalyticsEventContext().CLIVersion = version.Version
-		stripe.GetAnalyticsEventContext().OS = runtime.GOOS
+		telemetryContext := cmd.Context().Value(stripe.TelemetryContextKey{}).(*stripe.CLIAnalyticsEventContext)
+		telemetryContext.SetCobraCommandContext(cmd)
+		telemetryContext.SetMerchant(merchant)
 	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
+	telemetryContext := stripe.InitContext()
+	updatedCtx := context.WithValue(ctx, stripe.TelemetryContextKey{}, telemetryContext)
+
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 
