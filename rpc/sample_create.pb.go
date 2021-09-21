@@ -25,7 +25,7 @@ type SampleCreateRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Name of the sample, e.g. accept-a-card-payment. Use the `SamplesList` method to get a list of
+	// Name of the sample, e.g. accept-a-payment. Use the `SamplesList` method to get a list of
 	// available samples.
 	SampleName string `protobuf:"bytes,1,opt,name=sample_name,json=sampleName,proto3" json:"sample_name,omitempty"`
 	// Name of the particular integration, e.g. using-webhooks. Use the `SampleConfigs` method to get

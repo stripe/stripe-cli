@@ -44,7 +44,7 @@ func TestSampleConfigsReturnsListOfIntegrations(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	resp, err := client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-card-payment"})
+	resp, err := client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-payment"})
 	if err != nil {
 		t.Fatalf("SampleConfigs failed: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestSampleConfigsReturnsEmpty(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	resp, err := client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-card-payment"})
+	resp, err := client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-payment"})
 	if err != nil {
 		t.Fatalf("SampleConfigs failed: %v", err)
 	}
@@ -110,9 +110,9 @@ func TestSampleConfigsReturnsError(t *testing.T) {
 	defer conn.Close()
 	client := rpc.NewStripeCLIClient(conn)
 
-	_, err = client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-card-payment"})
+	_, err = client.SampleConfigs(ctx, &rpc.SampleConfigsRequest{SampleName: "accept-a-payment"})
 
-	expected := status.Errorf(codes.Internal, "Failed to fetch configs for sample accept-a-card-payment: %v", errors.New("foo"))
+	expected := status.Errorf(codes.Internal, "Failed to fetch configs for sample accept-a-payment: %v", errors.New("foo"))
 
 	assert.EqualValues(t, expected.Error(), err.Error())
 }

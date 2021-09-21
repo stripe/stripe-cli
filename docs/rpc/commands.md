@@ -5,71 +5,71 @@
 
 - [commands.proto](#commands.proto)
     - [StripeCLI](#rpc.StripeCLI)
-  
+
 - [common.proto](#common.proto)
     - [StripeEvent](#rpc.StripeEvent)
     - [StripeEvent.Request](#rpc.StripeEvent.Request)
-  
+
 - [events_resend.proto](#events_resend.proto)
     - [EventsResendRequest](#rpc.EventsResendRequest)
     - [EventsResendResponse](#rpc.EventsResendResponse)
-  
+
 - [listen.proto](#listen.proto)
     - [ListenRequest](#rpc.ListenRequest)
     - [ListenResponse](#rpc.ListenResponse)
     - [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse)
     - [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data)
-  
+
     - [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod)
     - [ListenResponse.State](#rpc.ListenResponse.State)
-  
+
 - [login.proto](#login.proto)
     - [LoginRequest](#rpc.LoginRequest)
     - [LoginResponse](#rpc.LoginResponse)
-  
+
 - [login_status.proto](#login_status.proto)
     - [LoginStatusRequest](#rpc.LoginStatusRequest)
     - [LoginStatusResponse](#rpc.LoginStatusResponse)
-  
+
 - [logs_tail.proto](#logs_tail.proto)
     - [LogsTailRequest](#rpc.LogsTailRequest)
     - [LogsTailResponse](#rpc.LogsTailResponse)
     - [LogsTailResponse.Log](#rpc.LogsTailResponse.Log)
     - [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error)
-  
+
     - [LogsTailRequest.Account](#rpc.LogsTailRequest.Account)
     - [LogsTailRequest.HttpMethod](#rpc.LogsTailRequest.HttpMethod)
     - [LogsTailRequest.RequestStatus](#rpc.LogsTailRequest.RequestStatus)
     - [LogsTailRequest.Source](#rpc.LogsTailRequest.Source)
     - [LogsTailRequest.StatusCodeType](#rpc.LogsTailRequest.StatusCodeType)
     - [LogsTailResponse.State](#rpc.LogsTailResponse.State)
-  
+
 - [sample_configs.proto](#sample_configs.proto)
     - [SampleConfigsRequest](#rpc.SampleConfigsRequest)
     - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
     - [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration)
-  
+
 - [sample_create.proto](#sample_create.proto)
     - [SampleCreateRequest](#rpc.SampleCreateRequest)
     - [SampleCreateResponse](#rpc.SampleCreateResponse)
-  
+
 - [samples_list.proto](#samples_list.proto)
     - [SamplesListRequest](#rpc.SamplesListRequest)
     - [SamplesListResponse](#rpc.SamplesListResponse)
     - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
-  
+
 - [trigger.proto](#trigger.proto)
     - [TriggerRequest](#rpc.TriggerRequest)
     - [TriggerResponse](#rpc.TriggerResponse)
-  
+
 - [triggers_list.proto](#triggers_list.proto)
     - [TriggersListRequest](#rpc.TriggersListRequest)
     - [TriggersListResponse](#rpc.TriggersListResponse)
-  
+
 - [version.proto](#version.proto)
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
-  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -80,11 +80,11 @@
 ## commands.proto
 
 
- 
 
- 
 
- 
+
+
+
 
 
 <a name="rpc.StripeCLI"></a>
@@ -106,7 +106,7 @@
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
 
- 
+
 
 
 
@@ -155,13 +155,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -209,13 +209,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -300,7 +300,7 @@
 
 
 
- 
+
 
 
 <a name="rpc.ListenResponse.EndpointResponse.Data.HttpMethod"></a>
@@ -331,11 +331,11 @@
 | STATE_DONE | 4 |  |
 
 
- 
 
- 
 
- 
+
+
+
 
 
 
@@ -371,13 +371,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -413,13 +413,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -508,7 +508,7 @@
 
 
 
- 
+
 
 
 <a name="rpc.LogsTailRequest.Account"></a>
@@ -593,11 +593,11 @@
 | STATE_DONE | 4 |  |
 
 
- 
 
- 
 
- 
+
+
+
 
 
 
@@ -616,7 +616,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
+| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-payment |
 
 
 
@@ -631,7 +631,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-card-payment&#34; sample includes an integration that uses webhooks, a web client, and a node server. |
+| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-payment&#34; sample includes an integration that uses Checkout, a web client, and a node server. |
 
 
 
@@ -654,13 +654,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -679,7 +679,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment. Use the `SamplesList` method to get a list of available samples. |
+| sample_name | [string](#string) |  | Name of the sample, e.g. accept-a-payment. Use the `SamplesList` method to get a list of available samples. |
 | integration_name | [string](#string) |  | Name of the particular integration, e.g. using-webhooks. Use the `SampleConfigs` method to get the available options. |
 | client | [string](#string) |  | Platform or language for the client, e.g. web. Use the `SampleConfigs` method to get the available options. |
 | server | [string](#string) |  | Platform or language for the server, e.g. node. Use the `SampleConfigs` method to get the available options. |
@@ -706,13 +706,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -756,21 +756,21 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  | Name of the sample, e.g. accept-a-card-payment |
-| url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment |
+| name | [string](#string) |  | Name of the sample, e.g. accept-a-payment |
+| url | [string](#string) |  | URL of the repo, e.g. https://github.com/stripe-samples/accept-a-payment |
 | description | [string](#string) |  | Description of the sample, e.g. Learn how to accept a basic card payment |
 
 
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -815,13 +815,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -856,13 +856,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 
@@ -897,13 +897,13 @@
 
 
 
- 
 
- 
 
- 
 
- 
+
+
+
+
 
 
 

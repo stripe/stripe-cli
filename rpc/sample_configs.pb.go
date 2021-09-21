@@ -25,7 +25,7 @@ type SampleConfigsRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Name of the sample, e.g. accept-a-card-payment
+	// Name of the sample, e.g. accept-a-payment
 	SampleName string `protobuf:"bytes,1,opt,name=sample_name,json=sampleName,proto3" json:"sample_name,omitempty"`
 }
 
@@ -73,7 +73,7 @@ type SampleConfigsResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// List of available integrations for this sample, e.g. the "accept-a-card-payment" sample
+	// List of available integrations for this sample, e.g. the "accept-a-payment" sample
 	// includes an integration that uses webhooks, a web client, and a node server.
 	Integrations []*SampleConfigsResponse_Integration `protobuf:"bytes,1,rep,name=integrations,proto3" json:"integrations,omitempty"`
 }

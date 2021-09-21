@@ -52,7 +52,7 @@ func TestSampleCreateSucceeds(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SampleCreate(ctx, &rpc.SampleCreateRequest{
-		SampleName:      "accept-a-card-payment",
+		SampleName:      "accept-a-payment",
 		IntegrationName: "foo",
 		Client:          "foo-client-1",
 		Server:          "foo-server-1",
@@ -99,7 +99,7 @@ func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SampleCreate(ctx, &rpc.SampleCreateRequest{
-		SampleName:      "accept-a-card-payment",
+		SampleName:      "accept-a-payment",
 		IntegrationName: "foo",
 		Client:          "foo-client-1",
 		Server:          "foo-server-1",
@@ -148,7 +148,7 @@ func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SampleCreate(ctx, &rpc.SampleCreateRequest{
-		SampleName:      "accept-a-card-payment",
+		SampleName:      "accept-a-payment",
 		IntegrationName: "doesn't exist",
 		Client:          "foo-client-1",
 		Server:          "foo-server-1",
@@ -196,7 +196,7 @@ func TestSampleCreateFailsWhenCreateSampleFails(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	resp, err := client.SampleCreate(ctx, &rpc.SampleCreateRequest{
-		SampleName:      "accept-a-card-payment",
+		SampleName:      "accept-a-payment",
 		IntegrationName: "doesn't exist",
 		Client:          "foo-client-1",
 		Server:          "foo-server-1",

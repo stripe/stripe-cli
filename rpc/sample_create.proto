@@ -5,7 +5,7 @@ package rpc;
 option go_package = "github.com/stripe/stripe-cli/rpc";
 
 message SampleCreateRequest {
-  // Name of the sample, e.g. accept-a-card-payment. Use the `SamplesList` method to get a list of
+  // Name of the sample, e.g. accept-a-payment. Use the `SamplesList` method to get a list of
   // available samples.
   string sample_name = 1;
 

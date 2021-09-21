@@ -8,10 +8,10 @@ message SamplesListRequest {}
 
 message SamplesListResponse {
   message SampleData {
-    // Name of the sample, e.g. accept-a-card-payment
+    // Name of the sample, e.g. accept-a-payment
     string name = 1;
 
-    // URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment
+    // URL of the repo, e.g. https://github.com/stripe-samples/accept-a-payment
     string url = 2;
 
     // Description of the sample, e.g. Learn how to accept a basic card payment

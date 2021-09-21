@@ -19,16 +19,16 @@ func TestSamplesListReturnsList(t *testing.T) {
 	fetchRawSamplesList = func() (map[string]*samples.SampleData, error) {
 		list := make(map[string]*samples.SampleData)
 
-		list["accept-a-card-payment"] = &samples.SampleData{
-			Name:        "accept-a-card-payment",
-			Description: "Learn how to accept a basic card payment",
-			URL:         "https://github.com/stripe-samples/accept-a-card-payment",
-		}
-
 		list["accept-a-payment"] = &samples.SampleData{
 			Name:        "accept-a-payment",
-			Description: "Learn how to accept a payment",
+			Description: "Learn how to accept a basic payment",
 			URL:         "https://github.com/stripe-samples/accept-a-payment",
+		}
+
+		list["subscription-use-cases"] = &samples.SampleData{
+			Name:        "subscription-use-cases",
+			Description: "Create subscriptions with fixed prices or usage based billing.",
+			URL:         "https://github.com/stripe-samples/subscription-use-cases",
 		}
 
 		return list, nil
@@ -47,14 +47,14 @@ func TestSamplesListReturnsList(t *testing.T) {
 	expected := rpc.SamplesListResponse{
 		Samples: []*rpc.SamplesListResponse_SampleData{
 			{
-				Name:        "accept-a-card-payment",
-				Description: "Learn how to accept a basic card payment",
-				Url:         "https://github.com/stripe-samples/accept-a-card-payment",
+				Name:        "accept-a-payment",
+				Description: "Learn how to accept a basic payment",
+				Url:         "https://github.com/stripe-samples/accept-a-payment",
 			},
 			{
-				Name:        "accept-a-payment",
-				Description: "Learn how to accept a payment",
-				Url:         "https://github.com/stripe-samples/accept-a-payment",
+				Name:        "subscription-use-cases",
+				Description: "Create subscriptions with fixed prices or usage based billing.",
+				Url:         "https://github.com/stripe-samples/subscription-use-cases",
 			},
 		},
 	}

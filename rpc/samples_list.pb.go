@@ -111,9 +111,9 @@ type SamplesListResponse_SampleData struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Name of the sample, e.g. accept-a-card-payment
+	// Name of the sample, e.g. accept-a-payment
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// URL of the repo, e.g. https://github.com/stripe-samples/accept-a-card-payment
+	// URL of the repo, e.g. https://github.com/stripe-samples/accept-a-payment
 	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
 	// Description of the sample, e.g. Learn how to accept a basic card payment
 	Description string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
