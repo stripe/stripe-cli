@@ -100,20 +100,23 @@ func sendTelemetryEvent(ctx context.Context, response *http.Response, livemode b
 	// Don't throw exception if we fail to send the event
 	// Also do this asynchronously.
 	// resp, err := SendAPIRequestEvent(ctx, requestID, livemode)
-	SendAPIRequestEvent(ctx, requestID, livemode)
-	// fmt.Printf("Response: %v\n\n", resp)
+	telemetryClient := ctx.Value(TelemetryClientKey{}).(Telemetry)
+	if telemetryClient != nil {
+		telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
+		// fmt.Printf("Response: %v\n\n", resp)
 
-	// res, _ := httputil.DumpResponse(resp, true)
-	// fmt.Printf("Response Dump: %v\n", string(res))
+		// res, _ := httputil.DumpResponse(resp, true)
+		// fmt.Printf("Response Dump: %v\n", string(res))
 
-	// req, _ := httputil.DumpRequest(resp.Request, true)
+		// req, _ := httputil.DumpRequest(resp.Request, true)
 
-	// fmt.Printf("Request: %v\n", string(req))
+		// fmt.Printf("Request: %v\n", string(req))
 
-	// if err != nil {
-	// 	fmt.Printf("Error: %v\n", err)
-	// }
-	// defer resp.Body.Close()
+		// if err != nil {
+		// 	fmt.Printf("Error: %v\n", err)
+		// }
+		// defer resp.Body.Close()
+	}
 }
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {

@@ -23,6 +23,7 @@ import (
 // Public types
 //
 type TelemetryContextKey struct{}
+type TelemetryClientKey struct{}
 
 // var TelemetryContextKey key = "telemetry"
 
@@ -40,9 +41,11 @@ type CLIAnalyticsEventContext struct {
 }
 
 type Telemetry interface {
-	SendAPIRequestEvent(ctx context.Context, requestId string, livemode bool) (*http.Response, error)
+	SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error)
 	SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error)
 }
+
+type AnalyticsTelemetry struct{}
 
 //
 // Public functions
@@ -82,13 +85,13 @@ func (e *CLIAnalyticsEventContext) SetInvocationID() {
 }
 
 // special function for API requests
-func SendAPIRequestEvent(ctx context.Context, requestId string, livemode bool) (*http.Response, error) {
+func (a *AnalyticsTelemetry) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
 	fmt.Printf("Context: %v\n", ctx)
 	if (ctx.Value(TelemetryContextKey{}) != nil) {
 		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
 
 		data.Set("client_id", "stripe-cli")
-		data.Set("request_id", requestId)
+		data.Set("request_id", requestID)
 		data.Set("livemode", strconv.FormatBool(livemode))
 		data.Set("event_id", uuid.NewString())
 		data.Set("event_name", "API Request")
@@ -102,7 +105,7 @@ func SendAPIRequestEvent(ctx context.Context, requestId string, livemode bool) (
 }
 
 // SendEvent sends a telemetry event to r.stripe.com
-func SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+func (a *AnalyticsTelemetry) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
 	if (ctx.Value(TelemetryContextKey{}) != nil) {
 
 		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
