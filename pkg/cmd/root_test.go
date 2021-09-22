@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"path/filepath"
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func executeCommand(root *cobra.Command, args ...string) (output string, err error) {
@@ -43,7 +43,7 @@ func TestGetPathXDG(t *testing.T) {
 }
 
 func TestHelpFlag(t *testing.T) {
-	Execute(stripe.GetTestContext())
+	Execute(context.Background())
 
 	output, err := executeCommand(rootCmd, "--help")
 

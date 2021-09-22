@@ -1,6 +1,7 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const testAccountName = "test-account-name"
@@ -20,7 +20,7 @@ func TestDisplayName(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testAccountName
 
-	displayName, err := getDisplayName(stripe.GetTestContext(), account, "", "sk_test_123")
+	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -34,7 +34,7 @@ func TestDisplayNameNoName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	displayName, err := getDisplayName(stripe.GetTestContext(), account, "", "sk_test_123")
+	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -58,7 +58,7 @@ func TestDisplayNameGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(stripe.GetTestContext(), nil, ts.URL, "sk_test_123")
+	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -81,7 +81,7 @@ func TestDisplayNameGetAccountNoName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(stripe.GetTestContext(), nil, ts.URL, "sk_test_123")
+	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,

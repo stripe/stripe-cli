@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/logtailing"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -28,7 +27,7 @@ func (mt *mockTailer) Run(ctx context.Context) error {
 }
 
 func TestLogsTailStreamsState(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
+	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -82,7 +81,7 @@ func TestLogsTailStreamsState(t *testing.T) {
 }
 
 func TestLogsTailStreamsLogs(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
+	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -141,7 +140,7 @@ func TestLogsTailStreamsLogs(t *testing.T) {
 }
 
 func TestLogsTailReturnsError(t *testing.T) {
-	ctx := withAuth(stripe.GetTestContext())
+	ctx := withAuth(context.Background())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {

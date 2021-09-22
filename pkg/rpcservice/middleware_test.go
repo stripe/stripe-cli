@@ -1,6 +1,7 @@
 package rpcservice
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,12 +12,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
 func TestAllowRequestIfHeaderPresent(t *testing.T) {
-	ctx := withAuth(stripe.GetTestContext())
+	ctx := withAuth(context.Background())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -31,7 +31,7 @@ func TestAllowRequestIfHeaderPresent(t *testing.T) {
 
 func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 	md := metadata.New(map[string]string{"foo-bar": "1"})
-	ctx := metadata.NewIncomingContext(stripe.GetTestContext(), md)
+	ctx := metadata.NewIncomingContext(context.Background(), md)
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -47,7 +47,7 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 }
 
 func TestRejectRequestIfMetadataEmpty(t *testing.T) {
-	ctx := stripe.GetTestContext()
+	ctx := context.Background()
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)

@@ -1,19 +1,19 @@
 package rpcservice
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/fixtures"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
 )
 
 func TestTriggersListReturnsEvents(t *testing.T) {
-	ctx := withAuth(stripe.GetTestContext())
+	ctx := withAuth(context.Background())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {

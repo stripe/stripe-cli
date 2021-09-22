@@ -1,13 +1,13 @@
 package login
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const testDisplayName = "test_disp_name"
@@ -18,7 +18,7 @@ func TestSuccessMessage(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testDisplayName
 
-	msg, err := SuccessMessage(stripe.GetTestContext(), account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -32,7 +32,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	msg, err := SuccessMessage(stripe.GetTestContext(), account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -43,7 +43,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &Account{}
-	msg, err := SuccessMessage(stripe.GetTestContext(), account, "", "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -67,7 +67,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(stripe.GetTestContext(), nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -90,7 +90,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(stripe.GetTestContext(), nil, ts.URL, "sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,

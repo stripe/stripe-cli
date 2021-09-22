@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,7 +12,6 @@ import (
 
 	ws "github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestClientWebhookEventHandler(t *testing.T) {
@@ -62,7 +62,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run(stripe.GetTestContext())
+	go client.Run(context.Background())
 
 	defer client.Stop()
 
@@ -124,7 +124,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		},
 	)
 
-	go client.Run(stripe.GetTestContext())
+	go client.Run(context.Background())
 
 	defer client.Stop()
 
@@ -166,7 +166,7 @@ func TestClientExpiredError(t *testing.T) {
 		},
 	)
 
-	go client.Run(stripe.GetTestContext())
+	go client.Run(context.Background())
 
 	select {
 	case <-client.NotifyExpired:
