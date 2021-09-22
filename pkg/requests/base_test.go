@@ -2,7 +2,6 @@ package requests
 
 import (
 	"bufio"
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -107,7 +107,7 @@ func TestMakeRequest(t *testing.T) {
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
+	_, err := rb.MakeRequest(stripe.GetTestContext(), "sk_test_1234", "/foo/bar", params, true)
 	require.NoError(t, err)
 }
 
@@ -123,7 +123,7 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
+	_, err := rb.MakeRequest(stripe.GetTestContext(), "sk_test_1234", "/foo/bar", params, true)
 	require.Error(t, err)
 	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }

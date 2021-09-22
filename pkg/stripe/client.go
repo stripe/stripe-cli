@@ -88,34 +88,24 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	fmt.Printf("Sending telemetry event\n")
 	// Need to wait for this process to finish, but not at this level.
-	livemode := strings.Contains(c.APIKey, "live")
-	sendTelemetryEvent(ctx, resp, livemode)
+	sendTelemetryEvent(ctx, resp, c.APIKey)
 	fmt.Printf("returning response\n")
 	return resp, nil
 }
 
-func sendTelemetryEvent(ctx context.Context, response *http.Response, livemode bool) {
-	// RequestID of the API Request
-	requestID := response.Header.Get("Request-Id")
+func sendTelemetryEvent(ctx context.Context, apiResponse *http.Response, apiKey string) {
+	livemode := strings.Contains(apiKey, "live")
+	requestID := apiResponse.Header.Get("Request-Id")
 	// Don't throw exception if we fail to send the event
 	// Also do this asynchronously.
 	// resp, err := SendAPIRequestEvent(ctx, requestID, livemode)
 	telemetryClient := ctx.Value(TelemetryClientKey{}).(Telemetry)
-	if telemetryClient != nil {
-		telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
-		// fmt.Printf("Response: %v\n\n", resp)
-
-		// res, _ := httputil.DumpResponse(resp, true)
-		// fmt.Printf("Response Dump: %v\n", string(res))
-
-		// req, _ := httputil.DumpRequest(resp.Request, true)
-
-		// fmt.Printf("Request: %v\n", string(req))
-
-		// if err != nil {
-		// 	fmt.Printf("Error: %v\n", err)
-		// }
-		// defer resp.Body.Close()
+	resp, err := telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		// log it
 	}
 }
 

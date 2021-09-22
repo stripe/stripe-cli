@@ -1,7 +1,6 @@
 package stripeauth
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestAuthorize(t *testing.T) {
@@ -37,7 +37,7 @@ func TestAuthorize(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	session, err := client.Authorize(context.Background(), "my-device", "webhooks", nil, nil)
+	session, err := client.Authorize(stripe.GetTestContext(), "my-device", "webhooks", nil, nil)
 	require.NoError(t, err)
 	require.Equal(t, "some-id", session.WebSocketID)
 	require.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
@@ -55,7 +55,7 @@ func TestUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize(context.Background(), "my-device", "webhooks", nil, nil)
+	client.Authorize(stripe.GetTestContext(), "my-device", "webhooks", nil, nil)
 }
 
 func TestStripeClientUserAgent(t *testing.T) {
@@ -78,7 +78,7 @@ func TestStripeClientUserAgent(t *testing.T) {
 	client := NewClient("sk_test_123", &Config{
 		APIBaseURL: ts.URL,
 	})
-	client.Authorize(context.Background(), "my-device", "webhooks", nil, nil)
+	client.Authorize(stripe.GetTestContext(), "my-device", "webhooks", nil, nil)
 }
 
 func TestAuthorizeWithURLDeviceMap(t *testing.T) {
@@ -101,5 +101,5 @@ func TestAuthorizeWithURLDeviceMap(t *testing.T) {
 		ForwardConnectURL: "http://localhost:3000/connect/events",
 	}
 
-	client.Authorize(context.Background(), "my-device", "webhooks", nil, &devURLMap)
+	client.Authorize(stripe.GetTestContext(), "my-device", "webhooks", nil, &devURLMap)
 }

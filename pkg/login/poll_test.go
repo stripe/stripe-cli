@@ -1,7 +1,6 @@
 package login
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestRedeemed(t *testing.T) {
@@ -37,7 +37,7 @@ func TestRedeemed(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	response, account, err := PollForKey(context.Background(), ts.URL, 1*time.Millisecond, 3)
+	response, account, err := PollForKey(stripe.GetTestContext(), ts.URL, 1*time.Millisecond, 3)
 	require.NoError(t, err)
 	require.Equal(t, "sk_test_123", response.TestModeAPIKey)
 	require.Equal(t, "pk_test_123", response.TestModePublishableKey)
@@ -69,7 +69,7 @@ func TestRedeemedNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	response, account, err := PollForKey(context.Background(), ts.URL, 1*time.Millisecond, 3)
+	response, account, err := PollForKey(stripe.GetTestContext(), ts.URL, 1*time.Millisecond, 3)
 	require.NoError(t, err)
 	require.Equal(t, "sk_test_123", response.TestModeAPIKey)
 	require.Equal(t, "pk_test_123", response.TestModePublishableKey)
@@ -95,7 +95,7 @@ func TestExceedMaxAttempts(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	response, account, err := PollForKey(context.Background(), ts.URL, 1*time.Millisecond, 3)
+	response, account, err := PollForKey(stripe.GetTestContext(), ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "exceeded max attempts")
 	require.Nil(t, response)
 	require.Empty(t, account)
@@ -114,7 +114,7 @@ func TestHTTPStatusError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	response, account, err := PollForKey(context.Background(), ts.URL, 1*time.Millisecond, 3)
+	response, account, err := PollForKey(stripe.GetTestContext(), ts.URL, 1*time.Millisecond, 3)
 	require.EqualError(t, err, "unexpected http status code: 500 ")
 	require.Nil(t, response)
 	require.Nil(t, account)
@@ -134,7 +134,7 @@ func TestHTTPRequestError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	ts.Close()
 
-	response, account, err := PollForKey(context.Background(), ts.URL, 1*time.Millisecond, 3)
+	response, account, err := PollForKey(stripe.GetTestContext(), ts.URL, 1*time.Millisecond, 3)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), errorString)
 	require.Nil(t, response)

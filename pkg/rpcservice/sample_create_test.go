@@ -9,6 +9,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -43,7 +44,7 @@ func TestSampleCreateSucceeds(t *testing.T) {
 		}
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -90,7 +91,7 @@ func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
 		}
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -139,7 +140,7 @@ func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
 		}
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -187,7 +188,7 @@ func TestSampleCreateFailsWhenCreateSampleFails(t *testing.T) {
 		}
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)

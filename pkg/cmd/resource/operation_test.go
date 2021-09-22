@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestNewOperationCmd(t *testing.T) {
@@ -69,7 +69,7 @@ func TestRunOperationCmd(t *testing.T) {
 	oc.Cmd.Flags().Set("param-with-underscores", "some_value")
 
 	parentCmd.SetArgs([]string{"foo", "bar_123"})
-	err := parentCmd.ExecuteContext(context.Background())
+	err := parentCmd.ExecuteContext(stripe.GetTestContext())
 
 	require.NoError(t, err)
 }
@@ -109,7 +109,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	oc.Cmd.Flags().Set("data", "shipping[name]=name")
 
 	parentCmd.SetArgs([]string{"foo", "bar_123"})
-	err := parentCmd.ExecuteContext(context.Background())
+	err := parentCmd.ExecuteContext(stripe.GetTestContext())
 
 	require.NoError(t, err)
 }

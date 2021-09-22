@@ -1,18 +1,18 @@
 package rpcservice
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
 )
 
 func TestVersionReturnsCLIVersion(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {

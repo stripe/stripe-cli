@@ -1,7 +1,6 @@
 package rpcservice
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -61,7 +61,7 @@ func TestEventsResendReturnsEventPayload(t *testing.T) {
 
 	baseURL = ts.URL
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -136,7 +136,7 @@ func TestEventsResendSucceedsWithAllArgs(t *testing.T) {
 
 	baseURL = ts.URL
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -208,7 +208,7 @@ func TestEventsResendReturnsGenericError(t *testing.T) {
 
 	baseURL = ts.URL
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -238,7 +238,7 @@ func TestEventsResendFailsWithoutEventId(t *testing.T) {
 
 	baseURL = ts.URL
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -266,7 +266,7 @@ func TestEventsResendFailsWithMalformedData(t *testing.T) {
 
 	baseURL = ts.URL
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)

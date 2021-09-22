@@ -2,7 +2,6 @@ package playback
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const defaultLocalAddress = "localhost:8080"
@@ -140,7 +140,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 
 	// Shutdown record server
 	resShutdown, err := http.Get("http://localhost:8080/playback/cassette/eject")
-	server.Shutdown(context.Background())
+	server.Shutdown(stripe.GetTestContext())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
 
@@ -180,7 +180,7 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	assert.Equal(t, mockResponse2.Body, bodyBytes2)
 
 	// Shutdown replay server
-	server.Shutdown(context.Background())
+	server.Shutdown(stripe.GetTestContext())
 }
 
 // Test the full server by switching between modes, loading and ejecting cassettes, and sending real stripe requests
@@ -233,7 +233,7 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 			log.Fatalf("server startup failed - Serve(): %v", err)
 		}
 	}()
-	defer server.Shutdown(context.Background())
+	defer server.Shutdown(stripe.GetTestContext())
 	<-serverReady
 
 	fullAddressString := "http://" + addressString

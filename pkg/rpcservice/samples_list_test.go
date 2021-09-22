@@ -1,13 +1,13 @@
 package rpcservice
 
 import (
-	"context"
 	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/samples"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -34,7 +34,7 @@ func TestSamplesListReturnsList(t *testing.T) {
 		return list, nil
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -70,7 +70,7 @@ func TestSamplesListReturnsEmptyList(t *testing.T) {
 		return list, nil
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
@@ -89,7 +89,7 @@ func TestSamplesListReturnsError(t *testing.T) {
 		return nil, errors.New("foo")
 	}
 
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)

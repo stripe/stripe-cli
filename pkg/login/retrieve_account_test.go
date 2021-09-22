@@ -1,13 +1,13 @@
 package login
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 const testName = "test_name"
@@ -27,7 +27,7 @@ func TestGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(stripe.GetTestContext(), ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -55,7 +55,7 @@ func TestGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(stripe.GetTestContext(), ts.URL, "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
 		t,

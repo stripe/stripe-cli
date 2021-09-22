@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 func TestRunEventsResendCmd(t *testing.T) {
@@ -41,7 +41,7 @@ func TestRunEventsResendCmd(t *testing.T) {
 	erc.opCmd.APIBaseURL = ts.URL
 
 	parentCmd.SetArgs([]string{"resend", "evt_123"})
-	err := parentCmd.ExecuteContext(context.Background())
+	err := parentCmd.ExecuteContext(stripe.GetTestContext())
 
 	require.NoError(t, err)
 }
@@ -74,7 +74,7 @@ func TestRunEventsResendCmd_WithWebhookEndpoint(t *testing.T) {
 	erc.opCmd.Cmd.Flags().Set("webhook-endpoint", "we_123")
 
 	parentCmd.SetArgs([]string{"resend", "evt_123"})
-	err := parentCmd.ExecuteContext(context.Background())
+	err := parentCmd.ExecuteContext(stripe.GetTestContext())
 
 	require.NoError(t, err)
 }

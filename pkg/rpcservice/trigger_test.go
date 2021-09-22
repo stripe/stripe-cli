@@ -1,7 +1,6 @@
 package rpcservice
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -23,7 +23,7 @@ const planPath = "/v1/plans"
 const subscriptionPath = "/v1/subscriptions"
 
 func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -60,7 +60,7 @@ func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 }
 
 func TestTriggerSucceedsWithStripeAccount(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -98,7 +98,7 @@ func TestTriggerSucceedsWithStripeAccount(t *testing.T) {
 }
 
 func TestTriggerFailsWithUnsupportedEvent(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -118,7 +118,7 @@ func TestTriggerFailsWithUnsupportedEvent(t *testing.T) {
 }
 
 func TestTriggerFailsWithEmptyEvent(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -136,7 +136,7 @@ func TestTriggerFailsWithEmptyEvent(t *testing.T) {
 }
 
 func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {

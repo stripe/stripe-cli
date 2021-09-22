@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/stripe/stripe-cli/pkg/proxy"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -31,7 +32,7 @@ func (mp *mockProxy) Run(ctx context.Context) error {
 }
 
 func TestListenStreamsState(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -85,7 +86,7 @@ func TestListenStreamsState(t *testing.T) {
 }
 
 func TestListenStreamsEvents(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -168,7 +169,7 @@ func TestListenStreamsEvents(t *testing.T) {
 }
 
 func TestListenStreamsEndpointResponses(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -233,7 +234,7 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 }
 
 func TestListenReturnsEndpointResponseError(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -274,7 +275,7 @@ func TestListenReturnsEndpointResponseError(t *testing.T) {
 }
 
 func TestListenReturnsGenericError(t *testing.T) {
-	ctx := withAuth(context.Background())
+	ctx := withAuth(stripe.GetTestContext())
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -305,7 +306,7 @@ func TestListenReturnsGenericError(t *testing.T) {
 }
 
 func TestListenSucceedsWithAllParams(t *testing.T) {
-	ctx, cancel := context.WithCancel(withAuth(context.Background()))
+	ctx, cancel := context.WithCancel(withAuth(stripe.GetTestContext()))
 
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
