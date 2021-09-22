@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,8 @@ func TestRunEventsResendCmd(t *testing.T) {
 	erc := NewEventsResendCmd(parentCmd, &config.Config{Profile: profile})
 	erc.opCmd.APIBaseURL = ts.URL
 
-	err := erc.runEventsResendCmd(erc.opCmd.Cmd, []string{"evt_123"})
+	parentCmd.SetArgs([]string{"resend", "evt_123"})
+	err := parentCmd.ExecuteContext(context.Background())
 
 	require.NoError(t, err)
 }
@@ -71,7 +73,8 @@ func TestRunEventsResendCmd_WithWebhookEndpoint(t *testing.T) {
 
 	erc.opCmd.Cmd.Flags().Set("webhook-endpoint", "we_123")
 
-	err := erc.runEventsResendCmd(erc.opCmd.Cmd, []string{"evt_123"})
+	parentCmd.SetArgs([]string{"resend", "evt_123"})
+	err := parentCmd.ExecuteContext(context.Background())
 
 	require.NoError(t, err)
 }

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -66,7 +67,9 @@ func TestRunOperationCmd(t *testing.T) {
 	oc.Cmd.Flags().Set("param1", "value1")
 	oc.Cmd.Flags().Set("param2", "value2")
 	oc.Cmd.Flags().Set("param-with-underscores", "some_value")
-	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	parentCmd.SetArgs([]string{"foo", "bar_123"})
+	err := parentCmd.ExecuteContext(context.Background())
 
 	require.NoError(t, err)
 }
@@ -104,7 +107,9 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	oc.Cmd.Flags().Set("param1", "value1")
 	oc.Cmd.Flags().Set("data", "shipping[address][line1]=123 Main St")
 	oc.Cmd.Flags().Set("data", "shipping[name]=name")
-	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	parentCmd.SetArgs([]string{"foo", "bar_123"})
+	err := parentCmd.ExecuteContext(context.Background())
 
 	require.NoError(t, err)
 }
