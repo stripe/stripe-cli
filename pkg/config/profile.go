@@ -83,7 +83,7 @@ func (p *Profile) GetAccountID() (string, error) {
 		return viper.GetString(p.GetConfigField("account_id")), nil
 	}
 
-	return "", validators.ErrAccountIdNotConfigured
+	return "", validators.ErrAccountIDNotConfigured
 }
 
 // GetAPIKey will return the existing key for the given profile

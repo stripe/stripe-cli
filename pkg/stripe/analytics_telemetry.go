@@ -3,7 +3,6 @@ package stripe
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,8 +34,6 @@ type CLIAnalyticsEventContext struct {
 	CLIVersion        string `url:"cli_version"`        // the version of the CLI
 	OS                string `url:"os"`                 // the OS of the system
 	GeneratedResource bool   `url:"generated_resource"` // whether or not this was a generated resource
-	// RequestID         string `url:"request_id"`         // only relevant for the api request
-	// LiveMode          bool   `url:"livemode"`           // only relevant for API request
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -103,7 +100,6 @@ func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requ
 		data.Set("event_value", "")
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		// fmt.Printf("telemetry params: %+v\n", data.Encode())
 		return a.sendData(ctx, data)
 	}
 	return nil, nil
@@ -122,18 +118,12 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 		data.Set("event_value", eventValue)
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		fmt.Printf("telemetry params: %+v\n", data.Encode())
 		return a.sendData(ctx, data)
 	}
 	return nil, nil
 }
 
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
-	fmt.Printf("Sending telemetry event\n")
-
-	time.Sleep(5 * time.Second)
-	// TODO -- can we just initialize this once when this instance gets created?
-
 	if telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
 		return nil, nil
 	}
@@ -160,30 +150,7 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 		return nil, err
 	}
 
-	fmt.Printf("Sent telemetry event\n")
-
 	return resp, nil
-}
-
-func NewTelemetryHTTPClient() *http.Client {
-	httpTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 10 * time.Second,
-	}
-
-	tr := &verboseTransport{
-		Transport: httpTransport,
-		// Verbose:   verbose,
-		Out: os.Stderr,
-	}
-
-	return &http.Client{
-		Transport: tr,
-	}
 }
 
 func telemetryOptedOut(optoutVar string) bool {

@@ -2,7 +2,6 @@ package stripe
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -87,24 +86,19 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
-	// Need to wait for this process to finish, but not at this level.
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
 	livemode := strings.Contains(c.APIKey, "live")
 	go sendTelemetryEvent(ctx, requestID, livemode)
-	fmt.Printf("returning response\n")
 	return resp, nil
 }
 
 func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
-	// can we add to the telemetry wait group here too?? But
 	telemetryClient := ctx.Value(TelemetryClientKey{})
 	if telemetryClient != nil {
 		resp, err := telemetryClient.(TelemetryClient).SendAPIRequestEvent(ctx, requestID, livemode)
 		// Don't throw exception if we fail to send the event
-		// Also do this asynchronously.
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
 			log.Debugf("Error while sending telemetry data: %v\n", err)
 		}
 		defer resp.Body.Close()
