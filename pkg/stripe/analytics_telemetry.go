@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -25,8 +26,6 @@ import (
 type TelemetryContextKey struct{}
 type TelemetryClientKey struct{}
 
-// var TelemetryContextKey key = "telemetry"
-
 // CLIAnalyticsEventContext is the structure that holds telemetry data context that is ultimately sent to the Stripe Analytics Service.
 type CLIAnalyticsEventContext struct {
 	InvocationID      string `url:"invocation_id"`      // The invocation id is unique to each context object and represents all events coming from one command / gRPC method call
@@ -40,12 +39,17 @@ type CLIAnalyticsEventContext struct {
 	// LiveMode          bool   `url:"livemode"`           // only relevant for API request
 }
 
-type Telemetry interface {
+// TelemetryClient is an interface that can send two types of events: an API request, and just general events.
+type TelemetryClient interface {
 	SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error)
 	SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error)
 }
 
-type AnalyticsTelemetry struct{}
+// AnalyticsTelemetryClient sends event information to r.stripe.com
+type AnalyticsTelemetryClient struct {
+	WG         *sync.WaitGroup
+	HttpClient *http.Client
+}
 
 //
 // Public functions
@@ -85,8 +89,9 @@ func (e *CLIAnalyticsEventContext) SetInvocationID() {
 }
 
 // special function for API requests
-func (a *AnalyticsTelemetry) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
-	fmt.Printf("Context: %v\n", ctx)
+func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
+	a.WG.Add(1)
+	defer a.WG.Done()
 	if (ctx.Value(TelemetryContextKey{}) != nil) {
 		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
 
@@ -98,16 +103,17 @@ func (a *AnalyticsTelemetry) SendAPIRequestEvent(ctx context.Context, requestID 
 		data.Set("event_value", "")
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		// return SendData(ctx, data)
-		fmt.Printf("telemetry params: %+v\n", data.Encode())
+		// fmt.Printf("telemetry params: %+v\n", data.Encode())
+		return a.sendData(ctx, data)
 	}
 	return nil, nil
 }
 
 // SendEvent sends a telemetry event to r.stripe.com
-func (a *AnalyticsTelemetry) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+	a.WG.Add(1)
+	defer a.WG.Done()
 	if (ctx.Value(TelemetryContextKey{}) != nil) {
-
 		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
 
 		data.Set("client_id", "stripe-cli")
@@ -116,15 +122,17 @@ func (a *AnalyticsTelemetry) SendEvent(ctx context.Context, eventName string, ev
 		data.Set("event_value", eventValue)
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		// return SendData(ctx, data)
 		fmt.Printf("telemetry params: %+v\n", data.Encode())
+		return a.sendData(ctx, data)
 	}
 	return nil, nil
-
 }
 
-func SendData(ctx context.Context, data url.Values) (*http.Response, error) {
-	client := newTelemetryHTTPClient(false)
+func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
+	fmt.Printf("Sending telemetry event\n")
+
+	time.Sleep(5 * time.Second)
+	// TODO -- can we just initialize this once when this instance gets created?
 
 	if telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
 		return nil, nil
@@ -147,17 +155,17 @@ func SendData(ctx context.Context, data url.Values) (*http.Response, error) {
 		req = req.WithContext(ctx)
 	}
 
-	resp, err := client.Do(req)
+	resp, err := a.HttpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("Sent telemetry event")
+	fmt.Printf("Sent telemetry event\n")
 
 	return resp, nil
 }
 
-func newTelemetryHTTPClient(verbose bool) *http.Client {
+func NewTelemetryHTTPClient() *http.Client {
 	httpTransport := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -169,8 +177,8 @@ func newTelemetryHTTPClient(verbose bool) *http.Client {
 
 	tr := &verboseTransport{
 		Transport: httpTransport,
-		Verbose:   verbose,
-		Out:       os.Stderr,
+		// Verbose:   verbose,
+		Out: os.Stderr,
 	}
 
 	return &http.Client{

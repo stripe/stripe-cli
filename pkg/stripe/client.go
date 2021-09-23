@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -86,36 +87,27 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
-	fmt.Printf("Sending telemetry event\n")
 	// Need to wait for this process to finish, but not at this level.
+	// RequestID of the API Request
+	requestID := resp.Header.Get("Request-Id")
 	livemode := strings.Contains(c.APIKey, "live")
-	sendTelemetryEvent(ctx, resp, livemode)
+	go sendTelemetryEvent(ctx, requestID, livemode)
 	fmt.Printf("returning response\n")
 	return resp, nil
 }
 
-func sendTelemetryEvent(ctx context.Context, response *http.Response, livemode bool) {
-	// RequestID of the API Request
-	requestID := response.Header.Get("Request-Id")
-	// Don't throw exception if we fail to send the event
-	// Also do this asynchronously.
-	// resp, err := SendAPIRequestEvent(ctx, requestID, livemode)
-	telemetryClient := ctx.Value(TelemetryClientKey{}).(Telemetry)
+func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
+	// can we add to the telemetry wait group here too?? But
+	telemetryClient := ctx.Value(TelemetryClientKey{})
 	if telemetryClient != nil {
-		telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
-		// fmt.Printf("Response: %v\n\n", resp)
-
-		// res, _ := httputil.DumpResponse(resp, true)
-		// fmt.Printf("Response Dump: %v\n", string(res))
-
-		// req, _ := httputil.DumpRequest(resp.Request, true)
-
-		// fmt.Printf("Request: %v\n", string(req))
-
-		// if err != nil {
-		// 	fmt.Printf("Error: %v\n", err)
-		// }
-		// defer resp.Body.Close()
+		resp, err := telemetryClient.(TelemetryClient).SendAPIRequestEvent(ctx, requestID, livemode)
+		// Don't throw exception if we fail to send the event
+		// Also do this asynchronously.
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			log.Debugf("Error while sending telemetry data: %v\n", err)
+		}
+		defer resp.Body.Close()
 	}
 }
 
