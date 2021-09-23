@@ -49,8 +49,28 @@ require (
 )
 
 require (
+	github.com/Microsoft/go-winio v0.5.0 // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/juju/ansiterm v0.0.0-20210706145210-9283cdf370b5 // indirect
+	github.com/magiconair/properties v1.8.5 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mitchellh/mapstructure v1.4.1 // indirect
+	github.com/onsi/gomega v1.10.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+	github.com/src-d/gcfg v1.4.0 // indirect
+	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tidwall/match v1.0.3 // indirect
 	golang.org/x/text v0.3.7 // indirect
+	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
+	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
