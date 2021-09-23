@@ -101,7 +101,9 @@ func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
 		if err != nil {
 			log.Debugf("Error while sending telemetry data: %v\n", err)
 		}
-		defer resp.Body.Close()
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 }
 
