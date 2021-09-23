@@ -56,7 +56,6 @@ type AnalyticsTelemetryClient struct {
 // Public functions
 //
 func InitContext() *CLIAnalyticsEventContext {
-	// if the get config errors, don't fail running the command
 	return &CLIAnalyticsEventContext{
 		InvocationID: uuid.NewString(),
 		UserAgent:    useragent.GetEncodedUserAgent(),
@@ -66,7 +65,6 @@ func InitContext() *CLIAnalyticsEventContext {
 }
 
 // SetCobraCommandContext sets the telemetry values for the command being executed.
-// Needs to come from the gRPC method name.
 func (e *CLIAnalyticsEventContext) SetCobraCommandContext(cmd *cobra.Command) {
 	e.CommandPath = cmd.CommandPath()
 	e.GeneratedResource = false
