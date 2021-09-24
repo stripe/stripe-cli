@@ -18,7 +18,7 @@ func main() {
 	httpClient := &http.Client{
 		Timeout: time.Second * 3,
 	}
-	telemetryClient := &stripe.AnalyticsTelemetryClient{WG: waitGroup, HttpClient: httpClient}
+	telemetryClient := &stripe.AnalyticsTelemetryClient{WG: waitGroup, HTTPClient: httpClient}
 	contextWithTelemetry := context.WithValue(ctx, stripe.TelemetryClientKey{}, telemetryClient)
 
 	cmd.Execute(contextWithTelemetry)

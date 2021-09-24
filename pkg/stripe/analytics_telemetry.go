@@ -14,7 +14,9 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/google/uuid"
+
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -22,7 +24,11 @@ import (
 //
 // Public types
 //
+
+// TelemetryContextKey is the key for the telemetry context
 type TelemetryContextKey struct{}
+
+// TelemetryClientKey is the key for the telemetry client
 type TelemetryClientKey struct{}
 
 // DefaultTelemetryEndpoint is the default URL for the telemetry destination
@@ -49,12 +55,14 @@ type TelemetryClient interface {
 type AnalyticsTelemetryClient struct {
 	BaseURL    *url.URL
 	WG         *sync.WaitGroup
-	HttpClient *http.Client
+	HTTPClient *http.Client
 }
 
 //
 // Public functions
 //
+
+// InitContext initializes an instance of CLIAnalyticsEventContext
 func InitContext() *CLIAnalyticsEventContext {
 	return &CLIAnalyticsEventContext{
 		InvocationID: uuid.NewString(),
@@ -78,11 +86,12 @@ func (e *CLIAnalyticsEventContext) SetCobraCommandContext(cmd *cobra.Command) {
 	}
 }
 
+// SetMerchant sets the merchant on the CLIAnalyticsEventContext object
 func (e *CLIAnalyticsEventContext) SetMerchant(merchant string) {
 	e.Merchant = merchant
 }
 
-// special function for API requests
+// SendAPIRequestEvent is a special function for API requests
 func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
 	a.WG.Add(1)
 	defer a.WG.Done()
@@ -145,7 +154,7 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 		req = req.WithContext(ctx)
 	}
 
-	resp, err := a.HttpClient.Do(req)
+	resp, err := a.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

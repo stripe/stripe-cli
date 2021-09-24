@@ -50,7 +50,6 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
-
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -65,7 +64,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		GeneratedResource: false,
 	}
 	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HttpClient: &http.Client{}}
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendAPIRequestEvent(processCtx, "req_zzz", false)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -82,10 +81,15 @@ func TestSkipsSendAPIRequestWhenUserOptsOutOfTelemetry(t *testing.T) {
 
 	telemetryContext := InitContext()
 	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HttpClient: &http.Client{}}
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendAPIRequestEvent(processCtx, "req_zzz", false)
 	require.NoError(t, err)
 	require.Nil(t, resp)
+
+	// We shouldn't get here but the linter is unhappy
+	if resp != nil {
+		resp.Body.Close()
+	}
 }
 
 func TestSendEvent(t *testing.T) {
@@ -104,7 +108,6 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
-
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -119,7 +122,7 @@ func TestSendEvent(t *testing.T) {
 		GeneratedResource: false,
 	}
 	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HttpClient: &http.Client{}}
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendEvent(processCtx, "foo", "bar")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -136,10 +139,14 @@ func TestSkipsSendEventWhenUserOptsOutOfTelemetry(t *testing.T) {
 
 	telemetryContext := InitContext()
 	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HttpClient: &http.Client{}}
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendEvent(processCtx, "foo", "bar")
 	require.NoError(t, err)
 	require.Nil(t, resp)
+	// We shouldn't get here but the linter is unhappy
+	if resp != nil {
+		resp.Body.Close()
+	}
 }
 
 // Utility function

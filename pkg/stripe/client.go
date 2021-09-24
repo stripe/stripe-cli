@@ -11,6 +11,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
