@@ -33,6 +33,8 @@ func TestSetMerchant(t *testing.T) {
 
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
+	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "0")
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -87,6 +89,7 @@ func TestSkipsSendAPIRequestWhenUserOptsOutOfTelemetry(t *testing.T) {
 }
 
 func TestSendEvent(t *testing.T) {
+	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "0")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		require.NoError(t, err)
