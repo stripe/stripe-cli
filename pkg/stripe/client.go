@@ -95,9 +95,9 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 }
 
 func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
-	telemetryClient := ctx.Value(TelemetryClientKey{})
+	telemetryClient := GetTelemetryClient(ctx)
 	if telemetryClient != nil {
-		resp, err := telemetryClient.(TelemetryClient).SendAPIRequestEvent(ctx, requestID, livemode)
+		resp, err := telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
 		// Don't throw exception if we fail to send the event
 		if err != nil {
 			log.Debugf("Error while sending telemetry data: %v\n", err)

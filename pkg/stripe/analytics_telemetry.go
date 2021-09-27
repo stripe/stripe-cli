@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -25,17 +24,17 @@ import (
 // Public types
 //
 
-// TelemetryContextKey is the key for the telemetry context
-type TelemetryContextKey struct{}
+// telemetryMetadataKey is the key for the telemetry context
+type telemetryMetadataKey struct{}
 
 // TelemetryClientKey is the key for the telemetry client
-type TelemetryClientKey struct{}
+type telemetryClientKey struct{}
 
 // DefaultTelemetryEndpoint is the default URL for the telemetry destination
 const DefaultTelemetryEndpoint = "https://r.stripe.com/0"
 
-// CLIAnalyticsEventContext is the structure that holds telemetry data context that is ultimately sent to the Stripe Analytics Service.
-type CLIAnalyticsEventContext struct {
+// CLIAnalyticsEventMetadata is the structure that holds telemetry data context that is ultimately sent to the Stripe Analytics Service.
+type CLIAnalyticsEventMetadata struct {
 	InvocationID      string `url:"invocation_id"`      // The invocation id is unique to each context object and represents all events coming from one command / gRPC method call
 	UserAgent         string `url:"user_agent"`         // the application that is used to create this request
 	CommandPath       string `url:"command_path"`       // the command or gRPC method that initiated this request
@@ -54,7 +53,7 @@ type TelemetryClient interface {
 // AnalyticsTelemetryClient sends event information to r.stripe.com
 type AnalyticsTelemetryClient struct {
 	BaseURL    *url.URL
-	WG         *sync.WaitGroup
+	WG         sync.WaitGroup
 	HTTPClient *http.Client
 }
 
@@ -62,9 +61,9 @@ type AnalyticsTelemetryClient struct {
 // Public functions
 //
 
-// InitContext initializes an instance of CLIAnalyticsEventContext
-func InitContext() *CLIAnalyticsEventContext {
-	return &CLIAnalyticsEventContext{
+// NewContext initializes an instance of CLIAnalyticsEventContext
+func NewContext() *CLIAnalyticsEventMetadata {
+	return &CLIAnalyticsEventMetadata{
 		InvocationID: uuid.NewString(),
 		UserAgent:    useragent.GetEncodedUserAgent(),
 		CLIVersion:   version.Version,
@@ -72,8 +71,36 @@ func InitContext() *CLIAnalyticsEventContext {
 	}
 }
 
+// WithEventMetadata returns a new copy of context.Context with the provided CLIAnalyticsEventMetadata
+func WithEventMetadata(ctx context.Context, metadata *CLIAnalyticsEventMetadata) context.Context {
+	return context.WithValue(ctx, telemetryMetadataKey{}, metadata)
+}
+
+// GetEventMetadata returns the CLIAnalyticsEventMetadata from the provided context
+func GetEventMetadata(ctx context.Context) *CLIAnalyticsEventMetadata {
+	metadata := ctx.Value(telemetryMetadataKey{})
+	if metadata != nil {
+		return metadata.(*CLIAnalyticsEventMetadata)
+	}
+	return nil
+}
+
+// WithAnalyticsTelemetryClient returns a new copy of context.Context with the provided AnalyticsTelemetryClient
+func WithAnalyticsTelemetryClient(ctx context.Context, client *AnalyticsTelemetryClient) context.Context {
+	return context.WithValue(ctx, telemetryClientKey{}, client)
+}
+
+// GetTelemetryClient returns the CLIAnalyticsEventMetadata from the provided context
+func GetTelemetryClient(ctx context.Context) TelemetryClient {
+	client := ctx.Value(telemetryClientKey{})
+	if client != nil {
+		return client.(TelemetryClient)
+	}
+	return nil
+}
+
 // SetCobraCommandContext sets the telemetry values for the command being executed.
-func (e *CLIAnalyticsEventContext) SetCobraCommandContext(cmd *cobra.Command) {
+func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 	e.CommandPath = cmd.CommandPath()
 	e.GeneratedResource = false
 
@@ -87,7 +114,7 @@ func (e *CLIAnalyticsEventContext) SetCobraCommandContext(cmd *cobra.Command) {
 }
 
 // SetMerchant sets the merchant on the CLIAnalyticsEventContext object
-func (e *CLIAnalyticsEventContext) SetMerchant(merchant string) {
+func (e *CLIAnalyticsEventMetadata) SetMerchant(merchant string) {
 	e.Merchant = merchant
 }
 
@@ -95,8 +122,9 @@ func (e *CLIAnalyticsEventContext) SetMerchant(merchant string) {
 func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
 	a.WG.Add(1)
 	defer a.WG.Done()
-	if (ctx.Value(TelemetryContextKey{}) != nil) {
-		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
+	telemetryMetadata := GetEventMetadata(ctx)
+	if telemetryMetadata != nil {
+		data, _ := query.Values(telemetryMetadata)
 
 		data.Set("client_id", "stripe-cli")
 		data.Set("request_id", requestID)
@@ -115,8 +143,9 @@ func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requ
 func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
 	a.WG.Add(1)
 	defer a.WG.Done()
-	if (ctx.Value(TelemetryContextKey{}) != nil) {
-		data, _ := query.Values(ctx.Value(TelemetryContextKey{}))
+	telemetryMetadata := GetEventMetadata(ctx)
+	if telemetryMetadata != nil {
+		data, _ := query.Values(telemetryMetadata)
 
 		data.Set("client_id", "stripe-cli")
 		data.Set("event_id", uuid.NewString())
@@ -130,10 +159,8 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 }
 
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
-	if telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
-		return nil, nil
-	}
-
+	a.WG.Add(1)
+	defer a.WG.Done()
 	if a.BaseURL == nil {
 		analyticsURL, err := url.Parse(DefaultTelemetryEndpoint)
 		if err != nil {
@@ -162,7 +189,14 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 	return resp, nil
 }
 
-func telemetryOptedOut(optoutVar string) bool {
+// Wait will return when all in-flight telemetry requests are complete.
+func (a *AnalyticsTelemetryClient) Wait() {
+	a.WG.Wait()
+}
+
+// TelemetryOptedOut returns true if the user has opted out of telemetry,
+// false otherwise.
+func TelemetryOptedOut(optoutVar string) bool {
 	optoutVar = strings.ToLower(optoutVar)
 
 	return optoutVar == "1" || optoutVar == "true"

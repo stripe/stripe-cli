@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"sync"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -16,7 +14,7 @@ import (
 
 // Context Tests
 func TestSetCobraCommandContext(t *testing.T) {
-	tel := InitContext()
+	tel := NewContext()
 	cmd := &cobra.Command{
 		Use: "foo",
 	}
@@ -25,7 +23,7 @@ func TestSetCobraCommandContext(t *testing.T) {
 }
 
 func TestSetMerchant(t *testing.T) {
-	tel := InitContext()
+	tel := NewContext()
 	merchant := "acct_zzzzzz"
 	tel.SetMerchant(merchant)
 	require.Equal(t, merchant, tel.Merchant)
@@ -33,8 +31,6 @@ func TestSetMerchant(t *testing.T) {
 
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
-	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "0")
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -54,7 +50,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	telemetryContext := &CLIAnalyticsEventContext{
+	telemetryMetadata := &CLIAnalyticsEventMetadata{
 		InvocationID:      "123456",
 		UserAgent:         "Unit Test",
 		CLIVersion:        "master",
@@ -63,26 +59,22 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
-	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
+	processCtx := WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendAPIRequestEvent(processCtx, "req_zzz", false)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	resp.Body.Close()
 }
 
-func TestSkipsSendAPIRequestWhenUserOptsOutOfTelemetry(t *testing.T) {
-	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "1")
+func TestSkipsSendAPIRequestEventWhenMetadataIsEmpty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// do nothing
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
-
-	telemetryContext := InitContext()
-	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
-	resp, err := analyticsClient.SendAPIRequestEvent(processCtx, "req_zzz", false)
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	resp, err := analyticsClient.SendAPIRequestEvent(context.Background(), "req_zzz", false)
 	require.NoError(t, err)
 	require.Nil(t, resp)
 
@@ -93,7 +85,6 @@ func TestSkipsSendAPIRequestWhenUserOptsOutOfTelemetry(t *testing.T) {
 }
 
 func TestSendEvent(t *testing.T) {
-	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "0")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := ioutil.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -112,7 +103,7 @@ func TestSendEvent(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	telemetryContext := &CLIAnalyticsEventContext{
+	telemetryMetadata := &CLIAnalyticsEventMetadata{
 		InvocationID:      "123456",
 		UserAgent:         "Unit Test",
 		CLIVersion:        "master",
@@ -121,26 +112,23 @@ func TestSendEvent(t *testing.T) {
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
-	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
+	processCtx := WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendEvent(processCtx, "foo", "bar")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	resp.Body.Close()
 }
 
-func TestSkipsSendEventWhenUserOptsOutOfTelemetry(t *testing.T) {
-	os.Setenv("STRIPE_CLI_TELEMETRY_OPTOUT", "1")
+func TestSkipsSendEventWhenMetadataIsEmpty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// do nothing
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	telemetryContext := InitContext()
-	processCtx := context.WithValue(context.Background(), TelemetryContextKey{}, telemetryContext)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, WG: &sync.WaitGroup{}, HTTPClient: &http.Client{}}
-	resp, err := analyticsClient.SendEvent(processCtx, "foo", "bar")
+	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	resp, err := analyticsClient.SendEvent(context.Background(), "foo", "bar")
 	require.NoError(t, err)
 	require.Nil(t, resp)
 	// We shouldn't get here but the linter is unhappy
@@ -151,13 +139,13 @@ func TestSkipsSendEventWhenUserOptsOutOfTelemetry(t *testing.T) {
 
 // Utility function
 func TestTelemetryOptedOut(t *testing.T) {
-	require.False(t, telemetryOptedOut(""))
-	require.False(t, telemetryOptedOut("0"))
-	require.False(t, telemetryOptedOut("false"))
-	require.False(t, telemetryOptedOut("False"))
-	require.False(t, telemetryOptedOut("FALSE"))
-	require.True(t, telemetryOptedOut("1"))
-	require.True(t, telemetryOptedOut("true"))
-	require.True(t, telemetryOptedOut("True"))
-	require.True(t, telemetryOptedOut("TRUE"))
+	require.False(t, TelemetryOptedOut(""))
+	require.False(t, TelemetryOptedOut("0"))
+	require.False(t, TelemetryOptedOut("false"))
+	require.False(t, TelemetryOptedOut("False"))
+	require.False(t, TelemetryOptedOut("FALSE"))
+	require.True(t, TelemetryOptedOut("1"))
+	require.True(t, TelemetryOptedOut("true"))
+	require.True(t, TelemetryOptedOut("True"))
+	require.True(t, TelemetryOptedOut("TRUE"))
 }
