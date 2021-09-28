@@ -53,7 +53,7 @@ type TelemetryClient interface {
 // AnalyticsTelemetryClient sends event information to r.stripe.com
 type AnalyticsTelemetryClient struct {
 	BaseURL    *url.URL
-	WG         sync.WaitGroup
+	wg         sync.WaitGroup
 	HTTPClient *http.Client
 }
 
@@ -61,8 +61,8 @@ type AnalyticsTelemetryClient struct {
 // Public functions
 //
 
-// NewContext initializes an instance of CLIAnalyticsEventContext
-func NewContext() *CLIAnalyticsEventMetadata {
+// NewEventMetadata initializes an instance of CLIAnalyticsEventContext
+func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	return &CLIAnalyticsEventMetadata{
 		InvocationID: uuid.NewString(),
 		UserAgent:    useragent.GetEncodedUserAgent(),
@@ -120,8 +120,8 @@ func (e *CLIAnalyticsEventMetadata) SetMerchant(merchant string) {
 
 // SendAPIRequestEvent is a special function for API requests
 func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
-	a.WG.Add(1)
-	defer a.WG.Done()
+	a.wg.Add(1)
+	defer a.wg.Done()
 	telemetryMetadata := GetEventMetadata(ctx)
 	if telemetryMetadata != nil {
 		data, _ := query.Values(telemetryMetadata)
@@ -141,8 +141,8 @@ func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requ
 
 // SendEvent sends a telemetry event to r.stripe.com
 func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
-	a.WG.Add(1)
-	defer a.WG.Done()
+	a.wg.Add(1)
+	defer a.wg.Done()
 	telemetryMetadata := GetEventMetadata(ctx)
 	if telemetryMetadata != nil {
 		data, _ := query.Values(telemetryMetadata)
@@ -159,8 +159,8 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 }
 
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
-	a.WG.Add(1)
-	defer a.WG.Done()
+	a.wg.Add(1)
+	defer a.wg.Done()
 	if a.BaseURL == nil {
 		analyticsURL, err := url.Parse(DefaultTelemetryEndpoint)
 		if err != nil {
@@ -191,7 +191,7 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 
 // Wait will return when all in-flight telemetry requests are complete.
 func (a *AnalyticsTelemetryClient) Wait() {
-	a.WG.Wait()
+	a.wg.Wait()
 }
 
 // TelemetryOptedOut returns true if the user has opted out of telemetry,

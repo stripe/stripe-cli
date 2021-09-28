@@ -14,7 +14,7 @@ import (
 
 // Context Tests
 func TestSetCobraCommandContext(t *testing.T) {
-	tel := NewContext()
+	tel := NewEventMetadata()
 	cmd := &cobra.Command{
 		Use: "foo",
 	}
@@ -23,7 +23,7 @@ func TestSetCobraCommandContext(t *testing.T) {
 }
 
 func TestSetMerchant(t *testing.T) {
-	tel := NewContext()
+	tel := NewEventMetadata()
 	merchant := "acct_zzzzzz"
 	tel.SetMerchant(merchant)
 	require.Equal(t, merchant, tel.Merchant)
