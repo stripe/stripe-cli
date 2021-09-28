@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -64,13 +66,6 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if !telemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
-		telemetryHdr, err := getTelemetryHeader()
-		if err == nil {
-			req.Header.Set("Stripe-CLI-Telemetry", telemetryHdr)
-		}
-	}
-
 	if c.APIKey != "" {
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 	}
@@ -92,7 +87,25 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	// RequestID of the API Request
+	requestID := resp.Header.Get("Request-Id")
+	livemode := strings.Contains(c.APIKey, "live")
+	go sendTelemetryEvent(ctx, requestID, livemode)
 	return resp, nil
+}
+
+func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
+	telemetryClient := GetTelemetryClient(ctx)
+	if telemetryClient != nil {
+		resp, err := telemetryClient.SendAPIRequestEvent(ctx, requestID, livemode)
+		// Don't throw exception if we fail to send the event
+		if err != nil {
+			log.Debugf("Error while sending telemetry data: %v\n", err)
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+	}
 }
 
 func newHTTPClient(verbose bool, unixSocket string) *http.Client {

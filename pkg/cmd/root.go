@@ -49,19 +49,23 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// if the device name errors, don't fail running the command
-		deviceName, _ := Config.Profile.GetDeviceName()
-		stripe.GetTelemetryInstance().SetDeviceName(deviceName)
-		stripe.GetTelemetryInstance().SetCommandContext(cmd)
+		// if getting the config errors, don't fail running the command
+		merchant, _ := Config.Profile.GetAccountID()
+		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
+		telemetryMetadata.SetCobraCommandContext(cmd)
+		telemetryMetadata.SetMerchant(merchant)
 	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
+	telemetryMetadata := stripe.NewEventMetadata()
+	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
+
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 

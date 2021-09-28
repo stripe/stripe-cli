@@ -17,6 +17,8 @@ var (
 	ErrAPIKeyNotConfigured = errors.New("you have not configured API keys yet")
 	// ErrDeviceNameNotConfigured is the error returned when the loaded profile is missing the device name property
 	ErrDeviceNameNotConfigured = errors.New("you have not configured your device name yet")
+	// ErrAccountIDNotConfigured is the error returned when the loaded profile is missing the account_id property
+	ErrAccountIDNotConfigured = errors.New("you have not configured your accountID yet")
 )
 
 // CallNonEmptyArray calls an argument validator on all non-empty elements of
