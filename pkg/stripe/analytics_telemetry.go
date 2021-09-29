@@ -90,6 +90,11 @@ func WithAnalyticsTelemetryClient(ctx context.Context, client *AnalyticsTelemetr
 	return context.WithValue(ctx, telemetryClientKey{}, client)
 }
 
+// WithTelemetryClient returns a new copy of context.Context with the provided telemetryClient
+func WithTelemetryClient(ctx context.Context, client TelemetryClient) context.Context {
+	return context.WithValue(ctx, telemetryClientKey{}, client)
+}
+
 // GetTelemetryClient returns the CLIAnalyticsEventMetadata from the provided context
 func GetTelemetryClient(ctx context.Context) TelemetryClient {
 	client := ctx.Value(telemetryClientKey{})
