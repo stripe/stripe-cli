@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	log "github.com/sirupsen/logrus"
+
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"google.golang.org/grpc"
@@ -15,19 +16,20 @@ import (
 
 const requiredHeader = "sec-x-stripe-cli"
 
-// It's not easy to pass values through context for streams
+// WrappedServerStream wraps a ServerSteam so that we can pass values through context.
 // https://pkg.go.dev/github.com/grpc-ecosystem/go-grpc-middleware#hdr-Writing_Your_Own
 type WrappedServerStream struct {
 	grpc.ServerStream
 	ctx context.Context
 }
 
+// Context returns the context for this stream.
 func (w WrappedServerStream) Context() context.Context {
 	return w.ctx
 }
 
-func newWrappedStream(server *RPCService, stream grpc.ServerStream, methodName string) grpc.ServerStream {
-	newCtx := initializeTelemetryContext(stream.Context(), methodName, server)
+func newWrappedStream(stream grpc.ServerStream, methodName string, server *RPCService) grpc.ServerStream {
+	newCtx := updateContextWithTelemetry(stream.Context(), methodName, server)
 	return &WrappedServerStream{stream, newCtx}
 }
 
@@ -46,7 +48,10 @@ func authorize(ctx context.Context) error {
 	return nil
 }
 
-func initializeTelemetryContext(ctx context.Context, methodName string, server *RPCService) context.Context {
+// Populate the context with:
+// 1. The telemetry client from the RPC Service
+// 2. The event metadata
+func updateContextWithTelemetry(ctx context.Context, methodName string, server *RPCService) context.Context {
 	// if getting the config errors, don't fail running the command
 	merchant, _ := server.cfg.UserCfg.Profile.GetAccountID()
 
@@ -71,7 +76,7 @@ func serverStreamInterceptor(
 	if err := authorize(stream.Context()); err != nil {
 		return err
 	}
-	wrappedStream := newWrappedStream(srv.(*RPCService), stream, info.FullMethod)
+	wrappedStream := newWrappedStream(stream, info.FullMethod, srv.(*RPCService))
 	return handler(srv, wrappedStream)
 }
 
@@ -88,6 +93,6 @@ func serverUnaryInterceptor(
 	if err := authorize(ctx); err != nil {
 		return nil, err
 	}
-	newCtx := initializeTelemetryContext(ctx, info.FullMethod, info.Server.(*RPCService))
+	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, info.Server.(*RPCService))
 	return handler(newCtx, req)
 }

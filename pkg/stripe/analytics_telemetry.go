@@ -85,11 +85,6 @@ func GetEventMetadata(ctx context.Context) *CLIAnalyticsEventMetadata {
 	return nil
 }
 
-// WithAnalyticsTelemetryClient returns a new copy of context.Context with the provided AnalyticsTelemetryClient
-func WithAnalyticsTelemetryClient(ctx context.Context, client *AnalyticsTelemetryClient) context.Context {
-	return context.WithValue(ctx, telemetryClientKey{}, client)
-}
-
 // WithTelemetryClient returns a new copy of context.Context with the provided telemetryClient
 func WithTelemetryClient(ctx context.Context, client TelemetryClient) context.Context {
 	return context.WithValue(ctx, telemetryClientKey{}, client)

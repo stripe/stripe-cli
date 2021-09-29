@@ -22,7 +22,7 @@ func main() {
 			Timeout: time.Second * 3,
 		}
 		telemetryClient := &stripe.AnalyticsTelemetryClient{HTTPClient: httpClient}
-		contextWithTelemetry := stripe.WithAnalyticsTelemetryClient(ctx, telemetryClient)
+		contextWithTelemetry := stripe.WithTelemetryClient(ctx, telemetryClient)
 
 		cmd.Execute(contextWithTelemetry)
 
