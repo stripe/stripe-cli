@@ -51,8 +51,10 @@ type ConfigOutput struct {
 }
 
 // New creates a new RPC service
-func New(cfg *Config,
-	telemetryClient stripe.TelemetryClient) *RPCService {
+func New(
+	cfg *Config,
+	telemetryClient stripe.TelemetryClient,
+) *RPCService {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}

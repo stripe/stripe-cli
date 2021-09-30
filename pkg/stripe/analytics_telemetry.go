@@ -57,6 +57,10 @@ type AnalyticsTelemetryClient struct {
 	HTTPClient *http.Client
 }
 
+// NoOpTelemetryClient does not call any endpoint and returns an empty response
+type NoOpTelemetryClient struct {
+}
+
 //
 // Public functions
 //
@@ -192,6 +196,16 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 // Wait will return when all in-flight telemetry requests are complete.
 func (a *AnalyticsTelemetryClient) Wait() {
 	a.wg.Wait()
+}
+
+// SendAPIRequestEvent does nothing
+func (a *NoOpTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
+	return nil, nil
+}
+
+// SendEvent does nothing
+func (a *NoOpTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+	return nil, nil
 }
 
 // TelemetryOptedOut returns true if the user has opted out of telemetry,

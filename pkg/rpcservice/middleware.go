@@ -52,6 +52,11 @@ func authorize(ctx context.Context) error {
 // 1. The telemetry client from the RPC Service
 // 2. The event metadata
 func updateContextWithTelemetry(ctx context.Context, methodName string, server *RPCService) context.Context {
+	// If the context is nil for whatever reason, create an empty one
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// if getting the config errors, don't fail running the command
 	merchant, _ := server.cfg.UserCfg.Profile.GetAccountID()
 
@@ -73,10 +78,10 @@ func serverStreamInterceptor(
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Streaming method invoked: %v", info.FullMethod)
-	if err := authorize(stream.Context()); err != nil {
+	wrappedStream := newWrappedStream(stream, info.FullMethod, srv.(*RPCService))
+	if err := authorize(wrappedStream.Context()); err != nil {
 		return err
 	}
-	wrappedStream := newWrappedStream(stream, info.FullMethod, srv.(*RPCService))
 	return handler(srv, wrappedStream)
 }
 
@@ -90,9 +95,9 @@ func serverUnaryInterceptor(
 	log.WithFields(log.Fields{
 		"prefix": "gRPC",
 	}).Debugf("Unary method invoked: %v, req: %v", info.FullMethod, req)
-	if err := authorize(ctx); err != nil {
+	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, info.Server.(*RPCService))
+	if err := authorize(newCtx); err != nil {
 		return nil, err
 	}
-	newCtx := updateContextWithTelemetry(ctx, info.FullMethod, info.Server.(*RPCService))
 	return handler(newCtx, req)
 }

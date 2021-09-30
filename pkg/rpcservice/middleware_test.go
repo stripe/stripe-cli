@@ -12,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
@@ -59,4 +61,19 @@ func TestRejectRequestIfMetadataEmpty(t *testing.T) {
 	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
 
 	assert.Equal(t, expected.Error(), err.Error())
+}
+
+func TestUpdateContextWithTelemetry(t *testing.T) {
+	telemetryClient := &stripe.NoOpTelemetryClient{}
+	config := &Config{
+		UserCfg: &config.Config{
+			Profile: config.Profile{
+				AccountID: "acct_xxx",
+			},
+		}}
+	rpcService := New(config, telemetryClient)
+	newCtx := updateContextWithTelemetry(context.Background(), "method", rpcService)
+
+	assert.NotNil(t, stripe.GetEventMetadata(newCtx))
+	assert.Equal(t, stripe.GetTelemetryClient(newCtx), telemetryClient)
 }
