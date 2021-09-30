@@ -87,3 +87,25 @@ func TestUpdateContextWithTelemetry(t *testing.T) {
 	assert.Equal(t, eventMetadata.UserAgent, "unit_test")
 	assert.Equal(t, stripe.GetTelemetryClient(newCtx), telemetryClient)
 }
+
+func TestGetUserAgentFromGRPCMetadata(t *testing.T) {
+	// No grpc metadata
+	assert.Equal(t, getUserAgentFromGrpcMetadata(context.Background()), "")
+}
+
+func TestGetUserAgentFromGRPCMetadataWithNoUserAgent(t *testing.T) {
+	// no user-agent key
+	md := metadata.Pairs("hello", "world")
+
+	ctx := metadata.NewIncomingContext(context.Background(), md)
+	assert.Equal(t, getUserAgentFromGrpcMetadata(ctx), "")
+}
+
+func TestGetUserAgentFromGRPCMetadataWitMultipleUserAgents(t *testing.T) {
+	// no user-agent key
+	md := metadata.Pairs("user-agent", "unit_test")
+	md.Append("user-agent", "hello")
+
+	ctx := metadata.NewIncomingContext(context.Background(), md)
+	assert.Equal(t, getUserAgentFromGrpcMetadata(ctx), "unit_test,hello")
+}

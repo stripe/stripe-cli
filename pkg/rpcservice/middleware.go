@@ -3,6 +3,7 @@ package rpcservice
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -75,12 +76,7 @@ func getUserAgentFromGrpcMetadata(ctx context.Context) string {
 	if !ok {
 		return ""
 	}
-
-	if len(md["user-agent"]) != 1 {
-		return ""
-	}
-
-	return md["user-agent"][0]
+	return strings.Join(md["user-agent"], ",")
 }
 
 // Middleware for stream requests
