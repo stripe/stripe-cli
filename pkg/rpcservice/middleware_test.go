@@ -72,8 +72,18 @@ func TestUpdateContextWithTelemetry(t *testing.T) {
 			},
 		}}
 	rpcService := New(config, telemetryClient)
-	newCtx := updateContextWithTelemetry(context.Background(), "method", rpcService)
 
-	assert.NotNil(t, stripe.GetEventMetadata(newCtx))
+	// Add grpc Metadata to context
+	md := metadata.Pairs("user-agent", "unit_test")
+
+	ctx := metadata.NewIncomingContext(context.Background(), md)
+
+	newCtx := updateContextWithTelemetry(ctx, "method", rpcService)
+
+	eventMetadata := stripe.GetEventMetadata(newCtx)
+	assert.NotNil(t, eventMetadata)
+	assert.Equal(t, eventMetadata.Merchant, "acct_xxx")
+	assert.Equal(t, eventMetadata.CommandPath, "method")
+	assert.Equal(t, eventMetadata.UserAgent, "unit_test")
 	assert.Equal(t, stripe.GetTelemetryClient(newCtx), telemetryClient)
 }

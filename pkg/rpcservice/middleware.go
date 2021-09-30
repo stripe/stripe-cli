@@ -59,13 +59,28 @@ func updateContextWithTelemetry(ctx context.Context, methodName string, server *
 
 	// if getting the config errors, don't fail running the command
 	merchant, _ := server.cfg.UserCfg.Profile.GetAccountID()
+	useragent := getUserAgentFromGrpcMetadata(ctx)
 
 	telemetryMetadata := stripe.NewEventMetadata()
 	telemetryMetadata.SetMerchant(merchant)
-	telemetryMetadata.CommandPath = methodName
+	telemetryMetadata.SetCommandPath(methodName)
+	telemetryMetadata.SetUserAgent(useragent)
 
 	newCtx := stripe.WithEventMetadata(stripe.WithTelemetryClient(ctx, server.TelemetryClient), telemetryMetadata)
 	return newCtx
+}
+
+func getUserAgentFromGrpcMetadata(ctx context.Context) string {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+
+	if len(md["user-agent"]) != 1 {
+		return ""
+	}
+
+	return md["user-agent"][0]
 }
 
 // Middleware for stream requests

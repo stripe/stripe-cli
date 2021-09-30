@@ -16,7 +16,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -69,7 +68,6 @@ type NoOpTelemetryClient struct {
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	return &CLIAnalyticsEventMetadata{
 		InvocationID: uuid.NewString(),
-		UserAgent:    useragent.GetEncodedUserAgent(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
 	}
@@ -120,6 +118,16 @@ func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 // SetMerchant sets the merchant on the CLIAnalyticsEventContext object
 func (e *CLIAnalyticsEventMetadata) SetMerchant(merchant string) {
 	e.Merchant = merchant
+}
+
+// SetUserAgent sets the userAgent on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetUserAgent(userAgent string) {
+	e.UserAgent = userAgent
+}
+
+// SetCommandPath sets the commandPath on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetCommandPath(commandPath string) {
+	e.CommandPath = commandPath
 }
 
 // SendAPIRequestEvent is a special function for API requests
