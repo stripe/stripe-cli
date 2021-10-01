@@ -16,7 +16,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -57,6 +56,10 @@ type AnalyticsTelemetryClient struct {
 	HTTPClient *http.Client
 }
 
+// NoOpTelemetryClient does not call any endpoint and returns an empty response
+type NoOpTelemetryClient struct {
+}
+
 //
 // Public functions
 //
@@ -65,7 +68,6 @@ type AnalyticsTelemetryClient struct {
 func NewEventMetadata() *CLIAnalyticsEventMetadata {
 	return &CLIAnalyticsEventMetadata{
 		InvocationID: uuid.NewString(),
-		UserAgent:    useragent.GetEncodedUserAgent(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
 	}
@@ -85,8 +87,8 @@ func GetEventMetadata(ctx context.Context) *CLIAnalyticsEventMetadata {
 	return nil
 }
 
-// WithAnalyticsTelemetryClient returns a new copy of context.Context with the provided AnalyticsTelemetryClient
-func WithAnalyticsTelemetryClient(ctx context.Context, client *AnalyticsTelemetryClient) context.Context {
+// WithTelemetryClient returns a new copy of context.Context with the provided telemetryClient
+func WithTelemetryClient(ctx context.Context, client TelemetryClient) context.Context {
 	return context.WithValue(ctx, telemetryClientKey{}, client)
 }
 
@@ -116,6 +118,16 @@ func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 // SetMerchant sets the merchant on the CLIAnalyticsEventContext object
 func (e *CLIAnalyticsEventMetadata) SetMerchant(merchant string) {
 	e.Merchant = merchant
+}
+
+// SetUserAgent sets the userAgent on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetUserAgent(userAgent string) {
+	e.UserAgent = userAgent
+}
+
+// SetCommandPath sets the commandPath on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetCommandPath(commandPath string) {
+	e.CommandPath = commandPath
 }
 
 // SendAPIRequestEvent is a special function for API requests
@@ -192,6 +204,16 @@ func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values
 // Wait will return when all in-flight telemetry requests are complete.
 func (a *AnalyticsTelemetryClient) Wait() {
 	a.wg.Wait()
+}
+
+// SendAPIRequestEvent does nothing
+func (a *NoOpTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error) {
+	return nil, nil
+}
+
+// SendEvent does nothing
+func (a *NoOpTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+	return nil, nil
 }
 
 // TelemetryOptedOut returns true if the user has opted out of telemetry,

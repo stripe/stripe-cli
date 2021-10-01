@@ -13,6 +13,41 @@ import (
 )
 
 // Context Tests
+func TestEventMetadataWithGet(t *testing.T) {
+	ctx := context.Background()
+	event := &CLIAnalyticsEventMetadata{
+		InvocationID: "hello",
+		UserAgent:    "uesr",
+		CLIVersion:   "1.0",
+		OS:           "os",
+	}
+	newCtx := WithEventMetadata(ctx, event)
+
+	require.Equal(t, GetEventMetadata(newCtx), event)
+}
+
+func TestGetEventMetadata_DoesNotExistInCtx(t *testing.T) {
+	ctx := context.Background()
+	require.Nil(t, GetEventMetadata(ctx))
+}
+
+func TestTelemetryClientWithGet(t *testing.T) {
+	ctx := context.Background()
+	url, _ := url.Parse("http://hello.com")
+	telemetryClient := &AnalyticsTelemetryClient{
+		BaseURL:    url,
+		HTTPClient: &http.Client{},
+	}
+	newCtx := WithTelemetryClient(ctx, telemetryClient)
+
+	require.Equal(t, GetTelemetryClient(newCtx), telemetryClient)
+}
+
+func TestGetTelemetryClient_DoesNotExistInCtx(t *testing.T) {
+	ctx := context.Background()
+	require.Nil(t, GetTelemetryClient(ctx))
+}
+
 func TestSetCobraCommandContext(t *testing.T) {
 	tel := NewEventMetadata()
 	cmd := &cobra.Command{

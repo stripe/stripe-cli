@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
@@ -34,6 +35,9 @@ type RPCService struct {
 	cfg *Config
 
 	grpcServer *grpc.Server
+
+	// TelemetryClient to use for sending telemetry events
+	TelemetryClient stripe.TelemetryClient
 }
 
 // ConfigOutput is the config that clients will need to connect to the gRPC server. This is printed
@@ -47,7 +51,10 @@ type ConfigOutput struct {
 }
 
 // New creates a new RPC service
-func New(cfg *Config) *RPCService {
+func New(
+	cfg *Config,
+	telemetryClient stripe.TelemetryClient,
+) *RPCService {
 	if cfg.Log == nil {
 		cfg.Log = &log.Logger{Out: ioutil.Discard}
 	}
@@ -58,8 +65,9 @@ func New(cfg *Config) *RPCService {
 	)
 
 	return &RPCService{
-		cfg:        cfg,
-		grpcServer: grpcServer,
+		cfg:             cfg,
+		grpcServer:      grpcServer,
+		TelemetryClient: telemetryClient,
 	}
 }
 

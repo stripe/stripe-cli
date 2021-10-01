@@ -18,6 +18,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
@@ -54,6 +55,8 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
 		telemetryMetadata.SetCobraCommandContext(cmd)
 		telemetryMetadata.SetMerchant(merchant)
+		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+
 	},
 }
 

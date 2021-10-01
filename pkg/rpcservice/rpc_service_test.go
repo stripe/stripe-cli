@@ -25,7 +25,7 @@ func init() {
 				DeviceName: "rpc_test_device_name",
 			},
 		},
-	})
+	}, nil)
 
 	rpc.RegisterStripeCLIServer(srv.grpcServer, srv)
 
