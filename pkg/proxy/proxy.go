@@ -162,9 +162,16 @@ func (p *Proxy) Run(ctx context.Context) error {
 			<-p.webSocketClient.Connected()
 			nAttempts = 0
 
+			displayedAPIVersion := ""
+			if p.cfg.UseLatestAPIVersion && session.LatestVersion != "" {
+				displayedAPIVersion = "You are using Stripe API Version [" + session.LatestVersion + "]. "
+			} else if !p.cfg.UseLatestAPIVersion && session.DefaultVersion != "" {
+				displayedAPIVersion = "You are using Stripe API Version [" + session.DefaultVersion + "]. "
+			}
+
 			p.cfg.OutCh <- websocket.StateElement{
 				State: websocket.Ready,
-				Data:  []string{session.Secret},
+				Data:  []string{displayedAPIVersion, session.Secret},
 			}
 		}()
 

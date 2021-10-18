@@ -104,6 +104,8 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 		"websocket_authorized_feature":   session.WebSocketAuthorizedFeature,
 		"reconnect_delay":                session.ReconnectDelay,
 		"display_connect_filter_warning": session.DisplayConnectFilterWarning,
+		"default_version":                session.DefaultVersion,
+		"latest_version":                 session.LatestVersion,
 	}).Debug("Got successful response from Stripe")
 
 	return session, nil
