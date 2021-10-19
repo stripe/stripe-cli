@@ -9,4 +9,6 @@ type StripeCLISession struct {
 	WebSocketAuthorizedFeature  string `json:"websocket_authorized_feature"`
 	WebSocketID                 string `json:"websocket_id"`
 	WebSocketURL                string `json:"websocket_url"`
+	DefaultVersion              string `json:"default_version"`
+	LatestVersion               string `json:"latest_version"`
 }

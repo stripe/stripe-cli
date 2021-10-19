@@ -228,7 +228,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 			case websocket.Reconnecting:
 				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
 			case websocket.Ready:
-				ansi.StopSpinner(s, fmt.Sprintf("Ready! Your webhook signing secret is %s (^C to quit)", ansi.Bold(se.Data[0])), logger.Out)
+				ansi.StopSpinner(s, fmt.Sprintf("Ready! %sYour webhook signing secret is %s (^C to quit)", se.Data[0], ansi.Bold(se.Data[1])), logger.Out)
 			case websocket.Done:
 				ansi.StopSpinner(s, "", logger.Out)
 			}
