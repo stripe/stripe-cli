@@ -18,6 +18,8 @@ func TestAuthorize(t *testing.T) {
 			WebSocketID:                "some-id",
 			WebSocketURL:               "wss://example.com/subscribe/acct_123",
 			WebSocketAuthorizedFeature: "webhook-payloads",
+			DefaultVersion:             "2014-01-31",
+			LatestVersion:              "2020-08-27",
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -42,6 +44,8 @@ func TestAuthorize(t *testing.T) {
 	require.Equal(t, "some-id", session.WebSocketID)
 	require.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
 	require.Equal(t, "webhook-payloads", session.WebSocketAuthorizedFeature)
+	require.Equal(t, "2014-01-31", session.DefaultVersion)
+	require.Equal(t, "2020-08-27", session.LatestVersion)
 }
 
 func TestUserAgent(t *testing.T) {
