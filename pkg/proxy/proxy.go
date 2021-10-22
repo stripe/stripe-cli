@@ -400,8 +400,8 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 
 	p.cfg.OutCh <- websocket.DataElement{
 		Data: EndpointResponse{
-			Event:    evtCtx.event,
-			Resp:     resp,
+			Event: evtCtx.event,
+			Resp:  resp,
 		},
 	}
 
