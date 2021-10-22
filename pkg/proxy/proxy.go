@@ -49,9 +49,8 @@ type EndpointRoute struct {
 
 // EndpointResponse describes the response to a Stripe event from an endpoint
 type EndpointResponse struct {
-	Event    *StripeEvent
-	Resp     *http.Response
-	RespBody string
+	Event *StripeEvent
+	Resp  *http.Response
 }
 
 // FailedToReadResponseError describes a failure to read the response from an endpoint
@@ -403,7 +402,6 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 		Data: EndpointResponse{
 			Event:    evtCtx.event,
 			Resp:     resp,
-			RespBody: body,
 		},
 	}
 

@@ -189,7 +189,6 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 						StatusCode: 200,
 						Request:    r,
 					},
-					RespBody: "foo",
 				},
 			}
 			return nil
@@ -354,7 +353,6 @@ func TestBuildEndpointResponseRespSucceeds(t *testing.T) {
 			StatusCode: 200,
 			Request:    endpointReq,
 		},
-		RespBody: "foo",
 	}
 
 	expected := &rpc.ListenResponse{
