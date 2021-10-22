@@ -134,7 +134,6 @@ func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse
 			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
 				Content: &rpc.ListenResponse_EndpointResponse_Data_{
 					Data: &rpc.ListenResponse_EndpointResponse_Data{
-						Body:       raw.RespBody,
 						EventId:    raw.Event.ID,
 						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
 						Status:     int64(raw.Resp.StatusCode),
