@@ -294,7 +294,6 @@
 | http_method | [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod) |  | HTTP method |
 | url | [string](#string) |  | URL of the webhook endpoint |
 | event_id | [string](#string) |  | ID of the Stripe event that caused this response |
-| body | [string](#string) |  | Response body |
 
 
 

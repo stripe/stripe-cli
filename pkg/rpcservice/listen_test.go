@@ -189,7 +189,6 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 						StatusCode: 200,
 						Request:    r,
 					},
-					RespBody: "foo",
 				},
 			}
 			return nil
@@ -211,7 +210,6 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 						HttpMethod: rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_POST,
 						Url:        "localhost:4242/webhook",
 						EventId:    "evt_12345",
-						Body:       "foo",
 					},
 				},
 			},
@@ -355,7 +353,6 @@ func TestBuildEndpointResponseRespSucceeds(t *testing.T) {
 			StatusCode: 200,
 			Request:    endpointReq,
 		},
-		RespBody: "foo",
 	}
 
 	expected := &rpc.ListenResponse{
@@ -367,7 +364,6 @@ func TestBuildEndpointResponseRespSucceeds(t *testing.T) {
 						HttpMethod: rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_POST,
 						Url:        "localhost:4242/webhook",
 						EventId:    "evt_12345",
-						Body:       "foo",
 					},
 				},
 			},

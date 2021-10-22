@@ -66,9 +66,6 @@ message ListenResponse {
 
       // ID of the Stripe event that caused this response
       string event_id = 4;
-
-      // Response body
-      string body = 5;
     }
 
     oneof content {
