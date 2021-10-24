@@ -794,6 +794,7 @@
 | override | [string](#string) | repeated | Override parameters in the fixture |
 | add | [string](#string) | repeated | Add parameters in the fixture |
 | remove | [string](#string) | repeated | Remove parameters from the fixture |
+| raw | [string](#string) |  | Raw fixture string |
 
 
 

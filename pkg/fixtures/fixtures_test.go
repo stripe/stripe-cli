@@ -103,7 +103,7 @@ func TestMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background())
@@ -133,7 +133,7 @@ func TestWithSkipMakeRequest(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{"char_bender", "capt_bender"}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background())
@@ -174,7 +174,7 @@ func TestMakeRequestWithOverride(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{"cust_bender:name=Fry", "char_bender:amount=3000"}, []string{}, []string{})
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background())
@@ -210,7 +210,7 @@ func TestMakeRequestWithAdd(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(
+	fxt, err := NewFixtureFromFile(
 		fs, apiKey, "", ts.URL, file,
 		[]string{}, []string{}, []string{
 			"cust_bender:birthdate=2996-09-04",
@@ -254,7 +254,7 @@ func TestMakeRequestWithRemove(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(
+	fxt, err := NewFixtureFromFile(
 		fs, apiKey, "", ts.URL, file, []string{}, []string{},
 		[]string{}, []string{"cust_bender:phone", "char_bender:capture"},
 	)
@@ -273,7 +273,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background())
@@ -290,7 +290,7 @@ func TestMakeRequestUnexpectedFailure(t *testing.T) {
 
 	defer func() { ts.Close() }()
 	afero.WriteFile(fs, "failured_test_fixture.json", []byte(failureTestFixture), os.ModePerm)
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, "failured_test_fixture.json", []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
 	_, err = fxt.Execute(context.Background())
@@ -404,7 +404,7 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 
 	afero.WriteFile(fs, file, []byte(testFixture), os.ModePerm)
 
-	fxt, err := NewFixture(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, file, []string{}, []string{}, []string{}, []string{})
 	require.NoError(t, err)
 
 	requestNames, err := fxt.Execute(context.Background())
