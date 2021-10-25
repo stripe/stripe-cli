@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message FixtureRequest {
+  // An event to get the default fixture for
+  string event = 1;
+}
+
+message FixtureResponse {
+  // default fixture for event
+  string fixture = 1;
+}
