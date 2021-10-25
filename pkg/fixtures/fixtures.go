@@ -62,8 +62,8 @@ type Fixture struct {
 	fixture       fixtureFile
 }
 
-// NewFixture creates a to later run steps for populating test data
-func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string) (*Fixture, error) {
+// NewFixtureFromFile creates a to later run steps for populating test data
+func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -74,7 +74,6 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, 
 	}
 
 	var filedata []byte
-
 	var err error
 
 	if _, ok := reverseMap()[file]; ok {
@@ -109,6 +108,38 @@ func NewFixture(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, 
 	}
 
 	return &fxt, nil
+}
+
+// NewFixtureFromRawString creates fixtures from user inputted string
+func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
+	fxt := Fixture{
+		Fs:            fs,
+		APIKey:        apiKey,
+		StripeAccount: stripeAccount,
+		Skip:          []string{},
+		BaseURL:       baseURL,
+		responses:     make(map[string]gjson.Result),
+	}
+
+	err := json.Unmarshal([]byte(raw), &fxt.fixture)
+	if err != nil {
+		return nil, err
+	}
+
+	if fxt.fixture.Meta.Version > SupportedVersions {
+		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
+	}
+
+	return &fxt, nil
+}
+
+// GetFixtureFileContent returns the file content of the given fixture file name
+func (fxt *Fixture) GetFixtureFileContent() string {
+	data, err := json.Marshal(fxt.fixture)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // Override forcefully overrides fields with existing data on a fixture

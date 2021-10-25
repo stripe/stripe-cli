@@ -22,6 +22,9 @@ message TriggerRequest {
 
   // Remove parameters from the fixture
   repeated string remove = 6;
+
+  // Raw fixture string
+  string raw = 7;
 }
 
 message TriggerResponse {

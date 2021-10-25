@@ -14,6 +14,10 @@
     - [EventsResendRequest](#rpc.EventsResendRequest)
     - [EventsResendResponse](#rpc.EventsResendResponse)
   
+- [fixtures.proto](#fixtures.proto)
+    - [FixtureRequest](#rpc.FixtureRequest)
+    - [FixtureResponse](#rpc.FixtureResponse)
+  
 - [listen.proto](#listen.proto)
     - [ListenRequest](#rpc.ListenRequest)
     - [ListenResponse](#rpc.ListenResponse)
@@ -95,6 +99,7 @@
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | EventsResend | [EventsResendRequest](#rpc.EventsResendRequest) | [EventsResendResponse](#rpc.EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
+| Fixture | [FixtureRequest](#rpc.FixtureRequest) | [FixtureResponse](#rpc.FixtureResponse) | Retrieve the default fixture of given triggering event. |
 | Listen | [ListenRequest](#rpc.ListenRequest) | [ListenResponse](#rpc.ListenResponse) stream | Receive webhook events from the Stripe API to your local machine. Like `stripe listen`. |
 | Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
 | LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
@@ -204,6 +209,52 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | stripe_event | [StripeEvent](#rpc.StripeEvent) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="fixtures.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## fixtures.proto
+
+
+
+<a name="rpc.FixtureRequest"></a>
+
+### FixtureRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [string](#string) |  | An event to get the default fixture for |
+
+
+
+
+
+
+<a name="rpc.FixtureResponse"></a>
+
+### FixtureResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| fixture | [string](#string) |  | default fixture for event |
 
 
 
@@ -794,6 +845,7 @@
 | override | [string](#string) | repeated | Override parameters in the fixture |
 | add | [string](#string) | repeated | Add parameters in the fixture |
 | remove | [string](#string) | repeated | Remove parameters from the fixture |
+| raw | [string](#string) |  | Raw fixture string |
 
 
 

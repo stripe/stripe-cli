@@ -22,6 +22,7 @@ type triggerCmd struct {
 	override      []string
 	add           []string
 	remove        []string
+	raw           string
 	apiBaseURL    string
 }
 
@@ -52,6 +53,7 @@ needed to create the triggered event as well as the corresponding API objects.
 	tc.cmd.Flags().StringArrayVar(&tc.override, "override", []string{}, "Override params in the trigger")
 	tc.cmd.Flags().StringArrayVar(&tc.add, "add", []string{}, "Add params to the trigger")
 	tc.cmd.Flags().StringArrayVar(&tc.remove, "remove", []string{}, "Remove params from the trigger")
+	tc.cmd.Flags().StringVar(&tc.raw, "raw", "", "Raw fixture in string format to replace all default fixtures")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -76,7 +78,7 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 
 	event := args[0]
 
-	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.add, tc.remove)
+	_, err = fixtures.Trigger(cmd.Context(), event, tc.stripeAccount, tc.apiBaseURL, apiKey, tc.skip, tc.override, tc.add, tc.remove, tc.raw)
 	if err != nil {
 		return err
 	}
