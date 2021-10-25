@@ -13,7 +13,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	if stripe.TelemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) {
+	if stripe.TelemetryOptedOut(os.Getenv("STRIPE_CLI_TELEMETRY_OPTOUT")) || stripe.TelemetryOptedOut(os.Getenv("DO_NOT_TRACK")) {
 		// Proceed without the telemetry client if client opted out.
 		cmd.Execute(ctx)
 	} else {
