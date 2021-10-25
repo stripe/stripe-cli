@@ -2,7 +2,6 @@ package rpcservice
 
 import (
 	"context"
-	"os"
 
 	"github.com/stripe/stripe-cli/pkg/fixtures"
 	"github.com/stripe/stripe-cli/rpc"
@@ -11,12 +10,9 @@ import (
 // Fixture returns the default fixture of given event in string format
 func (srv *RPCService) Fixture(ctx context.Context, req *rpc.FixtureRequest) (*rpc.FixtureResponse, error) {
 	fixtureFilename := fixtures.Events[req.Event]
-	data, err := os.ReadFile(fixtureFilename)
-
-	defaultFixture := ""
-	if err == nil {
-		defaultFixture = string(data)
+	f, err := fixtures.NewFixtureFromFile(nil, "", "", "", fixtureFilename, []string{}, []string{}, []string{}, []string{})
+	if err != nil {
+		return &rpc.FixtureResponse{Fixture: ""}, err
 	}
-
-	return &rpc.FixtureResponse{Fixture: defaultFixture}, nil
+	return &rpc.FixtureResponse{Fixture: f.GetFixtureFileContent()}, nil
 }

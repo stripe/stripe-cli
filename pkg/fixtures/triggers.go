@@ -89,8 +89,9 @@ func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFi
 	return fixture, nil
 }
 
-func buildFromFixtureString(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, raw string) (*Fixture, error) {
-	fixture, err := newFixtureFromRawString(fs, apiKey, stripeAccount, apiBaseURL, raw)
+// BuildFromFixtureString creates a new fixture from a string
+func BuildFromFixtureString(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, raw string) (*Fixture, error) {
+	fixture, err := NewFixtureFromRawString(fs, apiKey, stripeAccount, apiBaseURL, raw)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +144,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 			}
 		}
 	} else {
-		fixture, err = buildFromFixtureString(fs, apiKey, stripeAccount, baseURL, raw)
+		fixture, err = BuildFromFixtureString(fs, apiKey, stripeAccount, baseURL, raw)
 		if err != nil {
 			return nil, err
 		}

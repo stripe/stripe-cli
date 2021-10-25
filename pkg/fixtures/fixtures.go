@@ -110,7 +110,8 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 	return &fxt, nil
 }
 
-func newFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
+// NewFixtureFromRawString creates fixtures from user inputted string
+func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -130,6 +131,15 @@ func newFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw st
 	}
 
 	return &fxt, nil
+}
+
+// GetFixtureFileContent returns the file content of the given fixture file name
+func (fxt *Fixture) GetFixtureFileContent() string {
+	data, err := json.Marshal(fxt.fixture)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // Override forcefully overrides fields with existing data on a fixture
