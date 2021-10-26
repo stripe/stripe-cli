@@ -35,9 +35,10 @@
           "args":["trigger", "${input:event}"]
         },
 
-        // Unfortunately, this won't work on resource commands that require more arguments unless we manually add it
-        // becacuse we need to pass in each argument separately for this to work
+        // Unfortunately, this won't work on resource commands that require more arguments
+        // unless we manually add it becacuse we need to pass in each argument separately for this to work.
         // https://github.com/microsoft/vscode/issues/83678
+        // to test those, you can just customize this configuration to include all the args you need.
         {
           "name": "Launch (stripe resource command)",
           "type": "go",
