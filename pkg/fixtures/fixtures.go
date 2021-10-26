@@ -135,7 +135,7 @@ func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw st
 
 // GetFixtureFileContent returns the file content of the given fixture file name
 func (fxt *Fixture) GetFixtureFileContent() string {
-	data, err := json.Marshal(fxt.fixture)
+	data, err := json.MarshalIndent(fxt.fixture, "", "  ")
 	if err != nil {
 		return ""
 	}
