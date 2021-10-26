@@ -1,4 +1,4 @@
-package stripe
+package stripe_test
 
 import (
 	"context"
@@ -10,55 +10,69 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // Context Tests
 func TestEventMetadataWithGet(t *testing.T) {
 	ctx := context.Background()
-	event := &CLIAnalyticsEventMetadata{
+	event := &stripe.CLIAnalyticsEventMetadata{
 		InvocationID: "hello",
 		UserAgent:    "uesr",
 		CLIVersion:   "1.0",
 		OS:           "os",
 	}
-	newCtx := WithEventMetadata(ctx, event)
+	newCtx := stripe.WithEventMetadata(ctx, event)
 
-	require.Equal(t, GetEventMetadata(newCtx), event)
+	require.Equal(t, stripe.GetEventMetadata(newCtx), event)
 }
 
 func TestGetEventMetadata_DoesNotExistInCtx(t *testing.T) {
 	ctx := context.Background()
-	require.Nil(t, GetEventMetadata(ctx))
+	require.Nil(t, stripe.GetEventMetadata(ctx))
 }
 
 func TestTelemetryClientWithGet(t *testing.T) {
 	ctx := context.Background()
 	url, _ := url.Parse("http://hello.com")
-	telemetryClient := &AnalyticsTelemetryClient{
+	telemetryClient := &stripe.AnalyticsTelemetryClient{
 		BaseURL:    url,
 		HTTPClient: &http.Client{},
 	}
-	newCtx := WithTelemetryClient(ctx, telemetryClient)
+	newCtx := stripe.WithTelemetryClient(ctx, telemetryClient)
 
-	require.Equal(t, GetTelemetryClient(newCtx), telemetryClient)
+	require.Equal(t, stripe.GetTelemetryClient(newCtx), telemetryClient)
 }
 
 func TestGetTelemetryClient_DoesNotExistInCtx(t *testing.T) {
 	ctx := context.Background()
-	require.Nil(t, GetTelemetryClient(ctx))
+	require.Nil(t, stripe.GetTelemetryClient(ctx))
 }
 
 func TestSetCobraCommandContext(t *testing.T) {
-	tel := NewEventMetadata()
+	tel := stripe.NewEventMetadata()
 	cmd := &cobra.Command{
 		Use: "foo",
 	}
 	tel.SetCobraCommandContext(cmd)
 	require.Equal(t, "foo", tel.CommandPath)
+	require.False(t, tel.GeneratedResource)
+}
+
+func TestSetCobraCommandContext_SetsGeneratedResourceForGeneratedCommands(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{})
+	tel := stripe.NewEventMetadata()
+	tel.SetCobraCommandContext(oc.Cmd)
+	require.True(t, tel.GeneratedResource)
 }
 
 func TestSetMerchant(t *testing.T) {
-	tel := NewEventMetadata()
+	tel := stripe.NewEventMetadata()
 	merchant := "acct_zzzzzz"
 	tel.SetMerchant(merchant)
 	require.Equal(t, merchant, tel.Merchant)
@@ -85,7 +99,7 @@ func TestSendAPIRequestEvent(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	telemetryMetadata := &CLIAnalyticsEventMetadata{
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
 		InvocationID:      "123456",
 		UserAgent:         "Unit Test",
 		CLIVersion:        "master",
@@ -94,8 +108,8 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
-	processCtx := WithEventMetadata(context.Background(), telemetryMetadata)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendAPIRequestEvent(processCtx, "req_zzz", false)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
@@ -108,7 +122,7 @@ func TestSkipsSendAPIRequestEventWhenMetadataIsEmpty(t *testing.T) {
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	resp, err := analyticsClient.SendAPIRequestEvent(context.Background(), "req_zzz", false)
 	require.NoError(t, err)
 	require.Nil(t, resp)
@@ -138,7 +152,7 @@ func TestSendEvent(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	telemetryMetadata := &CLIAnalyticsEventMetadata{
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
 		InvocationID:      "123456",
 		UserAgent:         "Unit Test",
 		CLIVersion:        "master",
@@ -147,8 +161,8 @@ func TestSendEvent(t *testing.T) {
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
-	processCtx := WithEventMetadata(context.Background(), telemetryMetadata)
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
@@ -160,19 +174,19 @@ func TestSkipsSendEventWhenMetadataIsEmpty(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	analyticsClient.SendEvent(context.Background(), "foo", "bar")
 }
 
 // Utility function
 func TestTelemetryOptedOut(t *testing.T) {
-	require.False(t, TelemetryOptedOut(""))
-	require.False(t, TelemetryOptedOut("0"))
-	require.False(t, TelemetryOptedOut("false"))
-	require.False(t, TelemetryOptedOut("False"))
-	require.False(t, TelemetryOptedOut("FALSE"))
-	require.True(t, TelemetryOptedOut("1"))
-	require.True(t, TelemetryOptedOut("true"))
-	require.True(t, TelemetryOptedOut("True"))
-	require.True(t, TelemetryOptedOut("TRUE"))
+	require.False(t, stripe.TelemetryOptedOut(""))
+	require.False(t, stripe.TelemetryOptedOut("0"))
+	require.False(t, stripe.TelemetryOptedOut("false"))
+	require.False(t, stripe.TelemetryOptedOut("False"))
+	require.False(t, stripe.TelemetryOptedOut("FALSE"))
+	require.True(t, stripe.TelemetryOptedOut("1"))
+	require.True(t, stripe.TelemetryOptedOut("true"))
+	require.True(t, stripe.TelemetryOptedOut("True"))
+	require.True(t, stripe.TelemetryOptedOut("TRUE"))
 }
