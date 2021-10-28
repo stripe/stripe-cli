@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/spf13/afero"
+
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
