@@ -71,6 +71,14 @@ func updateContextWithTelemetry(ctx context.Context, methodName string, server *
 	return newCtx
 }
 
+// Use the telemetry client in context to send a telemetry event of the method invocation.
+func sendCommandInvocationEvent(ctx context.Context) {
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient != nil {
+		go telemetryClient.SendEvent(ctx, "Command Invoked", "gRPC")
+	}
+}
+
 func getUserAgentFromGrpcMetadata(ctx context.Context) string {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -93,6 +101,7 @@ func serverStreamInterceptor(
 	if err := authorize(wrappedStream.Context()); err != nil {
 		return err
 	}
+	sendCommandInvocationEvent(wrappedStream.Context())
 	return handler(srv, wrappedStream)
 }
 
@@ -110,5 +119,6 @@ func serverUnaryInterceptor(
 	if err := authorize(newCtx); err != nil {
 		return nil, err
 	}
+	go sendCommandInvocationEvent(newCtx)
 	return handler(newCtx, req)
 }

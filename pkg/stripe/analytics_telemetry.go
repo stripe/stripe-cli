@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 
@@ -46,7 +47,7 @@ type CLIAnalyticsEventMetadata struct {
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
 type TelemetryClient interface {
 	SendAPIRequestEvent(ctx context.Context, requestID string, livemode bool) (*http.Response, error)
-	SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error)
+	SendEvent(ctx context.Context, eventName string, eventValue string)
 }
 
 // AnalyticsTelemetryClient sends event information to r.stripe.com
@@ -152,7 +153,7 @@ func (a *AnalyticsTelemetryClient) SendAPIRequestEvent(ctx context.Context, requ
 }
 
 // SendEvent sends a telemetry event to r.stripe.com
-func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
+func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) {
 	a.wg.Add(1)
 	defer a.wg.Done()
 	telemetryMetadata := GetEventMetadata(ctx)
@@ -165,9 +166,15 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 		data.Set("event_value", eventValue)
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		return a.sendData(ctx, data)
+		resp, err := a.sendData(ctx, data)
+		// Don't throw exception if we fail to send the event
+		if err != nil {
+			log.Debugf("Error while sending telemetry data: %v\n", err)
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
-	return nil, nil
 }
 
 func (a *AnalyticsTelemetryClient) sendData(ctx context.Context, data url.Values) (*http.Response, error) {
@@ -212,8 +219,7 @@ func (a *NoOpTelemetryClient) SendAPIRequestEvent(ctx context.Context, requestID
 }
 
 // SendEvent does nothing
-func (a *NoOpTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) (*http.Response, error) {
-	return nil, nil
+func (a *NoOpTelemetryClient) SendEvent(ctx context.Context, eventName string, eventValue string) {
 }
 
 // TelemetryOptedOut returns true if the user has opted out of telemetry,
