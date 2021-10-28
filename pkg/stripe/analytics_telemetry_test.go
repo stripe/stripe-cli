@@ -149,27 +149,19 @@ func TestSendEvent(t *testing.T) {
 	}
 	processCtx := WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
-	resp, err := analyticsClient.SendEvent(processCtx, "foo", "bar")
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	resp.Body.Close()
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
 }
 
 func TestSkipsSendEventWhenMetadataIsEmpty(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Fail(t, "Did not expect to reach sendData")
 		// do nothing
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
 	analyticsClient := AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
-	resp, err := analyticsClient.SendEvent(context.Background(), "foo", "bar")
-	require.NoError(t, err)
-	require.Nil(t, resp)
-	// We shouldn't get here but the linter is unhappy
-	if resp != nil {
-		resp.Body.Close()
-	}
+	analyticsClient.SendEvent(context.Background(), "foo", "bar")
 }
 
 // Utility function

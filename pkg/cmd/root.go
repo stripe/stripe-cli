@@ -57,7 +57,16 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata.SetMerchant(merchant)
 		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
+		// record command invocation
+		sendCommandInvocationEvent(cmd.Context())
 	},
+}
+
+func sendCommandInvocationEvent(ctx context.Context) {
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient != nil {
+		go telemetryClient.SendEvent(ctx, "Command Invoked", "Cobra")
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	"github.com/spf13/afero"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 //go:embed triggers/*
@@ -125,6 +126,12 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()
+
+	// send event triggered
+	telemetryClient := stripe.GetTelemetryClient(ctx)
+	if telemetryClient != nil {
+		go telemetryClient.SendEvent(ctx, "Triggered Event", event)
+	}
 
 	if len(raw) == 0 {
 		if file, ok := Events[event]; ok {
