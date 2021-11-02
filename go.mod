@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/BurntSushi/toml v0.4.1
-	github.com/briandowns/spinner v1.16.0
+	github.com/briandowns/spinner v1.13.0
 	github.com/fatih/color v1.12.0 // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/google/go-github/v28 v28.1.1
