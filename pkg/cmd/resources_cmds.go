@@ -376,6 +376,12 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 	}, &Config)
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "list_payment_methods", "/v1/customers/{customer}/payment_methods", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+		"type":           "string",
+	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "update", "/v1/customers/{customer}", http.MethodPost, map[string]string{
 		"balance":               "integer",
@@ -1324,7 +1330,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rUsageRecordsCmd.Cmd, "create", "/v1/subscription_items/{subscription_item}/usage_records", http.MethodPost, map[string]string{
 		"action":    "string",
 		"quantity":  "integer",
-		"timestamp": "integer",
+		"timestamp": "string",
 	}, &Config)
 	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "create", "/v1/webhook_endpoints", http.MethodPost, map[string]string{
 		"api_version": "string",
@@ -1362,6 +1368,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
 		"configuration": "string",
 		"customer":      "string",
+		"locale":        "string",
 		"on_behalf_of":  "string",
 		"return_url":    "string",
 	}, &Config)
@@ -1372,6 +1379,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"client_reference_id":        "string",
 		"customer":                   "string",
 		"customer_email":             "string",
+		"expires_at":                 "integer",
 		"locale":                     "string",
 		"mode":                       "string",
 		"submit_type":                "string",

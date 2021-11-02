@@ -36,7 +36,7 @@
             "$ref": "#/components/schemas/legal_entity_company"
           },
           "controller": {
-            "$ref": "#/components/schemas/account_controller"
+            "$ref": "#/components/schemas/account_unification_account_controller"
           },
           "country": {
             "description": "The account's country.",
@@ -102,6 +102,9 @@
               "data"
             ]
           },
+          "future_requirements": {
+            "$ref": "#/components/schemas/account_future_requirements"
+          },
           "id": {
             "description": "Unique identifier for the object.",
             "maxLength": 5000,
@@ -166,6 +169,7 @@
           "company",
           "controller",
           "external_accounts",
+          "future_requirements",
           "individual",
           "requirements",
           "settings",
@@ -368,14 +372,15 @@
             "account_business_profile",
             "account_capabilities",
             "account_card_payments_settings",
-            "account_controller",
             "account_dashboard_settings",
             "account_decline_charge_on",
+            "account_future_requirements",
             "account_payments_settings",
             "account_payout_settings",
             "account_requirements",
             "account_settings",
             "account_tos_acceptance",
+            "account_unification_account_controller",
             "legal_entity_company",
             "transfer_schedule"
           ],
@@ -555,7 +560,7 @@
         "description": "",
         "properties": {
           "acss_debit_payments": {
-            "description": "The status of the ACSS Direct Debits payments capability of the account, or whether the account can directly process ACSS Direct Debits charges.",
+            "description": "The status of the Canadian pre-authorized debits payments capability of the account, or whether the account can directly process Canadian pre-authorized debits charges.",
             "enum": [
               "active",
               "inactive",
@@ -689,6 +694,15 @@
             ],
             "type": "string"
           },
+          "klarna_payments": {
+            "description": "The status of the Klarna payments capability of the account, or whether the account can directly process Klarna charges.",
+            "enum": [
+              "active",
+              "inactive",
+              "pending"
+            ],
+            "type": "string"
+          },
           "legacy_payments": {
             "description": "The status of the legacy payments capability of the account.",
             "enum": [
@@ -772,9 +786,101 @@
           "in_class": "account"
         }
       },
+      "account_capability_future_requirements": {
+        "description": "",
+        "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "current_deadline": {
+            "description": "Date on which `future_requirements` merges with the main `requirements` hash and `future_requirements` becomes empty. After the transition, `currently_due` requirements may immediately become `past_due`, but the account may also be given a grace period depending on the capability's enablement state prior to transitioning.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "currently_due": {
+            "description": "Fields that need to be collected to keep the capability enabled. If not collected by `future_requirements[current_deadline]`, these fields will transition to the main `requirements` hash.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "disabled_reason": {
+            "description": "This is typed as a string for consistency with `requirements.disabled_reason`, but it safe to assume `future_requirements.disabled_reason` is empty because fields in `future_requirements` will never disable the account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "errors": {
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_error"
+            },
+            "type": "array"
+          },
+          "eventually_due": {
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "past_due": {
+            "description": "Fields that weren't collected by `requirements.current_deadline`. These fields need to be collected to enable the capability on the account. New fields will never appear here; `future_requirements.past_due` will always be a subset of `requirements.past_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due` or `currently_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "alternatives",
+          "current_deadline",
+          "currently_due",
+          "disabled_reason",
+          "errors",
+          "eventually_due",
+          "past_due",
+          "pending_verification"
+        ],
+        "title": "AccountCapabilityFutureRequirements",
+        "type": "object",
+        "x-expandableFields": [
+          "alternatives",
+          "errors"
+        ],
+        "x-stripeResource": {
+          "class_name": "FutureRequirements",
+          "in_class": "capability"
+        }
+      },
       "account_capability_requirements": {
         "description": "",
         "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "current_deadline": {
             "description": "Date by which the fields in `currently_due` must be collected to keep the capability enabled for the account. These fields may disable the capability sooner if the next threshold is reached before they are collected.",
             "format": "unix-time",
@@ -828,6 +934,7 @@
           }
         },
         "required": [
+          "alternatives",
           "current_deadline",
           "currently_due",
           "disabled_reason",
@@ -839,6 +946,7 @@
         "title": "AccountCapabilityRequirements",
         "type": "object",
         "x-expandableFields": [
+          "alternatives",
           "errors"
         ],
         "x-stripeResource": {
@@ -889,32 +997,6 @@
         ],
         "x-stripeResource": {
           "class_name": "SettingsCardPayments",
-          "in_class": "account"
-        }
-      },
-      "account_controller": {
-        "description": "",
-        "properties": {
-          "is_controller": {
-            "description": "`true` if the Connect application retrieving the resource controls the account and can therefore exercise [platform controls](https://stripe.com/docs/connect/platform-controls-for-standard-accounts). Otherwise, this field is null.",
-            "type": "boolean"
-          },
-          "type": {
-            "description": "The controller type. Can be `application`, if a Connect application controls the account, or `account`, if the account controls itself.",
-            "enum": [
-              "account",
-              "application"
-            ],
-            "type": "string"
-          }
-        },
-        "title": "AccountController",
-        "type": "object",
-        "x-expandableFields": [
-
-        ],
-        "x-stripeResource": {
-          "class_name": "Controller",
           "in_class": "account"
         }
       },
@@ -971,6 +1053,95 @@
         ],
         "x-stripeResource": {
           "class_name": "DeclineChargeOn",
+          "in_class": "account"
+        }
+      },
+      "account_future_requirements": {
+        "description": "",
+        "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "current_deadline": {
+            "description": "Date on which `future_requirements` merges with the main `requirements` hash and `future_requirements` becomes empty. After the transition, `currently_due` requirements may immediately become `past_due`, but the account may also be given a grace period depending on its enablement state prior to transitioning.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "currently_due": {
+            "description": "Fields that need to be collected to keep the account enabled. If not collected by `future_requirements[current_deadline]`, these fields will transition to the main `requirements` hash.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "disabled_reason": {
+            "description": "This is typed as a string for consistency with `requirements.disabled_reason`, but it safe to assume `future_requirements.disabled_reason` is empty because fields in `future_requirements` will never disable the account.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "errors": {
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_error"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "eventually_due": {
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "past_due": {
+            "description": "Fields that weren't collected by `requirements.current_deadline`. These fields need to be collected to enable the capability on the account. New fields will never appear here; `future_requirements.past_due` will always be a subset of `requirements.past_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due` or `currently_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "required": [
+          "alternatives",
+          "current_deadline",
+          "currently_due",
+          "disabled_reason",
+          "errors",
+          "eventually_due",
+          "past_due",
+          "pending_verification"
+        ],
+        "title": "AccountFutureRequirements",
+        "type": "object",
+        "x-expandableFields": [
+          "alternatives",
+          "errors"
+        ],
+        "x-stripeResource": {
+          "class_name": "FutureRequirements",
           "in_class": "account"
         }
       },
@@ -1074,7 +1245,7 @@
         "description": "",
         "properties": {
           "debit_negative_balances": {
-            "description": "A Boolean indicating if Stripe should try to reclaim negative balances from an attached bank account. See our [Understanding Connect Account Balances](https://stripe.com/docs/connect/account-balances) documentation for details. Default value is `true` for Express accounts and `false` for Custom accounts.",
+            "description": "A Boolean indicating if Stripe should try to reclaim negative balances from an attached bank account. See our [Understanding Connect Account Balances](https://stripe.com/docs/connect/account-balances) documentation for details. Default value is `false` for Custom accounts, otherwise `true`.",
             "type": "boolean"
           },
           "schedule": {
@@ -1105,6 +1276,14 @@
       "account_requirements": {
         "description": "",
         "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "current_deadline": {
             "description": "Date by which the fields in `currently_due` must be collected to keep the account enabled. These fields may disable the account sooner if the next threshold is reached before they are collected.",
             "format": "unix-time",
@@ -1163,6 +1342,7 @@
           }
         },
         "required": [
+          "alternatives",
           "current_deadline",
           "currently_due",
           "disabled_reason",
@@ -1174,14 +1354,50 @@
         "title": "AccountRequirements",
         "type": "object",
         "x-expandableFields": [
+          "alternatives",
           "errors"
         ],
         "x-stripeResource": {
           "class_name": "Requirements",
           "in_class": "account",
           "inner_classes": [
+            "account_requirements_alternative",
             "account_requirements_error"
           ]
+        }
+      },
+      "account_requirements_alternative": {
+        "description": "",
+        "properties": {
+          "alternative_fields_due": {
+            "description": "Fields that can be provided to satisfy all fields in `original_fields_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "original_fields_due": {
+            "description": "Fields that are due and can be satisfied by providing all fields in `alternative_fields_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "alternative_fields_due",
+          "original_fields_due"
+        ],
+        "title": "AccountRequirementsAlternative",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Alternative",
+          "in_class": "account_requirements"
         }
       },
       "account_requirements_error": {
@@ -1374,6 +1590,35 @@
         ],
         "x-stripeResource": {
           "class_name": "TosAcceptance",
+          "in_class": "account"
+        }
+      },
+      "account_unification_account_controller": {
+        "description": "",
+        "properties": {
+          "is_controller": {
+            "description": "`true` if the Connect application retrieving the resource controls the account and can therefore exercise [platform controls](https://stripe.com/docs/connect/platform-controls-for-standard-accounts). Otherwise, this field is null.",
+            "type": "boolean"
+          },
+          "type": {
+            "description": "The controller type. Can be `application`, if a Connect application controls the account, or `account`, if the account controls itself.",
+            "enum": [
+              "account",
+              "application"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "AccountUnificationAccountController",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Controller",
           "in_class": "account"
         }
       },
@@ -3146,6 +3391,61 @@
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
             "type": "boolean"
           },
+          "locale": {
+            "description": "The IETF language tag of the locale Customer Portal is displayed in. If blank or auto, the customer’s `preferred_locales` or browser’s locale is used.",
+            "enum": [
+              "auto",
+              "bg",
+              "cs",
+              "da",
+              "de",
+              "el",
+              "en",
+              "en-AU",
+              "en-CA",
+              "en-GB",
+              "en-IE",
+              "en-IN",
+              "en-NZ",
+              "en-SG",
+              "es",
+              "es-419",
+              "et",
+              "fi",
+              "fil",
+              "fr",
+              "fr-CA",
+              "hr",
+              "hu",
+              "id",
+              "it",
+              "ja",
+              "ko",
+              "lt",
+              "lv",
+              "ms",
+              "mt",
+              "nb",
+              "nl",
+              "pl",
+              "pt",
+              "pt-BR",
+              "ro",
+              "ru",
+              "sk",
+              "sl",
+              "sv",
+              "th",
+              "tr",
+              "vi",
+              "zh",
+              "zh-HK",
+              "zh-TW"
+            ],
+            "nullable": true,
+            "type": "string",
+            "x-stripeBypassValidation": true
+          },
           "object": {
             "description": "String representing the object's type. Objects of the same type share the same value.",
             "enum": [
@@ -3176,6 +3476,7 @@
           "customer",
           "id",
           "livemode",
+          "locale",
           "object",
           "on_behalf_of",
           "return_url",
@@ -3546,6 +3847,9 @@
               ]
             }
           },
+          "future_requirements": {
+            "$ref": "#/components/schemas/account_capability_future_requirements"
+          },
           "id": {
             "description": "The identifier for the capability.",
             "maxLength": 5000,
@@ -3595,6 +3899,7 @@
         "type": "object",
         "x-expandableFields": [
           "account",
+          "future_requirements",
           "requirements"
         ],
         "x-resourceId": "capability",
@@ -3699,6 +4004,7 @@
           "has_collection_class": true,
           "in_package": "",
           "inner_classes": [
+            "account_capability_future_requirements",
             "account_capability_requirements"
           ]
         }
@@ -5031,8 +5337,17 @@
         }
       },
       "checkout.session": {
-        "description": "A Checkout Session represents your customer's session as they pay for\none-time purchases or subscriptions through [Checkout](https://stripe.com/docs/payments/checkout).\nWe recommend creating a new Session each time your customer attempts to pay.\n\nOnce payment is successful, the Checkout Session will contain a reference\nto the [Customer](https://stripe.com/docs/api/customers), and either the successful\n[PaymentIntent](https://stripe.com/docs/api/payment_intents) or an active\n[Subscription](https://stripe.com/docs/api/subscriptions).\n\nYou can create a Checkout Session on your server and pass its ID to the\nclient to begin Checkout.\n\nRelated guide: [Checkout Server Quickstart](https://stripe.com/docs/payments/checkout/api).",
+        "description": "A Checkout Session represents your customer's session as they pay for\none-time purchases or subscriptions through [Checkout](https://stripe.com/docs/payments/checkout)\nor [Payment Links](https://stripe.com/docs/payments/payment-links). We recommend creating a\nnew Session each time your customer attempts to pay.\n\nOnce payment is successful, the Checkout Session will contain a reference\nto the [Customer](https://stripe.com/docs/api/customers), and either the successful\n[PaymentIntent](https://stripe.com/docs/api/payment_intents) or an active\n[Subscription](https://stripe.com/docs/api/subscriptions).\n\nYou can create a Checkout Session on your server and pass its ID to the\nclient to begin Checkout.\n\nRelated guide: [Checkout Server Quickstart](https://stripe.com/docs/payments/checkout/api).",
         "properties": {
+          "after_expiration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_pages_checkout_session_after_expiration"
+              }
+            ],
+            "description": "When set, provides configuration for actions to take if this Checkout Session expires.",
+            "nullable": true
+          },
           "allow_promotion_codes": {
             "description": "Enables user redeemable promotion codes.",
             "nullable": true,
@@ -5070,6 +5385,24 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "consent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_pages_checkout_session_consent"
+              }
+            ],
+            "description": "Results of `consent_collection` for this session.",
+            "nullable": true
+          },
+          "consent_collection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_pages_checkout_session_consent_collection"
+              }
+            ],
+            "description": "When set, provides configuration for the Checkout Session to gather active consent from customers.",
+            "nullable": true
           },
           "currency": {
             "description": "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
@@ -5116,6 +5449,11 @@
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
+          },
+          "expires_at": {
+            "description": "The timestamp at which the Checkout Session will expire.",
+            "format": "unix-time",
+            "type": "integer"
           },
           "id": {
             "description": "Unique identifier for the object. Used to pass to `redirectToCheckout`\nin Stripe.js.",
@@ -5180,6 +5518,7 @@
               "es-419",
               "et",
               "fi",
+              "fil",
               "fr",
               "fr-CA",
               "hr",
@@ -5284,6 +5623,15 @@
             ],
             "type": "string"
           },
+          "phone_number_collection": {
+            "$ref": "#/components/schemas/payment_pages_checkout_session_phone_number_collection"
+          },
+          "recovered_from": {
+            "description": "The ID of the original expired Checkout Session that triggered the recovery flow.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
           "setup_intent": {
             "anyOf": [
               {
@@ -5378,6 +5726,7 @@
           }
         },
         "required": [
+          "after_expiration",
           "allow_promotion_codes",
           "amount_subtotal",
           "amount_total",
@@ -5385,10 +5734,13 @@
           "billing_address_collection",
           "cancel_url",
           "client_reference_id",
+          "consent",
+          "consent_collection",
           "currency",
           "customer",
           "customer_details",
           "customer_email",
+          "expires_at",
           "id",
           "livemode",
           "locale",
@@ -5399,6 +5751,7 @@
           "payment_method_options",
           "payment_method_types",
           "payment_status",
+          "recovered_from",
           "setup_intent",
           "shipping",
           "shipping_address_collection",
@@ -5411,12 +5764,16 @@
         "title": "Session",
         "type": "object",
         "x-expandableFields": [
+          "after_expiration",
           "automatic_tax",
+          "consent",
+          "consent_collection",
           "customer",
           "customer_details",
           "line_items",
           "payment_intent",
           "payment_method_options",
+          "phone_number_collection",
           "setup_intent",
           "shipping",
           "shipping_address_collection",
@@ -5487,8 +5844,12 @@
           "in_package": "Checkout",
           "inner_classes": [
             "checkout_session_payment_method_options",
+            "payment_pages_checkout_session_after_expiration",
             "payment_pages_checkout_session_automatic_tax",
+            "payment_pages_checkout_session_consent",
+            "payment_pages_checkout_session_consent_collection",
             "payment_pages_checkout_session_customer_details",
+            "payment_pages_checkout_session_phone_number_collection",
             "payment_pages_checkout_session_tax_id_collection",
             "payment_pages_checkout_session_total_details",
             "payment_pages_payment_page_resources_shipping_address_collection"
@@ -5502,6 +5863,17 @@
             "description": "A URL for custom mandate text",
             "maxLength": 5000,
             "type": "string"
+          },
+          "default_for": {
+            "description": "List of Stripe products where this mandate can be selected automatically. Returned when the Session is in `setup` mode.",
+            "items": {
+              "enum": [
+                "invoice",
+                "subscription"
+              ],
+              "type": "string"
+            },
+            "type": "array"
           },
           "interval_description": {
             "description": "Description of the interval. Only required if the 'payment_schedule' parameter is 'interval' or 'combined'.",
@@ -7133,6 +7505,32 @@
             "method_type": "delete",
             "operation": "delete",
             "path": "/v1/customers/{customer}",
+            "path_resource_variables": [
+              {
+                "method_parameter": "customer",
+                "name": "customer"
+              }
+            ]
+          },
+          {
+            "method_name": "list_payment_methods",
+            "method_on": "instance",
+            "method_type": "custom",
+            "operation": "get",
+            "path": "/v1/customers/{customer}/payment_methods",
+            "path_resource_variables": [
+              {
+                "name": "customer",
+                "object_property": "id"
+              }
+            ]
+          },
+          {
+            "method_name": "list_payment_methods",
+            "method_on": "service",
+            "method_type": "custom",
+            "operation": "get",
+            "path": "/v1/customers/{customer}/payment_methods",
             "path_resource_variables": [
               {
                 "method_parameter": "customer",
@@ -11363,7 +11761,8 @@
               "under_supported_age"
             ],
             "nullable": true,
-            "type": "string"
+            "type": "string",
+            "x-stripeBypassValidation": true
           },
           "reason": {
             "description": "A message that explains the reason for verification or user-session failure.",
@@ -11731,7 +12130,7 @@
             "x-stripeBypassValidation": true
           },
           "url": {
-            "description": "The short-lived URL that you use to redirect a user to Stripe to submit their identity information. This URL expires after 24 hours and can only be used once. Don’t store it, log it, send it in emails or expose it to anyone other than the user. Refer to our docs on [verifying identity documents](https://stripe.com/docs/identity/verify-identity-documents?platform=web&type=redirect) to learn how to redirect users to Stripe.",
+            "description": "The short-lived URL that you use to redirect a user to Stripe to submit their identity information. This URL expires after 48 hours and can only be used once. Don’t store it, log it, send it in emails or expose it to anyone other than the user. Refer to our docs on [verifying identity documents](https://stripe.com/docs/identity/verify-identity-documents?platform=web&type=redirect) to learn how to redirect users to Stripe.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -11919,7 +12318,7 @@
         }
       },
       "invoice": {
-        "description": "Invoices are statements of amounts owed by a customer, and are either\ngenerated one-off, or generated periodically from a subscription.\n\nThey contain [invoice items](https://stripe.com/docs/api#invoiceitems), and proration adjustments\nthat may be caused by subscription upgrades/downgrades (if necessary).\n\nIf your invoice is configured to be billed through automatic charges,\nStripe automatically finalizes your invoice and attempts payment. Note\nthat finalizing the invoice,\n[when automatic](https://stripe.com/docs/billing/invoices/workflow/#auto_advance), does\nnot happen immediately as the invoice is created. Stripe waits\nuntil one hour after the last webhook was successfully sent (or the last\nwebhook timed out after failing). If you (and the platforms you may have\nconnected to) have no webhooks configured, Stripe waits one hour after\ncreation to finalize the invoice.\n\nIf your invoice is configured to be billed by sending an email, then based on your\n[email settings](https://dashboard.stripe.com/account/billing/automatic'),\nStripe will email the invoice to your customer and await payment. These\nemails can contain a link to a hosted page to pay the invoice.\n\nStripe applies any customer credit on the account before determining the\namount due for the invoice (i.e., the amount that will be actually\ncharged). If the amount due for the invoice is less than Stripe's [minimum allowed charge\nper currency](/docs/currencies#minimum-and-maximum-charge-amounts), the\ninvoice is automatically marked paid, and we add the amount due to the\ncustomer's credit balance which is applied to the next invoice.\n\nMore details on the customer's credit balance are\n[here](https://stripe.com/docs/billing/customer/balance).\n\nRelated guide: [Send Invoices to Customers](https://stripe.com/docs/billing/invoices/sending).",
+        "description": "Invoices are statements of amounts owed by a customer, and are either\ngenerated one-off, or generated periodically from a subscription.\n\nThey contain [invoice items](https://stripe.com/docs/api#invoiceitems), and proration adjustments\nthat may be caused by subscription upgrades/downgrades (if necessary).\n\nIf your invoice is configured to be billed through automatic charges,\nStripe automatically finalizes your invoice and attempts payment. Note\nthat finalizing the invoice,\n[when automatic](https://stripe.com/docs/billing/invoices/workflow/#auto_advance), does\nnot happen immediately as the invoice is created. Stripe waits\nuntil one hour after the last webhook was successfully sent (or the last\nwebhook timed out after failing). If you (and the platforms you may have\nconnected to) have no webhooks configured, Stripe waits one hour after\ncreation to finalize the invoice.\n\nIf your invoice is configured to be billed by sending an email, then based on your\n[email settings](https://dashboard.stripe.com/account/billing/automatic),\nStripe will email the invoice to your customer and await payment. These\nemails can contain a link to a hosted page to pay the invoice.\n\nStripe applies any customer credit on the account before determining the\namount due for the invoice (i.e., the amount that will be actually\ncharged). If the amount due for the invoice is less than Stripe's [minimum allowed charge\nper currency](/docs/currencies#minimum-and-maximum-charge-amounts), the\ninvoice is automatically marked paid, and we add the amount due to the\ncustomer's credit balance which is applied to the next invoice.\n\nMore details on the customer's credit balance are\n[here](https://stripe.com/docs/billing/customer/balance).\n\nRelated guide: [Send Invoices to Customers](https://stripe.com/docs/billing/invoices/sending).",
         "properties": {
           "account_country": {
             "description": "The country of the business associated with this invoice, most often the business creating the invoice.",
@@ -12036,7 +12435,6 @@
               "charge_automatically",
               "send_invoice"
             ],
-            "nullable": true,
             "type": "string"
           },
           "created": {
@@ -12964,6 +13362,62 @@
           "in_package": ""
         }
       },
+      "invoice_payment_method_options_acss_debit": {
+        "description": "",
+        "properties": {
+          "mandate_options": {
+            "$ref": "#/components/schemas/invoice_payment_method_options_acss_debit_mandate_options"
+          },
+          "verification_method": {
+            "description": "Bank account verification method.",
+            "enum": [
+              "automatic",
+              "instant",
+              "microdeposits"
+            ],
+            "type": "string",
+            "x-stripeBypassValidation": true
+          }
+        },
+        "title": "invoice_payment_method_options_acss_debit",
+        "type": "object",
+        "x-expandableFields": [
+          "mandate_options"
+        ],
+        "x-stripeResource": {
+          "class_name": "AcssDebit",
+          "in_class": "invoices_payment_method_options",
+          "inner_classes": [
+            "invoice_payment_method_options_acss_debit_mandate_options"
+          ]
+        }
+      },
+      "invoice_payment_method_options_acss_debit_mandate_options": {
+        "description": "",
+        "properties": {
+          "transaction_type": {
+            "description": "Transaction type of the mandate.",
+            "enum": [
+              "business",
+              "personal"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction_type"
+        ],
+        "title": "invoice_payment_method_options_acss_debit_mandate_options",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "MandateOptions",
+          "in_class": "invoice_payment_method_options_acss_debit"
+        }
+      },
       "invoice_payment_method_options_bancontact": {
         "description": "",
         "properties": {
@@ -13607,6 +14061,15 @@
       "invoices_payment_method_options": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/invoice_payment_method_options_acss_debit"
+              }
+            ],
+            "description": "If paying by `acss_debit`, this sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to the invoice’s PaymentIntent.",
+            "nullable": true
+          },
           "bancontact": {
             "anyOf": [
               {
@@ -13627,12 +14090,14 @@
           }
         },
         "required": [
+          "acss_debit",
           "bancontact",
           "card"
         ],
         "title": "InvoicesPaymentMethodOptions",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "bancontact",
           "card"
         ],
@@ -13640,6 +14105,7 @@
           "class_name": "PaymentMethodOptions",
           "in_class": "invoice",
           "inner_classes": [
+            "invoice_payment_method_options_acss_debit",
             "invoice_payment_method_options_bancontact",
             "invoice_payment_method_options_card"
           ]
@@ -13663,6 +14129,7 @@
               "enum": [
                 "ach_credit_transfer",
                 "ach_debit",
+                "acss_debit",
                 "au_becs_debit",
                 "bacs_debit",
                 "bancontact",
@@ -13701,10 +14168,11 @@
         "description": "",
         "properties": {
           "type": {
-            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `gb_vat`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ru_kpp`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `jp_rn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, `il_vat`, or `unknown`",
+            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `gb_vat`, `nz_gst`, `au_abn`, `au_arn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ru_kpp`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `jp_rn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, `il_vat`, or `unknown`",
             "enum": [
               "ae_trn",
               "au_abn",
+              "au_arn",
               "br_cnpj",
               "br_cpf",
               "ca_bn",
@@ -14604,7 +15072,7 @@
             "type": "string"
           },
           "phone_number": {
-            "description": "The cardholder's phone number.",
+            "description": "The cardholder's phone number. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://stripe.com/docs/issuing/3d-secure#when-is-3d-secure-applied) for more details.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -18938,6 +19406,15 @@
             "description": "Whether the company's owners have been provided. This Boolean will be `true` if you've manually indicated that all owners are provided via [the `owners_provided` parameter](https://stripe.com/docs/api/accounts/update#update_account-company-owners_provided), or if Stripe determined that sufficient owners were provided. Stripe determines ownership requirements using both the number of owners provided and their total percent ownership (calculated by adding the `percent_ownership` of each owner together).",
             "type": "boolean"
           },
+          "ownership_declaration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/legal_entity_ubo_declaration"
+              }
+            ],
+            "description": "This hash is used to attest that the beneficial owner information provided to Stripe is both current and correct.",
+            "nullable": true
+          },
           "phone": {
             "description": "The company's phone number (used for verification).",
             "maxLength": 5000,
@@ -19003,13 +19480,15 @@
           "address",
           "address_kana",
           "address_kanji",
+          "ownership_declaration",
           "verification"
         ],
         "x-stripeResource": {
           "class_name": "Company",
           "in_class": "account",
           "inner_classes": [
-            "legal_entity_company_verification"
+            "legal_entity_company_verification",
+            "legal_entity_ubo_declaration"
           ]
         }
       },
@@ -19326,6 +19805,43 @@
         "x-stripeResource": {
           "class_name": "VerificationDocument",
           "in_class": "person"
+        }
+      },
+      "legal_entity_ubo_declaration": {
+        "description": "",
+        "properties": {
+          "date": {
+            "description": "The Unix timestamp marking when the beneficial owner attestation was made.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "ip": {
+            "description": "The IP address from which the beneficial owner attestation was made.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "user_agent": {
+            "description": "The user-agent string from the browser where the beneficial owner attestation was made.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "ip",
+          "user_agent"
+        ],
+        "title": "LegalEntityUBODeclaration",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "UBODeclaration",
+          "in_class": "legal_entity_company"
         }
       },
       "level3": {
@@ -19877,6 +20393,17 @@
       "mandate_acss_debit": {
         "description": "",
         "properties": {
+          "default_for": {
+            "description": "List of Stripe products where this mandate can be selected automatically.",
+            "items": {
+              "enum": [
+                "invoice",
+                "subscription"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
           "interval_description": {
             "description": "Description of the interval. Only required if the 'payment_schedule' parameter is 'interval' or 'combined'.",
             "maxLength": 5000,
@@ -20884,6 +21411,11 @@
       "payment_flows_private_payment_methods_alipay_details": {
         "description": "",
         "properties": {
+          "buyer_id": {
+            "description": "Uniquely identifies this particular Alipay account. You can use this attribute to check whether two Alipay accounts are the same.",
+            "maxLength": 5000,
+            "type": "string"
+          },
           "fingerprint": {
             "description": "Uniquely identifies this particular Alipay account. You can use this attribute to check whether two Alipay accounts are the same.",
             "maxLength": 5000,
@@ -20909,6 +21441,40 @@
         "x-stripeResource": {
           "class_name": "Alipay",
           "in_class": "payment_method_details"
+        }
+      },
+      "payment_flows_private_payment_methods_klarna_dob": {
+        "description": "",
+        "properties": {
+          "day": {
+            "description": "The day of birth, between 1 and 31.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "month": {
+            "description": "The month of birth, between 1 and 12.",
+            "nullable": true,
+            "type": "integer"
+          },
+          "year": {
+            "description": "The four-digit year of birth.",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "day",
+          "month",
+          "year"
+        ],
+        "title": "PaymentFlowsPrivatePaymentMethodsKlarnaDOB",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "DateOfBirth",
+          "in_class": "payment_method_klarna"
         }
       },
       "payment_intent": {
@@ -21914,6 +22480,9 @@
           "ideal": {
             "$ref": "#/components/schemas/payment_method_options_ideal"
           },
+          "klarna": {
+            "$ref": "#/components/schemas/payment_method_options_klarna"
+          },
           "oxxo": {
             "$ref": "#/components/schemas/payment_method_options_oxxo"
           },
@@ -21941,6 +22510,7 @@
           "card",
           "card_present",
           "ideal",
+          "klarna",
           "oxxo",
           "p24",
           "sepa_debit",
@@ -21961,6 +22531,7 @@
             "payment_method_options_boleto",
             "payment_method_options_card_present",
             "payment_method_options_ideal",
+            "payment_method_options_klarna",
             "payment_method_options_oxxo",
             "payment_method_options_p24",
             "payment_method_options_sofort",
@@ -22217,6 +22788,9 @@
           "interac_present": {
             "$ref": "#/components/schemas/payment_method_interac_present"
           },
+          "klarna": {
+            "$ref": "#/components/schemas/payment_method_klarna"
+          },
           "livemode": {
             "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
             "type": "boolean"
@@ -22267,6 +22841,7 @@
               "grabpay",
               "ideal",
               "interac_present",
+              "klarna",
               "oxxo",
               "p24",
               "sepa_debit",
@@ -22310,6 +22885,7 @@
           "grabpay",
           "ideal",
           "interac_present",
+          "klarna",
           "oxxo",
           "p24",
           "sepa_debit",
@@ -22472,6 +23048,7 @@
             "payment_method_grabpay",
             "payment_method_ideal",
             "payment_method_interac_present",
+            "payment_method_klarna",
             "payment_method_oxxo",
             "payment_method_p24",
             "payment_method_sepa_debit",
@@ -23593,7 +24170,7 @@
         "description": "",
         "properties": {
           "tax_id": {
-            "description": "Uniquely identifies this customer tax_id (CNPJ or CPF)",
+            "description": "The tax ID of the customer (CPF for individuals consumers or CNPJ for businesses consumers)",
             "maxLength": 5000,
             "type": "string"
           }
@@ -23855,6 +24432,11 @@
       "payment_method_details_card_present": {
         "description": "",
         "properties": {
+          "amount_authorized": {
+            "description": "The authorized amount",
+            "nullable": true,
+            "type": "integer"
+          },
           "brand": {
             "description": "Card brand. Can be `amex`, `diners`, `discover`, `jcb`, `mastercard`, `unionpay`, `visa`, or `unknown`.",
             "maxLength": 5000,
@@ -23862,7 +24444,7 @@
             "type": "string"
           },
           "cardholder_name": {
-            "description": "The cardholder name as read from the card, in [ISO 7813](https://en.wikipedia.org/wiki/ISO/IEC_7813) format. May include alphanumeric characters, special characters and first/last name separator (`/`).",
+            "description": "The cardholder name as read from the card, in [ISO 7813](https://en.wikipedia.org/wiki/ISO/IEC_7813) format. May include alphanumeric characters, special characters and first/last name separator (`/`). In some cases, the cardholder name may not be available depending on how the issuer has configured the card. Cardholder name is typically not available on swipe or contactless payments, such as those made with Apple Pay and Google Pay.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -23935,6 +24517,11 @@
             "nullable": true,
             "type": "string"
           },
+          "overcapture_supported": {
+            "description": "Defines whether the authorized amount can be over-captured or not",
+            "nullable": true,
+            "type": "boolean"
+          },
           "read_method": {
             "description": "How card details were read in this transaction.",
             "enum": [
@@ -23958,6 +24545,7 @@
           }
         },
         "required": [
+          "amount_authorized",
           "brand",
           "cardholder_name",
           "country",
@@ -23969,6 +24557,7 @@
           "generated_card",
           "last4",
           "network",
+          "overcapture_supported",
           "read_method",
           "receipt"
         ],
@@ -24603,7 +25192,7 @@
             "type": "string"
           },
           "cardholder_name": {
-            "description": "The cardholder name as read from the card, in [ISO 7813](https://en.wikipedia.org/wiki/ISO/IEC_7813) format. May include alphanumeric characters, special characters and first/last name separator (`/`).",
+            "description": "The cardholder name as read from the card, in [ISO 7813](https://en.wikipedia.org/wiki/ISO/IEC_7813) format. May include alphanumeric characters, special characters and first/last name separator (`/`). In some cases, the cardholder name may not be available depending on how the issuer has configured the card. Cardholder name is typically not available on swipe or contactless payments, such as those made with Apple Pay and Google Pay.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -24821,7 +25410,23 @@
       "payment_method_details_klarna": {
         "description": "",
         "properties": {
+          "payment_method_category": {
+            "description": "The Klarna payment method used for this transaction.\nCan be one of `pay_later`, `pay_now`, `pay_with_financing`, or `pay_in_installments`",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "preferred_locale": {
+            "description": "Preferred language of the Klarna authorization page that the customer is redirected to.\nCan be one of `de-AT`, `en-AT`, `nl-BE`, `fr-BE`, `en-BE`, `de-DE`, `en-DE`, `da-DK`, `en-DK`, `es-ES`, `en-ES`, `fi-FI`, `sv-FI`, `en-FI`, `en-GB`, `it-IT`, `en-IT`, `nl-NL`, `en-NL`, `nb-NO`, `en-NO`, `sv-SE`, `en-SE`, `en-US`, `fr-FR`, or `en-FR`",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
         },
+        "required": [
+          "payment_method_category",
+          "preferred_locale"
+        ],
         "title": "payment_method_details_klarna",
         "type": "object",
         "x-expandableFields": [
@@ -25421,6 +26026,35 @@
           "in_class": "payment_method"
         }
       },
+      "payment_method_klarna": {
+        "description": "",
+        "properties": {
+          "dob": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_flows_private_payment_methods_klarna_dob"
+              }
+            ],
+            "description": "The customer's date of birth, if provided.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "dob"
+        ],
+        "title": "payment_method_klarna",
+        "type": "object",
+        "x-expandableFields": [
+          "dob"
+        ],
+        "x-stripeResource": {
+          "class_name": "Klarna",
+          "in_class": "payment_method",
+          "inner_classes": [
+            "payment_flows_private_payment_methods_klarna_dob"
+          ]
+        }
+      },
       "payment_method_options_afterpay_clearpay": {
         "description": "",
         "properties": {
@@ -25578,6 +26212,29 @@
           "in_class": "payment_intent_payment_method_options"
         }
       },
+      "payment_method_options_klarna": {
+        "description": "",
+        "properties": {
+          "preferred_locale": {
+            "description": "Preferred locale of the Klarna checkout page that the customer is redirected to.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "preferred_locale"
+        ],
+        "title": "payment_method_options_klarna",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Klarna",
+          "in_class": "payment_intent_payment_method_options"
+        }
+      },
       "payment_method_options_oxxo": {
         "description": "",
         "properties": {
@@ -25726,7 +26383,8 @@
               "volkswagen_bank"
             ],
             "nullable": true,
-            "type": "string"
+            "type": "string",
+            "x-stripeBypassValidation": true
           }
         },
         "required": [
@@ -25843,6 +26501,75 @@
           "in_class": "payment_method"
         }
       },
+      "payment_pages_checkout_session_after_expiration": {
+        "description": "",
+        "properties": {
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/payment_pages_checkout_session_after_expiration_recovery"
+              }
+            ],
+            "description": "When set, configuration used to recover the Checkout Session on expiry.",
+            "nullable": true
+          }
+        },
+        "required": [
+          "recovery"
+        ],
+        "title": "PaymentPagesCheckoutSessionAfterExpiration",
+        "type": "object",
+        "x-expandableFields": [
+          "recovery"
+        ],
+        "x-stripeResource": {
+          "class_name": "AfterExpiration",
+          "in_class": "checkout.session",
+          "inner_classes": [
+            "payment_pages_checkout_session_after_expiration_recovery"
+          ]
+        }
+      },
+      "payment_pages_checkout_session_after_expiration_recovery": {
+        "description": "",
+        "properties": {
+          "allow_promotion_codes": {
+            "description": "Enables user redeemable promotion codes on the recovered Checkout Sessions. Defaults to `false`",
+            "type": "boolean"
+          },
+          "enabled": {
+            "description": "If `true`, a recovery url will be generated to recover this Checkout Session if it\nexpires before a transaction is completed. It will be attached to the\nCheckout Session object upon expiration.",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "description": "The timestamp at which the recovery URL will expire.",
+            "format": "unix-time",
+            "nullable": true,
+            "type": "integer"
+          },
+          "url": {
+            "description": "URL that creates a new Checkout Session when clicked that is a copy of this expired Checkout Session",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allow_promotion_codes",
+          "enabled",
+          "expires_at",
+          "url"
+        ],
+        "title": "PaymentPagesCheckoutSessionAfterExpirationRecovery",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Recovery",
+          "in_class": "payment_pages_checkout_session_after_expiration"
+        }
+      },
       "payment_pages_checkout_session_automatic_tax": {
         "description": "",
         "properties": {
@@ -25875,11 +26602,68 @@
           "in_class": "checkout.session"
         }
       },
+      "payment_pages_checkout_session_consent": {
+        "description": "",
+        "properties": {
+          "promotions": {
+            "description": "If `opt_in`, the customer consents to receiving promotional communications\nfrom the merchant about this Checkout Session.",
+            "enum": [
+              "opt_in",
+              "opt_out"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "promotions"
+        ],
+        "title": "PaymentPagesCheckoutSessionConsent",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "Consent",
+          "in_class": "checkout.session"
+        }
+      },
+      "payment_pages_checkout_session_consent_collection": {
+        "description": "",
+        "properties": {
+          "promotions": {
+            "description": "If set to `auto`, enables the collection of customer consent for promotional communications. The Checkout\nSession will determine whether to display an option to opt into promotional communication\nfrom the merchant depending on the customer's locale. Only available to US merchants.",
+            "enum": [
+              "auto"
+            ],
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "promotions"
+        ],
+        "title": "PaymentPagesCheckoutSessionConsentCollection",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "ConsentCollection",
+          "in_class": "checkout.session"
+        }
+      },
       "payment_pages_checkout_session_customer_details": {
         "description": "",
         "properties": {
           "email": {
-            "description": "The customer’s email at time of checkout.",
+            "description": "The email associated with the Customer, if one exists, on the Checkout Session at the time of checkout or at time of session expiry.\nOtherwise, if the customer has consented to promotional content, this value is the most recent valid email provided by the customer on the Checkout form.",
+            "maxLength": 5000,
+            "nullable": true,
+            "type": "string"
+          },
+          "phone": {
+            "description": "The customer's phone number at the time of checkout",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -25905,6 +26689,7 @@
         },
         "required": [
           "email",
+          "phone",
           "tax_exempt",
           "tax_ids"
         ],
@@ -25921,14 +26706,36 @@
           ]
         }
       },
+      "payment_pages_checkout_session_phone_number_collection": {
+        "description": "",
+        "properties": {
+          "enabled": {
+            "description": "Indicates whether phone number collection is enabled for the session",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PaymentPagesCheckoutSessionPhoneNumberCollection",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "PhoneNumberCollection",
+          "in_class": "checkout.session"
+        }
+      },
       "payment_pages_checkout_session_tax_id": {
         "description": "",
         "properties": {
           "type": {
-            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `gb_vat`, `nz_gst`, `au_abn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ru_kpp`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `jp_rn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, `il_vat`, or `unknown`",
+            "description": "The type of the tax ID, one of `eu_vat`, `br_cnpj`, `br_cpf`, `gb_vat`, `nz_gst`, `au_abn`, `au_arn`, `in_gst`, `no_vat`, `za_vat`, `ch_vat`, `mx_rfc`, `sg_uen`, `ru_inn`, `ru_kpp`, `ca_bn`, `hk_br`, `es_cif`, `tw_vat`, `th_vat`, `jp_cn`, `jp_rn`, `li_uid`, `my_itn`, `us_ein`, `kr_brn`, `ca_qst`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `my_sst`, `sg_gst`, `ae_trn`, `cl_tin`, `sa_vat`, `id_npwp`, `my_frp`, `il_vat`, or `unknown`",
             "enum": [
               "ae_trn",
               "au_abn",
+              "au_arn",
               "br_cnpj",
               "br_cpf",
               "ca_bn",
@@ -26933,6 +27740,23 @@
             "nullable": true,
             "type": "string"
           },
+          "full_name_aliases": {
+            "description": "A list of alternate names or aliases that the person is known by.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "future_requirements": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/person_future_requirements"
+              }
+            ],
+            "description": "Information about the upcoming new requirements for this person, including what information needs to be collected, and by when.",
+            "nullable": true
+          },
           "gender": {
             "description": "The person's gender (International regulations require either \"male\" or \"female\").",
             "nullable": true,
@@ -27038,6 +27862,7 @@
           "address_kana",
           "address_kanji",
           "dob",
+          "future_requirements",
           "relationship",
           "requirements",
           "verification"
@@ -27208,9 +28033,80 @@
             "legal_entity_japan_address",
             "legal_entity_person_verification",
             "legal_entity_person_verification_document",
+            "person_future_requirements",
             "person_relationship",
             "person_requirements"
           ]
+        }
+      },
+      "person_future_requirements": {
+        "description": "",
+        "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "currently_due": {
+            "description": "Fields that need to be collected to keep the person's account enabled. If not collected by the account's `future_requirements[current_deadline]`, these fields will transition to the main `requirements` hash, and may immediately become `past_due`, but the account may also be given a grace period depending on the account's enablement state prior to transition.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "errors": {
+            "description": "Fields that are `currently_due` and need to be collected again because validation or verification failed.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_error"
+            },
+            "type": "array"
+          },
+          "eventually_due": {
+            "description": "Fields that need to be collected assuming all volume thresholds are reached. As they become required, they appear in `currently_due` as well, and the account's `future_requirements[current_deadline]` becomes set.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "past_due": {
+            "description": "Fields that weren't collected by the account's `requirements.current_deadline`. These fields need to be collected to enable the person's account. New fields will never appear here; `future_requirements.past_due` will always be a subset of `requirements.past_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "pending_verification": {
+            "description": "Fields that may become required depending on the results of verification or review. Will be an empty array unless an asynchronous verification is pending. If verification fails, these fields move to `eventually_due` or `currently_due`.",
+            "items": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "alternatives",
+          "currently_due",
+          "errors",
+          "eventually_due",
+          "past_due",
+          "pending_verification"
+        ],
+        "title": "PersonFutureRequirements",
+        "type": "object",
+        "x-expandableFields": [
+          "alternatives",
+          "errors"
+        ],
+        "x-stripeResource": {
+          "class_name": "FutureRequirements",
+          "in_class": "person"
         }
       },
       "person_relationship": {
@@ -27269,6 +28165,14 @@
       "person_requirements": {
         "description": "",
         "properties": {
+          "alternatives": {
+            "description": "Fields that are due and can be satisfied by providing the corresponding alternative fields instead.",
+            "items": {
+              "$ref": "#/components/schemas/account_requirements_alternative"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "currently_due": {
             "description": "Fields that need to be collected to keep the person's account enabled. If not collected by the account's `current_deadline`, these fields appear in `past_due` as well, and the account is disabled.",
             "items": {
@@ -27310,6 +28214,7 @@
           }
         },
         "required": [
+          "alternatives",
           "currently_due",
           "errors",
           "eventually_due",
@@ -27319,6 +28224,7 @@
         "title": "PersonRequirements",
         "type": "object",
         "x-expandableFields": [
+          "alternatives",
           "errors"
         ],
         "x-stripeResource": {
@@ -27897,6 +28803,9 @@
       "portal_subscription_cancel": {
         "description": "",
         "properties": {
+          "cancellation_reason": {
+            "$ref": "#/components/schemas/portal_subscription_cancellation_reason"
+          },
           "enabled": {
             "description": "Whether the feature is enabled.",
             "type": "boolean"
@@ -27920,6 +28829,7 @@
           }
         },
         "required": [
+          "cancellation_reason",
           "enabled",
           "mode",
           "proration_behavior"
@@ -27927,11 +28837,53 @@
         "title": "PortalSubscriptionCancel",
         "type": "object",
         "x-expandableFields": [
-
+          "cancellation_reason"
         ],
         "x-stripeResource": {
           "class_name": "SubscriptionCancel",
-          "in_class": "portal_features"
+          "in_class": "portal_features",
+          "inner_classes": [
+            "portal_subscription_cancellation_reason"
+          ]
+        }
+      },
+      "portal_subscription_cancellation_reason": {
+        "description": "",
+        "properties": {
+          "enabled": {
+            "description": "Whether the feature is enabled.",
+            "type": "boolean"
+          },
+          "options": {
+            "description": "Which cancellation reasons will be given as options to the customer.",
+            "items": {
+              "enum": [
+                "customer_service",
+                "low_quality",
+                "missing_features",
+                "other",
+                "switched_service",
+                "too_complex",
+                "too_expensive",
+                "unused"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "enabled",
+          "options"
+        ],
+        "title": "PortalSubscriptionCancellationReason",
+        "type": "object",
+        "x-expandableFields": [
+
+        ],
+        "x-stripeResource": {
+          "class_name": "CancellationReason",
+          "in_class": "portal_subscription_cancel"
         }
       },
       "portal_subscription_pause": {
@@ -28076,7 +29028,7 @@
             "type": "boolean"
           },
           "lookup_key": {
-            "description": "A lookup key used to retrieve prices dynamically from a static string.",
+            "description": "A lookup key used to retrieve prices dynamically from a static string. This may be up to 200 characters.",
             "maxLength": 5000,
             "nullable": true,
             "type": "string"
@@ -30101,12 +31053,13 @@
             "type": "string"
           },
           "item_type": {
-            "description": "The type of items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, or `case_sensitive_string`.",
+            "description": "The type of items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, `case_sensitive_string`, or `customer_id`.",
             "enum": [
               "card_bin",
               "card_fingerprint",
               "case_sensitive_string",
               "country",
+              "customer_id",
               "email",
               "ip_address",
               "string"
@@ -31412,6 +32365,10 @@
             "maxLength": 5000,
             "type": "string"
           },
+          "livemode": {
+            "description": "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode.",
+            "type": "boolean"
+          },
           "name": {
             "description": "Human-readable name of the Report Type",
             "maxLength": 5000,
@@ -31439,6 +32396,7 @@
           "data_available_start",
           "default_columns",
           "id",
+          "livemode",
           "name",
           "object",
           "updated",
@@ -33373,6 +34331,17 @@
             "description": "A URL for custom mandate text",
             "maxLength": 5000,
             "type": "string"
+          },
+          "default_for": {
+            "description": "List of Stripe products where this mandate can be selected automatically.",
+            "items": {
+              "enum": [
+                "invoice",
+                "subscription"
+              ],
+              "type": "string"
+            },
+            "type": "array"
           },
           "interval_description": {
             "description": "Description of the interval. Only required if the 'payment_schedule' parameter is 'interval' or 'combined'.",
@@ -35872,7 +36841,6 @@
               "charge_automatically",
               "send_invoice"
             ],
-            "nullable": true,
             "type": "string"
           },
           "created": {
@@ -37607,6 +38575,15 @@
       "subscriptions_resource_payment_method_options": {
         "description": "",
         "properties": {
+          "acss_debit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/invoice_payment_method_options_acss_debit"
+              }
+            ],
+            "description": "This sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to invoices created by the subscription.",
+            "nullable": true
+          },
           "bancontact": {
             "anyOf": [
               {
@@ -37627,12 +38604,14 @@
           }
         },
         "required": [
+          "acss_debit",
           "bancontact",
           "card"
         ],
         "title": "SubscriptionsResourcePaymentMethodOptions",
         "type": "object",
         "x-expandableFields": [
+          "acss_debit",
           "bancontact",
           "card"
         ],
@@ -37659,6 +38638,7 @@
               "enum": [
                 "ach_credit_transfer",
                 "ach_debit",
+                "acss_debit",
                 "au_becs_debit",
                 "bacs_debit",
                 "bancontact",
@@ -37932,10 +38912,11 @@
             "type": "string"
           },
           "type": {
-            "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
+            "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`. Note that some legacy tax IDs have type `unknown`",
             "enum": [
               "ae_trn",
               "au_abn",
+              "au_arn",
               "br_cnpj",
               "br_cpf",
               "ca_bn",
@@ -38262,6 +39243,7 @@
               "hst",
               "pst",
               "qst",
+              "rst",
               "sales_tax",
               "vat"
             ],
@@ -38380,10 +39362,10 @@
         }
       },
       "terminal.connection_token": {
-        "description": "A Connection Token is used by the Stripe Terminal SDK to connect to a reader.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/creating-locations).",
+        "description": "A Connection Token is used by the Stripe Terminal SDK to connect to a reader.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/fleet/locations).",
         "properties": {
           "location": {
-            "description": "The id of the location that this connection token is scoped to. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/readers/fleet-management#connection-tokens).",
+            "description": "The id of the location that this connection token is scoped to. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/fleet/locations#connection-tokens).",
             "maxLength": 5000,
             "type": "string"
           },
@@ -38432,7 +39414,7 @@
         }
       },
       "terminal.location": {
-        "description": "A Location represents a grouping of readers.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/creating-locations).",
+        "description": "A Location represents a grouping of readers.\n\nRelated guide: [Fleet Management](https://stripe.com/docs/terminal/fleet/locations).",
         "properties": {
           "address": {
             "$ref": "#/components/schemas/address"
@@ -38596,7 +39578,7 @@
         }
       },
       "terminal.reader": {
-        "description": "A Reader represents a physical device for accepting payment details.\n\nRelated guide: [Connecting to a Reader](https://stripe.com/docs/terminal/readers/connecting).",
+        "description": "A Reader represents a physical device for accepting payment details.\n\nRelated guide: [Connecting to a Reader](https://stripe.com/docs/terminal/payments/connect-reader).",
         "properties": {
           "device_sw_version": {
             "description": "The current software version of the reader.",
@@ -38605,9 +39587,10 @@
             "type": "string"
           },
           "device_type": {
-            "description": "Type of reader, one of `bbpos_chipper2x` or `verifone_P400`.",
+            "description": "Type of reader, one of `bbpos_chipper2x`, `bbpos_wisepos_e`, or `verifone_P400`.",
             "enum": [
               "bbpos_chipper2x",
+              "bbpos_wisepos_e",
               "verifone_P400"
             ],
             "type": "string"
@@ -38976,7 +39959,8 @@
               "2.2.0"
             ],
             "nullable": true,
-            "type": "string"
+            "type": "string",
+            "x-stripeBypassValidation": true
           }
         },
         "required": [
@@ -41300,6 +42284,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "klarna_payments": {
+                        "description": "The klarna_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "legacy_payments": {
                         "description": "The legacy_payments capability.",
                         "properties": {
@@ -41543,6 +42538,27 @@
                         "description": "Whether the company's owners have been provided. Set this Boolean to `true` after creating all the company's owners with [the Persons API](https://stripe.com/docs/api/persons) for accounts with a `relationship.owner` requirement.",
                         "type": "boolean"
                       },
+                      "ownership_declaration": {
+                        "description": "This hash is used to attest that the beneficial owner information provided to Stripe is both current and correct.",
+                        "properties": {
+                          "date": {
+                            "description": "The Unix timestamp marking when the beneficial owner attestation was made.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "ip": {
+                            "description": "The IP address from which the beneficial owner attestation was made.",
+                            "type": "string"
+                          },
+                          "user_agent": {
+                            "description": "The user agent of the browser from which the beneficial owner attestation was made.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "company_ownership_declaration",
+                        "type": "object"
+                      },
                       "phone": {
                         "description": "The company's phone number (used for verification).",
                         "maxLength": 5000,
@@ -41743,13 +42759,31 @@
                         },
                         "title": "documents_param",
                         "type": "object"
+                      },
+                      "proof_of_registration": {
+                        "description": "One or more documents showing the company’s proof of registration with the national business registry.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
                       }
                     },
                     "title": "documents_specs",
                     "type": "object"
                   },
                   "email": {
-                    "description": "The email address of the account holder. This is only to make the account easier to identify to you. Stripe will never directly email Custom accounts.",
+                    "description": "The email address of the account holder. This is only to make the account easier to identify to you. Stripe only emails Custom accounts with your consent.",
                     "type": "string"
                   },
                   "expand": {
@@ -41942,6 +42976,27 @@
                         "description": "The Kanji variation of the individual's first name (Japan only).",
                         "maxLength": 5000,
                         "type": "string"
+                      },
+                      "full_name_aliases": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 300,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "full_name_aliase"
+                            }
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "A list of alternate names or aliases that the individual is known by."
                       },
                       "gender": {
                         "description": "The individual's gender (International regulations require either \"male\" or \"female\").",
@@ -42765,6 +43820,17 @@
                         "title": "capability_param",
                         "type": "object"
                       },
+                      "klarna_payments": {
+                        "description": "The klarna_payments capability.",
+                        "properties": {
+                          "requested": {
+                            "description": "Passing true requests the capability for the account, if it is not already requested. A requested capability may not immediately become active. Any requirements to activate the capability are returned in the `requirements` arrays.",
+                            "type": "boolean"
+                          }
+                        },
+                        "title": "capability_param",
+                        "type": "object"
+                      },
                       "legacy_payments": {
                         "description": "The legacy_payments capability.",
                         "properties": {
@@ -43008,6 +44074,27 @@
                         "description": "Whether the company's owners have been provided. Set this Boolean to `true` after creating all the company's owners with [the Persons API](https://stripe.com/docs/api/persons) for accounts with a `relationship.owner` requirement.",
                         "type": "boolean"
                       },
+                      "ownership_declaration": {
+                        "description": "This hash is used to attest that the beneficial owner information provided to Stripe is both current and correct.",
+                        "properties": {
+                          "date": {
+                            "description": "The Unix timestamp marking when the beneficial owner attestation was made.",
+                            "format": "unix-time",
+                            "type": "integer"
+                          },
+                          "ip": {
+                            "description": "The IP address from which the beneficial owner attestation was made.",
+                            "type": "string"
+                          },
+                          "user_agent": {
+                            "description": "The user agent of the browser from which the beneficial owner attestation was made.",
+                            "maxLength": 5000,
+                            "type": "string"
+                          }
+                        },
+                        "title": "company_ownership_declaration",
+                        "type": "object"
+                      },
                       "phone": {
                         "description": "The company's phone number (used for verification).",
                         "maxLength": 5000,
@@ -43203,13 +44290,31 @@
                         },
                         "title": "documents_param",
                         "type": "object"
+                      },
+                      "proof_of_registration": {
+                        "description": "One or more documents showing the company’s proof of registration with the national business registry.",
+                        "properties": {
+                          "files": {
+                            "description": "One or more document ids returned by a [file upload](https://stripe.com/docs/api#create_file) with a `purpose` value of `account_requirement`.",
+                            "items": {
+                              "maxLength": 500,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "file"
+                            }
+                          }
+                        },
+                        "title": "documents_param",
+                        "type": "object"
                       }
                     },
                     "title": "documents_specs",
                     "type": "object"
                   },
                   "email": {
-                    "description": "The email address of the account holder. This is only to make the account easier to identify to you. Stripe will never directly email Custom accounts.",
+                    "description": "The email address of the account holder. This is only to make the account easier to identify to you. Stripe only emails Custom accounts with your consent.",
                     "type": "string"
                   },
                   "expand": {
@@ -43402,6 +44507,27 @@
                         "description": "The Kanji variation of the individual's first name (Japan only).",
                         "maxLength": 5000,
                         "type": "string"
+                      },
+                      "full_name_aliases": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 300,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "full_name_aliase"
+                            }
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "A list of alternate names or aliases that the individual is known by."
                       },
                       "gender": {
                         "description": "The individual's gender (International regulations require either \"male\" or \"female\").",
@@ -44841,6 +45967,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "full_name_aliases": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -45099,6 +46229,27 @@
                     "description": "The Kanji variation of the person's first name (Japan only).",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "full_name_aliases": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "type": "array",
+                        "x-stripeParam": {
+                          "containee_entity_name": "full_name_aliase"
+                        }
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "A list of alternate names or aliases that the person is known by."
                   },
                   "gender": {
                     "description": "The person's gender (International regulations require either \"male\" or \"female\").",
@@ -45478,6 +46629,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "full_name_aliases": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "metadata": {
                   "explode": true,
                   "style": "deepObject"
@@ -45736,6 +46891,27 @@
                     "description": "The Kanji variation of the person's first name (Japan only).",
                     "maxLength": 5000,
                     "type": "string"
+                  },
+                  "full_name_aliases": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "maxLength": 5000,
+                          "type": "string"
+                        },
+                        "type": "array",
+                        "x-stripeParam": {
+                          "containee_entity_name": "full_name_aliase"
+                        }
+                      },
+                      {
+                        "enum": [
+                          ""
+                        ],
+                        "type": "string"
+                      }
+                    ],
+                    "description": "A list of alternate names or aliases that the person is known by."
                   },
                   "gender": {
                     "description": "The person's gender (International regulations require either \"male\" or \"female\").",
@@ -47292,6 +48468,7 @@
         "operationId": "GetBalanceTransactions",
         "parameters": [
           {
+            "description": "This parameter is deprecated and we recommend listing by created and filtering in memory instead.",
             "explode": true,
             "in": "query",
             "name": "available_on",
@@ -47894,6 +49071,51 @@
                       "subscription_cancel": {
                         "description": "Information about canceling subscriptions in the portal.",
                         "properties": {
+                          "cancellation_reason": {
+                            "description": "Whether the cancellation reasons will be collected in the portal and which options are exposed to the customer",
+                            "properties": {
+                              "enabled": {
+                                "description": "Whether the feature is enabled.",
+                                "type": "boolean"
+                              },
+                              "options": {
+                                "anyOf": [
+                                  {
+                                    "items": {
+                                      "enum": [
+                                        "customer_service",
+                                        "low_quality",
+                                        "missing_features",
+                                        "other",
+                                        "switched_service",
+                                        "too_complex",
+                                        "too_expensive",
+                                        "unused"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "type": "array",
+                                    "x-stripeParam": {
+                                      "containee_entity_name": "option"
+                                    }
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "Which cancellation reasons will be given as options to the customer."
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "options"
+                            ],
+                            "title": "subscription_cancellation_reason_creation_param",
+                            "type": "object"
+                          },
                           "enabled": {
                             "description": "Whether the feature is enabled.",
                             "type": "boolean"
@@ -48291,6 +49513,50 @@
                       "subscription_cancel": {
                         "description": "Information about canceling subscriptions in the portal.",
                         "properties": {
+                          "cancellation_reason": {
+                            "description": "Whether the cancellation reasons will be collected in the portal and which options are exposed to the customer",
+                            "properties": {
+                              "enabled": {
+                                "description": "Whether the feature is enabled.",
+                                "type": "boolean"
+                              },
+                              "options": {
+                                "anyOf": [
+                                  {
+                                    "items": {
+                                      "enum": [
+                                        "customer_service",
+                                        "low_quality",
+                                        "missing_features",
+                                        "other",
+                                        "switched_service",
+                                        "too_complex",
+                                        "too_expensive",
+                                        "unused"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "type": "array",
+                                    "x-stripeParam": {
+                                      "containee_entity_name": "option"
+                                    }
+                                  },
+                                  {
+                                    "enum": [
+                                      ""
+                                    ],
+                                    "type": "string"
+                                  }
+                                ],
+                                "description": "Which cancellation reasons will be given as options to the customer."
+                              }
+                            },
+                            "required": [
+                              "enabled"
+                            ],
+                            "title": "subscription_cancellation_reason_updating_param",
+                            "type": "object"
+                          },
                           "enabled": {
                             "description": "Whether the feature is enabled.",
                             "type": "boolean"
@@ -48483,6 +49749,60 @@
                       "type": "string"
                     },
                     "type": "array"
+                  },
+                  "locale": {
+                    "description": "The IETF language tag of the locale Customer Portal is displayed in. If blank or auto, the customer’s `preferred_locales` or browser’s locale is used.",
+                    "enum": [
+                      "auto",
+                      "bg",
+                      "cs",
+                      "da",
+                      "de",
+                      "el",
+                      "en",
+                      "en-AU",
+                      "en-CA",
+                      "en-GB",
+                      "en-IE",
+                      "en-IN",
+                      "en-NZ",
+                      "en-SG",
+                      "es",
+                      "es-419",
+                      "et",
+                      "fi",
+                      "fil",
+                      "fr",
+                      "fr-CA",
+                      "hr",
+                      "hu",
+                      "id",
+                      "it",
+                      "ja",
+                      "ko",
+                      "lt",
+                      "lv",
+                      "ms",
+                      "mt",
+                      "nb",
+                      "nl",
+                      "pl",
+                      "pt",
+                      "pt-BR",
+                      "ro",
+                      "ru",
+                      "sk",
+                      "sl",
+                      "sv",
+                      "th",
+                      "tr",
+                      "vi",
+                      "zh",
+                      "zh-HK",
+                      "zh-TW"
+                    ],
+                    "type": "string",
+                    "x-stripeBypassValidation": true
                   },
                   "on_behalf_of": {
                     "description": "The `on_behalf_of` account to use for this session. When specified, only subscriptions and invoices with this `on_behalf_of` account appear in the portal. For more information, see the [docs](https://stripe.com/docs/connect/charges-transfers#on-behalf-of). Use the [Accounts API](https://stripe.com/docs/api/accounts/object#account_object-settings-branding) to modify the `on_behalf_of` account's branding settings, which the portal displays.",
@@ -50099,7 +51419,15 @@
           "content": {
             "application/x-www-form-urlencoded": {
               "encoding": {
+                "after_expiration": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "automatic_tax": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "consent_collection": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -50135,6 +51463,10 @@
                   "explode": true,
                   "style": "deepObject"
                 },
+                "phone_number_collection": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
                 "setup_intent_data": {
                   "explode": true,
                   "style": "deepObject"
@@ -50159,6 +51491,31 @@
               "schema": {
                 "additionalProperties": false,
                 "properties": {
+                  "after_expiration": {
+                    "description": "Configure actions after a Checkout Session has expired.",
+                    "properties": {
+                      "recovery": {
+                        "description": "Configure a Checkout Session that can be used to recover an expired session.",
+                        "properties": {
+                          "allow_promotion_codes": {
+                            "description": "Enables user redeemable promotion codes on the recovered Checkout Sessions. Defaults to `false`",
+                            "type": "boolean"
+                          },
+                          "enabled": {
+                            "description": "If `true`, a recovery URL will be generated to recover this Checkout Session if it\nexpires before a successful transaction is completed. It will be attached to the\nCheckout Session object upon expiration.",
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "enabled"
+                        ],
+                        "title": "recovery_params",
+                        "type": "object"
+                      }
+                    },
+                    "title": "after_expiration_params",
+                    "type": "object"
+                  },
                   "allow_promotion_codes": {
                     "description": "Enables user redeemable promotion codes.",
                     "type": "boolean"
@@ -50194,6 +51551,20 @@
                     "description": "A unique string to reference the Checkout Session. This can be a\ncustomer ID, a cart ID, or similar, and can be used to reconcile the\nsession with your internal systems.",
                     "maxLength": 200,
                     "type": "string"
+                  },
+                  "consent_collection": {
+                    "description": "Configure fields for the Checkout Session to gather active consent from customers.",
+                    "properties": {
+                      "promotions": {
+                        "description": "If set to `auto`, enables the collection of customer consent for promotional communications. The Checkout\nSession will determine whether to display an option to opt into promotional communication\nfrom the merchant depending on the customer's locale. Only available to US merchants.",
+                        "enum": [
+                          "auto"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "title": "consent_collection_params",
+                    "type": "object"
                   },
                   "customer": {
                     "description": "ID of an existing Customer, if one exists. In `payment` mode, the customer’s most recent card\npayment method will be used to prefill the email, name, card details, and billing address\non the Checkout page. In `subscription` mode, the customer’s [default payment method](https://stripe.com/docs/api/customers/update#update_customer-invoice_settings-default_payment_method)\nwill be used if it’s a card, and otherwise the most recent card will be used. A valid billing address is required for Checkout to prefill the customer's card details.\n\nIf the customer changes their email on the Checkout page, the Customer object will be updated with the new email.\n\nIf blank for Checkout Sessions in `payment` or `subscription` mode, Checkout will create a new Customer object based on information provided during the payment flow.\n\nYou can set [`payment_intent_data.setup_future_usage`](https://stripe.com/docs/api/checkout/sessions/create#create_checkout_session-payment_intent_data-setup_future_usage) to have Checkout automatically attach the payment method to the Customer you pass in for future reuse.",
@@ -50269,6 +51640,11 @@
                     },
                     "type": "array"
                   },
+                  "expires_at": {
+                    "description": "The Epoch time in seconds at which the Checkout Session will expire. It can be anywhere from 1 to 24 hours after Checkout Session creation. By default, this value is 24 hours from creation.",
+                    "format": "unix-time",
+                    "type": "integer"
+                  },
                   "line_items": {
                     "description": "A list of items the customer is purchasing. Use this parameter to pass one-time or recurring [Prices](https://stripe.com/docs/api/prices).\n\nFor `payment` mode, there is a maximum of 100 line items, however it is recommended to consolidate line items if there are more than a few dozen.\n\nFor `subscription` mode, there is a maximum of 20 line items with recurring Prices and 20 line items with one-time Prices. Line items with one-time Prices in will be on the initial invoice only.",
                     "items": {
@@ -50281,7 +51657,7 @@
                               "type": "boolean"
                             },
                             "maximum": {
-                              "description": "The maximum quantity the customer can purchase for the Checkout Session. By default this value is 99.",
+                              "description": "The maximum quantity the customer can purchase for the Checkout Session. By default this value is 99. You can specify a value up to 999.",
                               "type": "integer"
                             },
                             "minimum": {
@@ -50482,6 +51858,7 @@
                       "es-419",
                       "et",
                       "fi",
+                      "fil",
                       "fr",
                       "fr-CA",
                       "hr",
@@ -50712,6 +52089,20 @@
                                 ],
                                 "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
                               },
+                              "default_for": {
+                                "description": "List of Stripe products where this mandate can be selected automatically. Only usable in `setup` mode.",
+                                "items": {
+                                  "enum": [
+                                    "invoice",
+                                    "subscription"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "default_for"
+                                }
+                              },
                               "interval_description": {
                                 "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
                                 "maxLength": 500,
@@ -50819,6 +52210,7 @@
                         "giropay",
                         "grabpay",
                         "ideal",
+                        "klarna",
                         "oxxo",
                         "p24",
                         "sepa_debit",
@@ -50832,6 +52224,20 @@
                     "x-stripeParam": {
                       "containee_entity_name": "payment_method_type"
                     }
+                  },
+                  "phone_number_collection": {
+                    "description": "Controls phone number collection settings for the session.\n\nWe recommend that you review your privacy policy and check with your legal contacts\nbefore using this feature. Learn more about [collecting phone numbers with Checkout](https://stripe.com/docs/payments/checkout/phone-numbers).",
+                    "properties": {
+                      "enabled": {
+                        "description": "Set to `true` to enable phone number collection.",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "enabled"
+                    ],
+                    "title": "phone_number_collection_params",
+                    "type": "object"
                   },
                   "setup_intent_data": {
                     "description": "A subset of parameters to be passed to SetupIntent creation for Checkout Sessions in `setup` mode.",
@@ -51237,7 +52643,7 @@
                     "type": "object"
                   },
                   "success_url": {
-                    "description": "The URL to which Stripe should send customers when payment or setup\nis complete.\nIf you’d like access to the Checkout Session for the successful\npayment, read more about it in the guide on [fulfilling orders](https://stripe.com/docs/payments/checkout/fulfill-orders).",
+                    "description": "The URL to which Stripe should send customers when payment or setup\nis complete.\nIf you’d like to use information from the successful Checkout Session on your page,\nread the guide on [customizing your success page](https://stripe.com/docs/payments/checkout/custom-success-page).",
                     "maxLength": 5000,
                     "type": "string"
                   },
@@ -53959,10 +55365,11 @@
                     "items": {
                       "properties": {
                         "type": {
-                          "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                          "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                           "enum": [
                             "ae_trn",
                             "au_abn",
+                            "au_arn",
                             "br_cnpj",
                             "br_cpf",
                             "ca_bn",
@@ -55047,6 +56454,175 @@
         }
       }
     },
+    "/v1/customers/{customer}/payment_methods": {
+      "get": {
+        "description": "<p>Returns a list of PaymentMethods for a given Customer</p>",
+        "operationId": "GetCustomersCustomerPaymentMethods",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "customer",
+            "required": true,
+            "schema": {
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "style": "simple"
+          },
+          {
+            "description": "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+            "in": "query",
+            "name": "ending_before",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "Specifies which fields in the response should be expanded.",
+            "explode": true,
+            "in": "query",
+            "name": "expand",
+            "required": false,
+            "schema": {
+              "items": {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "deepObject"
+          },
+          {
+            "description": "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+            "in": "query",
+            "name": "starting_after",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "style": "form"
+          },
+          {
+            "description": "A required filter on the list, based on the object `type` field.",
+            "in": "query",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "acss_debit",
+                "afterpay_clearpay",
+                "alipay",
+                "au_becs_debit",
+                "bacs_debit",
+                "bancontact",
+                "boleto",
+                "card",
+                "card_present",
+                "eps",
+                "fpx",
+                "giropay",
+                "grabpay",
+                "ideal",
+                "klarna",
+                "oxxo",
+                "p24",
+                "sepa_debit",
+                "sofort",
+                "wechat_pay"
+              ],
+              "type": "string",
+              "x-stripeBypassValidation": true
+            },
+            "style": "form"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "encoding": {
+              },
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": false
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "",
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "$ref": "#/components/schemas/payment_method"
+                      },
+                      "type": "array"
+                    },
+                    "has_more": {
+                      "description": "True if this list has another page of items after this one that can be fetched.",
+                      "type": "boolean"
+                    },
+                    "object": {
+                      "description": "String representing the object's type. Objects of the same type share the same value. Always has the value `list`.",
+                      "enum": [
+                        "list"
+                      ],
+                      "type": "string"
+                    },
+                    "url": {
+                      "description": "The URL where this list can be accessed.",
+                      "maxLength": 5000,
+                      "pattern": "^/v1/customers/:customer/payment_methods",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "has_more",
+                    "object",
+                    "url"
+                  ],
+                  "title": "CustomerPaymentMethodResourceList",
+                  "type": "object",
+                  "x-expandableFields": [
+                    "data"
+                  ]
+                }
+              }
+            },
+            "description": "Successful response."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/error"
+                }
+              }
+            },
+            "description": "Error response."
+          }
+        }
+      }
+    },
     "/v1/customers/{customer}/sources": {
       "get": {
         "description": "<p>List sources for a specified customer.</p>",
@@ -55930,10 +57506,11 @@
                     "type": "array"
                   },
                   "type": {
-                    "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                    "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                     "enum": [
                       "ae_trn",
                       "au_abn",
+                      "au_arn",
                       "br_cnpj",
                       "br_cpf",
                       "ca_bn",
@@ -60623,6 +62200,48 @@
                       "payment_method_options": {
                         "description": "Payment-method-specific configuration to provide to the invoice’s PaymentIntent.",
                         "properties": {
+                          "acss_debit": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "mandate_options": {
+                                    "description": "Additional fields for Mandate creation",
+                                    "properties": {
+                                      "transaction_type": {
+                                        "description": "Transaction type of the mandate.",
+                                        "enum": [
+                                          "business",
+                                          "personal"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "title": "mandate_options_param",
+                                    "type": "object"
+                                  },
+                                  "verification_method": {
+                                    "description": "Verification method for the intent",
+                                    "enum": [
+                                      "automatic",
+                                      "instant",
+                                      "microdeposits"
+                                    ],
+                                    "type": "string",
+                                    "x-stripeBypassValidation": true
+                                  }
+                                },
+                                "title": "invoice_payment_method_options_param",
+                                "type": "object"
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "If paying by `acss_debit`, this sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to the invoice’s PaymentIntent."
+                          },
                           "bancontact": {
                             "anyOf": [
                               {
@@ -60686,6 +62305,7 @@
                               "enum": [
                                 "ach_credit_transfer",
                                 "ach_debit",
+                                "acss_debit",
                                 "au_becs_debit",
                                 "bacs_debit",
                                 "bancontact",
@@ -60989,10 +62609,11 @@
                   "items": {
                     "properties": {
                       "type": {
-                        "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                        "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                         "enum": [
                           "ae_trn",
                           "au_abn",
+                          "au_arn",
                           "br_cnpj",
                           "br_cpf",
                           "ca_bn",
@@ -61907,10 +63528,11 @@
                   "items": {
                     "properties": {
                       "type": {
-                        "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
+                        "description": "Type of the tax ID, one of `ae_trn`, `au_abn`, `au_arn`, `br_cnpj`, `br_cpf`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `ch_vat`, `cl_tin`, `es_cif`, `eu_vat`, `gb_vat`, `hk_br`, `id_npwp`, `il_vat`, `in_gst`, `jp_cn`, `jp_rn`, `kr_brn`, `li_uid`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `no_vat`, `nz_gst`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `th_vat`, `tw_vat`, `us_ein`, or `za_vat`",
                         "enum": [
                           "ae_trn",
                           "au_abn",
+                          "au_arn",
                           "br_cnpj",
                           "br_cpf",
                           "ca_bn",
@@ -63087,6 +64709,48 @@
                       "payment_method_options": {
                         "description": "Payment-method-specific configuration to provide to the invoice’s PaymentIntent.",
                         "properties": {
+                          "acss_debit": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "mandate_options": {
+                                    "description": "Additional fields for Mandate creation",
+                                    "properties": {
+                                      "transaction_type": {
+                                        "description": "Transaction type of the mandate.",
+                                        "enum": [
+                                          "business",
+                                          "personal"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "title": "mandate_options_param",
+                                    "type": "object"
+                                  },
+                                  "verification_method": {
+                                    "description": "Verification method for the intent",
+                                    "enum": [
+                                      "automatic",
+                                      "instant",
+                                      "microdeposits"
+                                    ],
+                                    "type": "string",
+                                    "x-stripeBypassValidation": true
+                                  }
+                                },
+                                "title": "invoice_payment_method_options_param",
+                                "type": "object"
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "If paying by `acss_debit`, this sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to the invoice’s PaymentIntent."
+                          },
                           "bancontact": {
                             "anyOf": [
                               {
@@ -63150,6 +64814,7 @@
                               "enum": [
                                 "ach_credit_transfer",
                                 "ach_debit",
+                                "acss_debit",
                                 "au_becs_debit",
                                 "bacs_debit",
                                 "bancontact",
@@ -64900,7 +66565,7 @@
                     "type": "string"
                   },
                   "phone_number": {
-                    "description": "The cardholder's phone number. This will be transformed to [E.164](https://en.wikipedia.org/wiki/E.164) if it is not provided in that format already.",
+                    "description": "The cardholder's phone number. This will be transformed to [E.164](https://en.wikipedia.org/wiki/E.164) if it is not provided in that format already. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://stripe.com/docs/issuing/3d-secure#when-is-3d-secure-applied) for more details.",
                     "type": "string"
                   },
                   "spending_controls": {
@@ -66173,7 +67838,7 @@
                     "type": "object"
                   },
                   "phone_number": {
-                    "description": "The cardholder's phone number.",
+                    "description": "The cardholder's phone number. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://stripe.com/docs/issuing/3d-secure) for more details.",
                     "type": "string"
                   },
                   "spending_controls": {
@@ -71960,7 +73625,6 @@
             "name": "ending_before",
             "required": false,
             "schema": {
-              "maxLength": 5000,
               "type": "string"
             },
             "style": "form"
@@ -72014,7 +73678,6 @@
             "name": "starting_after",
             "required": false,
             "schema": {
-              "maxLength": 5000,
               "type": "string"
             },
             "style": "form"
@@ -72235,6 +73898,7 @@
                     "object",
                     "url"
                   ],
+                  "title": "OrdersLegacyResourceOrderList",
                   "type": "object",
                   "x-expandableFields": [
                     "data"
@@ -73409,7 +75073,7 @@
                         "description": "If this is a `boleto` PaymentMethod, this hash contains details about the Boleto payment method.",
                         "properties": {
                           "tax_id": {
-                            "description": "Uniquely identifies this customer tax_id (CNPJ or CPF)",
+                            "description": "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
                             "maxLength": 5000,
                             "type": "string"
                           }
@@ -73556,6 +75220,37 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "klarna": {
+                        "description": "If this is a `klarna` PaymentMethod, this hash contains details about the Klarna payment method.",
+                        "properties": {
+                          "dob": {
+                            "description": "Customer's date of birth",
+                            "properties": {
+                              "day": {
+                                "description": "The day of birth, between 1 and 31.",
+                                "type": "integer"
+                              },
+                              "month": {
+                                "description": "The month of birth, between 1 and 12.",
+                                "type": "integer"
+                              },
+                              "year": {
+                                "description": "The four-digit year of birth.",
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month",
+                              "year"
+                            ],
+                            "title": "date_of_birth",
+                            "type": "object"
+                          }
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "metadata": {
                         "additionalProperties": {
                           "type": "string"
@@ -73602,8 +75297,8 @@
                               "toyota_bank",
                               "volkswagen_bank"
                             ],
-                            "maxLength": 5000,
-                            "type": "string"
+                            "type": "string",
+                            "x-stripeBypassValidation": true
                           }
                         },
                         "title": "param",
@@ -73661,6 +75356,7 @@
                           "giropay",
                           "grabpay",
                           "ideal",
+                          "klarna",
                           "oxxo",
                           "p24",
                           "sepa_debit",
@@ -73983,6 +75679,54 @@
                         ],
                         "description": "If this is a `ideal` PaymentMethod, this sub-hash contains details about the Ideal payment method options."
                       },
+                      "klarna": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "preferred_locale": {
+                                "description": "Preferred language of the Klarna authorization page that the customer is redirected to",
+                                "enum": [
+                                  "da-DK",
+                                  "de-AT",
+                                  "de-DE",
+                                  "en-AT",
+                                  "en-BE",
+                                  "en-DE",
+                                  "en-DK",
+                                  "en-ES",
+                                  "en-FI",
+                                  "en-GB",
+                                  "en-IT",
+                                  "en-NL",
+                                  "en-NO",
+                                  "en-SE",
+                                  "en-US",
+                                  "es-ES",
+                                  "fi-FI",
+                                  "fr-BE",
+                                  "it-IT",
+                                  "nb-NO",
+                                  "nl-BE",
+                                  "nl-NL",
+                                  "sv-FI",
+                                  "sv-SE"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `klarna` PaymentMethod, this sub-hash contains details about the Klarna payment method options."
+                      },
                       "oxxo": {
                         "anyOf": [
                           {
@@ -74056,6 +75800,7 @@
                               "preferred_language": {
                                 "description": "Language shown to the payer on redirect.",
                                 "enum": [
+                                  "",
                                   "de",
                                   "en",
                                   "es",
@@ -74646,7 +76391,7 @@
                         "description": "If this is a `boleto` PaymentMethod, this hash contains details about the Boleto payment method.",
                         "properties": {
                           "tax_id": {
-                            "description": "Uniquely identifies this customer tax_id (CNPJ or CPF)",
+                            "description": "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
                             "maxLength": 5000,
                             "type": "string"
                           }
@@ -74793,6 +76538,37 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "klarna": {
+                        "description": "If this is a `klarna` PaymentMethod, this hash contains details about the Klarna payment method.",
+                        "properties": {
+                          "dob": {
+                            "description": "Customer's date of birth",
+                            "properties": {
+                              "day": {
+                                "description": "The day of birth, between 1 and 31.",
+                                "type": "integer"
+                              },
+                              "month": {
+                                "description": "The month of birth, between 1 and 12.",
+                                "type": "integer"
+                              },
+                              "year": {
+                                "description": "The four-digit year of birth.",
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month",
+                              "year"
+                            ],
+                            "title": "date_of_birth",
+                            "type": "object"
+                          }
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "metadata": {
                         "additionalProperties": {
                           "type": "string"
@@ -74839,8 +76615,8 @@
                               "toyota_bank",
                               "volkswagen_bank"
                             ],
-                            "maxLength": 5000,
-                            "type": "string"
+                            "type": "string",
+                            "x-stripeBypassValidation": true
                           }
                         },
                         "title": "param",
@@ -74898,6 +76674,7 @@
                           "giropay",
                           "grabpay",
                           "ideal",
+                          "klarna",
                           "oxxo",
                           "p24",
                           "sepa_debit",
@@ -75220,6 +76997,54 @@
                         ],
                         "description": "If this is a `ideal` PaymentMethod, this sub-hash contains details about the Ideal payment method options."
                       },
+                      "klarna": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "preferred_locale": {
+                                "description": "Preferred language of the Klarna authorization page that the customer is redirected to",
+                                "enum": [
+                                  "da-DK",
+                                  "de-AT",
+                                  "de-DE",
+                                  "en-AT",
+                                  "en-BE",
+                                  "en-DE",
+                                  "en-DK",
+                                  "en-ES",
+                                  "en-FI",
+                                  "en-GB",
+                                  "en-IT",
+                                  "en-NL",
+                                  "en-NO",
+                                  "en-SE",
+                                  "en-US",
+                                  "es-ES",
+                                  "fi-FI",
+                                  "fr-BE",
+                                  "it-IT",
+                                  "nb-NO",
+                                  "nl-BE",
+                                  "nl-NL",
+                                  "sv-FI",
+                                  "sv-SE"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `klarna` PaymentMethod, this sub-hash contains details about the Klarna payment method options."
+                      },
                       "oxxo": {
                         "anyOf": [
                           {
@@ -75293,6 +77118,7 @@
                               "preferred_language": {
                                 "description": "Language shown to the payer on redirect.",
                                 "enum": [
+                                  "",
                                   "de",
                                   "en",
                                   "es",
@@ -76065,7 +77891,7 @@
                         "description": "If this is a `boleto` PaymentMethod, this hash contains details about the Boleto payment method.",
                         "properties": {
                           "tax_id": {
-                            "description": "Uniquely identifies this customer tax_id (CNPJ or CPF)",
+                            "description": "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
                             "maxLength": 5000,
                             "type": "string"
                           }
@@ -76212,6 +78038,37 @@
                         "title": "param",
                         "type": "object"
                       },
+                      "klarna": {
+                        "description": "If this is a `klarna` PaymentMethod, this hash contains details about the Klarna payment method.",
+                        "properties": {
+                          "dob": {
+                            "description": "Customer's date of birth",
+                            "properties": {
+                              "day": {
+                                "description": "The day of birth, between 1 and 31.",
+                                "type": "integer"
+                              },
+                              "month": {
+                                "description": "The month of birth, between 1 and 12.",
+                                "type": "integer"
+                              },
+                              "year": {
+                                "description": "The four-digit year of birth.",
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "month",
+                              "year"
+                            ],
+                            "title": "date_of_birth",
+                            "type": "object"
+                          }
+                        },
+                        "title": "param",
+                        "type": "object"
+                      },
                       "metadata": {
                         "additionalProperties": {
                           "type": "string"
@@ -76258,8 +78115,8 @@
                               "toyota_bank",
                               "volkswagen_bank"
                             ],
-                            "maxLength": 5000,
-                            "type": "string"
+                            "type": "string",
+                            "x-stripeBypassValidation": true
                           }
                         },
                         "title": "param",
@@ -76317,6 +78174,7 @@
                           "giropay",
                           "grabpay",
                           "ideal",
+                          "klarna",
                           "oxxo",
                           "p24",
                           "sepa_debit",
@@ -76639,6 +78497,54 @@
                         ],
                         "description": "If this is a `ideal` PaymentMethod, this sub-hash contains details about the Ideal payment method options."
                       },
+                      "klarna": {
+                        "anyOf": [
+                          {
+                            "properties": {
+                              "preferred_locale": {
+                                "description": "Preferred language of the Klarna authorization page that the customer is redirected to",
+                                "enum": [
+                                  "da-DK",
+                                  "de-AT",
+                                  "de-DE",
+                                  "en-AT",
+                                  "en-BE",
+                                  "en-DE",
+                                  "en-DK",
+                                  "en-ES",
+                                  "en-FI",
+                                  "en-GB",
+                                  "en-IT",
+                                  "en-NL",
+                                  "en-NO",
+                                  "en-SE",
+                                  "en-US",
+                                  "es-ES",
+                                  "fi-FI",
+                                  "fr-BE",
+                                  "it-IT",
+                                  "nb-NO",
+                                  "nl-BE",
+                                  "nl-NL",
+                                  "sv-FI",
+                                  "sv-SE"
+                                ],
+                                "type": "string",
+                                "x-stripeBypassValidation": true
+                              }
+                            },
+                            "title": "payment_method_options_param",
+                            "type": "object"
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "If this is a `klarna` PaymentMethod, this sub-hash contains details about the Klarna payment method options."
+                      },
                       "oxxo": {
                         "anyOf": [
                           {
@@ -76712,6 +78618,7 @@
                               "preferred_language": {
                                 "description": "Language shown to the payer on redirect.",
                                 "enum": [
+                                  "",
                                   "de",
                                   "en",
                                   "es",
@@ -76916,14 +78823,14 @@
     },
     "/v1/payment_methods": {
       "get": {
-        "description": "<p>Returns a list of PaymentMethods for a given Customer</p>",
+        "description": "<p>Returns a list of PaymentMethods. For listing a customer’s payment methods, you should use <a href=\"/docs/api/payment_methods/customer_list\">List a Customer’s PaymentMethods</a></p>",
         "operationId": "GetPaymentMethods",
         "parameters": [
           {
             "description": "The ID of the customer whose PaymentMethods will be retrieved.",
             "in": "query",
             "name": "customer",
-            "required": true,
+            "required": false,
             "schema": {
               "maxLength": 5000,
               "type": "string"
@@ -76996,6 +78903,7 @@
                 "giropay",
                 "grabpay",
                 "ideal",
+                "klarna",
                 "oxxo",
                 "p24",
                 "sepa_debit",
@@ -77083,7 +78991,7 @@
         }
       },
       "post": {
-        "description": "<p>Creates a PaymentMethod object. Read the <a href=\"/docs/stripe-js/reference#stripe-create-payment-method\">Stripe.js reference</a> to learn how to create PaymentMethods via Stripe.js.</p>",
+        "description": "<p>Creates a PaymentMethod object. Read the <a href=\"/docs/stripe-js/reference#stripe-create-payment-method\">Stripe.js reference</a> to learn how to create PaymentMethods via Stripe.js.</p>\n\n<p>Instead of creating a PaymentMethod directly, we recommend using the <a href=\"/docs/payments/accept-a-payment\">PaymentIntents</a> API to accept a payment immediately or the <a href=\"/docs/payments/save-and-reuse\">SetupIntent</a> API to collect payment method details ahead of a future payment.</p>",
         "operationId": "PostPaymentMethods",
         "requestBody": {
           "content": {
@@ -77150,6 +79058,10 @@
                   "style": "deepObject"
                 },
                 "interac_present": {
+                  "explode": true,
+                  "style": "deepObject"
+                },
+                "klarna": {
                   "explode": true,
                   "style": "deepObject"
                 },
@@ -77339,7 +79251,7 @@
                     "description": "If this is a `boleto` PaymentMethod, this hash contains details about the Boleto payment method.",
                     "properties": {
                       "tax_id": {
-                        "description": "Uniquely identifies this customer tax_id (CNPJ or CPF)",
+                        "description": "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
                         "maxLength": 5000,
                         "type": "string"
                       }
@@ -77553,6 +79465,37 @@
                     "title": "param",
                     "type": "object"
                   },
+                  "klarna": {
+                    "description": "If this is a `klarna` PaymentMethod, this hash contains details about the Klarna payment method.",
+                    "properties": {
+                      "dob": {
+                        "description": "Customer's date of birth",
+                        "properties": {
+                          "day": {
+                            "description": "The day of birth, between 1 and 31.",
+                            "type": "integer"
+                          },
+                          "month": {
+                            "description": "The month of birth, between 1 and 12.",
+                            "type": "integer"
+                          },
+                          "year": {
+                            "description": "The four-digit year of birth.",
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "day",
+                          "month",
+                          "year"
+                        ],
+                        "title": "date_of_birth",
+                        "type": "object"
+                      }
+                    },
+                    "title": "param",
+                    "type": "object"
+                  },
                   "metadata": {
                     "additionalProperties": {
                       "type": "string"
@@ -77599,8 +79542,8 @@
                           "toyota_bank",
                           "volkswagen_bank"
                         ],
-                        "maxLength": 5000,
-                        "type": "string"
+                        "type": "string",
+                        "x-stripeBypassValidation": true
                       }
                     },
                     "title": "param",
@@ -77664,6 +79607,7 @@
                       "giropay",
                       "grabpay",
                       "ideal",
+                      "klarna",
                       "oxxo",
                       "p24",
                       "sepa_debit",
@@ -79808,8 +81752,8 @@
                     "type": "array"
                   },
                   "lookup_key": {
-                    "description": "A lookup key used to retrieve prices dynamically from a static string.",
-                    "maxLength": 5000,
+                    "description": "A lookup key used to retrieve prices dynamically from a static string. This may be up to 200 characters.",
+                    "maxLength": 200,
                     "type": "string"
                   },
                   "metadata": {
@@ -80174,8 +82118,8 @@
                     "type": "array"
                   },
                   "lookup_key": {
-                    "description": "A lookup key used to retrieve prices dynamically from a static string.",
-                    "maxLength": 5000,
+                    "description": "A lookup key used to retrieve prices dynamically from a static string. This may be up to 200 characters.",
+                    "maxLength": 200,
                     "type": "string"
                   },
                   "metadata": {
@@ -80441,6 +82385,7 @@
                   "description": "",
                   "properties": {
                     "data": {
+                      "description": "Details about each object.",
                       "items": {
                         "$ref": "#/components/schemas/product"
                       },
@@ -80470,6 +82415,7 @@
                     "object",
                     "url"
                   ],
+                  "title": "ProductList",
                   "type": "object",
                   "x-expandableFields": [
                     "data"
@@ -82823,7 +84769,7 @@
     },
     "/v1/quotes/{quote}/computed_upfront_line_items": {
       "get": {
-        "description": "<p>When retrieving a quote, there is an includable <strong>upfront.line_items</strong> property containing the first handful of those items. There is also a URL where you can retrieve the full (paginated) list of upfront line items.</p>",
+        "description": "<p>When retrieving a quote, there is an includable <a href=\"https://stripe.com/docs/api/quotes/object#quote_object-computed-upfront-line_items\"><strong>computed.upfront.line_items</strong></a> property containing the first handful of those items. There is also a URL where you can retrieve the full (paginated) list of upfront line items.</p>",
         "operationId": "GetQuotesQuoteComputedUpfrontLineItems",
         "parameters": [
           {
@@ -84051,12 +85997,13 @@
                     "type": "array"
                   },
                   "item_type": {
-                    "description": "Type of the items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, or `case_sensitive_string`. Use `string` if the item type is unknown or mixed.",
+                    "description": "Type of the items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, `case_sensitive_string`, or `customer_id`. Use `string` if the item type is unknown or mixed.",
                     "enum": [
                       "card_bin",
                       "card_fingerprint",
                       "case_sensitive_string",
                       "country",
+                      "customer_id",
                       "email",
                       "ip_address",
                       "string"
@@ -87287,6 +89234,20 @@
                                 ],
                                 "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
                               },
+                              "default_for": {
+                                "description": "List of Stripe products where this mandate can be selected automatically.",
+                                "items": {
+                                  "enum": [
+                                    "invoice",
+                                    "subscription"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "default_for"
+                                }
+                              },
                               "interval_description": {
                                 "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
                                 "maxLength": 500,
@@ -87628,6 +89589,20 @@
                                   }
                                 ],
                                 "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "default_for": {
+                                "description": "List of Stripe products where this mandate can be selected automatically.",
+                                "items": {
+                                  "enum": [
+                                    "invoice",
+                                    "subscription"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "default_for"
+                                }
                               },
                               "interval_description": {
                                 "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
@@ -88018,6 +89993,20 @@
                                   }
                                 ],
                                 "description": "A URL for custom mandate text to render during confirmation step.\nThe URL will be rendered with additional GET parameters `payment_intent` and `payment_intent_client_secret` when confirming a Payment Intent,\nor `setup_intent` and `setup_intent_client_secret` when confirming a Setup Intent."
+                              },
+                              "default_for": {
+                                "description": "List of Stripe products where this mandate can be selected automatically.",
+                                "items": {
+                                  "enum": [
+                                    "invoice",
+                                    "subscription"
+                                  ],
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "default_for"
+                                }
                               },
                               "interval_description": {
                                 "description": "Description of the mandate interval. Only required if 'payment_schedule' parameter is 'interval' or 'combined'.",
@@ -91126,6 +93115,10 @@
                 "expand": {
                   "explode": true,
                   "style": "deepObject"
+                },
+                "timestamp": {
+                  "explode": true,
+                  "style": "deepObject"
                 }
               },
               "schema": {
@@ -91152,13 +93145,23 @@
                     "type": "integer"
                   },
                   "timestamp": {
-                    "description": "The timestamp for the usage event. This timestamp must be within the current billing period of the subscription of the provided `subscription_item`.",
-                    "type": "integer"
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "now"
+                        ],
+                        "maxLength": 5000,
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer"
+                      }
+                    ],
+                    "description": "The timestamp for the usage event. This timestamp must be within the current billing period of the subscription of the provided `subscription_item`, and must not be in the future. When passing `\"now\"`, Stripe records usage for the current time. Default is `\"now\"` if a value is not provided."
                   }
                 },
                 "required": [
-                  "quantity",
-                  "timestamp"
+                  "quantity"
                 ],
                 "type": "object"
               }
@@ -93697,6 +95700,48 @@
                       "payment_method_options": {
                         "description": "Payment-method-specific configuration to provide to invoices created by the subscription.",
                         "properties": {
+                          "acss_debit": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "mandate_options": {
+                                    "description": "Additional fields for Mandate creation",
+                                    "properties": {
+                                      "transaction_type": {
+                                        "description": "Transaction type of the mandate.",
+                                        "enum": [
+                                          "business",
+                                          "personal"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "title": "mandate_options_param",
+                                    "type": "object"
+                                  },
+                                  "verification_method": {
+                                    "description": "Verification method for the intent",
+                                    "enum": [
+                                      "automatic",
+                                      "instant",
+                                      "microdeposits"
+                                    ],
+                                    "type": "string",
+                                    "x-stripeBypassValidation": true
+                                  }
+                                },
+                                "title": "invoice_payment_method_options_param",
+                                "type": "object"
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "This sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to the invoice’s PaymentIntent."
+                          },
                           "bancontact": {
                             "anyOf": [
                               {
@@ -93760,6 +95805,7 @@
                               "enum": [
                                 "ach_credit_transfer",
                                 "ach_debit",
+                                "acss_debit",
                                 "au_becs_debit",
                                 "bacs_debit",
                                 "bancontact",
@@ -94583,6 +96629,48 @@
                       "payment_method_options": {
                         "description": "Payment-method-specific configuration to provide to invoices created by the subscription.",
                         "properties": {
+                          "acss_debit": {
+                            "anyOf": [
+                              {
+                                "properties": {
+                                  "mandate_options": {
+                                    "description": "Additional fields for Mandate creation",
+                                    "properties": {
+                                      "transaction_type": {
+                                        "description": "Transaction type of the mandate.",
+                                        "enum": [
+                                          "business",
+                                          "personal"
+                                        ],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "title": "mandate_options_param",
+                                    "type": "object"
+                                  },
+                                  "verification_method": {
+                                    "description": "Verification method for the intent",
+                                    "enum": [
+                                      "automatic",
+                                      "instant",
+                                      "microdeposits"
+                                    ],
+                                    "type": "string",
+                                    "x-stripeBypassValidation": true
+                                  }
+                                },
+                                "title": "invoice_payment_method_options_param",
+                                "type": "object"
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "This sub-hash contains details about the Canadian pre-authorized debit payment method options to pass to the invoice’s PaymentIntent."
+                          },
                           "bancontact": {
                             "anyOf": [
                               {
@@ -94646,6 +96734,7 @@
                               "enum": [
                                 "ach_credit_transfer",
                                 "ach_debit",
+                                "acss_debit",
                                 "au_becs_debit",
                                 "bacs_debit",
                                 "bancontact",
@@ -95323,6 +97412,7 @@
                       "hst",
                       "pst",
                       "qst",
+                      "rst",
                       "sales_tax",
                       "vat"
                     ],
@@ -95525,6 +97615,7 @@
                       "hst",
                       "pst",
                       "qst",
+                      "rst",
                       "sales_tax",
                       "vat"
                     ],
@@ -95586,7 +97677,7 @@
                     "type": "array"
                   },
                   "location": {
-                    "description": "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/readers/fleet-management#connection-tokens).",
+                    "description": "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://stripe.com/docs/terminal/fleet/locations#connection-tokens).",
                     "maxLength": 5000,
                     "type": "string"
                   }
@@ -96144,6 +98235,7 @@
             "schema": {
               "enum": [
                 "bbpos_chipper2x",
+                "bbpos_wisepos_e",
                 "verifone_P400"
               ],
               "type": "string",
@@ -96810,6 +98902,27 @@
                             "description": "Whether the company's owners have been provided. Set this Boolean to `true` after creating all the company's owners with [the Persons API](https://stripe.com/docs/api/persons) for accounts with a `relationship.owner` requirement.",
                             "type": "boolean"
                           },
+                          "ownership_declaration": {
+                            "description": "This hash is used to attest that the beneficial owner information provided to Stripe is both current and correct.",
+                            "properties": {
+                              "date": {
+                                "description": "The Unix timestamp marking when the beneficial owner attestation was made.",
+                                "format": "unix-time",
+                                "type": "integer"
+                              },
+                              "ip": {
+                                "description": "The IP address from which the beneficial owner attestation was made.",
+                                "type": "string"
+                              },
+                              "user_agent": {
+                                "description": "The user agent of the browser from which the beneficial owner attestation was made.",
+                                "maxLength": 5000,
+                                "type": "string"
+                              }
+                            },
+                            "title": "company_ownership_declaration",
+                            "type": "object"
+                          },
                           "phone": {
                             "description": "The company's phone number (used for verification).",
                             "maxLength": 5000,
@@ -97068,6 +99181,27 @@
                             "maxLength": 5000,
                             "type": "string"
                           },
+                          "full_name_aliases": {
+                            "anyOf": [
+                              {
+                                "items": {
+                                  "maxLength": 300,
+                                  "type": "string"
+                                },
+                                "type": "array",
+                                "x-stripeParam": {
+                                  "containee_entity_name": "full_name_aliase"
+                                }
+                              },
+                              {
+                                "enum": [
+                                  ""
+                                ],
+                                "type": "string"
+                              }
+                            ],
+                            "description": "A list of alternate names or aliases that the individual is known by."
+                          },
                           "gender": {
                             "description": "The individual's gender (International regulations require either \"male\" or \"female\").",
                             "type": "string"
@@ -97175,6 +99309,10 @@
                         },
                         "title": "individual_specs",
                         "type": "object"
+                      },
+                      "ownership_declaration_shown_and_signed": {
+                        "description": "Whether the user described by the data in the token has been shown the Ownership Declaration and indicated that it is correct.",
+                        "type": "boolean"
                       },
                       "tos_shown_and_accepted": {
                         "description": "Whether the user described by the data in the token has been shown [the Stripe Connected Account Agreement](https://stripe.com/docs/connect/account-tokens#stripe-connected-account-agreement). When creating an account token to create a new Connect account, this value must be `true`.",
@@ -97576,6 +99714,27 @@
                         "description": "The Kanji variation of the person's first name (Japan only).",
                         "maxLength": 5000,
                         "type": "string"
+                      },
+                      "full_name_aliases": {
+                        "anyOf": [
+                          {
+                            "items": {
+                              "maxLength": 5000,
+                              "type": "string"
+                            },
+                            "type": "array",
+                            "x-stripeParam": {
+                              "containee_entity_name": "full_name_aliase"
+                            }
+                          },
+                          {
+                            "enum": [
+                              ""
+                            ],
+                            "type": "string"
+                          }
+                        ],
+                        "description": "A list of alternate names or aliases that the person is known by."
                       },
                       "gender": {
                         "description": "The person's gender (International regulations require either \"male\" or \"female\").",
@@ -99554,6 +101713,7 @@
                         "checkout.session.async_payment_failed",
                         "checkout.session.async_payment_succeeded",
                         "checkout.session.completed",
+                        "checkout.session.expired",
                         "coupon.created",
                         "coupon.deleted",
                         "coupon.updated",
@@ -99974,6 +102134,7 @@
                         "checkout.session.async_payment_failed",
                         "checkout.session.async_payment_succeeded",
                         "checkout.session.completed",
+                        "checkout.session.expired",
                         "coupon.created",
                         "coupon.deleted",
                         "coupon.updated",
