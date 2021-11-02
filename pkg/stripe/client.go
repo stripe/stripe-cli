@@ -90,7 +90,12 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
 	livemode := strings.Contains(c.APIKey, "live")
-	go sendTelemetryEvent(ctx, requestID, livemode)
+
+	// Weird edge case: ctx can be nil if the user runs a command like `stripe products list` but isn't logged in
+	if ctx != nil {
+		go sendTelemetryEvent(ctx, requestID, livemode)
+	}
+
 	return resp, nil
 }
 

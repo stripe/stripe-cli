@@ -142,3 +142,21 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 
 	defer resp.Body.Close()
 }
+
+func TestPerformRequest_DoesNotPanicWithNilContext(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := Client{
+		BaseURL: baseURL,
+	}
+
+	require.NotPanics(t, func() {
+		//nolint:staticcheck // Passing nil context not allowed by linter
+		resp, err := client.PerformRequest(nil, http.MethodGet, "/get", "", nil)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+	})
+}
