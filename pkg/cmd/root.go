@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -88,13 +89,8 @@ func Execute(ctx context.Context) {
 			errRunes[0] = unicode.ToUpper(errRunes[0])
 
 			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
-			loginCommand, _, err := rootCmd.Find([]string{"login"})
 
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			err = loginCommand.RunE(&cobra.Command{}, []string{})
+			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config, os.Stdin)
 
 			if err != nil {
 				fmt.Println(err)
