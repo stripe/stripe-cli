@@ -33,6 +33,7 @@ var validEvents = map[string]bool{
 	"checkout.session.async_payment_failed":        true,
 	"checkout.session.async_payment_succeeded":     true,
 	"checkout.session.completed":                   true,
+	"checkout.session.expired":                     true,
 	"coupon.created":                               true,
 	"coupon.deleted":                               true,
 	"coupon.updated":                               true,
