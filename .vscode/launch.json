@@ -3,9 +3,51 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
+    "inputs": [
+      {
+        "id": "event",
+        "description": "The event to trigger",
+        "default": "balance.available",
+        "type": "promptString",
+      },
+      {
+        "id": "resource",
+        "description": "The resource we want to use",
+        "default": "customers",
+        "type": "promptString",
+      },
+      {
+        "id": "action",
+        "description": "The resource we want to use",
+        "default": "create",
+        "type": "promptString",
+      }
+    ],
     "configurations": [
 
+        {
+          "name": "Launch (stripe trigger)",
+          "type": "go",
+          "request": "launch",
+          "mode": "auto",
+          "program": "${workspaceFolder}/cmd/stripe/main.go",
+          "env": {},
+          "args":["trigger", "${input:event}"]
+        },
 
+        // Unfortunately, this won't work on resource commands that require more arguments
+        // unless we manually add it becacuse we need to pass in each argument separately for this to work.
+        // https://github.com/microsoft/vscode/issues/83678
+        // to test those, you can just customize this configuration to include all the args you need.
+        {
+          "name": "Launch (stripe resource command)",
+          "type": "go",
+          "request": "launch",
+          "mode": "auto",
+          "program": "${workspaceFolder}/cmd/stripe/main.go",
+          "env": {},
+          "args":["${input:resource}", "${input:action}"]
+        },
         {
             "name": "Launch (listen)",
             "type": "go",

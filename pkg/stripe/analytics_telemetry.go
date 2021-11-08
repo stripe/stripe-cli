@@ -107,11 +107,13 @@ func (e *CLIAnalyticsEventMetadata) SetCobraCommandContext(cmd *cobra.Command) {
 	e.CommandPath = cmd.CommandPath()
 	e.GeneratedResource = false
 
-	for _, value := range cmd.Annotations {
-		// Generated commands have an annotation called "operation", we can
-		// search for that to let us know it's generated
-		if value == "operation" {
-			e.GeneratedResource = true
+	if cmd.HasParent() {
+		for key, value := range cmd.Parent().Annotations {
+			// Generated commands have an annotation called "operation", we can
+			// search for that to let us know it's generated
+			if key == cmd.Use && value == "operation" {
+				e.GeneratedResource = true
+			}
 		}
 	}
 }
