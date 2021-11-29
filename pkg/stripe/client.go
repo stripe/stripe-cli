@@ -21,7 +21,7 @@ const DefaultAPIBaseURL = "https://api.stripe.com"
 // DefaultDashboardBaseURL is the default base URL for dashboard requests
 const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
 
-// ApiVersion is API version used in CLI
+// APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
 
 // Client is the API client used to sent requests to Stripe.
