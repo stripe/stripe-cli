@@ -22,7 +22,7 @@ const DefaultAPIBaseURL = "https://api.stripe.com"
 const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
 
 // ApiVersion is API version used in CLI
-const ApiVersion = "2019-03-14"
+const APIVersion = "2019-03-14"
 
 // Client is the API client used to sent requests to Stripe.
 type Client struct {
