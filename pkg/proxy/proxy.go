@@ -665,7 +665,7 @@ func getEndpointsFromAPI(ctx context.Context, secretKey, apiBaseURL string) requ
 		apiBaseURL = stripe.DefaultAPIBaseURL
 	}
 
-	return requests.WebhookEndpointsList(ctx, apiBaseURL, "2019-03-14", secretKey, &config.Profile{})
+	return requests.WebhookEndpointsList(ctx, apiBaseURL, stripe.ApiVersion, secretKey, &config.Profile{})
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) ([]EndpointRoute, error) {

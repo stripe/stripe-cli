@@ -18,7 +18,7 @@ func (srv *RPCService) WebhookEndpointsList(ctx context.Context, req *rpc.Webhoo
 		return nil, err
 	}
 
-	endpoints := requests.WebhookEndpointsList(ctx, stripe.DefaultAPIBaseURL, "2019-03-14", key, &userConfig.Profile)
+	endpoints := requests.WebhookEndpointsList(ctx, stripe.DefaultAPIBaseURL, stripe.ApiVersion, key, &userConfig.Profile)
 
 	formattedEndpoints := make([]*rpc.WebhookEndpointsListResponse_WebhookEndpointData, 0, len(endpoints.Data))
 	for _, v := range endpoints.Data {
