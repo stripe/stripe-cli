@@ -74,6 +74,11 @@
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
   
+- [webhook_endpoints_list.proto](#webhook_endpoints_list.proto)
+    - [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest)
+    - [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse)
+    - [WebhookEndpointsListResponse.WebhookEndpointData](#rpc.WebhookEndpointsListResponse.WebhookEndpointData)
+  
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -110,6 +115,7 @@
 | Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+| WebhookEndpointsList | [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest) | [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse) | Get the list of webhook endpoints. |
 
  
 
@@ -943,6 +949,65 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | version | [string](#string) |  | The version of the Stripe CLI |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="webhook_endpoints_list.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## webhook_endpoints_list.proto
+
+
+
+<a name="rpc.WebhookEndpointsListRequest"></a>
+
+### WebhookEndpointsListRequest
+
+
+
+
+
+
+
+<a name="rpc.WebhookEndpointsListResponse"></a>
+
+### WebhookEndpointsListResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| endpoints | [WebhookEndpointsListResponse.WebhookEndpointData](#rpc.WebhookEndpointsListResponse.WebhookEndpointData) | repeated | A list webhook endpoints |
+
+
+
+
+
+
+<a name="rpc.WebhookEndpointsListResponse.WebhookEndpointData"></a>
+
+### WebhookEndpointsListResponse.WebhookEndpointData
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| application | [string](#string) |  | Webhook endpoint application |
+| enabledEvents | [string](#string) | repeated | Enabled events of the webhook endpoint |
+| url | [string](#string) |  | Webhook endpoint URL |
+| status | [string](#string) |  | Webhook endpoint status |
 
 
 

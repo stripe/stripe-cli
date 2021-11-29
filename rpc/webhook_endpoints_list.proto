@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package rpc;
+
+option go_package = "github.com/stripe/stripe-cli/rpc";
+
+message WebhookEndpointsListRequest {}
+
+message WebhookEndpointsListResponse {
+  message WebhookEndpointData {
+    // Webhook endpoint application
+    string application = 1;
+
+    // Enabled events of the webhook endpoint
+    repeated string enabledEvents = 2;
+
+    // Webhook endpoint URL
+    string url = 3;
+
+    // Webhook endpoint status
+    string status = 4;
+  }
+
+  // A list webhook endpoints
+  repeated WebhookEndpointData endpoints = 1;
+}
