@@ -69,6 +69,10 @@ func (e RequestError) Error() string {
 	return fmt.Sprintf("%s, status=%d, body=%s", e.msg, e.StatusCode, e.Body)
 }
 
+// IsAPIKeyExpiredError returns true if the provided error was caused by a
+// request returning an `api_key_expired` error code.
+//
+// See https://stripe.com/docs/error-codes/api-key-expired.
 func IsAPIKeyExpiredError(err error) bool {
 	var reqErr RequestError
 	if errors.As(err, &reqErr) {
