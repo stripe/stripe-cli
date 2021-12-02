@@ -85,7 +85,7 @@ func Execute(ctx context.Context) {
 
 		switch {
 		case requests.IsAPIKeyExpiredError(err):
-			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` to continue")
+			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
