@@ -3,6 +3,7 @@ package requests
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -128,6 +129,32 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }
 
+func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`
+{
+  "error": {
+    "code": "api_key_expired",
+    "doc_url": "https://stripe.com/docs/error-codes/api-key-expired",
+    "message": "Expired API Key provided: rk_test_***123",
+    "type": "invalid_request_error"
+  }
+}
+		`))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, false)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Request failed, status=401, body=")
+}
+
 func TestGetUserConfirmationRequired(t *testing.T) {
 	reader := bufio.NewReader(strings.NewReader("yes\n"))
 
@@ -207,4 +234,29 @@ func TestCreateOrNormalizePath(t *testing.T) {
 
 	result, _ = createOrNormalizePath("charges")
 	require.Equal(t, "/v1/charges", result)
+}
+
+func TestIsAPIKeyExpiredError(t *testing.T) {
+	for _, tt := range []struct {
+		statusCode int
+		errorCode  string
+		want       bool
+	}{
+		{200, "", false},
+		{401, "authentication_required", false},
+		{500, "api_key_expired", false},
+		{401, "api_key_expired", true},
+	} {
+		t.Run(fmt.Sprintf("status=%v,code=%q", tt.statusCode, tt.errorCode), func(t *testing.T) {
+			err := RequestError{
+				StatusCode: tt.statusCode,
+				ErrorCode:  tt.errorCode,
+			}
+			require.Equal(t, tt.want, IsAPIKeyExpiredError(err))
+		})
+	}
+
+	t.Run("non-RequestError", func(t *testing.T) {
+		require.False(t, IsAPIKeyExpiredError(fmt.Errorf("other")))
+	})
 }
