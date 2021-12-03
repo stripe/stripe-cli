@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -60,11 +61,24 @@ type RequestError struct {
 	msg        string
 	StatusCode int
 	ErrorType  string
+	ErrorCode  string
 	Body       interface{} // the raw response body
 }
 
 func (e RequestError) Error() string {
 	return fmt.Sprintf("%s, status=%d, body=%s", e.msg, e.StatusCode, e.Body)
+}
+
+// IsAPIKeyExpiredError returns true if the provided error was caused by a
+// request returning an `api_key_expired` error code.
+//
+// See https://stripe.com/docs/error-codes/api-key-expired.
+func IsAPIKeyExpiredError(err error) bool {
+	var reqErr RequestError
+	if errors.As(err, &reqErr) {
+		return reqErr.StatusCode == 401 && reqErr.ErrorCode == "api_key_expired"
+	}
+	return false
 }
 
 // Base encapsulates the required information needed to make requests to the API
@@ -192,7 +206,7 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 
 	body, err := ioutil.ReadAll(resp.Body)
 
-	if errOnStatus && resp.StatusCode >= 300 {
+	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
 		return nil, requestError
 	}
@@ -211,6 +225,7 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 
 func compileRequestError(body []byte, statusCode int) RequestError {
 	type requestErrorContent struct {
+		Code string `json:"code"`
 		Type string `json:"type"`
 	}
 
@@ -220,7 +235,13 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 
 	var errorBody requestErrorBody
 	json.Unmarshal(body, &errorBody)
-	return RequestError{"Request failed", statusCode, errorBody.Content.Type, string(body)}
+	return RequestError{
+		msg:        "Request failed",
+		StatusCode: statusCode,
+		ErrorType:  errorBody.Content.Type,
+		ErrorCode:  errorBody.Content.Code,
+		Body:       string(body),
+	}
 }
 
 // Confirm calls the confirmCommand() function, triggering the confirmation process
