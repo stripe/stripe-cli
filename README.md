@@ -89,7 +89,7 @@ The Stripe CLI includes a telemetry feature that collects some usage data. See o
 
 ## Feedback
 
-Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri.pe/cli-feedback).
+Got feedback for us? Please don't hesitate to tell us on [feedback](https://stripe.com/docs/dev-tools-csat).
 
 ## Contributing
 

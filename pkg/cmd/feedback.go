@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -20,8 +19,7 @@ func newFeedbackdCmd() *feedbackCmd {
 			Args:  validators.NoArgs,
 			Short: "Provide us with feedback on the CLI",
 			Run: func(cmd *cobra.Command, args []string) {
-				os := getOS()
-				url := fmt.Sprintf("https://stri.pe/cli-feedback%s", os)
+				url := "https://stripe.com/docs/dev-tools-csat"
 
 				output := `
      _        _
@@ -40,18 +38,5 @@ We'd love to know what you think of the CLI:
 				fmt.Println(fmt.Sprintf(output, url))
 			},
 		},
-	}
-}
-
-func getOS() string {
-	switch os := runtime.GOOS; os {
-	case "darwin":
-		return "?os=Mac"
-	case "linux":
-		return "?os=Linux"
-	case "windows":
-		return "?os=Windows"
-	default:
-		return ""
 	}
 }
