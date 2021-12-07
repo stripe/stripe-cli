@@ -21,7 +21,7 @@ func newFeedbackdCmd() *feedbackCmd {
 			Short: "Provide us with feedback on the CLI",
 			Run: func(cmd *cobra.Command, args []string) {
 				os := getOS()
-				url := fmt.Sprintf("https://stri.pe/cli-feedback%s", os)
+				url := fmt.Sprintf("https://stripe.com/docs/dev-tools-csat%s&devTool=cli", os)
 
 				output := `
      _        _
