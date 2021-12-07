@@ -82,6 +82,7 @@ type Client struct {
 	conn        *ws.Conn
 	done        chan struct{}
 	isConnected bool
+	isResetting bool
 
 	NotifyExpired chan struct{}
 	notifyClose   chan error
@@ -162,8 +163,10 @@ func (c *Client) Run(ctx context.Context) {
 			c.cfg.Log.WithFields(log.Fields{
 				"prefix": "websocket.Client.Run",
 			}).Debug("Resetting the connection")
+			c.isResetting = true
 			c.Close(ws.CloseNormalClosure, "Resetting the connection")
 			c.wg.Wait()
+			c.isResetting = false
 		}
 	}
 }
@@ -179,7 +182,7 @@ func (c *Client) Close(closeCode int, text string) {
 		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(c.cfg.WriteWait))
 		if err != nil {
 			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
+				"prefix": "websocket.Client.Close",
 				"error":  err,
 			}).Debug("Error while trying to send close frame")
 		}
@@ -437,7 +440,9 @@ func (c *Client) writePump() {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
 					c.cfg.Log.Error("write error: ", err)
 				}
-				c.notifyClose <- err
+				if !c.isResetting {
+					c.notifyClose <- err
+				}
 
 				return
 			}
