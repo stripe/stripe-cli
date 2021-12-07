@@ -11,7 +11,7 @@ import (
 	"time"
 
 	ws "github.com/gorilla/websocket"
-	log "github.com/sirupsen/logrus"
+	// log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
