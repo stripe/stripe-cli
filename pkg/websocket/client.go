@@ -438,7 +438,7 @@ func (c *Client) writePump() {
 					c.cfg.Log.Error("write error: ", err)
 				}
 
-				// writing to notifyClose during
+				// writing to notifyClose during a reset will cause a deadlock
 				select {
 				case c.notifyClose <- err:
 					c.cfg.Log.WithFields(log.Fields{
