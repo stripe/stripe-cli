@@ -443,11 +443,11 @@ func (c *Client) writePump() {
 				case c.notifyClose <- err:
 					c.cfg.Log.WithFields(log.Fields{
 						"prefix": "websocket.Client.writePump",
-					}).Debug("ping notifyClose")
+					}).Debug("Failed to send ping; closing connection")
 				case <-c.stopWritePump:
 					c.cfg.Log.WithFields(log.Fields{
 						"prefix": "websocket.Client.writePump",
-					}).Debug("ping stopWritePump")
+					}).Debug("Failed to send ping; connection is resetting")
 				}
 				return
 			}
