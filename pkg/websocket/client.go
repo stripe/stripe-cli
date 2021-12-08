@@ -179,7 +179,7 @@ func (c *Client) Close(closeCode int, text string) {
 		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(c.cfg.WriteWait))
 		if err != nil {
 			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
+				"prefix": "websocket.Client.Close",
 				"error":  err,
 			}).Debug("Error while trying to send close frame")
 		}
@@ -437,8 +437,18 @@ func (c *Client) writePump() {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
 					c.cfg.Log.Error("write error: ", err)
 				}
-				c.notifyClose <- err
 
+				// writing to notifyClose during a reset will cause a deadlock
+				select {
+				case c.notifyClose <- err:
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Debug("Failed to send ping; closing connection")
+				case <-c.stopWritePump:
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Debug("Failed to send ping; connection is resetting")
+				}
 				return
 			}
 		case <-c.stopWritePump:
