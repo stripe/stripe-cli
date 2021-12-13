@@ -145,7 +145,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
 	if !pc.noListen {
-		startListenCmdLoop(cmd, pc.mode, addressString, httpWrapper)
+		startListenCmdLoop(pc.cmd, pc.mode, addressString, httpWrapper)
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
