@@ -2,11 +2,14 @@ package requests
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -173,8 +176,33 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 }
 
+// MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
+// Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
+// e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})
+func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	reqBody, contentType, err := rb.buildMultiPartRequest(params)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	configure := func(req *http.Request) {
+		req.Header.Set("Content-Type", contentType)
+	}
+
+	return rb.performRequest(ctx, apiKey, path, params, reqBody.String(), errOnStatus, configure)
+}
+
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
 func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	data, err := rb.buildDataForRequest(params)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return rb.performRequest(ctx, apiKey, path, params, data, errOnStatus, nil)
+}
+
+func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request)) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -186,29 +214,27 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 		Verbose: rb.showHeaders,
 	}
 
-	data, err := rb.buildDataForRequest(params)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	configureReq := func(req *http.Request) {
+	configure := func(req *http.Request) {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
 		rb.setVersionHeader(req, params)
+		if additionalConfigure != nil {
+			additionalConfigure(req)
+		}
 	}
 
-	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configureReq)
+	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
+
 	if err != nil {
 		return []byte{}, err
 	}
-
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
-		return nil, requestError
+		return []byte{}, requestError
 	}
 
 	if !rb.SuppressOutput {
@@ -295,6 +321,41 @@ func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
 	}
 
 	return encode(keys, values), nil
+}
+
+func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer, string, error) {
+	var body bytes.Buffer
+	mp := multipart.NewWriter(&body)
+	defer mp.Close()
+	for _, datum := range params.data {
+		splitDatum := strings.SplitN(datum, "=", 2)
+
+		if len(splitDatum) < 2 {
+			return nil, "", fmt.Errorf("Invalid data argument: %s", datum)
+		}
+
+		key := splitDatum[0]
+		val := splitDatum[1]
+
+		// Param values that are prefixed with @ will be parsed as a form file
+		if strings.HasPrefix(val, "@") {
+			val = val[1:]
+			file, err := os.Open(val)
+			if err != nil {
+				return nil, "", err
+			}
+			defer file.Close()
+			part, err := mp.CreateFormFile(key, val)
+			if err != nil {
+				return nil, "", err
+			}
+			io.Copy(part, file)
+		} else {
+			mp.WriteField(key, val)
+		}
+	}
+
+	return &body, mp.FormDataContentType(), nil
 }
 
 // encode creates a url encoded string with the request parameters
