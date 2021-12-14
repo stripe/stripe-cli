@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -153,6 +154,43 @@ func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
 	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Request failed, status=401, body=")
+}
+
+func TestMakeMultiPartRequest(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("FILES!"))
+
+		reqBody, err := ioutil.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/foo/bar", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
+		require.Contains(t, string(reqBody), "purpose")
+		require.Contains(t, string(reqBody), "app_upload")
+
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodPost
+
+	tempFile, err := os.CreateTemp("", "upload.zip")
+	if err != nil {
+		t.Error("Error creating temp file")
+	}
+	defer os.Remove(tempFile.Name())
+
+	params := &RequestParameters{
+		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
+	}
+
+	_, err = rb.MakeMultiPartRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
+	require.NoError(t, err)
 }
 
 func TestGetUserConfirmationRequired(t *testing.T) {
