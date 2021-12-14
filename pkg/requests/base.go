@@ -176,7 +176,9 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 }
 
-// MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it
+// MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
+// Similar to making a multipart request using curl, add the local filepath to params arg with @ prefix.
+// e.g. params.AppendData([]string{"photo=@/path/to/local/file.png"})
 func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
 	reqBody, contentType, err := rb.buildMultiPartRequest(params)
 	if err != nil {
@@ -335,6 +337,7 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 		key := splitDatum[0]
 		val := splitDatum[1]
 
+// Param values that are prefixed with @ will be parsed as a form file
 		if strings.HasPrefix(val, "@") {
 			val = val[1:]
 			file, err := os.Open(val)
