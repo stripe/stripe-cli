@@ -43,10 +43,9 @@ type listenCmd struct {
 	skipUpdate            bool
 	apiBaseURL            string
 	noWSS                 bool
-	parentContext         context.Context
 }
 
-func newListenCmd(parentCmd *cobra.Command) *listenCmd {
+func newListenCmd() *listenCmd {
 	lc := &listenCmd{}
 
 	lc.cmd = &cobra.Command{
@@ -95,8 +94,6 @@ Stripe account.`,
 		return pflag.NormalizedName(name)
 	})
 
-	lc.parentContext = parentCmd.Context()
-
 	return lc
 }
 
@@ -117,7 +114,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ctx := withSIGTERMCancel(lc.parentContext, func() {
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
