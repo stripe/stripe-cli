@@ -172,7 +172,6 @@ func TestMakeMultiPartRequest(t *testing.T) {
 		require.Contains(t, r.Header.Get("Content-Type"), "multipart/form-data")
 		require.Contains(t, string(reqBody), "purpose")
 		require.Contains(t, string(reqBody), "app_upload")
-
 	}))
 	defer ts.Close()
 
