@@ -7,10 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/playback"
+	"github.com/stripe/stripe-cli/pkg/proxy"
 	"github.com/stripe/stripe-cli/pkg/validators"
+	"github.com/stripe/stripe-cli/pkg/version"
+	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
 const defaultPort = 13111
@@ -145,7 +149,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
 	if !pc.noListen {
-		startListenCmdLoop(pc.mode, addressString, httpWrapper)
+		startListenLoop(cmd, pc.mode, addressString, httpWrapper)
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
@@ -190,24 +194,79 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	select {}
 }
 
-func startListenCmdLoop(mode string, address string, httpWrapper *playback.Server) {
-	lc := newListenCmd()
-	lc.forwardURL = address + "/playback/webhooks"
-	startListenCmd := func() {
+func runListen(cmd *cobra.Command, address string) error {
+	version.CheckLatestVersion()
+
+	deviceName, err := Config.Profile.GetDeviceName()
+	if err != nil {
+		return err
+	}
+
+	key, err := Config.Profile.GetAPIKey(false)
+	if err != nil {
+		return err
+	}
+
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
+		log.WithFields(log.Fields{
+			"prefix": "proxy.Proxy.Run",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
+
+	logger := log.StandardLogger()
+	proxyVisitor := createVisitor(logger, "", false)
+	proxyOutCh := make(chan websocket.IElement)
+
+	p, err := proxy.Init(ctx, &proxy.Config{
+		DeviceName:            deviceName,
+		Key:                   key,
+		ForwardURL:            address + "/playback/webhooks",
+		ForwardHeaders:        []string{},
+		ForwardConnectURL:     "",
+		ForwardConnectHeaders: []string{},
+		UseConfiguredWebhooks: false,
+		APIBaseURL:            "",
+		WebSocketFeature:      webhooksWebSocketFeature,
+		PrintJSON:             false,
+		UseLatestAPIVersion:   false,
+		SkipVerify:            false,
+		Log:                   logger,
+		NoWSS:                 false,
+		Events:                []string{"*"},
+		OutCh:                 proxyOutCh,
+	})
+	if err != nil {
+		return err
+	}
+
+	go p.Run(ctx)
+
+	for el := range proxyOutCh {
+		err := el.Accept(proxyVisitor)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func startListenLoop(cmd *cobra.Command, mode string, address string, httpWrapper *playback.Server) {
+	startListen := func() {
 		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
-		lc.runListenCmd(lc.cmd, []string{})
+		runListen(cmd, address)
 		os.Exit(1)
 	}
 
 	if mode != playback.Replay {
-		go startListenCmd()
+		go startListen()
 	} else {
 		var listenToModeSwitch func()
 		listenToModeSwitch = func() {
 			httpWrapper.OnSwitchMode(func(mode string) {
 				switch strings.ToLower(mode) {
 				case playback.Record, playback.Auto:
-					go startListenCmd()
+					go startListen()
 				default:
 					listenToModeSwitch()
 				}
