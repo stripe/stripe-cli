@@ -175,6 +175,15 @@ func (rb *Base) InitFlags() {
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
 func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	data, err := rb.buildDataForRequest(params)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return rb.performRequest(ctx, apiKey, path, params, data, errOnStatus, nil)
+}
+
+func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request)) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -186,29 +195,27 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 		Verbose: rb.showHeaders,
 	}
 
-	data, err := rb.buildDataForRequest(params)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	configureReq := func(req *http.Request) {
+	configure := func(req *http.Request) {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
 		rb.setVersionHeader(req, params)
+		if additionalConfigure != nil {
+			additionalConfigure(req)
+		}
 	}
 
-	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configureReq)
+	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
+
 	if err != nil {
 		return []byte{}, err
 	}
-
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
-		return nil, requestError
+		return []byte{}, requestError
 	}
 
 	if !rb.SuppressOutput {
