@@ -337,7 +337,7 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 		key := splitDatum[0]
 		val := splitDatum[1]
 
-// Param values that are prefixed with @ will be parsed as a form file
+		// Param values that are prefixed with @ will be parsed as a form file
 		if strings.HasPrefix(val, "@") {
 			val = val[1:]
 			file, err := os.Open(val)
