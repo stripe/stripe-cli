@@ -201,6 +201,7 @@ func runListen(cmd *cobra.Command, address string) error {
 	if err != nil {
 		return err
 	}
+	deviceName += "-playback"
 
 	key, err := Config.Profile.GetAPIKey(false)
 	if err != nil {
@@ -209,7 +210,7 @@ func runListen(cmd *cobra.Command, address string) error {
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
+			"prefix": "playback.proxy.Run",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
