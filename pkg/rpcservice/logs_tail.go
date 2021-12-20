@@ -90,6 +90,7 @@ func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *websocket.Visitor {
 				Status:    int64(log.Status),
 				RequestId: log.RequestID,
 				CreatedAt: int64(log.CreatedAt),
+				Insight:   log.Insight,
 			}
 
 			// error struct is not empty

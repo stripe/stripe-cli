@@ -50,18 +50,18 @@ type Config struct {
 
 // EventHandler handles an event.
 type EventHandler interface {
-	ProcessEvent(IncomingMessage)
+	ProcessEvent(context.Context, IncomingMessage)
 }
 
 // EventHandlerFunc is an adapter to allow the use of ordinary
 // functions as event handlers. If f is a function with the
 // appropriate signature, EventHandlerFunc(f) is a
 // EventHandler that calls f.
-type EventHandlerFunc func(IncomingMessage)
+type EventHandlerFunc func(context.Context, IncomingMessage)
 
 // ProcessEvent calls f(msg).
-func (f EventHandlerFunc) ProcessEvent(msg IncomingMessage) {
-	f(msg)
+func (f EventHandlerFunc) ProcessEvent(ctx context.Context, msg IncomingMessage) {
+	f(ctx, msg)
 }
 
 // Client is the client used to receive webhook requests from Stripe
@@ -276,7 +276,7 @@ func (c *Client) connect(ctx context.Context) error {
 	c.wg = &sync.WaitGroup{}
 	c.wg.Add(2)
 
-	go c.readPump()
+	go c.readPump(ctx)
 
 	go c.writePump()
 
@@ -301,7 +301,7 @@ func (c *Client) changeConnection(conn *ws.Conn) {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump() {
+func (c *Client) readPump(ctx context.Context) {
 	defer c.wg.Done()
 
 	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
@@ -369,7 +369,7 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		go c.cfg.EventHandler.ProcessEvent(msg)
+		go c.cfg.EventHandler.ProcessEvent(ctx, msg)
 	}
 }
 
@@ -540,7 +540,7 @@ const (
 
 var subprotocols = [...]string{"stripecli-devproxy-v1"}
 
-var nullEventHandler = EventHandlerFunc(func(IncomingMessage) {})
+var nullEventHandler = EventHandlerFunc(func(context.Context, IncomingMessage) {})
 
 //
 // Private functions

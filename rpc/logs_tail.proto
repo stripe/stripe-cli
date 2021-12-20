@@ -89,6 +89,7 @@ message LogsTailResponse {
     string request_id = 5;
     int64 created_at = 6;
     Error error = 7;
+    string insight = 8;
   }
 
   oneof content {

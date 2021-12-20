@@ -314,7 +314,7 @@ func (p *Proxy) formatOutput(format string, eventPayload string) string {
 	}
 }
 
-func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
+func (p *Proxy) processWebhookEvent(ctx context.Context, msg websocket.IncomingMessage) {
 	if msg.WebhookEvent == nil {
 		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
 		return

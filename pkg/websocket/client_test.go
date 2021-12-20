@@ -57,7 +57,7 @@ func TestClientWebhookEventHandler(t *testing.T) {
 		"websocket-random-id",
 		"webhook-payloads",
 		&Config{
-			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
+			EventHandler: EventHandlerFunc(func(ctx context.Context, msg IncomingMessage) {
 				rcvMsgChan <- *msg.WebhookEvent
 			}),
 		},
@@ -118,7 +118,7 @@ func TestClientRequestLogEventHandler(t *testing.T) {
 		"websocket-random-id",
 		"request-log-payloads",
 		&Config{
-			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
+			EventHandler: EventHandlerFunc(func(ctx context.Context, msg IncomingMessage) {
 				rcvMsg = msg.RequestLogEvent
 				wg.Done()
 			}),

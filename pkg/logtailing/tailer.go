@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
+	"net/url"
 	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -70,6 +73,7 @@ type EventPayload struct {
 	Status    int           `json:"status"`
 	URL       string        `json:"url"`
 	Error     RedactedError `json:"error"`
+	Insight   string        `json:"insight"`
 }
 
 // RedactedError is the mapping for fields in error from an EventPayload
@@ -80,6 +84,10 @@ type RedactedError struct {
 	DeclineCode string `json:"decline_code"`
 	Message     string `json:"message"`
 	Param       string `json:"param"`
+}
+
+type getIntegrationInsightResponse struct {
+	Message string `json:"message"`
 }
 
 // New creates a new Tailer
@@ -222,17 +230,18 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 	return session, err
 }
 
-func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
+func (t *Tailer) processRequestLogEvent(ctx context.Context, msg websocket.IncomingMessage) {
 	if msg.RequestLogEvent == nil {
 		t.cfg.Log.Debug("WebSocket specified for request logs received non-request-logs event")
 		return
 	}
 
 	requestLogEvent := msg.RequestLogEvent
+	logID := requestLogEvent.RequestLogID
 
 	t.cfg.Log.WithFields(log.Fields{
 		"prefix":     "logtailing.Tailer.processRequestLogEvent",
-		"webhook_id": requestLogEvent.RequestLogID,
+		"webhook_id": logID,
 	}).Debugf("Processing request log event")
 
 	var payload EventPayload
@@ -249,6 +258,35 @@ func (t *Tailer) processRequestLogEvent(msg websocket.IncomingMessage) {
 		t.cfg.Log.Debug("Filtering out /v1/stripecli/sessions from logs")
 		return
 	}
+
+	// Retrieve integration insights and include and payload
+	parsedBaseURL, err := url.Parse(stripe.DefaultAPIBaseURL)
+	if err != nil {
+		t.cfg.Log.Debug(err)
+		return
+	}
+
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
+	}
+
+	res, err := client.PerformRequest(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("/v1/stripecli/integration_insight?log=%s", logID),
+		"",
+		nil,
+	)
+
+	if err != nil {
+		t.cfg.Log.Debug(err)
+		return
+	}
+
+	var result getIntegrationInsightResponse
+	defer res.Body.Close()
+	json.NewDecoder(res.Body).Decode(&result)
+	payload.Insight = result.Message
 
 	t.cfg.OutCh <- websocket.DataElement{
 		Data:      payload,

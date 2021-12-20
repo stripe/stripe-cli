@@ -539,6 +539,7 @@
 | request_id | [string](#string) |  |  |
 | created_at | [int64](#int64) |  |  |
 | error | [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error) |  |  |
+| insight | [string](#string) |  |  |
 
 
 
