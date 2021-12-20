@@ -86,8 +86,15 @@ type RedactedError struct {
 	Param       string `json:"param"`
 }
 
-type getIntegrationInsightResponse struct {
+// IntegrationInsight is the mapping for the fields in error from request log
+type IntegrationInsight struct {
 	Message string `json:"message"`
+	Type    string `json:"type"`
+}
+
+// GetIntegrationInsightResponse is the mapping for the fields in integration insight response
+type GetIntegrationInsightResponse struct {
+	Error IntegrationInsight `json:"error"`
 }
 
 // New creates a new Tailer
@@ -237,11 +244,10 @@ func (t *Tailer) processRequestLogEvent(ctx context.Context, msg websocket.Incom
 	}
 
 	requestLogEvent := msg.RequestLogEvent
-	logID := requestLogEvent.RequestLogID
 
 	t.cfg.Log.WithFields(log.Fields{
 		"prefix":     "logtailing.Tailer.processRequestLogEvent",
-		"webhook_id": logID,
+		"webhook_id": requestLogEvent.RequestLogID,
 	}).Debugf("Processing request log event")
 
 	var payload EventPayload
@@ -270,23 +276,38 @@ func (t *Tailer) processRequestLogEvent(ctx context.Context, msg websocket.Incom
 		BaseURL: parsedBaseURL,
 	}
 
+	logID := payload.RequestID
+	query := url.Values{}
+	query.Add("log", logID)
+
 	res, err := client.PerformRequest(
 		ctx,
 		http.MethodGet,
-		fmt.Sprintf("/v1/stripecli/integration_insight?log=%s", logID),
-		"",
+		"/v1/stripecli/integration_insight",
+		query.Encode(),
 		nil,
 	)
-
 	if err != nil {
 		t.cfg.Log.Debug(err)
 		return
 	}
 
-	var result getIntegrationInsightResponse
 	defer res.Body.Close()
-	json.NewDecoder(res.Body).Decode(&result)
-	payload.Insight = result.Message
+
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.cfg.Log.Debug(err)
+		return
+	}
+
+	var result GetIntegrationInsightResponse
+	err = json.Unmarshal(bodyBytes, &result)
+	if err != nil {
+		t.cfg.Log.Debug(err)
+		return
+	}
+
+	payload.Insight = fmt.Sprintf("%s%s33", result.Error.Message, logID)
 
 	t.cfg.OutCh <- websocket.DataElement{
 		Data:      payload,
