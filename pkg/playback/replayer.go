@@ -18,7 +18,8 @@ import (
 // An Replayer receives incoming requests and returns recorded responses from the provided cassette.
 type Replayer struct {
 	webhookURL string
-	replayLock *sync.WaitGroup // used to
+	//replayLock *sync.WaitGroup // used to
+	replayLock *sync.Mutex
 
 	cursor     int
 	cassette   Cassette
@@ -34,7 +35,8 @@ func newReplayer(webhookURL string, serializer serializer, comparator requestCom
 	replayer.webhookURL = webhookURL
 	replayer.serializer = serializer
 	replayer.comparator = comparator
-	replayer.replayLock = &sync.WaitGroup{}
+	//replayer.replayLock = &sync.WaitGroup{}
+	replayer.replayLock = &sync.Mutex{}
 
 	replayer.log = log.New()
 
@@ -115,9 +117,8 @@ func (replayer *Replayer) popFront() (interaction, error) {
 // The incoming request is compared with the request/response pairs recorded in the cassette, and the matching response is returned.
 // This handler also fires any webhooks that were recorded immediately after the matching response.
 func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
-	replayer.replayLock.Wait()       // wait to make sure no webhooks are in the middle of being fired
-	replayer.replayLock.Add(1)       // acquire the lock so we can handle this request
-	defer replayer.replayLock.Done() // release the lock when handler func is done
+	replayer.replayLock.Lock()         // wait to make sure no webhooks are in the middle of being fired - still a race between new goroutine and next request
+	defer replayer.replayLock.Unlock() // release the lock when handler func is done
 
 	replayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
 
@@ -160,9 +161,8 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		// Note: if there are any errors in processing recorded webhooks here,
 		// we log the error and keep going.
-		replayer.replayLock.Wait()       // only send webhooks after the previous request/response is handled
-		replayer.replayLock.Add(1)       // acquire lock so we can send webhooks
-		defer replayer.replayLock.Done() // release lock when done sending webhooks
+		replayer.replayLock.Lock()         // only send webhooks after the previous request/response is handled
+		defer replayer.replayLock.Unlock() // release lock when done sending webhooks
 
 		for i, webhookReq := range webhookRequests {
 			var evt stripeEvent
@@ -180,17 +180,8 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 
 			expectedResp := webhookResponses[i]
 
-			if err != nil {
-				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
-				continue
-			}
-
 			replayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
 			replayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
-			if err != nil {
-				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
-				continue
-			}
 		}
 	}()
 }
