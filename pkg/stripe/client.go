@@ -18,6 +18,9 @@ import (
 // DefaultAPIBaseURL is the default base URL for API requests
 const DefaultAPIBaseURL = "https://api.stripe.com"
 
+// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
+const DefaultFilesAPIBaseURL = "https://files.stripe.com"
+
 // DefaultDashboardBaseURL is the default base URL for dashboard requests
 const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
 
