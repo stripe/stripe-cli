@@ -18,7 +18,6 @@ import (
 // An Replayer receives incoming requests and returns recorded responses from the provided cassette.
 type Replayer struct {
 	webhookURL string
-	//replayLock *sync.WaitGroup // used to
 	replayLock *sync.Mutex
 
 	cursor     int
@@ -35,7 +34,6 @@ func newReplayer(webhookURL string, serializer serializer, comparator requestCom
 	replayer.webhookURL = webhookURL
 	replayer.serializer = serializer
 	replayer.comparator = comparator
-	//replayer.replayLock = &sync.WaitGroup{}
 	replayer.replayLock = &sync.Mutex{}
 
 	replayer.log = log.New()
