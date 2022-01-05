@@ -3,11 +3,12 @@ package rpcservice
 import (
 	"context"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/rpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // IntegrationInsight returns integration insight of a given log.
