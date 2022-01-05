@@ -15,7 +15,7 @@ type GetIntegrationInsightResponse struct {
 }
 
 // IntegrationInsight returns integration insight
-func IntegrationInsight(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile, logID string) string {
+func IntegrationInsight(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile, logID string) (string, error) {
 	params := &RequestParameters{
 		data:    []string{fmt.Sprintf("log=%s", logID)},
 		version: apiVersion,
@@ -30,11 +30,11 @@ func IntegrationInsight(ctx context.Context, baseURL, apiVersion, apiKey string,
 
 	resp, err := base.MakeRequest(ctx, apiKey, "/v1/stripecli/integration_insight", params, true)
 	if err != nil {
-		return fmt.Sprintf("Failed to retrieve insight. Error: %s", err)
+		return "", err
 	}
 
 	data := GetIntegrationInsightResponse{}
 	json.Unmarshal(resp, &data)
 
-	return data.Message
+	return data.Message, nil
 }
