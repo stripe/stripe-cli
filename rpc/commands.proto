@@ -4,6 +4,7 @@ package rpc;
 
 import "events_resend.proto";
 import "fixtures.proto";
+import "integration_insights.proto";
 import "listen.proto";
 import "login.proto";
 import "login_status.proto";
@@ -24,6 +25,9 @@ service StripeCLI {
 
   // Retrieve the default fixture of given triggering event.
   rpc Fixture(FixtureRequest) returns (FixtureResponse);
+
+  // Retrieve the integration insight of given log.
+  rpc IntegrationInsight(IntegrationInsightRequest) returns (IntegrationInsightResponse);
 
   // Receive webhook events from the Stripe API to your local machine. Like `stripe listen`.
   rpc Listen(ListenRequest) returns (stream ListenResponse);
