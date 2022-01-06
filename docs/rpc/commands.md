@@ -18,6 +18,10 @@
     - [FixtureRequest](#rpc.FixtureRequest)
     - [FixtureResponse](#rpc.FixtureResponse)
   
+- [integration_insights.proto](#integration_insights.proto)
+    - [IntegrationInsightRequest](#rpc.IntegrationInsightRequest)
+    - [IntegrationInsightResponse](#rpc.IntegrationInsightResponse)
+  
 - [listen.proto](#listen.proto)
     - [ListenRequest](#rpc.ListenRequest)
     - [ListenResponse](#rpc.ListenResponse)
@@ -105,6 +109,7 @@
 | ----------- | ------------ | ------------- | ------------|
 | EventsResend | [EventsResendRequest](#rpc.EventsResendRequest) | [EventsResendResponse](#rpc.EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
 | Fixture | [FixtureRequest](#rpc.FixtureRequest) | [FixtureResponse](#rpc.FixtureResponse) | Retrieve the default fixture of given triggering event. |
+| IntegrationInsight | [IntegrationInsightRequest](#rpc.IntegrationInsightRequest) | [IntegrationInsightResponse](#rpc.IntegrationInsightResponse) | Retrieve the integration insight of given log. |
 | Listen | [ListenRequest](#rpc.ListenRequest) | [ListenResponse](#rpc.ListenResponse) stream | Receive webhook events from the Stripe API to your local machine. Like `stripe listen`. |
 | Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
 | LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
@@ -261,6 +266,52 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | fixture | [string](#string) |  | default fixture for event |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="integration_insights.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## integration_insights.proto
+
+
+
+<a name="rpc.IntegrationInsightRequest"></a>
+
+### IntegrationInsightRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| log | [string](#string) |  | A log ID to get the integration insight for |
+
+
+
+
+
+
+<a name="rpc.IntegrationInsightResponse"></a>
+
+### IntegrationInsightResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| message | [string](#string) |  | Integration insight message |
 
 
 
