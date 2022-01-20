@@ -56,6 +56,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rOrderReturnsCmd := resource.NewResourceCmd(rootCmd, "order_returns")
 	rOrdersCmd := resource.NewResourceCmd(rootCmd, "orders")
 	rPaymentIntentsCmd := resource.NewResourceCmd(rootCmd, "payment_intents")
+	rPaymentLinksCmd := resource.NewResourceCmd(rootCmd, "payment_links")
 	rPaymentMethodsCmd := resource.NewResourceCmd(rootCmd, "payment_methods")
 	rPaymentSourcesCmd := resource.NewResourceCmd(rootCmd, "payment_sources")
 	rPayoutsCmd := resource.NewResourceCmd(rootCmd, "payouts")
@@ -70,6 +71,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rScheduledQueryRunsCmd := resource.NewResourceCmd(rootCmd, "scheduled_query_runs")
 	rSetupAttemptsCmd := resource.NewResourceCmd(rootCmd, "setup_attempts")
 	rSetupIntentsCmd := resource.NewResourceCmd(rootCmd, "setup_intents")
+	rShippingRatesCmd := resource.NewResourceCmd(rootCmd, "shipping_rates")
 	rSkusCmd := resource.NewResourceCmd(rootCmd, "skus")
 	rSourcesCmd := resource.NewResourceCmd(rootCmd, "sources")
 	rSubscriptionItemsCmd := resource.NewResourceCmd(rootCmd, "subscription_items")
@@ -725,6 +727,30 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_group":              "string",
 	}, &Config)
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "create", "/v1/payment_links", http.MethodPost, map[string]string{
+		"allow_promotion_codes":      "boolean",
+		"application_fee_amount":     "integer",
+		"application_fee_percent":    "number",
+		"billing_address_collection": "string",
+		"on_behalf_of":               "string",
+	}, &Config)
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "list", "/v1/payment_links", http.MethodGet, map[string]string{
+		"active":         "boolean",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "list_line_items", "/v1/payment_links/{payment_link}/line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "retrieve", "/v1/payment_links/{payment_link}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "update", "/v1/payment_links/{payment_link}", http.MethodPost, map[string]string{
+		"active":                     "boolean",
+		"allow_promotion_codes":      "boolean",
+		"billing_address_collection": "string",
+	}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "attach", "/v1/payment_methods/{payment_method}/attach", http.MethodPost, map[string]string{
 		"customer": "string",
 	}, &Config)
@@ -1054,6 +1080,24 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":    "string",
 		"payment_method": "string",
 	}, &Config)
+	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "create", "/v1/shipping_rates", http.MethodPost, map[string]string{
+		"display_name": "string",
+		"tax_behavior": "string",
+		"tax_code":     "string",
+		"type":         "string",
+	}, &Config)
+	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "list", "/v1/shipping_rates", http.MethodGet, map[string]string{
+		"active":         "boolean",
+		"created":        "integer",
+		"currency":       "string",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "retrieve", "/v1/shipping_rates/{shipping_rate_token}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "update", "/v1/shipping_rates/{shipping_rate_token}", http.MethodPost, map[string]string{
+		"active": "boolean",
+	}, &Config)
 	resource.NewOperationCmd(rSkusCmd.Cmd, "create", "/v1/skus", http.MethodPost, map[string]string{
 		"active":   "boolean",
 		"currency": "string",
@@ -1378,6 +1422,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"cancel_url":                 "string",
 		"client_reference_id":        "string",
 		"customer":                   "string",
+		"customer_creation":          "string",
 		"customer_email":             "string",
 		"expires_at":                 "integer",
 		"locale":                     "string",
@@ -1385,6 +1430,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"submit_type":                "string",
 		"success_url":                "string",
 	}, &Config)
+	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "expire", "/v1/checkout/sessions/{session}/expire", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "list", "/v1/checkout/sessions", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",

@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+          "name": "myproduct",
+          "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "product": "${product:id}",
+        "unit_amount": "1500",
+        "currency": "usd",
+        "recurring[interval]": "month"
+      }
+    },
+    {
+      "name": "payment_link",
+      "path": "/v1/payment_links",
+      "method": "post",
+      "params": {
+        "line_items": {
+          "0": {
+            "price": "${price:id}",
+            "quantity": 1
+          }
+        }
+      }
+    }
+  ]
+}
