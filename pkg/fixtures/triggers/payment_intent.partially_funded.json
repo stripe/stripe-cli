@@ -1,0 +1,41 @@
+
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "amount": 20000,
+        "currency": "jpy",
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)",
+        "payment_method_types[]": "customer_balance",
+        "payment_method_data[type]": "customer_balance",
+        "payment_method_options[customer_balance][funding_type]": "bank_transfer",
+        "payment_method_options[customer_balance][bank_transfer][type]": "jp_bank_account",
+        "confirm": "true"
+      }
+    },
+    {
+      "name": "fund_cash_balance",
+      "path": "/v1/test_helpers/customers/${customer:id}/fund_cash_balance",
+      "method": "post",
+      "params": {
+        "amount": 10000,
+        "currency": "jpy"
+      }
+    }
+  ]
+}
