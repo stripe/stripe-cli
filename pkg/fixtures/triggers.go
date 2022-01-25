@@ -50,6 +50,8 @@ var Events = map[string]string{
 	"payment_intent.canceled":                  "triggers/payment_intent.canceled.json",
 	"payment_link.created":                     "triggers/payment_link.created.json",
 	"payment_link.updated":                     "triggers/payment_link.updated.json",
+	"payment_intent.partially_funded":          "triggers/payment_intent.partially_funded.json",
+	"payment_intent.requires_action":           "triggers/payment_intent.requires_action.json",
 	"payment_method.attached":                  "triggers/payment_method.attached.json",
 	"payout.created":                           "triggers/payout.created.json",
 	"payout.updated":                           "triggers/payout.updated.json",
