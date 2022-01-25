@@ -55,7 +55,6 @@ var Events = map[string]string{
 	"plan.deleted":                             "triggers/plan.deleted.json",
 	"plan.updated":                             "triggers/plan.updated.json",
 	"price.created":                            "triggers/price.created.json",
-	"price.deleted":                            "triggers/price.deleted.json",
 	"price.updated":                            "triggers/price.updated.json",
 	"product.created":                          "triggers/product.created.json",
 	"product.deleted":                          "triggers/product.deleted.json",
