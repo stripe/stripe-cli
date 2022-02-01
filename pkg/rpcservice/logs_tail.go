@@ -97,12 +97,13 @@ func createVisitor(stream *rpc.StripeCLI_LogsTailServer) *websocket.Visitor {
 
 			if hasError {
 				logResponse.Error = &rpc.LogsTailResponse_Log_Error{
-					Type:        log.Error.Type,
-					Charge:      log.Error.Charge,
-					Code:        log.Error.Code,
-					DeclineCode: log.Error.DeclineCode,
-					Message:     log.Error.Message,
-					Param:       log.Error.Param,
+					Type:         log.Error.Type,
+					Charge:       log.Error.Charge,
+					Code:         log.Error.Code,
+					DeclineCode:  log.Error.DeclineCode,
+					Message:      log.Error.Message,
+					Param:        log.Error.Param,
+					ErrorInsight: log.Error.ErrorInsight,
 				}
 			}
 

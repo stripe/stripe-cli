@@ -559,6 +559,7 @@
 | decline_code | [string](#string) |  |  |
 | message | [string](#string) |  |  |
 | param | [string](#string) |  |  |
+| error_insight | [string](#string) |  |  |
 
 
 

@@ -80,6 +80,7 @@ message LogsTailResponse {
       string decline_code = 4;
       string message = 5;
       string param = 6;
+      string error_insight = 7;
     }
 
     bool livemode = 1;
