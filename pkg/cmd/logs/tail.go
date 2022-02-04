@@ -304,7 +304,12 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 			for i := 0; i < errorValues.NumField(); i++ {
 				fieldValue := errorValues.Field(i).Interface()
 				if fieldValue != "" {
-					fmt.Printf("%s: %s\n", errType.Field(i).Name, fieldValue)
+					fieldName := errType.Field(i).Name
+					if fieldName == "ErrorInsight" {
+						fieldName = fmt.Sprintf("%s%s", color.Bold("!!"), color.Bold(fieldName))
+						fieldValue = color.Bold(fieldValue)
+					}
+					fmt.Printf("%s: %s\n", fieldName, fieldValue)
 				}
 			}
 			return nil
