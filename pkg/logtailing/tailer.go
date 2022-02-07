@@ -74,12 +74,13 @@ type EventPayload struct {
 
 // RedactedError is the mapping for fields in error from an EventPayload
 type RedactedError struct {
-	Type        string `json:"type"`
-	Charge      string `json:"charge"`
-	Code        string `json:"code"`
-	DeclineCode string `json:"decline_code"`
-	Message     string `json:"message"`
-	Param       string `json:"param"`
+	Type         string `json:"type"`
+	Charge       string `json:"charge"`
+	Code         string `json:"code"`
+	DeclineCode  string `json:"decline_code"`
+	Message      string `json:"message"`
+	Param        string `json:"param"`
+	ErrorInsight string `json:"error_insight"`
 }
 
 // New creates a new Tailer
