@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -117,12 +118,19 @@ type Proxy struct {
 	endpointClients  []*EndpointClient
 	stripeAuthClient *stripeauth.Client
 	webSocketClient  *websocket.Client
+	isConnected      chan struct{}
 
 	// Events is the supported event types for the command
 	events map[string]bool
 }
 
 const maxConnectAttempts = 3
+
+// IsConnected signals a WaitGroup when the proxy has finished connecting
+func (p *Proxy) IsConnected(wg *sync.WaitGroup) {
+	<-p.isConnected
+	wg.Done()
+}
 
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
@@ -159,6 +167,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 		go func() {
 			<-p.webSocketClient.Connected()
+			close(p.isConnected)
 			nAttempts = 0
 
 			displayedAPIVersion := ""
@@ -508,7 +517,8 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 			Log:        cfg.Log,
 			APIBaseURL: cfg.APIBaseURL,
 		}),
-		events: convertToMap(cfg.Events),
+		events:      convertToMap(cfg.Events),
+		isConnected: make(chan struct{}),
 	}
 
 	for _, route := range endpointRoutes {
