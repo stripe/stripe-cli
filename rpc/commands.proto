@@ -14,6 +14,7 @@ import "samples_list.proto";
 import "trigger.proto";
 import "triggers_list.proto";
 import "version.proto";
+import "webhook_endpoint_create.proto";
 import "webhook_endpoints_list.proto";
 
 option go_package = "github.com/stripe/stripe-cli/rpc";
@@ -56,6 +57,9 @@ service StripeCLI {
 
   // Get the version of the Stripe CLI. Like `stripe version`.
   rpc Version(VersionRequest) returns (VersionResponse);
+
+  // Create a new webhook endpoint
+  rpc WebhookEndpointCreate(WebhookEndpointCreateRequest) returns (WebhookEndpointCreateResponse);
 
   // Get the list of webhook endpoints.
   rpc WebhookEndpointsList(WebhookEndpointsListRequest) returns (WebhookEndpointsListResponse);

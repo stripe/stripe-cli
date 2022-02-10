@@ -74,6 +74,10 @@
     - [VersionRequest](#rpc.VersionRequest)
     - [VersionResponse](#rpc.VersionResponse)
   
+- [webhook_endpoint_create.proto](#webhook_endpoint_create.proto)
+    - [WebhookEndpointCreateRequest](#rpc.WebhookEndpointCreateRequest)
+    - [WebhookEndpointCreateResponse](#rpc.WebhookEndpointCreateResponse)
+  
 - [webhook_endpoints_list.proto](#webhook_endpoints_list.proto)
     - [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest)
     - [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse)
@@ -115,6 +119,7 @@
 | Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
 | TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
 | Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+| WebhookEndpointCreate | [WebhookEndpointCreateRequest](#rpc.WebhookEndpointCreateRequest) | [WebhookEndpointCreateResponse](#rpc.WebhookEndpointCreateResponse) | Create a new webhook endpoint |
 | WebhookEndpointsList | [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest) | [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse) | Get the list of webhook endpoints. |
 
  
@@ -950,6 +955,49 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | version | [string](#string) |  | The version of the Stripe CLI |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="webhook_endpoint_create.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## webhook_endpoint_create.proto
+
+
+
+<a name="rpc.WebhookEndpointCreateRequest"></a>
+
+### WebhookEndpointCreateRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  | Webhook endpoint url |
+| description | [string](#string) |  | Webhook endpoint description |
+| connect | [bool](#bool) |  | True to receive events from connected accounts, false otherwise |
+
+
+
+
+
+
+<a name="rpc.WebhookEndpointCreateResponse"></a>
+
+### WebhookEndpointCreateResponse
+
 
 
 
