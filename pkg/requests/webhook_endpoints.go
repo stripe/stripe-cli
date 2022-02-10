@@ -52,7 +52,6 @@ func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url
 	data := []string{
 		fmt.Sprintf("url=%s", url),
 		"enabled_events[]=*",
-		"api_version=''", // empty string so the new webhook endpoint uses the merchant default version
 	}
 	if description != "" {
 		data = append(data, fmt.Sprintf("description=%s", description))
