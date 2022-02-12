@@ -219,6 +219,11 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	select {}
 }
 
+func waitUntilConnected(p *proxy.Proxy, wg *sync.WaitGroup) {
+	<-p.IsConnected()
+	wg.Done()
+}
+
 func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 	version.CheckLatestVersion()
 
@@ -266,7 +271,7 @@ func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 	}
 
 	go p.Run(ctx)
-	go p.IsConnected(wg)
+	go waitUntilConnected(p, wg)
 
 	for el := range proxyOutCh {
 		err := el.Accept(proxyVisitor)
