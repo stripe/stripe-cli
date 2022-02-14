@@ -124,6 +124,15 @@ type Proxy struct {
 
 const maxConnectAttempts = 3
 
+// IsConnected returns a channel that signals the proxy has finished connecting.
+// can only be called after webSocketClient is initialized
+func (p *Proxy) IsConnected() <-chan struct{} {
+	for p.webSocketClient == nil {
+		time.Sleep(50 * time.Millisecond)
+	}
+	return p.webSocketClient.Connected()
+}
+
 // Run sets the websocket connection and starts the Goroutines to forward
 // incoming events to the local endpoint.
 func (p *Proxy) Run(ctx context.Context) error {

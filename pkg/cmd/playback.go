@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -97,6 +100,22 @@ Currently, stripe playback only supports serving over HTTP.
 	return pc
 }
 
+// Local version of net/http's ListenAndServe(), modified to allow us to signal
+// a waitgroup. Doesn't handle the case where this is called when the server
+// is shutting down, due to those helper fxns not being exported.
+func notifyServer(srv *http.Server, wg *sync.WaitGroup) error {
+	addr := srv.Addr
+	if addr == "" {
+		addr = ":http"
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	wg.Done()
+	return srv.Serve(ln)
+}
+
 func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("Setting up playback server...")
@@ -141,6 +160,7 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	// --- Start up the playback HTTP server
 	addressString := pc.address
 	remoteURL := pc.apiBaseURL
+	wg := &sync.WaitGroup{}
 
 	httpWrapper, err := playback.NewServer(remoteURL, pc.webhookURL, absoluteCassetteDir, pc.mode, pc.filepath)
 	if err != nil {
@@ -149,12 +169,15 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 
 	// --- Setup `stripe listen` and run it now if not in replay-only mode, else listen for httpWrapper.ChangeModeChan.
 	if !pc.noListen {
-		startListenLoop(cmd, pc.mode, addressString, httpWrapper)
+		wg.Add(1)
+		startListenLoop(cmd, pc.mode, addressString, httpWrapper, wg)
 	}
 
 	server := httpWrapper.InitializeServer(addressString)
+	wg.Add(1)
+
 	go func() {
-		err = server.ListenAndServe()
+		err = notifyServer(server, wg)
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}()
@@ -191,10 +214,17 @@ func (pc *playbackCmd) runPlaybackCmd(cmd *cobra.Command, args []string) error {
 	fmt.Println("-----------------------------")
 	fmt.Println()
 
+	wg.Wait()
+	fmt.Println("Playback setup completed!")
 	select {}
 }
 
-func runListen(cmd *cobra.Command, address string) error {
+func waitUntilConnected(p *proxy.Proxy, wg *sync.WaitGroup) {
+	<-p.IsConnected()
+	wg.Done()
+}
+
+func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 	version.CheckLatestVersion()
 
 	deviceName, err := Config.Profile.GetDeviceName()
@@ -241,6 +271,7 @@ func runListen(cmd *cobra.Command, address string) error {
 	}
 
 	go p.Run(ctx)
+	go waitUntilConnected(p, wg)
 
 	for el := range proxyOutCh {
 		err := el.Accept(proxyVisitor)
@@ -252,10 +283,10 @@ func runListen(cmd *cobra.Command, address string) error {
 	return nil
 }
 
-func startListenLoop(cmd *cobra.Command, mode string, address string, httpWrapper *playback.Server) {
+func startListenLoop(cmd *cobra.Command, mode string, address string, httpWrapper *playback.Server, wg *sync.WaitGroup) {
 	startListen := func() {
 		fmt.Println("Starting `stripe listen` to proxy webhooks to playback server...")
-		runListen(cmd, address)
+		runListen(cmd, address, wg)
 		os.Exit(1)
 	}
 
