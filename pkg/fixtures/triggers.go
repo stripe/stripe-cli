@@ -36,6 +36,7 @@ var Events = map[string]string{
 	"customer.subscription.updated":            "triggers/customer.subscription.updated.json",
 	"invoice.created":                          "triggers/invoice.created.json",
 	"invoice.finalized":                        "triggers/invoice.finalized.json",
+	"invoice.paid":                             "triggers/invoice.paid.json",
 	"invoice.payment_action_required":          "triggers/invoice.payment_action_required.json",
 	"invoice.payment_failed":                   "triggers/invoice.payment_failed.json",
 	"invoice.payment_succeeded":                "triggers/invoice.payment_succeeded.json",
