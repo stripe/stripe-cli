@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	exec "golang.org/x/sys/execabs"
 
 	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
