@@ -2,8 +2,9 @@ package open
 
 import (
 	"fmt"
-	"os/exec"
 	"runtime"
+
+	exec "golang.org/x/sys/execabs"
 )
 
 var execCommand = exec.Command
