@@ -493,22 +493,26 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		if err != nil {
 			return nil, err
 		}
-	} else if len(cfg.ForwardURL) > 0 {
-		// non-connect endpoints
-		endpointRoutes = append(endpointRoutes, EndpointRoute{
-			URL:            parseURL(cfg.ForwardURL),
-			ForwardHeaders: cfg.ForwardHeaders,
-			Connect:        false,
-			EventTypes:     cfg.Events,
-		})
+	} else {
+		if len(cfg.ForwardURL) > 0 {
+			// non-connect endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:            parseURL(cfg.ForwardURL),
+				ForwardHeaders: cfg.ForwardHeaders,
+				Connect:        false,
+				EventTypes:     cfg.Events,
+			})
+		}
 
-		// connect endpoints
-		endpointRoutes = append(endpointRoutes, EndpointRoute{
-			URL:            parseURL(cfg.ForwardConnectURL),
-			ForwardHeaders: cfg.ForwardConnectHeaders,
-			Connect:        true,
-			EventTypes:     cfg.Events,
-		})
+		if len(cfg.ForwardConnectURL) > 0 {
+			// connect endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:            parseURL(cfg.ForwardConnectURL),
+				ForwardHeaders: cfg.ForwardConnectHeaders,
+				Connect:        true,
+				EventTypes:     cfg.Events,
+			})
+		}
 	}
 
 	p := &Proxy{

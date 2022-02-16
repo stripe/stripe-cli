@@ -139,3 +139,43 @@ func TestParseUrl(t *testing.T) {
 
 	require.Equal(t, "http://localhost:3000", parseURL("3000"))
 }
+
+func TestForwardToOnly(t *testing.T) {
+	cfg := Config{
+		ForwardURL:        "http://localhost:4242",
+		ForwardConnectURL: "",
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(p.endpointClients))
+	require.EqualValues(t, "http://localhost:4242", p.endpointClients[0].URL)
+	require.EqualValues(t, false, p.endpointClients[0].connect)
+	require.EqualValues(t, "http://localhost:4242", p.endpointClients[1].URL)
+	require.EqualValues(t, true, p.endpointClients[1].connect)
+}
+
+func TestForwardConnectToOnly(t *testing.T) {
+	cfg := Config{
+		ForwardURL:        "",
+		ForwardConnectURL: "http://localhost:4242/connect",
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(p.endpointClients))
+	require.EqualValues(t, "http://localhost:4242/connect", p.endpointClients[0].URL)
+	require.EqualValues(t, true, p.endpointClients[0].connect)
+}
+
+func TestForwardToAndForwardConnectTo(t *testing.T) {
+	cfg := Config{
+		ForwardURL:        "http://localhost:4242",
+		ForwardConnectURL: "http://localhost:4242/connect",
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(p.endpointClients))
+	require.EqualValues(t, "http://localhost:4242", p.endpointClients[0].URL)
+	require.EqualValues(t, false, p.endpointClients[0].connect)
+	require.EqualValues(t, "http://localhost:4242/connect", p.endpointClients[1].URL)
+	require.EqualValues(t, true, p.endpointClients[1].connect)
+}
