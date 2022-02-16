@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)",
+        "source": "tok_visa"
+      }
+    },
+    {
+      "name": "invoiceitem",
+      "path": "/v1/invoiceitems",
+      "method": "post",
+      "params": {
+        "amount": 2000,
+        "currency": "usd",
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "invoice",
+      "path": "/v1/invoices",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "invoice_pay",
+      "path": "/v1/invoices/${invoice:id}/pay",
+      "method": "post"
+    }
+  ]
+}
