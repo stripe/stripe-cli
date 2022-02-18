@@ -76,6 +76,7 @@ var Events = map[string]string{
 	"quote.canceled":                           "triggers/quote.canceled.json",
 	"quote.finalized":                          "triggers/quote.finalized.json",
 	"quote.accepted":                           "triggers/quote.accepted.json",
+	"reporting.report_run.succeeded":           "triggers/reporting.report_run.succeeded.json",
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
