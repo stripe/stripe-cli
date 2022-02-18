@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "reporting",
+      "path": "/v1/reporting/report_runs",
+      "method": "post",
+      "params": {
+        "report_type":"balance.summary.1"
+      }
+    }
+  ]
+}
