@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "reporting",
+      "expected_error_type": "invalid_request_error",
+      "path": "/v1/reporting/report_runs",
+      "method": "post",
+      "params": {
+        "report_type":"balance.summary.1"
+      }
+    }
+  ]
+}
