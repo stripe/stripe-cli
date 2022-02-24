@@ -27,7 +27,7 @@ type InstallCmd struct {
 
 // NewInstallCmd creates a command for installing plugins
 func NewInstallCmd(config *config.Config) *InstallCmd {
-	ic := &installCmd{}
+	ic := &InstallCmd{}
 	ic.fs = afero.NewOsFs()
 	ic.cfg = config
 
@@ -57,7 +57,7 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *installCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	// Refresh the plugin before proceeding
 	err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
 

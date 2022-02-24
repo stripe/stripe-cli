@@ -23,7 +23,7 @@ type UpgradeCmd struct {
 
 // NewUpgradeCmd creates a new command for upgrading plugins
 func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
-	uc := &upgradeCmd{}
+	uc := &UpgradeCmd{}
 	uc.fs = afero.NewOsFs()
 	uc.cfg = config
 
