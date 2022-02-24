@@ -15,9 +15,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
@@ -29,6 +31,7 @@ import (
 var Config config.Config
 
 var fs = afero.NewOsFs()
+var color = ansi.Color(os.Stdout)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -71,6 +74,19 @@ func sendCommandInvocationEvent(ctx context.Context) {
 	}
 }
 
+func showSuggestion() {
+	suggStr := "\nS"
+
+	suggestions := rootCmd.SuggestionsFor(os.Args[1])
+	if len(suggestions) > 0 {
+		suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
+	}
+
+	fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
+		"ee \"stripe --help\" for a list of available commands.",
+		os.Args[1], rootCmd.CommandPath(), suggStr))
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
@@ -81,6 +97,7 @@ func Execute(ctx context.Context) {
 	rootCmd.SetVersionTemplate(version.Template)
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
+
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 
 		switch {
@@ -100,16 +117,27 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
-			suggStr := "\nS"
+			// first look for a plugin that matches the unknown command
+			plugin, err := plugins.LookUpPlugin(ctx, &Config, fs, os.Args[1])
 
-			suggestions := rootCmd.SuggestionsFor(os.Args[1])
-			if len(suggestions) > 0 {
-				suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
+			if err != nil {
+				// no matches, show help and exit
+				showSuggestion()
+			} else {
+				Config.InitConfig()
+				// we found a plugin, so run it
+				err = plugin.Run(updatedCtx, &Config, fs, os.Args[2:])
+				if err != nil {
+					if err == validators.ErrAPIKeyNotConfigured {
+						fmt.Println(color.Red("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`"))
+					} else {
+						fmt.Println(err)
+					}
+					os.Exit(1)
+				}
+
+				os.Exit(0)
 			}
-
-			fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
-				"ee \"stripe --help\" for a list of available commands.",
-				os.Args[1], rootCmd.CommandPath(), suggStr))
 
 		default:
 			fmt.Println(err)
@@ -160,6 +188,7 @@ func init() {
 	rootCmd.AddCommand(newPlaybackCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
+	rootCmd.AddCommand(newPluginCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 

@@ -73,6 +73,12 @@ build-all-platforms:
 	env GOOS=windows go build -o stripe-windows.exe cmd/stripe/main.go
 .PHONY: build-all-platforms
 
+# Build a version of stripe with the `localdev` tag
+build-localdev:
+	go generate ./...
+	go build -o stripe -tags localdev cmd/stripe/main.go
+.PHONY: build-dev
+
 # Show to-do items per file
 todo:
 	@grep \

@@ -7,12 +7,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func getCommandPath(cmd *cobra.Command) string {
+	var commandPath string
+	if cmd.Annotations["scope"] == "plugin" {
+		commandPath = fmt.Sprintf("stripe %s", cmd.CommandPath())
+	} else {
+		commandPath = cmd.CommandPath()
+	}
+
+	return commandPath
+}
+
 // NoArgs is a validator for commands to print an error when an argument is provided
 func NoArgs(cmd *cobra.Command, args []string) error {
+	commandPath := getCommandPath(cmd)
 	errorMessage := fmt.Sprintf(
 		"`%s` does not take any positional arguments. See `%s --help` for supported flags and usage",
-		cmd.CommandPath(),
-		cmd.CommandPath(),
+		commandPath,
+		commandPath,
 	)
 
 	if len(args) > 0 {
@@ -26,6 +38,7 @@ func NoArgs(cmd *cobra.Command, args []string) error {
 // is different than the arguments passed in
 func ExactArgs(num int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
+		commandPath := getCommandPath(cmd)
 		argument := "positional argument"
 		if num != 1 {
 			argument = "positional arguments"
@@ -33,10 +46,10 @@ func ExactArgs(num int) cobra.PositionalArgs {
 
 		errorMessage := fmt.Sprintf(
 			"`%s` requires exactly %d %s. See `%s --help` for supported flags and usage",
-			cmd.CommandPath(),
+			commandPath,
 			num,
 			argument,
-			cmd.CommandPath(),
+			commandPath,
 		)
 
 		if len(args) != num {
@@ -50,6 +63,7 @@ func ExactArgs(num int) cobra.PositionalArgs {
 // args are greater than the maximum amount
 func MaximumNArgs(num int) cobra.PositionalArgs {
 	return func(cmd *cobra.Command, args []string) error {
+		commandPath := getCommandPath(cmd)
 		argument := "positional argument"
 		if num > 1 {
 			argument = "positional arguments"
@@ -57,10 +71,10 @@ func MaximumNArgs(num int) cobra.PositionalArgs {
 
 		errorMessage := fmt.Sprintf(
 			"`%s` accepts at maximum %d %s. See `%s --help` for supported flags and usage",
-			cmd.CommandPath(),
+			commandPath,
 			num,
 			argument,
-			cmd.CommandPath(),
+			commandPath,
 		)
 
 		if len(args) > num {
