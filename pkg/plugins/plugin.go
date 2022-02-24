@@ -25,8 +25,8 @@ import (
 
 // dev mode vars
 var (
-	PluginDev   bool   = false
-	PluginsPath string = ""
+	PluginDev   = false
+	PluginsPath string
 )
 
 // Plugin contains the plugin properties

@@ -52,7 +52,7 @@ func (g *PluginClient) RunCommand(args []string) (string, error) {
 
 // Plugin --------------------------------------------------------
 
-// CLIPlugin is the implementation of plugin.Plugin so we can serve/consume this
+// CLIPluginV1 is the implementation of plugin.Plugin so we can serve/consume this
 //
 // This has two methods: Server must return an RPC server for this plugin
 // type. We construct a DispatcherRPCServer for this.

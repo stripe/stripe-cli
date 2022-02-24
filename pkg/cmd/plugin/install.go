@@ -25,6 +25,7 @@ type installCmd struct {
 	fs  afero.Fs
 }
 
+// NewInstallCmd creates a command for installing plugins
 func NewInstallCmd(config *config.Config) *installCmd {
 	ic := &installCmd{}
 	ic.fs = afero.NewOsFs()

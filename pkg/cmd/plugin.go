@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/plugin"
@@ -10,7 +9,6 @@ import (
 
 type pluginCmd struct {
 	cmd *cobra.Command
-	fs  afero.Fs
 }
 
 func newPluginCmd() *pluginCmd {
