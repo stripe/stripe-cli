@@ -15,14 +15,14 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-type upgradeCmd struct {
+type UpgradeCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 	fs  afero.Fs
 }
 
-// NewUpgradeCommand creates a new command for upgrading plugins
-func NewUpgradeCmd(config *config.Config) *upgradeCmd {
+// NewUpgradeCmd creates a new command for upgrading plugins
+func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 	uc := &upgradeCmd{}
 	uc.fs = afero.NewOsFs()
 	uc.cfg = config
@@ -38,7 +38,7 @@ func NewUpgradeCmd(config *config.Config) *upgradeCmd {
 	return uc
 }
 
-func (uc *upgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
+func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	// Refresh the plugin before proceeding
 	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, stripe.DefaultAPIBaseURL)
 

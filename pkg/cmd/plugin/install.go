@@ -19,14 +19,14 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-type installCmd struct {
+type InstallCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 	fs  afero.Fs
 }
 
 // NewInstallCmd creates a command for installing plugins
-func NewInstallCmd(config *config.Config) *installCmd {
+func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic := &installCmd{}
 	ic.fs = afero.NewOsFs()
 	ic.cfg = config
