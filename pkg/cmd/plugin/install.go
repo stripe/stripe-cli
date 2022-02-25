@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// InstallCmd is the struct used for configuring the plugin install command
 type InstallCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command

@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// UpgradeCmd is the struct used for configuring the plugin update command
 type UpgradeCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
