@@ -254,7 +254,7 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
 	var version string
 
-	if PluginsPath != "" {
+	if PluginsPath != "" || os.Getenv("STRIPE_PLUGINS_PATH") != "" {
 		version = "master"
 	} else {
 		// first perform a naive glob of the plugins/name dir for an existing version

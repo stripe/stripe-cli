@@ -22,8 +22,11 @@ import (
 // getPluginsDir computes where plugins are installed locally
 func getPluginsDir(config config.IConfig) string {
 	var pluginsDir string
+	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
 
-	if PluginsPath != "" {
+	if tempEnvPluginsPath != "" {
+		pluginsDir = tempEnvPluginsPath
+	} else if PluginsPath != "" {
 		pluginsDir = PluginsPath
 	} else {
 		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
