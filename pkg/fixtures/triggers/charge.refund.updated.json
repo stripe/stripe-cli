@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "charge",
+      "path": "/v1/charges",
+      "method": "post",
+      "params": {
+        "source": "tok_visa",
+        "amount": 100,
+        "currency": "usd",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "refund",
+      "path": "/v1/refunds",
+      "method": "post",
+      "params": {
+        "charge": "${charge:id}"
+      }
+    },
+    {
+      "name": "updated_refund",
+      "path": "/v1/refunds/${refund:id}",
+      "method": "post",
+      "params": {
+        "metadata": {"order_id": "6735"}
+      }
+    }
+  ]
+}
