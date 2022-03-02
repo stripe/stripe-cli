@@ -30,12 +30,28 @@ const ColorOff = "off"
 // ColorAuto represents the auto-state for colors
 const ColorAuto = "auto"
 
+// IConfig allows us to add more implementations, such as ones for unit tests
+type IConfig interface {
+	GetProfile() *Profile
+	GetConfigFolder(xdgPath string) string
+	InitConfig()
+	EditConfig() error
+	PrintConfig() error
+	RemoveProfile(profileName string) error
+	RemoveAllProfiles() error
+}
+
 // Config handles all overall configuration for the CLI
 type Config struct {
 	Color        string
 	LogLevel     string
 	Profile      Profile
 	ProfilesFile string
+}
+
+// GetProfile returns the Profile of the config
+func (c *Config) GetProfile() *Profile {
+	return &c.Profile
 }
 
 // GetConfigFolder retrieves the folder where the profiles file is stored
