@@ -117,6 +117,7 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
+			Config.InitConfig()
 			// first look for a plugin that matches the unknown command
 			plugin, err := plugins.LookUpPlugin(ctx, &Config, fs, os.Args[1])
 
@@ -124,7 +125,6 @@ func Execute(ctx context.Context) {
 				// no matches, show help and exit
 				showSuggestion()
 			} else {
-				Config.InitConfig()
 				// we found a plugin, so run it
 				err = plugin.Run(updatedCtx, &Config, fs, os.Args[2:])
 				if err != nil {
