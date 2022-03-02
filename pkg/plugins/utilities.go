@@ -24,11 +24,12 @@ func getPluginsDir(config config.IConfig) string {
 	var pluginsDir string
 	tempEnvPluginsPath := os.Getenv("STRIPE_PLUGINS_PATH")
 
-	if tempEnvPluginsPath != "" {
+	switch {
+	case tempEnvPluginsPath != "":
 		pluginsDir = tempEnvPluginsPath
-	} else if PluginsPath != "" {
+	case PluginsPath != "":
 		pluginsDir = PluginsPath
-	} else {
+	default:
 		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 		pluginsDir = filepath.Join(configPath, "plugins")
 	}
