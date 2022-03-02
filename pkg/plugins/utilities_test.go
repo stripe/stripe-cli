@@ -22,8 +22,8 @@ func TestGetPluginList(t *testing.T) {
 	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
 	require.Equal(t, "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291", plugin.MagicCookieValue)
 
-	require.Equal(t, 9, len(plugin.Release))
-	release := plugin.Release[0]
+	require.Equal(t, 9, len(plugin.Releases))
+	release := plugin.Releases[0]
 	require.Equal(t, "amd64", release.Arch)
 	require.Equal(t, "darwin", release.OS)
 	require.Equal(t, "0.0.1", release.Version)
