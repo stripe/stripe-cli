@@ -73,7 +73,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		return plugin, err
 	}
 
-	for _, p := range pluginList.Plugin {
+	for _, p := range pluginList.Plugins {
 		if pluginName == p.Shortname {
 			return p, nil
 		}

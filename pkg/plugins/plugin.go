@@ -33,13 +33,13 @@ var (
 type Plugin struct {
 	Shortname        string
 	Binary           string
-	Release          []Release
+	Releases         []Release `toml:"Release"`
 	MagicCookieValue string
 }
 
 // PluginList contains a list of plugins
 type PluginList struct {
-	Plugin []Plugin
+	Plugins []Plugin `toml:"Plugin"`
 }
 
 // Release is the type that holds release data for a specific build of a plugin
@@ -116,7 +116,7 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	arch := runtime.GOARCH
 
 	var expectedSum string
-	for _, pkg := range p.Release {
+	for _, pkg := range p.Releases {
 		if pkg.OS == opsystem && pkg.Arch == arch && pkg.Version == version {
 			expectedSum = pkg.Sum
 		}
@@ -141,7 +141,7 @@ func (p *Plugin) LookUpLatestVersion() string {
 	arch := runtime.GOARCH
 
 	var version string
-	for _, pkg := range p.Release {
+	for _, pkg := range p.Releases {
 		if pkg.OS == opsystem && pkg.Arch == arch {
 			version = pkg.Version
 		}
