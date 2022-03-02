@@ -15,7 +15,8 @@ import (
 type completionCmd struct {
 	cmd *cobra.Command
 
-	shell string
+	shell         string
+	writeToStdout bool
 }
 
 func newCompletionCmd() *completionCmd {
@@ -31,6 +32,7 @@ func newCompletionCmd() *completionCmd {
 	}
 
 	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "The shell to generate completion commands for. Supports \"bash\" or \"zsh\"")
+	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
 
 	return cc
 }
