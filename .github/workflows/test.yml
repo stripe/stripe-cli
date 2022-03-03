@@ -28,7 +28,7 @@ jobs:
     - name: Install protoc deps
       run: |
         go get github.com/golang/protobuf/protoc-gen-go
-        go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+        go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.0
       shell: bash
     - name: Run Tests
       run: make ci
