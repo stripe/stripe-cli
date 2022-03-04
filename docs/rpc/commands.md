@@ -3,91 +3,91 @@
 
 ## Table of Contents
 
-- [commands.proto](#commands.proto)
-    - [StripeCLI](#rpc.StripeCLI)
+- [commands.proto](#commands-proto)
+    - [StripeCLI](#rpc-StripeCLI)
   
-- [common.proto](#common.proto)
-    - [StripeEvent](#rpc.StripeEvent)
-    - [StripeEvent.Request](#rpc.StripeEvent.Request)
+- [common.proto](#common-proto)
+    - [StripeEvent](#rpc-StripeEvent)
+    - [StripeEvent.Request](#rpc-StripeEvent-Request)
   
-- [events_resend.proto](#events_resend.proto)
-    - [EventsResendRequest](#rpc.EventsResendRequest)
-    - [EventsResendResponse](#rpc.EventsResendResponse)
+- [events_resend.proto](#events_resend-proto)
+    - [EventsResendRequest](#rpc-EventsResendRequest)
+    - [EventsResendResponse](#rpc-EventsResendResponse)
   
-- [fixtures.proto](#fixtures.proto)
-    - [FixtureRequest](#rpc.FixtureRequest)
-    - [FixtureResponse](#rpc.FixtureResponse)
+- [fixtures.proto](#fixtures-proto)
+    - [FixtureRequest](#rpc-FixtureRequest)
+    - [FixtureResponse](#rpc-FixtureResponse)
   
-- [listen.proto](#listen.proto)
-    - [ListenRequest](#rpc.ListenRequest)
-    - [ListenResponse](#rpc.ListenResponse)
-    - [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse)
-    - [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data)
+- [listen.proto](#listen-proto)
+    - [ListenRequest](#rpc-ListenRequest)
+    - [ListenResponse](#rpc-ListenResponse)
+    - [ListenResponse.EndpointResponse](#rpc-ListenResponse-EndpointResponse)
+    - [ListenResponse.EndpointResponse.Data](#rpc-ListenResponse-EndpointResponse-Data)
   
-    - [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod)
-    - [ListenResponse.State](#rpc.ListenResponse.State)
+    - [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc-ListenResponse-EndpointResponse-Data-HttpMethod)
+    - [ListenResponse.State](#rpc-ListenResponse-State)
   
-- [login.proto](#login.proto)
-    - [LoginRequest](#rpc.LoginRequest)
-    - [LoginResponse](#rpc.LoginResponse)
+- [login.proto](#login-proto)
+    - [LoginRequest](#rpc-LoginRequest)
+    - [LoginResponse](#rpc-LoginResponse)
   
-- [login_status.proto](#login_status.proto)
-    - [LoginStatusRequest](#rpc.LoginStatusRequest)
-    - [LoginStatusResponse](#rpc.LoginStatusResponse)
+- [login_status.proto](#login_status-proto)
+    - [LoginStatusRequest](#rpc-LoginStatusRequest)
+    - [LoginStatusResponse](#rpc-LoginStatusResponse)
   
-- [logs_tail.proto](#logs_tail.proto)
-    - [LogsTailRequest](#rpc.LogsTailRequest)
-    - [LogsTailResponse](#rpc.LogsTailResponse)
-    - [LogsTailResponse.Log](#rpc.LogsTailResponse.Log)
-    - [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error)
+- [logs_tail.proto](#logs_tail-proto)
+    - [LogsTailRequest](#rpc-LogsTailRequest)
+    - [LogsTailResponse](#rpc-LogsTailResponse)
+    - [LogsTailResponse.Log](#rpc-LogsTailResponse-Log)
+    - [LogsTailResponse.Log.Error](#rpc-LogsTailResponse-Log-Error)
   
-    - [LogsTailRequest.Account](#rpc.LogsTailRequest.Account)
-    - [LogsTailRequest.HttpMethod](#rpc.LogsTailRequest.HttpMethod)
-    - [LogsTailRequest.RequestStatus](#rpc.LogsTailRequest.RequestStatus)
-    - [LogsTailRequest.Source](#rpc.LogsTailRequest.Source)
-    - [LogsTailRequest.StatusCodeType](#rpc.LogsTailRequest.StatusCodeType)
-    - [LogsTailResponse.State](#rpc.LogsTailResponse.State)
+    - [LogsTailRequest.Account](#rpc-LogsTailRequest-Account)
+    - [LogsTailRequest.HttpMethod](#rpc-LogsTailRequest-HttpMethod)
+    - [LogsTailRequest.RequestStatus](#rpc-LogsTailRequest-RequestStatus)
+    - [LogsTailRequest.Source](#rpc-LogsTailRequest-Source)
+    - [LogsTailRequest.StatusCodeType](#rpc-LogsTailRequest-StatusCodeType)
+    - [LogsTailResponse.State](#rpc-LogsTailResponse-State)
   
-- [sample_configs.proto](#sample_configs.proto)
-    - [SampleConfigsRequest](#rpc.SampleConfigsRequest)
-    - [SampleConfigsResponse](#rpc.SampleConfigsResponse)
-    - [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration)
+- [sample_configs.proto](#sample_configs-proto)
+    - [SampleConfigsRequest](#rpc-SampleConfigsRequest)
+    - [SampleConfigsResponse](#rpc-SampleConfigsResponse)
+    - [SampleConfigsResponse.Integration](#rpc-SampleConfigsResponse-Integration)
   
-- [sample_create.proto](#sample_create.proto)
-    - [SampleCreateRequest](#rpc.SampleCreateRequest)
-    - [SampleCreateResponse](#rpc.SampleCreateResponse)
+- [sample_create.proto](#sample_create-proto)
+    - [SampleCreateRequest](#rpc-SampleCreateRequest)
+    - [SampleCreateResponse](#rpc-SampleCreateResponse)
   
-- [samples_list.proto](#samples_list.proto)
-    - [SamplesListRequest](#rpc.SamplesListRequest)
-    - [SamplesListResponse](#rpc.SamplesListResponse)
-    - [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData)
+- [samples_list.proto](#samples_list-proto)
+    - [SamplesListRequest](#rpc-SamplesListRequest)
+    - [SamplesListResponse](#rpc-SamplesListResponse)
+    - [SamplesListResponse.SampleData](#rpc-SamplesListResponse-SampleData)
   
-- [trigger.proto](#trigger.proto)
-    - [TriggerRequest](#rpc.TriggerRequest)
-    - [TriggerResponse](#rpc.TriggerResponse)
+- [trigger.proto](#trigger-proto)
+    - [TriggerRequest](#rpc-TriggerRequest)
+    - [TriggerResponse](#rpc-TriggerResponse)
   
-- [triggers_list.proto](#triggers_list.proto)
-    - [TriggersListRequest](#rpc.TriggersListRequest)
-    - [TriggersListResponse](#rpc.TriggersListResponse)
+- [triggers_list.proto](#triggers_list-proto)
+    - [TriggersListRequest](#rpc-TriggersListRequest)
+    - [TriggersListResponse](#rpc-TriggersListResponse)
   
-- [version.proto](#version.proto)
-    - [VersionRequest](#rpc.VersionRequest)
-    - [VersionResponse](#rpc.VersionResponse)
+- [version.proto](#version-proto)
+    - [VersionRequest](#rpc-VersionRequest)
+    - [VersionResponse](#rpc-VersionResponse)
   
-- [webhook_endpoint_create.proto](#webhook_endpoint_create.proto)
-    - [WebhookEndpointCreateRequest](#rpc.WebhookEndpointCreateRequest)
-    - [WebhookEndpointCreateResponse](#rpc.WebhookEndpointCreateResponse)
+- [webhook_endpoint_create.proto](#webhook_endpoint_create-proto)
+    - [WebhookEndpointCreateRequest](#rpc-WebhookEndpointCreateRequest)
+    - [WebhookEndpointCreateResponse](#rpc-WebhookEndpointCreateResponse)
   
-- [webhook_endpoints_list.proto](#webhook_endpoints_list.proto)
-    - [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest)
-    - [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse)
-    - [WebhookEndpointsListResponse.WebhookEndpointData](#rpc.WebhookEndpointsListResponse.WebhookEndpointData)
+- [webhook_endpoints_list.proto](#webhook_endpoints_list-proto)
+    - [WebhookEndpointsListRequest](#rpc-WebhookEndpointsListRequest)
+    - [WebhookEndpointsListResponse](#rpc-WebhookEndpointsListResponse)
+    - [WebhookEndpointsListResponse.WebhookEndpointData](#rpc-WebhookEndpointsListResponse-WebhookEndpointData)
   
 - [Scalar Value Types](#scalar-value-types)
 
 
 
-<a name="commands.proto"></a>
+<a name="commands-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## commands.proto
@@ -100,40 +100,40 @@
  
 
 
-<a name="rpc.StripeCLI"></a>
+<a name="rpc-StripeCLI"></a>
 
 ### StripeCLI
 
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| EventsResend | [EventsResendRequest](#rpc.EventsResendRequest) | [EventsResendResponse](#rpc.EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
-| Fixture | [FixtureRequest](#rpc.FixtureRequest) | [FixtureResponse](#rpc.FixtureResponse) | Retrieve the default fixture of given triggering event. |
-| Listen | [ListenRequest](#rpc.ListenRequest) | [ListenResponse](#rpc.ListenResponse) stream | Receive webhook events from the Stripe API to your local machine. Like `stripe listen`. |
-| Login | [LoginRequest](#rpc.LoginRequest) | [LoginResponse](#rpc.LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
-| LoginStatus | [LoginStatusRequest](#rpc.LoginStatusRequest) | [LoginStatusResponse](#rpc.LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
-| LogsTail | [LogsTailRequest](#rpc.LogsTailRequest) | [LogsTailResponse](#rpc.LogsTailResponse) stream | Get a realtime stream of API logs. Like `stripe logs tail`. |
-| SampleConfigs | [SampleConfigsRequest](#rpc.SampleConfigsRequest) | [SampleConfigsResponse](#rpc.SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
-| SampleCreate | [SampleCreateRequest](#rpc.SampleCreateRequest) | [SampleCreateResponse](#rpc.SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
-| SamplesList | [SamplesListRequest](#rpc.SamplesListRequest) | [SamplesListResponse](#rpc.SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
-| Trigger | [TriggerRequest](#rpc.TriggerRequest) | [TriggerResponse](#rpc.TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
-| TriggersList | [TriggersListRequest](#rpc.TriggersListRequest) | [TriggersListResponse](#rpc.TriggersListResponse) | Get a list of supported events for `Trigger`. |
-| Version | [VersionRequest](#rpc.VersionRequest) | [VersionResponse](#rpc.VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
-| WebhookEndpointCreate | [WebhookEndpointCreateRequest](#rpc.WebhookEndpointCreateRequest) | [WebhookEndpointCreateResponse](#rpc.WebhookEndpointCreateResponse) | Create a new webhook endpoint |
-| WebhookEndpointsList | [WebhookEndpointsListRequest](#rpc.WebhookEndpointsListRequest) | [WebhookEndpointsListResponse](#rpc.WebhookEndpointsListResponse) | Get the list of webhook endpoints. |
+| EventsResend | [EventsResendRequest](#rpc-EventsResendRequest) | [EventsResendResponse](#rpc-EventsResendResponse) | Resend an event given an event ID. Like `stripe events resend`. |
+| Fixture | [FixtureRequest](#rpc-FixtureRequest) | [FixtureResponse](#rpc-FixtureResponse) | Retrieve the default fixture of given triggering event. |
+| Listen | [ListenRequest](#rpc-ListenRequest) | [ListenResponse](#rpc-ListenResponse) stream | Receive webhook events from the Stripe API to your local machine. Like `stripe listen`. |
+| Login | [LoginRequest](#rpc-LoginRequest) | [LoginResponse](#rpc-LoginResponse) | Get a link to log in to the Stripe CLI. The client will have to open the browser to complete the login. Use `LoginStatus` after this method to wait for success. Like `stripe login`. |
+| LoginStatus | [LoginStatusRequest](#rpc-LoginStatusRequest) | [LoginStatusResponse](#rpc-LoginStatusResponse) | Successfully returns when login has succeeded, or returns an error if login has failed or timed out. Use this method after `Login` to check for success. |
+| LogsTail | [LogsTailRequest](#rpc-LogsTailRequest) | [LogsTailResponse](#rpc-LogsTailResponse) stream | Get a realtime stream of API logs. Like `stripe logs tail`. |
+| SampleConfigs | [SampleConfigsRequest](#rpc-SampleConfigsRequest) | [SampleConfigsResponse](#rpc-SampleConfigsResponse) | Get a list of available configs for a given Stripe sample. |
+| SampleCreate | [SampleCreateRequest](#rpc-SampleCreateRequest) | [SampleCreateResponse](#rpc-SampleCreateResponse) | Clone a Stripe sample. Like `stripe samples create`. |
+| SamplesList | [SamplesListRequest](#rpc-SamplesListRequest) | [SamplesListResponse](#rpc-SamplesListResponse) | Get a list of available Stripe samples. Like `stripe samples list`. |
+| Trigger | [TriggerRequest](#rpc-TriggerRequest) | [TriggerResponse](#rpc-TriggerResponse) | Trigger a webhook event. Like `stripe trigger`. |
+| TriggersList | [TriggersListRequest](#rpc-TriggersListRequest) | [TriggersListResponse](#rpc-TriggersListResponse) | Get a list of supported events for `Trigger`. |
+| Version | [VersionRequest](#rpc-VersionRequest) | [VersionResponse](#rpc-VersionResponse) | Get the version of the Stripe CLI. Like `stripe version`. |
+| WebhookEndpointCreate | [WebhookEndpointCreateRequest](#rpc-WebhookEndpointCreateRequest) | [WebhookEndpointCreateResponse](#rpc-WebhookEndpointCreateResponse) | Create a new webhook endpoint |
+| WebhookEndpointsList | [WebhookEndpointsListRequest](#rpc-WebhookEndpointsListRequest) | [WebhookEndpointsListResponse](#rpc-WebhookEndpointsListResponse) | Get the list of webhook endpoints. |
 
  
 
 
 
-<a name="common.proto"></a>
+<a name="common-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## common.proto
 
 
 
-<a name="rpc.StripeEvent"></a>
+<a name="rpc-StripeEvent"></a>
 
 ### StripeEvent
 
@@ -143,8 +143,8 @@
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | Unique identifier for the object. |
 | api_version | [string](#string) |  | The Stripe API version used to render `data`. Note: This property is populated only for events on or after October 31, 2014. |
-| data | [google.protobuf.Struct](#google.protobuf.Struct) |  | Object containing data associated with the event. |
-| request | [StripeEvent.Request](#rpc.StripeEvent.Request) |  | Information on the API request that instigated the event. |
+| data | [google.protobuf.Struct](#google-protobuf-Struct) |  | Object containing data associated with the event. |
+| request | [StripeEvent.Request](#rpc-StripeEvent-Request) |  | Information on the API request that instigated the event. |
 | type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
 | account | [string](#string) |  | CONNECT ONLY* The connected account that originated the event. |
 | created | [int64](#int64) |  | Time at which the object was created. Measured in seconds since the Unix epoch. |
@@ -156,7 +156,7 @@
 
 
 
-<a name="rpc.StripeEvent.Request"></a>
+<a name="rpc-StripeEvent-Request"></a>
 
 ### StripeEvent.Request
 
@@ -181,14 +181,14 @@
 
 
 
-<a name="events_resend.proto"></a>
+<a name="events_resend-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## events_resend.proto
 
 
 
-<a name="rpc.EventsResendRequest"></a>
+<a name="rpc-EventsResendRequest"></a>
 
 ### EventsResendRequest
 
@@ -211,7 +211,7 @@
 
 
 
-<a name="rpc.EventsResendResponse"></a>
+<a name="rpc-EventsResendResponse"></a>
 
 ### EventsResendResponse
 
@@ -219,7 +219,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| stripe_event | [StripeEvent](#rpc.StripeEvent) |  |  |
+| stripe_event | [StripeEvent](#rpc-StripeEvent) |  |  |
 
 
 
@@ -235,14 +235,14 @@
 
 
 
-<a name="fixtures.proto"></a>
+<a name="fixtures-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## fixtures.proto
 
 
 
-<a name="rpc.FixtureRequest"></a>
+<a name="rpc-FixtureRequest"></a>
 
 ### FixtureRequest
 
@@ -257,7 +257,7 @@
 
 
 
-<a name="rpc.FixtureResponse"></a>
+<a name="rpc-FixtureResponse"></a>
 
 ### FixtureResponse
 
@@ -281,14 +281,14 @@
 
 
 
-<a name="listen.proto"></a>
+<a name="listen-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## listen.proto
 
 
 
-<a name="rpc.ListenRequest"></a>
+<a name="rpc-ListenRequest"></a>
 
 ### ListenRequest
 
@@ -311,7 +311,7 @@
 
 
 
-<a name="rpc.ListenResponse"></a>
+<a name="rpc-ListenResponse"></a>
 
 ### ListenResponse
 
@@ -319,16 +319,16 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| state | [ListenResponse.State](#rpc.ListenResponse.State) |  | Check if the stream ready |
-| stripe_event | [StripeEvent](#rpc.StripeEvent) |  | A Stripe event |
-| endpoint_response | [ListenResponse.EndpointResponse](#rpc.ListenResponse.EndpointResponse) |  | A response from an endpoint |
+| state | [ListenResponse.State](#rpc-ListenResponse-State) |  | Check if the stream ready |
+| stripe_event | [StripeEvent](#rpc-StripeEvent) |  | A Stripe event |
+| endpoint_response | [ListenResponse.EndpointResponse](#rpc-ListenResponse-EndpointResponse) |  | A response from an endpoint |
 
 
 
 
 
 
-<a name="rpc.ListenResponse.EndpointResponse"></a>
+<a name="rpc-ListenResponse-EndpointResponse"></a>
 
 ### ListenResponse.EndpointResponse
 
@@ -336,7 +336,7 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| data | [ListenResponse.EndpointResponse.Data](#rpc.ListenResponse.EndpointResponse.Data) |  |  |
+| data | [ListenResponse.EndpointResponse.Data](#rpc-ListenResponse-EndpointResponse-Data) |  |  |
 | error | [string](#string) |  |  |
 
 
@@ -344,7 +344,7 @@
 
 
 
-<a name="rpc.ListenResponse.EndpointResponse.Data"></a>
+<a name="rpc-ListenResponse-EndpointResponse-Data"></a>
 
 ### ListenResponse.EndpointResponse.Data
 
@@ -353,7 +353,7 @@
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | status | [int64](#int64) |  | HTTP status code |
-| http_method | [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc.ListenResponse.EndpointResponse.Data.HttpMethod) |  | HTTP method |
+| http_method | [ListenResponse.EndpointResponse.Data.HttpMethod](#rpc-ListenResponse-EndpointResponse-Data-HttpMethod) |  | HTTP method |
 | url | [string](#string) |  | URL of the webhook endpoint |
 | event_id | [string](#string) |  | ID of the Stripe event that caused this response |
 
@@ -364,7 +364,7 @@
  
 
 
-<a name="rpc.ListenResponse.EndpointResponse.Data.HttpMethod"></a>
+<a name="rpc-ListenResponse-EndpointResponse-Data-HttpMethod"></a>
 
 ### ListenResponse.EndpointResponse.Data.HttpMethod
 
@@ -378,7 +378,7 @@
 
 
 
-<a name="rpc.ListenResponse.State"></a>
+<a name="rpc-ListenResponse-State"></a>
 
 ### ListenResponse.State
 
@@ -400,14 +400,14 @@
 
 
 
-<a name="login.proto"></a>
+<a name="login-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## login.proto
 
 
 
-<a name="rpc.LoginRequest"></a>
+<a name="rpc-LoginRequest"></a>
 
 ### LoginRequest
 
@@ -417,7 +417,7 @@
 
 
 
-<a name="rpc.LoginResponse"></a>
+<a name="rpc-LoginResponse"></a>
 
 ### LoginResponse
 
@@ -442,14 +442,14 @@
 
 
 
-<a name="login_status.proto"></a>
+<a name="login_status-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## login_status.proto
 
 
 
-<a name="rpc.LoginStatusRequest"></a>
+<a name="rpc-LoginStatusRequest"></a>
 
 ### LoginStatusRequest
 
@@ -459,7 +459,7 @@
 
 
 
-<a name="rpc.LoginStatusResponse"></a>
+<a name="rpc-LoginStatusResponse"></a>
 
 ### LoginStatusResponse
 
@@ -484,14 +484,14 @@
 
 
 
-<a name="logs_tail.proto"></a>
+<a name="logs_tail-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## logs_tail.proto
 
 
 
-<a name="rpc.LogsTailRequest"></a>
+<a name="rpc-LogsTailRequest"></a>
 
 ### LogsTailRequest
 
@@ -499,21 +499,21 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| filter_accounts | [LogsTailRequest.Account](#rpc.LogsTailRequest.Account) | repeated | CONNECT ONLY* Filter request logs by source and destination account |
-| filter_http_methods | [LogsTailRequest.HttpMethod](#rpc.LogsTailRequest.HttpMethod) | repeated | Filter request logs by http method |
+| filter_accounts | [LogsTailRequest.Account](#rpc-LogsTailRequest-Account) | repeated | CONNECT ONLY* Filter request logs by source and destination account |
+| filter_http_methods | [LogsTailRequest.HttpMethod](#rpc-LogsTailRequest-HttpMethod) | repeated | Filter request logs by http method |
 | filter_ip_addresses | [string](#string) | repeated | Filter request logs by ip address |
 | filter_request_paths | [string](#string) | repeated | Filter request logs by request path |
-| filter_request_statuses | [LogsTailRequest.RequestStatus](#rpc.LogsTailRequest.RequestStatus) | repeated | Filter request logs by request status |
-| filter_sources | [LogsTailRequest.Source](#rpc.LogsTailRequest.Source) | repeated | Filter request logs by source |
+| filter_request_statuses | [LogsTailRequest.RequestStatus](#rpc-LogsTailRequest-RequestStatus) | repeated | Filter request logs by request status |
+| filter_sources | [LogsTailRequest.Source](#rpc-LogsTailRequest-Source) | repeated | Filter request logs by source |
 | filter_status_codes | [string](#string) | repeated | Filter request logs by status code |
-| filter_status_code_types | [LogsTailRequest.StatusCodeType](#rpc.LogsTailRequest.StatusCodeType) | repeated | Filter request logs by status code type |
+| filter_status_code_types | [LogsTailRequest.StatusCodeType](#rpc-LogsTailRequest-StatusCodeType) | repeated | Filter request logs by status code type |
 
 
 
 
 
 
-<a name="rpc.LogsTailResponse"></a>
+<a name="rpc-LogsTailResponse"></a>
 
 ### LogsTailResponse
 
@@ -521,15 +521,15 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| state | [LogsTailResponse.State](#rpc.LogsTailResponse.State) |  | Check if the stream ready |
-| log | [LogsTailResponse.Log](#rpc.LogsTailResponse.Log) |  | A Stripe API log |
+| state | [LogsTailResponse.State](#rpc-LogsTailResponse-State) |  | Check if the stream ready |
+| log | [LogsTailResponse.Log](#rpc-LogsTailResponse-Log) |  | A Stripe API log |
 
 
 
 
 
 
-<a name="rpc.LogsTailResponse.Log"></a>
+<a name="rpc-LogsTailResponse-Log"></a>
 
 ### LogsTailResponse.Log
 
@@ -543,14 +543,14 @@
 | status | [int64](#int64) |  |  |
 | request_id | [string](#string) |  |  |
 | created_at | [int64](#int64) |  |  |
-| error | [LogsTailResponse.Log.Error](#rpc.LogsTailResponse.Log.Error) |  |  |
+| error | [LogsTailResponse.Log.Error](#rpc-LogsTailResponse-Log-Error) |  |  |
 
 
 
 
 
 
-<a name="rpc.LogsTailResponse.Log.Error"></a>
+<a name="rpc-LogsTailResponse-Log-Error"></a>
 
 ### LogsTailResponse.Log.Error
 
@@ -573,7 +573,7 @@
  
 
 
-<a name="rpc.LogsTailRequest.Account"></a>
+<a name="rpc-LogsTailRequest-Account"></a>
 
 ### LogsTailRequest.Account
 
@@ -587,7 +587,7 @@
 
 
 
-<a name="rpc.LogsTailRequest.HttpMethod"></a>
+<a name="rpc-LogsTailRequest-HttpMethod"></a>
 
 ### LogsTailRequest.HttpMethod
 
@@ -601,7 +601,7 @@
 
 
 
-<a name="rpc.LogsTailRequest.RequestStatus"></a>
+<a name="rpc-LogsTailRequest-RequestStatus"></a>
 
 ### LogsTailRequest.RequestStatus
 
@@ -614,7 +614,7 @@
 
 
 
-<a name="rpc.LogsTailRequest.Source"></a>
+<a name="rpc-LogsTailRequest-Source"></a>
 
 ### LogsTailRequest.Source
 
@@ -627,7 +627,7 @@
 
 
 
-<a name="rpc.LogsTailRequest.StatusCodeType"></a>
+<a name="rpc-LogsTailRequest-StatusCodeType"></a>
 
 ### LogsTailRequest.StatusCodeType
 
@@ -641,7 +641,7 @@
 
 
 
-<a name="rpc.LogsTailResponse.State"></a>
+<a name="rpc-LogsTailResponse-State"></a>
 
 ### LogsTailResponse.State
 
@@ -663,14 +663,14 @@
 
 
 
-<a name="sample_configs.proto"></a>
+<a name="sample_configs-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## sample_configs.proto
 
 
 
-<a name="rpc.SampleConfigsRequest"></a>
+<a name="rpc-SampleConfigsRequest"></a>
 
 ### SampleConfigsRequest
 
@@ -685,7 +685,7 @@
 
 
 
-<a name="rpc.SampleConfigsResponse"></a>
+<a name="rpc-SampleConfigsResponse"></a>
 
 ### SampleConfigsResponse
 
@@ -693,14 +693,14 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| integrations | [SampleConfigsResponse.Integration](#rpc.SampleConfigsResponse.Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-card-payment&#34; sample includes an integration that uses webhooks, a web client, and a node server. |
+| integrations | [SampleConfigsResponse.Integration](#rpc-SampleConfigsResponse-Integration) | repeated | List of available integrations for this sample, e.g. the &#34;accept-a-card-payment&#34; sample includes an integration that uses webhooks, a web client, and a node server. |
 
 
 
 
 
 
-<a name="rpc.SampleConfigsResponse.Integration"></a>
+<a name="rpc-SampleConfigsResponse-Integration"></a>
 
 ### SampleConfigsResponse.Integration
 
@@ -726,14 +726,14 @@
 
 
 
-<a name="sample_create.proto"></a>
+<a name="sample_create-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## sample_create.proto
 
 
 
-<a name="rpc.SampleCreateRequest"></a>
+<a name="rpc-SampleCreateRequest"></a>
 
 ### SampleCreateRequest
 
@@ -753,7 +753,7 @@
 
 
 
-<a name="rpc.SampleCreateResponse"></a>
+<a name="rpc-SampleCreateResponse"></a>
 
 ### SampleCreateResponse
 
@@ -778,14 +778,14 @@
 
 
 
-<a name="samples_list.proto"></a>
+<a name="samples_list-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## samples_list.proto
 
 
 
-<a name="rpc.SamplesListRequest"></a>
+<a name="rpc-SamplesListRequest"></a>
 
 ### SamplesListRequest
 
@@ -795,7 +795,7 @@
 
 
 
-<a name="rpc.SamplesListResponse"></a>
+<a name="rpc-SamplesListResponse"></a>
 
 ### SamplesListResponse
 
@@ -803,14 +803,14 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| samples | [SamplesListResponse.SampleData](#rpc.SamplesListResponse.SampleData) | repeated | List of available Stripe samples |
+| samples | [SamplesListResponse.SampleData](#rpc-SamplesListResponse-SampleData) | repeated | List of available Stripe samples |
 
 
 
 
 
 
-<a name="rpc.SamplesListResponse.SampleData"></a>
+<a name="rpc-SamplesListResponse-SampleData"></a>
 
 ### SamplesListResponse.SampleData
 
@@ -836,14 +836,14 @@
 
 
 
-<a name="trigger.proto"></a>
+<a name="trigger-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## trigger.proto
 
 
 
-<a name="rpc.TriggerRequest"></a>
+<a name="rpc-TriggerRequest"></a>
 
 ### TriggerRequest
 
@@ -864,7 +864,7 @@
 
 
 
-<a name="rpc.TriggerResponse"></a>
+<a name="rpc-TriggerResponse"></a>
 
 ### TriggerResponse
 
@@ -888,14 +888,14 @@
 
 
 
-<a name="triggers_list.proto"></a>
+<a name="triggers_list-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## triggers_list.proto
 
 
 
-<a name="rpc.TriggersListRequest"></a>
+<a name="rpc-TriggersListRequest"></a>
 
 ### TriggersListRequest
 
@@ -905,7 +905,7 @@
 
 
 
-<a name="rpc.TriggersListResponse"></a>
+<a name="rpc-TriggersListResponse"></a>
 
 ### TriggersListResponse
 
@@ -929,14 +929,14 @@
 
 
 
-<a name="version.proto"></a>
+<a name="version-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## version.proto
 
 
 
-<a name="rpc.VersionRequest"></a>
+<a name="rpc-VersionRequest"></a>
 
 ### VersionRequest
 
@@ -946,7 +946,7 @@
 
 
 
-<a name="rpc.VersionResponse"></a>
+<a name="rpc-VersionResponse"></a>
 
 ### VersionResponse
 
@@ -970,14 +970,14 @@
 
 
 
-<a name="webhook_endpoint_create.proto"></a>
+<a name="webhook_endpoint_create-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## webhook_endpoint_create.proto
 
 
 
-<a name="rpc.WebhookEndpointCreateRequest"></a>
+<a name="rpc-WebhookEndpointCreateRequest"></a>
 
 ### WebhookEndpointCreateRequest
 
@@ -994,7 +994,7 @@
 
 
 
-<a name="rpc.WebhookEndpointCreateResponse"></a>
+<a name="rpc-WebhookEndpointCreateResponse"></a>
 
 ### WebhookEndpointCreateResponse
 
@@ -1013,14 +1013,14 @@
 
 
 
-<a name="webhook_endpoints_list.proto"></a>
+<a name="webhook_endpoints_list-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## webhook_endpoints_list.proto
 
 
 
-<a name="rpc.WebhookEndpointsListRequest"></a>
+<a name="rpc-WebhookEndpointsListRequest"></a>
 
 ### WebhookEndpointsListRequest
 
@@ -1030,7 +1030,7 @@
 
 
 
-<a name="rpc.WebhookEndpointsListResponse"></a>
+<a name="rpc-WebhookEndpointsListResponse"></a>
 
 ### WebhookEndpointsListResponse
 
@@ -1038,14 +1038,14 @@
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| endpoints | [WebhookEndpointsListResponse.WebhookEndpointData](#rpc.WebhookEndpointsListResponse.WebhookEndpointData) | repeated | A list webhook endpoints |
+| endpoints | [WebhookEndpointsListResponse.WebhookEndpointData](#rpc-WebhookEndpointsListResponse-WebhookEndpointData) | repeated | A list webhook endpoints |
 
 
 
 
 
 
-<a name="rpc.WebhookEndpointsListResponse.WebhookEndpointData"></a>
+<a name="rpc-WebhookEndpointsListResponse-WebhookEndpointData"></a>
 
 ### WebhookEndpointsListResponse.WebhookEndpointData
 
