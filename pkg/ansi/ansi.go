@@ -188,8 +188,13 @@ func isTerminal(w io.Writer) bool {
 	}
 }
 
+func isPlugin() bool {
+	_, isSet := os.LookupEnv("CLIPLUGIN")
+	return isSet
+}
+
 func shouldUseColors(w io.Writer) bool {
-	useColors := ForceColors || isTerminal(w)
+	useColors := ForceColors || isTerminal(w) || isPlugin()
 
 	if EnvironmentOverrideColors {
 		force, ok := os.LookupEnv("CLICOLOR_FORCE")
