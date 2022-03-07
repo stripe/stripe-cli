@@ -22,6 +22,7 @@ var Events = map[string]string{
 	"charge.dispute.created":                   "triggers/charge.disputed.created.json",
 	"charge.failed":                            "triggers/charge.failed.json",
 	"charge.refunded":                          "triggers/charge.refunded.json",
+	"charge.refund.updated":                    "triggers/charge.refund.updated.json",
 	"charge.succeeded":                         "triggers/charge.succeeded.json",
 	"checkout.session.async_payment_failed":    "triggers/checkout.session.async_payment_failed.json",
 	"checkout.session.async_payment_succeeded": "triggers/checkout.session.async_payment_succeeded.json",
