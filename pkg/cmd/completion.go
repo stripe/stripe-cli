@@ -15,7 +15,8 @@ import (
 type completionCmd struct {
 	cmd *cobra.Command
 
-	shell string
+	shell         string
+	writeToStdout bool
 }
 
 func newCompletionCmd() *completionCmd {
@@ -26,11 +27,12 @@ func newCompletionCmd() *completionCmd {
 		Short: "Generate bash and zsh completion scripts",
 		Args:  validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return selectShell(cc.shell)
+			return selectShell(cc.shell, cc.writeToStdout)
 		},
 	}
 
 	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "The shell to generate completion commands for. Supports \"bash\" or \"zsh\"")
+	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
 
 	return cc
 }
@@ -84,7 +86,7 @@ Set up Stripe autocompletion:
     source ~/.stripe/stripe-completion.bash`
 )
 
-func selectShell(shell string) error {
+func selectShell(shell string, writeToStdout bool) error {
 	selected := shell
 	if selected == "" {
 		selected = detectShell()
@@ -92,26 +94,46 @@ func selectShell(shell string) error {
 
 	switch {
 	case selected == "zsh":
-		fmt.Println("Detected `zsh`, generating zsh completion file: stripe-completion.zsh")
-		err := rootCmd.GenZshCompletionFile("stripe-completion.zsh")
-		if err == nil {
-			fmt.Printf("%s%s\n", instructionsHeader, zshCompletionInstructions)
-		}
-		return err
+		return genZsh(writeToStdout)
 	case selected == "bash":
-		fmt.Println("Detected `bash`, generating bash completion file: stripe-completion.bash")
-		err := rootCmd.GenBashCompletionFile("stripe-completion.bash")
-		if err == nil {
-			if runtime.GOOS == "darwin" {
-				fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsMac)
-			} else if runtime.GOOS == "linux" {
-				fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsLinux)
-			}
-		}
-		return err
+		return genBash(writeToStdout)
 	default:
 		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for either bash or zsh")
 	}
+}
+
+func genZsh(writeToStdout bool) error {
+	if writeToStdout {
+		return rootCmd.GenZshCompletion(os.Stdout)
+	}
+
+	fmt.Println("Detected `zsh`, generating zsh completion file: stripe-completion.zsh")
+
+	err := rootCmd.GenZshCompletionFile("stripe-completion.zsh")
+	if err == nil {
+		fmt.Printf("%s%s\n", instructionsHeader, zshCompletionInstructions)
+	}
+
+	return err
+}
+
+func genBash(writeToStdout bool) error {
+	if writeToStdout {
+		return rootCmd.GenBashCompletion(os.Stdout)
+	}
+
+	fmt.Println("Detected `bash`, generating bash completion file: stripe-completion.bash")
+
+	err := rootCmd.GenBashCompletionFile("stripe-completion.bash")
+	if err == nil {
+		if runtime.GOOS == "darwin" {
+			fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsMac)
+		} else if runtime.GOOS == "linux" {
+			fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsLinux)
+		}
+	}
+
+	return err
 }
 
 func detectShell() string {
