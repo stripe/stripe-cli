@@ -575,7 +575,6 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 		return StripeRequest{ID: v}, nil
 	case nil:
 		return StripeRequest{}, nil
-
 	}
 
 	return StripeRequest{}, errors.New("Received malformed event from Stripe")
