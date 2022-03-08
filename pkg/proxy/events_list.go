@@ -109,6 +109,8 @@ var validEvents = map[string]bool{
 	"payment_intent.processing":                    true,
 	"payment_intent.requires_action":               true,
 	"payment_intent.succeeded":                     true,
+	"payment_link.created":                         true,
+	"payment_link.updated":                         true,
 	"payment_method.attached":                      true,
 	"payment_method.automatically_updated":         true,
 	"payment_method.detached":                      true,

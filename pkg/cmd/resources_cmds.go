@@ -20,6 +20,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
 	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
 	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
+	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
 
 	// Resource commands
 	r3DSecureCmd := resource.NewResourceCmd(rootCmd, "3d_secure")
@@ -112,6 +113,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
 	rTerminalLocationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "locations")
 	rTerminalReadersCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "readers")
+
+	rTestHelpersTestClocksCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "test_clocks")
 
 	// Operation commands
 	resource.NewOperationCmd(r3DSecureCmd.Cmd, "create", "/v1/3d_secure", http.MethodPost, map[string]string{
@@ -368,6 +371,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"promotion_code":        "string",
 		"source":                "string",
 		"tax_exempt":            "string",
+		"test_clock":            "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete", "/v1/customers/{customer}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete_discount", "/v1/customers/{customer}/discount", http.MethodDelete, map[string]string{}, &Config)
@@ -528,19 +532,20 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"unit_amount_decimal": "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create", "/v1/invoices", http.MethodPost, map[string]string{
-		"application_fee_amount": "integer",
-		"auto_advance":           "boolean",
-		"collection_method":      "string",
-		"customer":               "string",
-		"days_until_due":         "integer",
-		"default_payment_method": "string",
-		"default_source":         "string",
-		"description":            "string",
-		"due_date":               "integer",
-		"footer":                 "string",
-		"on_behalf_of":           "string",
-		"statement_descriptor":   "string",
-		"subscription":           "string",
+		"application_fee_amount":         "integer",
+		"auto_advance":                   "boolean",
+		"collection_method":              "string",
+		"customer":                       "string",
+		"days_until_due":                 "integer",
+		"default_payment_method":         "string",
+		"default_source":                 "string",
+		"description":                    "string",
+		"due_date":                       "integer",
+		"footer":                         "string",
+		"on_behalf_of":                   "string",
+		"pending_invoice_items_behavior": "string",
+		"statement_descriptor":           "string",
+		"subscription":                   "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "delete", "/v1/invoices/{invoice}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "finalize_invoice", "/v1/invoices/{invoice}/finalize", http.MethodPost, map[string]string{
@@ -727,6 +732,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_group":              "string",
 	}, &Config)
+	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "create", "/v1/payment_links", http.MethodPost, map[string]string{
 		"allow_promotion_codes":      "boolean",
 		"application_fee_amount":     "integer",
@@ -975,6 +981,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"footer":                  "string",
 		"header":                  "string",
 		"on_behalf_of":            "string",
+		"test_clock":              "string",
 	}, &Config)
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "finalize_quote", "/v1/quotes/{quote}/finalize", http.MethodPost, map[string]string{
 		"expires_at": "integer",
@@ -1080,6 +1087,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":    "string",
 		"payment_method": "string",
 	}, &Config)
+	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "create", "/v1/shipping_rates", http.MethodPost, map[string]string{
 		"display_name": "string",
 		"tax_behavior": "string",
@@ -1640,4 +1648,18 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "update", "/v1/terminal/readers/{reader}", http.MethodPost, map[string]string{
 		"label": "string",
 	}, &Config)
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "advance", "/v1/test_helpers/test_clocks/{test_clock}/advance", http.MethodPost, map[string]string{
+		"frozen_time": "integer",
+	}, &Config)
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "create", "/v1/test_helpers/test_clocks", http.MethodPost, map[string]string{
+		"frozen_time": "integer",
+		"name":        "string",
+	}, &Config)
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "delete", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodDelete, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "list", "/v1/test_helpers/test_clocks", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "retrieve", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodGet, map[string]string{}, &Config)
 }
