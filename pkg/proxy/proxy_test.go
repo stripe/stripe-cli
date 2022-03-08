@@ -179,3 +179,34 @@ func TestForwardToAndForwardConnectTo(t *testing.T) {
 	require.EqualValues(t, "http://localhost:4242/connect", p.endpointClients[1].URL)
 	require.EqualValues(t, true, p.endpointClients[1].connect)
 }
+
+func TestExtractRequestData(t *testing.T) {
+	t.Run("null", func(t *testing.T) {
+		evt := StripeEvent{}
+		req, err := ExtractRequestData(evt.RequestData)
+		require.NoError(t, err)
+		require.Equal(t, StripeRequest{}, req)
+	})
+	t.Run("string", func(t *testing.T) {
+		evt := StripeEvent{RequestData: "req_123"}
+		req, err := ExtractRequestData(evt.RequestData)
+		require.NoError(t, err)
+		require.Equal(t, StripeRequest{ID: "req_123"}, req)
+	})
+	t.Run("map", func(t *testing.T) {
+		evt := StripeEvent{
+			RequestData: map[string]interface{}{
+				"id":              "req_123",
+				"idempotency_key": "idk_123",
+			},
+		}
+		req, err := ExtractRequestData(evt.RequestData)
+		require.NoError(t, err)
+		require.Equal(t, StripeRequest{ID: "req_123", IdempotencyKey: "idk_123"}, req)
+	})
+	t.Run("other", func(t *testing.T) {
+		evt := StripeEvent{RequestData: 123}
+		_, err := ExtractRequestData(evt.RequestData)
+		require.Error(t, err)
+	})
+}
