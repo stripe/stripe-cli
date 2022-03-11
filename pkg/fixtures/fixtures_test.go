@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -452,4 +453,102 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 
 	expectedResponseNames := []string{"cust_bender", "char_bender", "capt_bender"}
 	assert.Equal(t, expectedResponseNames, requestNames)
+}
+
+func TestFixtureAdd(t *testing.T) {
+	t.Run("missing value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Add([]string{"price:currency"})
+		var missingValue missingRewriteValueError
+		assert.True(t, errors.As(err, &missingValue))
+		assert.Equal(t, "price:currency", missingValue.value)
+	})
+
+	t.Run("missing fixture name", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Add([]string{"currency=usd"})
+		var missingFixture missingFixtureNameError
+		assert.True(t, errors.As(err, &missingFixture))
+		assert.Equal(t, "currency=usd", missingFixture.value)
+	})
+
+	t.Run("existing value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Add([]string{"price:amount=1200"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100})
+	})
+
+	t.Run("new value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Add([]string{"price:currency=usd"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
+	})
+}
+
+func TestFixtureOverride(t *testing.T) {
+	t.Run("missing value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Override([]string{"price:currency"})
+		var missingValue missingRewriteValueError
+		assert.True(t, errors.As(err, &missingValue))
+		assert.Equal(t, "price:currency", missingValue.value)
+	})
+
+	t.Run("missing fixture name", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Override([]string{"currency=usd"})
+		var missingFixture missingFixtureNameError
+		assert.True(t, errors.As(err, &missingFixture))
+		assert.Equal(t, "currency=usd", missingFixture.value)
+	})
+
+	t.Run("existing value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Override([]string{"price:amount=1200"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": "1200"})
+	})
+
+	t.Run("new value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Override([]string{"price:currency=usd"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
+	})
+}
+
+func TestFixtureRemove(t *testing.T) {
+	t.Run("missing fixture name", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Remove([]string{"currency"})
+		var missingFixture missingFixtureNameError
+		assert.True(t, errors.As(err, &missingFixture))
+		assert.Equal(t, "currency", missingFixture.value)
+	})
+
+	t.Run("existing value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Remove([]string{"price:amount"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{})
+	})
+
+	t.Run("new value", func(t *testing.T) {
+		fxt := priceFixture()
+		err := fxt.Remove([]string{"price:currency"})
+		assert.NoError(t, err)
+		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100})
+	})
+}
+
+func priceFixture() *Fixture {
+	return &Fixture{
+		fixture: fixtureFile{
+			Fixtures: []fixture{
+				{Name: "price", Params: map[string]interface{}{"amount": 100}},
+			},
+		},
+	}
 }
