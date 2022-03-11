@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -99,9 +100,15 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 	}
 
 	// Customize fixture data
-	fxt.Override(override)
-	fxt.Add(add)
-	fxt.Remove(remove)
+	if err := fxt.Override(override); err != nil {
+		return nil, err
+	}
+	if err := fxt.Add(add); err != nil {
+		return nil, err
+	}
+	if err := fxt.Remove(remove); err != nil {
+		return nil, err
+	}
 
 	if fxt.fixture.Meta.Version > SupportedVersions {
 		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
@@ -142,9 +149,55 @@ func (fxt *Fixture) GetFixtureFileContent() string {
 	return string(data)
 }
 
+type fixtureRewriteError struct {
+	operation string // override/add/remove
+	err       error
+	fixture   *Fixture
+}
+
+func (e fixtureRewriteError) Unwrap() error {
+	return e.err
+}
+
+func (e fixtureRewriteError) example() string {
+	example := fmt.Sprintf("--%s fixtureName:path.to.param", e.operation)
+	if e.operation != "remove" {
+		example += "=value"
+	}
+	return example
+}
+
+func (e fixtureRewriteError) Error() string {
+	var nameError missingFixtureNameError
+	if errors.As(e.err, &nameError) {
+		fixtureNames := []string{}
+		for _, fixture := range e.fixture.fixture.Fixtures {
+			fixtureNames = append(fixtureNames, fixture.Name)
+		}
+
+		return fmt.Sprintf(
+			"Invalid value for %s flag (%s). The %s flag requires the name of the fixture to apply (%s).\n\nValid fixture names are: %v",
+			e.operation, nameError.value, e.operation, e.example(), fixtureNames,
+		)
+	}
+
+	var valueError missingRewriteValueError
+	if errors.As(e.err, &valueError) {
+		return fmt.Sprintf(
+			"Invalid value for %s flag (%s). The %s flag requires a value to set (%s).",
+			e.operation, valueError.value, e.operation, e.example(),
+		)
+	}
+
+	return fmt.Sprintf("Invalid value for %s flag: %s", e.operation, e.err)
+}
+
 // Override forcefully overrides fields with existing data on a fixture
-func (fxt *Fixture) Override(overrides []string) {
-	data := buildRewrites(overrides, false)
+func (fxt *Fixture) Override(overrides []string) error {
+	data, err := buildRewrites(overrides, false)
+	if err != nil {
+		return fixtureRewriteError{operation: "override", err: err, fixture: fxt}
+	}
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
 			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverride); err != nil {
@@ -152,12 +205,14 @@ func (fxt *Fixture) Override(overrides []string) {
 			}
 		}
 	}
+
+	return nil
 }
 
 // Add safely only adds any missing fields that do not already exist.
 // If the field is already on the fixture, it does not get copied
 // over. For that, `Override` should be used
-func (fxt *Fixture) Add(additions []string) {
+func (fxt *Fixture) Add(additions []string) error {
 	// If the params is empty, initialize it before merging with added data
 	for i, data := range fxt.fixture.Fixtures {
 		if data.Method == "post" && data.Params == nil {
@@ -165,7 +220,10 @@ func (fxt *Fixture) Add(additions []string) {
 		}
 	}
 
-	data := buildRewrites(additions, false)
+	data, err := buildRewrites(additions, false)
+	if err != nil {
+		return fixtureRewriteError{operation: "add", err: err, fixture: fxt}
+	}
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
 			if err := mergo.Merge(&f.Params, data[f.Name]); err != nil {
@@ -173,11 +231,15 @@ func (fxt *Fixture) Add(additions []string) {
 			}
 		}
 	}
+	return nil
 }
 
 // Remove removes fields from the fixture
-func (fxt *Fixture) Remove(removals []string) {
-	data := buildRewrites(removals, true)
+func (fxt *Fixture) Remove(removals []string) error {
+	data, err := buildRewrites(removals, true)
+	if err != nil {
+		return fixtureRewriteError{operation: "remove", err: err, fixture: fxt}
+	}
 	for _, f := range fxt.fixture.Fixtures {
 		if _, ok := data[f.Name]; ok {
 			for remove := range data[f.Name].(map[string]interface{}) {
@@ -185,6 +247,7 @@ func (fxt *Fixture) Remove(removals []string) {
 			}
 		}
 	}
+	return nil
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
@@ -350,13 +413,29 @@ func isNameIn(name string, skip []string) bool {
 	return false
 }
 
+type missingFixtureNameError struct {
+	value string
+}
+
+func (e missingFixtureNameError) Error() string {
+	return fmt.Sprintf("rewrite rule %s missing fixture name", e.value)
+}
+
+type missingRewriteValueError struct {
+	value string
+}
+
+func (e missingRewriteValueError) Error() string {
+	return fmt.Sprintf("rewrite rule %s missing value", e.value)
+}
+
 // buildRewrites takes a slice of json queries and values then builds
 // them into a map to later be merged. We work through the entire
 // list at the same time because the user might pass in multiple
 // changes for the same fixture.
 //
 // The query supported is <fixture_name>:path.to.field=value
-func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
+func buildRewrites(changes []string, toRemove bool) (map[string]interface{}, error) {
 	builtChanges := make(map[string]interface{})
 	for _, change := range changes {
 		if change == "" {
@@ -369,10 +448,16 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 		// empty string or trying to get the split value from above
 		var value string
 		if !toRemove {
+			if len(changeSplit) == 1 {
+				return nil, missingRewriteValueError{value: change}
+			}
 			value = changeSplit[1]
 		}
 
 		pathSplit := strings.SplitN(path, ":", 2)
+		if len(pathSplit) == 1 {
+			return nil, missingFixtureNameError{value: change}
+		}
 		name := pathSplit[0]
 		keys := pathSplit[1]
 
@@ -398,7 +483,7 @@ func buildRewrites(changes []string, toRemove bool) map[string]interface{} {
 		builtChanges[name] = keyMap
 	}
 
-	return builtChanges
+	return builtChanges, nil
 }
 
 // pop returns the last item and the rest of the list minus the last item
