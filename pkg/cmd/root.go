@@ -127,6 +127,8 @@ func Execute(ctx context.Context) {
 			} else {
 				// we found a plugin, so run it
 				err = plugin.Run(updatedCtx, &Config, fs, os.Args[2:])
+				// ensure we fully tear down the plugin before exiting the CLI
+				plugins.CleanupAllClients()
 				if err != nil {
 					if err == validators.ErrAPIKeyNotConfigured {
 						fmt.Println(color.Red("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`"))
