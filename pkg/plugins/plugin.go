@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -255,7 +256,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	var version string
 
 	if PluginsPath != "" {
-		version = "master"
+		version = "local.build.dev"
 	} else {
 		// first perform a naive glob of the plugins/name dir for an existing version
 		localPluginDir := filepath.Join(getPluginsDir(config), p.Shortname, "*.*.*")
@@ -282,10 +283,11 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	cmd := exec.Command(pluginBinaryPath)
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
+	timeout, _ := time.ParseDuration("10s")
 
 	pluginLogger := hclog.New(&hclog.LoggerOptions{
-		Name:  fmt.Sprintf("[plugin:%s]", p.Shortname),
-		Level: hclog.LevelFromString("INFO"),
+		Name:  fmt.Sprintf("plugin.child.%s", p.Shortname),
+		Level: hclog.LevelFromString("ERROR"),
 	})
 
 	clientConfig := &hcplugin.ClientConfig{
@@ -295,6 +297,8 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		SyncStdout:       os.Stdout,
 		SyncStderr:       os.Stderr,
 		Logger:           pluginLogger,
+		Managed:          true,
+		StartTimeout:     timeout,
 	}
 
 	sum, err := p.getChecksum(version)
