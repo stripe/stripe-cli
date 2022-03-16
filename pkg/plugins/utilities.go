@@ -144,6 +144,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
+// CleanupAllClients tears down and disconnects all "managed" plugin clients
 func CleanupAllClients() {
 	log.Debug("Tearing down plugin before exit")
 	hcplugin.CleanupClients()
