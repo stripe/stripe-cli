@@ -12,6 +12,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	hcplugin "github.com/hashicorp/go-plugin"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -80,7 +81,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		}
 	}
 
-	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
+	return plugin, fmt.Errorf("Could not find a plugin named %s", pluginName)
 }
 
 // RefreshPluginManifest refreshes the plugin manifest
@@ -141,4 +142,10 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// CleanupAllClients tears down and disconnects all "managed" plugin clients
+func CleanupAllClients() {
+	log.Debug("Tearing down plugin before exit")
+	hcplugin.CleanupClients()
 }
