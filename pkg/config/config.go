@@ -39,14 +39,16 @@ type IConfig interface {
 	PrintConfig() error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	SyncConfig(runtimeViper *viper.Viper) error
 }
 
 // Config handles all overall configuration for the CLI
 type Config struct {
-	Color        string
-	LogLevel     string
-	Profile      Profile
-	ProfilesFile string
+	Color            string
+	LogLevel         string
+	Profile          Profile
+	ProfilesFile     string
+	InstalledPlugins []string
 }
 
 // GetProfile returns the Profile of the config
@@ -226,7 +228,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return c.SyncConfig(runtimeViper)
 }
 
 // RemoveAllProfiles removes all the profiles from the config file.
@@ -243,7 +245,7 @@ func (c *Config) RemoveAllProfiles() error {
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return c.SyncConfig(runtimeViper)
 }
 
 // isProfile identifies whether a value in the config pertains to a profile.
@@ -253,8 +255,8 @@ func isProfile(value interface{}) bool {
 	return ok
 }
 
-// syncConfig merges a runtimeViper instance with the config file being used.
-func syncConfig(runtimeViper *viper.Viper) error {
+// SyncConfig merges a runtimeViper instance with the config file being used.
+func (c *Config) SyncConfig(runtimeViper *viper.Viper) error {
 	runtimeViper.MergeInConfig()
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)

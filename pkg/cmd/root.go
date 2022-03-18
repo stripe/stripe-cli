@@ -117,31 +117,7 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
-			Config.InitConfig()
-			// first look for a plugin that matches the unknown command
-			plugin, err := plugins.LookUpPlugin(ctx, &Config, fs, os.Args[1])
-
-			if err != nil {
-				// no matches, show help and exit
-				showSuggestion()
-			} else {
-				// we found a plugin, so run it
-				err = plugin.Run(updatedCtx, &Config, fs, os.Args[2:])
-				// ensure we fully tear down the plugin before exiting the CLI
-				plugins.CleanupAllClients()
-				if err != nil {
-					if err == validators.ErrAPIKeyNotConfigured {
-						fmt.Println(color.Red("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`"))
-					} else {
-						log.WithFields(log.Fields{
-							"prefix": "plugins.plugin.run",
-						}).Trace(fmt.Sprintf("Plugin command %s exited with error: %s", plugin.Shortname, err))
-					}
-					os.Exit(1)
-				}
-
-				os.Exit(0)
-			}
+			showSuggestion()
 
 		default:
 			fmt.Println(err)
@@ -204,5 +180,20 @@ func init() {
 	err = resource.AddTerminalSubCmds(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// config is not initialized by cobra at this point, so we need to temporarily initialize it
+	Config.InitConfig()
+
+	// get a list of installed plugins, validate against the manifest
+	// and finally add each validated plugin as a command
+	nfs := afero.NewOsFs()
+	pluginList := Config.Profile.GetInstalledPlugins()
+
+	for _, p := range pluginList {
+		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
+		if err == nil {
+			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
+		}
 	}
 }

@@ -22,6 +22,7 @@ import (
 	hcplugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"github.com/spf13/viper"
 )
 
 // dev mode vars
@@ -33,6 +34,7 @@ var (
 // Plugin contains the plugin properties
 type Plugin struct {
 	Shortname        string
+	Shortdesc        string
 	Binary           string
 	Releases         []Release `toml:"Release"`
 	MagicCookieValue string
@@ -175,14 +177,39 @@ func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs
 	err = p.downloadAndSavePlugin(config, pluginDownloadURL, fs, version)
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		return err
+	}
+
+	// Add plugin to list of installed plugins in user config
+	runtimeViper := viper.GetViper()
+	installedList := runtimeViper.GetStringSlice("installed_plugins")
+
+	// check for plugin already in list (ie. in the case of an upgrade)
+	isInstalled := false
+	for _, name := range installedList {
+		if name == p.Shortname {
+			isInstalled = true
+		}
+	}
+
+	if !isInstalled {
+		installedList = append(installedList, p.Shortname)
+	}
+
+	// sync list of installed plugins to file
+	runtimeViper.Set("installed_plugins", installedList)
+	err = config.SyncConfig(runtimeViper)
+
+	if err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s', %s", p.Shortname, err)), os.Stdout)
 		return err
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(config, fs, version)
 
-	ansi.StopSpinner(spinner, ansi.Faint(""), os.Stdout)
+	ansi.StopSpinner(spinner, "", os.Stdout)
 
 	return nil
 }
