@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -81,7 +82,7 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.cleanUpPluginPath",
 	})
-	logger.Debug("cleaning up other plugin versions...")
+	logger.Debug("Cleaning up other plugin versions...")
 
 	pluginsDir := getPluginsDir(config)
 	pluginPath := filepath.Join(pluginsDir, p.Shortname)
@@ -95,13 +96,13 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		switch {
 		case path == pluginPath:
 			// Pass the root directory
-			logger.Debugf("skipping directory: %s", path)
+			logger.Debugf("Skipping directory: %s", path)
 			return nil
 		case info.IsDir() && path == versionPathToKeep:
-			logger.Debugf("skipping directory: %s", path)
+			logger.Debugf("Skipping directory: %s", path)
 			return filepath.SkipDir
 		default:
-			logger.Debugf("removing old plugin: %s", path)
+			logger.Debugf("Removing old plugin: %s", path)
 			fs.RemoveAll(path)
 			return nil
 		}
@@ -123,12 +124,12 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	}
 
 	if expectedSum == "" {
-		return nil, fmt.Errorf("could not locate a valid checksum for %s version %s", p.Shortname, version)
+		return nil, fmt.Errorf("Could not locate a valid checksum for %s version %s", p.Shortname, version)
 	}
 
 	decoded, err := hex.DecodeString(expectedSum)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode checksum for %s version %s", p.Shortname, version)
+		return nil, fmt.Errorf("Could not decode checksum for %s version %s", p.Shortname, version)
 	}
 
 	return decoded, nil
@@ -207,7 +208,7 @@ func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL 
 	err = p.verifyChecksum(reader, version)
 
 	if err != nil {
-		logger.Debug("checksum mismatch")
+		logger.Debug("could not match checksum of plugin")
 		return err
 	}
 
@@ -252,10 +253,14 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 
 // Run boots up the binary and then sends the command to it via RPC
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
+	logger := log.WithFields(log.Fields{
+		"prefix": "plugins.plugin.Run",
+	})
+
 	var version string
 
 	if PluginsPath != "" {
-		version = "master"
+		version = "local.build.dev"
 	} else {
 		// first perform a naive glob of the plugins/name dir for an existing version
 		localPluginDir := filepath.Join(getPluginsDir(config), p.Shortname, "*.*.*")
@@ -282,10 +287,11 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	cmd := exec.Command(pluginBinaryPath)
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
+	timeout, _ := time.ParseDuration("10s")
 
 	pluginLogger := hclog.New(&hclog.LoggerOptions{
-		Name:  fmt.Sprintf("[plugin:%s]", p.Shortname),
-		Level: hclog.LevelFromString("INFO"),
+		Name:  fmt.Sprintf("plugin.child.%s", p.Shortname),
+		Level: hclog.LevelFromString("ERROR"),
 	})
 
 	clientConfig := &hcplugin.ClientConfig{
@@ -295,6 +301,8 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		SyncStdout:       os.Stdout,
 		SyncStderr:       os.Stderr,
 		Logger:           pluginLogger,
+		Managed:          true,
+		StartTimeout:     timeout,
 	}
 
 	sum, err := p.getChecksum(version)
@@ -313,14 +321,14 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	// Connect via RPC to the plugin
 	rpcClient, err := client.Client()
 	if err != nil {
+		logger.Debugf("Could not connect to plugin: %s", err)
 		return err
 	}
-
-	defer client.Kill()
 
 	// Request the plugin's main interface
 	raw, err := rpcClient.Dispense("main")
 	if err != nil {
+		logger.Debugf("Could not dispense plugin interface: %s", err)
 		return err
 	}
 
