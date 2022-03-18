@@ -1,5 +1,16 @@
 # bash completion for stripe                               -*- shell-script -*-
 
+#The stripe-cli would read the .env file for the stripe API key, if it exists,
+#from the current working directory, overriding the api key value in ~/.config/stripe/config.toml
+stripe() 
+{
+  if [ -f .env ]; then
+    source .env
+    export STRIPE_API_KEY
+  fi
+  command stripe "$@"
+}
+
 __stripe_debug()
 {
     if [[ -n ${BASH_COMP_DEBUG_FILE} ]]; then
