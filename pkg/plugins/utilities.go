@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"path/filepath"
 
@@ -116,19 +117,25 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
-	client := http.Client{
-		CheckRedirect: func(r *http.Request, via []*http.Request) error {
-			r.URL.Opaque = r.URL.Path
-			return nil
-		},
-	}
+	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequest("GET", url, nil)
+
 	if err != nil {
 		return nil, err
 	}
 
+	trace := &httptrace.ClientTrace{
+		GotConn: t.GotConn,
+		DNSDone: t.DNSDone,
+	}
+
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+
+	client := &http.Client{Transport: t}
+
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
