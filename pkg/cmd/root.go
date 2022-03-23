@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -31,7 +30,6 @@ import (
 var Config config.Config
 
 var fs = afero.NewOsFs()
-var color = ansi.Color(os.Stdout)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

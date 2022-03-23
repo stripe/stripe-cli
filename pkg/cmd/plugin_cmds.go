@@ -52,6 +52,11 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	fs := afero.NewOsFs()
 	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, cmd.CalledAs())
+
+	if err != nil {
+		return err
+	}
+
 	err = plugin.Run(ctx, ptc.cfg, fs, args)
 	plugins.CleanupAllClients()
 
