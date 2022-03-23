@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -28,9 +27,6 @@ func (c *TestConfig) GetProfile() *config.Profile {
 func (c *TestConfig) GetConfigFolder(xdgPath string) string {
 	return "/"
 }
-
-// SyncConfig is not implemented
-func (c *TestConfig) SyncConfig(viperRuntime *viper.Viper) error { return nil }
 
 // InitConfig is not implemented
 func (c *TestConfig) InitConfig() {}

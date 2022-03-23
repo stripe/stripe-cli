@@ -155,17 +155,17 @@ func (p *Plugin) LookUpLatestVersion() string {
 }
 
 // Install installs the plugin of the given version
-func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs, version string, baseURL string) error {
+func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
-	apiKey, err := config.GetProfile().GetAPIKey(false)
+	apiKey, err := cfg.GetProfile().GetAPIKey(false)
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': missing API key", p.Shortname)), os.Stdout)
 		return err
 	}
 
-	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
+	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
@@ -180,7 +180,7 @@ func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs
 	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
 
 	// Pull down bin, verify, and save to disk
-	err = p.downloadAndSavePlugin(config, pluginDownloadURL, fs, version)
+	err = p.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
@@ -213,7 +213,7 @@ func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs
 	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
-	p.cleanUpPluginPath(config, fs, version)
+	p.cleanUpPluginPath(cfg, fs, version)
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
 
