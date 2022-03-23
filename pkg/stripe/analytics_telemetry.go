@@ -231,3 +231,15 @@ func TelemetryOptedOut(optoutVar string) bool {
 
 	return optoutVar == "1" || optoutVar == "true"
 }
+
+func IsPluginCommand(cmd *cobra.Command) bool {
+	isPlugin := false
+
+	for key, value := range cmd.Annotations {
+		if key == "scope" && value == "plugin" {
+			isPlugin = true
+		}
+	}
+
+	return isPlugin
+}

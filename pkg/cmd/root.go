@@ -62,8 +62,11 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata.SetMerchant(merchant)
 		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
-		// record command invocation
-		sendCommandInvocationEvent(cmd.Context())
+		// plugins send their own telemetry due to having richer context than the CLI does
+		if !stripe.IsPluginCommand(cmd) {
+			// record command invocation
+			sendCommandInvocationEvent(cmd.Context())
+		}
 	},
 }
 
