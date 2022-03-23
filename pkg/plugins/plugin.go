@@ -174,7 +174,7 @@ func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs
 			"prefix": "plugins.plugin.Install",
 		}).Debugf("install error: %s", err)
 
-		return errors.New("you don't seem to have access to this plugin.")
+		return errors.New("you don't seem to have access to this plugin")
 	}
 
 	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)

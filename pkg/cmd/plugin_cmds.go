@@ -63,11 +63,11 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
 			return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
-		} else {
-			log.WithFields(log.Fields{
-				"prefix": "pluginTemplateCmd.runPluginCmd",
-			}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
 		}
+
+		log.WithFields(log.Fields{
+			"prefix": "pluginTemplateCmd.runPluginCmd",
+		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
 	}
 
 	return nil
