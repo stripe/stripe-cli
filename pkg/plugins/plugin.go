@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -167,8 +168,13 @@ func (p *Plugin) Install(ctx context.Context, config config.IConfig, fs afero.Fs
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': unauthorized", p.Shortname)), os.Stdout)
-		return err
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+
+		log.WithFields(log.Fields{
+			"prefix": "plugins.plugin.Install",
+		}).Debugf("install error: %s", err)
+
+		return errors.New("You don't seem to have access to this plugin.")
 	}
 
 	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
