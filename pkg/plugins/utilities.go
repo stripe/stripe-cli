@@ -15,6 +15,7 @@ import (
 
 	hcplugin "github.com/hashicorp/go-plugin"
 	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -155,4 +156,18 @@ func FetchRemoteResource(url string) ([]byte, error) {
 func CleanupAllClients() {
 	log.Debug("Tearing down plugin before exit")
 	hcplugin.CleanupClients()
+}
+
+// IsPluginCommand returns true if the command invoked is for a plugin
+// false otherwise
+func IsPluginCommand(cmd *cobra.Command) bool {
+	isPlugin := false
+
+	for key, value := range cmd.Annotations {
+		if key == "scope" && value == "plugin" {
+			isPlugin = true
+		}
+	}
+
+	return isPlugin
 }

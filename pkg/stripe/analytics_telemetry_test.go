@@ -190,14 +190,3 @@ func TestTelemetryOptedOut(t *testing.T) {
 	require.True(t, stripe.TelemetryOptedOut("True"))
 	require.True(t, stripe.TelemetryOptedOut("TRUE"))
 }
-
-func TestIsPluginCommand(t *testing.T) {
-	pluginCmd := &cobra.Command{
-		Annotations: map[string]string{"scope": "plugin"},
-	}
-
-	notPluginCmd := &cobra.Command{}
-
-	require.True(t, stripe.IsPluginCommand(pluginCmd))
-	require.False(t, stripe.IsPluginCommand(notPluginCmd))
-}
