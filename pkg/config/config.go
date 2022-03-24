@@ -39,6 +39,7 @@ type IConfig interface {
 	PrintConfig() error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	WriteConfigField(field string, value interface{}) error
 }
 
 // Config handles all overall configuration for the CLI
@@ -227,7 +228,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 		}
 	}
 
-	return SyncConfig(runtimeViper)
+	return syncConfig(runtimeViper)
 }
 
 // RemoveAllProfiles removes all the profiles from the config file.
@@ -244,7 +245,7 @@ func (c *Config) RemoveAllProfiles() error {
 		}
 	}
 
-	return SyncConfig(runtimeViper)
+	return syncConfig(runtimeViper)
 }
 
 // isProfile identifies whether a value in the config pertains to a profile.
@@ -254,8 +255,17 @@ func isProfile(value interface{}) bool {
 	return ok
 }
 
-// SyncConfig merges a runtimeViper instance with the config file being used.
-func SyncConfig(runtimeViper *viper.Viper) error {
+// WriteConfigField updates a configuration field and writes the updated
+// configuration to disk.
+func (c *Config) WriteConfigField(field string, value interface{}) error {
+	runtimeViper := viper.GetViper()
+	runtimeViper.Set(field, value)
+
+	return runtimeViper.WriteConfig()
+}
+
+// syncConfig merges a runtimeViper instance with the config file being used.
+func syncConfig(runtimeViper *viper.Viper) error {
 	runtimeViper.MergeInConfig()
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)

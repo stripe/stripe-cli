@@ -23,7 +23,6 @@ import (
 	hcplugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
-	"github.com/spf13/viper"
 )
 
 // dev mode vars
@@ -187,9 +186,8 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		return err
 	}
 
-	// Add plugin to list of installed plugins in user config
-	runtimeViper := viper.GetViper()
-	installedList := runtimeViper.GetStringSlice("installed_plugins")
+	profile := cfg.GetProfile()
+	installedList := profile.GetInstalledPlugins()
 
 	// check for plugin already in list (ie. in the case of an upgrade)
 	isInstalled := false
@@ -204,8 +202,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	}
 
 	// sync list of installed plugins to file
-	runtimeViper.Set("installed_plugins", installedList)
-	err = config.SyncConfig(runtimeViper)
+	cfg.WriteConfigField("installed_plugins", installedList)
 
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s', %s", p.Shortname, err)), os.Stdout)
