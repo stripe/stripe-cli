@@ -163,6 +163,16 @@ func (p *Profile) GetTerminalPOSDeviceID() string {
 	return ""
 }
 
+// GetInstalledPlugins returns a list of locally installed plugins.
+// This does not vary by profile
+func (p *Profile) GetInstalledPlugins() []string {
+	if err := viper.ReadInConfig(); err == nil {
+		return viper.GetStringSlice("installed_plugins")
+	}
+
+	return []string{}
+}
+
 // GetConfigField returns the configuration field for the specific profile
 func (p *Profile) GetConfigField(field string) string {
 	return p.ProfileName + "." + field

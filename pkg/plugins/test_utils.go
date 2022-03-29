@@ -14,7 +14,9 @@ import (
 )
 
 // TestConfig Implementation out the GetConfigFolder function
-type TestConfig struct{}
+type TestConfig struct {
+	config.Config
+}
 
 // GetProfile returns the Mock Profile
 func (c *TestConfig) GetProfile() *config.Profile {
@@ -30,18 +32,6 @@ func (c *TestConfig) GetConfigFolder(xdgPath string) string {
 
 // InitConfig is not implemented
 func (c *TestConfig) InitConfig() {}
-
-// EditConfig is not implemented
-func (c *TestConfig) EditConfig() error { return nil }
-
-// PrintConfig is not implemented
-func (c *TestConfig) PrintConfig() error { return nil }
-
-// RemoveProfile is not implemented
-func (c *TestConfig) RemoveProfile(profileName string) error { return nil }
-
-// RemoveAllProfiles is not implemented
-func (c *TestConfig) RemoveAllProfiles() error { return nil }
 
 // setUpFS Sets up a memMap that contains the manifest
 func setUpFS() afero.Fs {
