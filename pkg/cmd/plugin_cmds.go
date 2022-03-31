@@ -14,9 +14,10 @@ import (
 )
 
 type pluginTemplateCmd struct {
-	cfg *config.Config
-	cmd *cobra.Command
-	fs  afero.Fs
+	cfg        *config.Config
+	cmd        *cobra.Command
+	fs         afero.Fs
+	ParsedArgs []string
 }
 
 // newPluginTemplateCmd is a generic plugin command template to dynamically use
@@ -27,10 +28,11 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cfg = config
 
 	ptc.cmd = &cobra.Command{
-		Use:         plugin.Shortname,
-		Short:       plugin.Shortdesc,
-		RunE:        ptc.runPluginCmd,
-		Annotations: map[string]string{"scope": "plugin"},
+		Use:                plugin.Shortname,
+		Short:              plugin.Shortdesc,
+		RunE:               ptc.runPluginCmd,
+		Annotations:        map[string]string{"scope": "plugin"},
+		DisableFlagParsing: true,
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
@@ -50,6 +52,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	ptc.ParsedArgs = args
 	fs := afero.NewOsFs()
 	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, cmd.CalledAs())
 
