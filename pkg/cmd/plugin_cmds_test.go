@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
