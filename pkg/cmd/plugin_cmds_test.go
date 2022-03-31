@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -34,8 +33,7 @@ func TestFlagsArePassedAsArgs(t *testing.T) {
 
 	pluginCmd := createPluginCmd()
 	rootCmd.AddCommand(pluginCmd.cmd)
-	c, _, _ := executeCommandC(rootCmd, "test", "testarg", "--testflag")
-	fmt.Println(c.Args)
+	executeCommandC(rootCmd, "test", "testarg", "--testflag")
 
 	require.Equal(t, len(pluginCmd.ParsedArgs), 2)
 	require.Equal(t, strings.Join(pluginCmd.ParsedArgs, " "), "testarg --testflag")
