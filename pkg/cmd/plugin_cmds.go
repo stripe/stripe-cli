@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
@@ -28,11 +29,10 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cfg = config
 
 	ptc.cmd = &cobra.Command{
-		Use:                plugin.Shortname,
-		Short:              plugin.Shortdesc,
-		RunE:               ptc.runPluginCmd,
-		Annotations:        map[string]string{"scope": "plugin"},
-		DisableFlagParsing: true,
+		Use:         plugin.Shortname,
+		Short:       plugin.Shortdesc,
+		RunE:        ptc.runPluginCmd,
+		Annotations: map[string]string{"scope": "plugin"},
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
@@ -52,7 +52,8 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	ptc.ParsedArgs = args
+	ptc.ParsedArgs = os.Args[2:]
+
 	fs := afero.NewOsFs()
 	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, cmd.CalledAs())
 
@@ -60,7 +61,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		return err
 	}
 
-	err = plugin.Run(ctx, ptc.cfg, fs, args)
+	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
 	plugins.CleanupAllClients()
 
 	if err != nil {
