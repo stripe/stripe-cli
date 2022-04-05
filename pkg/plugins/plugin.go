@@ -225,6 +225,10 @@ func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
 
+	if runtime.GOOS == "windows" {
+		pluginFilePath += ".exe"
+	}
+
 	logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
 
 	body, err := FetchRemoteResource(pluginDownloadURL)
@@ -313,6 +317,10 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
+
+	if runtime.GOOS == "windows" {
+		pluginBinaryPath += ".exe"
+	}
 
 	cmd := exec.Command(pluginBinaryPath)
 
