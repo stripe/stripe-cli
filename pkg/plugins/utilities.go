@@ -8,6 +8,7 @@ import (
 	"net/http/httptrace"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	log "github.com/sirupsen/logrus"
 
@@ -21,6 +22,15 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+// GetBinaryExtension returns the appropriate file extension for plugin binary
+func GetBinaryExtension() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+
+	return ""
+}
 
 // getPluginsDir computes where plugins are installed locally
 func getPluginsDir(config config.IConfig) string {

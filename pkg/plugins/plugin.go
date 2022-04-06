@@ -224,6 +224,7 @@ func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL 
 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
+	pluginFilePath += GetBinaryExtension()
 
 	logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
 
@@ -313,6 +314,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
+	pluginBinaryPath += GetBinaryExtension()
 
 	cmd := exec.Command(pluginBinaryPath)
 
