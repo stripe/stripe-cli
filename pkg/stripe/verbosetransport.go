@@ -10,7 +10,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
-// inspectHeaders is the whitelist of headers that will be printed.
+// inspectHeaders is the default list of headers that will be printed.
 var inspectHeaders = []string{
 	"Authorization",
 	"Content-Type",
@@ -23,19 +23,17 @@ var inspectHeaders = []string{
 }
 
 type verboseTransport struct {
-	Transport *http.Transport
-	Verbose   bool
-	Out       io.Writer
+	Transport        http.RoundTripper
+	Out              io.Writer
+	PrintableHeaders []string
 }
 
 func (t *verboseTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
-	if t.Verbose {
-		t.dumpRequest(req)
-	}
+	t.dumpRequest(req)
 
 	resp, err = t.Transport.RoundTrip(req)
 
-	if err == nil && t.Verbose {
+	if err == nil {
 		t.dumpResponse(resp)
 	}
 
@@ -55,7 +53,7 @@ func (t *verboseTransport) dumpResponse(resp *http.Response) {
 }
 
 func (t *verboseTransport) dumpHeaders(header http.Header, indent string) {
-	for _, listed := range inspectHeaders {
+	for _, listed := range t.PrintableHeaders {
 		for name, vv := range header {
 			if !strings.EqualFold(name, listed) {
 				continue
