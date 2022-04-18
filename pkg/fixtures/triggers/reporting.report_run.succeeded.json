@@ -11,8 +11,8 @@
         "report_type":"balance.summary.1",
         "parameters": {
           "interval_start": 1641045832,
-          "interval_end": 1646143432,
-        },
+          "interval_end": 1646143432
+        }
       }
     }
   ]
