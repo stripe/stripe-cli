@@ -65,6 +65,7 @@ var Events = map[string]string{
 	"product.created":                          "triggers/product.created.json",
 	"product.deleted":                          "triggers/product.deleted.json",
 	"product.updated":                          "triggers/product.updated.json",
+	"reporting.report_run.succeeded":           "triggers/reporting.report_run.succeeded.json",
 	"setup_intent.canceled":                    "triggers/setup_intent.canceled.json",
 	"setup_intent.created":                     "triggers/setup_intent.created.json",
 	"setup_intent.setup_failed":                "triggers/setup_intent.setup_failed.json",
