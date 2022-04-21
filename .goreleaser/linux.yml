@@ -62,3 +62,16 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=repository=https://github.com/stripe/stripe-cli"
       - "--label=homepage=https://stripe.com"
+publishers:
+  - name: deb
+    ids:
+    - deb
+    cmd: scripts/publish-to-artifactory {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} debian
+    env:
+    - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
+  - name: rpm
+    ids:
+    - rpm
+    cmd: scripts/publish-to-artifactory {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} rpm
+    env:
+    - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
