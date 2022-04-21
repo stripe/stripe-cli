@@ -14,11 +14,6 @@ PACKAGE="stripe"
 DISTRIBUTIONS="stable"
 COMPONENTS="main"
 
-if [ -z "$ARTIFACTORY_USERNAME" ]; then
-  echo "ARTIFACTORY_USERNAME is not set"
-  exit 1
-fi
-
 if [ -z "$ARTIFACTORY_SECRET" ]; then
   echo "ARTIFACTORY_SECRET is not set"
   exit 1
