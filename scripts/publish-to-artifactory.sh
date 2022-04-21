@@ -46,12 +46,6 @@ artifactoryUpload () {
     echo "HTTP response code: $RESPONSE_CODE"
 }
 
-snooze () {
-  printf "\nSleeping for 30 seconds. Have a coffee..."
-  sleep 30s;
-  printf "Done sleeping\n"
-}
-
 printMeta () {
   echo "Publishing: $PACKAGE"
   echo "Version to be uploaded: $VERSION"
@@ -59,4 +53,3 @@ printMeta () {
 
 printMeta
 artifactoryUpload
-snooze
