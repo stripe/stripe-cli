@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestVerboseTransport_Verbose(t *testing.T) {
+func TestVerboseTransport(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Request-Id", "req_123")
 		w.Header().Set("Non-Whitelisted-Header", "foo")
@@ -22,9 +22,9 @@ func TestVerboseTransport_Verbose(t *testing.T) {
 
 	httpTransport := &http.Transport{}
 	tr := &verboseTransport{
-		Transport: httpTransport,
-		Verbose:   true,
-		Out:       &b,
+		Transport:        httpTransport,
+		Out:              &b,
+		PrintableHeaders: inspectHeaders,
 	}
 	client := &http.Client{Transport: tr}
 	req, err := http.NewRequest("POST", ts.URL+"/test", nil)

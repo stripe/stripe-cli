@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -31,7 +30,6 @@ import (
 var Config config.Config
 
 var fs = afero.NewOsFs()
-var color = ansi.Color(os.Stdout)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -62,8 +60,11 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata.SetMerchant(merchant)
 		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
-		// record command invocation
-		sendCommandInvocationEvent(cmd.Context())
+		// plugins send their own telemetry due to having richer context than the CLI does
+		if !plugins.IsPluginCommand(cmd) {
+			// record command invocation
+			sendCommandInvocationEvent(cmd.Context())
+		}
 	},
 }
 
@@ -117,31 +118,7 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
-			Config.InitConfig()
-			// first look for a plugin that matches the unknown command
-			plugin, err := plugins.LookUpPlugin(ctx, &Config, fs, os.Args[1])
-
-			if err != nil {
-				// no matches, show help and exit
-				showSuggestion()
-			} else {
-				// we found a plugin, so run it
-				err = plugin.Run(updatedCtx, &Config, fs, os.Args[2:])
-				// ensure we fully tear down the plugin before exiting the CLI
-				plugins.CleanupAllClients()
-				if err != nil {
-					if err == validators.ErrAPIKeyNotConfigured {
-						fmt.Println(color.Red("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`"))
-					} else {
-						log.WithFields(log.Fields{
-							"prefix": "plugins.plugin.run",
-						}).Trace(fmt.Sprintf("Plugin command %s exited with error: %s", plugin.Shortname, err))
-					}
-					os.Exit(1)
-				}
-
-				os.Exit(0)
-			}
+			showSuggestion()
 
 		default:
 			fmt.Println(err)
@@ -204,5 +181,20 @@ func init() {
 	err = resource.AddTerminalSubCmds(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// config is not initialized by cobra at this point, so we need to temporarily initialize it
+	Config.InitConfig()
+
+	// get a list of installed plugins, validate against the manifest
+	// and finally add each validated plugin as a command
+	nfs := afero.NewOsFs()
+	pluginList := Config.Profile.GetInstalledPlugins()
+
+	for _, p := range pluginList {
+		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
+		if err == nil {
+			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
+		}
 	}
 }

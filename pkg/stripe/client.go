@@ -41,6 +41,10 @@ type Client struct {
 	// stdout.
 	Verbose bool
 
+	// List of request and response headers that should be printed when Verbose is true.
+	// Defaults to the standard set of relevant for Stripe headers.
+	VerbosePrintableHeaders []string
+
 	// Cached HTTP client, lazily created the first time the Client is used to
 	// send a request.
 	httpClient *http.Client
@@ -81,7 +85,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = newHTTPClient(c.Verbose, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
 	}
 
 	if ctx != nil {
@@ -114,8 +118,8 @@ func sendTelemetryEvent(ctx context.Context, requestID string, livemode bool) {
 	}
 }
 
-func newHTTPClient(verbose bool, unixSocket string) *http.Client {
-	var httpTransport *http.Transport
+func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *http.Client {
+	var httpTransport http.RoundTripper
 
 	if unixSocket != "" {
 		dialFunc := func(network, addr string) (net.Conn, error) {
@@ -142,13 +146,19 @@ func newHTTPClient(verbose bool, unixSocket string) *http.Client {
 		}
 	}
 
-	tr := &verboseTransport{
-		Transport: httpTransport,
-		Verbose:   verbose,
-		Out:       os.Stderr,
+	if verbose {
+		if printableHeaders == nil {
+			printableHeaders = inspectHeaders
+		}
+
+		httpTransport = &verboseTransport{
+			Transport:        httpTransport,
+			Out:              os.Stderr,
+			PrintableHeaders: printableHeaders,
+		}
 	}
 
 	return &http.Client{
-		Transport: tr,
+		Transport: httpTransport,
 	}
 }

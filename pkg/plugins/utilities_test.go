@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,4 +57,15 @@ func TestRefreshPluginManifest(t *testing.T) {
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
 	require.Equal(t, updatedManifestContent, pluginManifestContent)
+}
+
+func TestIsPluginCommand(t *testing.T) {
+	pluginCmd := &cobra.Command{
+		Annotations: map[string]string{"scope": "plugin"},
+	}
+
+	notPluginCmd := &cobra.Command{}
+
+	require.True(t, IsPluginCommand(pluginCmd))
+	require.False(t, IsPluginCommand(notPluginCmd))
 }

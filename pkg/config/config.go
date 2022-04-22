@@ -39,14 +39,16 @@ type IConfig interface {
 	PrintConfig() error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	WriteConfigField(field string, value interface{}) error
 }
 
 // Config handles all overall configuration for the CLI
 type Config struct {
-	Color        string
-	LogLevel     string
-	Profile      Profile
-	ProfilesFile string
+	Color            string
+	LogLevel         string
+	Profile          Profile
+	ProfilesFile     string
+	InstalledPlugins []string
 }
 
 // GetProfile returns the Profile of the config
@@ -251,6 +253,15 @@ func isProfile(value interface{}) bool {
 	// TODO: ianjabour - ideally find a better way to identify projects in config
 	_, ok := value.(map[string]interface{})
 	return ok
+}
+
+// WriteConfigField updates a configuration field and writes the updated
+// configuration to disk.
+func (c *Config) WriteConfigField(field string, value interface{}) error {
+	runtimeViper := viper.GetViper()
+	runtimeViper.Set(field, value)
+
+	return runtimeViper.WriteConfig()
 }
 
 // syncConfig merges a runtimeViper instance with the config file being used.

@@ -59,7 +59,8 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	if err == nil {
 		color := ansi.Color(os.Stdout)
-		fmt.Println(color.Green("✔ upgrade complete."))
+		successMsg := fmt.Sprintf("✔ upgrade to v%s complete.", version)
+		fmt.Println(color.Green(successMsg))
 	}
 
 	return err

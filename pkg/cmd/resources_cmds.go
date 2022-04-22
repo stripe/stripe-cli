@@ -260,6 +260,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"transfer_group": "string",
 	}, &Config)
 	resource.NewOperationCmd(rChargesCmd.Cmd, "retrieve", "/v1/charges/{charge}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rChargesCmd.Cmd, "search", "/v1/charges/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rChargesCmd.Cmd, "update", "/v1/charges/{charge}", http.MethodPost, map[string]string{
 		"customer":       "string",
 		"description":    "string",
@@ -381,6 +386,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
+		"test_clock":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "list_payment_methods", "/v1/customers/{customer}/payment_methods", http.MethodGet, map[string]string{
 		"ending_before":  "string",
@@ -389,6 +395,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"type":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "search", "/v1/customers/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "update", "/v1/customers/{customer}", http.MethodPost, map[string]string{
 		"balance":               "integer",
 		"coupon":                "string",
@@ -571,6 +582,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"source":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "retrieve", "/v1/invoices/{invoice}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "search", "/v1/invoices/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "send_invoice", "/v1/invoices/{invoice}/send", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "upcoming", "/v1/invoices/upcoming", http.MethodGet, map[string]string{
 		"coupon":                            "string",
@@ -719,6 +735,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "retrieve", "/v1/payment_intents/{intent}", http.MethodGet, map[string]string{
 		"client_secret": "string",
 	}, &Config)
+	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "search", "/v1/payment_intents/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "update", "/v1/payment_intents/{intent}", http.MethodPost, map[string]string{
 		"amount":                      "integer",
 		"application_fee_amount":      "integer",
@@ -732,7 +753,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_group":              "string",
 	}, &Config)
-	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{
+		"descriptor_code": "string",
+	}, &Config)
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "create", "/v1/payment_links", http.MethodPost, map[string]string{
 		"allow_promotion_codes":      "boolean",
 		"application_fee_amount":     "integer",
@@ -904,6 +927,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"type":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rPricesCmd.Cmd, "retrieve", "/v1/prices/{price}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rPricesCmd.Cmd, "search", "/v1/prices/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rPricesCmd.Cmd, "update", "/v1/prices/{price}", http.MethodPost, map[string]string{
 		"active":              "boolean",
 		"lookup_key":          "string",
@@ -936,6 +964,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"url":            "string",
 	}, &Config)
 	resource.NewOperationCmd(rProductsCmd.Cmd, "retrieve", "/v1/products/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rProductsCmd.Cmd, "search", "/v1/products/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rProductsCmd.Cmd, "update", "/v1/products/{id}", http.MethodPost, map[string]string{
 		"active":               "boolean",
 		"caption":              "string",
@@ -992,6 +1025,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
+		"test_clock":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "list_computed_upfront_line_items", "/v1/quotes/{quote}/computed_upfront_line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
@@ -1016,6 +1050,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"header":                  "string",
 		"on_behalf_of":            "string",
 	}, &Config)
+	resource.NewOperationCmd(rRefundsCmd.Cmd, "cancel", "/v1/refunds/{refund}/cancel", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "create", "/v1/refunds", http.MethodPost, map[string]string{
 		"amount":                 "integer",
 		"charge":                 "string",
@@ -1087,7 +1122,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"description":    "string",
 		"payment_method": "string",
 	}, &Config)
-	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{
+		"descriptor_code": "string",
+	}, &Config)
 	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "create", "/v1/shipping_rates", http.MethodPost, map[string]string{
 		"display_name": "string",
 		"tax_behavior": "string",
@@ -1249,8 +1286,14 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"price":                "string",
 		"starting_after":       "string",
 		"status":               "string",
+		"test_clock":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "retrieve", "/v1/subscriptions/{subscription_exposed_id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "search", "/v1/subscriptions/search", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+		"query": "string",
+	}, &Config)
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "update", "/v1/subscriptions/{subscription_exposed_id}", http.MethodPost, map[string]string{
 		"application_fee_percent": "number",
 		"billing_cycle_anchor":    "string",
@@ -1630,6 +1673,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "update", "/v1/terminal/locations/{location}", http.MethodPost, map[string]string{
 		"display_name": "string",
 	}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "cancel_action", "/v1/terminal/readers/{reader}/cancel_action", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "create", "/v1/terminal/readers", http.MethodPost, map[string]string{
 		"label":             "string",
 		"location":          "string",
@@ -1644,7 +1688,20 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 		"status":         "string",
 	}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
+		"type": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "process_payment_intent", "/v1/terminal/readers/{reader}/process_payment_intent", http.MethodPost, map[string]string{
+		"payment_intent": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "process_setup_intent", "/v1/terminal/readers/{reader}/process_setup_intent", http.MethodPost, map[string]string{
+		"customer_consent_collected": "boolean",
+		"setup_intent":               "string",
+	}, &Config)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "retrieve", "/v1/terminal/readers/{reader}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "set_reader_display", "/v1/terminal/readers/{reader}/set_reader_display", http.MethodPost, map[string]string{
+		"type": "string",
+	}, &Config)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "update", "/v1/terminal/readers/{reader}", http.MethodPost, map[string]string{
 		"label": "string",
 	}, &Config)

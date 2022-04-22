@@ -50,16 +50,7 @@ jobs:
           args: release -f .goreleaser/linux.yml --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-      - name: Upload to Bintray
-        if: ${{ false }}  # Disable this step until a replacement is found
-        run: |
-          scripts/publish-deb-to-bintray.sh
-          scripts/publish-rpm-to-bintray.sh
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
-          BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
+          ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
     runs-on: windows-latest

@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptrace"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	log "github.com/sirupsen/logrus"
 
@@ -14,11 +16,21 @@ import (
 
 	hcplugin "github.com/hashicorp/go-plugin"
 	"github.com/spf13/afero"
+	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
+
+// GetBinaryExtension returns the appropriate file extension for plugin binary
+func GetBinaryExtension() string {
+	if runtime.GOOS == "windows" {
+		return ".exe"
+	}
+
+	return ""
+}
 
 // getPluginsDir computes where plugins are installed locally
 func getPluginsDir(config config.IConfig) string {
@@ -116,19 +128,25 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
-	client := http.Client{
-		CheckRedirect: func(r *http.Request, via []*http.Request) error {
-			r.URL.Opaque = r.URL.Path
-			return nil
-		},
-	}
+	t := &requests.TracedTransport{}
 
-	req, err := http.NewRequest(http.MethodGet, url, http.NoBody)
+	req, err := http.NewRequest("GET", url, nil)
+
 	if err != nil {
 		return nil, err
 	}
 
+	trace := &httptrace.ClientTrace{
+		GotConn: t.GotConn,
+		DNSDone: t.DNSDone,
+	}
+
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+
+	client := &http.Client{Transport: t}
+
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
@@ -148,4 +166,18 @@ func FetchRemoteResource(url string) ([]byte, error) {
 func CleanupAllClients() {
 	log.Debug("Tearing down plugin before exit")
 	hcplugin.CleanupClients()
+}
+
+// IsPluginCommand returns true if the command invoked is for a plugin
+// false otherwise
+func IsPluginCommand(cmd *cobra.Command) bool {
+	isPlugin := false
+
+	for key, value := range cmd.Annotations {
+		if key == "scope" && value == "plugin" {
+			isPlugin = true
+		}
+	}
+
+	return isPlugin
 }
