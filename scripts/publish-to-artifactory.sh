@@ -13,8 +13,6 @@ REPO="stripe-cli-$FORMAT"
 PACKAGE="stripe"
 DISTRIBUTIONS="stable"
 COMPONENTS="main"
-DEBIAN_META=""
-UPLOAD_URL=""
 
 if [ -z "$ARTIFACTORY_SECRET" ]; then
   echo "ARTIFACTORY_SECRET is not set"
@@ -22,28 +20,37 @@ if [ -z "$ARTIFACTORY_SECRET" ]; then
 fi
 
 artifactoryUpload () {
-    if [ "$ARCH" == "386" ]; then
-        ARCH="i386"
-    fi
+  if [ "$ARCH" == "386" ]; then
+      ARCH="i386"
+  fi
 
-    if [ "$FORMAT" == "debian" ]; then
-        DEBIAN_META="deb.distribution=$DISTRIBUTIONS;deb.component=$COMPONENTS;deb.architecture=$ARCH"
-        UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/pool/$PACKAGE/$VERSION/$PACKAGE$DEBIAN_META"
-    elif [ "$FORMAT" == "rpm" ]; then
-        UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/$PACKAGE/$VERSION/$ARCH/$PACKAGE"
-    else
-        echo "unrecognised package format"
-        exit 1
-    fi
+  if [[ $FORMAT == "debian" ]]
+  then
+      if [ $ARCH == "x86_64" ]; then
+        ARCH="amd64"
+      fi
 
-    echo "Uploading $UPLOAD_URL"
+      echo "setting deployment to debian repo"
+      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/pool/$PACKAGE/$VERSION/$ARCH/$PACKAGE.deb;deb.distribution=$DISTRIBUTIONS;deb.component=$COMPONENTS;deb.architecture=$ARCH"
+  elif [[ $FORMAT == "rpm" ]]
+  then
+      echo "setting deployment to rpm repo"
+      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/$PACKAGE/$VERSION/$ARCH/$PACKAGE.rpm"
+  else
+      echo "unrecognised package format"
+      exit 1
+  fi
 
-    RESPONSE_CODE=$(curl -X PUT -T "$FILENAME" -H "Authorization: Bearer $ARTIFACTORY_SECRET" "$UPLOAD_URL" -I -s -w "%{http_code}" -o /dev/null);
-    if [[ "$(echo "$RESPONSE_CODE" | head -c2)" != "20" ]]; then
-        echo "Unable to upload, HTTP response code: $RESPONSE_CODE"
-        exit 1
-    fi
-    echo "HTTP response code: $RESPONSE_CODE"
+  echo "Uploading $UPLOAD_URL"
+
+  RESPONSE_CODE=$(curl -X PUT -T "$FILENAME" -H "Authorization: Bearer $ARTIFACTORY_SECRET" "$UPLOAD_URL" -I -s -w "%{http_code}" -o /dev/null)
+
+  if [[ "$(echo "$RESPONSE_CODE" | head -c2)" != "20" ]]; then
+      echo "Unable to upload, HTTP response code: $RESPONSE_CODE"
+      exit 1
+  fi
+
+  echo "HTTP response code: $RESPONSE_CODE"
 }
 
 printMeta () {

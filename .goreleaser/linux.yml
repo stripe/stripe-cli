@@ -66,12 +66,12 @@ publishers:
   - name: deb
     ids:
     - deb
-    cmd: scripts/publish-to-artifactory {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} debian
+    cmd: scripts/publish-to-artifactory.sh {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} debian
     env:
     - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
   - name: rpm
     ids:
     - rpm
-    cmd: scripts/publish-to-artifactory {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} rpm
+    cmd: scripts/publish-to-artifactory.sh {{ abs .ArtifactPath }} {{ .Version }} {{ .Arch }} rpm
     env:
     - ARTIFACTORY_SECRET={{ .Env.ARTIFACTORY_SECRET }}
