@@ -31935,6 +31935,7 @@ _stripe_trigger()
     must_have_one_noun+=("subscription_schedule.created")
     must_have_one_noun+=("subscription_schedule.released")
     must_have_one_noun+=("subscription_schedule.updated")
+    must_have_one_noun+=("transfer.paid")
     noun_aliases=()
 }
 
