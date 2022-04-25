@@ -29,10 +29,11 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cfg = config
 
 	ptc.cmd = &cobra.Command{
-		Use:         plugin.Shortname,
-		Short:       plugin.Shortdesc,
-		RunE:        ptc.runPluginCmd,
-		Annotations: map[string]string{"scope": "plugin"},
+		Use:                plugin.Shortname,
+		Short:              plugin.Shortdesc,
+		RunE:               ptc.runPluginCmd,
+		Annotations:        map[string]string{"scope": "plugin"},
+		DisableFlagParsing: true,
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
