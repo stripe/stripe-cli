@@ -66,7 +66,6 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	log.WithFields(log.Fields{
 		"prefix": "cmd.pluginCmd.runPluginCmd",
-		"config": ptc.cfg,
 	}).Debug("Running plugin...")
 
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
