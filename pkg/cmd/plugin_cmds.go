@@ -33,6 +33,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		Short:       plugin.Shortdesc,
 		RunE:        ptc.runPluginCmd,
 		Annotations: map[string]string{"scope": "plugin"},
+		FParseErrWhitelist: cobra.FParseErrWhitelist{
+			UnknownFlags: true,
+		},
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
@@ -60,6 +63,11 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	if err != nil {
 		return err
 	}
+
+	log.WithFields(log.Fields{
+		"prefix": "cmd.pluginCmd.runPluginCmd",
+		"config": ptc.cfg,
+	}).Debug("Running plugin...")
 
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
 	plugins.CleanupAllClients()
