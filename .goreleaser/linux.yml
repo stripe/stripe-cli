@@ -36,7 +36,7 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 nfpms:
   - id: deb
-    package_name: stripe-linux
+    package_name: stripe
     vendor: Stripe
     homepage: https://stripe.com
     maintainer: Stripe <support@stripe.com>
@@ -45,7 +45,7 @@ nfpms:
     formats:
       - deb
   - id: rpm
-    package_name: stripe-linux
+    package_name: stripe
     vendor: Stripe
     homepage: https://stripe.com
     maintainer: Stripe <support@stripe.com>
