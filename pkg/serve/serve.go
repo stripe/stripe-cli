@@ -1,10 +1,11 @@
 package serve
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
-	"path"
+	"os"
 	"path/filepath"
+	"strings"
 )
 
 // TestFile ccc
@@ -26,36 +27,23 @@ import (
 // }
 
 // SubFileSystem only allows access to the directory and its contents
-type SubFileSystem struct {
-	FileSystem http.Dir
-	Dir        string
-	// dir http.Dir
-}
+type SubFileSystem string
 
 // Open is a wrapper around the Open method of the Dir FS
-func (fsys SubFileSystem) Open(name string) (http.File, error) {
+func (d SubFileSystem) Open(name string) (http.File, error) {
 	// Here we want to handle the additional case for windows where providing the drive with the absolute path allows
 	// the visitor to escape the intended directory in the File Server
-	baseDir := fsys.Dir
-	if baseDir == "" {
-		baseDir = "."
+	if filepath.Separator != '/' && strings.ContainsRune(name, filepath.Separator) {
+		return nil, errors.New("http: invalid character in file path")
 	}
-	fullName := filepath.Join(baseDir, filepath.FromSlash(path.Clean("/"+name)))
-
-	relative, err := filepath.Rel(baseDir, fullName)
-	fmt.Printf("Base Path: %s\n", baseDir)
-	fmt.Printf("Target Path: %s\n", fullName)
-	fmt.Printf("Relative Path: %s\n", relative)
-	if err != nil {
-		fmt.Printf("Relative Error : %s\n", err.Error())
+	dir := string(d)
+	if dir == "" {
+		dir = "."
 	}
-
-	file, err := fsys.FileSystem.Open(name)
+	fullName := filepath.Join(dir, filepath.FromSlash(filepath.Clean("/"+name)))
+	f, err := os.Open(fullName)
 	if err != nil {
-		fmt.Printf("[Open] You do not have permissions to open %s. %v\n", name, err.Error())
 		return nil, err
 	}
-
-	fmt.Printf("[Open] Opening file %s\n", name)
-	return file, err
+	return f, nil
 }
