@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/serve"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -32,8 +33,10 @@ func newServeCmd() *serveCmd {
 				dir = args[0]
 			}
 
+			fmt.Printf("Starting server at directory  %s\n", dir)
 			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
-			http.Handle("/", http.FileServer(http.Dir(dir)))
+			fsys := serve.TestFileSystem{FileSystem: http.Dir(dir)}
+			http.Handle("/", http.FileServer(fsys))
 			err := http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 
 			return err
