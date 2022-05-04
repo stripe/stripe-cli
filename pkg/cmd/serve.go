@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gorilla/handlers"
 	"github.com/spf13/cobra"
@@ -32,11 +33,16 @@ func newServeCmd() *serveCmd {
 				dir = args[0]
 			}
 
-			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
-			http.Handle("/", http.FileServer(http.Dir(dir)))
-			err := http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
+			absoluteDir, err := filepath.Abs(dir)
+			if err != nil {
+				return err
+			}
 
-			return err
+			fmt.Printf("Starting server for directory  %s\n", absoluteDir)
+
+			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
+			http.Handle("/", http.FileServer(http.Dir(absoluteDir)))
+			return http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 		},
 	}
 
