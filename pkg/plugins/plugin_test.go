@@ -148,7 +148,7 @@ func TestUninstall(t *testing.T) {
 	pluginDir := "/plugins/appA"
 	err = plugin.Uninstall(context.Background(), config, fs)
 	require.Nil(t, err)
-	dirExists, err := afero.Exists(fs, pluginDir)
+	dirExists, _ := afero.Exists(fs, pluginDir)
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))

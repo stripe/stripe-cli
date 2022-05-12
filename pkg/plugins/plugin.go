@@ -217,6 +217,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	return nil
 }
 
+// Uninstall removes a plugin from the disk and from the config's installed plugins list
 func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.Fs) error {
 	pluginList := config.GetInstalledPlugins()
 	pluginIdx := -1
