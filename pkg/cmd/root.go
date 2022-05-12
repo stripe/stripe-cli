@@ -189,7 +189,7 @@ func init() {
 	// get a list of installed plugins, validate against the manifest
 	// and finally add each validated plugin as a command
 	nfs := afero.NewOsFs()
-	pluginList := Config.Profile.GetInstalledPlugins()
+	pluginList := Config.GetInstalledPlugins()
 
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)

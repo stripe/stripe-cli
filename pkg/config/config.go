@@ -40,6 +40,7 @@ type IConfig interface {
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
 	WriteConfigField(field string, value interface{}) error
+	GetInstalledPlugins() []string
 }
 
 // Config handles all overall configuration for the CLI
@@ -62,11 +63,6 @@ func (c *Config) GetProfile() *Profile {
 func (c *Config) GetConfigFolder(xdgPath string) string {
 	configPath := xdgPath
 
-	log.WithFields(log.Fields{
-		"prefix": "config.Config.GetProfilesFolder",
-		"path":   configPath,
-	}).Debug("Using profiles file")
-
 	if configPath == "" {
 		home, err := homedir.Dir()
 		if err != nil {
@@ -77,7 +73,14 @@ func (c *Config) GetConfigFolder(xdgPath string) string {
 		configPath = filepath.Join(home, ".config")
 	}
 
-	return filepath.Join(configPath, "stripe")
+	stripeConfigPath := filepath.Join(configPath, "stripe")
+
+	log.WithFields(log.Fields{
+		"prefix": "config.Config.GetProfilesFolder",
+		"path":   stripeConfigPath,
+	}).Debug("Using profiles file")
+
+	return stripeConfigPath
 }
 
 // InitConfig reads in profiles file and ENV variables if set.
@@ -85,6 +88,24 @@ func (c *Config) InitConfig() {
 	logFormatter := &prefixed.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: time.RFC1123,
+	}
+
+	log.SetFormatter(logFormatter)
+
+	// Set log level
+	switch c.LogLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "trace":
+		log.SetLevel(log.TraceLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
 	}
 
 	if c.ProfilesFile != "" {
@@ -138,24 +159,6 @@ func (c *Config) InitConfig() {
 		// Nothing to do
 	default:
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
-	}
-
-	log.SetFormatter(logFormatter)
-
-	// Set log level
-	switch c.LogLevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "trace":
-		log.SetLevel(log.TraceLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
 	}
 }
 
@@ -211,6 +214,14 @@ func (c *Config) PrintConfig() error {
 	}
 
 	return nil
+}
+
+// GetInstalledPlugins returns a list of locally installed plugins.
+// This does not vary by profile
+func (c *Config) GetInstalledPlugins() []string {
+	runtimeViper := viper.GetViper()
+
+	return runtimeViper.GetStringSlice("installed_plugins")
 }
 
 // RemoveProfile removes the profile whose name matches the provided
