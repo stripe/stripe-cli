@@ -13,16 +13,16 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
-// TestConfig Implementation out the GetConfigFolder function
+// TestConfig Implementations out several methods
 type TestConfig struct {
 	config.Config
 }
 
-// GetProfile returns the Mock Profile
-func (c *TestConfig) GetProfile() *config.Profile {
-	return &config.Profile{
-		APIKey: "rk_test_11111111111111111111111111",
-	}
+// WriteConfigField mocks out the method so that we can ensure installed plugins data is written
+func (c *TestConfig) WriteConfigField(field string, value interface{}) error {
+	c.InstalledPlugins = value.([]string)
+
+	return nil
 }
 
 // GetConfigFolder returns the absolute path for the TestConfig
@@ -30,8 +30,15 @@ func (c *TestConfig) GetConfigFolder(xdgPath string) string {
 	return "/"
 }
 
-// InitConfig is not implemented
-func (c *TestConfig) InitConfig() {}
+// GetInstalledPlugins returns the mocked out list of installed plugins
+func (c *TestConfig) GetInstalledPlugins() []string {
+	return c.InstalledPlugins
+}
+
+// InitConfig initializes the config with the values we need
+func (c *TestConfig) InitConfig() {
+	c.Profile.APIKey = "rk_test_11111111111111111111111111"
+}
 
 // setUpFS Sets up a memMap that contains the manifest
 func setUpFS() afero.Fs {

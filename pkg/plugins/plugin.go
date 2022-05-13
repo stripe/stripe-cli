@@ -75,8 +75,9 @@ func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugi
 func (p *Plugin) getPluginInstallPath(config config.IConfig, version string) string {
 	pluginsDir := getPluginsDir(config)
 	pluginPath := filepath.Join(pluginsDir, p.Shortname, version)
+	cleanedPath := filepath.Clean(pluginPath)
 
-	return pluginPath
+	return cleanedPath
 }
 
 // cleanUpPluginPath empties the plugin folder except for the version specified
@@ -186,8 +187,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		return err
 	}
 
-	profile := cfg.GetProfile()
-	installedList := profile.GetInstalledPlugins()
+	installedList := cfg.GetInstalledPlugins()
 
 	// check for plugin already in list (ie. in the case of an upgrade)
 	isInstalled := false
@@ -213,6 +213,38 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	p.cleanUpPluginPath(cfg, fs, version)
 
 	ansi.StopSpinner(spinner, "", os.Stdout)
+
+	return nil
+}
+
+// Uninstall removes a plugin from the disk and from the config's installed plugins list
+func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.Fs) error {
+	pluginList := config.GetInstalledPlugins()
+	pluginIdx := -1
+
+	for i, name := range pluginList {
+		if name == p.Shortname {
+			pluginIdx = i
+		}
+	}
+
+	if pluginIdx == -1 {
+		return errors.New("this plugin doesn't seem to be installed, canceling")
+	}
+
+	pluginDir := p.getPluginInstallPath(config, "")
+
+	err := fs.RemoveAll(pluginDir)
+
+	if err != nil {
+		return err
+	}
+
+	// remove plugin from installed plugins list in profile
+	installedList := make([]string, 0)
+	installedList = append(installedList, pluginList[:pluginIdx]...)
+	installedList = append(installedList, pluginList[pluginIdx+1:]...)
+	config.WriteConfigField("installed_plugins", installedList)
 
 	return nil
 }
