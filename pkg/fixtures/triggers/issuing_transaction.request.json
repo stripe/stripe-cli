@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "authorization",
+      "path": "/v1/issuing/authorization:iauth_1JIkPLCP6Qc8Q0Gdmu6ZOZXq",
+      "method": "get",
+      "params": {}
+    },
+    {
+      "name": "create_dispute",
+      "path": "/v1/issuing/dispute",
+      "method": "post",
+      "params": {
+        "transaction": "${authorization:transaction:id}",
+        "evidence": {
+          "reason": "fraudulent",
+          "fraudulent": {
+            "explanation": "purchase was unreconized by user"
+          }
+        }
+      }
+    }
+  ]
+}
