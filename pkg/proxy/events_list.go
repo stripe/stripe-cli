@@ -84,6 +84,7 @@ var validEvents = map[string]bool{
 	"issuing_authorization.created":                true,
 	"issuing_authorization.request":                true,
 	"issuing_authorization.updated":                true,
+	"issuing_transaction.request":                  true,
 	"issuing_card.created":                         true,
 	"issuing_card.updated":                         true,
 	"issuing_cardholder.created":                   true,
