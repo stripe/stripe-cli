@@ -14,13 +14,13 @@ type OrdersUpdateCmd struct {
 	opCmd *OperationCmd
 }
 
-func (occ *OrdersUpdateCmd) runOrdersUpdateCmd(cmd *cobra.Command, args []string) error {
-	return occ.opCmd.runOperationCmd(cmd, args)
+func (ouc *OrdersUpdateCmd) runOrdersUpdateCmd(cmd *cobra.Command, args []string) error {
+	return ouc.opCmd.runOperationCmd(cmd, args)
 }
 
 // NewOrdersUpdateCmd creates a new orders creation sub command.
-func NewOrdersUpdateCmd(parentCmd *cobra.Command, cfg *config.Config) *OrdersCreateCmd {
-	ordersCreateCmd := &OrdersCreateCmd{
+func NewOrdersUpdateCmd(parentCmd *cobra.Command, cfg *config.Config) *OrdersUpdateCmd {
+	ordersUpdateCmd := &OrdersUpdateCmd{
 		opCmd: NewOperationCmd(parentCmd, "update", "/v1/orders/{id}", http.MethodPost, map[string]string{
 			"currency":               "string",
 			"line_items[][product]":  "string",
@@ -28,7 +28,7 @@ func NewOrdersUpdateCmd(parentCmd *cobra.Command, cfg *config.Config) *OrdersCre
 		}, cfg),
 	}
 
-	ordersCreateCmd.opCmd.Cmd.RunE = ordersCreateCmd.runOrdersCreateCmd
+	ordersUpdateCmd.opCmd.Cmd.RunE = ordersUpdateCmd.runOrdersUpdateCmd
 
-	return ordersCreateCmd
+	return ordersUpdateCmd
 }
