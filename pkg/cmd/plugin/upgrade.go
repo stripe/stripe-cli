@@ -40,20 +40,22 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 }
 
 func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
-	// Refresh the plugin before proceeding
-	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, stripe.DefaultAPIBaseURL)
-
-	plugin, err := plugins.LookUpPlugin(cmd.Context(), uc.cfg, uc.fs, args[0])
-	if err != nil {
-		return err
-	}
-	version := plugin.LookUpLatestVersion()
-
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.upgradeCmd.runUpgradeCmd",
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
+
+	// Refresh the plugin info before proceeding
+	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, stripe.DefaultAPIBaseURL)
+
+	plugin, err := plugins.LookUpPlugin(cmd.Context(), uc.cfg, uc.fs, args[0])
+
+	if err != nil {
+		return err
+	}
+
+	version := plugin.LookUpLatestVersion()
 
 	err = plugin.Install(ctx, uc.cfg, uc.fs, version, stripe.DefaultAPIBaseURL)
 

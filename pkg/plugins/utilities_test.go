@@ -13,6 +13,7 @@ import (
 func TestGetPluginList(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
+	config.InitConfig()
 
 	pluginList, err := GetPluginList(context.Background(), config, fs)
 
@@ -46,6 +47,7 @@ func TestLookUpPlugin(t *testing.T) {
 func TestRefreshPluginManifest(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
+	config.InitConfig()
 	updatedManifestContent, _ := os.ReadFile("./test_artifacts/plugins_updated.toml")
 	testServers := setUpServers(t, updatedManifestContent)
 	defer func() { testServers.CloseAll() }()
