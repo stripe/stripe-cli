@@ -43,7 +43,7 @@ func TestRunOrdersCreateCmd(t *testing.T) {
 		"--currency", "usd",
 		"--line-items[][product]", "dummyProduct",
 		"--line-items[][quantity]", "1",
-		"--automatic_tax[enabled]", "true",
+		"--automatic-tax[enabled]", "true",
 	})
 	err := parentCmd.ExecuteContext(context.Background())
 
