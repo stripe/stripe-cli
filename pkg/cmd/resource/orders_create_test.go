@@ -26,7 +26,7 @@ func TestRunOrdersCreateCmd(t *testing.T) {
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		vals, err := url.ParseQuery(string(body))
 		require.NoError(t, err)
-		require.Equal(t, 3, len(vals))
+		require.Equal(t, 4, len(vals))
 	}))
 	defer ts.Close()
 
