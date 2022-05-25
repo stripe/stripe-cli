@@ -183,6 +183,11 @@ func init() {
 		log.Fatal(err)
 	}
 
+	err = resource.AddOrdersSubCmds(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// config is not initialized by cobra at this point, so we need to temporarily initialize it
 	Config.InitConfig()
 
