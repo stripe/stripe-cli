@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // YAMLSerializer encodes/persists cassettes to files and decodes yaml cassette files.

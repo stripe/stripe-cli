@@ -205,19 +205,19 @@ func TestSaveAndCloseToYaml(t *testing.T) {
     method: POST
     body: hello world
     headers:
-      Test:
-      - header 1
+        Test:
+            - header 1
     url:
-      scheme: ""
-      opaque: ""
-      user: null
-      host: ""
-      path: ""
-      rawpath: ""
-      forcequery: false
-      rawquery: ""
-      fragment: ""
-      rawfragment: ""
+        scheme: ""
+        opaque: ""
+        user: null
+        host: ""
+        path: ""
+        rawpath: ""
+        forcequery: false
+        rawquery: ""
+        fragment: ""
+        rawfragment: ""
   response:
     headers: {}
     body: ""

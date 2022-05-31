@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const defaultLocalAddress = "localhost:8080"
-const defaultLocalWebhookAddress = "localhost:8888"
+const defaultLocalAddress = "127.0.0.1:8080"
+const defaultLocalWebhookAddress = "127.0.0.1:8888"
 
 func assertHTTPResponsesAreEqual(t *testing.T, resp1 *http.Response, resp2 *http.Response) error {
 	// Read the response bodies
@@ -130,16 +130,16 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	<-serverReady
 
 	// Send it 2 requests
-	res1, err := http.Get("http://localhost:8080/")
+	res1, err := http.Get("http://127.0.0.1:8080/")
 	assert.NoError(t, err)
 	assert.Equal(t, mockResponse1.StatusCode, res1.StatusCode)
 
-	res2, err := http.Get("http://localhost:8080/")
+	res2, err := http.Get("http://127.0.0.1:8080/")
 	assert.NoError(t, err)
 	assert.Equal(t, mockResponse2.StatusCode, res2.StatusCode)
 
 	// Shutdown record server
-	resShutdown, err := http.Get("http://localhost:8080/playback/cassette/eject")
+	resShutdown, err := http.Get("http://127.0.0.1:8080/playback/cassette/eject")
 	server.Shutdown(context.Background())
 	assert.NoError(t, err)
 	defer resShutdown.Body.Close()
@@ -160,9 +160,9 @@ func TestSimpleRecordReplayServerSeparately(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Send it the same 2 requests:
-	replay1, err := http.Get("http://localhost:8080/")
+	replay1, err := http.Get("http://127.0.0.1:8080/")
 	assert.NoError(t, err)
-	replay2, err := http.Get("http://localhost:8080/")
+	replay2, err := http.Get("http://127.0.0.1:8080/")
 	assert.NoError(t, err)
 
 	// Assert that the original responses and replayed responses are the same
@@ -205,7 +205,7 @@ func TestPlaybackSingleRunCreateCustomerAndStandaloneCharge(t *testing.T) {
 	remoteURL = ts.URL
 
 	// -- Setup Playback server
-	addressString := "localhost:13111"
+	addressString := "127.0.0.1:13111"
 	cassetteFilepath := "test_record_replay_single_run.yaml"
 
 	tempCassetteDir, err := ioutil.TempDir("", "playback-test-data-")
