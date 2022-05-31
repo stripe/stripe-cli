@@ -1,11 +1,10 @@
 package cmd
 
+/*
 import (
 	"errors"
-	"fmt"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -50,9 +49,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 // runPluginCmd hands off to the plugin itself to take over
 func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) error {
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "cmd.pluginCmd.runPluginCmd",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "cmd.pluginCmd.runPluginCmd",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	ptc.ParsedArgs = os.Args[2:]
@@ -64,9 +63,9 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		return err
 	}
 
-	log.WithFields(log.Fields{
-		"prefix": "cmd.pluginCmd.runPluginCmd",
-	}).Debug("Running plugin...")
+	// log.WithFields(log.Fields{
+	// 	"prefix": "cmd.pluginCmd.runPluginCmd",
+	// }).Debug("Running plugin...")
 
 	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
 	plugins.CleanupAllClients()
@@ -76,10 +75,11 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 			return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
 		}
 
-		log.WithFields(log.Fields{
-			"prefix": "pluginTemplateCmd.runPluginCmd",
-		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
+		// log.WithFields(log.Fields{
+		// 	"prefix": "pluginTemplateCmd.runPluginCmd",
+		// }).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
 	}
 
 	return nil
 }
+*/

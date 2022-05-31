@@ -1,5 +1,6 @@
 package samples
 
+/*
 import (
 	"errors"
 	"fmt"
@@ -218,3 +219,4 @@ func serverSelectPrompt(servers []string) (string, error) {
 
 	return selected, nil
 }
+*/

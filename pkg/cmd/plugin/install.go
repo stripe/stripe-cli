@@ -1,5 +1,6 @@
 package plugin
 
+/*
 import (
 	"context"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -78,9 +78,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "cmd.installCmd.runInstallCmd",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "cmd.installCmd.runInstallCmd",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	err = plugin.Install(ctx, ic.cfg, ic.fs, version, stripe.DefaultAPIBaseURL)
@@ -107,3 +107,4 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	}()
 	return ctx
 }
+*/

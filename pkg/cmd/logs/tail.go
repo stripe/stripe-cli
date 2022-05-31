@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"context"
@@ -166,9 +165,9 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	version.CheckLatestVersion()
 
-	logger := log.StandardLogger()
+	// logger := log.StandardLogger()
 
-	logtailingVisitor := createVisitor(logger, tailCmd.format)
+	logtailingVisitor := createVisitor(tailCmd.format)
 
 	logtailingOutCh := make(chan websocket.IElement)
 
@@ -177,15 +176,15 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		DeviceName: deviceName,
 		Filters:    tailCmd.LogFilters,
 		Key:        key,
-		Log:        logger,
-		NoWSS:      tailCmd.noWSS,
-		OutCh:      logtailingOutCh,
+		// Log:        logger,
+		NoWSS: tailCmd.noWSS,
+		OutCh: logtailingOutCh,
 	})
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "logtailing.Tailer.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "logtailing.Tailer.Run",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	go tailer.Run(ctx)
@@ -245,12 +244,12 @@ func (tailCmd *TailCmd) convertArgs() error {
 	return nil
 }
 
-func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
+func createVisitor(format string) *websocket.Visitor {
 	var s *spinner.Spinner
 
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
-			ansi.StopSpinner(s, "", logger.Out)
+			// ansi.StopSpinner(s, "", logger.Out)
 			return ee.Error
 		},
 		VisitWarning: func(we websocket.WarningElement) error {
@@ -261,13 +260,13 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
 			case websocket.Loading:
-				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
+				s = ansi.StartNewSpinner("Getting ready...", os.Stdout)
 			case websocket.Reconnecting:
-				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
+				ansi.StartSpinner(s, "Session expired, reconnecting...", os.Stdout)
 			case websocket.Ready:
-				ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", logger.Out)
+				ansi.StopSpinner(s, "Ready! You're now waiting to receive API request logs (^C to quit)", os.Stdout)
 			case websocket.Done:
-				ansi.StopSpinner(s, "", logger.Out)
+				ansi.StopSpinner(s, "", os.Stdout)
 			}
 			return nil
 		},

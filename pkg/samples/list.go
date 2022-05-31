@@ -1,18 +1,6 @@
 package samples
 
-import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/spf13/afero"
-	"gopkg.in/src-d/go-git.v4"
-
-	"github.com/stripe/stripe-cli/pkg/ansi"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
-)
-
+/*
 const sampleListGithubURL = "https://github.com/stripe-samples/samples-list.git"
 
 // SampleData stores the information needed for Stripe Samples to operate in
@@ -132,3 +120,4 @@ func GetSamples(mode string) (map[string]*SampleData, error) {
 
 	return sample.getSamples(mode)
 }
+*/

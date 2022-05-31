@@ -1,11 +1,6 @@
 package logout
 
-import (
-	"fmt"
-
-	"github.com/stripe/stripe-cli/pkg/config"
-)
-
+/*
 // Logout function is used to clear the credentials set for the current Profile
 func Logout(config *config.Config) error {
 	liveKey, _ := config.Profile.GetAPIKey(true)
@@ -47,3 +42,4 @@ func All(cfg *config.Config) error {
 
 	return nil
 }
+*/

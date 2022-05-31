@@ -15,4 +15,11 @@
     "[go]": {
         "editor.formatOnSave": true
     },
+
+    "gopls": {
+      "build.env": {
+        "GOOS": "js",
+        "GOARCH": "wasm"
+      }
+    }
 }

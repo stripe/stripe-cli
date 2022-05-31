@@ -1,26 +1,11 @@
 package plugins
 
 import (
-	"context"
-	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptrace"
 	"os"
 	"path/filepath"
 	"runtime"
 
-	log "github.com/sirupsen/logrus"
-
-	"github.com/BurntSushi/toml"
-
-	hcplugin "github.com/hashicorp/go-plugin"
-	"github.com/spf13/afero"
-	"github.com/spf13/cobra"
-
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -40,8 +25,8 @@ func getPluginsDir(config config.IConfig) string {
 	switch {
 	case tempEnvPluginsPath != "":
 		pluginsDir = tempEnvPluginsPath
-	case PluginsPath != "":
-		pluginsDir = PluginsPath
+	// case PluginsPath != "":
+	// 	pluginsDir = PluginsPath
 	default:
 		configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 		pluginsDir = filepath.Join(configPath, "plugins")
@@ -50,6 +35,7 @@ func getPluginsDir(config config.IConfig) string {
 	return pluginsDir
 }
 
+/*
 // GetPluginList builds a list of allowed plugins to be installed and run by the CLI
 func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (PluginList, error) {
 	var pluginList PluginList
@@ -58,10 +44,10 @@ func GetPluginList(ctx context.Context, config config.IConfig, fs afero.Fs) (Plu
 
 	file, err := afero.ReadFile(fs, pluginManifestPath)
 	if os.IsNotExist(err) {
-		log.Debug("The plugin manifest file does not exist. Downloading...")
+		// log.Debug("The plugin manifest file does not exist. Downloading...")
 		err = RefreshPluginManifest(ctx, config, fs, stripe.DefaultAPIBaseURL)
 		if err != nil {
-			log.Debug("Could not download plugin manifest")
+			// log.Debug("Could not download plugin manifest")
 			return pluginList, err
 		}
 		file, err = afero.ReadFile(fs, pluginManifestPath)
@@ -164,7 +150,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 // CleanupAllClients tears down and disconnects all "managed" plugin clients
 func CleanupAllClients() {
-	log.Debug("Tearing down plugin before exit")
+	// log.Debug("Tearing down plugin before exit")
 	hcplugin.CleanupClients()
 }
 
@@ -181,3 +167,4 @@ func IsPluginCommand(cmd *cobra.Command) bool {
 
 	return isPlugin
 }
+*/

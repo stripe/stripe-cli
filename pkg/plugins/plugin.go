@@ -1,6 +1,6 @@
 package plugins
 
-import (
+/*
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -21,7 +21,6 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	hcplugin "github.com/hashicorp/go-plugin"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
 
@@ -81,10 +80,10 @@ func (p *Plugin) getPluginInstallPath(config config.IConfig, version string) str
 
 // cleanUpPluginPath empties the plugin folder except for the version specified
 func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionToKeep string) error {
-	logger := log.WithFields(log.Fields{
-		"prefix": "plugins.plugin.cleanUpPluginPath",
-	})
-	logger.Debug("Cleaning up other plugin versions...")
+	// logger := log.WithFields(log.Fields{
+	// 	"prefix": "plugins.plugin.cleanUpPluginPath",
+	// })
+	// logger.Debug("Cleaning up other plugin versions...")
 
 	pluginsDir := getPluginsDir(config)
 	pluginPath := filepath.Join(pluginsDir, p.Shortname)
@@ -98,13 +97,13 @@ func (p *Plugin) cleanUpPluginPath(config config.IConfig, fs afero.Fs, versionTo
 		switch {
 		case path == pluginPath:
 			// Pass the root directory
-			logger.Debugf("Skipping directory: %s", path)
+			// logger.Debugf("Skipping directory: %s", path)
 			return nil
 		case info.IsDir() && path == versionPathToKeep:
-			logger.Debugf("Skipping directory: %s", path)
+			// logger.Debugf("Skipping directory: %s", path)
 			return filepath.SkipDir
 		default:
-			logger.Debugf("Removing old plugin: %s", path)
+			// logger.Debugf("Removing old plugin: %s", path)
 			fs.RemoveAll(path)
 			return nil
 		}
@@ -169,9 +168,9 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	if err != nil {
 		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
 
-		log.WithFields(log.Fields{
-			"prefix": "plugins.plugin.Install",
-		}).Debugf("install error: %s", err)
+		// log.WithFields(log.Fields{
+		// 	"prefix": "plugins.plugin.Install",
+		// }).Debugf("install error: %s", err)
 
 		return errors.New("you don't seem to have access to this plugin")
 	}
@@ -218,15 +217,15 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 }
 
 func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
-	logger := log.WithFields(log.Fields{
-		"prefix": "plugins.plugin.Install",
-	})
+	// logger := log.WithFields(log.Fields{
+	// 	"prefix": "plugins.plugin.Install",
+	// })
 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginFilePath := filepath.Join(pluginDir, p.Binary)
 	pluginFilePath += GetBinaryExtension()
 
-	logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
+	// logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
 
 	body, err := FetchRemoteResource(pluginDownloadURL)
 
@@ -239,21 +238,21 @@ func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL 
 	err = p.verifyChecksum(reader, version)
 
 	if err != nil {
-		logger.Debug("could not match checksum of plugin")
+		// logger.Debug("could not match checksum of plugin")
 		return err
 	}
 
 	err = fs.MkdirAll(pluginDir, 0755)
 
 	if err != nil {
-		logger.Debugf("could not create plugin directory: %s", pluginDir)
+		// logger.Debugf("could not create plugin directory: %s", pluginDir)
 		return err
 	}
 
 	err = afero.WriteFile(fs, pluginFilePath, body, 0755)
 
 	if err != nil {
-		logger.Debug("could not save plugin to disk")
+		// logger.Debug("could not save plugin to disk")
 		return err
 	}
 
@@ -284,9 +283,9 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 
 // Run boots up the binary and then sends the command to it via RPC
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
-	logger := log.WithFields(log.Fields{
-		"prefix": "plugins.plugin.Run",
-	})
+	// logger := log.WithFields(log.Fields{
+	// 	"prefix": "plugins.plugin.Run",
+	// })
 
 	var version string
 
@@ -353,14 +352,14 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	// Connect via RPC to the plugin
 	rpcClient, err := client.Client()
 	if err != nil {
-		logger.Debugf("Could not connect to plugin: %s", err)
+		// logger.Debugf("Could not connect to plugin: %s", err)
 		return err
 	}
 
 	// Request the plugin's main interface
 	raw, err := rpcClient.Dispense("main")
 	if err != nil {
-		logger.Debugf("Could not dispense plugin interface: %s", err)
+		// logger.Debugf("Could not dispense plugin interface: %s", err)
 		return err
 	}
 
@@ -376,3 +375,4 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	return nil
 }
+*/

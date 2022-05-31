@@ -8,21 +8,16 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode"
+	"syscall/js"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/login"
-	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/useragent"
-	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -61,10 +56,10 @@ var rootCmd = &cobra.Command{
 		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
 
 		// plugins send their own telemetry due to having richer context than the CLI does
-		if !plugins.IsPluginCommand(cmd) {
-			// record command invocation
-			sendCommandInvocationEvent(cmd.Context())
-		}
+		// if !plugins.IsPluginCommand(cmd) {
+		// 	// record command invocation
+		// 	sendCommandInvocationEvent(cmd.Context())
+		// }
 	},
 }
 
@@ -88,6 +83,15 @@ func showSuggestion() {
 		os.Args[1], rootCmd.CommandPath(), suggStr))
 }
 
+func PassInArgs(args []js.Value) {
+	length := len(args)
+	var goargs []string
+	for i := 0; i < length; i++ {
+		goargs = append(goargs, args[i].String())
+	}
+	rootCmd.SetArgs(goargs)
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(ctx context.Context) {
@@ -99,23 +103,23 @@ func Execute(ctx context.Context) {
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
-		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
+		// isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
 
 		switch {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
-		case isLoginRequiredError:
-			// capitalize first letter of error because linter
-			errRunes := []rune(errString)
-			errRunes[0] = unicode.ToUpper(errRunes[0])
+		// case isLoginRequiredError:
+		// 	// capitalize first letter of error because linter
+		// 	errRunes := []rune(errString)
+		// 	errRunes[0] = unicode.ToUpper(errRunes[0])
 
-			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
+		// 	fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
 
-			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config, os.Stdin)
+		// 	err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config, os.Stdin)
 
-			if err != nil {
-				fmt.Println(err)
-			}
+		// 	if err != nil {
+		// 		fmt.Println(err)
+		// 	}
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
@@ -135,7 +139,7 @@ func Execute(ctx context.Context) {
 }
 
 func init() {
-	cobra.OnInitialize(Config.InitConfig)
+	// cobra.OnInitialize(Config.InitConfig)
 
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
@@ -145,23 +149,23 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
-	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
+	// viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
-	rootCmd.AddCommand(newConfigCmd().cmd)
-	rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
+	// rootCmd.AddCommand(newConfigCmd().cmd)
+	// rootCmd.AddCommand(newDaemonCmd(&Config).cmd)
 	rootCmd.AddCommand(newDeleteCmd().reqs.Cmd)
 	rootCmd.AddCommand(newFeedbackdCmd().cmd)
 	rootCmd.AddCommand(newFixturesCmd(&Config).Cmd)
 	rootCmd.AddCommand(newGetCmd().reqs.Cmd)
 	rootCmd.AddCommand(newListenCmd().cmd)
-	rootCmd.AddCommand(newLoginCmd().cmd)
-	rootCmd.AddCommand(newLogoutCmd().cmd)
+	// rootCmd.AddCommand(newLoginCmd().cmd)
+	// rootCmd.AddCommand(newLogoutCmd().cmd)
 	rootCmd.AddCommand(newLogsCmd(&Config).Cmd)
 	rootCmd.AddCommand(newOpenCmd().cmd)
 	rootCmd.AddCommand(newPostCmd().reqs.Cmd)
 	rootCmd.AddCommand(newResourcesCmd().cmd)
-	rootCmd.AddCommand(newSamplesCmd().cmd)
+	// rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
@@ -169,32 +173,34 @@ func init() {
 	rootCmd.AddCommand(newPlaybackCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
-	rootCmd.AddCommand(newPluginCmd().cmd)
+	// rootCmd.AddCommand(newPluginCmd().cmd)
 
 	addAllResourcesCmds(rootCmd)
 
 	err := resource.AddEventsSubCmds(rootCmd, &Config)
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
+		os.Exit(1)
 	}
 
-	err = resource.AddTerminalSubCmds(rootCmd, &Config)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// err = resource.AddTerminalSubCmds(rootCmd, &Config)
+	// if err != nil {
+	// 	// log.Fatal(err)
+	// 	os.Exit(1)
+	// }
 
 	// config is not initialized by cobra at this point, so we need to temporarily initialize it
-	Config.InitConfig()
+	// Config.InitConfig()
 
 	// get a list of installed plugins, validate against the manifest
 	// and finally add each validated plugin as a command
-	nfs := afero.NewOsFs()
-	pluginList := Config.Profile.GetInstalledPlugins()
+	// nfs := afero.NewOsFs()
+	// pluginList := Config.Profile.GetInstalledPlugins()
 
-	for _, p := range pluginList {
-		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
-		if err == nil {
-			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
-		}
-	}
+	// for _, p := range pluginList {
+	// 	plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
+	// 	if err == nil {
+	// 		rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
+	// 	}
+	// }
 }

@@ -1,22 +1,7 @@
 package login
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
-
-	"github.com/briandowns/spinner"
-
-	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/open"
-	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 var openBrowser = open.Browser
@@ -39,6 +24,7 @@ type Links struct {
 7. Move configuration changes to profile package
 */
 
+/*
 // Login function is used to obtain credentials via stripe dashboard.
 func Login(ctx context.Context, baseURL string, config *config.Config, input io.Reader) error {
 	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
@@ -160,3 +146,4 @@ func isSSH() bool {
 
 	return false
 }
+*/

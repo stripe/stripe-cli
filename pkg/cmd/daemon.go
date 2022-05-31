@@ -1,15 +1,6 @@
 package cmd
 
-import (
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-
-	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/rpcservice"
-	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/stripe/stripe-cli/pkg/validators"
-)
-
+/*
 type daemonCmd struct {
 	cmd  *cobra.Command
 	port int
@@ -40,18 +31,19 @@ Currently, stripe daemon only supports a subset of CLI commands. Documentation i
 func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 	telemetryClient := stripe.GetTelemetryClient(cmd.Context())
 	srv := rpcservice.New(&rpcservice.Config{
-		Port:    dc.port,
-		Log:     log.StandardLogger(),
+		Port: dc.port,
+		// Log:     log.StandardLogger(),
 		UserCfg: dc.cfg,
 	}, telemetryClient)
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "cmd.daemonCmd.runDaemonCmd",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "cmd.daemonCmd.runDaemonCmd",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	go srv.Run(ctx)
 
 	<-ctx.Done()
 }
+*/

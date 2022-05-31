@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/url"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -21,7 +19,7 @@ const stripeCLISessionPath = "/v1/stripecli/sessions"
 
 // Config contains the optional configuration parameters of a Client.
 type Config struct {
-	Log *log.Logger
+	// Log *log.Logger
 
 	HTTPClient *http.Client
 
@@ -45,9 +43,9 @@ type DeviceURLMap struct {
 
 // Authorize sends a request to Stripe to initiate a new CLI session.
 func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeature string, filters *string, devURLMap *DeviceURLMap) (*StripeCLISession, error) {
-	c.cfg.Log.WithFields(log.Fields{
-		"prefix": "stripeauth.client.Authorize",
-	}).Debug("Authenticating with Stripe...")
+	// c.cfg.Log.WithFields(log.Fields{
+	// 	"prefix": "stripeauth.client.Authorize",
+	// }).Debug("Authenticating with Stripe...")
 
 	parsedBaseURL, err := url.Parse(c.cfg.APIBaseURL)
 	if err != nil {
@@ -97,16 +95,16 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 		return nil, err
 	}
 
-	c.cfg.Log.WithFields(log.Fields{
-		"prefix":                         "stripeauth.Client.Authorize",
-		"websocket_url":                  session.WebSocketURL,
-		"websocket_id":                   session.WebSocketID,
-		"websocket_authorized_feature":   session.WebSocketAuthorizedFeature,
-		"reconnect_delay":                session.ReconnectDelay,
-		"display_connect_filter_warning": session.DisplayConnectFilterWarning,
-		"default_version":                session.DefaultVersion,
-		"latest_version":                 session.LatestVersion,
-	}).Debug("Got successful response from Stripe")
+	// c.cfg.Log.WithFields(log.Fields{
+	// 	"prefix":                         "stripeauth.Client.Authorize",
+	// 	"websocket_url":                  session.WebSocketURL,
+	// 	"websocket_id":                   session.WebSocketID,
+	// 	"websocket_authorized_feature":   session.WebSocketAuthorizedFeature,
+	// 	"reconnect_delay":                session.ReconnectDelay,
+	// 	"display_connect_filter_warning": session.DisplayConnectFilterWarning,
+	// 	"default_version":                session.DefaultVersion,
+	// 	"latest_version":                 session.LatestVersion,
+	// }).Debug("Got successful response from Stripe")
 
 	return session, nil
 }
@@ -117,9 +115,9 @@ func NewClient(key string, cfg *Config) *Client {
 		cfg = &Config{}
 	}
 
-	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
-	}
+	// if cfg.Log == nil {
+	// 	cfg.Log = &log.Logger{Out: ioutil.Discard}
+	// }
 
 	if cfg.APIBaseURL == "" {
 		cfg.APIBaseURL = stripe.DefaultAPIBaseURL

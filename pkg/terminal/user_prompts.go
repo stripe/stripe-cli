@@ -1,13 +1,6 @@
 package terminal
 
-import (
-	"fmt"
-
-	"github.com/manifoldco/promptui"
-
-	"github.com/stripe/stripe-cli/pkg/ansi"
-)
-
+/*
 // ReaderTypeSelectPrompt prompts the user to choose which type of reader they want to set up
 // currently the only supported choice is the Verifone P400
 func ReaderTypeSelectPrompt(readers []string) (string, error) {
@@ -38,3 +31,4 @@ func selectOptions(template string, label string, options []string) (string, err
 
 	return result, nil
 }
+*/

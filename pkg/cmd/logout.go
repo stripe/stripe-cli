@@ -1,12 +1,6 @@
 package cmd
 
-import (
-	"github.com/spf13/cobra"
-
-	"github.com/stripe/stripe-cli/pkg/logout"
-	"github.com/stripe/stripe-cli/pkg/validators"
-)
-
+/*
 type logoutCmd struct {
 	cmd *cobra.Command
 	all bool
@@ -35,3 +29,4 @@ func (lc *logoutCmd) runLogoutCmd(cmd *cobra.Command, args []string) error {
 
 	return logout.Logout(&Config)
 }
+*/

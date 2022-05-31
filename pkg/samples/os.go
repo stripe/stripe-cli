@@ -1,14 +1,6 @@
 package samples
 
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/spf13/afero"
-)
-
+/*
 // cacheFolder is the local directory where we place local copies of samples
 func (s *Samples) cacheFolder() (string, error) {
 	configPath := s.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
@@ -115,3 +107,4 @@ func folderSearch(folders []string, name string) bool {
 
 	return false
 }
+*/

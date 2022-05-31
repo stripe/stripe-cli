@@ -1,26 +1,6 @@
 package samples
 
-import (
-	"context"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"github.com/joho/godotenv"
-	"github.com/otiai10/copy"
-	"github.com/spf13/afero"
-	"gopkg.in/src-d/go-git.v4"
-
-	log "github.com/sirupsen/logrus"
-
-	"github.com/stripe/stripe-cli/pkg/config"
-	g "github.com/stripe/stripe-cli/pkg/git"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
-	"github.com/stripe/stripe-cli/pkg/stripeauth"
-)
-
+/*
 // SampleConfig contains all the configuration options for a sample
 type SampleConfig struct {
 	Name            string                    `json:"name"`
@@ -375,17 +355,17 @@ func GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error
 	}
 
 	if forceRefresh {
-		err := sample.DeleteCache(sampleName)
-		if err != nil {
-			logger := log.Logger{
-				Out: os.Stdout,
-			}
+		sample.DeleteCache(sampleName)
+		// if err != nil {
+		// 	logger := log.Logger{
+		// 		Out: os.Stdout,
+		// 	}
 
-			logger.WithFields(log.Fields{
-				"prefix": "samples.create.forceRefresh",
-				"error":  err,
-			}).Debug("Could not clear cache")
-		}
+		// 	logger.WithFields(log.Fields{
+		// 		"prefix": "samples.create.forceRefresh",
+		// 		"error":  err,
+		// 	}).Debug("Could not clear cache")
+		// }
 	}
 
 	samplesList, err := sample.getSamples("create")
@@ -405,3 +385,4 @@ To see supported samples, run 'stripe samples list'`, sampleName)
 
 	return &sample.SampleConfig, nil
 }
+*/

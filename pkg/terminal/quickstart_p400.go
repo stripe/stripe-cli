@@ -1,17 +1,6 @@
 package terminal
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"time"
-
-	"github.com/manifoldco/promptui"
-
-	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/terminal/p400"
-)
-
+/*
 // QuickstartP400 runs the quickstart interactive prompt sequence to walk the user through setting up a P400 reader
 func QuickstartP400(ctx context.Context, cfg *config.Config) error {
 	tsCtx := SetTerminalSessionContext(cfg)
@@ -64,7 +53,7 @@ func SetTerminalSessionContext(cfg *config.Config) p400.TerminalSessionContext {
 	if posID == "" {
 		seed := time.Now().UnixNano()
 		posID = p400.GeneratePOSDeviceID(seed)
-		cfg.Profile.WriteConfigField("terminal_pos_device_id", posID)
+		// cfg.Profile.WriteConfigField("terminal_pos_device_id", posID)
 	}
 
 	hostOSVersion := p400.GetOSString()
@@ -90,3 +79,4 @@ func SetTerminalSessionContext(cfg *config.Config) p400.TerminalSessionContext {
 
 	return tsCtx
 }
+*/

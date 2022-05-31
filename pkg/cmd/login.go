@@ -1,15 +1,6 @@
 package cmd
 
-import (
-	"os"
-
-	"github.com/spf13/cobra"
-
-	"github.com/stripe/stripe-cli/pkg/login"
-	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/stripe/stripe-cli/pkg/validators"
-)
-
+/*
 type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
@@ -36,9 +27,10 @@ func newLoginCmd() *loginCmd {
 }
 
 func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
-	if lc.interactive {
-		return login.InteractiveLogin(cmd.Context(), &Config)
-	}
+	// if lc.interactive {
+	// 	return login.InteractiveLogin(cmd.Context(), &Config)
+	// }
 
 	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config, os.Stdin)
 }
+*/

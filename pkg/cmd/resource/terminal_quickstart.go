@@ -1,5 +1,6 @@
 package resource
 
+/*
 import (
 	"fmt"
 
@@ -65,3 +66,4 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 
 	return nil
 }
+*/

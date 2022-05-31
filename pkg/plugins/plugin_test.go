@@ -1,5 +1,6 @@
 package plugins
 
+/*
 import (
 	"context"
 	"fmt"
@@ -119,3 +120,4 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	fileExists, _ = afero.Exists(fs, file)
 	require.True(t, fileExists, "Did not expect the original version of the plugin to be deleted.")
 }
+*/

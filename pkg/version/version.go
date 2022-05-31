@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v28/github"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 )
@@ -45,12 +44,12 @@ func getLatestVersion() string {
 	client := github.NewClient(nil)
 	rep, _, err := client.Repositories.GetLatestRelease(context.Background(), "stripe", "stripe-cli")
 
-	l := log.StandardLogger()
+	// l := log.StandardLogger()
 
 	if err != nil {
 		// We don't want to fail any functionality or display errors for this
 		// so fail silently and output to debug log
-		l.Debug(err)
+		// l.Debug(err)
 		return ""
 	}
 

@@ -1,10 +1,10 @@
 package plugin
 
+/*
 import (
 	"fmt"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -50,9 +50,9 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	version := plugin.LookUpLatestVersion()
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "cmd.upgradeCmd.runUpgradeCmd",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "cmd.upgradeCmd.runUpgradeCmd",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	err = plugin.Install(ctx, uc.cfg, uc.fs, version, stripe.DefaultAPIBaseURL)
@@ -65,3 +65,4 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	return err
 }
+*/

@@ -1,13 +1,6 @@
 package p400
 
-import (
-	"context"
-	"fmt"
-	"os"
-
-	"github.com/stripe/stripe-cli/pkg/ansi"
-)
-
+/*
 // ActivationTypeLabels defines the string values offered as options to the user to prompt them to choose a new or registered reader
 // We use these strings in a few places so defining them here cuts down on brittleness if they change
 var ActivationTypeLabels = []string{
@@ -133,3 +126,4 @@ func RegisterAndActivateReader(ctx context.Context, tsCtx TerminalSessionContext
 
 	return tsCtx, nil
 }
+*/

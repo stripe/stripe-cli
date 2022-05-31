@@ -1,5 +1,6 @@
 package p400
 
+/*
 import (
 	"context"
 	"fmt"
@@ -103,3 +104,4 @@ func SummarizeQuickstartCompletion(tsCtx TerminalSessionContext) error {
 
 	return nil
 }
+*/

@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -99,7 +97,7 @@ type Config struct {
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
 	SkipVerify bool
 	// The logger used to log messages to stdin/err
-	Log *log.Logger
+	// Log *log.Logger
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
 
@@ -158,7 +156,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 			session.WebSocketID,
 			session.WebSocketAuthorizedFeature,
 			&websocket.Config{
-				Log:               p.cfg.Log,
+				// Log:               p.cfg.Log,
 				NoWSS:             p.cfg.NoWSS,
 				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
 				EventHandler:      websocket.EventHandlerFunc(p.processWebhookEvent),
@@ -210,9 +208,9 @@ func (p *Proxy) Run(ctx context.Context) error {
 		p.webSocketClient.Stop()
 	}
 
-	log.WithFields(log.Fields{
-		"prefix": "proxy.Proxy.Run",
-	}).Debug("Bye!")
+	// log.WithFields(log.Fields{
+	// 	"prefix": "proxy.Proxy.Run",
+	// }).Debug("Bye!")
 
 	return nil
 }
@@ -227,17 +225,17 @@ func GetSessionSecret(ctx context.Context, deviceName, key, baseURL string) (str
 		WebSocketFeature: "webhooks",
 	})
 	if err != nil {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.GetSessionSecret",
-		}).Debug(err)
+		// log.WithFields(log.Fields{
+		// 	"prefix": "proxy.Proxy.GetSessionSecret",
+		// }).Debug(err)
 		return "", err
 	}
 
 	session, err := p.createSession(ctx)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.GetSessionSecret",
-		}).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
+		// log.WithFields(log.Fields{
+		// 	"prefix": "proxy.Proxy.GetSessionSecret",
+		// }).Debug(fmt.Sprintf("Error while authenticating with Stripe: %v", err))
 		return "", err
 	}
 
@@ -284,18 +282,18 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 
 func (p *Proxy) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	if msg.Endpoint.APIVersion != nil && !p.cfg.UseLatestAPIVersion {
-		p.cfg.Log.WithFields(log.Fields{
-			"prefix":      "proxy.Proxy.filterWebhookEvent",
-			"api_version": getAPIVersionString(msg.Endpoint.APIVersion),
-		}).Debugf("Received event with non-default API version, ignoring")
+		// p.cfg.Log.WithFields(log.Fields{
+		// 	"prefix":      "proxy.Proxy.filterWebhookEvent",
+		// 	"api_version": getAPIVersionString(msg.Endpoint.APIVersion),
+		// }).Debugf("Received event with non-default API version, ignoring")
 
 		return true
 	}
 
 	if msg.Endpoint.APIVersion == nil && p.cfg.UseLatestAPIVersion {
-		p.cfg.Log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.filterWebhookEvent",
-		}).Debugf("Received event with default API version, ignoring")
+		// p.cfg.Log.WithFields(log.Fields{
+		// 	"prefix": "proxy.Proxy.filterWebhookEvent",
+		// }).Debugf("Received event with default API version, ignoring")
 
 		return true
 	}
@@ -309,7 +307,7 @@ func (p *Proxy) formatOutput(format string, eventPayload string) string {
 	var event map[string]interface{}
 	err := json.Unmarshal([]byte(eventPayload), &event)
 	if err != nil {
-		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		// p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return fmt.Sprint(err)
 	}
 	switch strings.ToUpper(format) {
@@ -324,43 +322,43 @@ func (p *Proxy) formatOutput(format string, eventPayload string) string {
 
 func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 	if msg.WebhookEvent == nil {
-		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
+		// p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
 		return
 	}
 
 	webhookEvent := msg.WebhookEvent
 
-	p.cfg.Log.WithFields(log.Fields{
-		"prefix":                   "proxy.Proxy.processWebhookEvent",
-		"webhook_id":               webhookEvent.WebhookID,
-		"webhook_converesation_id": webhookEvent.WebhookConversationID,
-	}).Debugf("Processing webhook event")
+	// p.cfg.Log.WithFields(log.Fields{
+	// 	"prefix":                   "proxy.Proxy.processWebhookEvent",
+	// 	"webhook_id":               webhookEvent.WebhookID,
+	// 	"webhook_converesation_id": webhookEvent.WebhookConversationID,
+	// }).Debugf("Processing webhook event")
 
 	var evt StripeEvent
 
 	err := json.Unmarshal([]byte(webhookEvent.EventPayload), &evt)
 	if err != nil {
-		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		// p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return
 	}
 
 	req, err := ExtractRequestData(evt.RequestData)
 
 	if err != nil {
-		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		// p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return
 	}
 
 	evt.Request = req
 
-	p.cfg.Log.WithFields(log.Fields{
-		"prefix":                  "proxy.Proxy.processWebhookEvent",
-		"webhook_id":              webhookEvent.WebhookID,
-		"webhook_conversation_id": webhookEvent.WebhookConversationID,
-		"event_id":                evt.ID,
-		"event_type":              evt.Type,
-		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
-	}).Trace("Webhook event trace")
+	// p.cfg.Log.WithFields(log.Fields{
+	// 	"prefix":                  "proxy.Proxy.processWebhookEvent",
+	// 	"webhook_id":              webhookEvent.WebhookID,
+	// 	"webhook_conversation_id": webhookEvent.WebhookConversationID,
+	// 	"event_id":                evt.ID,
+	// 	"event_type":              evt.Type,
+	// 	"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
+	// }).Trace("Webhook event trace")
 
 	// at this point the message is valid so we can acknowledge it
 	ackMessage := websocket.NewEventAck(webhookEvent.WebhookID, webhookEvent.WebhookConversationID)
@@ -444,9 +442,9 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 
 // Init initializes a new Proxy
 func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
-	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
-	}
+	// if cfg.Log == nil {
+	// 	cfg.Log = &log.Logger{Out: ioutil.Discard}
+	// }
 
 	// validate forward-urls args
 	if cfg.UseConfiguredWebhooks && len(cfg.ForwardURL) > 0 {
@@ -463,13 +461,14 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	// if no events are passed, listen for all events
 	if len(cfg.Events) == 0 {
 		cfg.Events = []string{"*"}
-	} else {
-		for _, event := range cfg.Events {
-			if _, found := validEvents[event]; !found {
-				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
-			}
-		}
 	}
+	// } else {
+	// 	for _, event := range cfg.Events {
+	// 		if _, found := validEvents[event]; !found {
+	// 			cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+	// 		}
+	// 	}
+	// }
 
 	// build from --forward-to urls if --forward-connect-to was not provided
 	if len(cfg.ForwardConnectURL) == 0 {
@@ -517,7 +516,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	p := &Proxy{
 		cfg: cfg,
 		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
+			// Log:        cfg.Log,
 			APIBaseURL: cfg.APIBaseURL,
 		}),
 		events: convertToMap(cfg.Events),
@@ -540,7 +539,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
 					},
 				},
-				Log:             p.cfg.Log,
+				// Log:             p.cfg.Log,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
 				OutCh:           p.cfg.OutCh,
 			},

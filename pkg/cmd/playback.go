@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/playback"
@@ -239,13 +238,13 @@ func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "playback.proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "playback.proxy.Run",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	logger := log.StandardLogger()
-	proxyVisitor := createVisitor(logger, "", false)
+	// logger := log.StandardLogger()
+	proxyVisitor := createVisitor("", false)
 	proxyOutCh := make(chan websocket.IElement)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
@@ -261,10 +260,10 @@ func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 		PrintJSON:             false,
 		UseLatestAPIVersion:   false,
 		SkipVerify:            false,
-		Log:                   logger,
-		NoWSS:                 false,
-		Events:                []string{"*"},
-		OutCh:                 proxyOutCh,
+		// Log:                   logger,
+		NoWSS:  false,
+		Events: []string{"*"},
+		OutCh:  proxyOutCh,
 	})
 	if err != nil {
 		return err

@@ -1,15 +1,6 @@
 package samples
 
-import (
-	"errors"
-	"os"
-	"path/filepath"
-	"testing"
-
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-)
-
+/*
 type mockGit struct {
 	fs afero.Fs
 }
@@ -118,3 +109,4 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	err := sample.Initialize(name)
 	assert.Equal(t, errors.New("Sample foo does not exist"), err)
 }
+*/

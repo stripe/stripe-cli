@@ -2,13 +2,10 @@ package proxy
 
 import (
 	"bytes"
-	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -21,7 +18,7 @@ import (
 type EndpointConfig struct {
 	HTTPClient *http.Client
 
-	Log *log.Logger
+	// Log *log.Logger
 
 	ResponseHandler EndpointResponseHandler
 
@@ -86,9 +83,9 @@ func (c *EndpointClient) SupportsEventType(connect bool, eventType string) bool 
 
 // Post sends a message to the local endpoint.
 func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[string]string) error {
-	c.cfg.Log.WithFields(log.Fields{
-		"prefix": "proxy.EndpointClient.Post",
-	}).Debug("Forwarding event to local endpoint")
+	// c.cfg.Log.WithFields(log.Fields{
+	// 	"prefix": "proxy.EndpointClient.Post",
+	// }).Debug("Forwarding event to local endpoint")
 
 	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
 	if err != nil {
@@ -133,9 +130,9 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 		cfg = &EndpointConfig{}
 	}
 
-	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
-	}
+	// if cfg.Log == nil {
+	// 	cfg.Log = &log.Logger{Out: ioutil.Discard}
+	// }
 
 	if cfg.HTTPClient == nil {
 		cfg.HTTPClient = &http.Client{

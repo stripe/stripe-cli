@@ -10,9 +10,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // An Replayer receives incoming requests and returns recorded responses from the provided cassette.
@@ -25,7 +24,7 @@ type Replayer struct {
 	comparator requestComparator
 	serializer serializer
 
-	log *log.Logger
+	// log *log.Logger
 }
 
 func newReplayer(webhookURL string, serializer serializer, comparator requestComparator) Replayer {
@@ -36,7 +35,7 @@ func newReplayer(webhookURL string, serializer serializer, comparator requestCom
 	replayer.comparator = comparator
 	replayer.replayLock = &sync.Mutex{}
 
-	replayer.log = log.New()
+	// replayer.log = log.New()
 
 	return replayer
 }
@@ -118,11 +117,11 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 	replayer.replayLock.Lock()         // wait to make sure no webhooks are in the middle of being fired - still a race between new goroutine and next request
 	defer replayer.replayLock.Unlock() // release the lock when handler func is done
 
-	replayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
+	// replayer.log.Infof("--> %v to %v", r.Method, r.RequestURI)
 
 	wrappedRequest, err := newHTTPRequest(r)
 	if err != nil {
-		writeErrorToHTTPResponse(w, replayer.log, err, 500)
+		// writeErrorToHTTPResponse(w, replayer.log, err, 500)
 		return
 	}
 
@@ -130,11 +129,11 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 	var wrappedResponse *httpResponse
 	wrappedResponse, err = replayer.getNextRecordedCassetteResponse(&wrappedRequest)
 	if err != nil {
-		writeErrorToHTTPResponse(w, replayer.log, err, 500)
+		// writeErrorToHTTPResponse(w, replayer.log, err, 500)
 		return
 	}
 
-	replayer.log.Infof("<-- %v from %v", wrappedResponse.StatusCode, "CASSETTE")
+	// replayer.log.Infof("<-- %v from %v", wrappedResponse.StatusCode, "CASSETTE")
 
 	// --- Write response back to client
 	// The header *must* be written first, since writing the body with implicitly and irreversibly set
@@ -143,17 +142,18 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(wrappedResponse.StatusCode)
 	_, err = io.Copy(w, bytes.NewBuffer(wrappedResponse.Body))
 	if err != nil {
-		replayer.log.Fatal(err)
+		// replayer.log.Fatal(err)
+		os.Exit(1)
 	}
 
 	// --- Handle webhooks
 	// Check the cassette to see if there are pending webhooks we should fire
-	webhookRequests, webhookResponses, err := replayer.readAnyPendingWebhookRecordingsFromCassette()
+	webhookRequests, _, err := replayer.readAnyPendingWebhookRecordingsFromCassette()
 
 	if err != nil {
-		replayer.log.Errorf("Error when checking cassette for webhooks to replay: %v", err)
+		// replayer.log.Errorf("Error when checking cassette for webhooks to replay: %v", err)
 	}
-	replayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
+	// replayer.log.Infof("Replaying %d webhooks", len(webhookRequests))
 
 	// Send the webhooks
 	go func() {
@@ -162,24 +162,24 @@ func (replayer *Replayer) handler(w http.ResponseWriter, r *http.Request) {
 		replayer.replayLock.Lock()         // only send webhooks after the previous request/response is handled
 		defer replayer.replayLock.Unlock() // release lock when done sending webhooks
 
-		for i, webhookReq := range webhookRequests {
+		for _, webhookReq := range webhookRequests {
 			var evt stripeEvent
 			err = json.Unmarshal(webhookReq.Body, &evt)
 			if err != nil {
-				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				// replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 			}
 
 			resp, err := forwardRequest(webhookReq, replayer.webhookURL)
 			if err != nil {
-				replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
+				// replayer.log.Errorf("Error when forwarding webhook request [%v]: %v", evt.Type, err)
 				continue
 			}
 			defer resp.Body.Close()
 
-			expectedResp := webhookResponses[i]
+			// expectedResp := webhookResponses[i]
 
-			replayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
-			replayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
+			// replayer.log.Infof("	> Forwarding webhook [%v].\n", evt.Type)
+			// replayer.log.Infof("	> Received %v from client. Expected %v.\n\n", resp.StatusCode, expectedResp.StatusCode)
 		}
 	}()
 }

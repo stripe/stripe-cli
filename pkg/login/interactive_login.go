@@ -7,45 +7,40 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
-
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // InteractiveLogin lets the user set configuration on the command line
 func InteractiveLogin(ctx context.Context, config *config.Config) error {
-	apiKey, err := getConfigureAPIKey(os.Stdin)
-	if err != nil {
-		return err
-	}
+	// apiKey, err := getConfigureAPIKey(os.Stdin)
+	// if err != nil {
+	// 	return err
+	// }
 
-	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
-	config.Profile.TestModeAPIKey = apiKey
-	displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
+	// config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
+	// config.Profile.TestModeAPIKey = apiKey
+	// displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
 
-	config.Profile.DisplayName = displayName
+	// config.Profile.DisplayName = displayName
 
-	profileErr := config.Profile.CreateProfile()
-	if profileErr != nil {
-		return profileErr
-	}
+	// profileErr := config.Profile.CreateProfile()
+	// if profileErr != nil {
+	// 	return profileErr
+	// }
 
-	// The '>' character is automatically included at the end of client login
-	// due to ansi spinner. Since no spinner is used with interactive login,
-	// we need to include it manually to maintain consistency in outputs.
-	message, err := SuccessMessage(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
-	if err != nil {
-		fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
-	} else {
-		fmt.Printf("> %s\n", message)
-	}
+	// // The '>' character is automatically included at the end of client login
+	// // due to ansi spinner. Since no spinner is used with interactive login,
+	// // we need to include it manually to maintain consistency in outputs.
+	// message, err := SuccessMessage(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
+	// if err != nil {
+	// 	fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
+	// } else {
+	// 	fmt.Printf("> %s\n", message)
+	// }
 
 	return nil
 }
@@ -119,46 +114,46 @@ func redactAPIKey(apiKey string) string {
 }
 
 func securePrompt(input io.Reader) (string, error) {
-	if input == os.Stdin {
-		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
-		// this results in the terminal input staying hidden after program exit.
-		// We need to manually catch the interrupt and restore terminal state before exiting.
-		signalChan, err := protectTerminalState()
-		if err != nil {
-			return "", err
-		}
+	// if input == os.Stdin {
+	// 	// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
+	// 	// this results in the terminal input staying hidden after program exit.
+	// 	// We need to manually catch the interrupt and restore terminal state before exiting.
+	// 	signalChan, err := protectTerminalState()
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
 
-		buf, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
-		if err != nil {
-			return "", err
-		}
+	// 	buf, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
 
-		signal.Stop(signalChan)
+	// 	signal.Stop(signalChan)
 
-		fmt.Print("\n")
+	// 	fmt.Print("\n")
 
-		return string(buf), nil
-	}
+	// 	return string(buf), nil
+	// }
 
 	reader := bufio.NewReader(input)
 
 	return reader.ReadString('\n')
 }
 
-func protectTerminalState() (chan os.Signal, error) {
-	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
-	if err != nil {
-		return nil, err
-	}
+// func protectTerminalState() (chan os.Signal, error) {
+// 	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
+// 	signalChan := make(chan os.Signal, 1)
+// 	signal.Notify(signalChan, os.Interrupt)
 
-	go func() {
-		<-signalChan
-		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
-		os.Exit(1)
-	}()
+// 	go func() {
+// 		<-signalChan
+// 		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
+// 		os.Exit(1)
+// 	}()
 
-	return signalChan, nil
-}
+// 	return signalChan, nil
+// }

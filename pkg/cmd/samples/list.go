@@ -1,5 +1,6 @@
 package samples
 
+/*
 import (
 	"fmt"
 	"os"
@@ -58,3 +59,4 @@ func (lc *ListCmd) runListCmd(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
+*/

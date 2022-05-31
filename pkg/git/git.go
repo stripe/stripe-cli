@@ -1,5 +1,6 @@
 package git
 
+/*
 import (
 	"gopkg.in/src-d/go-git.v4"
 )
@@ -66,3 +67,4 @@ func (g Operations) Pull(appCachePath string) error {
 
 	return nil
 }
+*/

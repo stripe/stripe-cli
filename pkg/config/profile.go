@@ -3,10 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -27,10 +23,10 @@ type Profile struct {
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	writeErr := p.writeProfile(viper.GetViper())
-	if writeErr != nil {
-		return writeErr
-	}
+	// writeErr := p.writeProfile(viper.GetViper())
+	// if writeErr != nil {
+	// 	return writeErr
+	// }
 
 	return nil
 }
@@ -38,22 +34,24 @@ func (p *Profile) CreateProfile() error {
 // GetColor gets the color setting for the user based on the flag or the
 // persisted color stored in the config file
 func (p *Profile) GetColor() (string, error) {
-	color := viper.GetString("color")
-	if color != "" {
-		return color, nil
-	}
+	// color := viper.GetString("color")
+	// if color != "" {
+	// 	return color, nil
+	// }
 
-	color = viper.GetString(p.GetConfigField("color"))
-	switch color {
-	case "", ColorAuto:
-		return ColorAuto, nil
-	case ColorOn:
-		return ColorOn, nil
-	case ColorOff:
-		return ColorOff, nil
-	default:
-		return "", fmt.Errorf("color value not supported: %s", color)
-	}
+	// color = viper.GetString(p.GetConfigField("color"))
+	// switch color {
+	// case "", ColorAuto:
+	// 	return ColorAuto, nil
+	// case ColorOn:
+	// 	return ColorOn, nil
+	// case ColorOff:
+	// 	return ColorOff, nil
+	// default:
+	// 	return "", fmt.Errorf("color value not supported: %s", color)
+	// }
+
+	return "", fmt.Errorf("color value not supported: %s", "")
 }
 
 // GetDeviceName returns the configured device name
@@ -66,9 +64,9 @@ func (p *Profile) GetDeviceName() (string, error) {
 		return p.DeviceName, nil
 	}
 
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("device_name")), nil
-	}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	return viper.GetString(p.GetConfigField("device_name")), nil
+	// }
 
 	return "", validators.ErrDeviceNameNotConfigured
 }
@@ -79,9 +77,9 @@ func (p *Profile) GetAccountID() (string, error) {
 		return p.AccountID, nil
 	}
 
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("account_id")), nil
-	}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	return viper.GetString(p.GetConfigField("account_id")), nil
+	// }
 
 	return "", validators.ErrAccountIDNotConfigured
 }
@@ -109,56 +107,56 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 
 	// If the user doesn't have an api_key field set, they might be using an
 	// old configuration so try to read from secret_key
-	if !livemode {
-		if !viper.IsSet(p.GetConfigField("api_key")) {
-			p.RegisterAlias("api_key", "secret_key")
-		} else {
-			p.RegisterAlias("test_mode_api_key", "api_key")
-		}
-	}
+	// if !livemode {
+	// 	if !viper.IsSet(p.GetConfigField("api_key")) {
+	// 		p.RegisterAlias("api_key", "secret_key")
+	// 	} else {
+	// 		p.RegisterAlias("test_mode_api_key", "api_key")
+	// 	}
+	// }
 
 	// Try to fetch the API key from the configuration file
-	if err := viper.ReadInConfig(); err == nil {
-		key := viper.GetString(p.GetConfigField(livemodeKeyField(livemode)))
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	key := viper.GetString(p.GetConfigField(livemodeKeyField(livemode)))
 
-		err := validators.APIKey(key)
-		if err != nil {
-			return "", err
-		}
+	// 	err := validators.APIKey(key)
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
 
-		return key, nil
-	}
+	// 	return key, nil
+	// }
 
 	return "", validators.ErrAPIKeyNotConfigured
 }
 
 // GetPublishableKey returns the publishable key for the user
 func (p *Profile) GetPublishableKey() string {
-	if err := viper.ReadInConfig(); err == nil {
-		if viper.IsSet(p.GetConfigField("publishable_key")) {
-			p.RegisterAlias("test_mode_publishable_key", "publishable_key")
-		}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	if viper.IsSet(p.GetConfigField("publishable_key")) {
+	// 		p.RegisterAlias("test_mode_publishable_key", "publishable_key")
+	// 	}
 
-		return viper.GetString(p.GetConfigField("test_mode_publishable_key"))
-	}
+	// 	return viper.GetString(p.GetConfigField("test_mode_publishable_key"))
+	// }
 
 	return ""
 }
 
 // GetDisplayName returns the account display name of the user
 func (p *Profile) GetDisplayName() string {
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("display_name"))
-	}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	return viper.GetString(p.GetConfigField("display_name"))
+	// }
 
 	return ""
 }
 
 // GetTerminalPOSDeviceID returns the device id from the config for Terminal quickstart to use
 func (p *Profile) GetTerminalPOSDeviceID() string {
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("terminal_pos_device_id"))
-	}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	return viper.GetString(p.GetConfigField("terminal_pos_device_id"))
+	// }
 
 	return ""
 }
@@ -166,9 +164,9 @@ func (p *Profile) GetTerminalPOSDeviceID() string {
 // GetInstalledPlugins returns a list of locally installed plugins.
 // This does not vary by profile
 func (p *Profile) GetInstalledPlugins() []string {
-	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetStringSlice("installed_plugins")
-	}
+	// if err := viper.ReadInConfig(); err == nil {
+	// 	return viper.GetStringSlice("installed_plugins")
+	// }
 
 	return []string{}
 }
@@ -180,14 +178,15 @@ func (p *Profile) GetConfigField(field string) string {
 
 // RegisterAlias registers an alias for a given key.
 func (p *Profile) RegisterAlias(alias, key string) {
-	viper.RegisterAlias(p.GetConfigField(alias), p.GetConfigField(key))
+	// viper.RegisterAlias(p.GetConfigField(alias), p.GetConfigField(key))
 }
 
+/*
 // WriteConfigField updates a configuration field and writes the updated
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
-	viper.Set(p.GetConfigField(field), value)
-	return viper.WriteConfig()
+	// viper.Set(p.GetConfigField(field), value)
+	// return viper.WriteConfig()
 }
 
 // DeleteConfigField deletes a configuration field.
@@ -281,3 +280,4 @@ func livemodeKeyField(livemode bool) string {
 
 	return "test_mode_api_key"
 }
+*/

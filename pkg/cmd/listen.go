@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -115,9 +114,9 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
-		log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.Run",
-		}).Debug("Ctrl+C received, cleaning up...")
+		// log.WithFields(log.Fields{
+		// 	"prefix": "proxy.Proxy.Run",
+		// }).Debug("Ctrl+C received, cleaning up...")
 	})
 
 	// --print-secret option
@@ -130,8 +129,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	logger := log.StandardLogger()
-	proxyVisitor := createVisitor(logger, lc.format, lc.printJSON)
+	// logger := log.StandardLogger()
+	proxyVisitor := createVisitor(lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
@@ -147,10 +146,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		PrintJSON:             lc.printJSON,
 		UseLatestAPIVersion:   lc.latestAPIVersion,
 		SkipVerify:            lc.skipVerify,
-		Log:                   logger,
-		NoWSS:                 lc.noWSS,
-		Events:                lc.events,
-		OutCh:                 proxyOutCh,
+		// Log:                   logger,
+		NoWSS:  lc.noWSS,
+		Events: lc.events,
+		OutCh:  proxyOutCh,
 	})
 	if err != nil {
 		return err
@@ -183,12 +182,12 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
-func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket.Visitor {
+func createVisitor(format string, printJSON bool) *websocket.Visitor {
 	var s *spinner.Spinner
 
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
-			ansi.StopSpinner(s, "", logger.Out)
+			// ansi.StopSpinner(s, "", logger.Out)
 			switch ee.Error.(type) {
 			case proxy.FailedToPostError:
 				color := ansi.Color(os.Stdout)
@@ -204,33 +203,33 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 				// Don't exit program
 				return nil
 			case proxy.FailedToReadResponseError:
-				color := ansi.Color(os.Stdout)
-				localTime := time.Now().Format(timeLayout)
+				// color := ansi.Color(os.Stdout)
+				// localTime := time.Now().Format(timeLayout)
 
-				errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
-					color.Faint(localTime),
-					color.Red("ERROR"),
-					ee.Error,
-				)
-				log.Errorf(errStr)
+				// errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
+				// 	color.Faint(localTime),
+				// 	color.Red("ERROR"),
+				// 	ee.Error,
+				// )
+				// log.Errorf(errStr)
 
 				// Don't exit program
 				return nil
 			default:
-				logger.Fatal(ee.Error)
+				// logger.Fatal(ee.Error)
 				return ee.Error
 			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
 			switch se.State {
 			case websocket.Loading:
-				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
+				s = ansi.StartNewSpinner("Getting ready...", os.Stdout)
 			case websocket.Reconnecting:
-				ansi.StartSpinner(s, "Session expired, reconnecting...", logger.Out)
+				ansi.StartSpinner(s, "Session expired, reconnecting...", os.Stdout)
 			case websocket.Ready:
-				ansi.StopSpinner(s, fmt.Sprintf("Ready! %sYour webhook signing secret is %s (^C to quit)", se.Data[0], ansi.Bold(se.Data[1])), logger.Out)
+				ansi.StopSpinner(s, fmt.Sprintf("Ready! %sYour webhook signing secret is %s (^C to quit)", se.Data[0], ansi.Bold(se.Data[1])), os.Stdout)
 			case websocket.Done:
-				ansi.StopSpinner(s, "", logger.Out)
+				ansi.StopSpinner(s, "", os.Stdout)
 			}
 			return nil
 		},
@@ -251,8 +250,8 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 						color.Faint(localTime),
 						maybeConnect,
-						ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
-						ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
+						ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), os.Stdout),
+						ansi.Linkify(data.ID, data.URLForEventID(), os.Stdout),
 					)
 					fmt.Println(outputStr)
 				}
@@ -268,7 +267,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					ansi.ColorizeStatus(resp.StatusCode),
 					resp.Request.Method,
 					resp.Request.URL,
-					ansi.Linkify(event.ID, event.URLForEventID(), logger.Out),
+					ansi.Linkify(event.ID, event.URLForEventID(), os.Stdout),
 				)
 				fmt.Println(outputStr)
 				return nil

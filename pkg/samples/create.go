@@ -1,20 +1,6 @@
 package samples
 
-import (
-	"context"
-	"fmt"
-	"os"
-	"os/signal"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
-
-	"github.com/stripe/stripe-cli/pkg/config"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
-
-	"gopkg.in/src-d/go-git.v4"
-)
-
+/*
 // CreationStatus is the current step in the sample creation routine
 type CreationStatus int
 
@@ -74,17 +60,17 @@ func Create(
 	}
 
 	if forceRefresh {
-		err := sample.DeleteCache(sampleName)
-		if err != nil {
-			logger := log.Logger{
-				Out: os.Stdout,
-			}
+		sample.DeleteCache(sampleName)
+		// 	if err != nil {
+		// 		logger := log.Logger{
+		// 			Out: os.Stdout,
+		// 		}
 
-			logger.WithFields(log.Fields{
-				"prefix": "samples.create.forceRefresh",
-				"error":  err,
-			}).Debug("Could not clear cache")
-		}
+		// 		logger.WithFields(log.Fields{
+		// 			"prefix": "samples.create.forceRefresh",
+		// 			"error":  err,
+		// 		}).Debug("Could not clear cache")
+		// 	}
 	}
 
 	resultChan <- CreationResult{State: WillInitialize}
@@ -159,3 +145,4 @@ func Create(
 
 	resultChan <- CreationResult{State: Done, Path: targetPath, PostInstall: sample.PostInstall()}
 }
+*/

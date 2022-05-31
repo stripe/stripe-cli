@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/go-querystring/query"
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
 
@@ -168,11 +167,11 @@ func (a *AnalyticsTelemetryClient) SendEvent(ctx context.Context, eventName stri
 		data.Set("event_value", eventValue)
 		data.Set("created", fmt.Sprint((time.Now().Unix())))
 
-		resp, err := a.sendData(ctx, data)
+		resp, _ := a.sendData(ctx, data)
 		// Don't throw exception if we fail to send the event
-		if err != nil {
-			log.Debugf("Error while sending telemetry data: %v\n", err)
-		}
+		// if err != nil {
+		// 	log.Debugf("Error while sending telemetry data: %v\n", err)
+		// }
 		if resp != nil {
 			resp.Body.Close()
 		}

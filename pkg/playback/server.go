@@ -4,16 +4,12 @@ package playback
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // These constants define the different playback modes
@@ -33,7 +29,7 @@ type Server struct {
 	remoteURL         string
 	cassetteDirectory string // absolute path to the root directory for all cassette filepaths
 
-	log *log.Logger
+	// log *log.Logger
 
 	switchModeChan chan string
 
@@ -93,7 +89,7 @@ func NewServer(remoteURL string, webhookURL string, absCassetteDirectory string,
 		return server, err
 	}
 
-	server.log = log.New()
+	// server.log = log.New()
 
 	return server, nil
 }
@@ -111,14 +107,14 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		// get mode
 		modeString := strings.TrimPrefix(r.URL.Path, "/playback/mode/")
 
-		wasCassetteLoaded := rr.cassetteLoaded
+		// wasCassetteLoaded := rr.cassetteLoaded
 		err := rr.switchMode(modeString)
-		if wasCassetteLoaded {
-			rr.log.Info("/playback/mode: unloaded the cassette. Please load a new cassette before recording/replaying any new interactions.")
-		}
+		// if wasCassetteLoaded {
+		// 	rr.log.Info("/playback/mode: unloaded the cassette. Please load a new cassette before recording/replaying any new interactions.")
+		// }
 		if err != nil {
-			rr.log.Error("Error in /playback/mode handler: ", err)
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// rr.log.Error("Error in /playback/mode handler: ", err)
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
 
@@ -128,7 +124,7 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		case rr.switchModeChan <- strings.ToLower(modeString):
 		default:
 		}
-		rr.log.Info("/playback/mode: Set mode to ", strings.ToUpper(modeString))
+		// rr.log.Info("/playback/mode: Set mode to ", strings.ToUpper(modeString))
 	})
 
 	customMux.HandleFunc("/playback/cassette/setroot", func(w http.ResponseWriter, r *http.Request) {
@@ -136,31 +132,31 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		directoryVals, ok := r.URL.Query()[queryKey]
 
 		if !ok {
-			writeErrorToHTTPResponse(w, rr.log, fmt.Errorf("\"%v\" query param must be present", queryKey), 400)
+			// writeErrorToHTTPResponse(w, rr.log, fmt.Errorf("\"%v\" query param must be present", queryKey), 400)
 			return
 		}
 
-		if len(directoryVals) > 1 {
-			rr.log.Warnf("Multiple \"value\" query param values provided, ignoring all except first: %v\n", directoryVals[0])
-		}
+		// if len(directoryVals) > 1 {
+		// 	rr.log.Warnf("Multiple \"value\" query param values provided, ignoring all except first: %v\n", directoryVals[0])
+		// }
 
 		// directoryVal can be either a relative or absolute path - filepath.Abs() no-ops if the given path is already absolute, and converts to absolute (assuming CWD) if relative
 		absoluteCassetteDir, err := filepath.Abs(directoryVals[0])
 
 		if err != nil {
-			rr.log.Error("Error with given directory in /playback/cassette/setroot handler: ", err)
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// rr.log.Error("Error with given directory in /playback/cassette/setroot handler: ", err)
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
 
 		err = rr.setCassetteDir(absoluteCassetteDir)
 
 		if err != nil {
-			rr.log.Error("Error in /playback/cassette/setroot handler: ", err)
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// rr.log.Error("Error in /playback/cassette/setroot handler: ", err)
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
-		rr.log.Infof("Cassette directory set to \"%v\"", rr.cassetteDirectory)
+		// rr.log.Infof("Cassette directory set to \"%v\"", rr.cassetteDirectory)
 		w.WriteHeader(200)
 	})
 
@@ -168,44 +164,44 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		filepathVals, ok := r.URL.Query()["filepath"]
 
 		if !ok {
-			err := fmt.Errorf("\"filepath\" query param must be present")
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// err := fmt.Errorf("\"filepath\" query param must be present")
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
 
 		if len(filepathVals) > 1 {
-			rr.log.Warnf("Multiple \"filepath\" param values given, ignoring all except first: %v", filepathVals[0])
+			// rr.log.Warnf("Multiple \"filepath\" param values given, ignoring all except first: %v", filepathVals[0])
 		}
 
 		relativeFilepath := filepathVals[0]
 
 		if !strings.HasSuffix(strings.ToLower(relativeFilepath), ".yaml") {
-			err := fmt.Errorf("%v is not a .yaml file", relativeFilepath)
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// err := fmt.Errorf("%v is not a .yaml file", relativeFilepath)
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
 
 		if filepath.IsAbs(relativeFilepath) {
-			err := fmt.Errorf("%v must be a relative filepath. a absolute filepath was provided", relativeFilepath)
-			writeErrorToHTTPResponse(w, rr.log, err, 400)
+			// err := fmt.Errorf("%v must be a relative filepath. a absolute filepath was provided", relativeFilepath)
+			// writeErrorToHTTPResponse(w, rr.log, err, 400)
 			return
 		}
 
 		err := rr.loadCassette(relativeFilepath)
 
 		if err != nil {
-			writeErrorToHTTPResponse(w, rr.log, err, 500)
+			// writeErrorToHTTPResponse(w, rr.log, err, 500)
 			return
 		}
 
-		var statusMsg string
-		isRecording := rr.isRecording()
-		if isRecording {
-			statusMsg = fmt.Sprintf("Recording to %v", relativeFilepath)
-		} else {
-			statusMsg = fmt.Sprintf("Replaying from %v", relativeFilepath)
-		}
-		rr.log.Info(statusMsg)
+		// var statusMsg string
+		// isRecording := rr.isRecording()
+		// if isRecording {
+		// 	statusMsg = fmt.Sprintf("Recording to %v", relativeFilepath)
+		// } else {
+		// 	statusMsg = fmt.Sprintf("Replaying from %v", relativeFilepath)
+		// }
+		// rr.log.Info(statusMsg)
 		w.WriteHeader(200)
 	})
 
@@ -213,10 +209,10 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 		err := rr.ejectCassette()
 
 		if err != nil {
-			writeErrorToHTTPResponse(w, rr.log, err, 500)
+			// writeErrorToHTTPResponse(w, rr.log, err, 500)
 		} else {
 			w.WriteHeader(200)
-			rr.log.Info("/playback/cassette/eject: Ejected cassette")
+			// rr.log.Info("/playback/cassette/eject: Ejected cassette")
 		}
 	})
 
@@ -237,8 +233,8 @@ func (rr *Server) InitializeServer(address string) *http.Server {
 func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 	// TODO: Should we be automatically loading a cassette when none is loaded?
 	if !rr.cassetteLoaded {
-		err := errors.New("no cassette is loaded")
-		writeErrorToHTTPResponse(w, rr.log, err, 400)
+		// err := errors.New("no cassette is loaded")
+		// writeErrorToHTTPResponse(w, rr.log, err, 400)
 		return
 	}
 
@@ -254,16 +250,14 @@ func (rr *Server) handler(w http.ResponseWriter, r *http.Request) {
 // Webhook requests are forwarded to the local application and recorded.
 func (rr *Server) webhookHandler(w http.ResponseWriter, r *http.Request) {
 	if !rr.cassetteLoaded {
-		err := errors.New("no cassette is loaded")
-		writeErrorToHTTPResponse(w, rr.log, err, 400)
+		// err := errors.New("no cassette is loaded")
+		// writeErrorToHTTPResponse(w, rr.log, err, 400)
 		return
 	}
 
 	isRecording := rr.isRecording()
 	if isRecording {
 		rr.recorder.webhookHandler(w, r)
-	} else {
-		rr.log.Error("Error: webhook endpoint should never be called in replay mode")
 	}
 }
 
@@ -292,25 +286,25 @@ func forwardRequest(wrappedRequest *httpRequest, destinationURL string) (resp *h
 
 // Writes to the HTTP response using the given HTTP status code and error in the response body. Simultaneously, prints logs error text.
 // Note: since http.ResponseWriter streams the response, you will not be able to change the HTTP status code after calling this function.
-func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
-	errorJSON := errorJSONOuter{}
-	errorJSON.Error.Message = errParam.Error()
-	errorJSON.Error.Type = "stripe_playback_error"
-	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
+// func writeErrorToHTTPResponse(w http.ResponseWriter, log *log.Logger, errParam error, statusCode int) { // nolint:interfacer
+// 	errorJSON := errorJSONOuter{}
+// 	errorJSON.Error.Message = errParam.Error()
+// 	errorJSON.Error.Type = "stripe_playback_error"
+// 	jsonBytes, err := json.MarshalIndent(errorJSON, "", "    ")
 
-	// Write error as json, falling back to plain text if it fails
-	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		w.WriteHeader(statusCode)
-		fmt.Fprintf(w, "%v\n", errParam)
-	} else {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		w.Write(jsonBytes)
-	}
+// 	// Write error as json, falling back to plain text if it fails
+// 	if err != nil {
+// 		w.Header().Set("Content-Type", "text/plain")
+// 		w.WriteHeader(statusCode)
+// 		fmt.Fprintf(w, "%v\n", errParam)
+// 	} else {
+// 		w.Header().Set("Content-Type", "application/json")
+// 		w.WriteHeader(statusCode)
+// 		w.Write(jsonBytes)
+// 	}
 
-	log.Errorf("<-- %d: %v", statusCode, errParam)
-}
+// 	log.Errorf("<-- %d: %v", statusCode, errParam)
+// }
 
 func copyHTTPHeader(dest, src http.Header) {
 	for k, v := range src {
@@ -455,7 +449,7 @@ func (rr *Server) isRecording() bool {
 		return rr.isRecordingInAutoMode
 	default:
 		// We should never get here, since all mutations of rr.mode should have already validated the mode value.
-		rr.log.Fatalf("Unexpected mode \"%v\" in playback server - this likely indicates a bug in the implementation. Please try restarting the server.", rr.mode)
+		// rr.log.Fatalf("Unexpected mode \"%v\" in playback server - this likely indicates a bug in the implementation. Please try restarting the server.", rr.mode)
 		return false
 	}
 }
