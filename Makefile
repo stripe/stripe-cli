@@ -40,7 +40,7 @@ lint: bin/golangci-lint
 .PHONY: lint
 
 bin/golangci-lint:
-	curl -fsSL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s $(GOLANGCI_LINT_VERSION)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $(GOLANGCI_LINT_VERSION)
 
 # Clean go.mod
 go-mod-tidy:
