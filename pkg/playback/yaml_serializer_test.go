@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func request() httpRequest {
@@ -33,16 +33,16 @@ func TestSerializeReq(t *testing.T) {
 body: hello world
 headers: {}
 url:
-  scheme: ""
-  opaque: ""
-  user: null
-  host: ""
-  path: ""
-  rawpath: ""
-  forcequery: false
-  rawquery: ""
-  fragment: ""
-  rawfragment: ""
+    scheme: ""
+    opaque: ""
+    user: null
+    host: ""
+    path: ""
+    rawpath: ""
+    forcequery: false
+    rawquery: ""
+    fragment: ""
+    rawfragment: ""
 `
 
 	req := request()
@@ -125,7 +125,48 @@ func TestEncodeCassette(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := "- type: 1\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n- type: 0\n  request:\n    method: POST\n    body: hello world\n    headers: {}\n    url:\n      scheme: \"\"\n      opaque: \"\"\n      user: null\n      host: \"\"\n      path: \"\"\n      rawpath: \"\"\n      forcequery: false\n      rawquery: \"\"\n      fragment: \"\"\n      rawfragment: \"\"\n  response:\n    headers: {}\n    body: response body\n    status_code: 200\n"
+	expected :=
+		`- type: 1
+  request:
+    method: POST
+    body: hello world
+    headers: {}
+    url:
+        scheme: ""
+        opaque: ""
+        user: null
+        host: ""
+        path: ""
+        rawpath: ""
+        forcequery: false
+        rawquery: ""
+        fragment: ""
+        rawfragment: ""
+  response:
+    headers: {}
+    body: response body
+    status_code: 200
+- type: 0
+  request:
+    method: POST
+    body: hello world
+    headers: {}
+    url:
+        scheme: ""
+        opaque: ""
+        user: null
+        host: ""
+        path: ""
+        rawpath: ""
+        forcequery: false
+        rawquery: ""
+        fragment: ""
+        rawfragment: ""
+  response:
+    headers: {}
+    body: response body
+    status_code: 200
+`
 
 	assert.Equal(t, expected, string(encoded))
 }
