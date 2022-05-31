@@ -23,7 +23,7 @@ jobs:
           version: v0.184.0
           args: release -f .goreleaser/mac.yml --rm-dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-linux:
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
           version: v0.184.0
           args: release -f .goreleaser/linux.yml --rm-dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
@@ -69,7 +69,7 @@ jobs:
           version: v0.184.0
           args: release -f .goreleaser/windows.yml --rm-dist
         env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   upload-to-virustotal:
     needs: [build-windows]
@@ -81,5 +81,5 @@ jobs:
         run: scripts/upload-zip-to-virustotal.sh
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
