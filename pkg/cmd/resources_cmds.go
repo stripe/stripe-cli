@@ -13,6 +13,7 @@ import (
 func addAllResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, "")
+	nsAppsCmd := resource.NewNamespaceCmd(rootCmd, "apps")
 	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
 	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
 	nsFinancialConnectionsCmd := resource.NewNamespaceCmd(rootCmd, "financial_connections")
@@ -22,6 +23,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
 	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
 	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
+	nsTreasuryCmd := resource.NewNamespaceCmd(rootCmd, "treasury")
 
 	// Resource commands
 	r3DSecureCmd := resource.NewResourceCmd(rootCmd, "3d_secure")
@@ -90,6 +92,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rUsageRecordsCmd := resource.NewResourceCmd(rootCmd, "usage_records")
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
 
+	rAppsSecretsCmd := resource.NewResourceCmd(nsAppsCmd.Cmd, "secrets")
+
 	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
 	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
 
@@ -121,6 +125,17 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 
 	rTestHelpersTestClocksCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "test_clocks")
 
+	rTreasuryCreditReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "credit_reversals")
+	rTreasuryDebitReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "debit_reversals")
+	rTreasuryFinancialAccountsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "financial_accounts")
+	rTreasuryInboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "inbound_transfers")
+	rTreasuryOutboundPaymentsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_payments")
+	rTreasuryOutboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_transfers")
+	rTreasuryReceivedCreditsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_credits")
+	rTreasuryReceivedDebitsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_debits")
+	rTreasuryTransactionEntrysCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transaction_entrys")
+	rTreasuryTransactionsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transactions")
+
 	// Operation commands
 	resource.NewOperationCmd(r3DSecureCmd.Cmd, "create", "/v1/3d_secure", http.MethodPost, map[string]string{
 		"amount":     "integer",
@@ -150,6 +165,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "delete", "/v1/accounts/{account}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "list", "/v1/accounts", http.MethodGet, map[string]string{
 		"created":        "integer",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rAccountsCmd.Cmd, "persons", "/v1/accounts/{account}/persons", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
@@ -370,6 +390,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "update", "/v1/customers/{customer}/balance_transactions/{transaction}", http.MethodPost, map[string]string{
 		"description": "string",
 	}, &Config)
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "balance_transactions", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create", "/v1/customers", http.MethodPost, map[string]string{
 		"balance":               "integer",
 		"coupon":                "string",
@@ -406,6 +431,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"type":           "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve_payment_method", "/v1/customers/{customer}/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "search", "/v1/customers/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
@@ -848,21 +874,22 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rPayoutsCmd.Cmd, "reverse", "/v1/payouts/{payout}/reverse", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPayoutsCmd.Cmd, "update", "/v1/payouts/{payout}", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "create", "/v1/accounts/{account}/persons", http.MethodPost, map[string]string{
-		"email":              "string",
-		"first_name":         "string",
-		"first_name_kana":    "string",
-		"first_name_kanji":   "string",
-		"gender":             "string",
-		"id_number":          "string",
-		"last_name":          "string",
-		"last_name_kana":     "string",
-		"last_name_kanji":    "string",
-		"maiden_name":        "string",
-		"nationality":        "string",
-		"person_token":       "string",
-		"phone":              "string",
-		"political_exposure": "string",
-		"ssn_last_4":         "string",
+		"email":               "string",
+		"first_name":          "string",
+		"first_name_kana":     "string",
+		"first_name_kanji":    "string",
+		"gender":              "string",
+		"id_number":           "string",
+		"id_number_secondary": "string",
+		"last_name":           "string",
+		"last_name_kana":      "string",
+		"last_name_kanji":     "string",
+		"maiden_name":         "string",
+		"nationality":         "string",
+		"person_token":        "string",
+		"phone":               "string",
+		"political_exposure":  "string",
+		"ssn_last_4":          "string",
 	}, &Config)
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "delete", "/v1/accounts/{account}/persons/{person}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "list", "/v1/accounts/{account}/persons", http.MethodGet, map[string]string{
@@ -872,21 +899,22 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "retrieve", "/v1/accounts/{account}/persons/{person}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "update", "/v1/accounts/{account}/persons/{person}", http.MethodPost, map[string]string{
-		"email":              "string",
-		"first_name":         "string",
-		"first_name_kana":    "string",
-		"first_name_kanji":   "string",
-		"gender":             "string",
-		"id_number":          "string",
-		"last_name":          "string",
-		"last_name_kana":     "string",
-		"last_name_kanji":    "string",
-		"maiden_name":        "string",
-		"nationality":        "string",
-		"person_token":       "string",
-		"phone":              "string",
-		"political_exposure": "string",
-		"ssn_last_4":         "string",
+		"email":               "string",
+		"first_name":          "string",
+		"first_name_kana":     "string",
+		"first_name_kanji":    "string",
+		"gender":              "string",
+		"id_number":           "string",
+		"id_number_secondary": "string",
+		"last_name":           "string",
+		"last_name_kana":      "string",
+		"last_name_kanji":     "string",
+		"maiden_name":         "string",
+		"nationality":         "string",
+		"person_token":        "string",
+		"phone":               "string",
+		"political_exposure":  "string",
+		"ssn_last_4":          "string",
 	}, &Config)
 	resource.NewOperationCmd(rPlansCmd.Cmd, "create", "/v1/plans", http.MethodPost, map[string]string{
 		"active":            "boolean",
@@ -1467,6 +1495,21 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"disabled":    "boolean",
 		"url":         "string",
 	}, &Config)
+	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "create", "/v1/apps/secrets", http.MethodPost, map[string]string{
+		"name":    "string",
+		"payload": "string",
+	}, &Config)
+	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "delete_where", "/v1/apps/secrets/delete", http.MethodPost, map[string]string{
+		"name": "string",
+	}, &Config)
+	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "find", "/v1/apps/secrets/find", http.MethodGet, map[string]string{
+		"name": "string",
+	}, &Config)
+	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "list", "/v1/apps/secrets", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
 		"default_return_url": "string",
 	}, &Config)
@@ -1513,6 +1556,18 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list", "/v1/financial_connections/accounts", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"session":        "string",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list_owners", "/v1/financial_connections/accounts/{account}/owners", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"ownership":      "string",
+		"starting_after": "string",
+	}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "refresh", "/v1/financial_connections/accounts/{account}/refresh", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "retrieve", "/v1/financial_connections/accounts/{account}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsSessionsCmd.Cmd, "create", "/v1/financial_connections/sessions", http.MethodPost, map[string]string{
@@ -1586,6 +1641,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "create", "/v1/issuing/cards", http.MethodPost, map[string]string{
 		"cardholder":         "string",
 		"currency":           "string",
+		"financial_account":  "string",
 		"replacement_for":    "string",
 		"replacement_reason": "string",
 		"status":             "string",
@@ -1760,4 +1816,153 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "retrieve", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "create", "/v1/treasury/credit_reversals", http.MethodPost, map[string]string{
+		"received_credit": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "list", "/v1/treasury/credit_reversals", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"received_credit":   "string",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "retrieve", "/v1/treasury/credit_reversals/{credit_reversal}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "create", "/v1/treasury/debit_reversals", http.MethodPost, map[string]string{
+		"received_debit": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "list", "/v1/treasury/debit_reversals", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"received_debit":    "string",
+		"resolution":        "string",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "retrieve", "/v1/treasury/debit_reversals/{debit_reversal}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "create", "/v1/treasury/financial_accounts", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "list", "/v1/treasury/financial_accounts", http.MethodGet, map[string]string{
+		"created":        "integer",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve", "/v1/treasury/financial_accounts/{financial_account}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve_features", "/v1/treasury/financial_accounts/{financial_account}/features", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "update", "/v1/treasury/financial_accounts/{financial_account}", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "update_features", "/v1/treasury/financial_accounts/{financial_account}/features", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "cancel", "/v1/treasury/inbound_transfers/{inbound_transfer}/cancel", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "create", "/v1/treasury/inbound_transfers", http.MethodPost, map[string]string{
+		"amount":                "integer",
+		"currency":              "string",
+		"description":           "string",
+		"financial_account":     "string",
+		"origin_payment_method": "string",
+		"statement_descriptor":  "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "fail", "/v1/test_helpers/treasury/inbound_transfers/{id}/fail", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "list", "/v1/treasury/inbound_transfers", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/inbound_transfers/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "return_inbound_transfer", "/v1/test_helpers/treasury/inbound_transfers/{id}/return", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "succeed", "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "cancel", "/v1/treasury/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "create", "/v1/treasury/outbound_payments", http.MethodPost, map[string]string{
+		"amount":                     "integer",
+		"currency":                   "string",
+		"customer":                   "string",
+		"description":                "string",
+		"destination_payment_method": "string",
+		"financial_account":          "string",
+		"statement_descriptor":       "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_payments/{id}/fail", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "list", "/v1/treasury/outbound_payments", http.MethodGet, map[string]string{
+		"customer":          "string",
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_payments/{id}/post", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "retrieve", "/v1/treasury/outbound_payments/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "return_outbound_payment", "/v1/test_helpers/treasury/outbound_payments/{id}/return", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "cancel", "/v1/treasury/outbound_transfers/{outbound_transfer}/cancel", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "create", "/v1/treasury/outbound_transfers", http.MethodPost, map[string]string{
+		"amount":                     "integer",
+		"currency":                   "string",
+		"description":                "string",
+		"destination_payment_method": "string",
+		"financial_account":          "string",
+		"statement_descriptor":       "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "list", "/v1/treasury/outbound_transfers", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/outbound_transfers/{outbound_transfer}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "return_outbound_transfer", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "create", "/v1/test_helpers/treasury/received_credits", http.MethodPost, map[string]string{
+		"amount":            "integer",
+		"currency":          "string",
+		"description":       "string",
+		"financial_account": "string",
+		"network":           "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "list", "/v1/treasury/received_credits", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "retrieve", "/v1/treasury/received_credits/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "create", "/v1/test_helpers/treasury/received_debits", http.MethodPost, map[string]string{
+		"amount":            "integer",
+		"currency":          "string",
+		"description":       "string",
+		"financial_account": "string",
+		"network":           "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "list", "/v1/treasury/received_debits", http.MethodGet, map[string]string{
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "retrieve", "/v1/treasury/received_debits/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryTransactionEntrysCmd.Cmd, "list", "/v1/treasury/transaction_entries", http.MethodGet, map[string]string{
+		"created":           "integer",
+		"effective_at":      "integer",
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"order_by":          "string",
+		"starting_after":    "string",
+		"transaction":       "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryTransactionEntrysCmd.Cmd, "retrieve", "/v1/treasury/transaction_entries/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "list", "/v1/treasury/transactions", http.MethodGet, map[string]string{
+		"created":           "integer",
+		"ending_before":     "string",
+		"financial_account": "string",
+		"limit":             "integer",
+		"order_by":          "string",
+		"starting_after":    "string",
+		"status":            "string",
+	}, &Config)
+	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "retrieve", "/v1/treasury/transactions/{id}", http.MethodGet, map[string]string{}, &Config)
 }
