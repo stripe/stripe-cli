@@ -46,6 +46,7 @@ brews:
   - tap:
       owner: stripe
       name: homebrew-stripe-cli
+      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}" # This token can access the repo, but GITHUB_TOKEN cannot
     commit_author:
       name: stripe-ci
       email: support@stripe.com
