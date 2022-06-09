@@ -72,3 +72,7 @@ func initUserAgent() {
 
 	encodedStripeUserAgent = string(marshaled)
 }
+
+func getUname() string {
+	return ""
+}

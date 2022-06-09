@@ -7,15 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
-
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/terminal"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -69,7 +66,7 @@ func getDisplayName(ctx context.Context, account *Account, baseURL string, apiKe
 func getConfigureAPIKey(input io.Reader) (string, error) {
 	fmt.Print("Enter your API key: ")
 
-	apiKey, err := securePrompt(input)
+	apiKey, err := terminal.SecurePrompt(input)
 	if err != nil {
 		return "", err
 	}
@@ -116,49 +113,4 @@ func redactAPIKey(apiKey string) string {
 	b.WriteString(apiKey[len(apiKey)-4:])              // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
 
 	return b.String()
-}
-
-func securePrompt(input io.Reader) (string, error) {
-	if input == os.Stdin {
-		// terminal.ReadPassword does not reset terminal state on ctrl-c interrupts,
-		// this results in the terminal input staying hidden after program exit.
-		// We need to manually catch the interrupt and restore terminal state before exiting.
-		signalChan, err := protectTerminalState()
-		if err != nil {
-			return "", err
-		}
-
-		buf, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
-		if err != nil {
-			return "", err
-		}
-
-		signal.Stop(signalChan)
-
-		fmt.Print("\n")
-
-		return string(buf), nil
-	}
-
-	reader := bufio.NewReader(input)
-
-	return reader.ReadString('\n')
-}
-
-func protectTerminalState() (chan os.Signal, error) {
-	originalTerminalState, err := term.GetState(int(syscall.Stdin)) //nolint:unconvert
-	if err != nil {
-		return nil, err
-	}
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-
-	go func() {
-		<-signalChan
-		term.Restore(int(syscall.Stdin), originalTerminalState) //nolint:unconvert
-		os.Exit(1)
-	}()
-
-	return signalChan, nil
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall/js"
 	"unicode"
 
 	log "github.com/sirupsen/logrus"
@@ -86,6 +87,15 @@ func showSuggestion() {
 	fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 		"ee \"stripe --help\" for a list of available commands.",
 		os.Args[1], rootCmd.CommandPath(), suggStr))
+}
+
+func PassInArgs(args []js.Value) {
+	length := len(args)
+	var goargs []string
+	for i := 0; i < length; i++ {
+		goargs = append(goargs, args[i].String())
+	}
+	rootCmd.SetArgs(goargs)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

@@ -9,8 +9,8 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/logrusorgru/aurora"
+	"github.com/stripe/stripe-cli/pkg/terminal"
 	"github.com/tidwall/pretty"
-	"golang.org/x/term"
 )
 
 var darkTerminalStyle = &pretty.Style{
@@ -123,7 +123,7 @@ const duration = time.Duration(100) * time.Millisecond
 // StartNewSpinner starts a new spinner with the given message. If the writer is not
 // a terminal or doesn't support colors, it simply prints the message.
 func StartNewSpinner(msg string, w io.Writer) *spinner.Spinner {
-	if !isTerminal(w) || !shouldUseColors(w) {
+	if !terminal.IsTerminal(w) || !shouldUseColors(w) {
 		fmt.Fprintln(w, msg)
 		return nil
 	}
@@ -157,7 +157,7 @@ func StartSpinner(s *spinner.Spinner, msg string, w io.Writer) {
 // StopSpinner stops a spinner with the given message. If the writer is not
 // a terminal or doesn't support colors, it simply prints the message.
 func StopSpinner(s *spinner.Spinner, msg string, w io.Writer) {
-	if !isTerminal(w) || !shouldUseColors(w) {
+	if !terminal.IsTerminal(w) || !shouldUseColors(w) {
 		fmt.Fprintln(w, msg)
 		return
 	}
@@ -179,22 +179,13 @@ func StrikeThrough(text string) string {
 // Private functions
 //
 
-func isTerminal(w io.Writer) bool {
-	switch v := w.(type) {
-	case *os.File:
-		return term.IsTerminal(int(v.Fd()))
-	default:
-		return false
-	}
-}
-
 func isPlugin() bool {
 	_, isSet := os.LookupEnv("CLIPLUGIN")
 	return isSet
 }
 
 func shouldUseColors(w io.Writer) bool {
-	useColors := ForceColors || isTerminal(w) || isPlugin()
+	useColors := ForceColors || terminal.IsTerminal(w) || isPlugin()
 
 	if EnvironmentOverrideColors {
 		force, ok := os.LookupEnv("CLICOLOR_FORCE")

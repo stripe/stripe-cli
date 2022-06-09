@@ -9,10 +9,10 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/terminal"
 )
 
 //
@@ -23,14 +23,14 @@ import (
 // for all flags which were inherited from parent commands, wrapped to the
 // terminal's width.
 func WrappedInheritedFlagUsages(cmd *cobra.Command) string {
-	return cmd.InheritedFlags().FlagUsagesWrapped(getTerminalWidth())
+	return cmd.InheritedFlags().FlagUsagesWrapped(terminal.GetTerminalWidth())
 }
 
 // WrappedLocalFlagUsages returns a string containing the usage information
 // for all flags specifically set in the current command, wrapped to the
 // terminal's width.
 func WrappedLocalFlagUsages(cmd *cobra.Command) string {
-	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
+	return cmd.LocalFlags().FlagUsagesWrapped(terminal.GetTerminalWidth())
 }
 
 // WrappedRequestParamsFlagUsages returns a string containing the usage
@@ -70,7 +70,7 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 		}
 	})
 
-	return nonRequestParamsFlags.FlagUsagesWrapped(getTerminalWidth())
+	return nonRequestParamsFlags.FlagUsagesWrapped(terminal.GetTerminalWidth())
 }
 
 //
@@ -150,17 +150,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global flags:"),
 	)
-}
-
-func getTerminalWidth() int {
-	var width int
-
-	width, _, err := term.GetSize(0)
-	if err != nil {
-		width = 80
-	}
-
-	return width
 }
 
 func init() {
