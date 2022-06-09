@@ -2,16 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/terminal"
 )
 
@@ -76,29 +72,6 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 //
 // Private functions
 //
-
-func getLogin(fs *afero.Fs, cfg *config.Config) string {
-	// We're checking against the path because we don't initialize the config
-	// at this point of execution.
-	path := cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	file := filepath.Join(path, "config.toml")
-
-	exists, _ := afero.Exists(*fs, file)
-
-	if !exists {
-		return `
-Before using the CLI, you'll need to login:
-
-  $ stripe login
-
-If you're working on multiple projects, you can run the login command with the
---project-name flag:
-
-  $ stripe login --project-name rocket-rides`
-	}
-
-	return ""
-}
 
 func getUsageTemplate() string {
 	return fmt.Sprintf(`%s{{if .Runnable}}

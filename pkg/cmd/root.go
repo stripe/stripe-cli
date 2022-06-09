@@ -79,6 +79,8 @@ func sendCommandInvocationEvent(ctx context.Context) {
 func showSuggestion() {
 	suggStr := "\nS"
 
+	fmt.Println("WASM ARGS")
+	fmt.Println(rootCmd.Args)
 	suggestions := rootCmd.SuggestionsFor(os.Args[1])
 	if len(suggestions) > 0 {
 		suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
