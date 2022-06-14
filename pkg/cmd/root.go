@@ -32,6 +32,8 @@ var Config config.Config
 
 var fs = afero.NewOsFs()
 
+var WasmArgs = []string{}
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:           "stripe",
@@ -78,17 +80,14 @@ func sendCommandInvocationEvent(ctx context.Context) {
 
 func showSuggestion() {
 	suggStr := "\nS"
-
-	fmt.Println("WASM ARGS")
-	fmt.Println(rootCmd.Args)
-	suggestions := rootCmd.SuggestionsFor(os.Args[1])
+	suggestions := rootCmd.SuggestionsFor(GetTopLevelCommand())
 	if len(suggestions) > 0 {
 		suggStr = fmt.Sprintf(" Did you mean \"%s\"?\nIf not, s", suggestions[0])
 	}
 
 	fmt.Println(fmt.Sprintf("Unknown command \"%s\" for \"%s\".%s"+
 		"ee \"stripe --help\" for a list of available commands.",
-		os.Args[1], rootCmd.CommandPath(), suggStr))
+		GetTopLevelCommand(), rootCmd.CommandPath(), suggStr))
 }
 
 func PassInArgs(args []js.Value) {
@@ -98,6 +97,27 @@ func PassInArgs(args []js.Value) {
 		goargs = append(goargs, args[i].String())
 	}
 	rootCmd.SetArgs(goargs)
+	WasmArgs = goargs
+}
+
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
+func ExecuteWasm() {
+	rootCmd.SetUsageTemplate(getUsageTemplate())
+	rootCmd.SetVersionTemplate(version.Template)
+
+	if err := rootCmd.Execute(); err != nil {
+		errString := err.Error()
+
+		switch {
+
+		case strings.Contains(errString, "unknown command"):
+			showSuggestion()
+
+		default:
+			fmt.Println(err)
+		}
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

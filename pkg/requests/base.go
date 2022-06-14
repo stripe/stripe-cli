@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -173,7 +174,10 @@ func (rb *Base) InitFlags() {
 
 	// Hidden configuration flags, useful for dev/debugging
 	rb.Cmd.Flags().StringVar(&rb.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
-	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+
+	if runtime.GOOS != "wasm" {
+		rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+	}
 }
 
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.

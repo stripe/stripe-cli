@@ -85,7 +85,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	if c.httpClient == nil {
-		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, os.Getenv("STRIPE_CLI_UNIX_SOCKET"))
+		c.httpClient = newHTTPClient(c.Verbose, c.VerbosePrintableHeaders, getCLIUnixSocket())
 	}
 
 	if ctx != nil {
