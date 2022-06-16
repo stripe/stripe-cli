@@ -34,6 +34,8 @@ var fs = afero.NewOsFs()
 
 var WasmArgs = []string{}
 
+var CliOutput = ""
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:           "stripe",
@@ -102,23 +104,23 @@ func PassInArgs(args []js.Value) {
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func ExecuteWasm() {
-	rootCmd.SetUsageTemplate(getUsageTemplate())
-	rootCmd.SetVersionTemplate(version.Template)
+// func ExecuteWasm() {
+// 	rootCmd.SetUsageTemplate(getUsageTemplate())
+// 	rootCmd.SetVersionTemplate(version.Template)
 
-	if err := rootCmd.Execute(); err != nil {
-		errString := err.Error()
+// 	if err := rootCmd.Execute(); err != nil {
+// 		errString := err.Error()
 
-		switch {
+// 		switch {
 
-		case strings.Contains(errString, "unknown command"):
-			showSuggestion()
+// 		case strings.Contains(errString, "unknown command"):
+// 			showSuggestion()
 
-		default:
-			fmt.Println(err)
-		}
-	}
-}
+// 		default:
+// 			fmt.Println(err)
+// 		}
+// 	}
+// }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.

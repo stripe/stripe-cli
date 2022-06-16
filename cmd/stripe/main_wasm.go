@@ -23,7 +23,9 @@ func RunStripeCli() js.Func {
 			go func() {
 				// cmd.ExecuteWasm()
 				cmd.Execute(ctx)
-				resolve.Invoke()
+				result := resolve.Invoke()
+				fmt.Println("Invoked result:")
+				fmt.Println(result)
 			}()
 
 			return nil
@@ -34,9 +36,24 @@ func RunStripeCli() js.Func {
 	})
 }
 
+func GetStripeCliOutput() js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return cmd.CliOutput
+	})
+}
+
+func ClearStripeCliOutput() js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		cmd.CliOutput = ""
+		return nil
+	})
+}
+
 func main() {
-	wasmChan := make(chan bool)
+	wasmChan := make(chan string)
 	fmt.Println("Go Web Assembly From Stripe CLI!")
 	js.Global().Set("StripeCliPromise", RunStripeCli())
+	js.Global().Set("GetStripeCliOutput", GetStripeCliOutput())
+	js.Global().Set("ClearStripeCliOutput", ClearStripeCliOutput())
 	<-wasmChan
 }

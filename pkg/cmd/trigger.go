@@ -84,5 +84,6 @@ func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Trigger succeeded! Check dashboard for event details.")
+	CliOutput = "Trigger succeeded! Check dashboard for event details."
 	return nil
 }
