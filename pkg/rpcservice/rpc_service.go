@@ -93,7 +93,7 @@ func (srv *RPCService) Run(ctx context.Context) {
 
 func (srv *RPCService) createListener() net.Listener {
 	// if port is 0, an available port is automatically chosen
-	address := fmt.Sprintf("[%s]:%d", "127.0.0.1", srv.cfg.Port)
+	address := fmt.Sprintf("[%s]:%d", net.IPv6loopback.String(), srv.cfg.Port)
 
 	lis, err := net.Listen("tcp", address)
 	if err != nil {
