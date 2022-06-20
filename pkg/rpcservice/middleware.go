@@ -16,6 +16,7 @@ import (
 )
 
 const requiredHeader = "sec-x-stripe-cli"
+const altRequiredHeader = "custom-" + requiredHeader
 
 // WrappedServerStream wraps a ServerSteam so that we can pass values through context.
 // https://pkg.go.dev/github.com/grpc-ecosystem/go-grpc-middleware#hdr-Writing_Your_Own
@@ -43,7 +44,10 @@ func authorize(ctx context.Context) error {
 	}
 
 	if _, ok := md[requiredHeader]; !ok {
-		return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
+		// Check for the alt header too, which is required for grpc web clients
+		if _, ok := md[altRequiredHeader]; !ok {
+			return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
+		}
 	}
 
 	return nil
