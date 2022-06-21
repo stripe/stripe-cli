@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -143,7 +144,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
-			Timeout: cfg.HTTPClient.Timeout, // changed this
+			Timeout: time.Duration(cfg.Timeout) * time.Second,
 		}
 	}
 

@@ -144,6 +144,7 @@ func TestForwardToOnly(t *testing.T) {
 	cfg := Config{
 		ForwardURL:        "http://localhost:4242",
 		ForwardConnectURL: "",
+		Timeout:           30,
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)
@@ -158,6 +159,7 @@ func TestForwardConnectToOnly(t *testing.T) {
 	cfg := Config{
 		ForwardURL:        "",
 		ForwardConnectURL: "http://localhost:4242/connect",
+		Timeout:           30,
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)
@@ -170,6 +172,7 @@ func TestForwardToAndForwardConnectTo(t *testing.T) {
 	cfg := Config{
 		ForwardURL:        "http://localhost:4242",
 		ForwardConnectURL: "http://localhost:4242/connect",
+		Timeout:           30,
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)

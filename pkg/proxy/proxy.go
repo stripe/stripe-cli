@@ -544,6 +544,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 					},
 				},
 				Log:             p.cfg.Log,
+				Timeout:         cfg.Timeout,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
 				OutCh:           p.cfg.OutCh,
 			},
