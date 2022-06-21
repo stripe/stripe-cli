@@ -66,6 +66,9 @@ type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 	// Key is the API key used to authenticate with Stripe
+
+	Timeout int64
+
 	Key string
 	// URL to which requests are sent
 	APIBaseURL string
@@ -535,7 +538,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
 						return http.ErrUseLastResponse
 					},
-					Timeout: defaultTimeout,
+					Timeout: time.Duration(cfg.Timeout) * time.Second,
 					Transport: &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
 					},

@@ -114,6 +114,11 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	timeout, err := Config.Profile.GetTimeout()
+	if err != nil {
+		return err
+	}
+
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "proxy.Proxy.Run",
@@ -136,6 +141,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 
 	p, err := proxy.Init(ctx, &proxy.Config{
 		DeviceName:            deviceName,
+		Timeout:               timeout,
 		Key:                   key,
 		ForwardURL:            lc.forwardURL,
 		ForwardHeaders:        lc.forwardHeaders,

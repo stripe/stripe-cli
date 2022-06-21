@@ -50,6 +50,7 @@ type Config struct {
 	Profile          Profile
 	ProfilesFile     string
 	InstalledPlugins []string
+	Timeout          string
 }
 
 // GetProfile returns the Profile of the config

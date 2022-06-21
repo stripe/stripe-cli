@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -22,6 +21,8 @@ type EndpointConfig struct {
 	HTTPClient *http.Client
 
 	Log *log.Logger
+
+	Timeout int64
 
 	ResponseHandler EndpointResponseHandler
 
@@ -142,7 +143,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
-			Timeout: defaultTimeout,
+			Timeout: cfg.HTTPClient.Timeout, // changed this
 		}
 	}
 
@@ -158,14 +159,6 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 		cfg:     cfg,
 	}
 }
-
-//
-// Private constants
-//
-
-const (
-	defaultTimeout = 30 * time.Second
-)
 
 //
 // Private functions

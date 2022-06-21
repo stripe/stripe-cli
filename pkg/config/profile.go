@@ -23,6 +23,7 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
+	Timeout                string
 }
 
 // CreateProfile creates a profile when logging in
@@ -54,6 +55,16 @@ func (p *Profile) GetColor() (string, error) {
 	default:
 		return "", fmt.Errorf("color value not supported: %s", color)
 	}
+}
+
+func (p *Profile) GetTimeout() (int64, error) {
+	timeoutStr := viper.GetString(p.GetConfigField("timeout"))
+
+	if timeoutStr != "" {
+		return viper.GetInt64(p.GetConfigField("timeout")), nil
+	}
+
+	return 30, nil // if user has not set timeout in config, return the default (30s)
 }
 
 // GetDeviceName returns the configured device name
@@ -224,6 +235,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField("account_id"), strings.TrimSpace(p.AccountID))
+	}
+
+	if p.Timeout != "" {
+		runtimeViper.Set(p.GetConfigField("timeout"), strings.TrimSpace(p.Timeout))
 	}
 
 	runtimeViper.MergeInConfig()
