@@ -57,6 +57,8 @@ func (p *Profile) GetColor() (string, error) {
 	}
 }
 
+// GetTimeout returns the timeout length set in the config file,
+// or defaults to 30 if not set
 func (p *Profile) GetTimeout() (int64, error) {
 	timeoutStr := viper.GetString(p.GetConfigField("timeout"))
 
@@ -64,7 +66,7 @@ func (p *Profile) GetTimeout() (int64, error) {
 		return viper.GetInt64(p.GetConfigField("timeout")), nil
 	}
 
-	return 30, nil // if user has not set timeout in config, return the default (30s)
+	return 30, nil
 }
 
 // GetDeviceName returns the configured device name
