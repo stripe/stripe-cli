@@ -12,7 +12,9 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-var PLUGIN_MANIFEST_URL = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
+const (
+	plugin_manifest_url = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
+)
 
 type resourcesCmd struct {
 	cmd *cobra.Command
@@ -66,7 +68,7 @@ Use "stripe [command] --help" for more information about a command.
 func getAllPluginCommands() ([]string, error) {
 	var manifest PluginList
 
-	resp, err := http.Get(PLUGIN_MANIFEST_URL)
+	resp, err := http.Get(plugin_manifest_url)
 	if err != nil {
 		return []string{}, err
 	}
