@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	plugin_manifest_url = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
+	pluginManifestUrl = "https://stripe.jfrog.io/artifactory/stripe-cli-plugins-local/plugins.toml"
 )
 
 type resourcesCmd struct {
@@ -68,7 +68,7 @@ Use "stripe [command] --help" for more information about a command.
 func getAllPluginCommands() ([]string, error) {
 	var manifest PluginList
 
-	resp, err := http.Get(plugin_manifest_url)
+	resp, err := http.Get(pluginManifestUrl)
 	if err != nil {
 		return []string{}, err
 	}
