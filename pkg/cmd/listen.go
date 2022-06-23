@@ -114,10 +114,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	timeout, err := Config.Profile.GetTimeout()
-	if err != nil {
-		return err
-	}
+	timeout := Config.GetTimeout()
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{

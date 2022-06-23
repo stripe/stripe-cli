@@ -23,8 +23,6 @@ type EndpointConfig struct {
 
 	Log *log.Logger
 
-	Timeout int64
-
 	ResponseHandler EndpointResponseHandler
 
 	// OutCh is the channel to send data and statuses to for processing in other packages
@@ -144,7 +142,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				return http.ErrUseLastResponse
 			},
-			Timeout: time.Duration(cfg.Timeout) * time.Second,
+			Timeout: defaultTimeout,
 		}
 	}
 
@@ -160,6 +158,14 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 		cfg:     cfg,
 	}
 }
+
+//
+// Private constants
+//
+
+const (
+	defaultTimeout = 30 * time.Second
+)
 
 //
 // Private functions

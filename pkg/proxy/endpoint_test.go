@@ -55,7 +55,6 @@ func TestClientHandler(t *testing.T) {
 
 				wg.Done()
 			}),
-			Timeout: 30,
 		},
 	)
 
@@ -113,7 +112,6 @@ func TestClientHandler_Redirects(t *testing.T) {
 				require.Equal(t, http.StatusMovedPermanently, resp.StatusCode)
 				wg.Done()
 			}),
-			Timeout: 30,
 		},
 	)
 

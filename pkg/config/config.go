@@ -33,6 +33,7 @@ const ColorAuto = "auto"
 // IConfig allows us to add more implementations, such as ones for unit tests
 type IConfig interface {
 	GetProfile() *Profile
+	GetTimeout() int64
 	GetConfigFolder(xdgPath string) string
 	InitConfig()
 	EditConfig() error
@@ -50,12 +51,22 @@ type Config struct {
 	Profile          Profile
 	ProfilesFile     string
 	InstalledPlugins []string
-	Timeout          string
+	Timeout          int64
 }
 
 // GetProfile returns the Profile of the config
 func (c *Config) GetProfile() *Profile {
 	return &c.Profile
+}
+
+// GetTimeout returns the timeout set in config, or the default (30s) if not was set
+func (c *Config) GetTimeout() int64 {
+	timeout, err := c.Profile.GetTimeout()
+	if err != nil {
+		return 30
+	}
+
+	return timeout
 }
 
 // GetConfigFolder retrieves the folder where the profiles file is stored
@@ -161,6 +172,12 @@ func (c *Config) InitConfig() {
 	default:
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
 	}
+
+	timeout, err := c.Profile.GetTimeout()
+	if err != nil {
+		timeout = 30
+	}
+	c.Timeout = timeout
 }
 
 // EditConfig opens the configuration file in the default editor.

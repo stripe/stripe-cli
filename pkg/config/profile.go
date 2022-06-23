@@ -23,7 +23,6 @@ type Profile struct {
 	TerminalPOSDeviceID    string
 	DisplayName            string
 	AccountID              string
-	Timeout                string
 }
 
 // CreateProfile creates a profile when logging in
@@ -237,10 +236,6 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.AccountID != "" {
 		runtimeViper.Set(p.GetConfigField("account_id"), strings.TrimSpace(p.AccountID))
-	}
-
-	if p.Timeout != "" {
-		runtimeViper.Set(p.GetConfigField("timeout"), strings.TrimSpace(p.Timeout))
 	}
 
 	runtimeViper.MergeInConfig()
