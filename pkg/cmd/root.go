@@ -106,7 +106,7 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && userInput[2] == "--project-name":
-			fmt.Println("Please run `stripe login --project-name=`...")
+			fmt.Println("You provided the \"--project-name\" flag, but no config for that project was found. Please run `stripe login --project-name=`...")
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
@@ -128,11 +128,9 @@ func Execute(ctx context.Context) {
 		}
 
 		os.Exit(1)
-	} else {
+	} else if len(userInput) == 2 && userInput[0] == "--color" {
 		// --color on/off/auto
-		if len(userInput) == 2 && userInput[0] == "--color" {
-			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
-		}
+		fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
 	}
 }
 
