@@ -66,9 +66,6 @@ type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 	// Key is the API key used to authenticate with Stripe
-
-	Timeout int64
-
 	Key string
 	// URL to which requests are sent
 	APIBaseURL string
@@ -105,6 +102,8 @@ type Config struct {
 	Log *log.Logger
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+	// Override default timeout
+	Timeout int64
 
 	// OutCh is the channel to send logs and statuses to for processing in other packages
 	OutCh chan websocket.IElement
