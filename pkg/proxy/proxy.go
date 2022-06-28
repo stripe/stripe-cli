@@ -102,6 +102,8 @@ type Config struct {
 	Log *log.Logger
 	// Force use of unencrypted ws:// protocol instead of wss://
 	NoWSS bool
+	// Override default timeout
+	Timeout int64
 
 	// OutCh is the channel to send logs and statuses to for processing in other packages
 	OutCh chan websocket.IElement
@@ -535,7 +537,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
 						return http.ErrUseLastResponse
 					},
-					Timeout: defaultTimeout,
+					Timeout: time.Duration(cfg.Timeout) * time.Second,
 					Transport: &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
 					},

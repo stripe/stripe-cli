@@ -43,6 +43,7 @@ type listenCmd struct {
 	skipUpdate            bool
 	apiBaseURL            string
 	noWSS                 bool
+	timeout               int64
 }
 
 func newListenCmd() *listenCmd {
@@ -85,6 +86,9 @@ Stripe account.`,
 
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
 	lc.cmd.Flags().MarkHidden("no-wss") // #nosec G104
+
+	lc.cmd.Flags().Int64Var(&lc.timeout, "timeout", 30, "Sets timeout duration")
+	lc.cmd.Flags().MarkHidden("timeout")
 
 	// renamed --load-from-webhooks-api to --use-configured-webhooks,  but want to keep backward compatibility
 	lc.cmd.Flags().SetNormalizeFunc(func(f *pflag.FlagSet, name string) pflag.NormalizedName {
@@ -149,6 +153,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		SkipVerify:            lc.skipVerify,
 		Log:                   logger,
 		NoWSS:                 lc.noWSS,
+		Timeout:               lc.timeout,
 		Events:                lc.events,
 		OutCh:                 proxyOutCh,
 	})
