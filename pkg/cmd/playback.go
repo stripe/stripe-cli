@@ -263,7 +263,6 @@ func runListen(cmd *cobra.Command, address string, wg *sync.WaitGroup) error {
 		SkipVerify:            false,
 		Log:                   logger,
 		NoWSS:                 false,
-		Timeout:               30,
 		Events:                []string{"*"},
 		OutCh:                 proxyOutCh,
 	})
