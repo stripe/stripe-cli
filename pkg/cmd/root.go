@@ -93,7 +93,6 @@ func showSuggestion() {
 func Execute(ctx context.Context) {
 	telemetryMetadata := stripe.NewEventMetadata()
 	updatedCtx := stripe.WithEventMetadata(ctx, telemetryMetadata)
-	userInput := os.Args[1:]
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
@@ -101,11 +100,12 @@ func Execute(ctx context.Context) {
 		errString := err.Error()
 
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
+		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
-		case isLoginRequiredError && userInput[2] == "--project-name":
+		case isLoginRequiredError && projectNameFlag != "default":
 			fmt.Println("You provided the \"--project-name\" flag, but no config for that project was found. Please run `stripe login --project-name=`...")
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
@@ -128,9 +128,12 @@ func Execute(ctx context.Context) {
 		}
 
 		os.Exit(1)
-	} else if len(userInput) == 2 && userInput[0] == "--color" {
+	} else {
+		userInput := os.Args[1:]
 		// --color on/off/auto
-		fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
+		if len(userInput) == 2 && userInput[0] == "--color" {
+			fmt.Println("You provided the \"--color\" flag but did not specify any command. The \"--color\" flag configures the color output of a specified command.")
+		}
 	}
 }
 
