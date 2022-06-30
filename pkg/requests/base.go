@@ -224,6 +224,7 @@ func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params 
 	}
 
 	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
+	fmt.Println(resp.Header) // debug: to check if correct version was applied
 
 	if err != nil {
 		return []byte{}, err

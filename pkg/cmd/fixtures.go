@@ -42,6 +42,7 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.override, "override", []string{}, "Override parameters in the fixture")
 	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.add, "add", []string{}, "Add parameters in the fixture")
 	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.remove, "remove", []string{}, "Remove parameters from the fixture")
+	// fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.apiVersion, "api-version", "", "Specify API version in the fixture")
 
 	return fixturesCmd
 }

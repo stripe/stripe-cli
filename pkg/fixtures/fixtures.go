@@ -40,6 +40,7 @@ type fixture struct {
 	Path              string                 `json:"path"`
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
+	APIVersion        string                 `json:"api_version"`
 }
 
 type fixtureQuery struct {
@@ -314,7 +315,8 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, erro
 		return make([]byte, 0), err
 	}
 
-	params, err := fxt.createParams(data.Params)
+	params, err := fxt.createParams(data.Params) // in fixture... which is #1 method of the jira ticket
+	params.SetVersion(data.APIVersion)
 
 	if err != nil {
 		return make([]byte, 0), err
