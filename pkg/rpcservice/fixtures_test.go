@@ -38,6 +38,7 @@ func TestFixturesReturnsData(t *testing.T) {
       "params": {
         "description": "(created by Stripe CLI)"
       }
+	  "api_version": "",
     }
   ],
   "env": null
