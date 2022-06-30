@@ -132,7 +132,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string) ([]string, error) {
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()
@@ -167,7 +167,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 		}
 	}
 
-	requestNames, err := fixture.Execute(ctx)
+	requestNames, err := fixture.Execute(ctx, apiVersion)
 	if err != nil {
 		return nil, fmt.Errorf(fmt.Sprintf("Trigger failed: %s\n", err))
 	}

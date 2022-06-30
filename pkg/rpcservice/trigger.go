@@ -31,6 +31,7 @@ func (srv *RPCService) Trigger(ctx context.Context, req *rpc.TriggerRequest) (*r
 		req.Add,
 		req.Remove,
 		req.Raw,
+		req.ApiVersion,
 	)
 	if err != nil {
 		return nil, err

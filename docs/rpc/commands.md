@@ -858,6 +858,7 @@
 | add | [string](#string) | repeated | Add parameters in the fixture |
 | remove | [string](#string) | repeated | Remove parameters from the fixture |
 | raw | [string](#string) |  | Raw fixture string |
+| api_version | [string](#string) |  | Specify API Version for fixture |
 
 
 

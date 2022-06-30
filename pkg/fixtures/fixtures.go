@@ -40,7 +40,6 @@ type fixture struct {
 	Path              string                 `json:"path"`
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
-	APIVersion        string                 `json:"api_version"`
 }
 
 type fixtureQuery struct {
@@ -253,7 +252,7 @@ func (fxt *Fixture) Remove(removals []string) error {
 
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
-func (fxt *Fixture) Execute(ctx context.Context) ([]string, error) {
+func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, error) {
 	requestNames := make([]string, len(fxt.fixture.Fixtures))
 	for i, data := range fxt.fixture.Fixtures {
 		if isNameIn(data.Name, fxt.Skip) {
@@ -265,7 +264,7 @@ func (fxt *Fixture) Execute(ctx context.Context) ([]string, error) {
 		requestNames[i] = data.Name
 
 		fmt.Printf("Running fixture for: %s\n", data.Name)
-		resp, err := fxt.makeRequest(ctx, data)
+		resp, err := fxt.makeRequest(ctx, data, apiVersion)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return nil, err
 		}
@@ -293,7 +292,7 @@ func (fxt *Fixture) UpdateEnv() error {
 	return nil
 }
 
-func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, error) {
+func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion string) ([]byte, error) {
 	var rp requests.RequestParameters
 
 	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
@@ -315,8 +314,8 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, erro
 		return make([]byte, 0), err
 	}
 
-	params, err := fxt.createParams(data.Params) // in fixture... which is #1 method of the jira ticket
-	params.SetVersion(data.APIVersion)
+	params, err := fxt.createParams(data.Params)
+	params.SetVersion(apiVersion)
 
 	if err != nil {
 		return make([]byte, 0), err
