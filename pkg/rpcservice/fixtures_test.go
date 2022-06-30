@@ -2,6 +2,7 @@ package rpcservice
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,13 +39,14 @@ func TestFixturesReturnsData(t *testing.T) {
       "params": {
         "description": "(created by Stripe CLI)"
       },
-	  	"api_version": "",
+      "api_version": ""
     }
   ],
   "env": null
 }`,
 	}
-
+	fmt.Println(resp.Fixture)
+	fmt.Println(expected.Fixture)
 	assert.Nil(t, err)
 	assert.Equal(t, expected.Fixture, resp.Fixture)
 }
