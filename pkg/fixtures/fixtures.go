@@ -271,7 +271,6 @@ func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, e
 
 		fxt.responses[data.Name] = gjson.ParseBytes(resp)
 	}
-
 	return requestNames, nil
 }
 
@@ -314,8 +313,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion st
 		return make([]byte, 0), err
 	}
 
-	params, err := fxt.createParams(data.Params)
-	params.SetVersion(apiVersion)
+	params, err := fxt.createParams(data.Params, apiVersion)
 
 	if err != nil {
 		return make([]byte, 0), err
@@ -324,7 +322,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion st
 	return req.MakeRequest(ctx, fxt.APIKey, path, params, true)
 }
 
-func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameters, error) {
+func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
 	parsed, err := fxt.parseInterface(params)
 	if err != nil {
@@ -333,6 +331,10 @@ func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameter
 	requestParams.AppendData(parsed)
 
 	requestParams.SetStripeAccount(fxt.StripeAccount)
+
+	if apiVersion != "" {
+		requestParams.SetVersion(apiVersion)
+	}
 
 	return &requestParams, nil
 }
