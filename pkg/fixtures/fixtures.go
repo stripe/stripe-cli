@@ -252,7 +252,7 @@ func (fxt *Fixture) Remove(removals []string) error {
 
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
-func (fxt *Fixture) Execute(ctx context.Context) ([]string, error) {
+func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, error) {
 	requestNames := make([]string, len(fxt.fixture.Fixtures))
 	for i, data := range fxt.fixture.Fixtures {
 		if isNameIn(data.Name, fxt.Skip) {
@@ -264,14 +264,13 @@ func (fxt *Fixture) Execute(ctx context.Context) ([]string, error) {
 		requestNames[i] = data.Name
 
 		fmt.Printf("Running fixture for: %s\n", data.Name)
-		resp, err := fxt.makeRequest(ctx, data)
+		resp, err := fxt.makeRequest(ctx, data, apiVersion)
 		if err != nil && !errWasExpected(err, data.ExpectedErrorType) {
 			return nil, err
 		}
 
 		fxt.responses[data.Name] = gjson.ParseBytes(resp)
 	}
-
 	return requestNames, nil
 }
 
@@ -292,7 +291,7 @@ func (fxt *Fixture) UpdateEnv() error {
 	return nil
 }
 
-func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, error) {
+func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion string) ([]byte, error) {
 	var rp requests.RequestParameters
 
 	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
@@ -314,7 +313,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, erro
 		return make([]byte, 0), err
 	}
 
-	params, err := fxt.createParams(data.Params)
+	params, err := fxt.createParams(data.Params, apiVersion)
 
 	if err != nil {
 		return make([]byte, 0), err
@@ -323,7 +322,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture) ([]byte, erro
 	return req.MakeRequest(ctx, fxt.APIKey, path, params, true)
 }
 
-func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameters, error) {
+func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
 	parsed, err := fxt.parseInterface(params)
 	if err != nil {
@@ -332,6 +331,10 @@ func (fxt *Fixture) createParams(params interface{}) (*requests.RequestParameter
 	requestParams.AppendData(parsed)
 
 	requestParams.SetStripeAccount(fxt.StripeAccount)
+
+	if apiVersion != "" {
+		requestParams.SetVersion(apiVersion)
+	}
 
 	return &requestParams, nil
 }

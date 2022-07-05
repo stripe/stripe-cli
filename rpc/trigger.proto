@@ -25,6 +25,9 @@ message TriggerRequest {
 
   // Raw fixture string
   string raw = 7;
+
+  // Specify API Version for fixture
+  string api_version = 8;
 }
 
 message TriggerResponse {
