@@ -100,10 +100,13 @@ func Execute(ctx context.Context) {
 		errString := err.Error()
 
 		isLoginRequiredError := errString == validators.ErrAPIKeyNotConfigured.Error() || errString == validators.ErrDeviceNameNotConfigured.Error()
+		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
+		case isLoginRequiredError && projectNameFlag != "default":
+			fmt.Println("You provided the \"--project-name\" flag, but no config for that project was found. Please run `stripe login --project-name=`...")
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
