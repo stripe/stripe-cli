@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const customerPath = "/v1/customers"
@@ -25,7 +26,7 @@ const subscriptionPath = "/v1/subscriptions"
 func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -62,7 +63,7 @@ func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 func TestTriggerSucceedsWithStripeAccount(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -100,7 +101,7 @@ func TestTriggerSucceedsWithStripeAccount(t *testing.T) {
 func TestTriggerFailsWithUnsupportedEvent(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -120,7 +121,7 @@ func TestTriggerFailsWithUnsupportedEvent(t *testing.T) {
 func TestTriggerFailsWithEmptyEvent(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -138,7 +139,7 @@ func TestTriggerFailsWithEmptyEvent(t *testing.T) {
 func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
