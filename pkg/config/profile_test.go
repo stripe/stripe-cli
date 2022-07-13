@@ -38,11 +38,11 @@ func TestWriteProfile(t *testing.T) {
 	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
-	expectedConfig := `
-[tests]
-  device_name = "st-testing"
-  display_name = "test-account-display-name"
-  test_mode_api_key = "sk_test_123"
+	expectedConfig := `[tests]
+device_name = 'st-testing'
+display_name = 'test-account-display-name'
+test_mode_api_key = 'sk_test_123'
+
 `
 	require.EqualValues(t, expectedConfig, string(configValues))
 
@@ -78,16 +78,16 @@ func TestWriteProfilesMerge(t *testing.T) {
 	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
-	expectedConfig := `
-[tests]
-  device_name = "st-testing"
-  display_name = "test-account-display-name"
-  test_mode_api_key = "sk_test_123"
+	expectedConfig := `[tests]
+device_name = 'st-testing'
+display_name = 'test-account-display-name'
+test_mode_api_key = 'sk_test_123'
 
 [tests-merge]
-  device_name = "st-testing"
-  display_name = "test-account-display-name"
-  test_mode_api_key = "sk_test_123"
+device_name = 'st-testing'
+display_name = 'test-account-display-name'
+test_mode_api_key = 'sk_test_123'
+
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))
