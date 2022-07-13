@@ -120,7 +120,7 @@ clean:
 
 # Handle all protobuf generation.
 protoc:
-	@go get github.com/golang/protobuf/protoc-gen-go
+	@go get google.golang.org/protobuf/cmd/protoc-gen-go
 	@go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	@go mod tidy
 	make protoc-gen-all
