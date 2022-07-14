@@ -128,6 +128,7 @@ func (srv *RPCService) printConfig(configOutput ConfigOutput) {
 	}
 }
 
+// Server returns the gRPC server
 func (srv *RPCService) Server() *grpc.Server {
 	return srv.grpcServer
 }
