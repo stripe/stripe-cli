@@ -24,11 +24,14 @@ jobs:
     - name: Install protoc
       uses: arduino/setup-protoc@v1
       with:
+        # this is the version available on homebrew, pinning so the behavior is
+        # identical to what we test locally
+        version: '3.19.4'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install protoc deps
       run: |
-        go get google.golang.org/protobuf/cmd/protoc-gen-go
-        go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
+        go install google.golang.org/protobuf/cmd/protoc-gen-go
+        go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
       shell: bash
     - name: Run Tests
       run: make ci
