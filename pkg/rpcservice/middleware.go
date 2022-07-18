@@ -46,8 +46,10 @@ func authorize(ctx context.Context) error {
 	if _, ok := md[requiredHeader]; !ok {
 		// Check for the alt header too, which is required for grpc web clients
 		if _, ok := md[altRequiredHeader]; !ok {
-			return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
+			return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", altRequiredHeader))
 		}
+
+		return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
 	}
 
 	return nil
