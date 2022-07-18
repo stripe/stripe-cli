@@ -120,7 +120,8 @@ clean:
 
 # Handle all protobuf generation.
 protoc:
-	@go get github.com/golang/protobuf/protoc-gen-go
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 	@go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
 	@go mod tidy
 	make protoc-gen-all
@@ -140,8 +141,10 @@ protoc-gen-all: protoc-gen-code protoc-gen-docs
 # Generate protobuf go code
 protoc-gen-code:
 	@protoc \
-		--go_out=plugins=grpc:./rpc \
+		--go_out=./rpc \
 		--go_opt=module=github.com/stripe/stripe-cli/rpc \
+		--go-grpc_out=require_unimplemented_servers=false:./rpc \
+		--go-grpc_opt=module=github.com/stripe/stripe-cli/rpc \
 		--proto_path ./rpc \
 		./rpc/*.proto \
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
