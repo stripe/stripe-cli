@@ -141,8 +141,8 @@ protoc-gen-all: protoc-gen-code protoc-gen-docs
 # Generate protobuf go code
 protoc-gen-code:
 	@protoc \
-		--go-grpc_out=require_unimplemented_servers=false,=plugin=grpc:./rpc \
-		--go-grpc_opt=module=github.com/stripe/stripe-cli/rpc \
+		--go_out=./rpc \
+		--go_opt=module=github.com/stripe/stripe-cli/rpc \
 		--proto_path ./rpc \
 		./rpc/*.proto \
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)

@@ -26,7 +26,7 @@ jobs:
       with:
         # this is the version available on homebrew, pinning so the behavior is
         # identical to what we test locally
-        version: '3.19.4'
+        version: '3.21.2'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install protoc deps
       run: |
