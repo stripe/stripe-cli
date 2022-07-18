@@ -4,7 +4,6 @@
 package useragent
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -12,7 +11,7 @@ import (
 
 func TestUnameNotEmpty(t *testing.T) {
 	u := getUname()
-	t.Log(fmt.Sprintf("%x", u)) // For NULL trim paranoia
+	t.Logf("%x", u) // For NULL trim paranoia
 	require.NotEmpty(t, u)
 }
 

@@ -3,54 +3,54 @@ module github.com/stripe/stripe-cli
 go 1.17
 
 require (
-	github.com/BurntSushi/toml v0.4.1
-	github.com/briandowns/spinner v1.17.0
+	github.com/BurntSushi/toml v1.1.0
+	github.com/briandowns/spinner v1.18.1
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/felixge/httpsnoop v1.0.2 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/google/go-github/v28 v28.1.1
 	github.com/google/go-querystring v1.1.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
-	github.com/gorilla/websocket v1.4.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/iancoleman/strcase v0.2.0
-	github.com/imdario/mergo v0.3.12
-	github.com/kevinburke/ssh_config v1.1.0 // indirect
+	github.com/imdario/mergo v0.3.13
+	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.14.1 // indirect
-	github.com/otiai10/copy v1.6.0
-	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/otiai10/copy v1.7.0
+	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
-	github.com/spf13/afero v1.6.0
-	github.com/spf13/cast v1.4.1 // indirect
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/afero v1.8.2
+	github.com/spf13/cast v1.5.0 // indirect
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/spf13/viper v1.9.0
-	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.11.0
+	github.com/spf13/viper v1.12.0
+	github.com/stretchr/testify v1.7.2
+	github.com/tidwall/gjson v1.14.1
 	github.com/tidwall/pretty v1.2.0
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2
 	github.com/xanzy/ssh-agent v0.3.1 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
-	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
-	google.golang.org/genproto v0.0.0-20211101144312-62acf1d99145 // indirect
-	google.golang.org/grpc v1.41.0
-	google.golang.org/protobuf v1.27.1
-	gopkg.in/ini.v1 v1.63.2 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/net v0.0.0-20220708220712-1185a9018129 // indirect
+	golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
+	google.golang.org/genproto v0.0.0-20220713161829-9c7dac0a6568 // indirect
+	google.golang.org/grpc v1.48.0
+	google.golang.org/protobuf v1.28.0
+	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (
-	github.com/hashicorp/go-hclog v0.14.1
-	github.com/hashicorp/go-plugin v1.4.3
+	github.com/hashicorp/go-hclog v1.2.1
+	github.com/hashicorp/go-plugin v1.4.4
 	github.com/joho/godotenv v1.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -67,24 +67,25 @@ require (
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/emirpasic/gods v1.12.0 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
+	github.com/hashicorp/yamux v0.0.0-20211028200310-0bc27b27de87 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/magiconair/properties v1.8.5 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.2 // indirect
-	github.com/oklog/run v1.0.0 // indirect
+	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/oklog/run v1.1.0 // indirect
 	github.com/onsi/gomega v1.10.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
-	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

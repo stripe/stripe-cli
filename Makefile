@@ -6,7 +6,7 @@ PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with c
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
-export GOLANGCI_LINT_VERSION := v1.42.1
+export GOLANGCI_LINT_VERSION := v1.46.2
 
 # Install all the build and lint dependencies
 setup:
