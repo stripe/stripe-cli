@@ -48,7 +48,6 @@ func authorize(ctx context.Context) error {
 		if _, ok := md[altRequiredHeader]; !ok {
 			return status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s or %s header is not supplied", requiredHeader, altRequiredHeader))
 		}
-
 	}
 
 	return nil
