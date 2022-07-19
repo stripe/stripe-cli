@@ -127,3 +127,8 @@ func (srv *RPCService) printConfig(configOutput ConfigOutput) {
 		fmt.Println(string(configOutputMarshalled))
 	}
 }
+
+// Server returns the gRPC server
+func (srv *RPCService) Server() *grpc.Server {
+	return srv.grpcServer
+}

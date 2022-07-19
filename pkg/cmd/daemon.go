@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"net/http"
+
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -13,6 +17,7 @@ import (
 type daemonCmd struct {
 	cmd  *cobra.Command
 	port int
+	http bool
 	cfg  *config.Config
 }
 
@@ -33,6 +38,7 @@ Currently, stripe daemon only supports a subset of CLI commands. Documentation i
 		Hidden: true,
 	}
 	dc.cmd.Flags().IntVar(&dc.port, "port", 0, "The TCP port the daemon will listen to (default: an available port)")
+	dc.cmd.Flags().BoolVar(&dc.http, "http", false, "Spin up an http-compatible gRPC service (default: false)")
 
 	return dc
 }
@@ -52,6 +58,24 @@ func (dc *daemonCmd) runDaemonCmd(cmd *cobra.Command, args []string) {
 	})
 
 	go srv.Run(ctx)
+
+	if dc.http {
+		grpcWeb := grpcweb.WrapServer(
+			srv.Server(),
+			grpcweb.WithOriginFunc(func(origin string) bool { return true }),
+		)
+
+		webSrv := &http.Server{
+			Handler: grpcWeb,
+			Addr:    fmt.Sprintf("localhost:%d", dc.port+1),
+		}
+
+		go func() {
+			if err := webSrv.ListenAndServe(); err != nil {
+				log.Fatalf("failed to serve: %v", err)
+			}
+		}()
+	}
 
 	<-ctx.Done()
 }
