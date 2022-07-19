@@ -44,7 +44,7 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	_, err = client.Version(ctx, &rpc.VersionRequest{})
-	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s or %s header is not supplied", requiredHeader, altRequiredHeader))
+	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
 
 	assert.Equal(t, expected.Error(), err.Error())
 }
@@ -59,7 +59,7 @@ func TestRejectRequestIfMetadataEmpty(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	_, err = client.Version(ctx, &rpc.VersionRequest{})
-	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s or %s header is not supplied", requiredHeader, altRequiredHeader))
+	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
 
 	assert.Equal(t, expected.Error(), err.Error())
 }
