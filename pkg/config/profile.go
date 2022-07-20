@@ -34,10 +34,10 @@ const (
 	IsTermsAcceptanceValidName = "is_terms_acceptance_valid"
 	TestModeAPIKeyName         = "test_mode_api_key"
 	TestModePublishableKeyName = "test_mode_publishable_key"
-	TestModeExpiresAtName      = "test_mode_key_expires_at"
+	TestModeKeyExpiresAtName   = "test_mode_key_expires_at"
 	LiveModeAPIKeyName         = "live_mode_api_key"
 	LiveModePublishableKeyName = "live_mode_publishable_key"
-	LiveModeExpiresAtName      = "live_mode_key_expires_at"
+	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 )
 
 // CreateProfile creates a profile when logging in
@@ -154,17 +154,46 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	return "", validators.ErrAPIKeyNotConfigured
 }
 
-// GetPublishableKey returns the publishable key for the user
-func (p *Profile) GetPublishableKey() string {
-	if err := viper.ReadInConfig(); err == nil {
-		if viper.IsSet(p.GetConfigField("publishable_key")) {
-			p.RegisterAlias(TestModePublishableKeyName, "publishable_key")
-		}
+// GetExpiresAt returns the API key expirary date
+func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
+	var timeString string
+	fieldID := TestModeKeyExpiresAtName
 
-		return viper.GetString(p.GetConfigField(TestModePublishableKeyName))
+	if livemode {
+		fieldID = LiveModeKeyExpiresAtName
+		timeString = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+	} else {
+		timeString = viper.GetString(p.GetConfigField(fieldID))
 	}
 
-	return ""
+	expiresAt, err := time.Parse(DateStringFormat, timeString)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return expiresAt, nil
+}
+
+// GetPublishableKey returns the publishable key for the user
+func (p *Profile) GetPublishableKey(livemode bool) string {
+	key := ""
+	fieldID := TestModePublishableKeyName
+
+	if livemode {
+		fieldID = LiveModePublishableKeyName
+		key = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+	} else {
+		if err := viper.ReadInConfig(); err == nil {
+			if viper.IsSet(p.GetConfigField("publishable_key")) {
+				p.RegisterAlias(fieldID, "publishable_key")
+			}
+
+			key = viper.GetString(p.GetConfigField(fieldID))
+		}
+	}
+
+	return key
 }
 
 // GetDisplayName returns the account display name of the user
@@ -229,11 +258,11 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 		// store redacted key in config
 		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
-		runtimeViper.Set(p.GetConfigField(LiveModeExpiresAtName), expiresAt)
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// store actual key in secure keyring
 		p.storeLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
-		p.storeLivemodeValue(LiveModeExpiresAtName, expiresAt, "Live mode API key expirary")
+		p.storeLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
 	}
 
 	if p.LiveModePublishableKey != "" {
@@ -246,7 +275,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.TestModeAPIKey != "" {
 		runtimeViper.Set(p.GetConfigField(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey))
-		runtimeViper.Set(p.GetConfigField(TestModeExpiresAtName), getKeyExpiresAt())
+		runtimeViper.Set(p.GetConfigField(TestModeKeyExpiresAtName), getKeyExpiresAt())
 	}
 
 	if p.TestModePublishableKey != "" {
