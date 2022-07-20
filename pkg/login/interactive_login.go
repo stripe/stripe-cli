@@ -84,7 +84,7 @@ func getConfigureAPIKey(input io.Reader) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("Your API key is: %s\n", redactAPIKey(apiKey))
+	fmt.Printf("Your API key is: %s\n", config.RedactAPIKey(apiKey))
 
 	return apiKey, nil
 }
@@ -102,20 +102,6 @@ func getConfigureDeviceName(input io.Reader) string {
 	}
 
 	return deviceName
-}
-
-// redactAPIKey returns a redacted version of API keys. The first 8 and last 4
-// characters are not redacted, everything else is replaced by "*" characters.
-//
-// It panics if the provided string has less than 12 characters.
-func redactAPIKey(apiKey string) string {
-	var b strings.Builder
-
-	b.WriteString(apiKey[0:8])                         // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
-	b.WriteString(strings.Repeat("*", len(apiKey)-12)) // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
-	b.WriteString(apiKey[len(apiKey)-4:])              // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
-
-	return b.String()
 }
 
 func securePrompt(input io.Reader) (string, error) {

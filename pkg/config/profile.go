@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -24,6 +25,20 @@ type Profile struct {
 	DisplayName            string
 	AccountID              string
 }
+
+// config key names
+const (
+	AccountIDName              = "account_id"
+	DeviceNameName             = "device_name"
+	DisplayNameName            = "display_name"
+	IsTermsAcceptanceValidName = "is_terms_acceptance_valid"
+	TestModeAPIKeyName         = "test_mode_api_key"
+	TestModePublishableKeyName = "test_mode_publishable_key"
+	TestModeKeyExpiresAtName   = "test_mode_key_expires_at"
+	LiveModeAPIKeyName         = "live_mode_api_key"
+	LiveModePublishableKeyName = "live_mode_publishable_key"
+	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
+)
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -67,7 +82,7 @@ func (p *Profile) GetDeviceName() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("device_name")), nil
+		return viper.GetString(p.GetConfigField(DeviceNameName)), nil
 	}
 
 	return "", validators.ErrDeviceNameNotConfigured
@@ -80,7 +95,7 @@ func (p *Profile) GetAccountID() (string, error) {
 	}
 
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("account_id")), nil
+		return viper.GetString(p.GetConfigField(AccountIDName)), nil
 	}
 
 	return "", validators.ErrAccountIDNotConfigured
@@ -113,13 +128,20 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		if !viper.IsSet(p.GetConfigField("api_key")) {
 			p.RegisterAlias("api_key", "secret_key")
 		} else {
-			p.RegisterAlias("test_mode_api_key", "api_key")
+			p.RegisterAlias(TestModeAPIKeyName, "api_key")
 		}
 	}
 
 	// Try to fetch the API key from the configuration file
 	if err := viper.ReadInConfig(); err == nil {
-		key := viper.GetString(p.GetConfigField(livemodeKeyField(livemode)))
+		var key string
+		fieldID := livemodeKeyField(livemode)
+
+		if !livemode {
+			key = viper.GetString(p.GetConfigField(fieldID))
+		} else {
+			key = p.RetrieveLivemodeValue(fieldID)
+		}
 
 		err := validators.APIKey(key)
 		if err != nil {
@@ -132,23 +154,52 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	return "", validators.ErrAPIKeyNotConfigured
 }
 
-// GetPublishableKey returns the publishable key for the user
-func (p *Profile) GetPublishableKey() string {
-	if err := viper.ReadInConfig(); err == nil {
-		if viper.IsSet(p.GetConfigField("publishable_key")) {
-			p.RegisterAlias("test_mode_publishable_key", "publishable_key")
-		}
+// GetExpiresAt returns the API key expirary date
+func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
+	var timeString string
+	fieldID := TestModeKeyExpiresAtName
 
-		return viper.GetString(p.GetConfigField("test_mode_publishable_key"))
+	if livemode {
+		fieldID = LiveModeKeyExpiresAtName
+		timeString = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+	} else {
+		timeString = viper.GetString(p.GetConfigField(fieldID))
 	}
 
-	return ""
+	expiresAt, err := time.Parse(DateStringFormat, timeString)
+
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return expiresAt, nil
+}
+
+// GetPublishableKey returns the publishable key for the user
+func (p *Profile) GetPublishableKey(livemode bool) string {
+	key := ""
+	fieldID := TestModePublishableKeyName
+
+	if livemode {
+		fieldID = LiveModePublishableKeyName
+		key = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+	} else {
+		if err := viper.ReadInConfig(); err == nil {
+			if viper.IsSet(p.GetConfigField("publishable_key")) {
+				p.RegisterAlias(fieldID, "publishable_key")
+			}
+
+			key = viper.GetString(p.GetConfigField(fieldID))
+		}
+	}
+
+	return key
 }
 
 // GetDisplayName returns the account display name of the user
 func (p *Profile) GetDisplayName() string {
 	if err := viper.ReadInConfig(); err == nil {
-		return viper.GetString(p.GetConfigField("display_name"))
+		return viper.GetString(p.GetConfigField(DisplayNameName))
 	}
 
 	return ""
@@ -199,31 +250,44 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.DeviceName != "" {
-		runtimeViper.Set(p.GetConfigField("device_name"), strings.TrimSpace(p.DeviceName))
+		runtimeViper.Set(p.GetConfigField(DeviceNameName), strings.TrimSpace(p.DeviceName))
 	}
 
 	if p.LiveModeAPIKey != "" {
-		runtimeViper.Set(p.GetConfigField("live_mode_api_key"), strings.TrimSpace(p.LiveModeAPIKey))
+		expiresAt := getKeyExpiresAt()
+
+		// store redacted key in config
+		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
+
+		// store actual key in secure keyring
+		p.storeLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		p.storeLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
 	}
 
 	if p.LiveModePublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField("live_mode_publishable_key"), strings.TrimSpace(p.LiveModePublishableKey))
+		// store redacted key in config
+		runtimeViper.Set(p.GetConfigField(LiveModePublishableKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModePublishableKey)))
+
+		// store actual key in secure keyring
+		p.storeLivemodeValue(LiveModePublishableKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
 	}
 
 	if p.TestModeAPIKey != "" {
-		runtimeViper.Set(p.GetConfigField("test_mode_api_key"), strings.TrimSpace(p.TestModeAPIKey))
+		runtimeViper.Set(p.GetConfigField(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey))
+		runtimeViper.Set(p.GetConfigField(TestModeKeyExpiresAtName), getKeyExpiresAt())
 	}
 
 	if p.TestModePublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField("test_mode_publishable_key"), strings.TrimSpace(p.TestModePublishableKey))
+		runtimeViper.Set(p.GetConfigField(TestModePublishableKeyName), strings.TrimSpace(p.TestModePublishableKey))
 	}
 
 	if p.DisplayName != "" {
-		runtimeViper.Set(p.GetConfigField("display_name"), strings.TrimSpace(p.DisplayName))
+		runtimeViper.Set(p.GetConfigField(DisplayNameName), strings.TrimSpace(p.DisplayName))
 	}
 
 	if p.AccountID != "" {
-		runtimeViper.Set(p.GetConfigField("account_id"), strings.TrimSpace(p.AccountID))
+		runtimeViper.Set(p.GetConfigField(AccountIDName), strings.TrimSpace(p.AccountID))
 	}
 
 	runtimeViper.MergeInConfig()
@@ -266,8 +330,12 @@ func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
 
 func livemodeKeyField(livemode bool) string {
 	if livemode {
-		return "live_mode_api_key"
+		return LiveModeAPIKeyName
 	}
 
-	return "test_mode_api_key"
+	return TestModeAPIKeyName
+}
+
+func getKeyExpiresAt() string {
+	return time.Now().AddDate(0, 0, KeyValidInDays).UTC().Format(DateStringFormat)
 }
