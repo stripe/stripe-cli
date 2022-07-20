@@ -208,6 +208,4 @@ func init() {
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
-
-	config.StoreKey()
 }

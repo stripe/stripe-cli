@@ -12,6 +12,7 @@ import (
 
 	exec "golang.org/x/sys/execabs"
 
+	"github.com/99designs/keyring"
 	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
@@ -160,6 +161,11 @@ func (c *Config) InitConfig() {
 	default:
 		log.Fatalf("Unrecognized color value: %s. Expected one of on, off, auto.", c.Color)
 	}
+
+	// initialize key ring
+	KeyRing, _ = keyring.Open(keyring.Config{
+		ServiceName: "Stripe CLI Key Storage",
+	})
 }
 
 // EditConfig opens the configuration file in the default editor.

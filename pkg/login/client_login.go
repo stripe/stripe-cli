@@ -13,7 +13,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/config"
+	configPkg "github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -40,7 +40,7 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(ctx context.Context, baseURL string, config *config.Config, input io.Reader) error {
+func Login(ctx context.Context, baseURL string, config *configPkg.Config, input io.Reader) error {
 	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
 	if err != nil {
 		return err
@@ -92,7 +92,7 @@ func Login(ctx context.Context, baseURL string, config *config.Config, input io.
 }
 
 // ConfigureProfile function sets config for this profile.
-func ConfigureProfile(config *config.Config, response *PollAPIKeyResponse) error {
+func ConfigureProfile(config *configPkg.Config, response *PollAPIKeyResponse) error {
 	validateErr := validators.APIKey(response.TestModeAPIKey)
 	if validateErr != nil {
 		return validateErr
