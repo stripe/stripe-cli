@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/99designs/keyring"
+
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
