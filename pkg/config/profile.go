@@ -33,10 +33,10 @@ const (
 	DisplayNameName            = "display_name"
 	IsTermsAcceptanceValidName = "is_terms_acceptance_valid"
 	TestModeAPIKeyName         = "test_mode_api_key"
-	TestModePublishableKeyName = "test_mode_publishable_key"
+	TestModePubKeyName         = "test_mode_pub_key"
 	TestModeKeyExpiresAtName   = "test_mode_key_expires_at"
 	LiveModeAPIKeyName         = "live_mode_api_key"
-	LiveModePublishableKeyName = "live_mode_publishable_key"
+	LiveModePubKeyName         = "live_mode_pub_key"
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 )
 
@@ -122,32 +122,34 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		return p.APIKey, nil
 	}
 
-	// If the user doesn't have an api_key field set, they might be using an
-	// old configuration so try to read from secret_key
-	if !livemode {
-		if !viper.IsSet(p.GetConfigField("api_key")) {
-			p.RegisterAlias("api_key", "secret_key")
-		} else {
-			p.RegisterAlias(TestModeAPIKeyName, "api_key")
-		}
-	}
+	var key string
+	var err error
 
 	// Try to fetch the API key from the configuration file
-	if err := viper.ReadInConfig(); err == nil {
-		var key string
-		fieldID := livemodeKeyField(livemode)
-
-		if !livemode {
-			key = viper.GetString(p.GetConfigField(fieldID))
-		} else {
-			key = p.RetrieveLivemodeValue(fieldID)
+	if !livemode {
+		// If the user doesn't have an api_key field set, they might be using an
+		// old configuration so try to read from secret_key
+		if viper.IsSet(p.GetConfigField("secret_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "secret_key")
+		} else if viper.IsSet(p.GetConfigField("api_key")) {
+			p.RegisterAlias(TestModeAPIKeyName, "api_key")
 		}
 
-		err := validators.APIKey(key)
+		if err := viper.ReadInConfig(); err == nil {
+			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
+		}
+	} else {
+		key, err = p.RetrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
 			return "", err
 		}
+	}
 
+	if key != "" {
+		err = validators.APIKey(key)
+		if err != nil {
+			return "", err
+		}
 		return key, nil
 	}
 
@@ -157,43 +159,59 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 // GetExpiresAt returns the API key expirary date
 func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var timeString string
-	fieldID := TestModeKeyExpiresAtName
+	var err error
 
 	if livemode {
-		fieldID = LiveModeKeyExpiresAtName
-		timeString = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+		timeString, err = p.RetrieveLivemodeValue(LiveModeKeyExpiresAtName)
+		if err != nil {
+			return time.Time{}, err
+		}
 	} else {
-		timeString = viper.GetString(p.GetConfigField(fieldID))
+		timeString = viper.GetString(p.GetConfigField(TestModeKeyExpiresAtName))
 	}
 
-	expiresAt, err := time.Parse(DateStringFormat, timeString)
-
-	if err != nil {
-		return time.Time{}, err
+	if timeString != "" {
+		expiresAt, err := time.Parse(DateStringFormat, timeString)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return expiresAt, nil
 	}
 
-	return expiresAt, nil
+	return time.Time{}, validators.ErrAPIKeyNotConfigured
 }
 
 // GetPublishableKey returns the publishable key for the user
-func (p *Profile) GetPublishableKey(livemode bool) string {
-	key := ""
-	fieldID := TestModePublishableKeyName
+func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
+	var key string
+	var err error
 
 	if livemode {
-		fieldID = LiveModePublishableKeyName
-		key = p.RetrieveLivemodeValue(p.GetConfigField(fieldID))
+		key, err = p.RetrieveLivemodeValue(LiveModePubKeyName)
+		if err != nil {
+			return "", err
+		}
 	} else {
+		// test mode
 		if err := viper.ReadInConfig(); err == nil {
 			if viper.IsSet(p.GetConfigField("publishable_key")) {
-				p.RegisterAlias(fieldID, "publishable_key")
+				p.RegisterAlias(TestModePubKeyName, "publishable_key")
+			}
+			// there is a bug with viper.GetStringMapString when the key name is too long, which makes
+			// `config --list --project-name <project_name>` unable to read the project specific config
+			if viper.IsSet(p.GetConfigField("test_mode_publishable_key")) {
+				p.RegisterAlias(TestModePubKeyName, "test_mode_publishable_key")
 			}
 
-			key = viper.GetString(p.GetConfigField(fieldID))
+			key = viper.GetString(p.GetConfigField(TestModePubKeyName))
 		}
 	}
 
-	return key
+	if key != "" {
+		return key, nil
+	}
+
+	return "", validators.ErrAPIKeyNotConfigured
 }
 
 // GetDisplayName returns the account display name of the user
@@ -238,6 +256,11 @@ func (p *Profile) DeleteConfigField(field string) error {
 		return err
 	}
 
+	// delete livemode redacted values from config and full values from keyring
+	if field == LiveModeAPIKeyName || field == LiveModePubKeyName || field == LiveModeKeyExpiresAtName {
+		p.DeleteLivemodeValue(field)
+	}
+
 	return p.writeProfile(v)
 }
 
@@ -267,10 +290,10 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 
 	if p.LiveModePublishableKey != "" {
 		// store redacted key in config
-		runtimeViper.Set(p.GetConfigField(LiveModePublishableKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModePublishableKey)))
+		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModePublishableKey)))
 
 		// store actual key in secure keyring
-		p.storeLivemodeValue(LiveModePublishableKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
+		p.storeLivemodeValue(LiveModePubKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
 	}
 
 	if p.TestModeAPIKey != "" {
@@ -279,7 +302,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.TestModePublishableKey != "" {
-		runtimeViper.Set(p.GetConfigField(TestModePublishableKeyName), strings.TrimSpace(p.TestModePublishableKey))
+		runtimeViper.Set(p.GetConfigField(TestModePubKeyName), strings.TrimSpace(p.TestModePublishableKey))
 	}
 
 	if p.DisplayName != "" {
@@ -326,14 +349,6 @@ func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
 	}
 
 	return v
-}
-
-func livemodeKeyField(livemode bool) string {
-	if livemode {
-		return LiveModeAPIKeyName
-	}
-
-	return TestModeAPIKeyName
 }
 
 func getKeyExpiresAt() string {
