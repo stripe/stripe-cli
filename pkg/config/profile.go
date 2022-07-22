@@ -200,7 +200,6 @@ func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
 		if viper.IsSet(p.GetConfigField("test_mode_publishable_key")) {
 			p.RegisterAlias(TestModePubKeyName, "test_mode_publishable_key")
 		}
-
 	}
 
 	err := viper.ReadInConfig()
