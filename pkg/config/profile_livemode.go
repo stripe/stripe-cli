@@ -1,10 +1,14 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/99designs/keyring"
+	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -17,8 +21,8 @@ const KeyValidInDays = 90
 // KeyRing ...
 var KeyRing keyring.Keyring
 
-// storeLivemodeValue
-func (p *Profile) storeLivemodeValue(field, value, description string) {
+// saveLivemodeValue saves livemode value of given key in keyring
+func (p *Profile) saveLivemodeValue(field, value, description string) {
 	fieldID := p.GetConfigField(field)
 	_ = KeyRing.Set(keyring.Item{
 		Key:         fieldID,
@@ -28,8 +32,8 @@ func (p *Profile) storeLivemodeValue(field, value, description string) {
 	})
 }
 
-// RetrieveLivemodeValue ...
-func (p *Profile) RetrieveLivemodeValue(key string) (string, error) {
+// retrieveLivemodeValue retrieves livemode value of given key in keyring
+func (p *Profile) retrieveLivemodeValue(key string) (string, error) {
 	fieldID := p.GetConfigField(key)
 	existingKeys, err := KeyRing.Keys()
 	if err != nil {
@@ -46,8 +50,8 @@ func (p *Profile) RetrieveLivemodeValue(key string) (string, error) {
 	return "", validators.ErrAPIKeyNotConfigured
 }
 
-// DeleteLivemodeValue ...
-func (p *Profile) DeleteLivemodeValue(key string) error {
+// deleteLivemodeValue deletes livemode value of given key in keyring
+func (p *Profile) deleteLivemodeValue(key string) error {
 	fieldID := p.GetConfigField(key)
 	existingKeys, err := KeyRing.Keys()
 	if err != nil {
@@ -60,6 +64,36 @@ func (p *Profile) DeleteLivemodeValue(key string) error {
 		}
 	}
 	return nil
+}
+
+// redactAllLivemodeValues redacts all livemode values in the local config file
+func (p *Profile) redactAllLivemodeValues() {
+	color := ansi.Color(os.Stdout)
+
+	if err := viper.ReadInConfig(); err == nil {
+		// if the config file has expires at date, then it is using the new livemode key storage
+		if viper.IsSet(p.GetConfigField(LiveModeAPIKeyName)) {
+			key := viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
+			if !isRedactedAPIKey(key) {
+				fmt.Println(color.Yellow(`
+(!) Livemode value found for the field '` + LiveModeAPIKeyName + `' in your config file.
+Livemode values from the config file will be redacted and will not be used.`))
+
+				p.WriteConfigField(LiveModeAPIKeyName, RedactAPIKey(key))
+			}
+		}
+
+		if viper.IsSet(p.GetConfigField(LiveModePubKeyName)) {
+			key := viper.GetString(p.GetConfigField(LiveModePubKeyName))
+			if !isRedactedAPIKey(key) {
+				fmt.Println(color.Yellow(`
+(!) Livemode value found for the field '` + LiveModePubKeyName + `' in your config file.
+Livemode values from the config file will be redacted and will not be used.`))
+
+				p.WriteConfigField(LiveModePubKeyName, RedactAPIKey(key))
+			}
+		}
+	}
 }
 
 // RedactAPIKey returns a redacted version of API keys. The first 8 and last 4
@@ -76,14 +110,14 @@ func RedactAPIKey(apiKey string) string {
 	return b.String()
 }
 
-// IsRedactedAPIKey ...
-func IsRedactedAPIKey(apiKey string) bool {
+// isRedactedAPIKey checks if the input string is a refacted api key
+func isRedactedAPIKey(apiKey string) bool {
 	keyParts := strings.Split(apiKey, "_")
 	if len(keyParts) < 3 {
 		return false
 	}
 
-	if keyParts[0] != "sk" && keyParts[0] != "rk" {
+	if keyParts[0] != "sk" && keyParts[0] != "rk" && keyParts[0] != "pk" {
 		return false
 	}
 

@@ -139,7 +139,8 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
 		}
 	} else {
-		key, err = p.RetrieveLivemodeValue(LiveModeAPIKeyName)
+		p.redactAllLivemodeValues()
+		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
 			return "", err
 		}
@@ -162,7 +163,7 @@ func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var err error
 
 	if livemode {
-		timeString, err = p.RetrieveLivemodeValue(LiveModeKeyExpiresAtName)
+		timeString, err = p.retrieveLivemodeValue(LiveModeKeyExpiresAtName)
 		if err != nil {
 			return time.Time{}, err
 		}
@@ -187,7 +188,8 @@ func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
 	var err error
 
 	if livemode {
-		key, err = p.RetrieveLivemodeValue(LiveModePubKeyName)
+		p.redactAllLivemodeValues()
+		key, err = p.retrieveLivemodeValue(LiveModePubKeyName)
 		if err != nil {
 			return "", err
 		}
@@ -258,7 +260,7 @@ func (p *Profile) DeleteConfigField(field string) error {
 
 	// delete livemode redacted values from config and full values from keyring
 	if field == LiveModeAPIKeyName || field == LiveModePubKeyName || field == LiveModeKeyExpiresAtName {
-		p.DeleteLivemodeValue(field)
+		p.deleteLivemodeValue(field)
 	}
 
 	return p.writeProfile(v)
@@ -284,8 +286,8 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// store actual key in secure keyring
-		p.storeLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
-		p.storeLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
+		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		p.saveLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
 	}
 
 	if p.LiveModePublishableKey != "" {
@@ -293,7 +295,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModePublishableKey)))
 
 		// store actual key in secure keyring
-		p.storeLivemodeValue(LiveModePubKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
+		p.saveLivemodeValue(LiveModePubKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
 	}
 
 	if p.TestModeAPIKey != "" {
