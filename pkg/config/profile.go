@@ -184,31 +184,31 @@ func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 
 // GetPublishableKey returns the publishable key for the user
 func (p *Profile) GetPublishableKey(livemode bool) (string, error) {
+	var fieldID string
 	var key string
-	var err error
 
 	if livemode {
-		p.redactAllLivemodeValues()
-		key, err = p.retrieveLivemodeValue(LiveModePubKeyName)
-		if err != nil {
-			return "", err
-		}
+		fieldID = LiveModePubKeyName
 	} else {
-		// test mode
-		if err := viper.ReadInConfig(); err == nil {
-			if viper.IsSet(p.GetConfigField("publishable_key")) {
-				p.RegisterAlias(TestModePubKeyName, "publishable_key")
-			}
-			// there is a bug with viper.GetStringMapString when the key name is too long, which makes
-			// `config --list --project-name <project_name>` unable to read the project specific config
-			if viper.IsSet(p.GetConfigField("test_mode_publishable_key")) {
-				p.RegisterAlias(TestModePubKeyName, "test_mode_publishable_key")
-			}
+		fieldID = TestModePubKeyName
 
-			key = viper.GetString(p.GetConfigField(TestModePubKeyName))
+		if viper.IsSet(p.GetConfigField("publishable_key")) {
+			p.RegisterAlias(TestModePubKeyName, "publishable_key")
 		}
+		// there is a bug with viper.GetStringMapString when the key name is too long, which makes
+		// `config --list --project-name <project_name>` unable to read the project specific config
+		if viper.IsSet(p.GetConfigField("test_mode_publishable_key")) {
+			p.RegisterAlias(TestModePubKeyName, "test_mode_publishable_key")
+		}
+
 	}
 
+	err := viper.ReadInConfig()
+	if err != nil {
+		return "", err
+	}
+
+	key = viper.GetString(p.GetConfigField(fieldID))
 	if key != "" {
 		return key, nil
 	}
@@ -291,11 +291,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.LiveModePublishableKey != "" {
-		// store redacted key in config
-		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModePublishableKey)))
-
-		// store actual key in secure keyring
-		p.saveLivemodeValue(LiveModePubKeyName, strings.TrimSpace(p.LiveModePublishableKey), "Live mode publishable key")
+		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), strings.TrimSpace(p.LiveModePublishableKey))
 	}
 
 	if p.TestModeAPIKey != "" {

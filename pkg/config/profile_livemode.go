@@ -82,17 +82,6 @@ Livemode values from the config file will be redacted and will not be used.`))
 				p.WriteConfigField(LiveModeAPIKeyName, RedactAPIKey(key))
 			}
 		}
-
-		if viper.IsSet(p.GetConfigField(LiveModePubKeyName)) {
-			key := viper.GetString(p.GetConfigField(LiveModePubKeyName))
-			if !isRedactedAPIKey(key) {
-				fmt.Println(color.Yellow(`
-(!) Livemode value found for the field '` + LiveModePubKeyName + `' in your config file.
-Livemode values from the config file will be redacted and will not be used.`))
-
-				p.WriteConfigField(LiveModePubKeyName, RedactAPIKey(key))
-			}
-		}
 	}
 }
 
@@ -117,7 +106,7 @@ func isRedactedAPIKey(apiKey string) bool {
 		return false
 	}
 
-	if keyParts[0] != "sk" && keyParts[0] != "rk" && keyParts[0] != "pk" {
+	if keyParts[0] != "sk" && keyParts[0] != "rk" {
 		return false
 	}
 
