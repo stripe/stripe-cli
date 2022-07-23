@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -135,7 +136,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			p.RegisterAlias(TestModeAPIKeyName, "api_key")
 		}
 
-		if err := viper.ReadInConfig(); err == nil {
+		if err = viper.ReadInConfig(); err == nil {
 			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
 		}
 	} else {
@@ -151,6 +152,13 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			return "", err
 		}
 		return key, nil
+	}
+
+	// If the log level is debug, return the raw error message. otherwise
+	// return a generic configuration message
+	level := log.GetLevel()
+	if level == log.DebugLevel {
+		return "", err
 	}
 
 	return "", validators.ErrAPIKeyNotConfigured
