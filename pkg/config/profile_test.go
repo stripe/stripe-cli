@@ -120,7 +120,7 @@ func TestAPIKeyLogLevel(t *testing.T) {
 	// For debug mode, the error should complain about a config file missing
 	// since we did not init the config
 	key, err := c.Profile.GetAPIKey(false)
-	assert.EqualError(t, err, `Config File "config" Not Found in "[]"`)
+	assert.ErrorContains(t, err, `stripe/config.toml: no such file or directory`)
 	assert.Equal(t, "", key)
 
 	// In info mode, it should give a cleaner error about the key not being
