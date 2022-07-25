@@ -120,7 +120,15 @@ func TestAPIKeyLogLevel(t *testing.T) {
 	// For debug mode, the error should complain about a config file missing
 	// since we did not init the config
 	key, err := c.Profile.GetAPIKey(false)
-	assert.ErrorContains(t, err, `config.toml: no such file or directory`)
+
+	// Little weird but windows returns a different error message than others
+    os := runtime.GOOS
+    switch os {
+    case "windows":
+		assert.ErrorContains(t, err, `config.toml: The system cannot find the file specified.`)
+	default:
+		assert.ErrorContains(t, err, `config.toml: no such file or directory`)
+
 	assert.Equal(t, "", key)
 
 	// In info mode, it should give a cleaner error about the key not being
