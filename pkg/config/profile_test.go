@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -122,12 +123,13 @@ func TestAPIKeyLogLevel(t *testing.T) {
 	key, err := c.Profile.GetAPIKey(false)
 
 	// Little weird but windows returns a different error message than others
-    os := runtime.GOOS
-    switch os {
-    case "windows":
+	os := runtime.GOOS
+	switch os {
+	case "windows":
 		assert.ErrorContains(t, err, `config.toml: The system cannot find the file specified.`)
 	default:
 		assert.ErrorContains(t, err, `config.toml: no such file or directory`)
+	}
 
 	assert.Equal(t, "", key)
 
