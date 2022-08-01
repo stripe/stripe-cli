@@ -26,7 +26,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsTreasuryCmd := resource.NewNamespaceCmd(rootCmd, "treasury")
 
 	// Resource commands
-	r3DSecureCmd := resource.NewResourceCmd(rootCmd, "3d_secure")
 	rAccountLinksCmd := resource.NewResourceCmd(rootCmd, "account_links")
 	rAccountsCmd := resource.NewResourceCmd(rootCmd, "accounts")
 	rApplePayDomainsCmd := resource.NewResourceCmd(rootCmd, "apple_pay_domains")
@@ -54,7 +53,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rFilesCmd := resource.NewResourceCmd(rootCmd, "files")
 	rInvoiceitemsCmd := resource.NewResourceCmd(rootCmd, "invoiceitems")
 	rInvoicesCmd := resource.NewResourceCmd(rootCmd, "invoices")
-	rItemsCmd := resource.NewResourceCmd(rootCmd, "items")
 	rLineItemsCmd := resource.NewResourceCmd(rootCmd, "line_items")
 	rLoginLinksCmd := resource.NewResourceCmd(rootCmd, "login_links")
 	rMandatesCmd := resource.NewResourceCmd(rootCmd, "mandates")
@@ -137,14 +135,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rTreasuryTransactionsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transactions")
 
 	// Operation commands
-	resource.NewOperationCmd(r3DSecureCmd.Cmd, "create", "/v1/3d_secure", http.MethodPost, map[string]string{
-		"amount":     "integer",
-		"card":       "string",
-		"currency":   "string",
-		"customer":   "string",
-		"return_url": "string",
-	}, &Config)
-	resource.NewOperationCmd(r3DSecureCmd.Cmd, "retrieve", "/v1/3d_secure/{three_d_secure}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rAccountLinksCmd.Cmd, "create", "/v1/account_links", http.MethodPost, map[string]string{
 		"account":     "string",
 		"collect":     "string",
@@ -409,6 +399,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"source":                "string",
 		"tax_exempt":            "string",
 		"test_clock":            "string",
+		"validate":              "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create_funding_instructions", "/v1/customers/{customer}/funding_instructions", http.MethodPost, map[string]string{
 		"currency":     "string",
@@ -455,7 +446,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"promotion_code":        "string",
 		"source":                "string",
 		"tax_exempt":            "string",
-		"trial_end":             "string",
+		"validate":              "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "close", "/v1/disputes/{dispute}/close", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "list", "/v1/disputes", http.MethodGet, map[string]string{
@@ -588,6 +579,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"application_fee_amount":         "integer",
 		"auto_advance":                   "boolean",
 		"collection_method":              "string",
+		"currency":                       "string",
 		"customer":                       "string",
 		"days_until_due":                 "integer",
 		"default_payment_method":         "string",
@@ -618,6 +610,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "mark_uncollectible", "/v1/invoices/{invoice}/mark_uncollectible", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "pay", "/v1/invoices/{invoice}/pay", http.MethodPost, map[string]string{
 		"forgive":          "boolean",
+		"mandate":          "string",
 		"off_session":      "boolean",
 		"paid_out_of_band": "boolean",
 		"payment_method":   "string",
@@ -679,19 +672,12 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor":   "string",
 	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, &Config)
-	resource.NewOperationCmd(rItemsCmd.Cmd, "list", "/v1/checkout/sessions/{session}/line_items", http.MethodGet, map[string]string{
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-	}, &Config)
 	resource.NewOperationCmd(rLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 	}, &Config)
-	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{
-		"redirect_url": "string",
-	}, &Config)
+	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rMandatesCmd.Cmd, "retrieve", "/v1/mandates/{mandate}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rOrdersCmd.Cmd, "cancel", "/v1/orders/{id}/cancel", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rOrdersCmd.Cmd, "create", "/v1/orders", http.MethodPost, map[string]string{
@@ -852,7 +838,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "retrieve", "/v1/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "update", "/v1/payment_methods/{payment_method}", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "create", "/v1/customers/{customer}/sources", http.MethodPost, map[string]string{
-		"source": "string",
+		"source":   "string",
+		"validate": "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "list", "/v1/customers/{customer}/sources", http.MethodGet, map[string]string{
 		"ending_before":  "string",
@@ -1573,6 +1560,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_intent": "string",
 		"starting_after": "string",
 		"subscription":   "string",
+	}, &Config)
+	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "list_line_items", "/v1/checkout/sessions/{session}/line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, &Config)
