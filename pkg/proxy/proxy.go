@@ -724,13 +724,19 @@ func buildForwardURL(forwardURL string, destination *url.URL) (string, error) {
 		return "", fmt.Errorf("Provided forward url cannot be parsed: %s", forwardURL)
 	}
 
-	return fmt.Sprintf(
+	newForwardURL := fmt.Sprintf(
 		"%s://%s%s%s",
 		f.Scheme,
 		f.Host,
 		strings.TrimSuffix(f.Path, "/"), // avoids having a double "//"
 		destination.Path,
-	), nil
+	)
+
+	if destination.RawQuery != "" {
+		newForwardURL = newForwardURL + "?" + destination.RawQuery
+	}
+
+	return newForwardURL, nil
 }
 
 func getAPIVersionString(str *string) string {
