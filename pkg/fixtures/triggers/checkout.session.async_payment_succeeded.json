@@ -10,13 +10,13 @@
       "params": {
         "success_url": "https://httpbin.org/post",
         "cancel_url": "https://httpbin.org/post",
-        "payment_method_types": ["bacs_debit"],
+        "payment_method_types": ["card"],
         "line_items": [
           {
             "name": "t-shirt",
             "description": "comfortable cotton t-shirt",
             "amount": 1500,
-            "currency": "gbp",
+            "currency": "usd",
             "quantity": 2
           }
         ],
@@ -45,21 +45,12 @@
       "path": "/v1/payment_methods",
       "method": "post",
       "params": {
-        "type": "bacs_debit",
-        "bacs_debit": {
-          "account_number": "00012345",
-          "sort_code": "108800"
+        "type": "card",
+        "card": {
+          "token": "tok_visa"
         },
         "billing_details": {
-          "email": "stripe@example.com",
-          "name": "Jenny Rosen",
-          "phone": "1234567890",
-          "address": {
-            "line1": "71 Crown Street",
-            "city": "London",
-            "postal_code": "W10 2WB",
-            "country": "GB"
-          }
+          "email": "stripe@example.com"
         }
       }
     },
