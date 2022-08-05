@@ -168,22 +168,7 @@ func (c *Config) InitConfig() {
 	})
 
 	// redact livemode values for existing configs
-	if err := viper.ReadInConfig(); err == nil {
-		// if the config file has expires at date, then it is using the new livemode key storage
-		if viper.IsSet(c.Profile.GetConfigField(LiveModeAPIKeyName)) {
-			key := viper.GetString(c.Profile.GetConfigField(LiveModeAPIKeyName))
-			if !IsRedactedAPIKey(key) {
-				c.Profile.WriteConfigField(LiveModeAPIKeyName, RedactAPIKey(key))
-			}
-		}
-
-		if viper.IsSet(c.Profile.GetConfigField(LiveModePubKeyName)) {
-			key := viper.GetString(c.Profile.GetConfigField(LiveModePubKeyName))
-			if !IsRedactedAPIKey(key) {
-				c.Profile.WriteConfigField(LiveModePubKeyName, RedactAPIKey(key))
-			}
-		}
-	}
+	c.Profile.redactAllLivemodeValues()
 }
 
 // EditConfig opens the configuration file in the default editor.
