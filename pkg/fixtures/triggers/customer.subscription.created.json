@@ -9,20 +9,30 @@
         "method": "post",
         "params": {
           "description": "(created by Stripe CLI)",
-          "source": "tok_visa"
+          "payment_method": "pm_card_visa",
+          "invoice_settings": {
+            "default_payment_method": "pm_card_visa"
+          }
         }
       },
       {
-        "name": "plan",
-        "path": "/v1/plans",
+        "name": "product",
+        "path": "/v1/products",
         "method": "post",
         "params": {
+            "name": "myproduct",
+            "description": "(created by Stripe CLI)"
+        }
+      },
+      {
+        "name": "price",
+        "path": "/v1/prices",
+        "method": "post",
+        "params": {
+          "product": "${product:id}",
+          "unit_amount": "1500",
           "currency": "usd",
-          "interval": "month",
-          "amount": 2000,
-          "product": {
-            "name": "myproduct"
-          }
+          "recurring[interval]": "month"
         }
       },
       {
@@ -33,7 +43,7 @@
           "customer": "${customer:id}",
           "items": [
             {
-              "plan": "${plan:id}"
+              "price": "${price:id}"
             }
           ]
         }
