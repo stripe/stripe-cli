@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -398,7 +398,7 @@ func (p *Proxy) processWebhookEvent(msg websocket.IncomingMessage) {
 }
 
 func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, resp *http.Response) {
-	buf, err := ioutil.ReadAll(resp.Body)
+	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
 		p.cfg.OutCh <- websocket.ErrorElement{
 			Error: FailedToReadResponseError{Err: err},
@@ -447,7 +447,7 @@ func (p *Proxy) processEndpointResponse(evtCtx eventContext, forwardURL string, 
 // Init initializes a new Proxy
 func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	// validate forward-urls args

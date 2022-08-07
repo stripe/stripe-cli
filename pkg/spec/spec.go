@@ -3,7 +3,7 @@ package spec
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 //
@@ -243,7 +243,7 @@ type StatusCode string
 
 // LoadSpec loads and returns the OpenAPI spec.
 func LoadSpec(specPath string) (*Spec, error) {
-	data, err := ioutil.ReadFile(specPath)
+	data, err := os.ReadFile(specPath)
 	if err != nil {
 		return nil, err
 	}

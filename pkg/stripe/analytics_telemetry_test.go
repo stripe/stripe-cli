@@ -2,7 +2,7 @@ package stripe_test
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -81,7 +81,7 @@ func TestSetMerchant(t *testing.T) {
 // AnalyticsClient Tests
 func TestSendAPIRequestEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		bodyString := string(body)
 		require.Contains(t, bodyString, "cli_version=master")
@@ -135,7 +135,7 @@ func TestSkipsSendAPIRequestEventWhenMetadataIsEmpty(t *testing.T) {
 
 func TestSendEvent(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		bodyString := string(body)
 		require.Contains(t, bodyString, "cli_version=master")

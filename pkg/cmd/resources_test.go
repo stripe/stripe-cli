@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -29,7 +29,7 @@ func TestConflictWithPluginCommand(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	var manifest plugins.PluginList

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -57,7 +57,7 @@ func PollForKey(ctx context.Context, pollURL string, interval time.Duration, max
 			return nil, nil, err
 		}
 
-		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			res.Body.Close()
 			return nil, nil, err

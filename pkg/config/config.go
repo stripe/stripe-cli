@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -205,7 +204,7 @@ func (c *Config) EditConfig() error {
 // PrintConfig outputs the contents of the configuration file.
 func (c *Config) PrintConfig() error {
 	if c.Profile.ProfileName == "default" {
-		configFile, err := ioutil.ReadFile(c.ProfilesFile)
+		configFile, err := os.ReadFile(c.ProfilesFile)
 		if err != nil {
 			return err
 		}
