@@ -169,7 +169,6 @@ func init() {
 	rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
-	rootCmd.AddCommand(newPlaybackCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
