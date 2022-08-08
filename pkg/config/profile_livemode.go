@@ -94,19 +94,19 @@ func RedactAPIKey(apiKey string) string {
 }
 
 // isRedactedAPIKey checks if the input string is a refacted api key
-// func isRedactedAPIKey(apiKey string) bool {
-// 	keyParts := strings.Split(apiKey, "_")
-// 	if len(keyParts) < 3 {
-// 		return false
-// 	}
+func isRedactedAPIKey(apiKey string) bool {
+	keyParts := strings.Split(apiKey, "_")
+	if len(keyParts) < 3 {
+		return false
+	}
 
-// 	if keyParts[0] != "sk" && keyParts[0] != "rk" {
-// 		return false
-// 	}
+	if keyParts[0] != "sk" && keyParts[0] != "rk" {
+		return false
+	}
 
-// 	if RedactAPIKey(apiKey) != apiKey {
-// 		return false
-// 	}
+	if RedactAPIKey(apiKey) != apiKey {
+		return false
+	}
 
-// 	return true
-// }
+	return true
+}

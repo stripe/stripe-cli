@@ -148,6 +148,10 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		if err := viper.ReadInConfig(); err == nil {
 			key = viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
 		}
+
+		if isRedactedAPIKey(key) {
+			return "", validators.ErrAPIKeyNotConfigured
+		}
 	}
 
 	if key != "" {
