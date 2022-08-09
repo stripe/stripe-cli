@@ -1501,8 +1501,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"url":         "string",
 	}, &Config)
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "create", "/v1/apps/secrets", http.MethodPost, map[string]string{
-		"name":    "string",
-		"payload": "string",
+		"expires_at": "integer",
+		"name":       "string",
+		"payload":    "string",
 	}, &Config)
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "delete_where", "/v1/apps/secrets/delete", http.MethodPost, map[string]string{
 		"name": "string",
