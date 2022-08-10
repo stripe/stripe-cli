@@ -33,11 +33,11 @@ var (
 
 // Plugin contains the plugin properties
 type Plugin struct {
-	Shortname        string
-	Shortdesc        string
-	Binary           string
+	Shortname        string    `toml:"Shortname"`
+	Shortdesc        string    `toml:"Shortdesc"`
+	Binary           string    `toml:"Binary"`
 	Releases         []Release `toml:"Release"`
-	MagicCookieValue string
+	MagicCookieValue string    `toml:"MagicCookieValue"`
 }
 
 // PluginList contains a list of plugins
@@ -47,10 +47,11 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string
-	OS      string
-	Version string
-	Sum     string
+	Arch      string `toml:"Arch"`
+	OS        string `toml:"OS"`
+	Version   string `toml:"Version"`
+	Sum       string `toml:"Sum"`
+	Unmanaged bool   `toml:"Unmanaged"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client

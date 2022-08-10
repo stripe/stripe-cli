@@ -93,12 +93,12 @@ func (ic *InstallCmd) installPluginByArchivePath(cmd *cobra.Command, tarContentS
 	}
 
 	if ic.archiveURL != "" {
-		err := plugins.FetchAndExtractRemoteTarball(ic.archiveURL, ic.cfg)
+		err := plugins.FetchAndExtractRemoteTarball(cmd.Context(), ic.cfg, ic.archiveURL)
 		if err != nil {
 			return err
 		}
 	} else if ic.archivePath != "" {
-		err := plugins.ExtractLocalTarball(ic.archivePath, ic.cfg)
+		err := plugins.ExtractLocalTarball(cmd.Context(), ic.cfg, ic.archivePath)
 		if err != nil {
 			return err
 		}
@@ -108,16 +108,21 @@ func (ic *InstallCmd) installPluginByArchivePath(cmd *cobra.Command, tarContentS
 }
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	// Refresh the plugin before proceeding
-	err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
-	if err != nil {
-		return err
-	}
+	var err error
 
 	if len(args) == 0 {
 		err = ic.installPluginByArchivePath(cmd, 2)
 	} else {
+		// Refresh the plugin before proceeding
+		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
+		if err != nil {
+			return err
+		}
+
 		err = ic.installPluginByName(cmd, args[0])
+		if err != nil {
+			return err
+		}
 	}
 
 	if err == nil {
@@ -125,7 +130,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		fmt.Println(color.Green("✔ installation complete."))
 	}
 
-	return err
+	return nil
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {

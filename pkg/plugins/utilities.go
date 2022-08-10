@@ -133,15 +133,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 }
 
 // AddEntryToPluginManifest update plugins.toml with a new release version
-func AddEntryToPluginManifest(entry Plugin, config config.IConfig) error {
-	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
-
-	var currentPluginList PluginList
-	if _, err := os.Stat(pluginManifestPath); err == nil {
-		if _, err := toml.DecodeFile(pluginManifestPath, &currentPluginList); err != nil {
-			return err
-		}
+func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, entry Plugin) error {
+	currentPluginList, err := GetPluginList(ctx, config, fs)
+	if err != nil {
+		return nil
 	}
 
 	foundPlugin := false
@@ -150,7 +145,19 @@ func AddEntryToPluginManifest(entry Plugin, config config.IConfig) error {
 		if plugin.Shortname == entry.Shortname {
 			// plugin already installed. append a new release version
 			foundPlugin = true
-			currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entry.Releases[0])
+
+			entryRelease := entry.Releases[0]
+			foundRelease := false
+			for _, release := range plugin.Releases {
+				if release.Version == entryRelease.Version && release.Unmanaged == entryRelease.Unmanaged {
+					foundRelease = true
+					break
+				}
+			}
+
+			if !foundRelease {
+				currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entry.Releases[0])
+			}
 			break
 		}
 	}
@@ -161,11 +168,13 @@ func AddEntryToPluginManifest(entry Plugin, config config.IConfig) error {
 	}
 
 	buf := new(bytes.Buffer)
-	err := toml.NewEncoder(buf).Encode(currentPluginList)
+	err = toml.NewEncoder(buf).Encode(currentPluginList)
 	if err != nil {
 		return err
 	}
 
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 	err = os.WriteFile(pluginManifestPath, buf.Bytes(), 0644)
 	if err != nil {
 		return err
@@ -228,7 +237,8 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
-func ExtractLocalTarball(source string, config config.IConfig) error {
+// ExtractLocalTarball extracts the local tarball body
+func ExtractLocalTarball(ctx context.Context, config config.IConfig, source string) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Println(color.Yellow(fmt.Sprintf("extracting tarball at %s...", source)))
 
@@ -244,7 +254,7 @@ func ExtractLocalTarball(source string, config config.IConfig) error {
 	}
 
 	tarReader := tar.NewReader(gzf)
-	err = extractFromTarball(tarReader, config)
+	err = extractFromTarball(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -252,8 +262,8 @@ func ExtractLocalTarball(source string, config config.IConfig) error {
 	return nil
 }
 
-// FetchAndExtractRemoteTarball returns the remote tarball body
-func FetchAndExtractRemoteTarball(url string, config config.IConfig) error {
+// FetchAndExtractRemoteTarball fetches and extracts the remote tarball body
+func FetchAndExtractRemoteTarball(ctx context.Context, config config.IConfig, url string) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Println(color.Yellow(fmt.Sprintf("fetching tarball at %s...", url)))
 
@@ -285,7 +295,7 @@ func FetchAndExtractRemoteTarball(url string, config config.IConfig) error {
 	defer archive.Close()
 
 	tarReader := tar.NewReader(archive)
-	err = extractFromTarball(tarReader, config)
+	err = extractFromTarball(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -293,9 +303,11 @@ func FetchAndExtractRemoteTarball(url string, config config.IConfig) error {
 	return nil
 }
 
-func extractFromTarball(tarReader *tar.Reader, config config.IConfig) error {
+// extractFromTarball extracts plugin tarball
+func extractFromTarball(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
 	var manifest PluginList
 	var pluginData []byte
+	fs := afero.NewOsFs()
 	color := ansi.Color(os.Stdout)
 
 	for {
@@ -331,14 +343,14 @@ func extractFromTarball(tarReader *tar.Reader, config config.IConfig) error {
 	}
 
 	// update plugin manifest and config manifest
-	if len(manifest.Plugins) == 1 && len(pluginData) > 0 {
+	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) == 1 && len(pluginData) > 0 {
 		plugin := manifest.Plugins[0]
-		err := AddEntryToPluginManifest(plugin, config)
+		plugin.Releases[0].Unmanaged = true
+		err := AddEntryToPluginManifest(ctx, config, fs, plugin)
 		if err != nil {
 			return err
 		}
 
-		fs := afero.NewOsFs()
 		err = plugin.verifychecksumAndSavePlugin(pluginData, config, fs, plugin.Releases[0].Version)
 		if err != nil {
 			return err
