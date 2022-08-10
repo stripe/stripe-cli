@@ -250,6 +250,20 @@ func (p *Plugin) Uninstall(ctx context.Context, config config.IConfig, fs afero.
 }
 
 func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL string, fs afero.Fs, version string) error {
+	body, err := FetchRemoteResource(pluginDownloadURL)
+	if err != nil {
+		return err
+	}
+
+	err = p.verifychecksumAndSavePlugin(body, config, fs, version)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Plugin) verifychecksumAndSavePlugin(pluginData []byte, config config.IConfig, fs afero.Fs, version string) error {
 	logger := log.WithFields(log.Fields{
 		"prefix": "plugins.plugin.Install",
 	})
@@ -260,30 +274,21 @@ func (p *Plugin) downloadAndSavePlugin(config config.IConfig, pluginDownloadURL 
 
 	logger.Debugf("installing %s to %s...", p.Shortname, pluginFilePath)
 
-	body, err := FetchRemoteResource(pluginDownloadURL)
+	reader := bytes.NewReader(pluginData)
 
-	if err != nil {
-		return err
-	}
-
-	reader := bytes.NewReader(body)
-
-	err = p.verifyChecksum(reader, version)
-
+	err := p.verifyChecksum(reader, version)
 	if err != nil {
 		logger.Debug("could not match checksum of plugin")
 		return err
 	}
 
 	err = fs.MkdirAll(pluginDir, 0755)
-
 	if err != nil {
 		logger.Debugf("could not create plugin directory: %s", pluginDir)
 		return err
 	}
 
-	err = afero.WriteFile(fs, pluginFilePath, body, 0755)
-
+	err = afero.WriteFile(fs, pluginFilePath, pluginData, 0755)
 	if err != nil {
 		logger.Debug("could not save plugin to disk")
 		return err
