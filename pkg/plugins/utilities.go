@@ -1,14 +1,19 @@
 package plugins
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +23,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -126,6 +132,75 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
+// AddEntryToPluginManifest update plugins.toml with a new release version
+func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, entry Plugin) error {
+	currentPluginList, err := GetPluginList(ctx, config, fs)
+	if err != nil {
+		return nil
+	}
+
+	foundPlugin := false
+	for i, plugin := range currentPluginList.Plugins {
+		// already a plugin in the manfest with the same name, so use this instead of making a new one
+		if plugin.Shortname == entry.Shortname {
+			// plugin already installed. append a new release version
+			foundPlugin = true
+
+			entryRelease := entry.Releases[0]
+			foundRelease := false
+			for _, release := range plugin.Releases {
+				if release.Version == entryRelease.Version && release.Unmanaged == entryRelease.Unmanaged {
+					foundRelease = true
+					break
+				}
+			}
+
+			if !foundRelease {
+				currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entry.Releases[0])
+			}
+			break
+		}
+	}
+
+	if !foundPlugin {
+		// plugin does not exist. add a new plugin with a new dev release
+		currentPluginList.Plugins = append(currentPluginList.Plugins, entry)
+	}
+
+	buf := new(bytes.Buffer)
+	err = toml.NewEncoder(buf).Encode(currentPluginList)
+	if err != nil {
+		return err
+	}
+
+	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+	err = os.WriteFile(pluginManifestPath, buf.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	config.InitConfig()
+	installedList := config.GetInstalledPlugins()
+
+	// check for plugin already in list (ie. in the case of an upgrade)
+	isInstalled := false
+	for _, name := range installedList {
+		if name == entry.Shortname {
+			isInstalled = true
+		}
+	}
+
+	if !isInstalled {
+		installedList = append(installedList, entry.Shortname)
+	}
+
+	// sync list of installed plugins to file
+	config.WriteConfigField("installed_plugins", installedList)
+
+	return nil
+}
+
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
@@ -160,6 +235,141 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+// ExtractLocalArchive extracts the local tarball body
+func ExtractLocalArchive(ctx context.Context, config config.IConfig, source string) error {
+	color := ansi.Color(os.Stdout)
+	fmt.Println(color.Yellow(fmt.Sprintf("extracting tarball at %s...", source)))
+
+	f, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gzf, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+
+	tarReader := tar.NewReader(gzf)
+	err = extractFromArchive(ctx, config, tarReader)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// FetchAndExtractRemoteArchive fetches and extracts the remote tarball body
+func FetchAndExtractRemoteArchive(ctx context.Context, config config.IConfig, url string) error {
+	color := ansi.Color(os.Stdout)
+	fmt.Println(color.Yellow(fmt.Sprintf("fetching tarball at %s...", url)))
+
+	t := &requests.TracedTransport{}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	trace := &httptrace.ClientTrace{
+		GotConn: t.GotConn,
+		DNSDone: t.DNSDone,
+	}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	client := &http.Client{Transport: t}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	archive, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	defer archive.Close()
+
+	tarReader := tar.NewReader(archive)
+	err = extractFromArchive(ctx, config, tarReader)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// extractFromArchive extracts plugin tarball
+func extractFromArchive(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
+	var manifest PluginList
+	var pluginData []byte
+	fs := afero.NewOsFs()
+	color := ansi.Color(os.Stdout)
+	extractedPluginName := ""
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
+
+		name := header.Name
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			continue
+		case tar.TypeReg:
+			if name == "manifest.toml" {
+				tomlBytes, _ := ioutil.ReadAll(tarReader)
+				err = toml.Unmarshal(tomlBytes, &manifest)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(color.Green(fmt.Sprintf("✔ extracted manifest '%s'", name)))
+			} else if strings.Contains(name, "stripe-cli-") {
+				extractedPluginName = name
+				pluginData, _ = ioutil.ReadAll(tarReader)
+				fmt.Println(color.Green(fmt.Sprintf("✔ extracted plugin '%s'", name)))
+			}
+
+		default:
+			return fmt.Errorf("unrecognized file type for file %s: %c", name, header.Typeflag)
+		}
+	}
+
+	// update plugin manifest and config manifest
+	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) == 1 && len(pluginData) > 0 {
+		plugin := manifest.Plugins[0]
+		plugin.Releases[0].Unmanaged = true
+
+		if extractedPluginName != plugin.Shortname {
+			return fmt.Errorf(
+				"extracted plugin '%s' does not match the plugin '%s' in the manifest",
+				extractedPluginName,
+				plugin.Shortname)
+		}
+
+		err := AddEntryToPluginManifest(ctx, config, fs, plugin)
+		if err != nil {
+			return err
+		}
+
+		err = plugin.verifychecksumAndSavePlugin(pluginData, config, fs, plugin.Releases[0].Version)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("missing required manifest.toml or plugin in the archive")
+	}
+
+	return nil
 }
 
 // CleanupAllClients tears down and disconnects all "managed" plugin clients
