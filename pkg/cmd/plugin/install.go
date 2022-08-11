@@ -87,18 +87,18 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 	return err
 }
 
-func (ic *InstallCmd) installPluginByArchivePath(cmd *cobra.Command, tarContentSize int) error {
+func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command, tarContentSize int) error {
 	if ic.archiveURL == "" && ic.archivePath == "" {
 		return fmt.Errorf("please provide the plugin name or the archive URL/path to install")
 	}
 
 	if ic.archiveURL != "" {
-		err := plugins.FetchAndExtractRemoteTarball(cmd.Context(), ic.cfg, ic.archiveURL)
+		err := plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
 		if err != nil {
 			return err
 		}
 	} else if ic.archivePath != "" {
-		err := plugins.ExtractLocalTarball(cmd.Context(), ic.cfg, ic.archivePath)
+		err := plugins.ExtractLocalArchive(cmd.Context(), ic.cfg, ic.archivePath)
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if len(args) == 0 {
-		err = ic.installPluginByArchivePath(cmd, 2)
+		err = ic.installPluginByArchive(cmd, 2)
 	} else {
 		// Refresh the plugin before proceeding
 		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)

@@ -237,8 +237,8 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
-// ExtractLocalTarball extracts the local tarball body
-func ExtractLocalTarball(ctx context.Context, config config.IConfig, source string) error {
+// ExtractLocalArchive extracts the local tarball body
+func ExtractLocalArchive(ctx context.Context, config config.IConfig, source string) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Println(color.Yellow(fmt.Sprintf("extracting tarball at %s...", source)))
 
@@ -254,7 +254,7 @@ func ExtractLocalTarball(ctx context.Context, config config.IConfig, source stri
 	}
 
 	tarReader := tar.NewReader(gzf)
-	err = extractFromTarball(ctx, config, tarReader)
+	err = extractFromArchive(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -262,8 +262,8 @@ func ExtractLocalTarball(ctx context.Context, config config.IConfig, source stri
 	return nil
 }
 
-// FetchAndExtractRemoteTarball fetches and extracts the remote tarball body
-func FetchAndExtractRemoteTarball(ctx context.Context, config config.IConfig, url string) error {
+// FetchAndExtractRemoteArchive fetches and extracts the remote tarball body
+func FetchAndExtractRemoteArchive(ctx context.Context, config config.IConfig, url string) error {
 	color := ansi.Color(os.Stdout)
 	fmt.Println(color.Yellow(fmt.Sprintf("fetching tarball at %s...", url)))
 
@@ -295,7 +295,7 @@ func FetchAndExtractRemoteTarball(ctx context.Context, config config.IConfig, ur
 	defer archive.Close()
 
 	tarReader := tar.NewReader(archive)
-	err = extractFromTarball(ctx, config, tarReader)
+	err = extractFromArchive(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -303,12 +303,13 @@ func FetchAndExtractRemoteTarball(ctx context.Context, config config.IConfig, ur
 	return nil
 }
 
-// extractFromTarball extracts plugin tarball
-func extractFromTarball(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
+// extractFromArchive extracts plugin tarball
+func extractFromArchive(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
 	var manifest PluginList
 	var pluginData []byte
 	fs := afero.NewOsFs()
 	color := ansi.Color(os.Stdout)
+	extractedPluginName := ""
 
 	for {
 		header, err := tarReader.Next()
@@ -333,6 +334,7 @@ func extractFromTarball(ctx context.Context, config config.IConfig, tarReader *t
 
 				fmt.Println(color.Green(fmt.Sprintf("✔ extracted manifest '%s'", name)))
 			} else if strings.Contains(name, "stripe-cli-") {
+				extractedPluginName = name
 				pluginData, _ = ioutil.ReadAll(tarReader)
 				fmt.Println(color.Green(fmt.Sprintf("✔ extracted plugin '%s'", name)))
 			}
@@ -346,6 +348,14 @@ func extractFromTarball(ctx context.Context, config config.IConfig, tarReader *t
 	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) == 1 && len(pluginData) > 0 {
 		plugin := manifest.Plugins[0]
 		plugin.Releases[0].Unmanaged = true
+
+		if extractedPluginName != plugin.Shortname {
+			return fmt.Errorf(
+				"extracted plugin '%s' does not match the plugin '%s' in the manifest",
+				extractedPluginName,
+				plugin.Shortname)
+		}
+
 		err := AddEntryToPluginManifest(ctx, config, fs, plugin)
 		if err != nil {
 			return err
