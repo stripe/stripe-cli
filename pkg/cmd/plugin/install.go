@@ -87,7 +87,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 	return err
 }
 
-func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command, tarContentSize int) error {
+func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
 	if ic.archiveURL == "" && ic.archivePath == "" {
 		return fmt.Errorf("please provide the plugin name or the archive URL/path to install")
 	}
@@ -111,7 +111,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if len(args) == 0 {
-		err = ic.installPluginByArchive(cmd, 2)
+		err = ic.installPluginByArchive(cmd)
 	} else {
 		// Refresh the plugin before proceeding
 		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
