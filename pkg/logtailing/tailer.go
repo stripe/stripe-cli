@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"time"
 
@@ -86,7 +86,7 @@ type RedactedError struct {
 // New creates a new Tailer
 func New(cfg *Config) *Tailer {
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	return &Tailer{

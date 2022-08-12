@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"syscall"
@@ -56,7 +56,7 @@ func New(
 	telemetryClient stripe.TelemetryClient,
 ) *RPCService {
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	grpcServer := grpc.NewServer(

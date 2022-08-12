@@ -193,11 +193,11 @@ func (s *Samples) Initialize(app string) error {
 // `-- .env.example
 //
 // The behavior here is:
-// * If there are no integrations available, copy the top-level files, the
-//   client folder, and the selected language inside of the server folder to
-//   the server top-level (example above)
-// * If the user selects an integration, mirror the structure above for the
-//   selected integration (example above)
+//   - If there are no integrations available, copy the top-level files, the
+//     client folder, and the selected language inside of the server folder to
+//     the server top-level (example above)
+//   - If the user selects an integration, mirror the structure above for the
+//     selected integration (example above)
 func (s *Samples) Copy(target string) error {
 	integration := s.SelectedConfig.Integration.name()
 

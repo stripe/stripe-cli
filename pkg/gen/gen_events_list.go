@@ -7,7 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
+	"os"
 	"text/template"
 
 	"github.com/stripe/stripe-cli/pkg/spec"
@@ -57,7 +57,7 @@ func main() {
 
 	// write formatted code to disk
 	fmt.Printf("writing %s\n", pathOutput)
-	err = ioutil.WriteFile(pathOutput, formatted, 0644)
+	err = os.WriteFile(pathOutput, formatted, 0644)
 	if err != nil {
 		panic(err)
 	}

@@ -269,7 +269,8 @@ func findSimilarQueryNames(fxt *Fixture, name string) ([]string, bool) {
 
 // parseQuery checks strings for possible queries and replaces the
 // corresponding value in its place. The supported query format is:
-// 		$<name of fixture>:dot.path.to.field
+//
+//	$<name of fixture>:dot.path.to.field
 func (fxt *Fixture) parseQuery(queryString string) (string, error) {
 	value := queryString
 

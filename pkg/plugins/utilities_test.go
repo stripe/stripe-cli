@@ -24,7 +24,7 @@ func TestGetPluginList(t *testing.T) {
 	require.Equal(t, "stripe-cli-app-a", plugin.Binary)
 	require.Equal(t, "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291", plugin.MagicCookieValue)
 
-	require.Equal(t, 9, len(plugin.Releases))
+	require.Equal(t, 12, len(plugin.Releases))
 	release := plugin.Releases[0]
 	require.Equal(t, "amd64", release.Arch)
 	require.Equal(t, "darwin", release.OS)
@@ -41,7 +41,7 @@ func TestLookUpPlugin(t *testing.T) {
 	require.Equal(t, "appB", plugin.Shortname)
 	require.Equal(t, "stripe-cli-app-b", plugin.Binary)
 	require.Equal(t, "FDBE6FB9-A149-44BD-9639-4D33D8B594E8", plugin.MagicCookieValue)
-	require.Equal(t, 3, len(plugin.Releases))
+	require.Equal(t, 4, len(plugin.Releases))
 }
 
 func TestRefreshPluginManifest(t *testing.T) {

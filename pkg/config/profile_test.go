@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -102,7 +101,7 @@ test_mode_key_expires_at = '` + expiresAt + `'
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
-	bytes, err := ioutil.ReadFile(name)
+	bytes, err := os.ReadFile(name)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -82,7 +82,7 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func NewClient(key string, cfg *Config) *Client {
 	}
 
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	if cfg.APIBaseURL == "" {
