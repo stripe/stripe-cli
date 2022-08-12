@@ -98,32 +98,33 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 }
 
 func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
-	if ic.archiveURL == "" && ic.archivePath == "" {
+	var err error
+
+	switch {
+	case ic.archiveURL == "" && ic.archivePath == "":
 		// no arhive URL or path was provided. try to read from piped stdin
-		readArchive, err := cmd.Flags().GetBool("archive")
+		readFromArchive, err := cmd.Flags().GetBool("archive")
 		if err != nil {
 			return err
 		}
 
-		if readArchive {
+		if readFromArchive {
 			if !hasPipedData() {
-				return fmt.Errorf("Please pipe into stdout: curl <url> | stripe plugin install --archive")
+				err = fmt.Errorf("Please pipe into stdout: curl <url> | stripe plugin install --archive")
+			} else {
+				err = plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
 			}
-
-			return plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
 		} else {
-			return fmt.Errorf("To install a plugin from archive, please provide archive url/path or pipe archive data into stdout")
+			err = fmt.Errorf("To install a plugin from archive, please provide archive url/path or pipe archive data into stdout")
 		}
-	} else if ic.archiveURL != "" {
-		err := plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
-		if err != nil {
-			return err
-		}
-	} else if ic.archivePath != "" {
-		err := plugins.ExtractLocalArchive(cmd.Context(), ic.cfg, ic.archivePath)
-		if err != nil {
-			return err
-		}
+	case ic.archiveURL != "":
+		err = plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
+	case ic.archivePath != "":
+		err = plugins.ExtractLocalArchive(cmd.Context(), ic.cfg, ic.archivePath)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil
