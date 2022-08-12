@@ -29,7 +29,8 @@
       "method": "post",
       "params": {
         "customer": "${customer:id}",
-        "description": "(created by Stripe CLI)"
+        "description": "(created by Stripe CLI)",
+        "pending_invoice_items_behavior": "include"
       }
     }
   ]
