@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -25,8 +26,9 @@ type InstallCmd struct {
 	Cmd *cobra.Command
 	fs  afero.Fs
 
-	archiveURL  string
-	archivePath string
+	archiveURL     string
+	archivePath    string
+	localPluginDir string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -46,6 +48,7 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 
 	ic.Cmd.Flags().StringVar(&ic.archiveURL, "archive-url", "", "Install a plugin by an archive URL")
 	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive-path", "", "Install a plugin by a local archive path")
+	ic.Cmd.Flags().StringVar(&ic.localPluginDir, "local", "", "Install a development version plugin from a local development folder")
 	ic.Cmd.Flags().Bool("archive", false, "Install a plugin by archive data from stdout")
 
 	return ic
@@ -126,13 +129,34 @@ func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
 	return nil
 }
 
+func (ic *InstallCmd) installPluginFromLocalDir() error {
+	os.Chdir(ic.localPluginDir)
+
+	cmd := exec.Command("make", "install")
+	stdout, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	// Print the output
+	fmt.Println(string(stdout))
+	return nil
+}
+
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
 	if len(args) == 0 {
-		err = ic.installPluginByArchive(cmd)
-		if err != nil {
-			return err
+		if ic.localPluginDir != "" {
+			err = ic.installPluginFromLocalDir()
+			if err != nil {
+				return err
+			}
+		} else {
+			err = ic.installPluginByArchive(cmd)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		// Refresh the plugin before proceeding
