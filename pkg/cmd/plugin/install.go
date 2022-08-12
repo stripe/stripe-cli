@@ -45,7 +45,8 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	}
 
 	ic.Cmd.Flags().StringVar(&ic.archiveURL, "archive-url", "", "Install a plugin by an archive URL")
-	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive", "", "Install a plugin by an archive path")
+	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive-path", "", "Install a plugin by a local archive path")
+	ic.Cmd.Flags().Bool("archive", false, "Install a plugin by archive data from stdout")
 
 	return ic
 }
@@ -66,6 +67,12 @@ func parseInstallArg(arg string) (string, string) {
 
 func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error {
 	pluginName, version := parseInstallArg(arg)
+
+	if pluginName == "-" && hasPipedData() {
+		// -: reads data from stdout
+		return plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
+	}
+
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 
 	if err != nil {
@@ -89,10 +96,22 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 
 func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
 	if ic.archiveURL == "" && ic.archivePath == "" {
-		return fmt.Errorf("please provide the plugin name or the archive URL/path to install")
-	}
+		// no arhive URL or path was provided. try to read from piped stdin
+		readArchive, err := cmd.Flags().GetBool("archive")
+		if err != nil {
+			return err
+		}
 
-	if ic.archiveURL != "" {
+		if readArchive {
+			if !hasPipedData() {
+				return fmt.Errorf("Please pipe into stdout: curl <url> | stripe plugin install --archive")
+			}
+
+			return plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
+		} else {
+			return fmt.Errorf("To install a plugin from archive, please provide archive url/path or pipe archive data into stdout")
+		}
+	} else if ic.archiveURL != "" {
 		err := plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
 		if err != nil {
 			return err
@@ -112,6 +131,9 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 0 {
 		err = ic.installPluginByArchive(cmd)
+		if err != nil {
+			return err
+		}
 	} else {
 		// Refresh the plugin before proceeding
 		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
@@ -146,4 +168,9 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 		cancel()
 	}()
 	return ctx
+}
+
+func hasPipedData() bool {
+	info, _ := os.Stdin.Stat()
+	return info.Mode()&os.ModeCharDevice == 0
 }
