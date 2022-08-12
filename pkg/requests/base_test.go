@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -88,7 +88,7 @@ func TestMakeRequest(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK!"))
 
-		reqBody, err := ioutil.ReadAll(r.Body)
+		reqBody, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		require.Equal(t, http.MethodGet, r.Method)
@@ -161,7 +161,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("FILES!"))
 
-		reqBody, err := ioutil.ReadAll(r.Body)
+		reqBody, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -83,7 +83,7 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 			return nil, err
 		}
 
-		filedata, err = ioutil.ReadAll(f)
+		filedata, err = io.ReadAll(f)
 		if err != nil {
 			return nil, err
 		}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -212,7 +212,7 @@ func readWSConnectErrorMessage(resp *http.Response) string {
 		} `json:"error"`
 	}{}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return ""
@@ -480,7 +480,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 	}
 
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	if cfg.PongWait == 0 {
