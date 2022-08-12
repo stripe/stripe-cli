@@ -368,7 +368,7 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 		plugin := manifest.Plugins[0]
 		plugin.Releases[0].Unmanaged = true
 
-		if extractedPluginName != fmt.Sprintf("stripe-cli-%s", plugin.Shortname) {
+		if extractedPluginName != plugin.Binary {
 			return fmt.Errorf(
 				"extracted plugin '%s' does not match the plugin '%s' in the manifest",
 				extractedPluginName,
