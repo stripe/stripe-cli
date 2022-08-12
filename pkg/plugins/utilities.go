@@ -134,6 +134,7 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 // AddEntryToPluginManifest update plugins.toml with a new release version
 func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, entry Plugin) error {
+	color := ansi.Color(os.Stdout)
 	currentPluginList, err := GetPluginList(ctx, config, fs)
 	if err != nil {
 		return nil
@@ -179,6 +180,8 @@ func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afe
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(color.Green(fmt.Sprintf("✔ updated '%s' with a release entry for 'stripe-cli-%s'", pluginManifestPath, entry.Shortname)))
 
 	config.InitConfig()
 	installedList := config.GetInstalledPlugins()
@@ -237,6 +240,22 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	return body, nil
 }
 
+// ExtractStdoutArchive extracts the archive from stdout
+func ExtractStdoutArchive(ctx context.Context, config config.IConfig) error {
+	gzf, err := gzip.NewReader(os.Stdin)
+	if err != nil {
+		return err
+	}
+
+	tarReader := tar.NewReader(gzf)
+	err = extractAndInstall(ctx, config, tarReader)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ExtractLocalArchive extracts the local tarball body
 func ExtractLocalArchive(ctx context.Context, config config.IConfig, source string) error {
 	color := ansi.Color(os.Stdout)
@@ -254,7 +273,7 @@ func ExtractLocalArchive(ctx context.Context, config config.IConfig, source stri
 	}
 
 	tarReader := tar.NewReader(gzf)
-	err = extractFromArchive(ctx, config, tarReader)
+	err = extractAndInstall(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -295,7 +314,7 @@ func FetchAndExtractRemoteArchive(ctx context.Context, config config.IConfig, ur
 	defer archive.Close()
 
 	tarReader := tar.NewReader(archive)
-	err = extractFromArchive(ctx, config, tarReader)
+	err = extractAndInstall(ctx, config, tarReader)
 	if err != nil {
 		return err
 	}
@@ -303,8 +322,8 @@ func FetchAndExtractRemoteArchive(ctx context.Context, config config.IConfig, ur
 	return nil
 }
 
-// extractFromArchive extracts plugin tarball
-func extractFromArchive(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
+// extractAndInstall extracts plugin tarball
+func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *tar.Reader) error {
 	var manifest PluginList
 	var pluginData []byte
 	fs := afero.NewOsFs()
@@ -349,7 +368,7 @@ func extractFromArchive(ctx context.Context, config config.IConfig, tarReader *t
 		plugin := manifest.Plugins[0]
 		plugin.Releases[0].Unmanaged = true
 
-		if extractedPluginName != plugin.Shortname {
+		if extractedPluginName != plugin.Binary {
 			return fmt.Errorf(
 				"extracted plugin '%s' does not match the plugin '%s' in the manifest",
 				extractedPluginName,
