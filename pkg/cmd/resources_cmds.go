@@ -799,6 +799,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"currency":                   "string",
 		"customer_creation":          "string",
 		"on_behalf_of":               "string",
+		"payment_method_collection":  "string",
 		"submit_type":                "string",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "list", "/v1/payment_links", http.MethodGet, map[string]string{
@@ -818,6 +819,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"allow_promotion_codes":      "boolean",
 		"billing_address_collection": "string",
 		"customer_creation":          "string",
+		"payment_method_collection":  "string",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "attach", "/v1/payment_methods/{payment_method}/attach", http.MethodPost, map[string]string{
 		"customer": "string",
@@ -1501,8 +1503,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"url":         "string",
 	}, &Config)
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "create", "/v1/apps/secrets", http.MethodPost, map[string]string{
-		"name":    "string",
-		"payload": "string",
+		"expires_at": "integer",
+		"name":       "string",
+		"payload":    "string",
 	}, &Config)
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "delete_where", "/v1/apps/secrets/delete", http.MethodPost, map[string]string{
 		"name": "string",
@@ -1549,6 +1552,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"expires_at":                 "integer",
 		"locale":                     "string",
 		"mode":                       "string",
+		"payment_method_collection":  "string",
 		"submit_type":                "string",
 		"success_url":                "string",
 	}, &Config)

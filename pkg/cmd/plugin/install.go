@@ -24,6 +24,9 @@ type InstallCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 	fs  afero.Fs
+
+	archiveURL  string
+	archivePath string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -34,12 +37,15 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 
 	ic.Cmd = &cobra.Command{
 		Use:   "install",
-		Args:  validators.ExactArgs(1),
+		Args:  validators.MaximumNArgs(1),
 		Short: "Install a Stripe CLI plugin",
 		Long: `Install a Stripe CLI plugin. To download a specific version, run stripe install [plugin_name]@[version].
 			By default, the most recent version will be installed.`,
 		RunE: ic.runInstallCmd,
 	}
+
+	ic.Cmd.Flags().StringVar(&ic.archiveURL, "archive-url", "", "Install a plugin by an archive URL")
+	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive", "", "Install a plugin by an archive path")
 
 	return ic
 }
@@ -58,15 +64,8 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	// Refresh the plugin before proceeding
-	err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
-
-	if err != nil {
-		return err
-	}
-
-	pluginName, version := parseInstallArg(args[0])
+func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error {
+	pluginName, version := parseInstallArg(arg)
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 
 	if err != nil {
@@ -85,12 +84,53 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 
 	err = plugin.Install(ctx, ic.cfg, ic.fs, version, stripe.DefaultAPIBaseURL)
 
+	return err
+}
+
+func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
+	if ic.archiveURL == "" && ic.archivePath == "" {
+		return fmt.Errorf("please provide the plugin name or the archive URL/path to install")
+	}
+
+	if ic.archiveURL != "" {
+		err := plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
+		if err != nil {
+			return err
+		}
+	} else if ic.archivePath != "" {
+		err := plugins.ExtractLocalArchive(cmd.Context(), ic.cfg, ic.archivePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+	var err error
+
+	if len(args) == 0 {
+		err = ic.installPluginByArchive(cmd)
+	} else {
+		// Refresh the plugin before proceeding
+		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
+		if err != nil {
+			return err
+		}
+
+		err = ic.installPluginByName(cmd, args[0])
+		if err != nil {
+			return err
+		}
+	}
+
 	if err == nil {
 		color := ansi.Color(os.Stdout)
 		fmt.Println(color.Green("✔ installation complete."))
 	}
 
-	return err
+	return nil
 }
 
 func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
