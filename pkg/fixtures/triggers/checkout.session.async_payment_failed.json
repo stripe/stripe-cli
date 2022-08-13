@@ -4,6 +4,25 @@
   },
   "fixtures": [
     {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+          "name": "myproduct",
+          "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "product": "${product:id}",
+        "unit_amount": "1500",
+        "currency": "gbp"
+      }
+    },
+    {
       "name": "checkout_session",
       "expected_error_type": "invalid_request_error",
       "path": "/v1/checkout/sessions",
@@ -12,12 +31,10 @@
         "success_url": "https://httpbin.org/post",
         "cancel_url": "https://httpbin.org/post",
         "payment_method_types": ["bacs_debit"],
+        "mode": "payment",
         "line_items": [
           {
-            "name": "t-shirt",
-            "description": "comfortable cotton t-shirt",
-            "amount": 1500,
-            "currency": "gbp",
+            "price": "${price:id}",
             "quantity": 2
           }
         ],
