@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
 	"os"
@@ -231,7 +230,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		return nil, err
@@ -345,7 +344,7 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 			continue
 		case tar.TypeReg:
 			if name == "manifest.toml" {
-				tomlBytes, _ := ioutil.ReadAll(tarReader)
+				tomlBytes, _ := io.ReadAll(tarReader)
 				err = toml.Unmarshal(tomlBytes, &manifest)
 				if err != nil {
 					return err
@@ -354,7 +353,7 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 				fmt.Println(color.Green(fmt.Sprintf("✔ extracted manifest '%s'", name)))
 			} else if strings.Contains(name, "stripe-cli-") {
 				extractedPluginName = name
-				pluginData, _ = ioutil.ReadAll(tarReader)
+				pluginData, _ = io.ReadAll(tarReader)
 				fmt.Println(color.Green(fmt.Sprintf("✔ extracted plugin '%s'", name)))
 			}
 

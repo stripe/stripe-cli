@@ -2,7 +2,7 @@ package resource
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -34,7 +34,7 @@ func TestNewOperationCmd(t *testing.T) {
 func TestRunOperationCmd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
@@ -77,7 +77,7 @@ func TestRunOperationCmd(t *testing.T) {
 func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)

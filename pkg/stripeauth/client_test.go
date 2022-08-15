@@ -3,7 +3,7 @@ package stripeauth
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -30,7 +30,7 @@ func TestAuthorize(t *testing.T) {
 		require.NotEmpty(t, r.UserAgent())
 		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.Equal(t, "device_name=my-device&websocket_feature=webhooks", string(body))
 	}))

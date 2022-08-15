@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -134,7 +134,7 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 	}
 
 	if cfg.Log == nil {
-		cfg.Log = &log.Logger{Out: ioutil.Discard}
+		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
 	if cfg.HTTPClient == nil {

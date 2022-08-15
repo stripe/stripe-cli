@@ -2,7 +2,7 @@ package stripe
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -16,7 +16,7 @@ func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {
 		require.Equal(t, "/delete", r.URL.Path)
 		require.Equal(t, "key_a=value_a&key_b=value_b", r.URL.RawQuery)
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.Equal(t, "", string(body))
 	}))
@@ -42,7 +42,7 @@ func TestPerformRequest_ParamsEncoding_Get(t *testing.T) {
 		require.Equal(t, "/get", r.URL.Path)
 		require.Equal(t, "key_a=value_a&key_b=value_b", r.URL.RawQuery)
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.Equal(t, "", string(body))
 	}))
@@ -68,7 +68,7 @@ func TestPerformRequest_ParamsEncoding_Post(t *testing.T) {
 		require.Equal(t, "/post", r.URL.Path)
 		require.Equal(t, "", r.URL.RawQuery)
 
-		body, err := ioutil.ReadAll(r.Body)
+		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 		require.Equal(t, "key_a=value_a&key_b=value_b", string(body))
 	}))

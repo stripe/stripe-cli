@@ -1,7 +1,7 @@
 package proxy
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -18,7 +18,7 @@ func TestClientHandler(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK!"))
 
-		reqBody, err := ioutil.ReadAll(r.Body)
+		reqBody, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
 
 		require.Equal(t, http.MethodPost, r.Method)
@@ -46,7 +46,7 @@ func TestClientHandler(t *testing.T) {
 		[]string{"*"},
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
-				buf, err := ioutil.ReadAll(resp.Body)
+				buf, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
 
 				rcvCtx = evtCtx
