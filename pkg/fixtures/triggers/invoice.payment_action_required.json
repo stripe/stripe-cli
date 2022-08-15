@@ -8,8 +8,15 @@
       "path": "/v1/customers",
       "method": "post",
       "params": {
-        "description": "(created by Stripe CLI)",
-        "source": "tok_visa"
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods/pm_card_threeDSecure2Required/attach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
       }
     },
     {
@@ -29,29 +36,8 @@
       "method": "post",
       "params": {
         "customer": "${customer:id}",
-        "description": "(created by Stripe CLI)"
-      }
-    },
-    {
-      "name": "payment_method",
-      "path": "/v1/payment_methods",
-      "method": "post",
-      "params": {
-        "type": "card",
-        "card": {
-          "exp_month": 7,
-          "exp_year": 25,
-          "number": "4000000000003220",
-          "cvc": "424"
-        }
-      }
-    },
-    {
-      "name": "attach_payment_method",
-      "path": "/v1/payment_methods/${payment_method:id}/attach",
-      "method": "post",
-      "params": {
-        "customer": "${customer:id}"
+        "description": "(created by Stripe CLI)",
+        "pending_invoice_items_behavior": "include"
       }
     },
     {
