@@ -8,8 +8,15 @@
       "path": "/v1/customers",
       "method": "post",
       "params": {
-        "description": "(created by Stripe CLI)",
-        "source": "tok_chargeCustomerFail"
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods/pm_card_chargeCustomerFail/attach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
       }
     },
     {
@@ -29,14 +36,18 @@
       "method": "post",
       "params": {
         "customer": "${customer:id}",
-        "description": "(created by Stripe CLI)"
+        "description": "(created by Stripe CLI)",
+        "pending_invoice_items_behavior": "include"
       }
     },
     {
       "name": "invoice_pay",
       "expected_error_type": "card_error",
       "path": "/v1/invoices/${invoice:id}/pay",
-      "method": "post"
+      "method": "post",
+      "params": {
+        "payment_method": "${payment_method:id}"
+      }
     }
   ]
 }
