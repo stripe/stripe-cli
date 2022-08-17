@@ -148,7 +148,15 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
+	// tell viper to monitor the following flags:
 	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
+	viper.BindPFlag("project-name", rootCmd.PersistentFlags().Lookup("project-name"))
+	// and, bind one to an environment variable, which is used if there's no flag provided
+	// value precedence is:
+	// 	1. flag
+	// 	2. env
+	// 	3. default
+	viper.BindEnv("project-name", "STRIPE_PROJECT_NAME")
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)
