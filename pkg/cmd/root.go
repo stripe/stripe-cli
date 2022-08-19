@@ -137,8 +137,30 @@ func Execute(ctx context.Context) {
 	}
 }
 
+var keysToReBind []string
+
+// ReBindKeys applies the value found in viper config to the cobra flag when viper has a value (possibly from env)
+func ReBindKeys() {
+	for _, k := range keysToReBind {
+		if viper.IsSet(k) {
+			rootCmd.Flags().Set(k, viper.GetString(k))
+		}
+	}
+}
+
+// wraps viper's bindEnv and ensures we write values back to the Config
+// value precedence is:
+// 	1. flag
+// 	2. env
+// 	3. default
+func bindEnv(key, envKey string) {
+	viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(key))
+	viper.BindEnv(key, envKey)
+	keysToReBind = append(keysToReBind, key)
+}
+
 func init() {
-	cobra.OnInitialize(Config.InitConfig)
+	cobra.OnInitialize(Config.InitConfig, ReBindKeys)
 
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
@@ -149,14 +171,11 @@ func init() {
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
 	// tell viper to monitor the following flags:
+	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
 	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
-	viper.BindPFlag("project-name", rootCmd.PersistentFlags().Lookup("project-name"))
-	// and, bind one to an environment variable, which is used if there's no flag provided
-	// value precedence is:
-	// 	1. flag
-	// 	2. env
-	// 	3. default
-	viper.BindEnv("project-name", "STRIPE_PROJECT_NAME")
+
+	// also, bind flags to the environment variables
+	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)

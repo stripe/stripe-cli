@@ -244,18 +244,7 @@ func (p *Profile) GetTerminalPOSDeviceID() string {
 
 // GetConfigField returns the configuration field for the specific profile
 func (p *Profile) GetConfigField(field string) string {
-	return p.GetProfileName() + "." + field
-}
-
-// GetProfileName returns the current project name, which is supplied by a CLI flag, environment variable, or default
-// it's read from viper directly and uses the struct field as a fallback
-func (p *Profile) GetProfileName() string {
-	if s := viper.GetString("project-name"); s != "" {
-		return s
-	}
-	// in unit tests, Profile isn't set up by cobra, so viper has no default to fall back on
-	// in that case, return whatever we manually added to ProfileName
-	return p.ProfileName
+	return p.ProfileName + "." + field
 }
 
 // RegisterAlias registers an alias for a given key.

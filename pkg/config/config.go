@@ -203,7 +203,7 @@ func (c *Config) EditConfig() error {
 
 // PrintConfig outputs the contents of the configuration file.
 func (c *Config) PrintConfig() error {
-	profileName := c.Profile.GetProfileName()
+	profileName := c.Profile.ProfileName
 
 	if profileName == "default" {
 		configFile, err := os.ReadFile(c.ProfilesFile)
