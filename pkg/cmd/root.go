@@ -150,9 +150,9 @@ func ReBindKeys() {
 
 // wraps viper's bindEnv and ensures we write values back to the Config
 // value precedence is:
-// 	1. flag
-// 	2. env
-// 	3. default
+// 1. flag
+// 2. env
+// 3. default
 func bindEnv(key, envKey string) {
 	viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(key))
 	viper.BindEnv(key, envKey)
