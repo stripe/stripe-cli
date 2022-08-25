@@ -146,22 +146,22 @@ func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afe
 			// plugin already installed. append a new release version
 			foundPlugin = true
 
-			entryRelease := entry.Releases[0]
-			foundRelease := false
-			for _, release := range plugin.Releases {
-				if release.Version == entryRelease.Version {
-					if release.Sum != entryRelease.Sum {
-						return fmt.Errorf("version '%s' is already installed but checksums do not match", release.Version)
+			for _, entryRelease := range entry.Releases {
+				foundRelease := false
+				for _, release := range plugin.Releases {
+					if release.Version == entryRelease.Version {
+						if release.Sum != entryRelease.Sum {
+							return fmt.Errorf("release version '%s/%s/%s' is already installed but checksums do not match", release.Arch, release.OS, release.Version)
+						}
+						foundRelease = true
+						break
 					}
-					foundRelease = true
-					break
+				}
+
+				if !foundRelease {
+					currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entryRelease)
 				}
 			}
-
-			if !foundRelease {
-				currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entry.Releases[0])
-			}
-			break
 		}
 	}
 
@@ -371,7 +371,7 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 	}
 
 	// update plugin manifest and config manifest
-	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) == 1 && len(pluginData) > 0 {
+	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) >= 1 && len(pluginData) > 0 {
 		plugin := manifest.Plugins[0]
 
 		if extractedPluginName != plugin.Binary {
