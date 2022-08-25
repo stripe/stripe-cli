@@ -8,7 +8,7 @@
       "path": "/v1/payment_intents",
       "method": "post",
       "params": {
-        "amount": 1300,
+        "amount": 2000,
         "confirm": "true",
         "currency": "usd",
         "description": "(created by Stripe CLI)",
