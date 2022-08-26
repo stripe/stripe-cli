@@ -42,6 +42,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rCreditNoteLineItemsCmd := resource.NewResourceCmd(rootCmd, "credit_note_line_items")
 	rCreditNotesCmd := resource.NewResourceCmd(rootCmd, "credit_notes")
 	rCustomerBalanceTransactionsCmd := resource.NewResourceCmd(rootCmd, "customer_balance_transactions")
+	rCustomerCashBalanceTransactionsCmd := resource.NewResourceCmd(rootCmd, "customer_cash_balance_transactions")
 	rCustomersCmd := resource.NewResourceCmd(rootCmd, "customers")
 	rDisputesCmd := resource.NewResourceCmd(rootCmd, "disputes")
 	rEphemeralKeysCmd := resource.NewResourceCmd(rootCmd, "ephemeral_keys")
@@ -380,6 +381,12 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "update", "/v1/customers/{customer}/balance_transactions/{transaction}", http.MethodPost, map[string]string{
 		"description": "string",
 	}, &Config)
+	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "list", "/v1/customers/{customer}/cash_balance_transactions", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance_transactions/{transaction}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "balance_transactions", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
