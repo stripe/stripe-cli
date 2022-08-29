@@ -50,3 +50,23 @@ func TestFlagsArePassedAsArgs(t *testing.T) {
 	require.Equal(t, 2, len(pluginCmd.ParsedArgs))
 	require.Equal(t, "testarg --log-level=info", strings.Join(pluginCmd.ParsedArgs, " "))
 }
+
+// TestHelpFlagIsPassedAsArgs ensures that the plugin is passing the "help" flag as expected.
+// This is needed because we override cobra's default "help" flag behavior.
+func TestHelpFlagIsPassedAsArgs(t *testing.T) {
+	pluginCmd := createPluginCmd()
+	rootCmd.AddCommand(pluginCmd.cmd)
+
+	Execute(context.Background())
+
+	// temp override for the os.Args so that the pluginCmd can use them
+	oldArgs := os.Args
+	os.Args = []string{"stripe", "test", "testarg", "--help"}
+	defer func() { os.Args = oldArgs }()
+
+	rootCmd.SetArgs([]string{"test", "testarg", "--help"})
+	executeCommandC(rootCmd, "test", "testarg", "--help")
+
+	require.Equal(t, 2, len(pluginCmd.ParsedArgs))
+	require.Equal(t, "testarg --help", strings.Join(pluginCmd.ParsedArgs, " "))
+}

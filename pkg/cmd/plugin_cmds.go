@@ -31,7 +31,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cmd = &cobra.Command{
 		Use:         plugin.Shortname,
 		Short:       plugin.Shortdesc,
-		RunE:        ptc.runPluginCmd,
+		RunE:        func(cmd *cobra.Command, args []string) error {
+			return ptc.runPluginCmd(cmd, os.Args[2:])
+		},
 		Annotations: map[string]string{"scope": "plugin"},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
@@ -39,9 +41,8 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
-	ptc.cmd.SetHelpCommand(&cobra.Command{
-		Use:    "no-help",
-		Hidden: true,
+	ptc.cmd.SetHelpFunc(func(c *cobra.Command, s []string) {
+		ptc.runPluginCmd(c, s[1:])
 	})
 
 	return ptc
@@ -55,7 +56,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	ptc.ParsedArgs = os.Args[2:]
+	ptc.ParsedArgs = args
 
 	fs := afero.NewOsFs()
 	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, cmd.CalledAs())
