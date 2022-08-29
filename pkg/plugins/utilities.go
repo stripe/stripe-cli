@@ -146,19 +146,22 @@ func AddEntryToPluginManifest(ctx context.Context, config config.IConfig, fs afe
 			// plugin already installed. append a new release version
 			foundPlugin = true
 
-			entryRelease := entry.Releases[0]
-			foundRelease := false
-			for _, release := range plugin.Releases {
-				if release.Version == entryRelease.Version && release.Unmanaged == entryRelease.Unmanaged {
-					foundRelease = true
-					break
+			for _, entryRelease := range entry.Releases {
+				foundRelease := false
+				for _, release := range plugin.Releases {
+					if release.Version == entryRelease.Version {
+						if release.Sum != entryRelease.Sum {
+							return fmt.Errorf("release version '%s/%s/%s' is already installed but checksums do not match", release.Arch, release.OS, release.Version)
+						}
+						foundRelease = true
+						break
+					}
+				}
+
+				if !foundRelease {
+					currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entryRelease)
 				}
 			}
-
-			if !foundRelease {
-				currentPluginList.Plugins[i].Releases = append(currentPluginList.Plugins[i].Releases, entry.Releases[0])
-			}
-			break
 		}
 	}
 
@@ -343,18 +346,23 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 		case tar.TypeDir:
 			continue
 		case tar.TypeReg:
-			if name == "manifest.toml" {
+			filename := filepath.Base(name)
+			if strings.HasPrefix(filename, "._") {
+				continue
+			}
+
+			if filename == "manifest.toml" {
 				tomlBytes, _ := io.ReadAll(tarReader)
 				err = toml.Unmarshal(tomlBytes, &manifest)
 				if err != nil {
 					return err
 				}
 
-				fmt.Println(color.Green(fmt.Sprintf("✔ extracted manifest '%s'", name)))
-			} else if strings.Contains(name, "stripe-cli-") {
-				extractedPluginName = name
+				fmt.Println(color.Green(fmt.Sprintf("✔ extracted manifest '%s'", filename)))
+			} else if strings.Contains(filename, "stripe-cli-") {
+				extractedPluginName = filename
 				pluginData, _ = io.ReadAll(tarReader)
-				fmt.Println(color.Green(fmt.Sprintf("✔ extracted plugin '%s'", name)))
+				fmt.Println(color.Green(fmt.Sprintf("✔ extracted plugin '%s'", filename)))
 			}
 
 		default:
@@ -363,9 +371,8 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 	}
 
 	// update plugin manifest and config manifest
-	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) == 1 && len(pluginData) > 0 {
+	if len(manifest.Plugins) == 1 && len(manifest.Plugins[0].Releases) >= 1 && len(pluginData) > 0 {
 		plugin := manifest.Plugins[0]
-		plugin.Releases[0].Unmanaged = true
 
 		if extractedPluginName != plugin.Binary {
 			return fmt.Errorf(
@@ -379,10 +386,14 @@ func extractAndInstall(ctx context.Context, config config.IConfig, tarReader *ta
 			return err
 		}
 
-		err = plugin.verifychecksumAndSavePlugin(pluginData, config, fs, plugin.Releases[0].Version)
+		version := plugin.Releases[0].Version
+		err = plugin.verifychecksumAndSavePlugin(pluginData, config, fs, version)
 		if err != nil {
 			return err
 		}
+
+		// clean up other plugin versions
+		plugin.cleanUpPluginPath(config, fs, version)
 	} else {
 		return fmt.Errorf("missing required manifest.toml or plugin in the archive")
 	}
