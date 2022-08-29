@@ -29,9 +29,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc.cfg = config
 
 	ptc.cmd = &cobra.Command{
-		Use:         plugin.Shortname,
-		Short:       plugin.Shortdesc,
-		RunE:        func(cmd *cobra.Command, args []string) error {
+		Use:   plugin.Shortname,
+		Short: plugin.Shortdesc,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return ptc.runPluginCmd(cmd, os.Args[2:])
 		},
 		Annotations: map[string]string{"scope": "plugin"},
