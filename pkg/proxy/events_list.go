@@ -61,6 +61,7 @@ var validEvents = map[string]bool{
 	"customer.tax_id.deleted":                                  true,
 	"customer.tax_id.updated":                                  true,
 	"customer.updated":                                         true,
+	"customer_cash_balance_transaction.created":                true,
 	"file.created":                                             true,
 	"financial_connections.account.created":                    true,
 	"financial_connections.account.deactivated":                true,

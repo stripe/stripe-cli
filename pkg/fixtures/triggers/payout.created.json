@@ -4,6 +4,19 @@
   },
   "fixtures": [
     {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "amount": 2000,
+        "confirm": "true",
+        "currency": "usd",
+        "description": "(created by Stripe CLI)",
+        "payment_method": "pm_card_bypassPending",
+        "payment_method_types": ["card"]
+      }
+    },
+    {
       "name": "payout",
       "path": "/v1/payouts",
       "method": "post",
@@ -15,3 +28,4 @@
     }
   ]
 }
+
