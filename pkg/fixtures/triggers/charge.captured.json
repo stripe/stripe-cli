@@ -4,20 +4,22 @@
   },
   "fixtures": [
     {
-      "name": "charge",
-      "path": "/v1/charges",
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
       "method": "post",
       "params": {
-        "source": "tok_visa",
-        "amount": 100,
+        "amount": 2000,
+        "capture_method": "manual",
+        "confirm": true,
         "currency": "usd",
-        "capture": false,
-        "description": "(created by Stripe CLI)"
+        "description": "(created by Stripe CLI)",
+        "payment_method": "pm_card_visa",
+        "payment_method_types": ["card"]
       }
     },
     {
       "name": "capture",
-      "path": "/v1/charges/${charge:id}/capture",
+      "path": "/v1/payment_intents/${payment_intent:id}/capture",
       "method": "post"
     }
   ]
