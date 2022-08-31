@@ -56,9 +56,11 @@ var rootCmd = &cobra.Command{
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
-		telemetryMetadata.SetCobraCommandContext(cmd)
-		telemetryMetadata.SetMerchant(merchant)
-		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+		if telemetryMetadata != nil {
+			telemetryMetadata.SetCobraCommandContext(cmd)
+			telemetryMetadata.SetMerchant(merchant)
+			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+		}
 
 		// plugins send their own telemetry due to having richer context than the CLI does
 		if !plugins.IsPluginCommand(cmd) {
