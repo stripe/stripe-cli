@@ -42,6 +42,8 @@ func GetResourceCmdName(name string) string {
 		return "3d_secure"
 	case "usage_record_summary":
 		return "usage_record_summaries"
+	case "treasury":
+		return "treasury"
 	default:
 		return name + "s"
 	}

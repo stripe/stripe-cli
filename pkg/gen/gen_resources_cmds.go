@@ -27,7 +27,8 @@ type NamespaceData struct {
 }
 
 type ResourceData struct {
-	Operations map[string]*OperationData
+	Operations   map[string]*OperationData
+	SubResources map[string]*ResourceData
 }
 
 type OperationData struct {
@@ -52,6 +53,8 @@ var scalarTypes = map[string]bool{
 	"number":  true,
 	"string":  true,
 }
+
+var overrideNamespacePaths = [1]string{"test_helpers"}
 
 func main() {
 	// This is the script that generates the `resources.go` file from the
@@ -114,7 +117,7 @@ func getTemplateData() (*TemplateData, error) {
 			continue
 		}
 
-		nsName, resName := parseSchemaName(name)
+		origNsName, origResName := parseSchemaName(name)
 
 		// Iterate over every operation for the resource
 		for _, op := range *schema.XStripeOperations {
@@ -122,6 +125,22 @@ func getTemplateData() (*TemplateData, error) {
 			if op.MethodOn != "service" {
 				continue
 			}
+
+			nsName := origNsName
+			resName := origResName
+			subResName := ""
+
+			for _, overrideNamespacePath := range overrideNamespacePaths {
+				if strings.Contains(op.Path, overrideNamespacePath) && overrideNamespacePath != nsName {
+					if nsName != "" {
+						subResName = resName
+						resName = nsName
+					}
+					nsName = overrideNamespacePath
+				}
+			}
+
+			hasSubResources := subResName != ""
 
 			// If we haven't seen the namespace before, initialize it
 			if _, ok := data.Namespaces[nsName]; !ok {
@@ -134,12 +153,30 @@ func getTemplateData() (*TemplateData, error) {
 			resCmdName := resource.GetResourceCmdName(resName)
 			if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
 				data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
-					Operations: make(map[string]*OperationData),
+					Operations:   make(map[string]*OperationData),
+					SubResources: make(map[string]*ResourceData),
 				}
 			}
 
+			// check if operations already exists
+			operationExists := true
+			subResCmdName := ""
+
+			if hasSubResources {
+				// If we haven't seen the sub-resource before, initialize it
+				subResCmdName = resource.GetResourceCmdName(subResName)
+				if _, ok := data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
+					data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
+						Operations: make(map[string]*OperationData),
+					}
+				}
+				_, operationExists = data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName]
+			} else {
+				_, operationExists = data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
+			}
+
 			// If we haven't seen the operation before, initialize it
-			if _, ok := data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]; !ok {
+			if !operationExists {
 				httpString := string(op.Operation)
 				properties := make(map[string]string)
 
@@ -182,10 +219,18 @@ func getTemplateData() (*TemplateData, error) {
 					}
 				}
 
-				data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
-					Path:      op.Path,
-					HTTPVerb:  httpString,
-					PropFlags: properties,
+				if hasSubResources {
+					data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
+						Path:      op.Path,
+						HTTPVerb:  httpString,
+						PropFlags: properties,
+					}
+				} else {
+					data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
+						Path:      op.Path,
+						HTTPVerb:  httpString,
+						PropFlags: properties,
+					}
 				}
 			}
 		}
