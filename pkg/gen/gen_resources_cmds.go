@@ -54,7 +54,7 @@ var scalarTypes = map[string]bool{
 	"string":  true,
 }
 
-var overrideNamespacePaths = [1]string{"test_helpers"}
+var test_helpers_path = "test_helpers"
 
 func main() {
 	// This is the script that generates the `resources.go` file from the
@@ -130,108 +130,115 @@ func getTemplateData() (*TemplateData, error) {
 			resName := origResName
 			subResName := ""
 
-			for _, overrideNamespacePath := range overrideNamespacePaths {
-				if strings.Contains(op.Path, overrideNamespacePath) && overrideNamespacePath != nsName {
-					if nsName != "" {
-						subResName = resName
-						resName = nsName
+			if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
+				// create entry in the test_helpers namespace
+				if nsName != "" {
+					data, err = addToTemplateData(data, test_helpers_path, nsName, resName, stripeAPI, op)
+				} else {
+					data, err = addToTemplateData(data, test_helpers_path, resName, "", stripeAPI, op)
+				}
+
+				// add test_helpers as a sub-resource to the current namespace-resource entry
+				subResName = test_helpers_path
+			}
+
+			data, err = addToTemplateData(data, nsName, resName, subResName, stripeAPI, op)
+		}
+	}
+
+	return data, nil
+}
+
+func addToTemplateData(data *TemplateData, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) (*TemplateData, error) {
+	hasSubResources := subResName != ""
+
+	if _, ok := data.Namespaces[nsName]; !ok {
+		data.Namespaces[nsName] = &NamespaceData{
+			Resources: make(map[string]*ResourceData),
+		}
+	}
+
+	// If we haven't seen the resource before, initialize it
+	resCmdName := resource.GetResourceCmdName(resName)
+	if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
+		data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
+			Operations:   make(map[string]*OperationData),
+			SubResources: make(map[string]*ResourceData),
+		}
+	}
+
+	// check if operations already exists
+	operationExists := true
+	subResCmdName := ""
+
+	if hasSubResources {
+		// If we haven't seen the sub-resource before, initialize it
+		subResCmdName = resource.GetResourceCmdName(subResName)
+		if _, ok := data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
+			data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
+				Operations: make(map[string]*OperationData),
+			}
+		}
+		_, operationExists = data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName]
+	} else {
+		_, operationExists = data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
+	}
+
+	// If we haven't seen the operation before, initialize it
+	if !operationExists {
+		httpString := string(op.Operation)
+		properties := make(map[string]string)
+
+		specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
+
+		// Skip deprecated methods
+		if specOp.Deprecated != nil && *specOp.Deprecated == true {
+			return data, nil
+		}
+
+		if strings.ToUpper(httpString) == http.MethodPost {
+			requestContent := specOp.RequestBody.Content
+
+			if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
+				for propName, schema := range media.Schema.Properties {
+					scalarType := getScalarType(schema)
+
+					if scalarType == nil {
+						continue
 					}
-					nsName = overrideNamespacePath
+
+					properties[propName] = *scalarType
 				}
 			}
-
-			hasSubResources := subResName != ""
-
-			// If we haven't seen the namespace before, initialize it
-			if _, ok := data.Namespaces[nsName]; !ok {
-				data.Namespaces[nsName] = &NamespaceData{
-					Resources: make(map[string]*ResourceData),
-				}
-			}
-
-			// If we haven't seen the resource before, initialize it
-			resCmdName := resource.GetResourceCmdName(resName)
-			if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
-				data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
-					Operations:   make(map[string]*OperationData),
-					SubResources: make(map[string]*ResourceData),
-				}
-			}
-
-			// check if operations already exists
-			operationExists := true
-			subResCmdName := ""
-
-			if hasSubResources {
-				// If we haven't seen the sub-resource before, initialize it
-				subResCmdName = resource.GetResourceCmdName(subResName)
-				if _, ok := data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
-					data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
-						Operations: make(map[string]*OperationData),
-					}
-				}
-				_, operationExists = data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName]
-			} else {
-				_, operationExists = data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
-			}
-
-			// If we haven't seen the operation before, initialize it
-			if !operationExists {
-				httpString := string(op.Operation)
-				properties := make(map[string]string)
-
-				specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
-
-				// Skip deprecated methods
-				if specOp.Deprecated != nil && *specOp.Deprecated == true {
+		} else {
+			for _, param := range specOp.Parameters {
+				// Only create flags for query string parameters
+				if param.In != "query" {
 					continue
 				}
 
-				if strings.ToUpper(httpString) == http.MethodPost {
-					requestContent := specOp.RequestBody.Content
+				schema := param.Schema
+				scalarType := getScalarType(schema)
 
-					if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
-						for propName, schema := range media.Schema.Properties {
-							scalarType := getScalarType(schema)
-
-							if scalarType == nil {
-								continue
-							}
-
-							properties[propName] = *scalarType
-						}
-					}
-				} else {
-					for _, param := range specOp.Parameters {
-						// Only create flags for query string parameters
-						if param.In != "query" {
-							continue
-						}
-
-						schema := param.Schema
-						scalarType := getScalarType(schema)
-
-						if scalarType == nil {
-							continue
-						}
-
-						properties[param.Name] = *scalarType
-					}
+				if scalarType == nil {
+					continue
 				}
 
-				if hasSubResources {
-					data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
-						Path:      op.Path,
-						HTTPVerb:  httpString,
-						PropFlags: properties,
-					}
-				} else {
-					data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
-						Path:      op.Path,
-						HTTPVerb:  httpString,
-						PropFlags: properties,
-					}
-				}
+				properties[param.Name] = *scalarType
+			}
+		}
+
+		if hasSubResources {
+			data.Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
+				Path:      op.Path,
+				HTTPVerb:  httpString,
+				PropFlags: properties,
+			}
+		} else {
+			data.Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
+				Path:      op.Path,
+				HTTPVerb:  httpString,
+				PropFlags: properties,
 			}
 		}
 	}
