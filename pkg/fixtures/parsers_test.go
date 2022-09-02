@@ -313,3 +313,28 @@ func TestParseWithEnvSubstring(t *testing.T) {
 
 	fs.Remove(envPath)
 }
+
+func TestParseArray(t *testing.T) {
+	jsonData := gjson.Parse(`{"id": "cust_bend123456789", "timezones": ["Europe/Brussels", "Europe/Berlin"]}`)
+
+	fxt := Fixture{}
+	fxt.responses = make(map[string]gjson.Result)
+	fxt.responses["cust_bender"] = jsonData
+
+	data := make(map[string]interface{})
+	data["customer"] = "${cust_bender:id}"
+	data["timezones"] = "${cust_bender:timezones}"
+	data["first_timezone"] = "${cust_bender:timezones.0}"
+	data["second_timezone"] = "${cust_bender:timezones.1}"
+	data["third_timezone"] = "${cust_bender:timezones.2|notimezonefound}"
+
+	output, _ := fxt.parseInterface(data)
+	sort.Strings(output)
+
+	require.Equal(t, len(output), 5)
+	require.Equal(t, "customer=cust_bend123456789", output[0])
+	require.Equal(t, "first_timezone=Europe/Brussels", output[1])
+	require.Equal(t, "second_timezone=Europe/Berlin", output[2])
+	require.Equal(t, "third_timezone=notimezonefound", output[3])
+	require.Equal(t, "timezones=[\"Europe/Brussels\", \"Europe/Berlin\"]", output[4])
+}
