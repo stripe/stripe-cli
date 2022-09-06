@@ -10,7 +10,6 @@ linters:
     - dogsled
     - dupl
     - exportloopref
-    - goconst
     - gocritic
     - gocyclo
     - gofmt
