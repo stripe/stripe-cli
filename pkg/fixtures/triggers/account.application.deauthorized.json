@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v1/accounts",
+      "method": "post",
+      "params": {
+        "type": "standard"
+      }
+    },
+    {
+      "name": "delete_account",
+      "path": "/v1/accounts/${account:id}",
+      "method": "delete",
+      "params": {}
+    }
+  ]
+}

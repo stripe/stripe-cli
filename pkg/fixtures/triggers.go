@@ -16,6 +16,7 @@ var triggers embed.FS
 
 // Events is a mapping of pre-built trigger events and the corresponding json file
 var Events = map[string]string{
+	"account.application.deauthorized":         "triggers/account.application.deauthorized.json",
 	"account.updated":                          "triggers/account.updated.json",
 	"balance.available":                        "triggers/balance.available.json",
 	"charge.captured":                          "triggers/charge.captured.json",
