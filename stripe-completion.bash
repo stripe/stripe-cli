@@ -31878,6 +31878,7 @@ _stripe_trigger()
 
     must_have_one_flag=()
     must_have_one_noun=()
+    must_have_one_noun+=("account.application.deauthorized")
     must_have_one_noun+=("account.updated")
     must_have_one_noun+=("balance.available")
     must_have_one_noun+=("charge.captured")
