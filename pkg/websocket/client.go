@@ -304,11 +304,6 @@ func (c *Client) changeConnection(conn *ws.Conn) {
 func (c *Client) readPump() {
 	defer c.wg.Done()
 
-	err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
-	if err != nil {
-		c.cfg.Log.Debug("SetReadDeadline error: ", err)
-	}
-
 	c.conn.SetPongHandler(func(string) error {
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.Client.readPump",
@@ -323,6 +318,11 @@ func (c *Client) readPump() {
 	})
 
 	for {
+		c.cfg.Log.Debug("Setting read deadline: ")
+		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
+		if err != nil {
+			c.cfg.Log.Debug("SetReadDeadline error: ", err)
+		}
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
 			select {
