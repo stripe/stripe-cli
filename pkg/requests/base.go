@@ -274,6 +274,7 @@ func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
 }
 
+// BuildDataForRequest builds request payload
 // Note: We converted to using two arrays to track keys and values, with our own
 // implementation of Go's url.Values Encode function due to our query parameters being
 // order sensitive for API requests involving arrays like `items` for `/v1/orders`.
