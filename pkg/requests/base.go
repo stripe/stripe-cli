@@ -193,7 +193,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
 func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
-	data, err := rb.buildDataForRequest(params)
+	data, err := rb.BuildDataForRequest(params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -280,7 +280,7 @@ func (rb *Base) Confirm() (bool, error) {
 // Go's url.Values uses Go's map, which jumbles the key ordering, and their Encode
 // implementation sorts keys by alphabetical order, but this doesn't work for us since
 // some API endpoints have required parameter ordering. Yes, this is hacky, but it works.
-func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
+func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	keys := []string{}
 	values := []string{}
 
