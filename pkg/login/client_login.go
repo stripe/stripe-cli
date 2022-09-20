@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/briandowns/spinner"
 
@@ -51,43 +52,55 @@ func Login(ctx context.Context, baseURL string, config *configPkg.Config, input 
 
 	var s *spinner.Spinner
 
+	pollResultCh := make(chan pollResult)
+	inputCh := make(chan int)
+
 	if isSSH() || !canOpenBrowser() {
 		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
-
 		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	} else {
 		fmt.Printf("Press Enter to open the browser or visit %s (^C to quit)", links.BrowserURL)
-		fmt.Fscanln(input)
+		go asyncScanln(input, inputCh)
+		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
+	}
 
-		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
-
-		err = openBrowser(links.BrowserURL)
-		if err != nil {
-			msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
-			ansi.StopSpinner(s, msg, os.Stdout)
+	for {
+		select {
+		case <-inputCh:
 			s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+
+			err = openBrowser(links.BrowserURL)
+			if err != nil {
+				msg := fmt.Sprintf("Failed to open browser, please go to %s manually.", links.BrowserURL)
+				ansi.StopSpinner(s, msg, os.Stdout)
+				s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
+			}
+		case res := <-pollResultCh:
+			if res.err != nil {
+				return res.err
+			}
+
+			err = ConfigureProfile(config, res.response)
+			if err != nil {
+				return err
+			}
+
+			message, err := SuccessMessage(ctx, res.account, stripe.DefaultAPIBaseURL, res.response.TestModeAPIKey)
+			if err != nil {
+				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
+				return err
+			}
+
+			if s == nil {
+				fmt.Printf("\n> %s\n", message)
+			} else {
+				ansi.StopSpinner(s, message, os.Stdout)
+			}
+			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+			return nil
 		}
 	}
-
-	response, account, err := PollForKey(ctx, links.PollURL, 0, 0)
-	if err != nil {
-		return err
-	}
-
-	err = ConfigureProfile(config, response)
-	if err != nil {
-		return err
-	}
-
-	message, err := SuccessMessage(ctx, account, stripe.DefaultAPIBaseURL, response.TestModeAPIKey)
-	if err != nil {
-		fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
-		return err
-	}
-
-	ansi.StopSpinner(s, message, os.Stdout)
-	fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
-	return nil
 }
 
 // ConfigureProfile function sets config for this profile.
@@ -158,4 +171,25 @@ func isSSH() bool {
 	}
 
 	return false
+}
+
+type pollResult struct {
+	response *PollAPIKeyResponse
+	account  *Account
+	err      error
+}
+
+func asyncPollKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int, ch chan pollResult) {
+	response, account, err := PollForKey(ctx, pollURL, interval, maxAttempts)
+	ch <- pollResult{
+		response: response,
+		account:  account,
+		err:      err,
+	}
+	close(ch)
+}
+
+func asyncScanln(input io.Reader, ch chan int) {
+	n, _ := fmt.Fscanln(input)
+	ch <- n
 }
