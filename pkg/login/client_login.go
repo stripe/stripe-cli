@@ -40,7 +40,7 @@ type Links struct {
 */
 
 // Login function is used to obtain credentials via stripe dashboard.
-func Login(ctx context.Context, baseURL string, config *configPkg.Config, input io.Reader) error {
+func Login(ctx context.Context, baseURL string, config *configPkg.Config, asyncInput AsyncInputReader) error {
 	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func Login(ctx context.Context, baseURL string, config *configPkg.Config, input 
 		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	} else {
 		fmt.Printf("Press Enter to open the browser or visit %s (^C to quit)", links.BrowserURL)
-		go asyncScanln(input, inputCh)
+		go asyncInput.scanln(inputCh)
 		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	}
 
@@ -189,7 +189,16 @@ func asyncPollKey(ctx context.Context, pollURL string, interval time.Duration, m
 	close(ch)
 }
 
-func asyncScanln(input io.Reader, ch chan int) {
-	n, _ := fmt.Fscanln(input)
+// AsyncInputReader is an interface that has an async version of scanln
+type AsyncInputReader interface {
+	scanln(ch chan int)
+}
+
+// AsyncStdinReader implements scanln(ch chan int), an async version of scanln
+type AsyncStdinReader struct {
+}
+
+func (r AsyncStdinReader) scanln(ch chan int) {
+	n, _ := fmt.Fscanln(os.Stdin)
 	ch <- n
 }
