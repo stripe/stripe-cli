@@ -29,6 +29,8 @@ type InstallCmd struct {
 	archiveURL     string
 	archivePath    string
 	localPluginDir string
+
+	apiBaseURL string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -50,6 +52,10 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive-path", "", "Install a plugin by a local archive path")
 	ic.Cmd.Flags().StringVar(&ic.localPluginDir, "local", "", "Install a development version plugin from a local development folder")
 	ic.Cmd.Flags().Bool("archive", false, "Install a plugin by archive data from stdout")
+
+	// Hidden configuration flags, useful for dev/debugging
+	ic.Cmd.Flags().StringVar(&ic.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	return ic
 }
@@ -92,7 +98,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err = plugin.Install(ctx, ic.cfg, ic.fs, version, stripe.DefaultAPIBaseURL)
+	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
 
 	return err
 }
@@ -155,7 +161,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// Refresh the plugin before proceeding
-		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
+		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
 		if err != nil {
 			return err
 		}
