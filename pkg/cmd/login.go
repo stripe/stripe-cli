@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -40,5 +38,5 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config, os.Stdin)
+	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config, login.AsyncStdinReader{})
 }
