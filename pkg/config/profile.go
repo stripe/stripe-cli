@@ -267,9 +267,9 @@ func (p *Profile) DeleteConfigField(field string) error {
 	}
 
 	// delete livemode redacted values from config and full values from keyring
-	// if field == LiveModeAPIKeyName || field == LiveModePubKeyName || field == LiveModeKeyExpiresAtName {
-	// 	p.deleteLivemodeValue(field)
-	// }
+	if field == LiveModeAPIKeyName || field == LiveModeKeyExpiresAtName {
+		p.deleteLivemodeValue(field)
+	}
 
 	return p.writeProfile(v)
 }
@@ -287,19 +287,20 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.LiveModeAPIKey != "" {
+		fmt.Println("DEBUG: FOUND LIVE API KEY")
 		// comment out livemode storage until bugs are ironed out
-		// expiresAt := getKeyExpiresAt()
+		expiresAt := getKeyExpiresAt()
 
 		// // store redacted key in config
-		// runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
-		// runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
+		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// // store actual key in secure keyring
-		// p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
-		// p.saveLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
+		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		p.saveLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
 
-		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), strings.TrimSpace(p.LiveModeAPIKey))
-		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), getKeyExpiresAt())
+		// runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), strings.TrimSpace(p.LiveModeAPIKey))
+		// runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), getKeyExpiresAt())
 	}
 
 	if p.LiveModePublishableKey != "" {

@@ -167,7 +167,7 @@ func (c *Config) InitConfig() {
 	})
 
 	// redact livemode values for existing configs
-	// c.Profile.redactAllLivemodeValues()
+	c.Profile.redactAllLivemodeValues()
 }
 
 // EditConfig opens the configuration file in the default editor.
