@@ -139,19 +139,19 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
 		}
 	} else {
-		// p.redactAllLivemodeValues()
-		// key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
-		// if err != nil {
-		// 	return "", err
+		p.redactAllLivemodeValues()
+		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
+		if err != nil {
+			return "", err
+		}
+
+		// if err := viper.ReadInConfig(); err == nil {
+		// 	key = viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
 		// }
 
-		if err := viper.ReadInConfig(); err == nil {
-			key = viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
-		}
-
-		if isRedactedAPIKey(key) {
-			return "", validators.ErrAPIKeyNotConfigured
-		}
+		// if isRedactedAPIKey(key) {
+		// 	return "", validators.ErrAPIKeyNotConfigured
+		// }
 	}
 
 	if key != "" {
