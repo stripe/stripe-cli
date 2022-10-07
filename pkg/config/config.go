@@ -163,7 +163,7 @@ func (c *Config) InitConfig() {
 
 	// initialize key ring
 	KeyRing, _ = keyring.Open(keyring.Config{
-		ServiceName: "Stripe CLI Key Storage",
+		ServiceName: KeyManagementService,
 	})
 
 	// redact livemode values for existing configs
