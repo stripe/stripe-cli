@@ -5,8 +5,6 @@ package config
 
 import (
 	"github.com/99designs/keyring"
-	"github.com/spf13/viper"
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
