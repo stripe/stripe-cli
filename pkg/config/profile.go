@@ -160,14 +160,6 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		// if err := viper.ReadInConfig(); err == nil {
-		// 	key = viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
-		// }
-
-		// if isRedactedAPIKey(key) {
-		// 	return "", validators.ErrAPIKeyNotConfigured
-		// }
 	}
 
 	if key != "" {
@@ -184,13 +176,8 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 // GetExpiresAt returns the API key expirary date
 func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var timeString string
-	// var err error
 
 	if livemode {
-		// timeString, err = p.retrieveLivemodeValue(LiveModeKeyExpiresAtName)
-		// if err != nil {
-		// 	return time.Time{}, err
-		// }
 		timeString = viper.GetString(p.GetConfigField(LiveModeKeyExpiresAtName))
 	} else {
 		timeString = viper.GetString(p.GetConfigField(TestModeKeyExpiresAtName))
@@ -283,7 +270,7 @@ func (p *Profile) DeleteConfigField(field string) error {
 	}
 
 	// delete livemode redacted values from config and full values from keyring
-	if field == LiveModeAPIKeyName || field == LiveModeKeyExpiresAtName {
+	if field == LiveModeAPIKeyName {
 		p.deleteLivemodeValue(field)
 	}
 
@@ -303,20 +290,14 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.LiveModeAPIKey != "" {
-		fmt.Println("DEBUG: FOUND LIVE API KEY")
-		// comment out livemode storage until bugs are ironed out
 		expiresAt := getKeyExpiresAt()
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// // store redacted key in config
 		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
-		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// // store actual key in secure keyring
 		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
-		p.saveLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
-
-		// runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), strings.TrimSpace(p.LiveModeAPIKey))
-		// runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), getKeyExpiresAt())
 	}
 
 	if p.LiveModePublishableKey != "" {
