@@ -4,10 +4,6 @@
 package config
 
 import (
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stripe/stripe-cli/pkg/ansi"
