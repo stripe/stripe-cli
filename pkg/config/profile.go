@@ -43,7 +43,7 @@ const (
 )
 
 const (
-	// DateStrineFormat is the format for expiredAt date
+	// DateStringFormat is the format for expiredAt date
 	DateStringFormat = "2006-01-02"
 
 	// KeyValidInDays is the number of days the API key is valid for

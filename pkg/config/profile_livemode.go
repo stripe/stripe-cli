@@ -4,8 +4,9 @@
 package config
 
 import (
-	"github.com/99designs/keyring"
 	"github.com/stripe/stripe-cli/pkg/validators"
+
+	"github.com/99designs/keyring"
 )
 
 // saveLivemodeValue saves livemode value of given key in keyring
