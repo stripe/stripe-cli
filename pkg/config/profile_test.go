@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -98,6 +101,43 @@ test_mode_key_expires_at = '` + expiresAt + `'
 	require.EqualValues(t, expectedConfig, string(configValues))
 
 	cleanUp(c.ProfilesFile)
+}
+
+func TestAPIKeyLogLevel(t *testing.T) {
+	// Set the level to debug
+	logrus.SetLevel(logrus.DebugLevel)
+
+	c := &Config{
+		Color:    "auto",
+		LogLevel: "debug",
+		Profile: Profile{
+			ProfileName:    "tests",
+			TestModeAPIKey: "asdas",
+		},
+		ProfilesFile: "",
+	}
+
+	// For debug mode, the error should complain about a config file missing
+	// since we did not init the config
+	key, err := c.Profile.GetAPIKey(false)
+
+	// Little weird but windows returns a different error message than others
+	os := runtime.GOOS
+	switch os {
+	case "windows":
+		assert.ErrorContains(t, err, `config.toml: The system cannot find the file specified.`)
+	default:
+		assert.ErrorContains(t, err, `config.toml: no such file or directory`)
+	}
+
+	assert.Equal(t, "", key)
+
+	// In info mode, it should give a cleaner error about the key not being
+	// configured
+	logrus.SetLevel(logrus.InfoLevel)
+	key, err = c.Profile.GetAPIKey(false)
+	assert.EqualError(t, err, "you have not configured API keys yet")
+	assert.Equal(t, "", key)
 }
 
 func helperLoadBytes(t *testing.T, name string) []byte {
