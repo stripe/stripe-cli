@@ -31,6 +31,7 @@ type RequestParameters struct {
 	limit         string
 	version       string
 	stripeAccount string
+	stripeContext string
 }
 
 // AppendData appends data to the request parameters.
@@ -173,6 +174,9 @@ func (rb *Base) InitFlags() {
 	// Hidden configuration flags, useful for dev/debugging
 	rb.Cmd.Flags().StringVar(&rb.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	rb.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "context", "", "Set the Stripe context to use for your request")
+	rb.Cmd.Flags().MarkHidden("context") // #nosec G104
 }
 
 // MakeMultiPartRequest will make a multipart/form-data request to the Stripe API with the specific variables given to it.
@@ -216,6 +220,7 @@ func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params 
 	configure := func(req *http.Request) {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
+		rb.setStripeContextHeader(req, params)
 		rb.setVersionHeader(req, params)
 		if additionalConfigure != nil {
 			additionalConfigure(req)
@@ -410,6 +415,12 @@ func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameter
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
 	if params.stripeAccount != "" {
 		request.Header.Set("Stripe-Account", params.stripeAccount)
+	}
+}
+
+func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeContext != "" {
+		request.Header.Set("Stripe-Context", params.stripeContext)
 	}
 }
 

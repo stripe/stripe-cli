@@ -83,7 +83,7 @@ func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	require.Equal(t, expected, err.Error())
 }
 
-func TestMakeRequest(t *testing.T) {
+func TestMakeRequest_Succeeds(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK!"))
@@ -107,6 +107,31 @@ func TestMakeRequest(t *testing.T) {
 	params := &RequestParameters{
 		data:   []string{"bender=robot", "fry=human"},
 		expand: []string{"futurama.employees", "futurama.ships"},
+	}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_PassesHeaders(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+		require.Equal(t, "idempotency_header", r.Header.Get("Idempotency-Key"))
+		require.Equal(t, "stripe_account_header", r.Header.Get("Stripe-Account"))
+		require.Equal(t, "stripe_context_header", r.Header.Get("Stripe-Context"))
+		require.Equal(t, "version_header", r.Header.Get("Stripe-Version"))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{
+		idempotency:   "idempotency_header",
+		stripeAccount: "stripe_account_header",
+		stripeContext: "stripe_context_header",
+		version:       "version_header",
 	}
 
 	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
