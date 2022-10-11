@@ -23,7 +23,8 @@ const (
 )
 
 // saveLivemodeValue saves livemode value of given key in keyring
-func (p *Profile) saveLivemodeValue(field, value, description string) {
+func (p *Profile) saveLivemodeValue(key, value, description string) {
+	fieldID := p.GetConfigField(key)
 	value = encodingPrefix + hex.EncodeToString([]byte(value))
 
 	cmd := exec.Command(execPathKeychain, "-i")
@@ -32,7 +33,7 @@ func (p *Profile) saveLivemodeValue(field, value, description string) {
 
 	command := fmt.Sprintf(
 		"add-generic-password -U -s %s -a %s -w %s\n",
-		shellescape.Quote(field),
+		shellescape.Quote(fieldID),
 		shellescape.Quote(KeyManagementService),
 		shellescape.Quote(value),
 	)
