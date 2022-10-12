@@ -244,6 +244,8 @@ func (c *Config) RemoveProfile(profileName string) error {
 			if err != nil {
 				return err
 			}
+
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
 		}
 	}
 
@@ -261,6 +263,8 @@ func (c *Config) RemoveAllProfiles() error {
 			if err != nil {
 				return err
 			}
+
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
 		}
 	}
 
