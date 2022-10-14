@@ -147,8 +147,9 @@ func (ic *InstallCmd) installPluginFromLocalDir() error {
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
+	color := ansi.Color(os.Stdout)
 
-	// check if plugin manfiest exists to be updated with the plugin to be installed
+	// check if plugin manfest exists to be updated with the plugin to be installed
 	configPath := ic.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 	_, err = afero.ReadFile(ic.fs, pluginManifestPath)
@@ -157,7 +158,8 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		// api key is required to retrieve the plugin manifest
 		_, err = ic.cfg.GetProfile().GetAPIKey(false)
 		if err != nil {
-			return fmt.Errorf("could not install plugin. please run `stripe login` and try again.")
+			fmt.Println(color.Red("x could not install plugin. please run `stripe login` and try again"))
+			return fmt.Errorf("installation process exited")
 		}
 	}
 
@@ -187,7 +189,6 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if err == nil {
-		color := ansi.Color(os.Stdout)
 		fmt.Println(color.Green("✔ installation complete."))
 	}
 
