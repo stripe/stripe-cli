@@ -147,6 +147,11 @@ func (ic *InstallCmd) installPluginFromLocalDir() error {
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
+	_, err = ic.cfg.GetProfile().GetAPIKey(false)
+	if err != nil {
+		return fmt.Errorf("could not install plugin. please run `stripe login` and try again.")
+	}
+
 	if len(args) == 0 {
 		if ic.localPluginDir != "" {
 			err = ic.installPluginFromLocalDir()
