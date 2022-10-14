@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -147,9 +148,17 @@ func (ic *InstallCmd) installPluginFromLocalDir() error {
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 
-	_, err = ic.cfg.GetProfile().GetAPIKey(false)
-	if err != nil {
-		return fmt.Errorf("could not install plugin. please run `stripe login` and try again.")
+	// check if plugin manfiest exists to be updated with the plugin to be installed
+	configPath := ic.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+	_, err = afero.ReadFile(ic.fs, pluginManifestPath)
+	if os.IsNotExist(err) {
+		// plugin manifest does not exist. will need to retrieve from web
+		// api key is required to retrieve the plugin manifest
+		_, err = ic.cfg.GetProfile().GetAPIKey(false)
+		if err != nil {
+			return fmt.Errorf("could not install plugin. please run `stripe login` and try again.")
+		}
 	}
 
 	if len(args) == 0 {
