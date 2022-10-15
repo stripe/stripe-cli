@@ -33,6 +33,7 @@ type OperationCmd struct {
 	URLParams []string
 
 	stringFlags map[string]*string
+	arrayFlags  map[string]*[]string
 
 	data []string
 }
@@ -52,6 +53,16 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := strings.ReplaceAll(stringProp, "-", "_")
 			flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+		}
+	}
+
+	for arrayProp, arrayVal := range oc.arrayFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(arrayProp) {
+			paramName := strings.ReplaceAll(arrayProp, "-", "_")
+			for _, arrayItem := range *arrayVal {
+				flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
+			}
 		}
 	}
 
@@ -124,6 +135,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		URLParams: urlParams,
 
 		stringFlags: make(map[string]*string),
+		arrayFlags:  make(map[string]*[]string),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -132,11 +144,15 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Args:        validators.ExactArgs(len(urlParams)),
 	}
 
-	for prop := range propFlags {
+	for prop, propType := range propFlags {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
-		operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		if propType == "array" {
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringSlice(flagName, []string{}, "")
+		} else {
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 	}
 
