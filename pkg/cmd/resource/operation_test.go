@@ -2,7 +2,6 @@ package resource
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +41,6 @@ func TestRunOperationCmd(t *testing.T) {
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		vals, err := url.ParseQuery(string(body))
-		fmt.Println(vals)
 		require.NoError(t, err)
 		require.Equal(t, 5, len(vals))
 		require.Equal(t, vals["param1"][0], "value1")
