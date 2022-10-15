@@ -154,7 +154,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 		if propType == "array" {
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringSlice(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
 		} else {
 			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		}
@@ -226,6 +226,8 @@ func operationUsageTemplate(urlParams []string) string {
 {{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
 
 %s
+
+%s
 {{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
@@ -242,6 +244,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
 		ansi.Bold("Request Parameters:"),
+		ansi.Italic("Note: all types are specifically for the Stripe CLI itself, not the Stripe API. The CLI handles\ntransforming types to what the API expects."),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
