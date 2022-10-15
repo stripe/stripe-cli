@@ -41,3 +41,48 @@ func GetType(schema *spec.Schema) *string {
 
 	return nil
 }
+
+// DenormalizeObject accepts a schema and returns a map of its properties,
+// fully expanded to the lowest level. Note that the one exception to this is
+// for arrays of objects. The `GetType` function explicitly does not support
+// arrays of objects, so we don't expand those (this is due to there being no
+// way to specify an array of objects in a shell).
+//
+// We denormalize into a dot-notation since that has the most compatibility
+// across shells. This is not following proper conventions (as per
+// https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html),
+// but our API is becoming increasingly complex and dot-notation is the most
+// compatible way to handle it (brackets are not supported in all shells).
+func DenormalizeObject(name string, schema *spec.Schema) map[string]string {
+	tmpProperties := denormalizedObject(schema)
+	properties := make(map[string]string)
+	for propName, propType := range tmpProperties {
+		properties[name+"."+propName] = propType
+	}
+	return properties
+}
+
+// denormalizeObject is a recursive function that handles the actual unfolding
+// of objects into a dot notation.
+func denormalizedObject(schema *spec.Schema) map[string]string {
+	properties := make(map[string]string)
+
+	for propName, propSchema := range schema.Properties {
+		if propSchema.Type == "object" {
+			subProperties := denormalizedObject(propSchema)
+			for subPropName, subPropSchema := range subProperties {
+				properties[propName+"."+subPropName] = subPropSchema
+			}
+		} else {
+			scalarType := GetType(propSchema)
+
+			if scalarType == nil {
+				continue
+			}
+
+			properties[propName] = *scalarType
+		}
+	}
+
+	return properties
+}

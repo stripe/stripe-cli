@@ -200,13 +200,21 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 						continue
 					}
 
-					scalarType := gen.GetType(schema)
+					if schema.Type == "object" {
+						denormalizedProps := gen.DenormalizeObject(propName, schema)
+						for prop, propType := range denormalizedProps {
+							properties[prop] = propType
+						}
 
-					if scalarType == nil {
-						continue
+					} else {
+						scalarType := gen.GetType(schema)
+
+						if scalarType == nil {
+							continue
+						}
+
+						properties[propName] = *scalarType
 					}
-
-					properties[propName] = *scalarType
 				}
 			}
 		} else {

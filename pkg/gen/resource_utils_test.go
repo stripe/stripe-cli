@@ -98,3 +98,21 @@ func TestGetTypeComplexArray(t *testing.T) {
 
 	assert.Nil(t, result)
 }
+
+func TestDenormalizeObject(t *testing.T) {
+	s := &spec.Schema{
+		Properties: map[string]*spec.Schema{
+			"foo": {
+				Type: "string",
+			},
+			"bar": {
+				Type: "integer",
+			},
+		},
+	}
+
+	result := DenormalizeObject("test", s)
+
+	assert.Equal(t, "string", result["test.foo"])
+	assert.Equal(t, "integer", result["test.bar"])
+}

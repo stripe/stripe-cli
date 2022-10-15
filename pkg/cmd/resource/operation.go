@@ -52,7 +52,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := strings.ReplaceAll(stringProp, "-", "_")
-			flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+			if strings.Contains(paramName, ".") {
+				fullParam := constructParamFromDot(paramName)
+				flagParams = append(flagParams, fmt.Sprintf("%s=%s", fullParam, *stringVal))
+			} else {
+				flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+			}
 		}
 	}
 
@@ -241,4 +246,18 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
 	)
+}
+
+func constructParamFromDot(dotParam string) string {
+	paramPath := strings.Split(dotParam, ".")
+	var param string
+	for i, p := range paramPath {
+		if i == 0 {
+			param = p
+		} else {
+			param = fmt.Sprintf("%s[%s]", param, p)
+		}
+	}
+
+	return param
 }
