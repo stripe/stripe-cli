@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -41,11 +42,14 @@ func TestRunOperationCmd(t *testing.T) {
 		require.Equal(t, "/v1/bars/bar_123", r.URL.Path)
 		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
 		vals, err := url.ParseQuery(string(body))
+		fmt.Println(vals)
 		require.NoError(t, err)
-		require.Equal(t, 3, len(vals))
+		require.Equal(t, 5, len(vals))
 		require.Equal(t, vals["param1"][0], "value1")
 		require.Equal(t, vals["param2"][0], "value2")
 		require.Equal(t, vals["param_with_underscores"][0], "some_value")
+		require.Equal(t, vals["param[with][dots]"][0], "some_other_value")
+		require.Equal(t, vals["param_array[]"], []string{"data1", "data2"})
 	}))
 	defer ts.Close()
 
@@ -59,6 +63,8 @@ func TestRunOperationCmd(t *testing.T) {
 		"param1":                 "string",
 		"param2":                 "string",
 		"param_with_underscores": "string",
+		"param.with.dots":        "string",
+		"param_array":            "array",
 	}, &config.Config{
 		Profile: profile,
 	})
@@ -67,6 +73,9 @@ func TestRunOperationCmd(t *testing.T) {
 	oc.Cmd.Flags().Set("param1", "value1")
 	oc.Cmd.Flags().Set("param2", "value2")
 	oc.Cmd.Flags().Set("param-with-underscores", "some_value")
+	oc.Cmd.Flags().Set("param.with.dots", "some_other_value")
+	oc.Cmd.Flags().Set("param-array", "data1")
+	oc.Cmd.Flags().Set("param-array", "data2")
 
 	parentCmd.SetArgs([]string{"foo", "bar_123"})
 	err := parentCmd.ExecuteContext(context.Background())
@@ -126,4 +135,9 @@ func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
 	require.Error(t, err, "your API key has not been configured. Use `stripe login` to set your API key")
+}
+
+func TestConstructParamFromDot(t *testing.T) {
+	param := constructParamFromDot("shipping.address.line1")
+	require.Equal(t, "shipping[address][line1]", param)
 }
