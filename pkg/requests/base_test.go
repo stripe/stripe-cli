@@ -19,7 +19,7 @@ func TestBuildDataForRequest(t *testing.T) {
 	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
 	expected := "bender=robot&fry=human"
 
-	output, _ := rb.buildDataForRequest(params)
+	output, _ := rb.BuildDataForRequest(params)
 	require.Equal(t, expected, output)
 }
 
@@ -28,7 +28,7 @@ func TestBuildDataForRequestParamOrdering(t *testing.T) {
 	params := &RequestParameters{data: []string{"fry=human", "bender=robot"}}
 	expected := "fry=human&bender=robot"
 
-	output, _ := rb.buildDataForRequest(params)
+	output, _ := rb.BuildDataForRequest(params)
 	require.Equal(t, expected, output)
 }
 
@@ -37,7 +37,7 @@ func TestBuildDataForRequestExpand(t *testing.T) {
 	params := &RequestParameters{expand: []string{"futurama.employees", "futurama.ships"}}
 	expected := "expand[]=futurama.employees&expand[]=futurama.ships"
 
-	output, _ := rb.buildDataForRequest(params)
+	output, _ := rb.BuildDataForRequest(params)
 	require.Equal(t, expected, output)
 }
 
@@ -53,7 +53,7 @@ func TestBuildDataForRequestPagination(t *testing.T) {
 
 	expected := "limit=10&starting_after=bender&ending_before=leela"
 
-	output, _ := rb.buildDataForRequest(params)
+	output, _ := rb.BuildDataForRequest(params)
 	require.Equal(t, expected, output)
 }
 
@@ -69,7 +69,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 
 	expected := ""
 
-	output, _ := rb.buildDataForRequest(params)
+	output, _ := rb.BuildDataForRequest(params)
 	require.Equal(t, expected, output)
 }
 
@@ -78,7 +78,7 @@ func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
 	expected := "Invalid data argument: fry"
 
-	data, err := rb.buildDataForRequest(params)
+	data, err := rb.BuildDataForRequest(params)
 	require.Equal(t, "", data)
 	require.Equal(t, expected, err.Error())
 }

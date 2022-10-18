@@ -20,6 +20,8 @@ type UpgradeCmd struct {
 	cfg *config.Config
 	Cmd *cobra.Command
 	fs  afero.Fs
+
+	apiBaseURL string
 }
 
 // NewUpgradeCmd creates a new command for upgrading plugins
@@ -36,6 +38,10 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 		RunE:  uc.runUpgradeCmd,
 	}
 
+	// Hidden configuration flags, useful for dev/debugging
+	uc.Cmd.Flags().StringVar(&uc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	uc.Cmd.Flags().MarkHidden("api-base") // #nosec G104
+
 	return uc
 }
 
@@ -47,7 +53,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	})
 
 	// Refresh the plugin info before proceeding
-	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, stripe.DefaultAPIBaseURL)
+	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, uc.apiBaseURL)
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), uc.cfg, uc.fs, args[0])
 
@@ -57,7 +63,7 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 
 	version := plugin.LookUpLatestVersion()
 
-	err = plugin.Install(ctx, uc.cfg, uc.fs, version, stripe.DefaultAPIBaseURL)
+	err = plugin.Install(ctx, uc.cfg, uc.fs, version, uc.apiBaseURL)
 
 	if err == nil {
 		color := ansi.Color(os.Stdout)

@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -39,6 +41,20 @@ const (
 	LiveModePubKeyName         = "live_mode_pub_key"
 	LiveModeKeyExpiresAtName   = "live_mode_key_expires_at"
 )
+
+const (
+	// DateStringFormat is the format for expiredAt date
+	DateStringFormat = "2006-01-02"
+
+	// KeyValidInDays is the number of days the API key is valid for
+	KeyValidInDays = 90
+
+	// KeyManagementService is the key management service name
+	KeyManagementService = "Stripe CLI"
+)
+
+// KeyRing ...
+var KeyRing keyring.Keyring
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -139,18 +155,10 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
 		}
 	} else {
-		// p.redactAllLivemodeValues()
-		// key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
-		// if err != nil {
-		// 	return "", err
-		// }
-
-		if err := viper.ReadInConfig(); err == nil {
-			key = viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
-		}
-
-		if isRedactedAPIKey(key) {
-			return "", validators.ErrAPIKeyNotConfigured
+		p.redactAllLivemodeValues()
+		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -168,13 +176,8 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 // GetExpiresAt returns the API key expirary date
 func (p *Profile) GetExpiresAt(livemode bool) (time.Time, error) {
 	var timeString string
-	// var err error
 
 	if livemode {
-		// timeString, err = p.retrieveLivemodeValue(LiveModeKeyExpiresAtName)
-		// if err != nil {
-		// 	return time.Time{}, err
-		// }
 		timeString = viper.GetString(p.GetConfigField(LiveModeKeyExpiresAtName))
 	} else {
 		timeString = viper.GetString(p.GetConfigField(TestModeKeyExpiresAtName))
@@ -267,9 +270,9 @@ func (p *Profile) DeleteConfigField(field string) error {
 	}
 
 	// delete livemode redacted values from config and full values from keyring
-	// if field == LiveModeAPIKeyName || field == LiveModePubKeyName || field == LiveModeKeyExpiresAtName {
-	// 	p.deleteLivemodeValue(field)
-	// }
+	if field == LiveModeAPIKeyName {
+		p.deleteLivemodeValue(field)
+	}
 
 	return p.writeProfile(v)
 }
@@ -287,19 +290,14 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	}
 
 	if p.LiveModeAPIKey != "" {
-		// comment out livemode storage until bugs are ironed out
-		// expiresAt := getKeyExpiresAt()
+		expiresAt := getKeyExpiresAt()
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
 
 		// // store redacted key in config
-		// runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
-		// runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
+		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
 
 		// // store actual key in secure keyring
-		// p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
-		// p.saveLivemodeValue(LiveModeKeyExpiresAtName, expiresAt, "Live mode API key expirary")
-
-		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), strings.TrimSpace(p.LiveModeAPIKey))
-		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), getKeyExpiresAt())
+		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
 	}
 
 	if p.LiveModePublishableKey != "" {
@@ -359,6 +357,57 @@ func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
 	}
 
 	return v
+}
+
+// redactAllLivemodeValues redacts all livemode values in the local config file
+func (p *Profile) redactAllLivemodeValues() {
+	color := ansi.Color(os.Stdout)
+
+	if err := viper.ReadInConfig(); err == nil {
+		// if the config file has expires at date, then it is using the new livemode key storage
+		if viper.IsSet(p.GetConfigField(LiveModeAPIKeyName)) {
+			key := viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
+			if !isRedactedAPIKey(key) {
+				fmt.Println(color.Yellow(`
+(!) Livemode value found for the field '` + LiveModeAPIKeyName + `' in your config file.
+Livemode values from the config file will be redacted and will not be used.`))
+
+				p.WriteConfigField(LiveModeAPIKeyName, RedactAPIKey(key))
+			}
+		}
+	}
+}
+
+// RedactAPIKey returns a redacted version of API keys. The first 8 and last 4
+// characters are not redacted, everything else is replaced by "*" characters.
+//
+// It panics if the provided string has less than 12 characters.
+func RedactAPIKey(apiKey string) string {
+	var b strings.Builder
+
+	b.WriteString(apiKey[0:8])                         // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
+	b.WriteString(strings.Repeat("*", len(apiKey)-12)) // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
+	b.WriteString(apiKey[len(apiKey)-4:])              // #nosec G104 (gosec bug: https://github.com/securego/gosec/issues/267)
+
+	return b.String()
+}
+
+// isRedactedAPIKey checks if the input string is a refacted api key
+func isRedactedAPIKey(apiKey string) bool {
+	keyParts := strings.Split(apiKey, "_")
+	if len(keyParts) < 3 {
+		return false
+	}
+
+	if keyParts[0] != "sk" && keyParts[0] != "rk" {
+		return false
+	}
+
+	if RedactAPIKey(apiKey) != apiKey {
+		return false
+	}
+
+	return true
 }
 
 func getKeyExpiresAt() string {
