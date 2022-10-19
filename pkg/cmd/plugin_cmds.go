@@ -38,6 +38,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
 		},
+		SilenceErrors: true,
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
@@ -80,6 +81,10 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		log.WithFields(log.Fields{
 			"prefix": "pluginTemplateCmd.runPluginCmd",
 		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
+
+		// We can't return err because the plugin will have already printed the error message at
+		// this point, and we can't return nil because the host will exit with code 0.
+		os.Exit(1)
 	}
 
 	return nil

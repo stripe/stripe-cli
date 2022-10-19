@@ -135,8 +135,9 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) {
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) error {
 		r.Header.Add("Stripe-Version", "2019-07-10")
+		return nil
 	})
 	require.NoError(t, err)
 
