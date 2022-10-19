@@ -38,7 +38,6 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
 			UnknownFlags: true,
 		},
-		SilenceErrors: true,
 	}
 
 	// override the CLI's help command and let the plugin supply the help text instead
