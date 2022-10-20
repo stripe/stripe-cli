@@ -18,39 +18,39 @@ import (
 
 func TestParsePathDoNothing(t *testing.T) {
 	fxt := Fixture{}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges",
 	}
 
-	path, _ := fxt.parsePath(http)
+	path, _ := fxt.ParsePath(http)
 	assert.Equal(t, http.Path, path)
 }
 
 func TestParsePathOneParam(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges/${char_bender:id}",
 	}
 
-	path, _ := fxt.parsePath(http)
+	path, _ := fxt.ParsePath(http)
 	assert.Equal(t, "/v1/charges/cust_12345", path)
 }
 
 func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges/${char:id}",
 	}
 
-	_, err := fxt.parsePath(http)
+	_, err := fxt.ParsePath(http)
 
 	color := ansi.Color(os.Stdout)
 	expected := fmt.Errorf(
@@ -64,15 +64,15 @@ func TestParsePathReferenceErrorWithSuggestion(t *testing.T) {
 
 func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges/${foo:id}",
 	}
 
-	_, err := fxt.parsePath(http)
+	_, err := fxt.ParsePath(http)
 
 	color := ansi.Color(os.Stdout)
 	expected := fmt.Errorf(
@@ -86,12 +86,12 @@ func TestParsePathReferenceErrorNoSuggestion(t *testing.T) {
 
 func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 
-	_, err := fxt.parseQuery("${bender:id}")
+	_, err := fxt.ParseQuery("${bender:id}")
 
 	color := ansi.Color(os.Stdout)
 	expected := fmt.Errorf(
@@ -105,12 +105,12 @@ func TestParseQueryReferenceErrorWithSuggestion(t *testing.T) {
 
 func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
 
-	_, err := fxt.parseQuery("${foo:id}")
+	_, err := fxt.ParseQuery("${foo:id}")
 
 	color := ansi.Color(os.Stdout)
 	expected := fmt.Errorf(
@@ -124,30 +124,30 @@ func TestParseQueryReferenceErrorNoSuggestion(t *testing.T) {
 
 func TestParseTwoParam(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
 			"cust_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
 	}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges/${char_bender:id}/capture/${cust_bender:id}",
 	}
 
-	path, _ := fxt.parsePath(http)
+	path, _ := fxt.ParsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture/cust_12345", path)
 }
 
 func TestParsePathOneParamWithTrailing(t *testing.T) {
 	fxt := Fixture{
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
 		},
 	}
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/charges/${char_bender:id}/capture",
 	}
 
-	path, _ := fxt.parsePath(http)
+	path, _ := fxt.ParsePath(http)
 	assert.Equal(t, "/v1/charges/char_12345/capture", path)
 }
 
@@ -162,7 +162,7 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 
 	fxt := Fixture{}
 
-	output, _ := fxt.parseInterface(parsedFixtureData)
+	output, _ := fxt.ParseInterface(parsedFixtureData)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 2)
@@ -193,7 +193,7 @@ func TestParseInterface(t *testing.T) {
 	data["tax_id_data"] = taxIDData
 	fxt := Fixture{}
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
@@ -211,8 +211,8 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	jsonData := gjson.Parse(`{"id": "cust_bend123456789", "currency": "eur"}`)
 
 	fxt := Fixture{}
-	fxt.responses = make(map[string]gjson.Result)
-	fxt.responses["cust_bender"] = jsonData
+	fxt.Responses = make(map[string]gjson.Result)
+	fxt.Responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
 	data["customer"] = "${cust_bender:id}"
@@ -220,7 +220,7 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	data["amount"] = "100"
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
@@ -234,13 +234,13 @@ func TestParseWithQueryDefaultValue(t *testing.T) {
 	jsonData := gjson.Parse(`{"id": "cust_bend123456789"}`)
 
 	fxt := Fixture{}
-	fxt.responses = make(map[string]gjson.Result)
-	fxt.responses["cust_bender"] = jsonData
+	fxt.Responses = make(map[string]gjson.Result)
+	fxt.Responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "currency=usd", output[0])
@@ -251,7 +251,7 @@ func TestParseNoEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234567890", output[0])
@@ -265,14 +265,14 @@ func TestParseWithLocalEnv(t *testing.T) {
 	os.Setenv("CUST_ID", "cust_12345")
 	os.Setenv("PHONE_LOCAL", "+1234")
 
-	http := fixture{
+	http := FixtureRequest{
 		Path: "/v1/customers/${.env:CUST_ID}",
 	}
 
-	path, _ := fxt.parsePath(http)
+	path, _ := fxt.ParsePath(http)
 	assert.Equal(t, "/v1/customers/cust_12345", path)
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -289,7 +289,7 @@ func TestParseWithEnvFile(t *testing.T) {
 	fxt := Fixture{}
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -306,7 +306,7 @@ func TestParseWithEnvSubstring(t *testing.T) {
 	fxt := Fixture{}
 	data := make(map[string]interface{})
 	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
-	output, _ := (fxt.parseInterface(data))
+	output, _ := (fxt.ParseInterface(data))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
@@ -318,8 +318,8 @@ func TestParseArray(t *testing.T) {
 	jsonData := gjson.Parse(`{"id": "cust_bend123456789", "timezones": ["Europe/Brussels", "Europe/Berlin"]}`)
 
 	fxt := Fixture{}
-	fxt.responses = make(map[string]gjson.Result)
-	fxt.responses["cust_bender"] = jsonData
+	fxt.Responses = make(map[string]gjson.Result)
+	fxt.Responses["cust_bender"] = jsonData
 
 	data := make(map[string]interface{})
 	data["customer"] = "${cust_bender:id}"
@@ -328,7 +328,7 @@ func TestParseArray(t *testing.T) {
 	data["second_timezone"] = "${cust_bender:timezones.1}"
 	data["third_timezone"] = "${cust_bender:timezones.2|notimezonefound}"
 
-	output, _ := fxt.parseInterface(data)
+	output, _ := fxt.ParseInterface(data)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 5)
