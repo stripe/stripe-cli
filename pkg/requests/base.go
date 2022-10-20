@@ -184,8 +184,9 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 		return []byte{}, err
 	}
 
-	configure := func(req *http.Request) {
+	configure := func(req *http.Request) error {
 		req.Header.Set("Content-Type", contentType)
+		return nil
 	}
 
 	return rb.performRequest(ctx, apiKey, path, params, reqBody.String(), errOnStatus, configure)
@@ -201,7 +202,7 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 	return rb.performRequest(ctx, apiKey, path, params, data, errOnStatus, nil)
 }
 
-func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request)) ([]byte, error) {
+func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -213,13 +214,16 @@ func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params 
 		Verbose: rb.showHeaders,
 	}
 
-	configure := func(req *http.Request) {
+	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
 		rb.setVersionHeader(req, params)
 		if additionalConfigure != nil {
-			additionalConfigure(req)
+			if err := additionalConfigure(req); err != nil {
+				return err
+			}
 		}
+		return nil
 	}
 
 	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
