@@ -23,18 +23,18 @@ import (
 // SupportedVersions is the version number of the fixture template the CLI supports
 const SupportedVersions = 0
 
-type metaFixture struct {
+type MetaFixture struct {
 	Version         int  `json:"template_version"`
 	ExcludeMetadata bool `json:"exclude_metadata"`
 }
 
-type fixtureFile struct {
-	Meta     metaFixture       `json:"_meta"`
-	Fixtures []fixture         `json:"fixtures"`
+type FixtureData struct {
+	Meta     MetaFixture       `json:"_meta"`
+	Requests []FixtureRequest  `json:"fixtures"`
 	Env      map[string]string `json:"env"`
 }
 
-type fixture struct {
+type FixtureRequest struct {
 	Name              string                 `json:"name"`
 	ExpectedErrorType string                 `json:"expected_error_type"`
 	Path              string                 `json:"path"`
@@ -42,7 +42,7 @@ type fixture struct {
 	Params            map[string]interface{} `json:"params"`
 }
 
-type fixtureQuery struct {
+type FixtureQuery struct {
 	Match        string // The substring that matched the query pattern regex
 	Name         string
 	Query        string
@@ -59,8 +59,8 @@ type Fixture struct {
 	Additions     map[string]interface{}
 	Removals      map[string]interface{}
 	BaseURL       string
-	responses     map[string]gjson.Result
-	fixture       fixtureFile
+	Responses     map[string]gjson.Result
+	FixtureData   FixtureData
 }
 
 // NewFixtureFromFile creates a to later run steps for populating test data
@@ -71,7 +71,7 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		StripeAccount: stripeAccount,
 		Skip:          skip,
 		BaseURL:       baseURL,
-		responses:     make(map[string]gjson.Result),
+		Responses:     make(map[string]gjson.Result),
 	}
 
 	var filedata []byte
@@ -94,7 +94,7 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		}
 	}
 
-	err = json.Unmarshal(filedata, &fxt.fixture)
+	err = json.Unmarshal(filedata, &fxt.FixtureData)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +110,8 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		return nil, err
 	}
 
-	if fxt.fixture.Meta.Version > SupportedVersions {
-		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
+	if fxt.FixtureData.Meta.Version > SupportedVersions {
+		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
 	}
 
 	return &fxt, nil
@@ -125,16 +125,16 @@ func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw st
 		StripeAccount: stripeAccount,
 		Skip:          []string{},
 		BaseURL:       baseURL,
-		responses:     make(map[string]gjson.Result),
+		Responses:     make(map[string]gjson.Result),
 	}
 
-	err := json.Unmarshal([]byte(raw), &fxt.fixture)
+	err := json.Unmarshal([]byte(raw), &fxt.FixtureData)
 	if err != nil {
 		return nil, err
 	}
 
-	if fxt.fixture.Meta.Version > SupportedVersions {
-		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.fixture.Meta.Version))
+	if fxt.FixtureData.Meta.Version > SupportedVersions {
+		return nil, fmt.Errorf("Fixture version not supported: %s", fmt.Sprint(fxt.FixtureData.Meta.Version))
 	}
 
 	return &fxt, nil
@@ -142,7 +142,7 @@ func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw st
 
 // GetFixtureFileContent returns the file content of the given fixture file name
 func (fxt *Fixture) GetFixtureFileContent() string {
-	data, err := json.MarshalIndent(fxt.fixture, "", "  ")
+	data, err := json.MarshalIndent(fxt.FixtureData, "", "  ")
 	if err != nil {
 		return ""
 	}
@@ -171,7 +171,7 @@ func (e fixtureRewriteError) Error() string {
 	var nameError missingFixtureNameError
 	if errors.As(e.err, &nameError) {
 		fixtureNames := []string{}
-		for _, fixture := range e.fixture.fixture.Fixtures {
+		for _, fixture := range e.fixture.FixtureData.Requests {
 			fixtureNames = append(fixtureNames, fixture.Name)
 		}
 
@@ -198,7 +198,7 @@ func (fxt *Fixture) Override(overrides []string) error {
 	if err != nil {
 		return fixtureRewriteError{operation: "override", err: err, fixture: fxt}
 	}
-	for _, f := range fxt.fixture.Fixtures {
+	for _, f := range fxt.FixtureData.Requests {
 		if _, ok := data[f.Name]; ok {
 			if err := mergo.Merge(&f.Params, data[f.Name], mergo.WithOverride); err != nil {
 				fmt.Println(err)
@@ -214,9 +214,9 @@ func (fxt *Fixture) Override(overrides []string) error {
 // over. For that, `Override` should be used
 func (fxt *Fixture) Add(additions []string) error {
 	// If the params is empty, initialize it before merging with added data
-	for i, data := range fxt.fixture.Fixtures {
+	for i, data := range fxt.FixtureData.Requests {
 		if data.Method == "post" && data.Params == nil {
-			fxt.fixture.Fixtures[i].Params = make(map[string]interface{})
+			fxt.FixtureData.Requests[i].Params = make(map[string]interface{})
 		}
 	}
 
@@ -224,7 +224,7 @@ func (fxt *Fixture) Add(additions []string) error {
 	if err != nil {
 		return fixtureRewriteError{operation: "add", err: err, fixture: fxt}
 	}
-	for _, f := range fxt.fixture.Fixtures {
+	for _, f := range fxt.FixtureData.Requests {
 		if _, ok := data[f.Name]; ok {
 			if err := mergo.Merge(&f.Params, data[f.Name]); err != nil {
 				fmt.Println(err)
@@ -240,7 +240,7 @@ func (fxt *Fixture) Remove(removals []string) error {
 	if err != nil {
 		return fixtureRewriteError{operation: "remove", err: err, fixture: fxt}
 	}
-	for _, f := range fxt.fixture.Fixtures {
+	for _, f := range fxt.FixtureData.Requests {
 		if _, ok := data[f.Name]; ok {
 			for remove := range data[f.Name].(map[string]interface{}) {
 				delete(f.Params, remove)
@@ -253,8 +253,8 @@ func (fxt *Fixture) Remove(removals []string) error {
 // Execute takes the parsed fixture file and runs through all the requests
 // defined to populate the user's account
 func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, error) {
-	requestNames := make([]string, len(fxt.fixture.Fixtures))
-	for i, data := range fxt.fixture.Fixtures {
+	requestNames := make([]string, len(fxt.FixtureData.Requests))
+	for i, data := range fxt.FixtureData.Requests {
 		if isNameIn(data.Name, fxt.Skip) {
 			fmt.Printf("Skipping fixture for: %s\n", data.Name)
 			continue
@@ -269,7 +269,7 @@ func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, e
 			return nil, err
 		}
 
-		fxt.responses[data.Name] = gjson.ParseBytes(resp)
+		fxt.Responses[data.Name] = gjson.ParseBytes(resp)
 	}
 	return requestNames, nil
 }
@@ -284,17 +284,17 @@ func errWasExpected(err error, expectedErrorType string) bool {
 // UpdateEnv uses the results of the fixtures command just executed and
 // updates a local .env with the resulting data
 func (fxt *Fixture) UpdateEnv() error {
-	if len(fxt.fixture.Env) > 0 {
-		return fxt.updateEnv(fxt.fixture.Env)
+	if len(fxt.FixtureData.Env) > 0 {
+		return fxt.updateEnv(fxt.FixtureData.Env)
 	}
 
 	return nil
 }
 
-func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion string) ([]byte, error) {
+func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
 	var rp requests.RequestParameters
 
-	if data.Method == "post" && !fxt.fixture.Meta.ExcludeMetadata {
+	if data.Method == "post" && !fxt.FixtureData.Meta.ExcludeMetadata {
 		now := time.Now().String()
 		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
 		rp.AppendData([]string{metadata})
@@ -307,7 +307,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion st
 		Parameters:     rp,
 	}
 
-	path, err := fxt.parsePath(data)
+	path, err := fxt.ParsePath(data)
 
 	if err != nil {
 		return make([]byte, 0), err
@@ -324,7 +324,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data fixture, apiVersion st
 
 func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	parsed, err := fxt.parseInterface(params)
+	parsed, err := fxt.ParseInterface(params)
 	if err != nil {
 		return &requestParams, err
 	}
@@ -339,7 +339,7 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 	return &requestParams, nil
 }
 
-func getEnvVar(query fixtureQuery) (string, error) {
+func getEnvVar(query FixtureQuery) (string, error) {
 	key := query.Query
 	// Check if env variable is present
 	envValue := os.Getenv(key)
@@ -388,7 +388,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	}
 
 	for key, value := range env {
-		parsed, err := fxt.parseQuery(value)
+		parsed, err := fxt.ParseQuery(value)
 		if err != nil {
 			return err
 		}
