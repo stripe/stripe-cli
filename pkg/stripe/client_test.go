@@ -2,6 +2,7 @@ package stripe
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -135,10 +136,33 @@ func TestPerformRequest_ConfigureFunc(t *testing.T) {
 		BaseURL: baseURL,
 	}
 
-	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) {
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) error {
 		r.Header.Add("Stripe-Version", "2019-07-10")
+		return nil
 	})
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
+}
+
+func TestPerformRequest_ConfigureFuncReturnsError(t *testing.T) {
+	serverCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverCalled = true
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := Client{
+		BaseURL: baseURL,
+	}
+
+	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", func(r *http.Request) error {
+		return errors.New("foo")
+	})
+	require.Equal(t, errors.New("foo"), err)
+	require.False(t, serverCalled)
+	if resp != nil {
+		resp.Body.Close()
+	}
 }

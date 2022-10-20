@@ -110,13 +110,13 @@ func TestMakeRequest(t *testing.T) {
 	_, err = fxt.Execute(context.Background(), "")
 	require.NoError(t, err)
 
-	require.NotNil(t, fxt.responses["cust_bender"])
-	require.NotNil(t, fxt.responses["char_bender"])
-	require.NotNil(t, fxt.responses["capt_bender"])
+	require.NotNil(t, fxt.Responses["cust_bender"])
+	require.NotNil(t, fxt.Responses["char_bender"])
+	require.NotNil(t, fxt.Responses["capt_bender"])
 
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").String())
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").String())
-	require.True(t, fxt.responses["char_bender"].Get("charge").Bool())
+	require.Equal(t, "cust_12345", fxt.Responses["cust_bender"].Get("id").String())
+	require.Equal(t, "char_12345", fxt.Responses["char_bender"].Get("id").String())
+	require.True(t, fxt.Responses["char_bender"].Get("charge").Bool())
 }
 
 func TestMakeRequestWithStringFixture(t *testing.T) {
@@ -142,13 +142,13 @@ func TestMakeRequestWithStringFixture(t *testing.T) {
 	_, err = fxt.Execute(context.Background(), "")
 	require.NoError(t, err)
 
-	require.NotNil(t, fxt.responses["cust_bender"])
-	require.NotNil(t, fxt.responses["char_bender"])
-	require.NotNil(t, fxt.responses["capt_bender"])
+	require.NotNil(t, fxt.Responses["cust_bender"])
+	require.NotNil(t, fxt.Responses["char_bender"])
+	require.NotNil(t, fxt.Responses["capt_bender"])
 
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").String())
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").String())
-	require.True(t, fxt.responses["char_bender"].Get("charge").Bool())
+	require.Equal(t, "cust_12345", fxt.Responses["cust_bender"].Get("id").String())
+	require.Equal(t, "char_12345", fxt.Responses["char_bender"].Get("id").String())
+	require.True(t, fxt.Responses["char_bender"].Get("charge").Bool())
 }
 
 func TestWithSkipMakeRequest(t *testing.T) {
@@ -172,9 +172,9 @@ func TestWithSkipMakeRequest(t *testing.T) {
 	_, err = fxt.Execute(context.Background(), "")
 	require.NoError(t, err)
 
-	require.True(t, fxt.responses["cust_bender"].Exists())
-	require.False(t, fxt.responses["char_bender"].Exists())
-	require.False(t, fxt.responses["capt_bender"].Exists())
+	require.True(t, fxt.Responses["cust_bender"].Exists())
+	require.False(t, fxt.Responses["char_bender"].Exists())
+	require.False(t, fxt.Responses["capt_bender"].Exists())
 }
 
 func TestMakeRequestWithOverride(t *testing.T) {
@@ -311,7 +311,7 @@ func TestMakeRequestExpectedFailure(t *testing.T) {
 
 	_, err = fxt.Execute(context.Background(), "")
 	require.NoError(t, err)
-	require.NotNil(t, fxt.responses["charge_expected_failure"])
+	require.NotNil(t, fxt.Responses["charge_expected_failure"])
 }
 
 func TestMakeRequestUnexpectedFailure(t *testing.T) {
@@ -334,7 +334,7 @@ func TestUpdateEnv(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	fxt := Fixture{
 		Fs: fs,
-		responses: map[string]gjson.Result{
+		Responses: map[string]gjson.Result{
 			"char_bender": gjson.Parse(`{"id": "char_12345"}`),
 			"cust_bender": gjson.Parse(`{"id": "cust_12345"}`),
 		},
@@ -361,58 +361,58 @@ CUST_ID="char_12345"`
 func TestToFixtureQuery(t *testing.T) {
 	tests := []struct {
 		input    string
-		expected fixtureQuery
+		expected FixtureQuery
 		didMatch bool
 	}{
 		{
 			"/v1/charges",
-			fixtureQuery{},
+			FixtureQuery{},
 			false,
 		},
 		{
 			"/v1/charges/${char_bender:id}/capture",
-			fixtureQuery{"${char_bender:id}", "char_bender", "id", ""},
+			FixtureQuery{"${char_bender:id}", "char_bender", "id", ""},
 			true,
 		},
 		{
 			"${.env:PHONE_NOT_SET|+1234567890}",
-			fixtureQuery{"${.env:PHONE_NOT_SET|+1234567890}", ".env", "PHONE_NOT_SET", "+1234567890"},
+			FixtureQuery{"${.env:PHONE_NOT_SET|+1234567890}", ".env", "PHONE_NOT_SET", "+1234567890"},
 			true,
 		},
 		{
 			"/v1/customers/${.env:CUST_ID}",
-			fixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
+			FixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
 			true,
 		},
 		{
 			"${.env:CUST_ID}",
-			fixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
+			FixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
 			true,
 		},
 		{
 			"${cust_bender:subscriptions.data.[0].id}",
-			fixtureQuery{"${cust_bender:subscriptions.data.[0].id}", "cust_bender", "subscriptions.data.[0].id", ""},
+			FixtureQuery{"${cust_bender:subscriptions.data.[0].id}", "cust_bender", "subscriptions.data.[0].id", ""},
 			true,
 		},
 		{
 			"${cust_bender:subscriptions.data.[0].name|Unknown Person}",
-			fixtureQuery{"${cust_bender:subscriptions.data.[0].name|Unknown Person}", "cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
+			FixtureQuery{"${cust_bender:subscriptions.data.[0].name|Unknown Person}", "cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
 			true,
 		},
 		{
 			"${cust_bender:billing_details.address.country}",
-			fixtureQuery{"${cust_bender:billing_details.address.country}", "cust_bender", "billing_details.address.country", ""},
+			FixtureQuery{"${cust_bender:billing_details.address.country}", "cust_bender", "billing_details.address.country", ""},
 			true,
 		},
 		{
 			"${cust_bender:billing_details.address.country|San Mateo}",
-			fixtureQuery{"${cust_bender:billing_details.address.country|San Mateo}", "cust_bender", "billing_details.address.country", "San Mateo"},
+			FixtureQuery{"${cust_bender:billing_details.address.country|San Mateo}", "cust_bender", "billing_details.address.country", "San Mateo"},
 			true,
 		},
 	}
 
 	for _, test := range tests {
-		actualQuery, actualDidMatch := toFixtureQuery(test.input)
+		actualQuery, actualDidMatch := ToFixtureQuery(test.input)
 		assert.Equal(t, test.expected, actualQuery)
 		assert.Equal(t, test.didMatch, actualDidMatch)
 	}
@@ -443,13 +443,13 @@ func TestExecuteReturnsRequestNames(t *testing.T) {
 	requestNames, err := fxt.Execute(context.Background(), "")
 	require.NoError(t, err)
 
-	require.NotNil(t, fxt.responses["cust_bender"])
-	require.NotNil(t, fxt.responses["char_bender"])
-	require.NotNil(t, fxt.responses["capt_bender"])
+	require.NotNil(t, fxt.Responses["cust_bender"])
+	require.NotNil(t, fxt.Responses["char_bender"])
+	require.NotNil(t, fxt.Responses["capt_bender"])
 
-	require.Equal(t, "cust_12345", fxt.responses["cust_bender"].Get("id").Str)
-	require.Equal(t, "char_12345", fxt.responses["char_bender"].Get("id").Str)
-	require.Equal(t, "", fxt.responses["char_bender"].Get("charge").Str)
+	require.Equal(t, "cust_12345", fxt.Responses["cust_bender"].Get("id").Str)
+	require.Equal(t, "char_12345", fxt.Responses["char_bender"].Get("id").Str)
+	require.Equal(t, "", fxt.Responses["char_bender"].Get("charge").Str)
 
 	expectedResponseNames := []string{"cust_bender", "char_bender", "capt_bender"}
 	assert.Equal(t, expectedResponseNames, requestNames)
@@ -476,14 +476,14 @@ func TestFixtureAdd(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Add([]string{"price:amount=1200"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{"amount": 100})
 	})
 
 	t.Run("new value", func(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Add([]string{"price:currency=usd"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
 	})
 }
 
@@ -508,14 +508,14 @@ func TestFixtureOverride(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Override([]string{"price:amount=1200"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": "1200"})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{"amount": "1200"})
 	})
 
 	t.Run("new value", func(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Override([]string{"price:currency=usd"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{"amount": 100, "currency": "usd"})
 	})
 }
 
@@ -532,21 +532,21 @@ func TestFixtureRemove(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Remove([]string{"price:amount"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{})
 	})
 
 	t.Run("new value", func(t *testing.T) {
 		fxt := priceFixture()
 		err := fxt.Remove([]string{"price:currency"})
 		assert.NoError(t, err)
-		assert.Equal(t, fxt.fixture.Fixtures[0].Params, map[string]interface{}{"amount": 100})
+		assert.Equal(t, fxt.FixtureData.Requests[0].Params, map[string]interface{}{"amount": 100})
 	})
 }
 
 func priceFixture() *Fixture {
 	return &Fixture{
-		fixture: fixtureFile{
-			Fixtures: []fixture{
+		FixtureData: FixtureData{
+			Requests: []FixtureRequest{
 				{Name: "price", Params: map[string]interface{}{"amount": 100}},
 			},
 		},
