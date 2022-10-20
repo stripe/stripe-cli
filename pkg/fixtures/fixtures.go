@@ -23,17 +23,20 @@ import (
 // SupportedVersions is the version number of the fixture template the CLI supports
 const SupportedVersions = 0
 
+// MetaFixture contains fixture metadata
 type MetaFixture struct {
 	Version         int  `json:"template_version"`
 	ExcludeMetadata bool `json:"exclude_metadata"`
 }
 
+// FixtureData contains the whole fixture file
 type FixtureData struct {
 	Meta     MetaFixture       `json:"_meta"`
 	Requests []FixtureRequest  `json:"fixtures"`
 	Env      map[string]string `json:"env"`
 }
 
+// FixtureRequest is the individual request payload
 type FixtureRequest struct {
 	Name              string                 `json:"name"`
 	ExpectedErrorType string                 `json:"expected_error_type"`
@@ -42,6 +45,7 @@ type FixtureRequest struct {
 	Params            map[string]interface{} `json:"params"`
 }
 
+// FixtureQuery describes the query in fixture request
 type FixtureQuery struct {
 	Match        string // The substring that matched the query pattern regex
 	Name         string

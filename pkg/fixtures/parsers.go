@@ -347,7 +347,7 @@ func ToFixtureQuery(value string) (FixtureQuery, bool) {
 	return query, isQuery
 }
 
-// matchQuery will attempt to find matches for a fixture query pattern
+// MatchFixtureQuery will attempt to find matches for a fixture query pattern
 // returning a *Regexp which can be used to further parse and a boolean
 // indicating a match was found.
 func MatchFixtureQuery(value string) (*regexp.Regexp, bool) {
