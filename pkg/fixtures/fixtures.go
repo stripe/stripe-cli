@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
 
+	"github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -64,7 +65,7 @@ type Fixture struct {
 }
 
 // NewFixtureFromFile creates a to later run steps for populating test data
-func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string) (*Fixture, error) {
+func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -89,6 +90,13 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		}
 	} else {
 		filedata, err = afero.ReadFile(fxt.Fs, file)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if edit {
+		filedata, err = fxt.Edit(filedata)
 		if err != nil {
 			return nil, err
 		}
@@ -248,6 +256,18 @@ func (fxt *Fixture) Remove(removals []string) error {
 		}
 	}
 	return nil
+}
+
+// Opens the fixture in the git's default IDE to edit directly
+func (fxt *Fixture) Edit(filedata []byte) ([]byte, error) {
+	editor, err := git.NewEditor(filedata)
+	if err != nil {
+		return nil, fixtureRewriteError{operation: "edit", err: err, fixture: fxt}
+	}
+
+	data, err := editor.EditContent()
+
+	return data, nil
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
