@@ -48,6 +48,53 @@ docker run --rm -it stripe/stripe-cli version
 stripe version x.y.z (beta)
 ```
 
+**Passwod Store Setup on Linux Dockers**
+
+1. Create `entrypoint.sh`
+
+```sh
+#!/bin/sh
+if ! [ -f ~/.gnupg/trustdb.gpg ] ; then
+  chmod 700 ~/.gnupg/
+  gpg --quick-generate-key <gpg-key-alias-name> # ie. gpg --quick-generate-key stripe-live
+fi
+if ! [ -f ~/.password-store/.gpg-id ] ; then
+  pass init <gpg-key-alias-name> # ie. pass init stripe-live
+fi
+
+string="$@"
+liveflag="--live"
+
+if [ -z "${string##*$liveflag*}" ] ;then
+  pass show default.live_mode_api_key >/dev/null
+fi
+
+/bin/stripe  $@
+```
+
+2. Create docker file `Dockerfile-cli`
+
+```sh
+FROM  stripe/stripe-cli:vx.x.x
+RUN  apk  add  pass  gpg-agent
+COPY  ./entrypoint.sh  /entrypoint.sh
+ENTRYPOINT  [ "/entrypoint.sh" ]
+```
+
+3. Build docker image
+
+```sh
+docker build -t stripe-cli -f Dockerfile-cli .
+```
+
+4. Run docker image with pass volumes
+
+```sh
+docker run --rm -it -v stripe-config://root/.config/stripe/ -v stripe-gpg://root/.gnupg/ -v stripe-pass://root/.password-store/ stripe-cli $command
+```
+
+for more details on initializing password store with gpg key, see https://gist.github.com/flbuddymooreiv/a4f24da7e0c3552942ff
+
 ### Without package managers
 
 Instructions are also available for installing and using the CLI [without a package manager](https://github.com/stripe/stripe-cli/wiki/Installing-and-updating#without-a-package-manager).
