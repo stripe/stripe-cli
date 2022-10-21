@@ -11,17 +11,18 @@ import (
 )
 
 /*
-NewEditor creates a new Editor instance, which can be used to launch a file
-(containing the content that is passed into NewEditor) with the OS's
-default IDE, and return the new file content after the user saves & closes the file.
+NewEditor creates a new Editor instance, which can be used to launch a file (containing the content that is passed into NewEditor)
+with the OS's default IDE, and return the new file content after the user saves & closes the file.
+Accepts the name for the temporary file, and the file content.
+The name of the file will have a random string appended, or if an empty string is provided, the name will just be that random string. If the filename string includes a "*", the random string replaces the last "*".
 */
-func NewEditor(content []byte) (editor *Editor, err error) {
+func NewEditor(name string, content []byte) (editor *Editor, err error) {
 	defaultIDE, err := getDefaultEditor()
 	if err != nil {
 		return nil, err
 	}
 
-	filename, err := createTemporaryFile("tmp", content)
+	filename, err := createTemporaryFile(name, content)
 	if err != nil {
 		return nil, err
 	}

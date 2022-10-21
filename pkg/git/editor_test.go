@@ -10,16 +10,17 @@ import (
 
 func TestNewEditor(t *testing.T) {
 	t.Run("Creates default Editor", func(t *testing.T) {
-		editor, err := NewEditor(nil)
+		editor, err := NewEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 	})
 
-	t.Run("creates temporary file", func(t *testing.T) {
-		editor, _ := NewEditor(nil)
+	t.Run("creates temporary file with custom name", func(t *testing.T) {
+		editor, _ := NewEditor("foo", nil)
 
-		_, err := os.Stat(editor.File)
+		f, err := os.Stat(editor.File)
 		assert.Nil(t, err)
+		assert.Equal(t, f.Name(), "foo")
 	})
 
 	t.Run("missing GIT_EDITOR", func(t *testing.T) {
@@ -28,7 +29,7 @@ func TestNewEditor(t *testing.T) {
 
 		setEditorTo("")
 
-		editor, err := NewEditor(nil)
+		editor, err := NewEditor("", nil)
 		assert.NotNil(t, err)
 		assert.Nil(t, editor)
 	})
@@ -36,7 +37,7 @@ func TestNewEditor(t *testing.T) {
 
 func TestGetOpenEditorCommand(t *testing.T) {
 	t.Run("with default system editor", func(t *testing.T) {
-		editor, err := NewEditor(nil)
+		editor, err := NewEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 
@@ -52,7 +53,7 @@ func TestGetOpenEditorCommand(t *testing.T) {
 
 		setEditorTo("command with multiple --options")
 
-		editor, err := NewEditor(nil)
+		editor, err := NewEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 

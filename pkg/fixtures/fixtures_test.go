@@ -553,3 +553,15 @@ func priceFixture() *Fixture {
 		},
 	}
 }
+
+func TestGetFixtureFilenameWithWildcard(t *testing.T) {
+	t.Run("account.updated", func(t *testing.T) {
+		assert.Equal(t, getFixtureFilenameWithWildcard("triggers/account.updated.json"), "account.updated.*.json")
+	})
+	t.Run("charge.dispute.created", func(t *testing.T) {
+		assert.Equal(t, getFixtureFilenameWithWildcard("triggers/charge.dispute.created.json"), "charge.dispute.created.*.json")
+	})
+	t.Run("payment_intent.amount_capturable_updated", func(t *testing.T) {
+		assert.Equal(t, getFixtureFilenameWithWildcard("triggers/payment_intent.amount_capturable_updated.json"), "payment_intent.amount_capturable_updated.*.json")
+	})
+}

@@ -96,7 +96,7 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 	}
 
 	if edit {
-		filedata, err = fxt.Edit(filedata)
+		filedata, err = fxt.Edit(file, filedata)
 		if err != nil {
 			return nil, err
 		}
@@ -258,16 +258,21 @@ func (fxt *Fixture) Remove(removals []string) error {
 	return nil
 }
 
-// Opens the fixture in the git's default IDE to edit directly
-func (fxt *Fixture) Edit(filedata []byte) ([]byte, error) {
-	editor, err := git.NewEditor(filedata)
+// Edit opens the fixture in the git's default IDE to edit directly
+func (fxt *Fixture) Edit(path string, filedata []byte) ([]byte, error) {
+	filename := getFixtureFilenameWithWildcard(path)
+	editor, err := git.NewEditor(filename, filedata)
 	if err != nil {
 		return nil, fixtureRewriteError{operation: "edit", err: err, fixture: fxt}
 	}
 
-	data, err := editor.EditContent()
+	return editor.EditContent()
+}
 
-	return data, nil
+func getFixtureFilenameWithWildcard(path string) string {
+	pathComponents := strings.Split(path, "/")
+	fixtureName := strings.Split(pathComponents[len(pathComponents)-1], ".")
+	return strings.Join(fixtureName[0:len(fixtureName)-1], ".") + ".*." + fixtureName[len(fixtureName)-1]
 }
 
 // Execute takes the parsed fixture file and runs through all the requests
