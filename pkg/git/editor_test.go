@@ -8,7 +8,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Ensure there is a default editor set in our testing env
+func setup() {
+	currentEditor, _ := getDefaultEditor()
+	if len(currentEditor) < 1 {
+		setEditorTo("vi")
+	}
+}
+
 func TestNewEditor(t *testing.T) {
+	setup()
+
 	t.Run("Creates default Editor", func(t *testing.T) {
 		editor, err := NewEditor("", nil)
 		assert.NotNil(t, editor)
@@ -20,11 +30,11 @@ func TestNewEditor(t *testing.T) {
 
 		f, err := os.Stat(editor.File)
 		assert.Nil(t, err)
-		assert.Equal(t, f.Name(), "foo")
+		assert.Contains(t, f.Name(), "foo")
 	})
 
 	t.Run("missing GIT_EDITOR", func(t *testing.T) {
-		prevGitEditor := getCurrentEditor()
+		prevGitEditor, _ := getDefaultEditor()
 		defer setEditorTo(prevGitEditor)
 
 		setEditorTo("")
@@ -36,6 +46,8 @@ func TestNewEditor(t *testing.T) {
 }
 
 func TestGetOpenEditorCommand(t *testing.T) {
+	setup()
+
 	t.Run("with default system editor", func(t *testing.T) {
 		editor, err := NewEditor("", nil)
 		assert.NotNil(t, editor)
@@ -48,7 +60,7 @@ func TestGetOpenEditorCommand(t *testing.T) {
 	})
 
 	t.Run("with custom set editor", func(t *testing.T) {
-		prevGitEditor := getCurrentEditor()
+		prevGitEditor, _ := getDefaultEditor()
 		defer setEditorTo(prevGitEditor)
 
 		setEditorTo("command with multiple --options")
@@ -66,7 +78,7 @@ func TestGetOpenEditorCommand(t *testing.T) {
 
 func TestGetDefaultEditor(t *testing.T) {
 	t.Run("common default editors", func(t *testing.T) {
-		prevGitEditor := getCurrentEditor()
+		prevGitEditor, _ := getDefaultEditor()
 		defer setEditorTo(prevGitEditor)
 
 		for _, e := range [4]string{"subl -n -w", "vi", "code --wait", "mate -w"} {
@@ -78,7 +90,7 @@ func TestGetDefaultEditor(t *testing.T) {
 	})
 
 	t.Run("expands env var", func(t *testing.T) {
-		prevGitEditor := getCurrentEditor()
+		prevGitEditor, _ := getDefaultEditor()
 		defer setEditorTo(prevGitEditor)
 
 		os.Setenv("STRIPE_CLI_TEST_GIT_EDITOR", "value")
@@ -99,11 +111,6 @@ func TestGetFirstLine(t *testing.T) {
 `,
 	))
 	assert.Equal(t, "abc", getFirstLine("abc\n\n123\n\n\n"))
-}
-
-func getCurrentEditor() string {
-	e, _ := exec.Command("git", "var", "GIT_EDITOR").Output()
-	return string(e)
 }
 
 func setEditorTo(newEditor string) {
