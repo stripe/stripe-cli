@@ -33,6 +33,7 @@ type OperationCmd struct {
 	URLParams []string
 
 	stringFlags map[string]*string
+	arrayFlags  map[string]*[]string
 
 	data []string
 }
@@ -51,7 +52,22 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := strings.ReplaceAll(stringProp, "-", "_")
-			flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+			if strings.Contains(paramName, ".") {
+				fullParam := constructParamFromDot(paramName)
+				flagParams = append(flagParams, fmt.Sprintf("%s=%s", fullParam, *stringVal))
+			} else {
+				flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
+			}
+		}
+	}
+
+	for arrayProp, arrayVal := range oc.arrayFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(arrayProp) {
+			paramName := strings.ReplaceAll(arrayProp, "-", "_")
+			for _, arrayItem := range *arrayVal {
+				flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
+			}
 		}
 	}
 
@@ -124,6 +140,7 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		URLParams: urlParams,
 
 		stringFlags: make(map[string]*string),
+		arrayFlags:  make(map[string]*[]string),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -132,11 +149,15 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Args:        validators.ExactArgs(len(urlParams)),
 	}
 
-	for prop := range propFlags {
+	for prop, propType := range propFlags {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
-		operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		if propType == "array" {
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+		} else {
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 	}
 
@@ -205,6 +226,8 @@ func operationUsageTemplate(urlParams []string) string {
 {{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
 
 %s
+
+%s
 {{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
@@ -221,8 +244,23 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
 		ansi.Bold("Request Parameters:"),
+		ansi.Italic("Note: all types are specifically for the Stripe CLI itself, not the Stripe API. The CLI handles\ntransforming types to what the API expects."),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
 	)
+}
+
+func constructParamFromDot(dotParam string) string {
+	paramPath := strings.Split(dotParam, ".")
+	var param string
+	for i, p := range paramPath {
+		if i == 0 {
+			param = p
+		} else {
+			param = fmt.Sprintf("%s[%s]", param, p)
+		}
+	}
+
+	return param
 }
