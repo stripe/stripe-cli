@@ -93,11 +93,13 @@ func getDefaultEditor() (string, error) {
 		return "", err
 	}
 
-	if len(output) < 1 {
+	editor := os.ExpandEnv(getFirstLine(string(output)))
+
+	if len(editor) < 1 {
 		return "", errors.New("no default editor found. Please set your GIT_EDITOR var: https://git-scm.com/docs/git-var")
 	}
 
-	return os.ExpandEnv(getFirstLine(string(output))), nil
+	return editor, nil
 }
 
 func getFirstLine(output string) string {
