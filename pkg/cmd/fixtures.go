@@ -23,6 +23,7 @@ type FixturesCmd struct {
 	override      []string
 	add           []string
 	remove        []string
+	edit          bool
 }
 
 func newFixturesCmd(cfg *config.Config) *FixturesCmd {
@@ -44,6 +45,7 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.add, "add", []string{}, "Add parameters in the fixture")
 	fixturesCmd.Cmd.Flags().StringArrayVar(&fixturesCmd.remove, "remove", []string{}, "Remove parameters from the fixture")
 	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.apiVersion, "api-version", "", "Specify API version in the fixture")
+	fixturesCmd.Cmd.Flags().BoolVar(&fixturesCmd.edit, "edit", false, "Edit the fixture directly in your default IDE")
 
 	return fixturesCmd
 }
@@ -70,6 +72,7 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		fc.override,
 		fc.add,
 		fc.remove,
+		fc.edit,
 	)
 	if err != nil {
 		return err
