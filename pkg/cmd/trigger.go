@@ -57,7 +57,7 @@ needed to create the triggered event as well as the corresponding API objects.
 	tc.cmd.Flags().StringArrayVar(&tc.remove, "remove", []string{}, "Remove params from the trigger")
 	tc.cmd.Flags().StringVar(&tc.raw, "raw", "", "Raw fixture in string format to replace all default fixtures")
 	tc.cmd.Flags().StringVar(&tc.apiVersion, "api-version", "", "Specify API version for trigger")
-	tc.cmd.Flags().BoolVar(&tc.edit, "edit", true, "Edit the trigger directly in your default IDE")
+	tc.cmd.Flags().BoolVar(&tc.edit, "edit", false, "Edit the trigger directly in your default IDE")
 
 	// Hidden configuration flags, useful for dev/debugging
 	tc.cmd.Flags().StringVar(&tc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
