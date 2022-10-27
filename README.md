@@ -26,6 +26,13 @@ Stripe CLI is available on macOS via [Homebrew](https://brew.sh/):
 brew install stripe/stripe-cli/stripe
 ```
 
+### OpenBSD
+Stripe CLI is available on OpenBSD via ports:
+
+```sh
+$ doas pkg_add stripe-cli
+```
+
 ### Linux
 
 Refer to the [installation instructions](https://stripe.com/docs/stripe-cli#install) for available Linux installation options.
