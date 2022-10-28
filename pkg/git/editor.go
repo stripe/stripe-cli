@@ -114,7 +114,8 @@ func (e *Editor) getOpenEditorCommand() (*exec.Cmd, error) {
 func getDefaultGitEditor() (string, error) {
 	output, err := exec.Command("git", "var", "GIT_EDITOR").Output()
 	if err != nil {
-		return "", err
+		// Most likely git is not installed, fallback to default OS editor
+		return getDefaultEditorByOS()
 	}
 
 	editor := os.ExpandEnv(getFirstLine(string(output)))
