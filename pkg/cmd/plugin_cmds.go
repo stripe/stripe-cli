@@ -69,21 +69,30 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
-	plugins.CleanupAllClients()
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
+	}()
 
-	if err != nil {
-		if err == validators.ErrAPIKeyNotConfigured {
-			return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
+	select {
+	case err := <-errCh:
+		plugins.CleanupAllClients()
+		if err != nil {
+			if err == validators.ErrAPIKeyNotConfigured {
+				return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
+			}
+
+			log.WithFields(log.Fields{
+				"prefix": "pluginTemplateCmd.runPluginCmd",
+			}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
+
+			// We can't return err because the plugin will have already printed the error message at
+			// this point, and we can't return nil because the host will exit with code 0.
+			os.Exit(1)
 		}
-
-		log.WithFields(log.Fields{
-			"prefix": "pluginTemplateCmd.runPluginCmd",
-		}).Debug(fmt.Sprintf("Plugin command '%s' exited with error: %s", plugin.Shortname, err))
-
-		// We can't return err because the plugin will have already printed the error message at
-		// this point, and we can't return nil because the host will exit with code 0.
-		os.Exit(1)
+	case <-ctx.Done():
+		plugins.CleanupAllClients()
+		return nil
 	}
 
 	return nil
