@@ -3,6 +3,7 @@ package git
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -94,7 +95,12 @@ func TestGetDefaultGitEditor(t *testing.T) {
 		setEditorTo("")
 
 		newEditor, _ := getDefaultGitEditor()
-		assert.Equal(t, newEditor, "vi")
+		if runtime.GOOS == "windows" {
+			assert.Equal(t, "notepad", newEditor)
+		} else {
+			assert.Equal(t, "vi", newEditor)
+		}
+
 	})
 }
 
