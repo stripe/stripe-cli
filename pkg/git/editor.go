@@ -1,23 +1,23 @@
 package git
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/kballard/go-shellquote"
 )
 
 /*
-NewEditor creates a new Editor instance, which can be used to launch a file (containing the content that is passed into NewEditor)
-with the OS's default IDE, and return the new file content after the user saves & closes the file.
+NewTemporaryFileEditor creates a new Editor instance, which can be used to launch a temporary file (containing the content that is passed into NewTemporaryFileEditor)
+with the user's default IDE.
 Accepts the name for the temporary file, and the file content.
 The name of the file will have a random string appended, or if an empty string is provided, the name will just be that random string. If the filename string includes a "*", the random string replaces the last "*".
 */
-func NewEditor(name string, content []byte) (editor *Editor, err error) {
-	defaultIDE, err := getDefaultEditor()
+func NewTemporaryFileEditor(name string, content []byte) (editor *Editor, err error) {
+	defaultIDE, err := getDefaultGitEditor()
 	if err != nil {
 		return nil, err
 	}
@@ -28,8 +28,28 @@ func NewEditor(name string, content []byte) (editor *Editor, err error) {
 	}
 
 	editor = &Editor{
-		Program: defaultIDE,
-		File:    filename,
+		Program:           defaultIDE,
+		File:              filename,
+		usesTemporaryFile: true,
+	}
+
+	return
+}
+
+/*
+NewEditor creates a new Editor instance, which can be used to launch the file with the user's default IDE.
+Accepts the name for the file.
+*/
+func NewEditor(filename string) (editor *Editor, err error) {
+	defaultIDE, err := getDefaultGitEditor()
+	if err != nil {
+		return nil, err
+	}
+
+	editor = &Editor{
+		Program:           defaultIDE,
+		File:              filename,
+		usesTemporaryFile: false,
 	}
 
 	return
@@ -40,9 +60,10 @@ Editor can be used to allow the user to directly edit content using
 their default IDE (set via `git var GIT_EDITOR`).
 */
 type Editor struct {
-	Program string
-	File    string
-	Launch  func() error
+	Program           string
+	File              string
+	Launch            func() error
+	usesTemporaryFile bool
 }
 
 /*
@@ -54,9 +75,11 @@ func (e *Editor) EditContent() ([]byte, error) {
 		return nil, err
 	}
 
-	defer cleanup(e.File)
+	if e.usesTemporaryFile {
+		defer cleanup(e.File)
+	}
 
-	return readTemporaryFile(e.File)
+	return readFile(e.File)
 }
 
 func (e *Editor) openAndWaitForTextEditor() error {
@@ -88,7 +111,7 @@ func (e *Editor) getOpenEditorCommand() (*exec.Cmd, error) {
 }
 
 // Get's the OS default git editor via the `git var GIT_EDITOR` command.
-func getDefaultEditor() (string, error) {
+func getDefaultGitEditor() (string, error) {
 	output, err := exec.Command("git", "var", "GIT_EDITOR").Output()
 	if err != nil {
 		return "", err
@@ -97,7 +120,8 @@ func getDefaultEditor() (string, error) {
 	editor := os.ExpandEnv(getFirstLine(string(output)))
 
 	if len(editor) < 1 {
-		return "", errors.New("no default editor found. Please set your GIT_EDITOR var: https://git-scm.com/docs/git-var")
+		// No default git editor, fallback to default OS editor
+		return getDefaultEditorByOS()
 	}
 
 	return editor, nil
@@ -108,6 +132,23 @@ func getFirstLine(output string) string {
 		return output[0:i]
 	}
 	return output
+}
+
+func getDefaultEditorByOS() (string, error) {
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = "vi"
+		}
+		return editor, nil
+	case "windows":
+		// As far as I can tell, Windows doesn't have an easily accesible or
+		// comparable option to $EDITOR, so default to notepad for now
+		return "notepad", nil
+	default:
+		return "", fmt.Errorf("unsupported platform")
+	}
 }
 
 /*
@@ -130,7 +171,7 @@ func createTemporaryFile(name string, data []byte) (string, error) {
 	return f.Name(), nil
 }
 
-func readTemporaryFile(name string) ([]byte, error) {
+func readFile(name string) ([]byte, error) {
 	newFixtureData, err := os.ReadFile(name)
 	if err != nil {
 		return nil, err

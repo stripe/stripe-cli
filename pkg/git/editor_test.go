@@ -8,48 +8,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Ensure there is a default editor set in our testing env
-func setup() {
-	currentEditor, _ := getDefaultEditor()
-	if len(currentEditor) < 1 {
-		setEditorTo("vi")
-	}
+func TestFileEditor(t *testing.T) {
+	t.Run("Creates default Editor", func(t *testing.T) {
+		editor, err := NewEditor("")
+		assert.NotNil(t, editor)
+		assert.Nil(t, err)
+	})
 }
 
-func TestNewEditor(t *testing.T) {
-	setup()
-
-	t.Run("Creates default Editor", func(t *testing.T) {
-		editor, err := NewEditor("", nil)
+func TestNewTemporaryFileEditor(t *testing.T) {
+	t.Run("Creates default temporary file Editor", func(t *testing.T) {
+		editor, err := NewTemporaryFileEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 	})
 
 	t.Run("creates temporary file with custom name", func(t *testing.T) {
-		editor, _ := NewEditor("foo", nil)
+		editor, _ := NewTemporaryFileEditor("foo", nil)
 
 		f, err := os.Stat(editor.File)
 		assert.Nil(t, err)
 		assert.Contains(t, f.Name(), "foo")
 	})
-
-	t.Run("missing GIT_EDITOR", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultEditor()
-		defer setEditorTo(prevGitEditor)
-
-		setEditorTo("")
-
-		editor, err := NewEditor("", nil)
-		assert.NotNil(t, err)
-		assert.Nil(t, editor)
-	})
 }
 
 func TestGetOpenEditorCommand(t *testing.T) {
-	setup()
-
 	t.Run("with default system editor", func(t *testing.T) {
-		editor, err := NewEditor("", nil)
+		editor, err := NewTemporaryFileEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 
@@ -60,12 +45,12 @@ func TestGetOpenEditorCommand(t *testing.T) {
 	})
 
 	t.Run("with custom set editor", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultEditor()
+		prevGitEditor, _ := getDefaultGitEditor()
 		defer setEditorTo(prevGitEditor)
 
 		setEditorTo("command with multiple --options")
 
-		editor, err := NewEditor("", nil)
+		editor, err := NewTemporaryFileEditor("", nil)
 		assert.NotNil(t, editor)
 		assert.Nil(t, err)
 
@@ -76,21 +61,21 @@ func TestGetOpenEditorCommand(t *testing.T) {
 	})
 }
 
-func TestGetDefaultEditor(t *testing.T) {
+func TestGetDefaultGitEditor(t *testing.T) {
 	t.Run("common default editors", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultEditor()
+		prevGitEditor, _ := getDefaultGitEditor()
 		defer setEditorTo(prevGitEditor)
 
 		for _, e := range [4]string{"subl -n -w", "vi", "code --wait", "mate -w"} {
 			setEditorTo(e)
 
-			defaultIDE, _ := getDefaultEditor()
+			defaultIDE, _ := getDefaultGitEditor()
 			assert.Equal(t, defaultIDE, e)
 		}
 	})
 
 	t.Run("expands env var", func(t *testing.T) {
-		prevGitEditor, _ := getDefaultEditor()
+		prevGitEditor, _ := getDefaultGitEditor()
 		defer setEditorTo(prevGitEditor)
 
 		os.Setenv("STRIPE_CLI_TEST_GIT_EDITOR", "value")
@@ -98,8 +83,18 @@ func TestGetDefaultEditor(t *testing.T) {
 
 		setEditorTo("$STRIPE_CLI_TEST_GIT_EDITOR")
 
-		defaultIDE, _ := getDefaultEditor()
+		defaultIDE, _ := getDefaultGitEditor()
 		assert.Equal(t, defaultIDE, "value")
+	})
+
+	t.Run("no GIT_EDITOR or EDITOR defaults to vi", func(t *testing.T) {
+		prevGitEditor, _ := getDefaultGitEditor()
+		defer setEditorTo(prevGitEditor)
+
+		setEditorTo("")
+
+		newEditor, _ := getDefaultGitEditor()
+		assert.Equal(t, newEditor, "vi")
 	})
 }
 
@@ -113,6 +108,6 @@ func TestGetFirstLine(t *testing.T) {
 	assert.Equal(t, "abc", getFirstLine("abc\n\n123\n\n\n"))
 }
 
-func setEditorTo(newEditor string) {
-	exec.Command("git", "config", "--global", "core.editor", newEditor).Run()
+func setEditorTo(newTemporaryFileEditor string) {
+	exec.Command("git", "config", "--global", "core.editor", newTemporaryFileEditor).Run()
 }

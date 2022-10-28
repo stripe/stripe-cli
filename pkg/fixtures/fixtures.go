@@ -277,7 +277,7 @@ func (fxt *Fixture) Edit(path string, filedata []byte) ([]byte, error) {
 // Edit is separated into a var so we can mock this in fixtures_test
 var Edit = func(path string, filedata []byte) ([]byte, error) {
 	filename := getFixtureFilenameWithWildcard(path)
-	editor, err := git.NewEditor(filename, filedata)
+	editor, err := git.NewTemporaryFileEditor(filename, filedata)
 	if err != nil {
 		return nil, err
 	}
