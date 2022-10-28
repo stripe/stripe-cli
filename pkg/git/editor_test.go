@@ -100,7 +100,6 @@ func TestGetDefaultGitEditor(t *testing.T) {
 		} else {
 			assert.Equal(t, "vi", newEditor)
 		}
-
 	})
 }
 
