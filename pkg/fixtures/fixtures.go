@@ -74,7 +74,6 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		Fs:            fs,
 		APIKey:        apiKey,
 		StripeAccount: stripeAccount,
-		Skip:          skip,
 		BaseURL:       baseURL,
 		Responses:     make(map[string]gjson.Result),
 	}
@@ -99,6 +98,8 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		}
 	}
 
+	// Customize fixture data
+
 	if edit {
 		filedata, err = fxt.Edit(file, filedata)
 		if err != nil {
@@ -111,15 +112,21 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 		return nil, err
 	}
 
-	// Customize fixture data
-	if err := fxt.Override(override); err != nil {
-		return nil, err
-	}
-	if err := fxt.Add(add); err != nil {
-		return nil, err
-	}
-	if err := fxt.Remove(remove); err != nil {
-		return nil, err
+	if len(override) > 0 || len(add) > 0 || len(remove) > 0 || len(skip) > 0 {
+		if edit {
+			fmt.Println("Warning: --edit cannot be used with --add, --remove, --override, or --skip. Skipping those flags...")
+		} else {
+			if err := fxt.Override(override); err != nil {
+				return nil, err
+			}
+			if err := fxt.Add(add); err != nil {
+				return nil, err
+			}
+			if err := fxt.Remove(remove); err != nil {
+				return nil, err
+			}
+			fxt.Skip = skip
+		}
 	}
 
 	if fxt.FixtureData.Meta.Version > SupportedVersions {
@@ -264,10 +271,15 @@ func (fxt *Fixture) Remove(removals []string) error {
 
 // Edit opens the fixture in the git's default IDE to edit directly
 func (fxt *Fixture) Edit(path string, filedata []byte) ([]byte, error) {
+	return Edit(path, filedata)
+}
+
+// Edit is separated into a var so we can mock this in fixtures_test
+var Edit = func(path string, filedata []byte) ([]byte, error) {
 	filename := getFixtureFilenameWithWildcard(path)
 	editor, err := git.NewEditor(filename, filedata)
 	if err != nil {
-		return nil, fixtureRewriteError{operation: "edit", err: err, fixture: fxt}
+		return nil, err
 	}
 
 	return editor.EditContent()
@@ -276,6 +288,7 @@ func (fxt *Fixture) Edit(path string, filedata []byte) ([]byte, error) {
 func getFixtureFilenameWithWildcard(path string) string {
 	pathComponents := strings.Split(path, "/")
 	fixtureName := strings.Split(pathComponents[len(pathComponents)-1], ".")
+	// Add a wildcard that is replaced by a random string when passing this filename to os.CreateTemp
 	return strings.Join(fixtureName[0:len(fixtureName)-1], ".") + ".*." + fixtureName[len(fixtureName)-1]
 }
 
