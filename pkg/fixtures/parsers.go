@@ -40,21 +40,21 @@ import (
 // The supported query shapes are simple:
 // 		$<name of fixture>:dot.path.to.field
 
-// parsePath will inspect the path to see if it has a query in the
+// ParsePath will inspect the path to see if it has a query in the
 // path for requests that operate on specific objects (for example,
 // GET /v1/customers/:id or POST /v1/subscriptions/:id)
 //
 // If a query is found, this returns the path with the value already
 // in place. If there is no query, it returns the old path as-is.
-func (fxt *Fixture) parsePath(http fixture) (string, error) {
-	if r, containsQuery := matchFixtureQuery(http.Path); containsQuery {
+func (fxt *Fixture) ParsePath(http FixtureRequest) (string, error) {
+	if r, containsQuery := MatchFixtureQuery(http.Path); containsQuery {
 		var newPath []string
 
 		matches := r.FindAllStringSubmatch(http.Path, -1)
 		pathParts := r.Split(http.Path, -1)
 
 		for i, match := range matches {
-			value, err := fxt.parseQuery(match[0])
+			value, err := fxt.ParseQuery(match[0])
 
 			if err != nil {
 				return "", err
@@ -74,14 +74,14 @@ func (fxt *Fixture) parsePath(http fixture) (string, error) {
 	return http.Path, nil
 }
 
-// parseInterface is the primary entrypoint into building the request
+// ParseInterface is the primary entrypoint into building the request
 // data for fixtures. The data will always be provided as an
 // interface{} and this will need to use reflection to determine how
 // to proceed. There are two primary paths here, `parseMap` and
-// `parseArray`, which will recursively traverse and convert the data
+// `ParseArray`, which will recursively traverse and convert the data
 //
 // This returns an array of clean form data to make the request.
-func (fxt *Fixture) parseInterface(params interface{}) ([]string, error) {
+func (fxt *Fixture) ParseInterface(params interface{}) ([]string, error) {
 	var data []string
 
 	var cleanData []string
@@ -89,14 +89,14 @@ func (fxt *Fixture) parseInterface(params interface{}) ([]string, error) {
 	switch v := reflect.ValueOf(params); v.Kind() {
 	case reflect.Map:
 		m := params.(map[string]interface{})
-		parsed, err := fxt.parseMap(m, "", -1)
+		parsed, err := fxt.ParseMap(m, "", -1)
 		if err != nil {
 			return make([]string, 0), err
 		}
 		data = append(data, parsed...)
 	case reflect.Array:
 		a := params.([]interface{})
-		parsed, err := fxt.parseArray(a, "")
+		parsed, err := fxt.ParseArray(a, "")
 		if err != nil {
 			return make([]string, 0), err
 		}
@@ -113,10 +113,10 @@ func (fxt *Fixture) parseInterface(params interface{}) ([]string, error) {
 	return cleanData, nil
 }
 
-// parseMap recursively parses a map of string => interface{} until
+// ParseMap recursively parses a map of string => interface{} until
 // each leaf node has a terminal type (String, Int, etc) that can no
 // longer be recursively traversed.
-func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index int) ([]string, error) {
+func (fxt *Fixture) ParseMap(params map[string]interface{}, parent string, index int) ([]string, error) {
 	data := make([]string, len(params))
 
 	var keyname string
@@ -143,7 +143,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 		case reflect.String:
 			// Strings can contain queries to load data from other
 			// responses, check and load those.
-			parsed, err := fxt.parseQuery(v.String())
+			parsed, err := fxt.ParseQuery(v.String())
 			if err != nil {
 				return make([]string, 0), err
 			}
@@ -176,7 +176,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 		case reflect.Map:
 			m := value.(map[string]interface{})
 
-			result, err := fxt.parseMap(m, keyname, index)
+			result, err := fxt.ParseMap(m, keyname, index)
 
 			if err != nil {
 				return make([]string, 0), err
@@ -186,7 +186,7 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
 
-			result, err := fxt.parseArray(a, keyname)
+			result, err := fxt.ParseArray(a, keyname)
 
 			if err != nil {
 				return make([]string, 0), err
@@ -202,11 +202,11 @@ func (fxt *Fixture) parseMap(params map[string]interface{}, parent string, index
 	return data, nil
 }
 
-// parseArray is similar to parseMap but doesn't have to build the
+// ParseArray is similar to parseMap but doesn't have to build the
 // multi-depth keys. Form data arrays contain brackets with nothing
 // inside the bracket to designate an array instead of a key value
 // pair.
-func (fxt *Fixture) parseArray(params []interface{}, parent string) ([]string, error) {
+func (fxt *Fixture) ParseArray(params []interface{}, parent string) ([]string, error) {
 	data := make([]string, len(params))
 
 	// The index is only used for arrays of maps
@@ -215,7 +215,7 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string) ([]string, e
 		switch v := reflect.ValueOf(value); v.Kind() {
 		case reflect.String:
 			// A string can be a regular value or one we need to look up first, ex: ${product.id}
-			parsed, err := fxt.parseQuery(v.String())
+			parsed, err := fxt.ParseQuery(v.String())
 			if err != nil {
 				return make([]string, 0), err
 			}
@@ -227,14 +227,14 @@ func (fxt *Fixture) parseArray(params []interface{}, parent string) ([]string, e
 			// When we parse arrays of maps, we want to track the index of the element for the request
 			// ex: lines[0][id] = "id_0000", lines[1][id] = "id_1234", etc.
 			index++
-			parsed, err := fxt.parseMap(m, parent, index)
+			parsed, err := fxt.ParseMap(m, parent, index)
 			if err != nil {
 				return make([]string, 0), err
 			}
 			data = append(data, parsed...)
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
-			parsed, err := fxt.parseArray(a, parent)
+			parsed, err := fxt.ParseArray(a, parent)
 			if err != nil {
 				return make([]string, 0), err
 			}
@@ -253,8 +253,8 @@ func normalizeForComparison(x string) string {
 }
 
 func findSimilarQueryNames(fxt *Fixture, name string) ([]string, bool) {
-	keys := make([]string, 0, len(fxt.responses))
-	for k := range fxt.responses {
+	keys := make([]string, 0, len(fxt.Responses))
+	for k := range fxt.Responses {
 		a := normalizeForComparison(k)
 		b := normalizeForComparison(name)
 		isSubstr := strings.Contains(a, b) || strings.Contains(b, a)
@@ -267,14 +267,14 @@ func findSimilarQueryNames(fxt *Fixture, name string) ([]string, bool) {
 	return keys, len(keys) > 0
 }
 
-// parseQuery checks strings for possible queries and replaces the
+// ParseQuery checks strings for possible queries and replaces the
 // corresponding value in its place. The supported query format is:
 //
 //	$<name of fixture>:dot.path.to.field
-func (fxt *Fixture) parseQuery(queryString string) (string, error) {
+func (fxt *Fixture) ParseQuery(queryString string) (string, error) {
 	value := queryString
 
-	if query, isQuery := toFixtureQuery(queryString); isQuery {
+	if query, isQuery := ToFixtureQuery(queryString); isQuery {
 		name := query.Name
 
 		// Check if there is a default value specified
@@ -296,7 +296,7 @@ func (fxt *Fixture) parseQuery(queryString string) (string, error) {
 			return value, nil
 		}
 
-		if _, ok := fxt.responses[name]; !ok {
+		if _, ok := fxt.Responses[name]; !ok {
 			// An undeclared fixture name is being referenced
 			var errorStrings []string
 			color := ansi.Color(os.Stdout)
@@ -321,7 +321,7 @@ func (fxt *Fixture) parseQuery(queryString string) (string, error) {
 			return "", fmt.Errorf(strings.Join(errorStrings, "\n"))
 		}
 
-		result := fxt.responses[name].Get(query.Query)
+		result := fxt.Responses[name].Get(query.Query)
 		if len(result.String()) != 0 {
 			return result.String(), nil
 		}
@@ -332,25 +332,25 @@ func (fxt *Fixture) parseQuery(queryString string) (string, error) {
 	return value, nil
 }
 
-// toFixtureQuery will parse a string into a fixtureQuery struct, additionally
+// ToFixtureQuery will parse a string into a fixtureQuery struct, additionally
 // returning a bool indicating the value did contain a fixtureQuery.
-func toFixtureQuery(value string) (fixtureQuery, bool) {
-	var query fixtureQuery
+func ToFixtureQuery(value string) (FixtureQuery, bool) {
+	var query FixtureQuery
 	isQuery := false
 
-	if r, didMatch := matchFixtureQuery(value); didMatch {
+	if r, didMatch := MatchFixtureQuery(value); didMatch {
 		isQuery = true
 		match := r.FindStringSubmatch(value)
-		query = fixtureQuery{Match: match[0], Name: match[1], Query: match[2], DefaultValue: match[3]}
+		query = FixtureQuery{Match: match[0], Name: match[1], Query: match[2], DefaultValue: match[3]}
 	}
 
 	return query, isQuery
 }
 
-// matchQuery will attempt to find matches for a fixture query pattern
+// MatchFixtureQuery will attempt to find matches for a fixture query pattern
 // returning a *Regexp which can be used to further parse and a boolean
 // indicating a match was found.
-func matchFixtureQuery(value string) (*regexp.Regexp, bool) {
+func MatchFixtureQuery(value string) (*regexp.Regexp, bool) {
 	// Queries will start with `${` and end with `}`. The `:` is a
 	// separator for `name:json_path`. Additionally, default value will
 	// be specified after the `|`.

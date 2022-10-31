@@ -15,6 +15,7 @@ import (
 	"github.com/iancoleman/strcase"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/gen"
 	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
@@ -46,13 +47,6 @@ const (
 
 	pathOutput = "resources_cmds.go"
 )
-
-var scalarTypes = map[string]bool{
-	"boolean": true,
-	"integer": true,
-	"number":  true,
-	"string":  true,
-}
 
 var test_helpers_path = "test_helpers"
 
@@ -201,13 +195,26 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 
 			if media, ok := requestContent["application/x-www-form-urlencoded"]; ok {
 				for propName, schema := range media.Schema.Properties {
-					scalarType := getScalarType(schema)
-
-					if scalarType == nil {
+					// If property is metadata or expand, skip it
+					if propName == "metadata" || propName == "expand" {
 						continue
 					}
 
-					properties[propName] = *scalarType
+					if schema.Type == "object" {
+						denormalizedProps := gen.DenormalizeObject(propName, schema)
+						for prop, propType := range denormalizedProps {
+							properties[prop] = propType
+						}
+
+					} else {
+						scalarType := gen.GetType(schema)
+
+						if scalarType == nil {
+							continue
+						}
+
+						properties[propName] = *scalarType
+					}
 				}
 			}
 		} else {
@@ -217,8 +224,13 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 					continue
 				}
 
+				// Skip metadata and expand params
+				if param.Name == "metadata" || param.Name == "expand" {
+					continue
+				}
+
 				schema := param.Schema
-				scalarType := getScalarType(schema)
+				scalarType := gen.GetType(schema)
 
 				if scalarType == nil {
 					continue
@@ -252,33 +264,4 @@ func parseSchemaName(name string) (string, string) {
 		return components[0], components[1]
 	}
 	return "", name
-}
-
-// getScalarType accepts a schema and returns its scalar type, if it has one.
-//
-// If the schema is monomorphic, it returns its type if it's scalar.
-//
-// If the schema is polymorphic, it returns the first scalar type for the
-// schema, if there is any.
-func getScalarType(schema *spec.Schema) *string {
-	if len(schema.AnyOf) > 0 {
-		for _, subSchema := range schema.AnyOf {
-			scalarType := getScalarType(subSchema)
-			if scalarType != nil {
-				return scalarType
-			}
-		}
-	} else if scalarTypes[schema.Type] {
-		// Special case for string types that only support the "" (empty
-		// string) value: we consider these to be non-scalar so we don't
-		// generate a flag for those.
-		if schema.Type == "string" {
-			if len(schema.Enum) == 1 && schema.Enum[0] == "" {
-				return nil
-			}
-		}
-		return &schema.Type
-	}
-
-	return nil
 }
