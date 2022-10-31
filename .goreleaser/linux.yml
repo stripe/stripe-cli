@@ -17,6 +17,17 @@ builds:
       - linux
     goarch:
       - amd64
+  - id: stripe-linux-arm
+    ldflags:
+      - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
+    binary: stripe
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/stripe/main.go
+    goos:
+      - linux
+    goarch:
+      - arm64
 archives:
   - replacements:
       linux: linux
@@ -59,6 +70,22 @@ dockers:
     ids:
       - stripe
       - stripe-linux
+    image_templates:
+      - "stripe/stripe-cli:latest"
+      - "stripe/stripe-cli:{{ .Tag }}"
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=repository=https://github.com/stripe/stripe-cli"
+      - "--label=homepage=https://stripe.com"
+  - goos: linux
+    goarch: arm64
+    ids:
+      - stripe
+      - stripe-linux-arm
     image_templates:
       - "stripe/stripe-cli:latest"
       - "stripe/stripe-cli:{{ .Tag }}"

@@ -184,8 +184,9 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 		return []byte{}, err
 	}
 
-	configure := func(req *http.Request) {
+	configure := func(req *http.Request) error {
 		req.Header.Set("Content-Type", contentType)
+		return nil
 	}
 
 	return rb.performRequest(ctx, apiKey, path, params, reqBody.String(), errOnStatus, configure)
@@ -193,7 +194,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
 func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
-	data, err := rb.buildDataForRequest(params)
+	data, err := rb.BuildDataForRequest(params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -201,7 +202,7 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 	return rb.performRequest(ctx, apiKey, path, params, data, errOnStatus, nil)
 }
 
-func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request)) ([]byte, error) {
+func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -213,13 +214,16 @@ func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params 
 		Verbose: rb.showHeaders,
 	}
 
-	configure := func(req *http.Request) {
+	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
 		rb.setVersionHeader(req, params)
 		if additionalConfigure != nil {
-			additionalConfigure(req)
+			if err := additionalConfigure(req); err != nil {
+				return err
+			}
 		}
+		return nil
 	}
 
 	resp, err := client.PerformRequest(ctx, rb.Method, path, data, configure)
@@ -274,13 +278,14 @@ func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
 }
 
+// BuildDataForRequest builds request payload
 // Note: We converted to using two arrays to track keys and values, with our own
 // implementation of Go's url.Values Encode function due to our query parameters being
 // order sensitive for API requests involving arrays like `items` for `/v1/orders`.
 // Go's url.Values uses Go's map, which jumbles the key ordering, and their Encode
 // implementation sorts keys by alphabetical order, but this doesn't work for us since
 // some API endpoints have required parameter ordering. Yes, this is hacky, but it works.
-func (rb *Base) buildDataForRequest(params *RequestParameters) (string, error) {
+func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	keys := []string{}
 	values := []string{}
 

@@ -51,7 +51,7 @@ type Client struct {
 }
 
 // PerformRequest sends a request to Stripe and returns the response.
-func (c *Client) PerformRequest(ctx context.Context, method, path string, params string, configure func(*http.Request)) (*http.Response, error) {
+func (c *Client) PerformRequest(ctx context.Context, method, path string, params string, configure func(*http.Request) error) (*http.Response, error) {
 	url, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,9 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	}
 
 	if configure != nil {
-		configure(req)
+		if err := configure(req); err != nil {
+			return nil, err
+		}
 	}
 
 	if c.httpClient == nil {

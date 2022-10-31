@@ -163,11 +163,11 @@ func (c *Config) InitConfig() {
 
 	// initialize key ring
 	KeyRing, _ = keyring.Open(keyring.Config{
-		ServiceName: "Stripe CLI Key Storage",
+		ServiceName: KeyManagementService,
 	})
 
 	// redact livemode values for existing configs
-	// c.Profile.redactAllLivemodeValues()
+	c.Profile.redactAllLivemodeValues()
 }
 
 // EditConfig opens the configuration file in the default editor.
@@ -246,6 +246,8 @@ func (c *Config) RemoveProfile(profileName string) error {
 			if err != nil {
 				return err
 			}
+
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
 		}
 	}
 
@@ -263,6 +265,8 @@ func (c *Config) RemoveAllProfiles() error {
 			if err != nil {
 				return err
 			}
+
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
 		}
 	}
 

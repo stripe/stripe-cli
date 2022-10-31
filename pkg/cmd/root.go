@@ -116,7 +116,7 @@ func Execute(ctx context.Context) {
 
 			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
 
-			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config, os.Stdin)
+			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config, login.AsyncStdinReader{})
 
 			if err != nil {
 				fmt.Println(err)

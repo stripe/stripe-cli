@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -29,6 +30,8 @@ type InstallCmd struct {
 	archiveURL     string
 	archivePath    string
 	localPluginDir string
+
+	apiBaseURL string
 }
 
 // NewInstallCmd creates a command for installing plugins
@@ -50,6 +53,10 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive-path", "", "Install a plugin by a local archive path")
 	ic.Cmd.Flags().StringVar(&ic.localPluginDir, "local", "", "Install a development version plugin from a local development folder")
 	ic.Cmd.Flags().Bool("archive", false, "Install a plugin by archive data from stdout")
+
+	// Hidden configuration flags, useful for dev/debugging
+	ic.Cmd.Flags().StringVar(&ic.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
+	ic.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	return ic
 }
@@ -92,7 +99,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err = plugin.Install(ctx, ic.cfg, ic.fs, version, stripe.DefaultAPIBaseURL)
+	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
 
 	return err
 }
@@ -140,6 +147,21 @@ func (ic *InstallCmd) installPluginFromLocalDir() error {
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
+	color := ansi.Color(os.Stdout)
+
+	// check if plugin manfest exists to be updated with the plugin to be installed
+	configPath := ic.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+	_, err = afero.ReadFile(ic.fs, pluginManifestPath)
+	if os.IsNotExist(err) {
+		// plugin manifest does not exist. will need to retrieve from web
+		// api key is required to retrieve the plugin manifest
+		_, err = ic.cfg.GetProfile().GetAPIKey(false)
+		if err != nil {
+			fmt.Println(color.Red("x could not install plugin. please run `stripe login` and try again"))
+			return fmt.Errorf("installation process exited")
+		}
+	}
 
 	if len(args) == 0 {
 		if ic.localPluginDir != "" {
@@ -155,7 +177,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// Refresh the plugin before proceeding
-		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, stripe.DefaultAPIBaseURL)
+		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
 		if err != nil {
 			return err
 		}
@@ -167,7 +189,6 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if err == nil {
-		color := ansi.Color(os.Stdout)
 		fmt.Println(color.Green("✔ installation complete."))
 	}
 
