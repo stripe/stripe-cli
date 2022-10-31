@@ -56,9 +56,11 @@ var rootCmd = &cobra.Command{
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
-		telemetryMetadata.SetCobraCommandContext(cmd)
-		telemetryMetadata.SetMerchant(merchant)
-		telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+		if telemetryMetadata != nil {
+			telemetryMetadata.SetCobraCommandContext(cmd)
+			telemetryMetadata.SetMerchant(merchant)
+			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+		}
 
 		// plugins send their own telemetry due to having richer context than the CLI does
 		if !plugins.IsPluginCommand(cmd) {
@@ -106,7 +108,7 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
-			fmt.Println("You provided the \"--project-name\" flag, but no config for that project was found. Please run `stripe login --project-name=`...")
+			fmt.Printf("You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
@@ -137,8 +139,30 @@ func Execute(ctx context.Context) {
 	}
 }
 
+var keysToReBind []string
+
+// ReBindKeys applies the value found in viper config to the cobra flag when viper has a value (possibly from env)
+func ReBindKeys() {
+	for _, k := range keysToReBind {
+		if viper.IsSet(k) {
+			rootCmd.Flags().Set(k, viper.GetString(k))
+		}
+	}
+}
+
+// wraps viper's bindEnv and ensures we write values back to the Config
+// value precedence is:
+// 1. flag
+// 2. env
+// 3. default
+func bindEnv(key, envKey string) {
+	viper.BindPFlag(key, rootCmd.PersistentFlags().Lookup(key))
+	viper.BindEnv(key, envKey)
+	keysToReBind = append(keysToReBind, key)
+}
+
 func init() {
-	cobra.OnInitialize(Config.InitConfig)
+	cobra.OnInitialize(Config.InitConfig, ReBindKeys)
 
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
@@ -148,7 +172,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
+	// tell viper to monitor the following flags:
+	// they will be available via viper.get(KEY), but not mapped back to the Config (by default; see below)
 	viper.BindPFlag("color", rootCmd.PersistentFlags().Lookup("color"))
+
+	// also, bind flags to the environment variables
+	bindEnv("project-name", "STRIPE_PROJECT_NAME")
 
 	rootCmd.AddCommand(newCompletionCmd().cmd)
 	rootCmd.AddCommand(newConfigCmd().cmd)

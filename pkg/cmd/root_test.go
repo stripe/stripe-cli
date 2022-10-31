@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -68,4 +69,33 @@ func TestExampleCommands(t *testing.T) {
 		_, err := executeCommand(rootCmd, "samples", "create", "foo", "foo", "foo")
 		require.Equal(t, err.Error(), "`stripe samples create` accepts at maximum 2 positional arguments. See `stripe samples create --help` for supported flags and usage")
 	}
+}
+
+func TestReadProjectDefault(t *testing.T) {
+	executeCommand(rootCmd, "version")
+	require.Equal(t, Config.Profile.ProfileName, "default")
+}
+
+func TestReadProjectFromEnv(t *testing.T) {
+	os.Setenv("STRIPE_PROJECT_NAME", "from-env")
+	defer os.Unsetenv("STRIPE_PROJECT_NAME")
+
+	executeCommand(rootCmd, "version")
+
+	require.Equal(t, Config.Profile.ProfileName, "from-env")
+}
+
+func TestReadProjectFromFlag(t *testing.T) {
+	executeCommand(rootCmd, "version", "--project-name", "from-flag")
+
+	require.Equal(t, Config.Profile.ProfileName, "from-flag")
+}
+
+func TestReadProjectFlagHasPrecedence(t *testing.T) {
+	os.Setenv("STRIPE_PROJECT_NAME", "from-env")
+	defer os.Unsetenv("STRIPE_PROJECT_NAME")
+
+	executeCommand(rootCmd, "version", "--project-name", "from-flag")
+
+	require.Equal(t, Config.Profile.ProfileName, "from-flag")
 }
