@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -32,7 +33,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		Use:   plugin.Shortname,
 		Short: plugin.Shortdesc,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return ptc.runPluginCmd(cmd, os.Args[2:])
+			// "stripe [host_flags...] plugin_name [plugin_subcommands...] [plugin_flags...]" => "[plugin_subcommands...] [plugin_flags...]"
+			pluginArgs := subsliceAfter(os.Args, cmd.Name())
+			return ptc.runPluginCmd(cmd, pluginArgs)
 		},
 		Annotations: map[string]string{"scope": "plugin"},
 		FParseErrWhitelist: cobra.FParseErrWhitelist{
@@ -42,7 +45,17 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 
 	// override the CLI's help command and let the plugin supply the help text instead
 	ptc.cmd.SetHelpFunc(func(c *cobra.Command, s []string) {
-		ptc.runPluginCmd(c, s[1:])
+		var args []string
+		if len(s) == 0 {
+			// "stripe help plugin_name [plugin_subcommands...]" => "[plugin_subcommands...] --help"
+			args = subsliceAfter(os.Args, c.Name())
+			args = append(args, "--help")
+			c.SetContext(context.Background())
+		} else {
+			// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
+			args = subsliceAfter(s, c.Name())
+		}
+		ptc.runPluginCmd(c, args)
 	})
 
 	return ptc
@@ -59,7 +72,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	ptc.ParsedArgs = args
 
 	fs := afero.NewOsFs()
-	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, cmd.CalledAs())
+	plugin, err := plugins.LookUpPlugin(ctx, ptc.cfg, fs, ptc.cmd.Name())
 
 	if err != nil {
 		return err
@@ -87,4 +100,17 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	}
 
 	return nil
+}
+
+// Return a copy of sl strictly after the first occurrence of str, or empty slice if not found.
+func subsliceAfter(sl []string, str string) []string {
+	for i, s := range sl {
+		if s == str {
+			subsl := sl[i+1:]
+			res := make([]string, len(subsl))
+			copy(res, subsl)
+			return res
+		}
+	}
+	return make([]string, 0)
 }
