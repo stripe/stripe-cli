@@ -96,6 +96,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 	return nil
 }
 
+// Return a copy of sl strictly after the first occurrence of str, or empty slice if not found.
 func subsliceAfter(sl []string, str string) []string {
 	for i, s := range sl {
 		if s == str {
