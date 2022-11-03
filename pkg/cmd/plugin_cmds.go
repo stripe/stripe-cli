@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -49,6 +50,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 			// "stripe help plugin_name [plugin_subcommands...]" => "[plugin_subcommands...] --help"
 			args = subsliceAfter(os.Args, c.Name())
 			args = append(args, "--help")
+			c.SetContext(context.Background())
 		} else {
 			// "stripe plugin_name [plugin_subcommands...] --help" => "[plugin_subcommands...] --help"
 			args = subsliceAfter(s, c.Name())
@@ -61,7 +63,11 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 
 // runPluginCmd hands off to the plugin itself to take over
 func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
+	ctx := withSIGTERMCancel(cmd.Context(), func() {
+		log.WithFields(log.Fields{
+			"prefix": "cmd.pluginCmd.runPluginCmd",
+		}).Debug("Ctrl+C received, cleaning up...")
+	})
 
 	ptc.ParsedArgs = args
 
