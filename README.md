@@ -119,7 +119,7 @@ stripe [command] help
 
 ## Commands
 
-The Stripe CLI supports a broad range of commands. Below is some of the most used ones:
+The Stripe CLI supports a broad range of commands. Below are some of the most used ones:
 - [`login`](https://stripe.com/docs/cli/login)
 - [`listen`](https://stripe.com/docs/cli/listen)
 - [`trigger`](https://stripe.com/docs/cli/trigger)
