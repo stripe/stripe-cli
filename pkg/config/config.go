@@ -183,7 +183,9 @@ func (c *Config) EditConfig() error {
 
 // PrintConfig outputs the contents of the configuration file.
 func (c *Config) PrintConfig() error {
-	if c.Profile.ProfileName == "default" {
+	profileName := c.Profile.ProfileName
+
+	if profileName == "default" {
 		configFile, err := os.ReadFile(c.ProfilesFile)
 		if err != nil {
 			return err
@@ -191,10 +193,10 @@ func (c *Config) PrintConfig() error {
 
 		fmt.Print(string(configFile))
 	} else {
-		configs := viper.GetStringMapString(c.Profile.ProfileName)
+		configs := viper.GetStringMapString(profileName)
 
 		if len(configs) > 0 {
-			fmt.Printf("[%s]\n", c.Profile.ProfileName)
+			fmt.Printf("[%s]\n", profileName)
 			for field, value := range configs {
 				fmt.Printf("  %s=%s\n", field, value)
 			}
