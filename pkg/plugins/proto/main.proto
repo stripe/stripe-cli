@@ -1,0 +1,26 @@
+syntax = "proto3";
+package proto;
+
+option go_package = "github.com/stripe/stripe-cli/plugins/proto";
+
+service Main {
+  rpc RunCommand(RunCommandRequest) returns (RunCommandResponse);
+}
+
+message RunCommandRequest {
+  AdditionalInfo additional_info = 1;
+  repeated string args = 2;
+}
+
+message RunCommandResponse {
+}
+
+message AdditionalInfo {
+  IsTerminal is_terminal = 1;
+}
+
+message IsTerminal {
+  bool stdin = 1;
+  bool stdout = 2;
+  bool stderr = 3;
+}

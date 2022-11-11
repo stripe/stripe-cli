@@ -30,7 +30,7 @@ cover: test
 
 # gofmt and goimports all go files
 fmt:
-	find . -path ./rpc -prune -false -o -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w "$$file"; done
+	find . -not -path "./rpc*" -not -path "./pkg/plugins/proto*" -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w -local github.com/stripe/stripe-cli "$$file"; done
 .PHONY: fmt
 
 # Run all the linters
@@ -161,5 +161,16 @@ protoc-gen-docs:
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
 	@echo "Successfully generated proto docs"
 .PHONY: protoc-docs
+
+protoc-gen-plugin:
+	@protoc \
+		--go_out=pkg/plugins \
+		--go_opt=module=github.com/stripe/stripe-cli/plugins \
+		--go-grpc_out=pkg/plugins \
+		--go-grpc_opt=module=github.com/stripe/stripe-cli/plugins \
+	pkg/plugins/proto/main.proto \
+	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
+	@echo "Successfully compiled proto files for plugins"
+.PHONY: protoc-plugin
 
 .DEFAULT_GOAL := build
