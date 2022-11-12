@@ -71,8 +71,8 @@ dockers:
       - stripe
       - stripe-linux
     image_templates:
-      - "stripe/stripe-cli:latest"
-      - "stripe/stripe-cli:{{ .Tag }}"
+      - "stripe/stripe-cli:latest-amd64"
+      - "stripe/stripe-cli:{{ .Tag }}-amd64"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -87,8 +87,8 @@ dockers:
       - stripe
       - stripe-linux-arm
     image_templates:
-      - "stripe/stripe-cli:latest"
-      - "stripe/stripe-cli:{{ .Tag }}"
+      - "stripe/stripe-cli:latest-arm64"
+      - "stripe/stripe-cli:{{ .Tag }}-arm64"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
