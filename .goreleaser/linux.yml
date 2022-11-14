@@ -81,7 +81,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=repository=https://github.com/stripe/stripe-cli"
       - "--label=homepage=https://stripe.com"
-      - "--platform=linux/amd64"
   - goos: linux
     goarch: arm64
     ids:
@@ -98,7 +97,6 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=repository=https://github.com/stripe/stripe-cli"
       - "--label=homepage=https://stripe.com"
-      - "--platform=linux/arm64"
 docker_manifests:
   - name_template: "stripe/stripe-cli:latest"
     image_templates:
