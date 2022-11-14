@@ -28,6 +28,10 @@ jobs:
 
   build-linux:
     runs-on: ubuntu-latest
+    env:
+      # https://goreleaser.com/customization/docker_manifest/
+      DOCKER_CLI_EXPERIMENTAL: "enabled"
+
     steps:
       - name: Code checkout
         uses: actions/checkout@v2
