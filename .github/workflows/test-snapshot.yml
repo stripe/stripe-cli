@@ -38,7 +38,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: v0.184.0
-          args: release -f .goreleaser/linux.yml --rm-dist --snapshot
+          args: release -f .goreleaser/linux.yml --rm-dist --snapshot --debug
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
