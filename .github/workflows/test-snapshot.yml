@@ -1,9 +1,7 @@
 # Running goreleaser with the snapshot flag allows us to run some custom validations
 # on our build without publishing: https://goreleaser.com/customization/snapshots/
-# TODO -- verify docker builds
-# TODO -- add so it only runs when we update the goreleaser directory.
 
-name: test-gorelease
+name: test-snapshot
 
 on:
   push:
@@ -13,8 +11,6 @@ on:
     paths:
     - 'goreleaser/**'
 
-# TODO -- it would be nice if we could verify pulling the docker images from other machines
-# by actually publishing the docker image to a test namespace
 jobs:
   build-linux:
     runs-on: ubuntu-latest
