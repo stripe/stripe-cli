@@ -3,15 +3,13 @@
 
 name: test-snapshot
 
-on: [push, pull_request]
-
-# on:
-#   push:
-#     paths:
-#     - '.goreleaser/**'
-#   pull_request:
-#     paths:
-#     - 'goreleaser/**'
+on:
+  push:
+    paths:
+    - '.goreleaser/**'
+  pull_request:
+    paths:
+    - 'goreleaser/**'
 
 jobs:
   build-linux:
@@ -42,7 +40,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: v0.184.0
-          args: release -f .goreleaser/linux.yml --rm-dist --snapshot --debug
+          args: release -f .goreleaser/linux.yml --rm-dist --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
