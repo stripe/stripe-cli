@@ -3,13 +3,15 @@
 
 name: test-snapshot
 
-on:
-  push:
-    paths:
-    - '.goreleaser/**'
-  pull_request:
-    paths:
-    - 'goreleaser/**'
+on: [push, pull_request]
+
+# on:
+#   push:
+#     paths:
+#     - '.goreleaser/**'
+#   pull_request:
+#     paths:
+#     - 'goreleaser/**'
 
 jobs:
   build-linux:
