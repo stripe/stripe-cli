@@ -1,0 +1,31 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_method_attach",
+      "path": "/v1/payment_methods/pm_card_visa/attach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
+      }
+    },
+    {
+      "name": "payment_method_detach",
+      "path": "/v1/payment_methods/${payment_method_attach.id}/detach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
+      }
+    }
+  ]
+}

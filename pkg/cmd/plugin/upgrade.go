@@ -53,7 +53,10 @@ func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
 	})
 
 	// Refresh the plugin info before proceeding
-	plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, uc.apiBaseURL)
+	if err := plugins.RefreshPluginManifest(cmd.Context(), uc.cfg, uc.fs, uc.apiBaseURL); err != nil {
+		log.Debug(err)
+		fmt.Println("Unable to refresh plugin manifest, continuing with cached manifest...")
+	}
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), uc.cfg, uc.fs, args[0])
 

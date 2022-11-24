@@ -61,6 +61,23 @@ func TestRefreshPluginManifest(t *testing.T) {
 	require.Equal(t, updatedManifestContent, pluginManifestContent)
 }
 
+func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	emptyManifestContent := []byte{}
+	testServers := setUpServers(t, emptyManifestContent)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.NotNil(t, err)
+	require.ErrorContains(t, err, "Received an empty plugin manifest")
+	// We expect the /plugins.toml file in the test fs has NOT been updated
+	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
+	require.Nil(t, err)
+	require.NotEqual(t, emptyManifestContent, pluginManifestContent)
+}
+
 func TestIsPluginCommand(t *testing.T) {
 	pluginCmd := &cobra.Command{
 		Annotations: map[string]string{"scope": "plugin"},
