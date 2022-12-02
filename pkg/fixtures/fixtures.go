@@ -43,7 +43,7 @@ type FixtureRequest struct {
 	Path              string                 `json:"path"`
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
-	Context           string                 `json:"context"`
+	Context           string                 `json:"context,omitempty"`
 }
 
 // FixtureQuery describes the query in fixture request
