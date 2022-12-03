@@ -44,6 +44,7 @@ type FixtureRequest struct {
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
 	IdempotencyKey    string                 `json:"idempotency_key"`
+	Context           string                 `json:"context,omitempty"`
 }
 
 // FixtureQuery describes the query in fixture request
