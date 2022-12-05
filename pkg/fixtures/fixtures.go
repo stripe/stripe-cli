@@ -43,7 +43,7 @@ type FixtureRequest struct {
 	Path              string                 `json:"path"`
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
-	IdempotencyKey    string                 `json:"idempotency_key,omitempy"`
+	IdempotencyKey    string                 `json:"idempotency_key,omitempty"`
 	Context           string                 `json:"context,omitempty"`
 }
 
