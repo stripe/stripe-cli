@@ -136,7 +136,7 @@ protoc-ci: protoc-gen-all
 	@git diff-index -G"^[^\/]|^[\/][^\/]" --quiet HEAD
 .PHONY: proto-ci
 
-protoc-gen-all: protoc-gen-code protoc-gen-docs
+protoc-gen-all: protoc-gen-code protoc-gen-docs protoc-gen-plugin
 .PHONY: protoc-gen-all
 
 # Generate protobuf go code

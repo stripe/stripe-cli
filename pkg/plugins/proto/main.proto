@@ -17,7 +17,6 @@ message RunCommandResponse {
 
 message AdditionalInfo {
   IsTerminal is_terminal = 1;
-  string asdf_testing = 2;
 }
 
 message IsTerminal {
