@@ -48,7 +48,11 @@ docker run --rm -it stripe/stripe-cli version
 stripe version x.y.z (beta)
 ```
 
-**Passwod Store Setup on Linux Dockers**
+**Password Store Setup with Docker**
+
+While test mode doesn’t require password store, you will need to set it up if you wish to perform live mode request.
+
+> You can also make live mode requests on a per command basis by attaching the `--api-key` flag.
 
 1. Create `entrypoint.sh`
 
@@ -56,20 +60,22 @@ stripe version x.y.z (beta)
 #!/bin/sh
 if ! [ -f ~/.gnupg/trustdb.gpg ] ; then
   chmod 700 ~/.gnupg/
-  gpg --quick-generate-key <gpg-key-alias-name> # ie. gpg --quick-generate-key stripe-live
+  gpg --quick-generate-key stripe-live # This will generate a gpg key called "stripe-live"
 fi
 if ! [ -f ~/.password-store/.gpg-id ] ; then
-  pass init <gpg-key-alias-name> # ie. pass init stripe-live
+  pass init stripe-live # This will initialize a password store record named "stripe-live", using the gpg key above
+  pass insert stripe-live # This will insert value for the password store "stripe-live", which we will put Stripe Live Secret Key in
 fi
 
 string="$@"
 liveflag="--live"
 
 if [ -z "${string##*$liveflag*}" ] ;then
-  pass show default.live_mode_api_key >/dev/null
+  OPTS="--api-key $(pass show stripe-live)" # This will use the content of the password store "stripe-live" which was inserted in line 8
 fi
 
-/bin/stripe  $@
+#pass insert stripe-live
+/bin/stripe  $@ $OPTS
 ```
 
 2. Create docker file `Dockerfile-cli`
