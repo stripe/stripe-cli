@@ -65,14 +65,15 @@ nfpms:
     formats:
       - rpm
 dockers:
-  - goos: linux
+  - use: buildx
+    goos: linux
     goarch: amd64
     ids:
       - stripe
       - stripe-linux
     image_templates:
-      - "stripe/stripe-cli:latest"
-      - "stripe/stripe-cli:{{ .Tag }}"
+      - "stripe/stripe-cli:latest-amd64"
+      - "stripe/stripe-cli:{{ .Tag }}-amd64"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -81,14 +82,16 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=repository=https://github.com/stripe/stripe-cli"
       - "--label=homepage=https://stripe.com"
-  - goos: linux
+      - "--platform=linux/amd64"
+  - use: buildx
+    goos: linux
     goarch: arm64
     ids:
       - stripe
       - stripe-linux-arm
     image_templates:
-      - "stripe/stripe-cli:latest"
-      - "stripe/stripe-cli:{{ .Tag }}"
+      - "stripe/stripe-cli:latest-arm64"
+      - "stripe/stripe-cli:{{ .Tag }}-arm64"
     build_flag_templates:
       - "--pull"
       - "--label=org.opencontainers.image.created={{.Date}}"
@@ -97,6 +100,17 @@ dockers:
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--label=repository=https://github.com/stripe/stripe-cli"
       - "--label=homepage=https://stripe.com"
+      - "--platform=linux/arm64/v8"
+docker_manifests:
+  - name_template: "stripe/stripe-cli:latest"
+    image_templates:
+      - "stripe/stripe-cli:latest-amd64"
+      - "stripe/stripe-cli:latest-arm64"
+  - name_template: "stripe/stripe-cli:{{ .Tag }}"
+    image_templates:
+      - "stripe/stripe-cli:{{ .Tag }}-amd64"
+      - "stripe/stripe-cli:{{ .Tag }}-arm64"
+
 publishers:
   - name: deb
     ids:

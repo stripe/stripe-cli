@@ -28,6 +28,7 @@ const testFixture = `
 			"name": "cust_bender",
 			"path": "/v1/customers",
 			"method": "post",
+			"idempotency_key": "create_cust_bender",
 			"params": {
 				"name": "Bender Bending Rodriguez",
 				"email": "bender@planex.com",
@@ -90,6 +91,18 @@ func TestMakeRequest(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
 		case customersPath:
+			if req.Header.Get("Idempotency-Key") == "" {
+				t.Errorf("Idempotency key not sent")
+			}
+
+			if err := req.ParseForm(); err != nil {
+				t.Error(err)
+			}
+
+			if req.Form.Get("metadata[_created_by_fixture]") == "" {
+				t.Error("Metadata not set")
+			}
+
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))

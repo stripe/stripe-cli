@@ -119,6 +119,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
+	if err := validatePluginManifest(body); err != nil {
+		return err
+	}
+
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
@@ -128,6 +132,18 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
+	return nil
+}
+
+func validatePluginManifest(body []byte) error {
+	var manifestBody PluginList
+
+	if err := toml.Unmarshal(body, &manifestBody); err != nil {
+		return fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+	}
+	if len(manifestBody.Plugins) == 0 {
+		return fmt.Errorf("Received an empty plugin manifest")
+	}
 	return nil
 }
 

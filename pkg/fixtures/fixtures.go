@@ -44,6 +44,8 @@ type FixtureRequest struct {
 	Path              string                 `json:"path"`
 	Method            string                 `json:"method"`
 	Params            map[string]interface{} `json:"params"`
+	IdempotencyKey    string                 `json:"idempotency_key,omitempty"`
+	Context           string                 `json:"context,omitempty"`
 }
 
 // FixtureQuery describes the query in fixture request
@@ -334,19 +336,10 @@ func (fxt *Fixture) UpdateEnv() error {
 }
 
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
-	var rp requests.RequestParameters
-
-	if data.Method == "post" && !fxt.FixtureData.Meta.ExcludeMetadata {
-		now := time.Now().String()
-		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
-		rp.AppendData([]string{metadata})
-	}
-
 	req := requests.Base{
 		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,
 		APIBaseURL:     fxt.BaseURL,
-		Parameters:     rp,
 	}
 
 	path, err := fxt.ParsePath(data)
@@ -356,9 +349,22 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 	}
 
 	params, err := fxt.createParams(data.Params, apiVersion)
-
 	if err != nil {
 		return make([]byte, 0), err
+	}
+
+	if data.Method == "post" && !fxt.FixtureData.Meta.ExcludeMetadata {
+		now := time.Now().String()
+		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
+		params.AppendData([]string{metadata})
+	}
+
+	if data.IdempotencyKey != "" {
+		idempotencyKey, err := fxt.ParseQuery(data.IdempotencyKey)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing idempotency_key field: %w", err)
+		}
+		params.SetIdempotency(idempotencyKey)
 	}
 
 	return req.MakeRequest(ctx, fxt.APIKey, path, params, true)
