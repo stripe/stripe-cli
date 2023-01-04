@@ -50,7 +50,7 @@ stripe version x.y.z (beta)
 
 **Password Store Setup with Docker**
 
-While test mode doesn’t require password store, you will need to set it up if you wish to perform live mode request.
+While test mode doesn’t require password store, you will need to set it up if you wish to perform live mode requests.
 
 > You can also make live mode requests on a per command basis by attaching the `--api-key` flag.
 
@@ -98,8 +98,6 @@ docker build -t stripe-cli -f Dockerfile-cli .
 ```sh
 docker run --rm -it -v stripe-config://root/.config/stripe/ -v stripe-gpg://root/.gnupg/ -v stripe-pass://root/.password-store/ stripe-cli $command
 ```
-
-for more details on initializing password store with gpg key, see https://gist.github.com/flbuddymooreiv/a4f24da7e0c3552942ff
 
 ### Without package managers
 
