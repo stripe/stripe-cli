@@ -78,7 +78,7 @@ fi
 /bin/stripe  $@ $OPTS
 ```
 
-2. Create docker file `Dockerfile-cli`
+2. Create a docker file `Dockerfile-cli`
 
 ```sh
 FROM  stripe/stripe-cli:vx.x.x
@@ -87,17 +87,17 @@ COPY  ./entrypoint.sh  /entrypoint.sh
 ENTRYPOINT  [ "/entrypoint.sh" ]
 ```
 
-3. Build docker image
+3. Build the docker image
 
 ```sh
 docker build -t stripe-cli -f Dockerfile-cli .
 ```
 
-4. Run docker image with pass volumes
+4. Run the docker image with password volumes, replacing `$command` with the appropraite Stripe CLI command (i.e `customers list`)
 
 ```sh
 docker run --rm -it -v stripe-config://root/.config/stripe/ -v stripe-gpg://root/.gnupg/ -v stripe-pass://root/.password-store/ stripe-cli $command
-```
+``` 
 
 > For live mode requests append `--live` after `$command`.
 
