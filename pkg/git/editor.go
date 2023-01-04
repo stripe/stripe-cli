@@ -16,31 +16,24 @@ with the user's default IDE.
 Accepts the name for the temporary file, and the file content.
 The name of the file will have a random string appended, or if an empty string is provided, the name will just be that random string. If the filename string includes a "*", the random string replaces the last "*".
 */
-func NewTemporaryFileEditor(name string, content []byte) (editor *Editor, err error) {
-	defaultIDE, err := getDefaultGitEditor()
+func NewTemporaryFileEditor(filename string, content []byte) (editor *Editor, err error) {
+	temporaryFile, err := createTemporaryFile(filename, content)
 	if err != nil {
 		return nil, err
 	}
 
-	filename, err := createTemporaryFile(name, content)
-	if err != nil {
-		return nil, err
-	}
-
-	editor = &Editor{
-		Program:           defaultIDE,
-		File:              filename,
-		usesTemporaryFile: true,
-	}
-
-	return
+	return newEditor(temporaryFile, true)
 }
 
 /*
 NewEditor creates a new Editor instance, which can be used to launch the file with the user's default IDE.
 Accepts the name for the file.
 */
-func NewEditor(filename string) (editor *Editor, err error) {
+func NewEditor(file string) (editor *Editor, err error) {
+	return newEditor(file, false)
+}
+
+func newEditor(file string, usesTemporaryFile bool) (editor *Editor, err error) {
 	defaultIDE, err := getDefaultGitEditor()
 	if err != nil {
 		return nil, err
@@ -48,8 +41,8 @@ func NewEditor(filename string) (editor *Editor, err error) {
 
 	editor = &Editor{
 		Program:           defaultIDE,
-		File:              filename,
-		usesTemporaryFile: false,
+		File:              file,
+		usesTemporaryFile: usesTemporaryFile,
 	}
 
 	return
