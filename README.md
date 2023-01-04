@@ -99,6 +99,8 @@ docker build -t stripe-cli -f Dockerfile-cli .
 docker run --rm -it -v stripe-config://root/.config/stripe/ -v stripe-gpg://root/.gnupg/ -v stripe-pass://root/.password-store/ stripe-cli $command
 ```
 
+> For live mode requests append `--live` after `$command`.
+
 ### Without package managers
 
 Instructions are also available for installing and using the CLI [without a package manager](https://github.com/stripe/stripe-cli/wiki/Installing-and-updating#without-a-package-manager).
