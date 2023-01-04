@@ -30,6 +30,7 @@ cover: test
 
 # gofmt and goimports all go files
 fmt:
+	go install golang.org/x/tools/cmd/goimports@v0.5
 	find . -not -path "./rpc*" -not -path "./pkg/plugins/proto*" -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w -local github.com/stripe/stripe-cli "$$file"; done
 .PHONY: fmt
 
@@ -122,7 +123,7 @@ clean:
 protoc:
 	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
-	@go get github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+	@go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5
 	@go mod tidy
 	make protoc-gen-all
 .PHONY: protoc
