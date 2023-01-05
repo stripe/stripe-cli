@@ -51,49 +51,57 @@ func makeRecipe(fs afero.Fs, path string, integrations []string, languages []str
 	}
 }
 
+type testSampleLister struct {
+	data map[string]*SampleData
+}
+
+func (l testSampleLister) ListSamples(mode string) (map[string]*SampleData, error) {
+	return l.data, nil
+}
 func TestInitialize(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "accept-a-payment"
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 		Git: &mockGit{
 			fs: fs,
 		},
-		SamplesList: map[string]*SampleData{
-			"accept-a-payment": {
-				Name:        "accept-a-payment",
-				Description: "Learn how to accept a payment",
-				URL:         "https://github.com/stripe-samples/accept-a-payment",
-			},
+		SampleLister: testSampleLister{
+			data: map[string]*SampleData{
+				"accept-a-payment": {
+					Name:        "accept-a-payment",
+					Description: "Learn how to accept a payment",
+					URL:         "https://github.com/stripe-samples/accept-a-payment",
+				}},
 		},
 	}
 
-	err := sample.Initialize(name)
+	err := sampleManager.Initialize(name)
 	assert.Nil(t, err)
-	assert.ElementsMatch(t, sample.SampleConfig.IntegrationNames(), []string{"webhooks", "no-webhooks"})
-	assert.ElementsMatch(t, sample.SampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
+	assert.ElementsMatch(t, sampleManager.SampleConfig.IntegrationNames(), []string{"webhooks", "no-webhooks"})
+	assert.ElementsMatch(t, sampleManager.SampleConfig.integrationServers("webhooks"), []string{"node", "python", "ruby"})
 }
 
 func TestInitializeFailsWithEmptyName(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := ""
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 		Git: &mockGit{
 			fs: fs,
 		},
-		SamplesList: map[string]*SampleData{
+		SampleLister: testSampleLister{map[string]*SampleData{
 			"accept-a-payment": {
 				Name:        "accept-a-payment",
 				Description: "Learn how to accept a payment",
 				URL:         "https://github.com/stripe-samples/accept-a-payment",
 			},
-		},
+		}},
 	}
 
-	err := sample.Initialize(name)
+	err := sampleManager.Initialize(name)
 	assert.Equal(t, errors.New("Sample name is empty"), err)
 }
 
@@ -101,20 +109,20 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	name := "foo"
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 		Git: &mockGit{
 			fs: fs,
 		},
-		SamplesList: map[string]*SampleData{
+		SampleLister: testSampleLister{map[string]*SampleData{
 			"accept-a-payment": {
 				Name:        "accept-a-payment",
 				Description: "Learn how to accept a payment",
 				URL:         "https://github.com/stripe-samples/accept-a-payment",
 			},
-		},
+		}},
 	}
 
-	err := sample.Initialize(name)
+	err := sampleManager.Initialize(name)
 	assert.Equal(t, errors.New("Sample foo does not exist"), err)
 }

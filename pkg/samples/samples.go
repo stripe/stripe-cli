@@ -96,37 +96,66 @@ type SelectedConfig struct {
 	Server      string
 }
 
-// Samples stores the information for the selected sample in addition to the
-// selected configuration option to copy over
-type Samples struct {
+// SampleManager supports operations related to listing, cloning, and setup of
+// Stripe samples. It contains configurable dependencies like `SampleLister`
+// and `Fs` so that the behavior can be customized in tests or plugins, and it
+// contains stateful properties like `repoPath`, `selectedConfig` that keep
+// track of the operation as it goes along.
+type SampleManager struct {
+	// Holds functionality for getting the list of stripe sample repositories.
+	SampleLister SampleLister
+	// Function to populating the .env file in a created sample
+	// (using information from the user's stripe-cli config)
+	ConfigureDotEnv func(ctx context.Context, config *config.Config) (map[string]string, error)
+	// Filesystem operations
+	Fs afero.Fs
+	// Git operations.
+	Git g.Interface
+
 	Config *config.Config
-	Fs     afero.Fs
-	Git    g.Interface
 
-	name string
+	// Filesystem path where the sample repository is cloned
+	repoPath string
 
-	// source repository to clone from
-	repo string
-
-	SamplesList map[string]*SampleData
-
+	// Information (defined by the sample) about what integrations it supports
+	// and how it ought to be set up by the CLI.
 	SampleConfig SampleConfig
 
+	// Represents the user selection about which part of the sample to copy over during
+	// setup.
 	SelectedConfig SelectedConfig
 }
 
-// Initialize get the sample ready for the user to copy. It:
+// NewSampleManager creates a SampleManager with default behavior. I.e. it uses
+// go-git for git operations, it uses the standard filesystem implementation,
+// it lists samples by fetching samples.json from the standard samples-list
+// repository, and it copies .env files in the standard way
+func NewSampleManager(config *config.Config) (*SampleManager, error) {
+	sampleManager := &SampleManager{
+		Fs:              afero.NewOsFs(),
+		Git:             gitpkg.Operations{},
+		ConfigureDotEnv: ConfigureDotEnv,
+		Config:          config,
+	}
+
+	cacheFolder, err := sampleManager.appCacheFolder("samples-list")
+	if err != nil {
+		return nil, err
+	}
+	sampleManager.SampleLister = newCachedGithubSampleLister(sampleManager, sampleListGithubURL, cacheFolder)
+	return sampleManager, nil
+}
+
+// Initialize gets the sample ready for the user to copy. It:
 // 1. creates the sample cache folder if it doesn't exist
-// 2. store the path of the locale cache folder for later use
+// 2. store the path of the local cache folder for later use
 // 3. if the selected app does not exist in the local cache folder, clone it
 // 4. if the selected app does exist in the local cache folder, pull changes
 // 5. parse the sample cli config file
-func (s *Samples) Initialize(app string) error {
+func (s *SampleManager) Initialize(app string) error {
 	if app == "" {
 		return errors.New("Sample name is empty")
 	}
-
-	s.name = app
 
 	appPath, err := s.appCacheFolder(app)
 	if err != nil {
@@ -135,9 +164,9 @@ func (s *Samples) Initialize(app string) error {
 
 	// We still set the repo path here. There are some failure cases
 	// that we can still work with (like no updates or repo already exists)
-	s.repo = appPath
+	s.repoPath = appPath
 
-	list, err := s.getSamples("create")
+	list, err := s.SampleLister.ListSamples("create")
 	if err != nil {
 		return err
 	}
@@ -198,7 +227,7 @@ func (s *Samples) Initialize(app string) error {
 //     the server top-level (example above)
 //   - If the user selects an integration, mirror the structure above for the
 //     selected integration (example above)
-func (s *Samples) Copy(target string) error {
+func (s *SampleManager) Copy(target string) error {
 	integration := s.SelectedConfig.Integration.name()
 
 	if s.SelectedConfig.Integration.hasServers() {
@@ -212,7 +241,7 @@ func (s *Samples) Copy(target string) error {
 			)
 		}
 
-		serverSource := filepath.Join(s.repo, integration, "server", s.SelectedConfig.Server)
+		serverSource := filepath.Join(s.repoPath, integration, "server", s.SelectedConfig.Server)
 		serverDestination := filepath.Join(target, "server")
 
 		err := copy.Copy(serverSource, serverDestination)
@@ -232,7 +261,7 @@ func (s *Samples) Copy(target string) error {
 			)
 		}
 
-		clientSource := filepath.Join(s.repo, integration, "client", s.SelectedConfig.Client)
+		clientSource := filepath.Join(s.repoPath, integration, "client", s.SelectedConfig.Client)
 		clientDestination := filepath.Join(target, "client")
 
 		err := copy.Copy(clientSource, clientDestination)
@@ -241,26 +270,26 @@ func (s *Samples) Copy(target string) error {
 		}
 	}
 
-	filesSource, err := s.GetFiles(filepath.Join(s.repo, integration))
+	filesSource, err := s.GetFiles(filepath.Join(s.repoPath, integration))
 	if err != nil {
 		return err
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repo, integration, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file))
 		if err != nil {
 			return err
 		}
 	}
 
 	// This copies all top-level files specific to the entire sample repo
-	filesSource, err = s.GetFiles(s.repo)
+	filesSource, err = s.GetFiles(s.repoPath)
 	if err != nil {
 		return err
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repo, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file))
 		if err != nil {
 			return err
 		}
@@ -269,9 +298,42 @@ func (s *Samples) Copy(target string) error {
 	return nil
 }
 
-// ConfigureDotEnv takes the .env.example from the provided location and
+// ConfigureDotEnv returns a map of environment variables to copy into the
+// .env file of the target project, based on the user's stripe-cli profile.
+func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]string, error) {
+	publishableKey, _ := config.Profile.GetPublishableKey(false)
+	if publishableKey == "" {
+		return nil, fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
+	}
+
+	apiKey, err := config.Profile.GetAPIKey(false)
+	if err != nil {
+		return nil, err
+	}
+
+	deviceName, err := config.Profile.GetDeviceName()
+	if err != nil {
+		return nil, err
+	}
+
+	authClient := stripeauth.NewClient(apiKey, nil)
+
+	authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		"STRIPE_PUBLISHABLE_KEY": publishableKey,
+		"STRIPE_SECRET_KEY":      apiKey,
+		"STRIPE_WEBHOOK_SECRET":  authSession.Secret,
+		"STATIC_DIR":             "../client",
+	}, nil
+}
+
+// WriteDotEnv takes the .env.example from the provided location and
 // modifies it to automatically configure it for the users settings
-func (s *Samples) ConfigureDotEnv(ctx context.Context, sampleLocation string) error {
+func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) error {
 	if s.SelectedConfig.Integration.hasServers() {
 		if !s.SampleConfig.ConfigureDotEnv {
 			return nil
@@ -290,35 +352,15 @@ func (s *Samples) ConfigureDotEnv(ctx context.Context, sampleLocation string) er
 			return err
 		}
 
-		publishableKey, _ := s.Config.Profile.GetPublishableKey(false)
-		if publishableKey == "" {
-			return fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
-		}
-
-		apiKey, err := s.Config.Profile.GetAPIKey(false)
+		envVars, err := s.ConfigureDotEnv(ctx, s.Config)
 		if err != nil {
 			return err
 		}
-
-		deviceName, err := s.Config.Profile.GetDeviceName()
-		if err != nil {
-			return err
+		for k, v := range envVars {
+			dotenv[k] = v
 		}
-
-		authClient := stripeauth.NewClient(apiKey, nil)
-
-		authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
-		if err != nil {
-			return err
-		}
-
-		dotenv["STRIPE_PUBLISHABLE_KEY"] = publishableKey
-		dotenv["STRIPE_SECRET_KEY"] = apiKey
-		dotenv["STRIPE_WEBHOOK_SECRET"] = authSession.Secret
-		dotenv["STATIC_DIR"] = "../client"
 
 		envFile := filepath.Join(sampleLocation, "server", ".env")
-
 		err = godotenv.Write(dotenv, envFile)
 		if err != nil {
 			return err
@@ -329,13 +371,13 @@ func (s *Samples) ConfigureDotEnv(ctx context.Context, sampleLocation string) er
 }
 
 // PostInstall returns any installation for post installation instructions
-func (s *Samples) PostInstall() string {
+func (s *SampleManager) PostInstall() string {
 	message := s.SampleConfig.PostInstall["message"]
 	return message
 }
 
 // Cleanup performs cleanup for the recently created sample
-func (s *Samples) Cleanup(name string) error {
+func (s *SampleManager) Cleanup(name string) error {
 	fmt.Println("Cleaning up...")
 
 	return s.delete(name)
@@ -343,7 +385,7 @@ func (s *Samples) Cleanup(name string) error {
 
 // DeleteCache forces the local sample cache to refresh in case something
 // goes awry during the initial clone or to clean out stale samples
-func (s *Samples) DeleteCache(sample string) error {
+func (s *SampleManager) DeleteCache(sample string) error {
 	appPath, err := s.appCacheFolder(sample)
 	if err != nil {
 		return err
@@ -368,14 +410,9 @@ func contains(s []string, e string) bool {
 }
 
 // GetSampleConfig returns the available config for this sample
-func GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error) {
-	sample := Samples{
-		Fs:  afero.NewOsFs(),
-		Git: gitpkg.Operations{},
-	}
-
+func (s *SampleManager) GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error) {
 	if forceRefresh {
-		err := sample.DeleteCache(sampleName)
+		err := s.DeleteCache(sampleName)
 		if err != nil {
 			logger := log.Logger{
 				Out: os.Stdout,
@@ -388,7 +425,7 @@ func GetSampleConfig(sampleName string, forceRefresh bool) (*SampleConfig, error
 		}
 	}
 
-	samplesList, err := sample.getSamples("create")
+	samplesList, err := s.SampleLister.ListSamples("create")
 	if err != nil {
 		return nil, err
 	}
@@ -398,10 +435,10 @@ To see supported samples, run 'stripe samples list'`, sampleName)
 		return nil, fmt.Errorf(errorMessage)
 	}
 
-	err = sample.Initialize(sampleName)
+	err = s.Initialize(sampleName)
 	if err != nil {
 		return nil, err
 	}
 
-	return &sample.SampleConfig, nil
+	return &s.SampleConfig, nil
 }
