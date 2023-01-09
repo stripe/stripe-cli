@@ -3,26 +3,24 @@ package rpcservice
 import (
 	"context"
 
-	"github.com/spf13/afero"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/rpc"
 )
 
 // Make overridable for tests
 var fetchRawSampleIntegrations = func(req *rpc.SampleConfigsRequest) ([]samples.SampleConfigIntegration, error) {
-	sample := samples.Samples{
-		Fs:  afero.NewOsFs(),
-		Git: gitpkg.Operations{},
-	}
-	err := sample.Initialize(req.SampleName)
+	sampleManager, err := samples.NewSampleManager(nil)
 	if err != nil {
 		return nil, err
 	}
-	return sample.SampleConfig.Integrations, nil
+	err = sampleManager.Initialize(req.SampleName)
+	if err != nil {
+		return nil, err
+	}
+	return sampleManager.SampleConfig.Integrations, nil
 }
 
 // SampleConfigs returns a list of available configs for a given Stripe sample.

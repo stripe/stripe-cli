@@ -48,19 +48,47 @@ func Names(list map[string]*SampleData) []string {
 	return keys
 }
 
-func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
-	listPath, err := s.appCacheFolder("samples-list")
-	if err != nil {
-		return err
-	}
+// SampleLister gets the list of valid stripe samples. It is used both in
+// `stripe samples list` to show the users what they can do, and in
+// `stripe samples create <name>` in order to look up the repo url corresponding
+// to <name>
+type SampleLister interface {
+	ListSamples(mode string) (map[string]*SampleData, error)
+}
 
-	if _, err := s.Fs.Stat(listPath); os.IsNotExist(err) {
-		err = s.Git.Clone(listPath, sampleListGithubURL)
+type cachedGithubSampleLister struct {
+	// Used for .Fs and .Git
+	s *SampleManager
+
+	// URL like https://github.com/stripe-samples/samples-list.git
+	// expected to contain a repository with a "samples.json" file at the root
+	// with the expected format/contents
+	sampleListGithubURL string
+
+	// Place on the user's filesystem where a cached copy of the repo designated by
+	// https://github.com/stripe-samples/samples-list.git will be stored
+	cacheFolder string
+
+	// In-memory cache of the sample data contained in samples.json
+	result map[string]*SampleData
+}
+
+func newCachedGithubSampleLister(s *SampleManager, sampleListGithubURL string, cacheFolder string) SampleLister {
+	return &cachedGithubSampleLister{
+		s:                   s,
+		sampleListGithubURL: sampleListGithubURL,
+		cacheFolder:         cacheFolder,
+	}
+}
+
+func (l *cachedGithubSampleLister) getFromCacheOrGithub(noNetwork bool) (map[string]*SampleData, error) {
+	if _, err := l.s.Fs.Stat(l.cacheFolder); os.IsNotExist(err) {
+		err = l.s.Git.Clone(l.cacheFolder, l.sampleListGithubURL)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else if !noNetwork {
-		err := s.Git.Pull(listPath)
+		err := l.s.Git.Pull(l.cacheFolder)
 		if err != nil {
 			if err != nil {
 				switch e := err.Error(); e {
@@ -69,38 +97,38 @@ func (s *Samples) getFromCacheOrGithub(noNetwork bool) error {
 					// error to continue as normal
 					break
 				default:
-					return err
+					return nil, err
 				}
 			}
 		}
 	}
 
-	file, err := afero.ReadFile(s.Fs, filepath.Join(listPath, "samples.json"))
+	file, err := afero.ReadFile(l.s.Fs, filepath.Join(l.cacheFolder, "samples.json"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var allSamples SampleList
 
 	err = json.Unmarshal(file, &allSamples)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	s.SamplesList = make(map[string]*SampleData)
+	ret := make(map[string]*SampleData)
 	for i, sample := range allSamples.Samples {
-		s.SamplesList[sample.Name] = &allSamples.Samples[i]
+		ret[sample.Name] = &allSamples.Samples[i]
 	}
 
-	return nil
+	return ret, nil
 }
 
-func (s *Samples) getSamples(mode string) (map[string]*SampleData, error) {
-	if len(s.SamplesList) != 0 {
-		return s.SamplesList, nil
+func (l *cachedGithubSampleLister) ListSamples(mode string) (map[string]*SampleData, error) {
+	if len(l.result) != 0 {
+		return l.result, nil
 	}
 
-	// Reduce the amount of request to GitHub
+	// Reduce the number of requests to GitHub
 	var noNetwork bool
 	switch mode {
 	case "list":
@@ -111,13 +139,12 @@ func (s *Samples) getSamples(mode string) (map[string]*SampleData, error) {
 		noNetwork = false
 	}
 
-	// Get the samples from the cache or GitHub
-	err := s.getFromCacheOrGithub(noNetwork)
+	ret, err := l.getFromCacheOrGithub(noNetwork)
 	if err != nil {
 		return nil, err
 	}
-
-	return s.SamplesList, nil
+	l.result = ret
+	return ret, nil
 }
 
 // GetSamples returns a list that contains a mapping of Stripe Samples that
@@ -125,10 +152,16 @@ func (s *Samples) getSamples(mode string) (map[string]*SampleData, error) {
 // TODO: what do we want to name these for it to be easier for users to select?
 // TODO: should we group them by products for easier exploring?
 func GetSamples(mode string) (map[string]*SampleData, error) {
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs:  afero.NewOsFs(),
 		Git: gitpkg.Operations{},
 	}
 
-	return sample.getSamples(mode)
+	cacheFolder, err := sampleManager.appCacheFolder("samples-list")
+	if err != nil {
+		return nil, err
+	}
+	sampleManager.SampleLister = newCachedGithubSampleLister(&sampleManager, sampleListGithubURL, cacheFolder)
+
+	return sampleManager.SampleLister.ListSamples(mode)
 }
