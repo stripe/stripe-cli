@@ -33,7 +33,6 @@ var createSample = func(sample *samples.SampleManager) createSampleFunc {
 
 // SampleCreate creates a sample at a given path with the selected integration, client language, and server language.
 func (srv *RPCService) SampleCreate(ctx context.Context, req *rpc.SampleCreateRequest) (*rpc.SampleCreateResponse, error) {
-
 	sampleManager, err := samples.NewSampleManager(srv.cfg.UserCfg)
 	if err != nil {
 		return nil, err
