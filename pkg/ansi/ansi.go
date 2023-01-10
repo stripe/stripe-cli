@@ -36,6 +36,12 @@ var DisableColors = false
 // `CLICOLOR_FORCE`. Cf. https://bixense.com/clicolors/
 var EnvironmentOverrideColors = true
 
+// HostStdoutIsTerminal enables color on stdout output when this package is used in a plugin.
+var HostStdoutIsTerminal = true
+
+// HostStderrIsTerminal enables color on stderr output when this package is used in a plugin.
+var HostStderrIsTerminal = true
+
 //
 // Public functions
 //
@@ -193,8 +199,30 @@ func isPlugin() bool {
 	return isSet
 }
 
+// isHostTerminal returns true if called by a plugin and
+// the host's stdout/stderr stream has not been piped or redirected
+func isHostTerminal(w io.Writer) bool {
+	if !isPlugin() {
+		return false
+	}
+
+	v, ok := w.(*os.File)
+	if !ok {
+		return false
+	}
+
+	switch v.Fd() {
+	case os.Stdout.Fd():
+		return HostStdoutIsTerminal
+	case os.Stderr.Fd():
+		return HostStderrIsTerminal
+	default:
+		return false
+	}
+}
+
 func shouldUseColors(w io.Writer) bool {
-	useColors := ForceColors || isTerminal(w) || isPlugin()
+	useColors := ForceColors || isTerminal(w) || isHostTerminal(w)
 
 	if EnvironmentOverrideColors {
 		force, ok := os.LookupEnv("CLICOLOR_FORCE")
