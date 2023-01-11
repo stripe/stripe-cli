@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/alessio/shellescape"
-	"github.com/stripe/stripe-cli/pkg/validators"
 	exec "golang.org/x/sys/execabs"
+
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 const (
