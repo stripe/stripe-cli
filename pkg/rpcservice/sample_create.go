@@ -10,20 +10,42 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var getSampleConfig = samples.GetSampleConfig
-var createSample = samples.Create
+// We declare these functions here insteoad of calling `sample.GetSampleConfig` or `sample.Create` directly
+// so that they can be overridden during tests
+
+type getSampleConfigFunc = func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error)
+
+var getSampleConfig = func(sample *samples.SampleManager) getSampleConfigFunc {
+	return sample.GetSampleConfig
+}
+
+type createSampleFunc = func(
+	ctx context.Context,
+	sampleName string,
+	selectedConfig *samples.SelectedConfig,
+	destination string,
+	forceRefresh bool,
+	resultChan chan<- samples.CreationResult)
+
+var createSample = func(sample *samples.SampleManager) createSampleFunc {
+	return sample.Create
+}
 
 // SampleCreate creates a sample at a given path with the selected integration, client language, and server language.
 func (srv *RPCService) SampleCreate(ctx context.Context, req *rpc.SampleCreateRequest) (*rpc.SampleCreateResponse, error) {
+	sampleManager, err := samples.NewSampleManager(srv.cfg.UserCfg)
+	if err != nil {
+		return nil, err
+	}
+
 	selectedConfig, err := getSelectedConfig(req)
 	if err != nil {
 		return nil, err
 	}
 
 	resultChan := make(chan samples.CreationResult)
-	go createSample(
+	go createSample(sampleManager)(
 		ctx,
-		srv.cfg.UserCfg,
 		req.SampleName,
 		selectedConfig,
 		req.Path,
@@ -47,8 +69,12 @@ func (srv *RPCService) SampleCreate(ctx context.Context, req *rpc.SampleCreateRe
 }
 
 func getSelectedConfig(req *rpc.SampleCreateRequest) (*samples.SelectedConfig, error) {
+	sampleManager, err := samples.NewSampleManager(nil)
+	if err != nil {
+		return nil, err
+	}
 	// Validate the selected integration exists
-	sampleConfig, err := getSampleConfig(req.SampleName, req.ForceRefresh)
+	sampleConfig, err := getSampleConfig(sampleManager)(req.SampleName, req.ForceRefresh)
 	if err != nil {
 		return nil, err
 	}

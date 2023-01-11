@@ -14,8 +14,11 @@ import (
 	"runtime"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
@@ -65,6 +68,9 @@ func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugi
 	pluginSetMap := map[int]hcplugin.PluginSet{
 		1: {
 			"main": &CLIPluginV1{},
+		},
+		2: {
+			"main": &CLIPluginGRPC{},
 		},
 	}
 
@@ -372,6 +378,9 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		Logger:           pluginLogger,
 		Managed:          true,
 		StartTimeout:     timeout,
+		AllowedProtocols: []hcplugin.Protocol{
+			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
+		},
 	}
 
 	sum, err := p.getChecksum(version)
@@ -402,14 +411,26 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	}
 
 	// get the native golang interface for the plugin so that we can call it directly
-	dispatcher := raw.(Dispatcher)
-
-	// run the command that the user specified via args
-	_, err = dispatcher.RunCommand(args)
-
-	if err != nil {
-		return err
+	switch d := raw.(type) {
+	case Dispatcher:
+		logger.Debug("negotiated net/rpc with plugin process")
+		if _, err = d.RunCommand(args); err != nil {
+			return err
+		}
+	case DispatcherGRPC:
+		logger.Debug("negotiated gRPC with plugin process")
+		additionalInfo := &proto.AdditionalInfo{
+			IsTerminal: &proto.IsTerminal{
+				Stdin:  term.IsTerminal(int(os.Stdin.Fd())),
+				Stdout: term.IsTerminal(int(os.Stdout.Fd())),
+				Stderr: term.IsTerminal(int(os.Stderr.Fd())),
+			},
+		}
+		if err = d.RunCommand(additionalInfo, args); err != nil {
+			return err
+		}
+	default:
+		return errors.New("dispensed an unknown plugin interface")
 	}
-
 	return nil
 }

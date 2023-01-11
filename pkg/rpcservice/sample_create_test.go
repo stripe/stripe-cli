@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/samples"
 	"github.com/stripe/stripe-cli/rpc"
 
@@ -16,31 +15,34 @@ import (
 )
 
 func TestSampleCreateSucceeds(t *testing.T) {
-	getSampleConfig = func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
-		return &samples.SampleConfig{
-			Integrations: []samples.SampleConfigIntegration{
-				{
-					Name:    "foo",
-					Clients: []string{"foo-client-1", "foo-client-2"},
-					Servers: []string{"foo-server-1", "foo-server-2"},
+	getSampleConfig = func(sample *samples.SampleManager) getSampleConfigFunc {
+		return func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
+			return &samples.SampleConfig{
+				Integrations: []samples.SampleConfigIntegration{
+					{
+						Name:    "foo",
+						Clients: []string{"foo-client-1", "foo-client-2"},
+						Servers: []string{"foo-server-1", "foo-server-2"},
+					},
 				},
-			},
-		}, nil
+			}, nil
+		}
 	}
 
-	createSample = func(
-		ctx context.Context,
-		config *config.Config,
-		sampleName string,
-		selectedConfig *samples.SelectedConfig,
-		destination string,
-		forceRefresh bool,
-		resultChan chan<- samples.CreationResult) {
-		defer close(resultChan)
-		resultChan <- samples.CreationResult{
-			State:       samples.Done,
-			Path:        "my path",
-			PostInstall: "my post install message",
+	createSample = func(sample *samples.SampleManager) createSampleFunc {
+		return func(
+			ctx context.Context,
+			sampleName string,
+			selectedConfig *samples.SelectedConfig,
+			destination string,
+			forceRefresh bool,
+			resultChan chan<- samples.CreationResult) {
+			defer close(resultChan)
+			resultChan <- samples.CreationResult{
+				State:       samples.Done,
+				Path:        "my path",
+				PostInstall: "my post install message",
+			}
 		}
 	}
 
@@ -72,22 +74,25 @@ func TestSampleCreateSucceeds(t *testing.T) {
 }
 
 func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
-	getSampleConfig = func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
-		return nil, errors.New("getSampleConfig failed")
+	getSampleConfig = func(_ *samples.SampleManager) getSampleConfigFunc {
+		return func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
+			return nil, errors.New("getSampleConfig failed")
+		}
 	}
 
-	createSample = func(
-		ctx context.Context,
-		config *config.Config,
-		sampleName string,
-		selectedConfig *samples.SelectedConfig,
-		destination string, forceRefresh bool,
-		resultChan chan<- samples.CreationResult) {
-		defer close(resultChan)
-		resultChan <- samples.CreationResult{
-			State:       samples.Done,
-			Path:        "my path",
-			PostInstall: "my post install message",
+	createSample = func(_ *samples.SampleManager) createSampleFunc {
+		return func(
+			ctx context.Context,
+			sampleName string,
+			selectedConfig *samples.SelectedConfig,
+			destination string, forceRefresh bool,
+			resultChan chan<- samples.CreationResult) {
+			defer close(resultChan)
+			resultChan <- samples.CreationResult{
+				State:       samples.Done,
+				Path:        "my path",
+				PostInstall: "my post install message",
+			}
 		}
 	}
 
@@ -113,30 +118,33 @@ func TestSampleCreateFailsWhenGetSampleConfigFails(t *testing.T) {
 }
 
 func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
-	getSampleConfig = func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
-		return &samples.SampleConfig{
-			Integrations: []samples.SampleConfigIntegration{
-				{
-					Name:    "foo",
-					Clients: []string{"foo-client-1", "foo-client-2"},
-					Servers: []string{"foo-server-1", "foo-server-2"},
+	getSampleConfig = func(_ *samples.SampleManager) getSampleConfigFunc {
+		return func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
+			return &samples.SampleConfig{
+				Integrations: []samples.SampleConfigIntegration{
+					{
+						Name:    "foo",
+						Clients: []string{"foo-client-1", "foo-client-2"},
+						Servers: []string{"foo-server-1", "foo-server-2"},
+					},
 				},
-			},
-		}, nil
+			}, nil
+		}
 	}
 
-	createSample = func(
-		ctx context.Context,
-		config *config.Config,
-		sampleName string,
-		selectedConfig *samples.SelectedConfig,
-		destination string, forceRefresh bool,
-		resultChan chan<- samples.CreationResult) {
-		defer close(resultChan)
-		resultChan <- samples.CreationResult{
-			State:       samples.Done,
-			Path:        "my path",
-			PostInstall: "my post install message",
+	createSample = func(_ *samples.SampleManager) createSampleFunc {
+		return func(
+			ctx context.Context,
+			sampleName string,
+			selectedConfig *samples.SelectedConfig,
+			destination string, forceRefresh bool,
+			resultChan chan<- samples.CreationResult) {
+			defer close(resultChan)
+			resultChan <- samples.CreationResult{
+				State:       samples.Done,
+				Path:        "my path",
+				PostInstall: "my post install message",
+			}
 		}
 	}
 
@@ -162,29 +170,32 @@ func TestSampleCreateFailsWhenIntegrationDoesntExist(t *testing.T) {
 }
 
 func TestSampleCreateFailsWhenCreateSampleFails(t *testing.T) {
-	getSampleConfig = func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
-		return &samples.SampleConfig{
-			Integrations: []samples.SampleConfigIntegration{
-				{
-					Name:    "foo",
-					Clients: []string{"foo-client-1", "foo-client-2"},
-					Servers: []string{"foo-server-1", "foo-server-2"},
+	getSampleConfig = func(_ *samples.SampleManager) getSampleConfigFunc {
+		return func(sampleName string, forceRefresh bool) (*samples.SampleConfig, error) {
+			return &samples.SampleConfig{
+				Integrations: []samples.SampleConfigIntegration{
+					{
+						Name:    "foo",
+						Clients: []string{"foo-client-1", "foo-client-2"},
+						Servers: []string{"foo-server-1", "foo-server-2"},
+					},
 				},
-			},
-		}, nil
+			}, nil
+		}
 	}
 
-	createSample = func(
-		ctx context.Context,
-		config *config.Config,
-		sampleName string,
-		selectedConfig *samples.SelectedConfig,
-		destination string,
-		forceRefresh bool,
-		resultChan chan<- samples.CreationResult) {
-		defer close(resultChan)
-		resultChan <- samples.CreationResult{
-			Err: errors.New("createSample failed"),
+	createSample = func(_ *samples.SampleManager) createSampleFunc {
+		return func(
+			ctx context.Context,
+			sampleName string,
+			selectedConfig *samples.SelectedConfig,
+			destination string,
+			forceRefresh bool,
+			resultChan chan<- samples.CreationResult) {
+			defer close(resultChan)
+			resultChan <- samples.CreationResult{
+				Err: errors.New("createSample failed"),
+			}
 		}
 	}
 

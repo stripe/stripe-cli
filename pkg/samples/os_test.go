@@ -31,13 +31,13 @@ func TestCacheFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
 
 	expectedPath := filepath.Join(home(), ".config", "stripe", "samples-cache")
 
-	path, _ := sample.cacheFolder()
+	path, _ := sampleManager.cacheFolder()
 	pathExists, err := afero.Exists(fs, path)
 
 	assert.Equal(t, expectedPath, path)
@@ -49,13 +49,13 @@ func TestAppCacheFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
 
 	expectedPath := filepath.Join(home(), ".config", "stripe", "samples-cache", "bender")
 
-	path, err := sample.appCacheFolder("bender")
+	path, err := sampleManager.appCacheFolder("bender")
 
 	assert.Equal(t, expectedPath, path)
 	assert.Nil(t, err)
@@ -65,14 +65,14 @@ func TestMakeFolder(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
 
 	wd, _ := os.Getwd()
 	expectedPath := filepath.Join(wd, "bender")
 
-	path, err := sample.MakeFolder("bender")
+	path, err := sampleManager.MakeFolder("bender")
 	exists, _ := afero.Exists(fs, path)
 
 	assert.Equal(t, expectedPath, path)
@@ -80,7 +80,7 @@ func TestMakeFolder(t *testing.T) {
 	assert.Nil(t, err)
 
 	absolutePath := filepath.Join(wd, "absolute/path/indeed")
-	path, err = sample.MakeFolder(absolutePath)
+	path, err = sampleManager.MakeFolder(absolutePath)
 	exists, _ = afero.Exists(fs, path)
 	assert.Equal(t, absolutePath, path)
 	assert.True(t, exists)
@@ -91,7 +91,7 @@ func TestMakeFolderExists(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	viper.SetFs(fs)
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
 
@@ -99,7 +99,7 @@ func TestMakeFolderExists(t *testing.T) {
 	preExistingPath := filepath.Join(wd, "bender")
 	fs.MkdirAll(preExistingPath, os.ModePerm)
 
-	path, err := sample.MakeFolder("bender")
+	path, err := sampleManager.MakeFolder("bender")
 
 	assert.Equal(t, "", path)
 	assert.EqualError(t, err, fmt.Sprintf("Path already exists, aborting: %s", preExistingPath))
@@ -113,10 +113,10 @@ func TestGetFolders(t *testing.T) {
 	fs.Mkdir("leela", os.ModePerm)
 	fs.Create("zoidberg")
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
-	folders, err := sample.GetFolders("/")
+	folders, err := sampleManager.GetFolders("/")
 
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, []string{"bender", "fry", "leela"}, folders)
@@ -130,10 +130,10 @@ func TestGetFiles(t *testing.T) {
 	fs.Create("leela")
 	fs.Mkdir("zoidberg", os.ModePerm)
 
-	sample := Samples{
+	sampleManager := SampleManager{
 		Fs: fs,
 	}
-	files, err := sample.GetFiles("/")
+	files, err := sampleManager.GetFiles("/")
 
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, []string{"bender", "fry", "leela"}, files)

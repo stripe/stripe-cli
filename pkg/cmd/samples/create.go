@@ -64,7 +64,13 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 	color := ansi.Color(os.Stdout)
 	spinner := ansi.StartNewSpinner(fmt.Sprintf("Downloading %s", selectedSample), os.Stdout)
 
-	sampleConfig, err := samples.GetSampleConfig(selectedSample, cc.forceRefresh)
+	sampleManager, err := samples.NewSampleManager(cc.cfg)
+	if err != nil {
+		ansi.StopSpinner(spinner, "", os.Stdout)
+		return err
+	}
+
+	sampleConfig, err := sampleManager.GetSampleConfig(selectedSample, cc.forceRefresh)
 	if err != nil {
 		ansi.StopSpinner(spinner, "", os.Stdout)
 		return err
@@ -83,9 +89,8 @@ func (cc *CreateCmd) runCreateCmd(cmd *cobra.Command, args []string) error {
 
 	resultChan := make(chan samples.CreationResult)
 
-	go samples.Create(
+	go sampleManager.Create(
 		cmd.Context(),
-		cc.cfg,
 		selectedSample,
 		selectedConfig,
 		destination,

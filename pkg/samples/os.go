@@ -10,7 +10,7 @@ import (
 )
 
 // cacheFolder is the local directory where we place local copies of samples
-func (s *Samples) cacheFolder() (string, error) {
+func (s *SampleManager) cacheFolder() (string, error) {
 	configPath := s.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	cachePath := filepath.Join(configPath, "samples-cache")
 
@@ -25,7 +25,7 @@ func (s *Samples) cacheFolder() (string, error) {
 }
 
 // appCacheFolder returns the full path of the local cache with the recipe name
-func (s *Samples) appCacheFolder(app string) (string, error) {
+func (s *SampleManager) appCacheFolder(app string) (string, error) {
 	path, err := s.cacheFolder()
 	if err != nil {
 		return "", err
@@ -37,7 +37,7 @@ func (s *Samples) appCacheFolder(app string) (string, error) {
 }
 
 // MakeFolder creates the folder that'll contain the Stripe app the user is creating
-func (s *Samples) MakeFolder(name string) (string, error) {
+func (s *SampleManager) MakeFolder(name string) (string, error) {
 	appFolder, err := filepath.Abs(name)
 	if err != nil {
 		return "", err
@@ -55,7 +55,7 @@ func (s *Samples) MakeFolder(name string) (string, error) {
 }
 
 // GetFolders returns a list of all folders for a given path
-func (s *Samples) GetFolders(path string) ([]string, error) {
+func (s *SampleManager) GetFolders(path string) ([]string, error) {
 	var dir []string
 
 	files, err := afero.ReadDir(s.Fs, path)
@@ -74,7 +74,7 @@ func (s *Samples) GetFolders(path string) ([]string, error) {
 }
 
 // GetFiles returns a list of files for a given path
-func (s *Samples) GetFiles(path string) ([]string, error) {
+func (s *SampleManager) GetFiles(path string) ([]string, error) {
 	var file []string
 
 	files, err := afero.ReadDir(s.Fs, path)
@@ -92,7 +92,7 @@ func (s *Samples) GetFiles(path string) ([]string, error) {
 	return file, nil
 }
 
-func (s *Samples) delete(name string) error {
+func (s *SampleManager) delete(name string) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
