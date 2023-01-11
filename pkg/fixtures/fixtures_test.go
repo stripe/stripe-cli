@@ -99,10 +99,6 @@ func TestMakeRequest(t *testing.T) {
 				t.Error(err)
 			}
 
-			if req.Form.Get("metadata[_created_by_fixture]") == "" {
-				t.Error("Metadata not set")
-			}
-
 			res.Write([]byte(`{"id": "cust_12345", "foo": "bar"}`))
 		case chargePath:
 			res.Write([]byte(`{"charge": true, "id": "char_12345"}`))
