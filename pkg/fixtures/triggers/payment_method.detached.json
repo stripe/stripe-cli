@@ -1,6 +1,7 @@
 {
   "_meta": {
-    "template_version": 0
+    "template_version": 0,
+    "exclude_metadata": true
   },
   "fixtures": [
     {
