@@ -1,0 +1,90 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods",
+      "method": "post",
+      "params": {
+        "type": "card",
+        "card": {
+          "number": "4000000000000341",
+          "exp_month": 10,
+          "exp_year": 2026,
+          "cvc": 314
+        }
+      }
+    },
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "name": "SubscriptionTestCustomer",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "attach_payment_method",
+      "path": "/v1/payment_methods/${payment_method:id}/attach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
+      }
+    },
+    {
+      "name": "default_payment_method",
+      "path": "/v1/customers/${customer:id}",
+      "method": "post",
+      "params": {
+        "invoice_settings": {
+          "default_payment_method": "${payment_method:id}"
+        }
+      }
+    },
+    {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+        "name": "SubscriptionTestProduct",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "nickname": "SubscriptionTestPrice",
+        "product": "${product:id}",
+        "unit_amount": 2000,
+        "currency": "usd",
+        "recurring": {
+          "interval": "month"
+        }
+      }
+    },
+    {
+      "name": "subscription",
+      "path": "/v1/subscriptions",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "items": [
+          {
+            "price": "${price:id}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "invoice",
+      "path": "/v1/invoices/${subscription:latest_invoice}",
+      "method": "get",
+      "params": {}
+    }
+  ]
+}
