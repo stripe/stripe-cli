@@ -76,6 +76,8 @@ var Events = map[string]string{
 	"subscription_schedule.created":            "triggers/subscription_schedule.created.json",
 	"subscription_schedule.released":           "triggers/subscription_schedule.released.json",
 	"subscription_schedule.updated":            "triggers/subscription_schedule.updated.json",
+	"subscription.payment_succeeded":           "triggers/subscription.payment_succeeded.json",
+	"subscription.payment_failed":              "triggers/subscription.payment_failed.json",
 	"quote.created":                            "triggers/quote.created.json",
 	"quote.canceled":                           "triggers/quote.canceled.json",
 	"quote.finalized":                          "triggers/quote.finalized.json",

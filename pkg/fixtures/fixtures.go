@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/imdario/mergo"
 	"github.com/joho/godotenv"
@@ -351,12 +350,6 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 	params, err := fxt.createParams(data.Params, apiVersion)
 	if err != nil {
 		return make([]byte, 0), err
-	}
-
-	if data.Method == "post" && !fxt.FixtureData.Meta.ExcludeMetadata {
-		now := time.Now().String()
-		metadata := fmt.Sprintf("metadata[_created_by_fixture]=%s", now)
-		params.AppendData([]string{metadata})
 	}
 
 	if data.IdempotencyKey != "" {
