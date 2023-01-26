@@ -1,0 +1,18 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "transfer",
+      "path": "/v1/transfers",
+      "method": "post",
+      "params": {
+        "amount": "999",
+        "currency": "eur",
+        "destination": "acct_1032D82eZvKYlo2C",
+        "description": "(created by Stripe CLI)"
+      }
+    }
+  ]
+}
