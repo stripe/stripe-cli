@@ -7,3 +7,5 @@ coverage.txt
 /stripe-windows.exe
 default_cassette.yaml
 .vscode/*.log
+stripe-completion.bash
+stripe-completion.zsh
