@@ -78,7 +78,7 @@ func TestReadProjectDefault(t *testing.T) {
 }
 
 func TestReadProjectFromEnv(t *testing.T) {
-	// Run this test in a subprocess since there is a race condition with other tests
+	// Run this test in a subprocess since side effects from other tests interfere with this
 	if os.Getenv("BE_TestReadProjectFromEnv") == "1" {
 		os.Setenv("STRIPE_PROJECT_NAME", "from-env")
 		defer os.Unsetenv("STRIPE_PROJECT_NAME")
