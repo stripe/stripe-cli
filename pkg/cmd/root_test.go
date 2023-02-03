@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -77,12 +78,22 @@ func TestReadProjectDefault(t *testing.T) {
 }
 
 func TestReadProjectFromEnv(t *testing.T) {
-	os.Setenv("STRIPE_PROJECT_NAME", "from-env")
-	defer os.Unsetenv("STRIPE_PROJECT_NAME")
+	// Run this test in a subprocess since there is a race condition with other tests
+	if os.Getenv("BE_TestReadProjectFromEnv") == "1" {
+		os.Setenv("STRIPE_PROJECT_NAME", "from-env")
+		defer os.Unsetenv("STRIPE_PROJECT_NAME")
 
-	executeCommand(rootCmd, "version")
+		executeCommand(rootCmd, "version")
 
-	require.Equal(t, Config.Profile.ProfileName, "from-env")
+		require.Equal(t, Config.Profile.ProfileName, "from-env")
+		return
+	}
+	cmd := exec.Command(os.Args[0], "-test.run=TestReadProjectFromEnv")
+	cmd.Env = append(os.Environ(), "BE_TestReadProjectFromEnv=1")
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("process ran with err %v, want success", err)
+	}
 }
 
 func TestReadProjectFromFlag(t *testing.T) {
