@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "verification_session",
+      "path": "/v1/identity/verification_sessions",
+      "method": "post",
+      "params": {
+        "type": "document",
+        "options[document][require_matching_selfie]": true,
+        "return_url": "https://stripe.com"
+      }
+    },
+    {
+      "name": "verification_session_redacted",
+      "path": "/v1/identity/verification_sessions/${verification_session:id}/redact",
+      "method": "post"
+    }
+  ]
+}
