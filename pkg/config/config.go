@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
-
-	exec "golang.org/x/sys/execabs"
 
 	"github.com/99designs/keyring"
 	"github.com/BurntSushi/toml"
@@ -19,6 +16,7 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/git"
 )
 
 // ColorOn represnets the on-state for colors
@@ -172,32 +170,14 @@ func (c *Config) InitConfig() {
 
 // EditConfig opens the configuration file in the default editor.
 func (c *Config) EditConfig() error {
-	var err error
-
 	fmt.Println("Opening config file:", c.ProfilesFile)
 
-	switch runtime.GOOS {
-	case "darwin", "linux":
-		editor := os.Getenv("EDITOR")
-		if editor == "" {
-			editor = "vi"
-		}
-
-		cmd := exec.Command(editor, c.ProfilesFile)
-		// Some editors detect whether they have control of stdin/out and will
-		// fail if they do not.
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-
-		return cmd.Run()
-	case "windows":
-		// As far as I can tell, Windows doesn't have an easily accesible or
-		// comparable option to $EDITOR, so default to notepad for now
-		err = exec.Command("notepad", c.ProfilesFile).Run()
-	default:
-		err = fmt.Errorf("unsupported platform")
+	editor, err := git.NewEditor(c.ProfilesFile)
+	if err != nil {
+		return err
 	}
 
+	_, err = editor.EditContent()
 	return err
 }
 

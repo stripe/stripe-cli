@@ -28,6 +28,9 @@ message TriggerRequest {
 
   // Specify API Version for fixture
   string api_version = 8;
+
+  // Whether or not to edit the fixture directly in git's default IDE
+  bool edit = 9;
 }
 
 message TriggerResponse {
