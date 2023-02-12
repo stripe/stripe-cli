@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/tidwall/gjson"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 // FixtureQuery describes the query in fixture request
