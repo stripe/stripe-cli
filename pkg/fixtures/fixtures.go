@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
@@ -45,14 +45,6 @@ type FixtureRequest struct {
 	Params            map[string]interface{} `json:"params"`
 	IdempotencyKey    string                 `json:"idempotency_key,omitempty"`
 	Context           string                 `json:"context,omitempty"`
-}
-
-// FixtureQuery describes the query in fixture request
-type FixtureQuery struct {
-	Match        string // The substring that matched the query pattern regex
-	Name         string
-	Query        string
-	DefaultValue string
 }
 
 // Fixture contains a mapping of an individual fixtures responses for querying
@@ -341,7 +333,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		APIBaseURL:     fxt.BaseURL,
 	}
 
-	path, err := fxt.ParsePath(data)
+	path, err := parsers.ParsePath(data.Path, fxt.Responses)
 
 	if err != nil {
 		return make([]byte, 0), err
@@ -353,7 +345,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 	}
 
 	if data.IdempotencyKey != "" {
-		idempotencyKey, err := fxt.ParseQuery(data.IdempotencyKey)
+		idempotencyKey, err := parsers.ParseQuery(data.IdempotencyKey, fxt.Responses)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing idempotency_key field: %w", err)
 		}
@@ -365,7 +357,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 
 func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	parsed, err := fxt.ParseInterface(params)
+	parsed, err := parsers.ParseInterface(params, fxt.Responses)
 	if err != nil {
 		return &requestParams, err
 	}
@@ -378,30 +370,6 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 	}
 
 	return &requestParams, nil
-}
-
-func getEnvVar(query FixtureQuery) (string, error) {
-	key := query.Query
-	// Check if env variable is present
-	envValue := os.Getenv(key)
-	if envValue == "" {
-		// Try to load from .env file
-		dir, err := os.Getwd()
-		if err != nil {
-			dir = ""
-		}
-		err = godotenv.Load(path.Join(dir, ".env"))
-		if err != nil {
-			return "", nil
-		}
-		envValue = os.Getenv(key)
-	}
-	if envValue == "" {
-		fmt.Printf("No value for env var: %s\n", key)
-		return "", nil
-	}
-
-	return envValue, nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
@@ -429,7 +397,7 @@ func (fxt *Fixture) updateEnv(env map[string]string) error {
 	}
 
 	for key, value := range env {
-		parsed, err := fxt.ParseQuery(value)
+		parsed, err := parsers.ParseQuery(value, fxt.Responses)
 		if err != nil {
 			return err
 		}
