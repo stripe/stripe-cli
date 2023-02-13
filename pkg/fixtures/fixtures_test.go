@@ -368,66 +368,6 @@ CUST_ID="char_12345"`
 	assert.Equal(t, expected, string(output))
 }
 
-func TestToFixtureQuery(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected FixtureQuery
-		didMatch bool
-	}{
-		{
-			"/v1/charges",
-			FixtureQuery{},
-			false,
-		},
-		{
-			"/v1/charges/${char_bender:id}/capture",
-			FixtureQuery{"${char_bender:id}", "char_bender", "id", ""},
-			true,
-		},
-		{
-			"${.env:PHONE_NOT_SET|+1234567890}",
-			FixtureQuery{"${.env:PHONE_NOT_SET|+1234567890}", ".env", "PHONE_NOT_SET", "+1234567890"},
-			true,
-		},
-		{
-			"/v1/customers/${.env:CUST_ID}",
-			FixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
-			true,
-		},
-		{
-			"${.env:CUST_ID}",
-			FixtureQuery{"${.env:CUST_ID}", ".env", "CUST_ID", ""},
-			true,
-		},
-		{
-			"${cust_bender:subscriptions.data.[0].id}",
-			FixtureQuery{"${cust_bender:subscriptions.data.[0].id}", "cust_bender", "subscriptions.data.[0].id", ""},
-			true,
-		},
-		{
-			"${cust_bender:subscriptions.data.[0].name|Unknown Person}",
-			FixtureQuery{"${cust_bender:subscriptions.data.[0].name|Unknown Person}", "cust_bender", "subscriptions.data.[0].name", "Unknown Person"},
-			true,
-		},
-		{
-			"${cust_bender:billing_details.address.country}",
-			FixtureQuery{"${cust_bender:billing_details.address.country}", "cust_bender", "billing_details.address.country", ""},
-			true,
-		},
-		{
-			"${cust_bender:billing_details.address.country|San Mateo}",
-			FixtureQuery{"${cust_bender:billing_details.address.country|San Mateo}", "cust_bender", "billing_details.address.country", "San Mateo"},
-			true,
-		},
-	}
-
-	for _, test := range tests {
-		actualQuery, actualDidMatch := ToFixtureQuery(test.input)
-		assert.Equal(t, test.expected, actualQuery)
-		assert.Equal(t, test.didMatch, actualDidMatch)
-	}
-}
-
 func TestExecuteReturnsRequestNames(t *testing.T) {
 	fs := afero.NewMemMapFs()
 	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
