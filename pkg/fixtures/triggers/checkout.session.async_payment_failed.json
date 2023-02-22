@@ -19,7 +19,7 @@
       "params": {
         "product": "${product:id}",
         "unit_amount": "1500",
-        "currency": "gbp"
+        "currency": "eur"
       }
     },
     {
@@ -30,7 +30,7 @@
       "params": {
         "success_url": "https://httpbin.org/post",
         "cancel_url": "https://httpbin.org/post",
-        "payment_method_types": ["bacs_debit"],
+        "payment_method_types": ["sepa_debit"],
         "mode": "payment",
         "line_items": [
           {
@@ -65,10 +65,9 @@
       "path": "/v1/payment_methods",
       "method": "post",
       "params": {
-        "type": "bacs_debit",
-        "bacs_debit": {
-          "account_number": "33333335",
-          "sort_code": "108800"
+        "type": "sepa_debit",
+        "sepa_debit": {
+          "iban": "IT60X0542811101000000123456"
         },
         "billing_details": {
           "email": "stripe@example.com",

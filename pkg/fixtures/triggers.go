@@ -88,7 +88,7 @@ var Events = map[string]string{
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
-func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string) (*Fixture, error) {
+func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fixture, err := NewFixtureFromFile(
 		fs,
 		apiKey,
@@ -99,6 +99,7 @@ func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFi
 		override,
 		add,
 		remove,
+		edit,
 	)
 	if err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()
@@ -152,7 +153,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 
 	if len(raw) == 0 {
 		if file, ok := Events[event]; ok {
-			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove)
+			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove, edit)
 			if err != nil {
 				return nil, err
 			}
@@ -162,7 +163,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 				return nil, fmt.Errorf(fmt.Sprintf("The event ‘%s’ is not supported by the Stripe CLI.", event))
 			}
 
-			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, event, skip, override, add, remove)
+			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, event, skip, override, add, remove, edit)
 			if err != nil {
 				return nil, err
 			}
