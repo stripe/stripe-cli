@@ -26,11 +26,13 @@ const stripeCLIAuthPath = "/stripecli/auth"
 7. Move configuration changes to profile package
 */
 
+// Authenticator handles the login flow
 type Authenticator struct {
 	configurer       configurer.IConfigurer
 	asyncInputReader AsyncInputReader
 }
 
+// NewAuthenticator creates a new authenticator object
 func NewAuthenticator(configurer *configurer.Configurer) *Authenticator {
 	return &Authenticator{
 		configurer:       configurer,
