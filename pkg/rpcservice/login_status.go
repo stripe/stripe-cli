@@ -3,15 +3,19 @@ package rpcservice
 import (
 	"context"
 
-	"github.com/stripe/stripe-cli/pkg/login"
+	"github.com/spf13/afero"
+
+	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login/configurer"
+	"github.com/stripe/stripe-cli/pkg/login/polling"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var pollForKey = login.PollForKey
-var configureProfile = login.ConfigureProfile
+var pollForKey = polling.PollForKey
+var configureProfile = saveLoginDetails
 
 // LoginStatus returns when login is successful, or returns an error if failure or timeout.
 func (srv *RPCService) LoginStatus(ctx context.Context, req *rpc.LoginStatusRequest) (*rpc.LoginStatusResponse, error) {
@@ -36,4 +40,9 @@ func (srv *RPCService) LoginStatus(ctx context.Context, req *rpc.LoginStatusRequ
 		DisplayName: displayName,
 		AccountId:   accountID,
 	}, nil
+}
+
+func saveLoginDetails(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configurer := configurer.NewConfigurer(config, afero.NewOsFs())
+	return configurer.SaveLoginDetails(response)
 }

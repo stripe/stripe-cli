@@ -1,4 +1,4 @@
-package login
+package acct
 
 import (
 	"context"

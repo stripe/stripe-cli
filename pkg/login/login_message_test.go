@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 
 const testDisplayName = "test_disp_name"
 
 func TestSuccessMessage(t *testing.T) {
-	account := &Account{
+	account := &acct.Account{
 		ID: "acct_123",
 	}
 	account.Settings.Dashboard.DisplayName = testDisplayName
@@ -28,7 +29,7 @@ func TestSuccessMessage(t *testing.T) {
 }
 
 func TestSuccessMessageNoDisplayName(t *testing.T) {
-	account := &Account{
+	account := &acct.Account{
 		ID: "acct_123",
 	}
 
@@ -42,7 +43,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 }
 
 func TestSuccessMessageBasicMessage(t *testing.T) {
-	account := &Account{}
+	account := &acct.Account{}
 	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
 	require.NoError(t, err)
 	require.Equal(
@@ -56,7 +57,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 
-		account := &Account{
+		account := &acct.Account{
 			ID: "acct_123",
 		}
 		account.Settings.Dashboard.DisplayName = testDisplayName
@@ -80,7 +81,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 
-		account := &Account{
+		account := &acct.Account{
 			ID: "acct_123",
 		}
 

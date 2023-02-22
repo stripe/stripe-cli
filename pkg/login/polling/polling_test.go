@@ -1,4 +1,4 @@
-package login
+package polling
 
 import (
 	"context"

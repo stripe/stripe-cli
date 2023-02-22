@@ -1,4 +1,4 @@
-package login
+package polling
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -28,7 +29,7 @@ type PollAPIKeyResponse struct {
 }
 
 // PollForKey polls Stripe at the specified interval until either the API key is available or we've reached the max attempts.
-func PollForKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*PollAPIKeyResponse, *Account, error) {
+func PollForKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*PollAPIKeyResponse, *acct.Account, error) {
 	var response PollAPIKeyResponse
 
 	if maxAttempts == 0 {
@@ -74,7 +75,7 @@ func PollForKey(ctx context.Context, pollURL string, interval time.Duration, max
 		}
 
 		if response.Redeemed {
-			account := &Account{
+			account := &acct.Account{
 				ID: response.AccountID,
 			}
 
