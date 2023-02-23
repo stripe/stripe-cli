@@ -1,4 +1,4 @@
-package keytransfer
+package keys
 
 import (
 	"path/filepath"

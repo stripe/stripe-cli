@@ -8,7 +8,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
+	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -28,12 +28,12 @@ const stripeCLIAuthPath = "/stripecli/auth"
 
 // Authenticator handles the login flow
 type Authenticator struct {
-	keytransfer      keytransfer.KeyTransfer
+	keytransfer      keys.KeyTransfer
 	asyncInputReader AsyncInputReader
 }
 
 // NewAuthenticator creates a new authenticator object
-func NewAuthenticator(keytransfer keytransfer.KeyTransfer) *Authenticator {
+func NewAuthenticator(keytransfer keys.KeyTransfer) *Authenticator {
 	return &Authenticator{
 		keytransfer:      keytransfer,
 		asyncInputReader: AsyncStdinReader{},
@@ -48,7 +48,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 	var s *spinner.Spinner
 
-	pollResultCh := make(chan keytransfer.AsyncPollResult)
+	pollResultCh := make(chan keys.AsyncPollResult)
 	inputCh := make(chan int)
 
 	if isSSH() || !canOpenBrowser() {

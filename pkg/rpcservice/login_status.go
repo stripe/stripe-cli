@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
+	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-var pollForKey = keytransfer.PollForKey
+var pollForKey = keys.PollForKey
 var configureProfile = saveLoginDetails
 
 // LoginStatus returns when login is successful, or returns an error if failure or timeout.
@@ -41,7 +41,7 @@ func (srv *RPCService) LoginStatus(ctx context.Context, req *rpc.LoginStatusRequ
 	}, nil
 }
 
-func saveLoginDetails(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
-	configurer := keytransfer.NewRAKConfigurer(config, afero.NewOsFs())
+func saveLoginDetails(config *config.Config, response *keys.PollAPIKeyResponse) error {
+	configurer := keys.NewRAKConfigurer(config, afero.NewOsFs())
 	return configurer.SaveLoginDetails(response)
 }

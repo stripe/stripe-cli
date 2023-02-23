@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
+	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 
@@ -88,8 +88,8 @@ func TestLogin(t *testing.T) {
 
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
-	configurer := keytransfer.NewRAKConfigurer(c, afero.NewOsFs())
-	rt := keytransfer.NewRAKTransfer(configurer)
+	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
+	rt := keys.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(rt)
 	auth.asyncInputReader = stubInputReader{}
 
@@ -166,8 +166,8 @@ func TestLoginNoInput(t *testing.T) {
 
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
-	configurer := keytransfer.NewRAKConfigurer(c, afero.NewOsFs())
-	rt := keytransfer.NewRAKTransfer(configurer)
+	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
+	rt := keys.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(rt)
 	auth.asyncInputReader = noInputReader{}
 
