@@ -17,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/configurer"
+	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 
@@ -89,7 +90,8 @@ func TestLogin(t *testing.T) {
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
 	configurer := configurer.NewConfigurer(c, afero.NewOsFs())
-	auth := NewAuthenticator(configurer)
+	kt := keytransfer.NewKeyTransfer(configurer)
+	auth := NewAuthenticator(kt)
 	auth.asyncInputReader = stubInputReader{}
 
 	err = auth.Login(context.Background(), links)
@@ -166,7 +168,8 @@ func TestLoginNoInput(t *testing.T) {
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
 	configurer := configurer.NewConfigurer(c, afero.NewOsFs())
-	auth := NewAuthenticator(configurer)
+	kt := keytransfer.NewKeyTransfer(configurer)
+	auth := NewAuthenticator(kt)
 	auth.asyncInputReader = noInputReader{}
 
 	err = auth.Login(context.Background(), links)

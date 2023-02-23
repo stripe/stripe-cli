@@ -8,7 +8,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/login/configurer"
+	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
@@ -28,14 +28,14 @@ const stripeCLIAuthPath = "/stripecli/auth"
 
 // Authenticator handles the login flow
 type Authenticator struct {
-	configurer       configurer.IConfigurer
+	keytransfer      keytransfer.IKeyTransfer
 	asyncInputReader AsyncInputReader
 }
 
 // NewAuthenticator creates a new authenticator object
-func NewAuthenticator(configurer *configurer.Configurer) *Authenticator {
+func NewAuthenticator(keytransfer keytransfer.IKeyTransfer) *Authenticator {
 	return &Authenticator{
-		configurer:       configurer,
+		keytransfer:      keytransfer,
 		asyncInputReader: AsyncStdinReader{},
 	}
 }
@@ -48,17 +48,17 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 	var s *spinner.Spinner
 
-	pollResultCh := make(chan pollResult)
+	pollResultCh := make(chan keytransfer.AsyncPollResult)
 	inputCh := make(chan int)
 
 	if isSSH() || !canOpenBrowser() {
 		fmt.Printf("To authenticate with Stripe, please go to: %s\n", links.BrowserURL)
 		s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
-		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
+		go a.keytransfer.AsyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	} else {
 		fmt.Printf("Press Enter to open the browser or visit %s (^C to quit)", links.BrowserURL)
 		go a.asyncInputReader.scanln(inputCh)
-		go asyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
+		go a.keytransfer.AsyncPollKey(ctx, links.PollURL, 0, 0, pollResultCh)
 	}
 
 	for {
@@ -73,16 +73,11 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 				s = ansi.StartNewSpinner("Waiting for confirmation...", os.Stdout)
 			}
 		case res := <-pollResultCh:
-			if res.err != nil {
-				return res.err
+			if res.Err != nil {
+				return res.Err
 			}
 
-			err := a.configurer.SaveLoginDetails(res.response)
-			if err != nil {
-				return err
-			}
-
-			message, err := SuccessMessage(ctx, res.account, stripe.DefaultAPIBaseURL, res.response.TestModeAPIKey)
+			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
 			if err != nil {
 				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 				return err
