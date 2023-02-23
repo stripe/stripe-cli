@@ -11,7 +11,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
-	"github.com/stripe/stripe-cli/pkg/login/polling"
+	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
 	"github.com/stripe/stripe-cli/rpc"
 
 	"google.golang.org/grpc"
@@ -25,8 +25,8 @@ func TestLoginStatusSucceeds(t *testing.T) {
 		VerificationCode: "baz",
 	}
 
-	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*polling.PollAPIKeyResponse, *acct.Account, error) {
-		return &polling.PollAPIKeyResponse{}, &acct.Account{
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*keytransfer.PollAPIKeyResponse, *acct.Account, error) {
+		return &keytransfer.PollAPIKeyResponse{}, &acct.Account{
 			ID: "acct_12345",
 			Settings: acct.Settings{
 				Dashboard: acct.Dashboard{
@@ -36,7 +36,7 @@ func TestLoginStatusSucceeds(t *testing.T) {
 		}, nil
 	}
 
-	configureProfile = func(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configureProfile = func(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
 		return nil
 	}
 
@@ -63,8 +63,8 @@ func TestLoginStatusSucceeds(t *testing.T) {
 func TestLoginStatusFailsWhenLinksEmpty(t *testing.T) {
 	links = &login.Links{}
 
-	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*polling.PollAPIKeyResponse, *acct.Account, error) {
-		return &polling.PollAPIKeyResponse{}, &acct.Account{
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*keytransfer.PollAPIKeyResponse, *acct.Account, error) {
+		return &keytransfer.PollAPIKeyResponse{}, &acct.Account{
 			ID: "acct_12345",
 			Settings: acct.Settings{
 				Dashboard: acct.Dashboard{
@@ -74,7 +74,7 @@ func TestLoginStatusFailsWhenLinksEmpty(t *testing.T) {
 		}, nil
 	}
 
-	configureProfile = func(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configureProfile = func(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
 		return nil
 	}
 
@@ -95,8 +95,8 @@ func TestLoginStatusFailsWhenLinksEmpty(t *testing.T) {
 func TestLoginStatusFailsWhenLinksNil(t *testing.T) {
 	links = nil
 
-	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*polling.PollAPIKeyResponse, *acct.Account, error) {
-		return &polling.PollAPIKeyResponse{}, &acct.Account{
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*keytransfer.PollAPIKeyResponse, *acct.Account, error) {
+		return &keytransfer.PollAPIKeyResponse{}, &acct.Account{
 			ID: "acct_12345",
 			Settings: acct.Settings{
 				Dashboard: acct.Dashboard{
@@ -106,7 +106,7 @@ func TestLoginStatusFailsWhenLinksNil(t *testing.T) {
 		}, nil
 	}
 
-	configureProfile = func(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configureProfile = func(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
 		return nil
 	}
 
@@ -127,11 +127,11 @@ func TestLoginStatusFailsWhenLinksNil(t *testing.T) {
 func TestLoginStatusFailsWhenPollFails(t *testing.T) {
 	links = nil
 
-	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*polling.PollAPIKeyResponse, *acct.Account, error) {
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*keytransfer.PollAPIKeyResponse, *acct.Account, error) {
 		return nil, nil, errors.New("pollForKey failed")
 	}
 
-	configureProfile = func(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configureProfile = func(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
 		return nil
 	}
 
@@ -152,8 +152,8 @@ func TestLoginStatusFailsWhenPollFails(t *testing.T) {
 func TestLoginStatusFailsWhenConfigureProfileFails(t *testing.T) {
 	links = nil
 
-	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*polling.PollAPIKeyResponse, *acct.Account, error) {
-		return &polling.PollAPIKeyResponse{}, &acct.Account{
+	pollForKey = func(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int) (*keytransfer.PollAPIKeyResponse, *acct.Account, error) {
+		return &keytransfer.PollAPIKeyResponse{}, &acct.Account{
 			ID: "acct_12345",
 			Settings: acct.Settings{
 				Dashboard: acct.Dashboard{
@@ -163,7 +163,7 @@ func TestLoginStatusFailsWhenConfigureProfileFails(t *testing.T) {
 		}, nil
 	}
 
-	configureProfile = func(config *config.Config, response *polling.PollAPIKeyResponse) error {
+	configureProfile = func(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
 		return errors.New("configureProfile failed")
 	}
 
