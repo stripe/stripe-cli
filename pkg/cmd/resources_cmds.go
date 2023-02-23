@@ -3238,6 +3238,13 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"customer_consent_collected": "boolean",
 		"setup_intent":               "string",
 	}, &Config)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "refund_payment", "/v1/terminal/readers/{reader}/refund_payment", http.MethodPost, map[string]string{
+		"amount":                 "integer",
+		"charge":                 "string",
+		"payment_intent":         "string",
+		"refund_application_fee": "boolean",
+		"reverse_transfer":       "boolean",
+	}, &Config)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "retrieve", "/v1/terminal/readers/{reader}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "set_reader_display", "/v1/terminal/readers/{reader}/set_reader_display", http.MethodPost, map[string]string{
 		"cart.currency": "string",
@@ -3249,8 +3256,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"label": "string",
 	}, &Config)
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
-		"card_present.number": "string",
-		"type":                "string",
+		"card_present.number":    "string",
+		"interac_present.number": "string",
+		"type":                   "string",
 	}, &Config)
 	resource.NewOperationCmd(rTestHelpersCustomersCmd.Cmd, "fund_cash_balance", "/v1/test_helpers/customers/{customer}/fund_cash_balance", http.MethodPost, map[string]string{
 		"amount":    "integer",
@@ -3263,8 +3271,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTestHelpersRefundsCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
-		"card_present.number": "string",
-		"type":                "string",
+		"card_present.number":    "string",
+		"interac_present.number": "string",
+		"type":                   "string",
 	}, &Config)
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "advance", "/v1/test_helpers/test_clocks/{test_clock}/advance", http.MethodPost, map[string]string{
 		"frozen_time": "integer",
