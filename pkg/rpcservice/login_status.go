@@ -42,6 +42,6 @@ func (srv *RPCService) LoginStatus(ctx context.Context, req *rpc.LoginStatusRequ
 }
 
 func saveLoginDetails(config *config.Config, response *keytransfer.PollAPIKeyResponse) error {
-	configurer := keytransfer.NewConfigurer(config, afero.NewOsFs())
+	configurer := keytransfer.NewRAKConfigurer(config, afero.NewOsFs())
 	return configurer.SaveLoginDetails(response)
 }

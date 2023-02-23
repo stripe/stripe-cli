@@ -16,8 +16,8 @@ func Login(ctx context.Context, baseURL string, config *config.Config) error {
 		return err
 	}
 
-	configurer := keytransfer.NewConfigurer(config, afero.NewOsFs())
-	kt := keytransfer.NewRAKTransfer(configurer)
-	auth := NewAuthenticator(kt)
+	configurer := keytransfer.NewRAKConfigurer(config, afero.NewOsFs())
+	rt := keytransfer.NewRAKTransfer(configurer)
+	auth := NewAuthenticator(rt)
 	return auth.Login(ctx, links)
 }

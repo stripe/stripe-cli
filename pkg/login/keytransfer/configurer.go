@@ -7,22 +7,27 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
-// Configurer saves login details into the filesystem after the user has gone through the login flow
-type Configurer struct {
+// Configurer is an interface for saving login details
+type Configurer interface {
+	SaveLoginDetails(response *PollAPIKeyResponse) error
+}
+
+// RAKConfigurer saves login details into the filesystem after the user has gone through the login flow
+type RAKConfigurer struct {
 	cfg *config.Config
 	fs  afero.Fs
 }
 
-// NewConfigurer returns a new configurer
-func NewConfigurer(cfg *config.Config, fs afero.Fs) *Configurer {
-	return &Configurer{
+// NewRAKConfigurer returns a new RAKConfigurer
+func NewRAKConfigurer(cfg *config.Config, fs afero.Fs) *RAKConfigurer {
+	return &RAKConfigurer{
 		cfg: cfg,
 		fs:  fs,
 	}
 }
 
 // SaveLoginDetails function sets config for this profile.
-func (c *Configurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
+func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 	validateErr := validators.APIKey(response.TestModeAPIKey)
 	if validateErr != nil {
 		return validateErr

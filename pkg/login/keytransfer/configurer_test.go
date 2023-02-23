@@ -12,7 +12,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
-func TestConfigurerSaveLoginDetails(t *testing.T) {
+func TestSaveLoginDetails(t *testing.T) {
 	profilesFile := filepath.Join(t.TempDir(), "stripe", "config.toml")
 	c := &config.Config{
 		LogLevel: "info",
@@ -23,7 +23,7 @@ func TestConfigurerSaveLoginDetails(t *testing.T) {
 	}
 	c.InitConfig()
 
-	configurer := NewConfigurer(c, afero.NewOsFs())
+	configurer := NewRAKConfigurer(c, afero.NewOsFs())
 	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
 		Redeemed:               true,
 		AccountID:              "acct_123",

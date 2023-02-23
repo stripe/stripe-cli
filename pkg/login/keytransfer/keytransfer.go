@@ -21,11 +21,11 @@ type KeyTransfer interface {
 
 // RAKTransfer implements KeyTransfer to poll for RAKs
 type RAKTransfer struct {
-	configurer *Configurer
+	configurer Configurer
 }
 
 // NewRAKTransfer creates a new RAKTransfer object
-func NewRAKTransfer(configurer *Configurer) *RAKTransfer {
+func NewRAKTransfer(configurer Configurer) *RAKTransfer {
 	return &RAKTransfer{
 		configurer: configurer,
 	}
