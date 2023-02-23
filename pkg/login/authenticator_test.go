@@ -90,7 +90,7 @@ func TestLogin(t *testing.T) {
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
 	configurer := configurer.NewConfigurer(c, afero.NewOsFs())
-	kt := keytransfer.NewKeyTransfer(configurer)
+	kt := keytransfer.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(kt)
 	auth.asyncInputReader = stubInputReader{}
 
@@ -168,7 +168,7 @@ func TestLoginNoInput(t *testing.T) {
 	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
 	require.NoError(t, err)
 	configurer := configurer.NewConfigurer(c, afero.NewOsFs())
-	kt := keytransfer.NewKeyTransfer(configurer)
+	kt := keytransfer.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(kt)
 	auth.asyncInputReader = noInputReader{}
 

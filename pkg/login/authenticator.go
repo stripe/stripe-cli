@@ -28,12 +28,12 @@ const stripeCLIAuthPath = "/stripecli/auth"
 
 // Authenticator handles the login flow
 type Authenticator struct {
-	keytransfer      keytransfer.IKeyTransfer
+	keytransfer      keytransfer.KeyTransfer
 	asyncInputReader AsyncInputReader
 }
 
 // NewAuthenticator creates a new authenticator object
-func NewAuthenticator(keytransfer keytransfer.IKeyTransfer) *Authenticator {
+func NewAuthenticator(keytransfer keytransfer.KeyTransfer) *Authenticator {
 	return &Authenticator{
 		keytransfer:      keytransfer,
 		asyncInputReader: AsyncStdinReader{},

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/stripe/stripe-cli/pkg/login/acct"
-	"github.com/stripe/stripe-cli/pkg/login/configurer"
-	"github.com/stripe/stripe-cli/pkg/login/polling"
 )
 
 type AsyncPollResult struct {
@@ -15,24 +13,24 @@ type AsyncPollResult struct {
 	Err            error
 }
 
-type IKeyTransfer interface {
+type KeyTransfer interface {
 	AsyncPollKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int, ch chan AsyncPollResult)
 }
 
-type KeyTransfer struct {
-	configurer *configurer.Configurer
+type RAKTransfer struct {
+	configurer *Configurer
 }
 
-func NewKeyTransfer(configurer *configurer.Configurer) *KeyTransfer {
-	return &KeyTransfer{
+func NewRAKTransfer(configurer *Configurer) *RAKTransfer {
+	return &RAKTransfer{
 		configurer: configurer,
 	}
 }
 
-func (kt *KeyTransfer) AsyncPollKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int, ch chan AsyncPollResult) {
+func (rt *RAKTransfer) AsyncPollKey(ctx context.Context, pollURL string, interval time.Duration, maxAttempts int, ch chan AsyncPollResult) {
 	defer close(ch)
 
-	response, account, err := polling.PollForKey(ctx, pollURL, interval, maxAttempts)
+	response, account, err := PollForKey(ctx, pollURL, interval, maxAttempts)
 	if err != nil {
 		ch <- AsyncPollResult{
 			TestModeAPIKey: "",
@@ -42,7 +40,7 @@ func (kt *KeyTransfer) AsyncPollKey(ctx context.Context, pollURL string, interva
 		return
 	}
 
-	err = kt.configurer.SaveLoginDetails(response)
+	err = rt.configurer.SaveLoginDetails(response)
 	if err != nil {
 		ch <- AsyncPollResult{
 			TestModeAPIKey: "",

@@ -1,4 +1,4 @@
-package configurer
+package keytransfer
 
 import (
 	"path/filepath"
@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/login/polling"
 )
 
 func TestConfigurerSaveLoginDetails(t *testing.T) {
@@ -25,7 +24,7 @@ func TestConfigurerSaveLoginDetails(t *testing.T) {
 	c.InitConfig()
 
 	configurer := NewConfigurer(c, afero.NewOsFs())
-	err := configurer.SaveLoginDetails(&polling.PollAPIKeyResponse{
+	err := configurer.SaveLoginDetails(&PollAPIKeyResponse{
 		Redeemed:               true,
 		AccountID:              "acct_123",
 		AccountDisplayName:     "",

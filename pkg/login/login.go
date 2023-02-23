@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/login/configurer"
 	"github.com/stripe/stripe-cli/pkg/login/keytransfer"
 )
 
@@ -17,8 +16,8 @@ func Login(ctx context.Context, baseURL string, config *config.Config) error {
 		return err
 	}
 
-	configurer := configurer.NewConfigurer(config, afero.NewOsFs())
-	kt := keytransfer.NewKeyTransfer(configurer)
+	configurer := keytransfer.NewConfigurer(config, afero.NewOsFs())
+	kt := keytransfer.NewRAKTransfer(configurer)
 	auth := NewAuthenticator(kt)
 	return auth.Login(ctx, links)
 }
