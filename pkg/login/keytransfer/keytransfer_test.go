@@ -3,6 +3,7 @@ package keytransfer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -19,7 +20,7 @@ type mockConfigurer struct {
 }
 
 func (c *mockConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
-	assert.Equal(c.t, true, true, "expected SaveLoginDetails to be called, but wasn't")
+	require.Equal(c.t, true, true, "expected SaveLoginDetails to be called, but wasn't")
 	return nil
 }
 
@@ -114,4 +115,47 @@ func TestAsyncPollKey_ExceedMaxAttempts(t *testing.T) {
 	result := <-ch
 	assert.EqualError(t, result.Err, "exceeded max attempts")
 	assert.Equal(t, uint64(3), atomic.LoadUint64(&attempts))
+}
+
+type errorConfigurer struct {
+	t *testing.T
+}
+
+func (c *errorConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
+	require.Equal(c.t, true, true, "expected SaveLoginDetails to be called, but wasn't")
+	return errors.New("failed to save login details")
+}
+
+func TestAsyncPollKey_ConfigurerError(t *testing.T) {
+	var attempts uint64
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodGet, r.Method)
+
+		atomic.AddUint64(&attempts, 1)
+
+		response := &PollAPIKeyResponse{
+			Redeemed: false,
+		}
+		if atomic.LoadUint64(&attempts) == 2 {
+			response.Redeemed = true
+			response.AccountID = "acct_123"
+			response.AccountDisplayName = "test_disp_name"
+			response.TestModeAPIKey = "sk_test_123"
+			response.TestModePublishableKey = "pk_test_123"
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer ts.Close()
+
+	ch := make(chan AsyncPollResult)
+	configurer := errorConfigurer{t: t}
+	rt := NewRAKTransfer(&configurer)
+
+	go rt.AsyncPollKey(context.Background(), ts.URL, 1*time.Millisecond, 3, ch)
+
+	result := <-ch
+
+	assert.EqualError(t, result.Err, "failed to save login details")
 }
