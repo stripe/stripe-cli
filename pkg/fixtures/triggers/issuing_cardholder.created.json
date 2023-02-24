@@ -8,8 +8,18 @@
       "path": "/v1/issuing/cardholders",
       "method": "post",
       "params": {
-        "name": "mycardholder",
+        "name": "My Cardholder",
         "type": "individual",
+        "individual": {
+          "first_name": "My",
+          "last_name": "Cardholder",
+          "card_issuing": {
+            "user_terms_acceptance": {
+              "date": 1470266163,
+              "ip": "91.121.146.224"
+            }
+          }
+        },
         "billing": {
           "address": {
             "line1": "1234 Main Street",
