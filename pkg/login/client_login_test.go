@@ -8,14 +8,15 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 )
 
@@ -85,7 +86,14 @@ func TestLogin(t *testing.T) {
 
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
-	err := Login(context.Background(), ts.URL, c, &stubInputReader{})
+	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
+	require.NoError(t, err)
+	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
+	rt := keys.NewRAKTransfer(configurer)
+	auth := NewAuthenticator(rt)
+	auth.asyncInputReader = stubInputReader{}
+
+	err = auth.Login(context.Background(), links)
 	require.NoError(t, err)
 	assert.Equal(t, true, didOpenBrowser)
 
@@ -156,85 +164,16 @@ func TestLoginNoInput(t *testing.T) {
 
 	pollURL = fmt.Sprintf("%s%s", ts.URL, "/stripecli/auth/cliauth_123?secret=cliauth_secret")
 
-	err := Login(context.Background(), ts.URL, c, &noInputReader{})
+	links, err := GetLinks(context.Background(), ts.URL, p.DeviceName)
+	require.NoError(t, err)
+	configurer := keys.NewRAKConfigurer(c, afero.NewOsFs())
+	rt := keys.NewRAKTransfer(configurer)
+	auth := NewAuthenticator(rt)
+	auth.asyncInputReader = noInputReader{}
+
+	err = auth.Login(context.Background(), links)
 	require.NoError(t, err)
 	assert.Equal(t, false, didOpenBrowser)
 
 	viper.Reset()
-}
-
-func TestGetLinks(t *testing.T) {
-	expectedLinks := Links{
-		BrowserURL:       "https://stripe.com/browser",
-		PollURL:          "https://stripe.com/poll",
-		VerificationCode: "dinosaur-pineapple-polkadot",
-	}
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
-
-		require.NoError(t, r.ParseForm())
-		require.Equal(t, "test", r.PostFormValue("device_name"))
-
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(expectedLinks)
-	}))
-	defer ts.Close()
-
-	links, err := GetLinks(context.Background(), ts.URL, "test")
-	require.NoError(t, err)
-	require.Equal(t, expectedLinks, *links)
-}
-
-func TestGetLinksHTTPStatusError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer ts.Close()
-
-	links, err := GetLinks(context.Background(), ts.URL, "test")
-	require.EqualError(t, err, "unexpected http status code: 500 ")
-	require.Empty(t, links)
-}
-
-func TestGetLinksRequestError(t *testing.T) {
-	errorString := ""
-
-	if runtime.GOOS == "windows" {
-		errorString = "connectex: No connection could be made because the target machine actively refused it."
-	} else {
-		errorString = "connect: connection refused"
-	}
-
-	// Immediately close the HTTP server so that the request fails.
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
-	ts.Close()
-
-	links, err := GetLinks(context.Background(), ts.URL, "test")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), errorString)
-	require.Empty(t, links)
-}
-
-func TestGetLinksParseError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
-
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-
-		badLinks := make(map[string]int)
-		badLinks["browser_url"] = 10
-		json.NewEncoder(w).Encode(badLinks)
-	}))
-	defer ts.Close()
-
-	links, err := GetLinks(context.Background(), ts.URL, "test")
-	require.EqualError(t, err, "json: cannot unmarshal number into Go struct field Links.browser_url of type string")
-	require.Empty(t, links)
 }

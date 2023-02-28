@@ -367,6 +367,11 @@ func (p *Profile) redactAllLivemodeValues() {
 		// if the config file has expires at date, then it is using the new livemode key storage
 		if viper.IsSet(p.GetConfigField(LiveModeAPIKeyName)) {
 			key := viper.GetString(p.GetConfigField(LiveModeAPIKeyName))
+			if key == "" || len(key) < 12 {
+				p.DeleteConfigField(LiveModeAPIKeyName)
+				return
+			}
+
 			if !isRedactedAPIKey(key) {
 				fmt.Println(color.Yellow(`
 (!) Livemode value found for the field '` + LiveModeAPIKeyName + `' in your config file.
