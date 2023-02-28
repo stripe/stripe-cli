@@ -10,12 +10,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 
 const testAccountName = "test-account-name"
 
 func TestDisplayName(t *testing.T) {
-	account := &Account{
+	account := &acct.Account{
 		ID: "acct_123",
 	}
 	account.Settings.Dashboard.DisplayName = testAccountName
@@ -30,7 +32,7 @@ func TestDisplayName(t *testing.T) {
 }
 
 func TestDisplayNameNoName(t *testing.T) {
-	account := &Account{
+	account := &acct.Account{
 		ID: "acct_123",
 	}
 
@@ -47,7 +49,7 @@ func TestDisplayNameGetAccount(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 
-		account := &Account{
+		account := &acct.Account{
 			ID: "acct_123",
 		}
 		account.Settings.Dashboard.DisplayName = testAccountName
@@ -71,7 +73,7 @@ func TestDisplayNameGetAccountNoName(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "GET", r.Method)
 
-		account := &Account{
+		account := &acct.Account{
 			ID: "acct_123",
 		}
 
