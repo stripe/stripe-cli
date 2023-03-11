@@ -126,6 +126,7 @@ var validEvents = map[string]bool{
 	"payout.created":                                           true,
 	"payout.failed":                                            true,
 	"payout.paid":                                              true,
+	"payout.reconciliation_completed":                          true,
 	"payout.updated":                                           true,
 	"person.created":                                           true,
 	"person.deleted":                                           true,
