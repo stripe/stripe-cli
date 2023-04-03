@@ -21,6 +21,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsIssuingCmd := resource.NewNamespaceCmd(rootCmd, "issuing")
 	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
 	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
+	nsTaxCmd := resource.NewNamespaceCmd(rootCmd, "tax")
 	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
 	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
 	nsTreasuryCmd := resource.NewNamespaceCmd(rootCmd, "treasury")
@@ -109,6 +110,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rRadarValueListsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_lists")
 	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
 	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
+	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
+	rTaxTransactionsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "transactions")
 	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
 	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
 	rTerminalLocationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "locations")
@@ -225,6 +228,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"company.address_kanji.town":                               "string",
 		"company.directors_provided":                               "boolean",
 		"company.executives_provided":                              "boolean",
+		"company.export_license_id":                                "string",
+		"company.export_purpose_code":                              "string",
 		"company.name":                                             "string",
 		"company.name_kana":                                        "string",
 		"company.name_kanji":                                       "string",
@@ -415,6 +420,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"company.address_kanji.town":                               "string",
 		"company.directors_provided":                               "boolean",
 		"company.executives_provided":                              "boolean",
+		"company.export_license_id":                                "string",
+		"company.export_purpose_code":                              "string",
 		"company.name":                                             "string",
 		"company.name_kana":                                        "string",
 		"company.name_kanji":                                       "string",
@@ -2489,6 +2496,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"account.company.address_kanji.town":                        "string",
 		"account.company.directors_provided":                        "boolean",
 		"account.company.executives_provided":                       "boolean",
+		"account.company.export_license_id":                         "string",
+		"account.company.export_purpose_code":                       "string",
 		"account.company.name":                                      "string",
 		"account.company.name_kana":                                 "string",
 		"account.company.name_kanji":                                "string",
@@ -3184,6 +3193,46 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "retrieve", "/v1/reporting/report_runs/{report_run}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "list", "/v1/reporting/report_types", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "retrieve", "/v1/reporting/report_types/{report_type}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "create", "/v1/tax/calculations", http.MethodPost, map[string]string{
+		"currency":                             "string",
+		"customer":                             "string",
+		"customer_details.address.city":        "string",
+		"customer_details.address.country":     "string",
+		"customer_details.address.line1":       "string",
+		"customer_details.address.line2":       "string",
+		"customer_details.address.postal_code": "string",
+		"customer_details.address.state":       "string",
+		"customer_details.address_source":      "string",
+		"customer_details.ip_address":          "string",
+		"customer_details.taxability_override": "string",
+		"shipping_cost.amount":                 "integer",
+		"shipping_cost.shipping_rate":          "string",
+		"shipping_cost.tax_behavior":           "string",
+		"shipping_cost.tax_code":               "string",
+		"tax_date":                             "integer",
+	}, &Config)
+	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "list_line_items", "/v1/tax/calculations/{calculation}/line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_from_calculation", "/v1/tax/transactions/create_from_calculation", http.MethodPost, map[string]string{
+		"calculation": "string",
+		"reference":   "string",
+	}, &Config)
+	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_reversal", "/v1/tax/transactions/create_reversal", http.MethodPost, map[string]string{
+		"mode":                     "string",
+		"original_transaction":     "string",
+		"reference":                "string",
+		"shipping_cost.amount":     "integer",
+		"shipping_cost.amount_tax": "integer",
+	}, &Config)
+	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "list_line_items", "/v1/tax/transactions/{transaction}/line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "retrieve", "/v1/tax/transactions/{transaction}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "create", "/v1/terminal/configurations", http.MethodPost, map[string]string{
 		"bbpos_wisepos_e.splashscreen": "string",
 		"verifone_p400.splashscreen":   "string",
@@ -3269,6 +3318,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"label": "string",
 	}, &Config)
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
+		"amount_tip":             "integer",
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
@@ -3284,6 +3334,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTestHelpersRefundsCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
+		"amount_tip":             "integer",
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
