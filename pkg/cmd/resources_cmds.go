@@ -10,6 +10,10 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 )
 
+func AddResourceCmds(rootCmd *cobra.Command) {
+	addAllResourcesCmds(rootCmd)
+}
+
 func addAllResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, "")
