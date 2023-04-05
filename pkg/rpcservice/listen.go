@@ -39,10 +39,10 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	key, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
-	if err != nil {
-		return status.Error(codes.Unauthenticated, err.Error())
-	}
+	// key, err := srv.cfg.UserCfg.Profile.GetAPIKey(req.Live)
+	// if err != nil {
+	// 	return status.Error(codes.Unauthenticated, err.Error())
+	// }
 
 	logger := log.StandardLogger()
 	proxyVisitor := createProxyVisitor(&stream)
@@ -52,8 +52,8 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	defer cancel()
 
 	p, err := createProxy(ctx, &proxy.Config{
-		DeviceName:            deviceName,
-		Key:                   key,
+		DeviceName: deviceName,
+		// Key:                   key,
 		ForwardURL:            req.ForwardTo,
 		ForwardHeaders:        req.Headers,
 		ForwardConnectURL:     req.ForwardConnectTo,
@@ -67,8 +67,8 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		OutCh:                 proxyOutCh,
 
 		// Hidden for debugging
-		APIBaseURL: "",
-		NoWSS:      false,
+		// APIBaseURL: "",
+		NoWSS: false,
 	})
 
 	if err != nil {

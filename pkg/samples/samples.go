@@ -316,7 +316,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 		return nil, err
 	}
 
-	authClient := stripeauth.NewClient(apiKey, nil)
+	authClient := &stripeauth.Client{} //stripeauth.NewClient(apiKey, nil)
 
 	authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
 	if err != nil {

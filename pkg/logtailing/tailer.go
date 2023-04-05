@@ -91,10 +91,10 @@ func New(cfg *Config) *Tailer {
 
 	return &Tailer{
 		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
-		}),
+		// stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
+		// 	Log:        cfg.Log,
+		// 	APIBaseURL: cfg.APIBaseURL,
+		// }),
 		interruptCh: make(chan os.Signal, 1),
 	}
 }
