@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"reflect"
@@ -19,6 +20,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
 	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -119,7 +121,7 @@ Acceptable values:
 	)
 
 	// Hidden configuration flags, useful for dev/debugging
-	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", "", "Sets the API base URL")
+	tailCmd.Cmd.Flags().StringVar(&tailCmd.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	tailCmd.Cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	tailCmd.Cmd.Flags().BoolVar(&tailCmd.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
@@ -163,6 +165,10 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	apiBase, err := url.Parse(tailCmd.apiBaseURL)
+	if err != nil {
+		return err
+	}
 
 	version.CheckLatestVersion()
 
@@ -173,10 +179,12 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 	logtailingOutCh := make(chan websocket.IElement)
 
 	tailer := logTailing.New(&logTailing.Config{
-		APIBaseURL: tailCmd.apiBaseURL,
+		Client: &stripe.Client{
+			APIKey:  key,
+			BaseURL: apiBase,
+		},
 		DeviceName: deviceName,
 		Filters:    tailCmd.LogFilters,
-		Key:        key,
 		Log:        logger,
 		NoWSS:      tailCmd.noWSS,
 		OutCh:      logtailingOutCh,
