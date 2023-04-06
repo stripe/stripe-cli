@@ -66,7 +66,7 @@ type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 
-	// TODO: document
+	// Client is a configured stripe client used to execute authenticated calls to the Stripe API.
 	Client stripe.RequestPerformer
 
 	// URL to which events are forwarded to
