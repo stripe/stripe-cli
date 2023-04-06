@@ -219,6 +219,8 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 	return rb.MakeRequestWithClient(ctx, client, path, params, errOnStatus)
 }
 
+// MakeRequestWithClient will make a request to the Stripe API with the specific
+// variables given to it using the provided client.
 func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
 	data, err := rb.BuildDataForRequest(params)
 	if err != nil {

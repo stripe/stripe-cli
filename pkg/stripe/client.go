@@ -50,6 +50,8 @@ type Client struct {
 	httpClient *http.Client
 }
 
+// RequestPerformer is an interface for executing requests against the Stripe
+// API, usually satisfied by providing a stripe.Client.
 type RequestPerformer interface {
 	PerformRequest(ctx context.Context, method, path string, params string, configure func(*http.Request) error) (*http.Response, error)
 }
