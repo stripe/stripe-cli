@@ -482,17 +482,16 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	// build endpoint routes
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
-		return nil, fmt.Errorf("TODO: implement configured webhooks")
-		// // build from user's API config
-		// endpoints := getEndpointsFromAPI(ctx, cfg.Key, cfg.APIBaseURL)
-		// if len(endpoints.Data) == 0 {
-		// 	return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
-		// }
-		// var err error
-		// endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
-		// if err != nil {
-		// 	return nil, err
-		// }
+		// build from user's API config
+		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
+		if len(endpoints.Data) == 0 {
+			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
+		}
+		var err error
+		endpointRoutes, err = buildEndpointRoutes(endpoints, parseURL(cfg.ForwardURL), parseURL(cfg.ForwardConnectURL), cfg.ForwardHeaders, cfg.ForwardConnectHeaders)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		if len(cfg.ForwardURL) > 0 {
 			// non-connect endpoints
@@ -664,12 +663,8 @@ func parseURL(url string) string {
 	return url
 }
 
-func getEndpointsFromAPI(ctx context.Context, secretKey, apiBaseURL string) requests.WebhookEndpointList {
-	if apiBaseURL == "" {
-		apiBaseURL = stripe.DefaultAPIBaseURL
-	}
-
-	return requests.WebhookEndpointsList(ctx, apiBaseURL, stripe.APIVersion, secretKey, &config.Profile{})
+func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) requests.WebhookEndpointList {
+	return requests.WebhookEndpointsListWithClient(ctx, client, stripe.APIVersion, &config.Profile{})
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) ([]EndpointRoute, error) {
