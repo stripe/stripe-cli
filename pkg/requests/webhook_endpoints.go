@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
 // WebhookEndpointList contains the list of webhook endpoints for the account
@@ -37,6 +38,25 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey strin
 		APIBaseURL:     baseURL,
 	}
 	resp, _ := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, true)
+	data := WebhookEndpointList{}
+	json.Unmarshal(resp, &data)
+
+	return data
+}
+
+// WebhookEndpointsListWithClient returns all the webhook endpoints on a users' account
+func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPerformer, apiVersion string, profile *config.Profile) WebhookEndpointList {
+	params := &RequestParameters{
+		data:    []string{"limit=30"},
+		version: apiVersion,
+	}
+
+	base := &Base{
+		Profile:        profile,
+		Method:         http.MethodGet,
+		SuppressOutput: true,
+	}
+	resp, _ := base.MakeRequestWithClient(ctx, client, "/v1/webhook_endpoints", params, true)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	g "github.com/stripe/stripe-cli/pkg/git"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
 
@@ -316,7 +318,13 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 		return nil, err
 	}
 
-	authClient := stripeauth.NewClient(apiKey, nil)
+	apiBase, _ := url.Parse(stripe.DefaultAPIBaseURL)
+
+	stripeClient := &stripe.Client{
+		APIKey:  apiKey,
+		BaseURL: apiBase,
+	}
+	authClient := stripeauth.NewClient(stripeClient, nil)
 
 	authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
 	if err != nil {

@@ -65,10 +65,9 @@ func (f FailedToReadResponseError) Error() string {
 type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
-	// Key is the API key used to authenticate with Stripe
-	Key string
-	// URL to which requests are sent
-	APIBaseURL string
+
+	// Client is a configured stripe client used to execute authenticated calls to the Stripe API.
+	Client stripe.RequestPerformer
 
 	// URL to which events are forwarded to
 	ForwardURL string
@@ -220,11 +219,10 @@ func (p *Proxy) Run(ctx context.Context) error {
 }
 
 // GetSessionSecret creates a session and returns the webhook signing secret.
-func GetSessionSecret(ctx context.Context, deviceName, key, baseURL string) (string, error) {
+func GetSessionSecret(ctx context.Context, client stripe.RequestPerformer, deviceName string) (string, error) {
 	p, err := Init(ctx, &Config{
+		Client:           client,
 		DeviceName:       deviceName,
-		Key:              key,
-		APIBaseURL:       baseURL,
 		EndpointRoutes:   make([]EndpointRoute, 0),
 		WebSocketFeature: "webhooks",
 	})
@@ -485,7 +483,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	var endpointRoutes []EndpointRoute
 	if cfg.UseConfiguredWebhooks {
 		// build from user's API config
-		endpoints := getEndpointsFromAPI(ctx, cfg.Key, cfg.APIBaseURL)
+		endpoints := getEndpointsFromAPI(ctx, cfg.Client)
 		if len(endpoints.Data) == 0 {
 			return nil, errors.New("You have not defined any webhook endpoints on your account. Go to the Stripe Dashboard to add some: https://dashboard.stripe.com/test/webhooks")
 		}
@@ -518,9 +516,8 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 
 	p := &Proxy{
 		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
+		stripeAuthClient: stripeauth.NewClient(cfg.Client, &stripeauth.Config{
+			Log: cfg.Log,
 		}),
 		events: convertToMap(cfg.Events),
 	}
@@ -666,12 +663,8 @@ func parseURL(url string) string {
 	return url
 }
 
-func getEndpointsFromAPI(ctx context.Context, secretKey, apiBaseURL string) requests.WebhookEndpointList {
-	if apiBaseURL == "" {
-		apiBaseURL = stripe.DefaultAPIBaseURL
-	}
-
-	return requests.WebhookEndpointsList(ctx, apiBaseURL, stripe.APIVersion, secretKey, &config.Profile{})
+func getEndpointsFromAPI(ctx context.Context, client stripe.RequestPerformer) requests.WebhookEndpointList {
+	return requests.WebhookEndpointsListWithClient(ctx, client, stripe.APIVersion, &config.Profile{})
 }
 
 func buildEndpointRoutes(endpoints requests.WebhookEndpointList, forwardURL, forwardConnectURL string, forwardHeaders []string, forwardConnectHeaders []string) ([]EndpointRoute, error) {

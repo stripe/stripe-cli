@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/proxy"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -81,7 +83,7 @@ Stripe account.`,
 	lc.cmd.Flags().BoolVarP(&lc.skipUpdate, "skip-update", "s", false, "Skip checking latest version of Stripe CLI")
 
 	// Hidden configuration flags, useful for dev/debugging
-	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", "", "Sets the API base URL")
+	lc.cmd.Flags().StringVar(&lc.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
 	lc.cmd.Flags().MarkHidden("api-base") // #nosec G104
 
 	lc.cmd.Flags().BoolVar(&lc.noWSS, "no-wss", false, "Force unencrypted ws:// protocol instead of wss://")
@@ -117,6 +119,10 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	apiBase, err := url.Parse(lc.apiBaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse API base url: %w", err)
+	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
@@ -124,9 +130,14 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
+	client := &stripe.Client{
+		APIKey:  key,
+		BaseURL: apiBase,
+	}
+
 	// --print-secret option
 	if lc.onlyPrintSecret {
-		secret, err := proxy.GetSessionSecret(ctx, deviceName, key, lc.apiBaseURL)
+		secret, err := proxy.GetSessionSecret(ctx, client, deviceName)
 		if err != nil {
 			return err
 		}
@@ -139,14 +150,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	proxyOutCh := make(chan websocket.IElement)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
+		Client:                client,
 		DeviceName:            deviceName,
-		Key:                   key,
 		ForwardURL:            lc.forwardURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
-		APIBaseURL:            lc.apiBaseURL,
 		WebSocketFeature:      webhooksWebSocketFeature,
 		PrintJSON:             lc.printJSON,
 		UseLatestAPIVersion:   lc.latestAPIVersion,

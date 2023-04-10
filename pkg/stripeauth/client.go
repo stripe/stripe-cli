@@ -22,15 +22,11 @@ const stripeCLISessionPath = "/v1/stripecli/sessions"
 // Config contains the optional configuration parameters of a Client.
 type Config struct {
 	Log *log.Logger
-
-	HTTPClient *http.Client
-
-	APIBaseURL string
 }
 
 // Client is the client used to initiate new CLI sessions with Stripe.
 type Client struct {
-	apiKey string
+	client stripe.RequestPerformer
 
 	// Optional configuration parameters
 	cfg *Config
@@ -49,11 +45,6 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
 
-	parsedBaseURL, err := url.Parse(c.cfg.APIBaseURL)
-	if err != nil {
-		return nil, err
-	}
-
 	form := url.Values{}
 	form.Add("device_name", deviceName)
 	form.Add("websocket_feature", websocketFeature)
@@ -70,12 +61,7 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 		form.Add("forward_connect_to_url", devURLMap.ForwardConnectURL)
 	}
 
-	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  c.apiKey,
-	}
-
-	resp, err := client.PerformRequest(ctx, http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
+	resp, err := c.client.PerformRequest(ctx, http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +98,7 @@ func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeat
 }
 
 // NewClient returns a new Client.
-func NewClient(key string, cfg *Config) *Client {
+func NewClient(client stripe.RequestPerformer, cfg *Config) *Client {
 	if cfg == nil {
 		cfg = &Config{}
 	}
@@ -121,12 +107,8 @@ func NewClient(key string, cfg *Config) *Client {
 		cfg.Log = &log.Logger{Out: io.Discard}
 	}
 
-	if cfg.APIBaseURL == "" {
-		cfg.APIBaseURL = stripe.DefaultAPIBaseURL
-	}
-
 	return &Client{
-		apiKey: key,
+		client: client,
 		cfg:    cfg,
 	}
 }

@@ -3,12 +3,14 @@ package rpcservice
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/stripe/stripe-cli/pkg/logtailing"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 	"github.com/stripe/stripe-cli/rpc"
 )
@@ -33,6 +35,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 	if err != nil {
 		return status.Error(codes.Unauthenticated, err.Error())
 	}
+	apiBase, _ := url.Parse(stripe.DefaultAPIBaseURL)
 
 	filters := getFiltersFromReq(req)
 
@@ -43,15 +46,17 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 	logger := log.StandardLogger()
 
 	tailer := createTailer(&logtailing.Config{
+		Client: &stripe.Client{
+			APIKey:  key,
+			BaseURL: apiBase,
+		},
 		DeviceName: deviceName,
 		Filters:    filters,
-		Key:        key,
 		Log:        logger,
 		OutCh:      logtailingOutCh,
 
 		// Hidden for debugging
-		APIBaseURL: "",
-		NoWSS:      false,
+		NoWSS: false,
 	})
 
 	ctx, cancel := context.WithCancel(stream.Context())

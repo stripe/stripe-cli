@@ -189,20 +189,6 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 		return nil
 	}
 
-	return rb.performRequest(ctx, apiKey, path, params, reqBody.String(), errOnStatus, configure)
-}
-
-// MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
-	data, err := rb.BuildDataForRequest(params)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	return rb.performRequest(ctx, apiKey, path, params, data, errOnStatus, nil)
-}
-
-func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -214,6 +200,37 @@ func (rb *Base) performRequest(ctx context.Context, apiKey, path string, params 
 		Verbose: rb.showHeaders,
 	}
 
+	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
+}
+
+// MakeRequest will make a request to the Stripe API with the specific variables given to it
+func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	client := &stripe.Client{
+		BaseURL: parsedBaseURL,
+		APIKey:  apiKey,
+		Verbose: rb.showHeaders,
+	}
+
+	return rb.MakeRequestWithClient(ctx, client, path, params, errOnStatus)
+}
+
+// MakeRequestWithClient will make a request to the Stripe API with the specific
+// variables given to it using the provided client.
+func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, errOnStatus bool) ([]byte, error) {
+	data, err := rb.BuildDataForRequest(params)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	return rb.performRequest(ctx, client, path, params, data, errOnStatus, nil)
+}
+
+func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, data string, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)

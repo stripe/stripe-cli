@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
@@ -30,16 +31,13 @@ type LogFilters struct {
 
 // Config provides the configuration of a log tailer
 type Config struct {
-	APIBaseURL string
+	Client stripe.RequestPerformer
 
 	// DeviceName is the name of the device sent to Stripe to help identify the device
 	DeviceName string
 
 	// Filters for API request logs
 	Filters *LogFilters
-
-	// Key is the API key used to authenticate with Stripe
-	Key string
 
 	// Info, error, etc. logger. Unrelated to API request logs.
 	Log *log.Logger
@@ -91,9 +89,8 @@ func New(cfg *Config) *Tailer {
 
 	return &Tailer{
 		cfg: cfg,
-		stripeAuthClient: stripeauth.NewClient(cfg.Key, &stripeauth.Config{
-			Log:        cfg.Log,
-			APIBaseURL: cfg.APIBaseURL,
+		stripeAuthClient: stripeauth.NewClient(cfg.Client, &stripeauth.Config{
+			Log: cfg.Log,
 		}),
 		interruptCh: make(chan os.Signal, 1),
 	}
