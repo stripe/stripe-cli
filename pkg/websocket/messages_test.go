@@ -13,7 +13,9 @@ func TestUnmarshalUnknownIncomingMsg(t *testing.T) {
 
 	var msg IncomingMessage
 	err := json.Unmarshal([]byte(data), &msg)
-	require.EqualError(t, err, "Unexpected message type: unknown_type")
+	require.NoError(t, err)
+	require.Equal(t, "unknown_type", msg.Unknown.Type)
+	require.Equal(t, data, string(msg.Unknown.Data))
 }
 
 func TestMarshalWebhookEventAck(t *testing.T) {
