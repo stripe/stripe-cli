@@ -28,11 +28,11 @@ func TestFilterWebhookEvent(t *testing.T) {
 		},
 	}
 
-	require.False(t, proxyUseDefault.filterWebhookEvent(evtDefault))
-	require.True(t, proxyUseDefault.filterWebhookEvent(evtLatest))
+	require.False(t, proxyUseDefault.webhookEventProcessor.filterWebhookEvent(evtDefault))
+	require.True(t, proxyUseDefault.webhookEventProcessor.filterWebhookEvent(evtLatest))
 
-	require.True(t, proxyUseLatest.filterWebhookEvent(evtDefault))
-	require.False(t, proxyUseLatest.filterWebhookEvent(evtLatest))
+	require.True(t, proxyUseLatest.webhookEventProcessor.filterWebhookEvent(evtDefault))
+	require.False(t, proxyUseLatest.webhookEventProcessor.filterWebhookEvent(evtLatest))
 }
 
 func TestTruncate(t *testing.T) {
@@ -147,11 +147,11 @@ func TestForwardToOnly(t *testing.T) {
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(p.endpointClients))
-	require.EqualValues(t, "http://localhost:4242", p.endpointClients[0].URL)
-	require.EqualValues(t, false, p.endpointClients[0].connect)
-	require.EqualValues(t, "http://localhost:4242", p.endpointClients[1].URL)
-	require.EqualValues(t, true, p.endpointClients[1].connect)
+	require.Equal(t, 2, len(p.webhookEventProcessor.endpointClients))
+	require.EqualValues(t, "http://localhost:4242", p.webhookEventProcessor.endpointClients[0].URL)
+	require.EqualValues(t, false, p.webhookEventProcessor.endpointClients[0].connect)
+	require.EqualValues(t, "http://localhost:4242", p.webhookEventProcessor.endpointClients[1].URL)
+	require.EqualValues(t, true, p.webhookEventProcessor.endpointClients[1].connect)
 }
 
 func TestForwardConnectToOnly(t *testing.T) {
@@ -161,9 +161,9 @@ func TestForwardConnectToOnly(t *testing.T) {
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(p.endpointClients))
-	require.EqualValues(t, "http://localhost:4242/connect", p.endpointClients[0].URL)
-	require.EqualValues(t, true, p.endpointClients[0].connect)
+	require.Equal(t, 1, len(p.webhookEventProcessor.endpointClients))
+	require.EqualValues(t, "http://localhost:4242/connect", p.webhookEventProcessor.endpointClients[0].URL)
+	require.EqualValues(t, true, p.webhookEventProcessor.endpointClients[0].connect)
 }
 
 func TestForwardToAndForwardConnectTo(t *testing.T) {
@@ -173,11 +173,11 @@ func TestForwardToAndForwardConnectTo(t *testing.T) {
 	}
 	p, err := Init(context.Background(), &cfg)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(p.endpointClients))
-	require.EqualValues(t, "http://localhost:4242", p.endpointClients[0].URL)
-	require.EqualValues(t, false, p.endpointClients[0].connect)
-	require.EqualValues(t, "http://localhost:4242/connect", p.endpointClients[1].URL)
-	require.EqualValues(t, true, p.endpointClients[1].connect)
+	require.Equal(t, 2, len(p.webhookEventProcessor.endpointClients))
+	require.EqualValues(t, "http://localhost:4242", p.webhookEventProcessor.endpointClients[0].URL)
+	require.EqualValues(t, false, p.webhookEventProcessor.endpointClients[0].connect)
+	require.EqualValues(t, "http://localhost:4242/connect", p.webhookEventProcessor.endpointClients[1].URL)
+	require.EqualValues(t, true, p.webhookEventProcessor.endpointClients[1].connect)
 }
 
 func TestExtractRequestData(t *testing.T) {
