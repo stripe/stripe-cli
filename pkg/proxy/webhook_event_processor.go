@@ -123,7 +123,7 @@ func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
 		"webhook_conversation_id": webhookEvent.WebhookConversationID,
 		"event_id":                evt.ID,
 		"event_type":              evt.Type,
-		"api_version":             getAPIVersionString(msg.Endpoint.APIVersion),
+		"api_version":             getAPIVersionString(webhookEvent.Endpoint.APIVersion),
 	}).Trace("Webhook event trace")
 
 	// at this point the message is valid so we can acknowledge it
