@@ -119,14 +119,53 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
-	if err := validatePluginManifest(body); err != nil {
+	mainPluginList, err := validatePluginManifest(body)
+	if err != nil {
 		return err
 	}
+
+	additionalPluginLists := []*PluginList{}
+	for _, filename := range pluginData.AdditonalManifests {
+		additionalPluginManifestURL := fmt.Sprintf("%s/%s", pluginData.PluginBaseURL, filename)
+		additionalManifestBody, err := FetchRemoteResource(additionalPluginManifestURL)
+		if err != nil {
+			return err
+		}
+		additionaPluginList, err := validatePluginManifest(additionalManifestBody)
+		if err != nil {
+			return err
+		}
+		additionalPluginLists = append(additionalPluginLists, additionaPluginList)
+	}
+
+	for _, list := range additionalPluginLists {
+		for _, pl := range list.Plugins {
+			match := -1
+			for i, mainPl := range mainPluginList.Plugins {
+				if mainPl.MagicCookieValue == pl.MagicCookieValue {
+					match = i
+					break
+				}
+			}
+			if match == -1 {
+				mainPluginList.Plugins = append(mainPluginList.Plugins, pl)
+			} else {
+				mainPluginList.Plugins[match].Releases = append(pl.Releases, mainPluginList.Plugins[match].Releases...)
+			}
+		}
+	}
+
+	fmt.Println(mainPluginList)
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
-	err = afero.WriteFile(fs, pluginManifestPath, body, 0644)
+	pluginManifestBody := new(bytes.Buffer)
+	if err := toml.NewEncoder(pluginManifestBody).Encode(mainPluginList); err != nil {
+		return err
+	}
+
+	err = afero.WriteFile(fs, pluginManifestPath, pluginManifestBody.Bytes(), 0644)
 
 	if err != nil {
 		return err
@@ -135,16 +174,16 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
-func validatePluginManifest(body []byte) error {
+func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+		return nil, fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return fmt.Errorf("Received an empty plugin manifest")
+		return nil, fmt.Errorf("Received an empty plugin manifest")
 	}
-	return nil
+	return &manifestBody, nil
 }
 
 // AddEntryToPluginManifest update plugins.toml with a new release version

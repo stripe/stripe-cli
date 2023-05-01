@@ -1,7 +1,3 @@
-# This is a made up manifest file for unit test purposes.
-# The checksums are the same for all OS versions of a single release for testing simplicity
-# The checksums for appA were generated to match the response returned in the test servers (see ../test_utils.go)
-# The checksums for appB do not match the actual contents returned from the test server.
 [[Plugin]]
   Shortname = "appA"
   Binary = "stripe-cli-app-a"
@@ -111,7 +107,19 @@
 [[Plugin]]
   Shortname = "foo"
   Binary = "stripe-cli-foo"
-  MagicCookieValue = "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291"
+  MagicCookieValue = "6C5CFD81-F43C-447B-BBCF-803FF31CD3D1"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "0.0.2"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "0.0.2"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
 
   [[Plugin.Release]]
     Arch = "amd64"
