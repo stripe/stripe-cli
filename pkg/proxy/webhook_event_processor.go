@@ -95,7 +95,7 @@ func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
 	webhookEvent := msg.WebhookEvent
 
 	p.cfg.Log.WithFields(log.Fields{
-		"prefix":                   "proxy.Proxy.processWebhookEvent",
+		"prefix":                   "proxy.WebhookEventProcessor.ProcessEvent",
 		"webhook_id":               webhookEvent.WebhookID,
 		"webhook_converesation_id": webhookEvent.WebhookConversationID,
 	}).Debugf("Processing webhook event")
@@ -118,7 +118,7 @@ func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
 	evt.Request = req
 
 	p.cfg.Log.WithFields(log.Fields{
-		"prefix":                  "proxy.Proxy.processWebhookEvent",
+		"prefix":                  "proxy.WebhookEventProcessor.ProcessEvent",
 		"webhook_id":              webhookEvent.WebhookID,
 		"webhook_conversation_id": webhookEvent.WebhookConversationID,
 		"event_id":                evt.ID,
@@ -162,7 +162,7 @@ func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
 func (p *WebhookEventProcessor) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	if msg.Endpoint.APIVersion != nil && !p.cfg.UseLatestAPIVersion {
 		p.cfg.Log.WithFields(log.Fields{
-			"prefix":      "proxy.Proxy.filterWebhookEvent",
+			"prefix":      "proxy.WebhookEventProcessor.filterWebhookEvent",
 			"api_version": getAPIVersionString(msg.Endpoint.APIVersion),
 		}).Debugf("Received event with non-default API version, ignoring")
 
@@ -171,7 +171,7 @@ func (p *WebhookEventProcessor) filterWebhookEvent(msg *websocket.WebhookEvent) 
 
 	if msg.Endpoint.APIVersion == nil && p.cfg.UseLatestAPIVersion {
 		p.cfg.Log.WithFields(log.Fields{
-			"prefix": "proxy.Proxy.filterWebhookEvent",
+			"prefix": "proxy.WebhookEventProcessor.filterWebhookEvent",
 		}).Debugf("Received event with default API version, ignoring")
 
 		return true
