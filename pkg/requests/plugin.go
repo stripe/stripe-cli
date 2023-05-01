@@ -10,7 +10,8 @@ import (
 
 // PluginData contains the plugin download information
 type PluginData struct {
-	PluginBaseURL string `json:"base_url"`
+	PluginBaseURL      string   `json:"base_url"`
+	AdditonalManifests []string `json:"additional_manifests,omitempty"`
 }
 
 // GetPluginData returns the plugin download information

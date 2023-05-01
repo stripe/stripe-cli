@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 // TestConfig Implementations out several methods
@@ -64,11 +65,18 @@ func (ts *TestServers) CloseAll() {
 }
 
 // setUpServers sets up a local stripe server and artifactory server for unit tests
-func setUpServers(t *testing.T, manifestContent []byte) TestServers {
+func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[string][]byte) TestServers {
+	additionalManifestNames := []string{}
+	for name := range additionalManifests {
+		additionalManifestNames = append(additionalManifestNames, name)
+	}
+
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); {
 		case url == "/plugins.toml":
 			res.Write(manifestContent)
+		case contains(additionalManifestNames, strings.TrimPrefix(url, "/")):
+			res.Write(additionalManifests[strings.TrimPrefix(url, "/")])
 		case strings.Contains(url, "/appA/2.0.1"):
 			res.Write([]byte("hello, I am appA_2.0.1"))
 		case strings.Contains(url, "/appA/1.0.1"):
@@ -90,7 +98,17 @@ func setUpServers(t *testing.T, manifestContent []byte) TestServers {
 	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch url := req.URL.String(); url {
 		case "/v1/stripecli/get-plugin-url":
-			res.Write([]byte(fmt.Sprintf(`{"base_url": "%s"}`, artifactoryServer.URL)))
+			pd := requests.PluginData{
+				PluginBaseURL: artifactoryServer.URL,
+			}
+			for _, name := range additionalManifestNames {
+				pd.AdditonalManifests = append(pd.AdditonalManifests, name)
+			}
+			body, err := json.Marshal(pd)
+			if err != nil {
+				t.Error(err)
+			}
+			res.Write(body)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
 		}
@@ -100,4 +118,13 @@ func setUpServers(t *testing.T, manifestContent []byte) TestServers {
 		ArtifactoryServer: artifactoryServer,
 		StripeServer:      stripeServer,
 	}
+}
+
+func contains(sl []string, str string) bool {
+	for _, s := range sl {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
