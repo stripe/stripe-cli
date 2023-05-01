@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 
@@ -93,7 +92,6 @@ func TestRefreshPluginManifestMergesAdditionalManifest(t *testing.T) {
 	// We expect the /plugins.toml file in the test fs is updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
-	fmt.Println(string(pluginManifestContent))
 
 	actualPluginList := PluginList{}
 	err = toml.Unmarshal(pluginManifestContent, &actualPluginList)
