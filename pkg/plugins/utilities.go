@@ -155,8 +155,6 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		}
 	}
 
-	fmt.Println(mainPluginList)
-
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
