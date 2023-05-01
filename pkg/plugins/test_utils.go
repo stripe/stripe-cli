@@ -99,10 +99,8 @@ func setUpServers(t *testing.T, manifestContent []byte, additionalManifests map[
 		switch url := req.URL.String(); url {
 		case "/v1/stripecli/get-plugin-url":
 			pd := requests.PluginData{
-				PluginBaseURL: artifactoryServer.URL,
-			}
-			for _, name := range additionalManifestNames {
-				pd.AdditonalManifests = append(pd.AdditonalManifests, name)
+				PluginBaseURL:      artifactoryServer.URL,
+				AdditonalManifests: additionalManifestNames,
 			}
 			body, err := json.Marshal(pd)
 			if err != nil {
