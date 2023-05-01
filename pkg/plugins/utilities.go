@@ -113,53 +113,23 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
-	pluginManifestURL := fmt.Sprintf("%s/%s", pluginData.PluginBaseURL, "plugins.toml")
-	body, err := FetchRemoteResource(pluginManifestURL)
+	pluginList, err := fetchPluginList(pluginData.PluginBaseURL, "plugins.toml")
 	if err != nil {
 		return err
 	}
 
-	mainPluginList, err := validatePluginManifest(body)
+	additionalPluginLists, err := fetchAdditionalPluginLists(pluginData)
 	if err != nil {
 		return err
 	}
 
-	additionalPluginLists := []*PluginList{}
-	for _, filename := range pluginData.AdditonalManifests {
-		additionalPluginManifestURL := fmt.Sprintf("%s/%s", pluginData.PluginBaseURL, filename)
-		additionalManifestBody, err := FetchRemoteResource(additionalPluginManifestURL)
-		if err != nil {
-			return err
-		}
-		additionaPluginList, err := validatePluginManifest(additionalManifestBody)
-		if err != nil {
-			return err
-		}
-		additionalPluginLists = append(additionalPluginLists, additionaPluginList)
-	}
-
-	for _, list := range additionalPluginLists {
-		for _, pl := range list.Plugins {
-			match := -1
-			for i, mainPl := range mainPluginList.Plugins {
-				if mainPl.MagicCookieValue == pl.MagicCookieValue {
-					match = i
-					break
-				}
-			}
-			if match == -1 {
-				mainPluginList.Plugins = append(mainPluginList.Plugins, pl)
-			} else {
-				mainPluginList.Plugins[match].Releases = append(pl.Releases, mainPluginList.Plugins[match].Releases...)
-			}
-		}
-	}
+	mergePluginLists(pluginList, additionalPluginLists)
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
 	pluginManifestBody := new(bytes.Buffer)
-	if err := toml.NewEncoder(pluginManifestBody).Encode(mainPluginList); err != nil {
+	if err := toml.NewEncoder(pluginManifestBody).Encode(pluginList); err != nil {
 		return err
 	}
 
@@ -170,6 +140,50 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	}
 
 	return nil
+}
+
+func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
+	pluginManifestURL := fmt.Sprintf("%s/%s", baseURL, manifestFilename)
+	body, err := FetchRemoteResource(pluginManifestURL)
+	if err != nil {
+		return nil, err
+	}
+	return validatePluginManifest(body)
+}
+
+func fetchAdditionalPluginLists(pluginData requests.PluginData) ([]*PluginList, error) {
+	additionalPluginLists := []*PluginList{}
+	for _, filename := range pluginData.AdditonalManifests {
+		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
+		if err != nil {
+			return nil, err
+		}
+		additionalPluginLists = append(additionalPluginLists, additionalPluginList)
+	}
+	return additionalPluginLists, nil
+}
+
+// Merge additional plugin lists into the main plugin list, in place
+func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginList) {
+	for _, list := range additionalPluginLists {
+		for _, pl := range list.Plugins {
+			idx := findPluginIndex(pluginList, pl)
+			if idx == -1 {
+				pluginList.Plugins = append(pluginList.Plugins, pl)
+			} else {
+				pluginList.Plugins[idx].Releases = append(pl.Releases, pluginList.Plugins[idx].Releases...)
+			}
+		}
+	}
+}
+
+func findPluginIndex(list *PluginList, p Plugin) int {
+	for i, pp := range list.Plugins {
+		if pp.MagicCookieValue == p.MagicCookieValue {
+			return i
+		}
+	}
+	return -1
 }
 
 func validatePluginManifest(body []byte) (*PluginList, error) {
