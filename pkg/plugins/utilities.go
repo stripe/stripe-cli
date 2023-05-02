@@ -121,12 +121,12 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
-	pluginManifestBody := new(bytes.Buffer)
-	if err := toml.NewEncoder(pluginManifestBody).Encode(pluginList); err != nil {
+	body := new(bytes.Buffer)
+	if err := toml.NewEncoder(body).Encode(pluginList); err != nil {
 		return err
 	}
 
-	err = afero.WriteFile(fs, pluginManifestPath, pluginManifestBody.Bytes(), 0644)
+	err = afero.WriteFile(fs, pluginManifestPath, body.Bytes(), 0644)
 
 	if err != nil {
 		return err
