@@ -1,0 +1,57 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "cardholder",
+      "path": "/v1/issuing/cardholders",
+      "method": "post",
+      "params": {
+        "name": "My Cardholder",
+        "type": "individual",
+        "phone_number": "+447700900000",
+        "individual": {
+          "first_name": "My",
+          "last_name": "Cardholder",
+          "card_issuing": {
+            "user_terms_acceptance": {
+              "date": 1470266163,
+              "ip": "91.121.146.224"
+            }
+          }
+        },
+        "billing": {
+          "address": {
+            "line1": "211 Old Street",
+            "city": "London",
+            "state": "London",
+            "postal_code": "EC1V 9NR",
+            "country": "GB"
+          }
+        }
+      }
+    },
+    {
+      "name": "card",
+      "path": "/v1/issuing/cards",
+      "method": "post",
+      "params": {
+        "currency": "gbp",
+        "type": "virtual",
+        "cardholder": "${cardholder:id}",
+        "status": "active"
+      }
+    },
+    {
+      "name": "authorization_request",
+      "path": "/v1/issuing/cards/${card:id}/test/authorizations",
+      "method": "post",
+      "params": {
+        "held_amount": 100,
+        "held_currency": "gbp",
+        "authorization_method": "online"
+      }
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -23,6 +24,8 @@ const customerPayload = `{"id": "cust_12345", "foo": "bar"}`
 const productPath = "/v1/products"
 const pricePath = "/v1/prices"
 const subscriptionPath = "/v1/subscriptions"
+const issuingCardholdersPath = "/v1/issuing/cardholders"
+const issuingCardholderPayload = `{"id": "ich_12345", "foo": "bar"}`
 
 func TestTriggerSucceedsWithSupportedEvent(t *testing.T) {
 	ctx := withAuth(context.Background())
@@ -183,4 +186,64 @@ func TestTriggerSucceedsWithFixtureFlags(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected.Requests, resp.Requests)
+}
+
+func TestTriggerSucceedsWithNamedFixture(t *testing.T) {
+	ctx := withAuth(context.Background())
+
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		body, _ := io.ReadAll(req.Body)
+		switch url := req.URL.String(); url {
+		case issuingCardholdersPath:
+			require.True(t, strings.Contains(string(body), "billing[address][country]=GB"))
+			res.Write([]byte(issuingCardholderPayload))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	baseURL = ts.URL
+
+	resp, err := client.Trigger(ctx, &rpc.TriggerRequest{
+		Event:   "issuing_cardholder.created",
+		Fixture: "gb",
+	})
+
+	expected := rpc.TriggerResponse{
+		Requests: []string{"cardholder"},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected.Requests, resp.Requests)
+}
+
+func TestTriggerFailsWithUnsupportedNamedFixture(t *testing.T) {
+	ctx := withAuth(context.Background())
+
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := rpc.NewStripeCLIClient(conn)
+
+	baseURL = "foo"
+
+	resp, err := client.Trigger(ctx, &rpc.TriggerRequest{
+		Event:   "issuing_cardholder.created",
+		Fixture: "banana",
+	})
+
+	assert.NotNil(t, err)
+	assert.Nil(t, resp)
+	assert.Regexp(t, regexp.MustCompile("The fixture ‘banana’ is not supported for event ‘issuing_cardholder.created’"), err.Error())
 }

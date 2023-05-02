@@ -85,6 +85,47 @@ const file = "test_fixture.json"
 const customersPath = "/v1/customers"
 const chargePath = "/v1/charges"
 const capturePath = "/v1/charges/char_12345/capture"
+const variantFile = "issuing_cardholder.created.eu.json"
+const issuingCardholdersPath = "/v1/issuing/cardholders"
+const issuingCardholderPayload = `{"id": "ich_12345", "foo": "bar"}`
+
+const cardholderTestFixture = `
+{
+	"_meta": {
+		"template_version": 0
+	},
+	"fixtures": [
+		{
+			"name": "cardholder",
+			"path": "/v1/issuing/cardholders",
+			"method": "post",
+			"params": {
+				"name": "My Cardholder",
+				"type": "individual",
+				"phone_number": "+34666777888",
+				"individual": {
+					"first_name": "My",
+					"last_name": "Cardholder",
+					"card_issuing": {
+						"user_terms_acceptance": {
+							"date": 1470266163,
+							"ip": "91.121.146.224"
+						}
+					}
+				},
+				"billing": {
+					"address": {
+						"line1": "P. de la Castellana 43",
+						"city": "Madrid",
+						"state": "Madrid",
+						"postal_code": "28046",
+						"country": "ES"
+					}
+				}
+			}
+		}
+	]
+}`
 
 func TestMakeRequest(t *testing.T) {
 	fs := afero.NewMemMapFs()
@@ -158,6 +199,31 @@ func TestMakeRequestWithStringFixture(t *testing.T) {
 	require.Equal(t, "cust_12345", fxt.Responses["cust_bender"].Get("id").String())
 	require.Equal(t, "char_12345", fxt.Responses["char_bender"].Get("id").String())
 	require.True(t, fxt.Responses["char_bender"].Get("charge").Bool())
+}
+
+func TestMakeRequestWithFixtureVariant(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	ts := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case issuingCardholdersPath:
+			res.Write([]byte(issuingCardholderPayload))
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	defer func() { ts.Close() }()
+
+	afero.WriteFile(fs, variantFile, []byte(cardholderTestFixture), os.ModePerm)
+
+	fxt, err := NewFixtureFromFile(fs, apiKey, "", ts.URL, variantFile, []string{}, []string{}, []string{}, []string{}, false)
+	require.NoError(t, err)
+
+	_, err = fxt.Execute(context.Background(), "")
+	require.NoError(t, err)
+
+	require.NotNil(t, fxt.Responses["cardholder"])
+	require.Equal(t, "ich_12345", fxt.Responses["cardholder"].Get("id").String())
 }
 
 func TestWithSkipMakeRequest(t *testing.T) {
