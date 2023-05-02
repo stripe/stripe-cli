@@ -153,7 +153,7 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 
 func fetchAdditionalPluginLists(pluginData requests.PluginData) ([]*PluginList, error) {
 	additionalPluginLists := []*PluginList{}
-	for _, filename := range pluginData.AdditonalManifests {
+	for _, filename := range pluginData.AdditionalManifests {
 		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
 		if err != nil {
 			return nil, err
@@ -296,6 +296,10 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("remote resource not found: url=%s", url)
 	}
 
 	defer resp.Body.Close()
