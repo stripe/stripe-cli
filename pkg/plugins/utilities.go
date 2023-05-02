@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -172,7 +173,14 @@ func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginLis
 			if idx == -1 {
 				pluginList.Plugins = append(pluginList.Plugins, pl)
 			} else {
-				pluginList.Plugins[idx].Releases = append(pl.Releases, pluginList.Plugins[idx].Releases...)
+				releases := append(pluginList.Plugins[idx].Releases, pl.Releases...)
+
+				// Other code assumes the releases are sorted with the latest version first.
+				sort.Slice(releases, func(i, j int) bool {
+					return releases[i].Version > releases[j].Version
+				})
+
+				pluginList.Plugins[idx].Releases = releases
 			}
 		}
 	}
