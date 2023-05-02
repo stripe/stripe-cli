@@ -165,36 +165,6 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 	return validatePluginManifest(body)
 }
 
-// Merge additional plugin lists into the main plugin list, in place
-func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginList) {
-	for _, list := range additionalPluginLists {
-		for _, pl := range list.Plugins {
-			idx := findPluginIndex(pluginList, pl)
-			if idx == -1 {
-				pluginList.Plugins = append(pluginList.Plugins, pl)
-			} else {
-				releases := append(pluginList.Plugins[idx].Releases, pl.Releases...)
-
-				// Other code assumes the releases are sorted with the latest version first.
-				sort.Slice(releases, func(i, j int) bool {
-					return releases[i].Version > releases[j].Version
-				})
-
-				pluginList.Plugins[idx].Releases = releases
-			}
-		}
-	}
-}
-
-func findPluginIndex(list *PluginList, p Plugin) int {
-	for i, pp := range list.Plugins {
-		if pp.MagicCookieValue == p.MagicCookieValue {
-			return i
-		}
-	}
-	return -1
-}
-
 func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
@@ -205,6 +175,39 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 		return nil, fmt.Errorf("Received an empty plugin manifest")
 	}
 	return &manifestBody, nil
+}
+
+// mergePluginLists merges additional plugin lists into the main plugin list, in place
+func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginList) {
+	for _, list := range additionalPluginLists {
+		for _, pl := range list.Plugins {
+			addPluginToList(pluginList, pl)
+		}
+	}
+}
+
+func addPluginToList(pluginList *PluginList, pl Plugin) {
+	idx := findPluginIndex(pluginList, pl)
+	if idx == -1 {
+		pluginList.Plugins = append(pluginList.Plugins, pl)
+	} else {
+		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
+
+		// Other code assumes the releases are sorted with latest version last.
+		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
+			return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+		})
+	}
+
+}
+
+func findPluginIndex(list *PluginList, p Plugin) int {
+	for i, pp := range list.Plugins {
+		if pp.MagicCookieValue == p.MagicCookieValue {
+			return i
+		}
+	}
+	return -1
 }
 
 // AddEntryToPluginManifest update plugins.toml with a new release version

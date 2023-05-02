@@ -112,23 +112,23 @@
   [[Plugin.Release]]
     Arch = "amd64"
     OS = "darwin"
-    Version = "0.0.2"
+    Version = "0.0.1"
     Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
 
   [[Plugin.Release]]
     Arch = "arm64"
     OS = "darwin"
-    Version = "0.0.2"
+    Version = "0.0.1"
     Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
 
   [[Plugin.Release]]
     Arch = "amd64"
     OS = "darwin"
-    Version = "0.0.1"
+    Version = "0.0.2"
     Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
 
   [[Plugin.Release]]
     Arch = "arm64"
     OS = "darwin"
-    Version = "0.0.1"
+    Version = "0.0.2"
     Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
