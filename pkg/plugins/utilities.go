@@ -198,7 +198,6 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 			return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
 		})
 	}
-
 }
 
 func findPluginIndex(list *PluginList, p Plugin) int {
