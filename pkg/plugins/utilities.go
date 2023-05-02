@@ -113,17 +113,10 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
-	pluginList, err := fetchPluginList(pluginData.PluginBaseURL, "plugins.toml")
+	pluginList, err := fetchAndMergeManifests(pluginData)
 	if err != nil {
 		return err
 	}
-
-	additionalPluginLists, err := fetchAdditionalPluginLists(pluginData)
-	if err != nil {
-		return err
-	}
-
-	mergePluginLists(pluginList, additionalPluginLists)
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
@@ -142,16 +135,12 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
-func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
-	pluginManifestURL := fmt.Sprintf("%s/%s", baseURL, manifestFilename)
-	body, err := FetchRemoteResource(pluginManifestURL)
+func fetchAndMergeManifests(pluginData requests.PluginData) (*PluginList, error) {
+	pluginList, err := fetchPluginList(pluginData.PluginBaseURL, "plugins.toml")
 	if err != nil {
 		return nil, err
 	}
-	return validatePluginManifest(body)
-}
 
-func fetchAdditionalPluginLists(pluginData requests.PluginData) ([]*PluginList, error) {
 	additionalPluginLists := []*PluginList{}
 	for _, filename := range pluginData.AdditionalManifests {
 		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
@@ -160,7 +149,19 @@ func fetchAdditionalPluginLists(pluginData requests.PluginData) ([]*PluginList, 
 		}
 		additionalPluginLists = append(additionalPluginLists, additionalPluginList)
 	}
-	return additionalPluginLists, nil
+
+	mergePluginLists(pluginList, additionalPluginLists)
+
+	return pluginList, nil
+}
+
+func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
+	pluginManifestURL := fmt.Sprintf("%s/%s", baseURL, manifestFilename)
+	body, err := FetchRemoteResource(pluginManifestURL)
+	if err != nil {
+		return nil, err
+	}
+	return validatePluginManifest(body)
 }
 
 // Merge additional plugin lists into the main plugin list, in place
