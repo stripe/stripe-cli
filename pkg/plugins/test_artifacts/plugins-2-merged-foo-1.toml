@@ -1,0 +1,134 @@
+[[Plugin]]
+  Shortname = "appA"
+  Binary = "stripe-cli-app-a"
+  MagicCookieValue = "0337A75A-C3C4-4DCF-A9EF-E7A144E5A291"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "linux"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "windows"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "1.0.1"
+    Sum = "3c909ec628b7d32536a65fd15545db527a7509e734995d4ef4806694fbd89c3a"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "1.0.1"
+    Sum = "3c909ec628b7d32536a65fd15545db527a7509e734995d4ef4806694fbd89c3a"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "linux"
+    Version = "1.0.1"
+    Sum = "3c909ec628b7d32536a65fd15545db527a7509e734995d4ef4806694fbd89c3a"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "windows"
+    Version = "1.0.1"
+    Sum = "3c909ec628b7d32536a65fd15545db527a7509e734995d4ef4806694fbd89c3a"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "2.0.1"
+    Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "2.0.1"
+    Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "linux"
+    Version = "2.0.1"
+    Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "windows"
+    Version = "2.0.1"
+    Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+
+[[Plugin]]
+  Shortname = "appB"
+  Binary = "stripe-cli-app-b"
+  MagicCookieValue = "FDBE6FB9-A149-44BD-9639-4D33D8B594E8"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "1.2.1"
+    Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "1.2.1"
+    Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "linux"
+    Version = "1.2.1"
+    Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "windows"
+    Version = "1.2.1"
+    Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+
+[[Plugin]]
+  Shortname = "foo"
+  Binary = "stripe-cli-foo"
+  MagicCookieValue = "6C5CFD81-F43C-447B-BBCF-803FF31CD3D1"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "0.0.1"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "0.0.2"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"
+
+  [[Plugin.Release]]
+    Arch = "arm64"
+    OS = "darwin"
+    Version = "0.0.2"
+    Sum = "125653c37803a51a048f6687f7f66d511be614f675f199cd6c71928b74875238"

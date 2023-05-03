@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -49,7 +50,7 @@ func TestRefreshPluginManifest(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	updatedManifestContent, _ := os.ReadFile("./test_artifacts/plugins_updated.toml")
-	testServers := setUpServers(t, updatedManifestContent)
+	testServers := setUpServers(t, updatedManifestContent, nil)
 	defer func() { testServers.CloseAll() }()
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
@@ -58,7 +59,115 @@ func TestRefreshPluginManifest(t *testing.T) {
 	// We expect the /plugins.toml file in the test fs is updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
-	require.Equal(t, updatedManifestContent, pluginManifestContent)
+
+	actualPluginList := PluginList{}
+	err = toml.Unmarshal(pluginManifestContent, &actualPluginList)
+	require.Nil(t, err)
+
+	expectedPluginList := PluginList{}
+	err = toml.Unmarshal(updatedManifestContent, &expectedPluginList)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedPluginList, actualPluginList)
+}
+
+func TestRefreshPluginManifestMergesAdditionalManifest(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	mergedManifestContent, _ := os.ReadFile("./test_artifacts/plugins-merged-foo-1.toml")
+
+	fooManifest, _ := os.ReadFile("./test_artifacts/plugins-foo-1.toml")
+	additionalManifests := map[string][]byte{
+		"plugins-foo-1.toml": fooManifest,
+	}
+
+	testServers := setUpServers(t, manifestContent, additionalManifests)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// We expect the /plugins.toml file in the test fs is updated
+	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
+	require.Nil(t, err)
+
+	actualPluginList := PluginList{}
+	err = toml.Unmarshal(pluginManifestContent, &actualPluginList)
+	require.Nil(t, err)
+
+	expectedPluginList := PluginList{}
+	err = toml.Unmarshal(mergedManifestContent, &expectedPluginList)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedPluginList, actualPluginList)
+}
+
+func TestRefreshPluginManifestMergesExisitingPlugin(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins-2.toml")
+	mergedManifestContent, _ := os.ReadFile("./test_artifacts/plugins-2-merged-foo-1.toml")
+
+	fooManifest, _ := os.ReadFile("./test_artifacts/plugins-foo-1.toml")
+	additionalManifests := map[string][]byte{
+		"plugins-foo-1.toml": fooManifest,
+	}
+
+	testServers := setUpServers(t, manifestContent, additionalManifests)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// We expect the /plugins.toml file in the test fs is updated
+	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
+	require.Nil(t, err)
+
+	actualPluginList := PluginList{}
+	err = toml.Unmarshal(pluginManifestContent, &actualPluginList)
+	require.Nil(t, err)
+
+	expectedPluginList := PluginList{}
+	err = toml.Unmarshal(mergedManifestContent, &expectedPluginList)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedPluginList, actualPluginList)
+}
+
+func TestRefreshPluginManifestSortsPluginReleases(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins-3.toml")
+	mergedManifestContent, _ := os.ReadFile("./test_artifacts/plugins-3-merged-foo-1.toml")
+
+	fooManifest, _ := os.ReadFile("./test_artifacts/plugins-foo-1.toml")
+	additionalManifests := map[string][]byte{
+		"plugins-foo-1.toml": fooManifest,
+	}
+
+	testServers := setUpServers(t, manifestContent, additionalManifests)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// We expect the /plugins.toml file in the test fs is updated
+	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
+	require.Nil(t, err)
+
+	actualPluginList := PluginList{}
+	err = toml.Unmarshal(pluginManifestContent, &actualPluginList)
+	require.Nil(t, err)
+
+	expectedPluginList := PluginList{}
+	err = toml.Unmarshal(mergedManifestContent, &expectedPluginList)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedPluginList, actualPluginList)
 }
 
 func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
@@ -66,7 +175,7 @@ func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	emptyManifestContent := []byte{}
-	testServers := setUpServers(t, emptyManifestContent)
+	testServers := setUpServers(t, emptyManifestContent, nil)
 	defer func() { testServers.CloseAll() }()
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
