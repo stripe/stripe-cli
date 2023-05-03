@@ -2,13 +2,26 @@ package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 // IncomingMessage represents any incoming message sent by Stripe.
 type IncomingMessage struct {
 	*WebhookEvent
 	*RequestLogEvent
+
+	// Unknown will be present if the incoming message type does not match the
+	// list known to the CLI.
+	Unknown *UnknownMessage
+}
+
+// UnknownMessage represents an incoming message with a type that's unknown
+// to the CLI, and therefore cannot be deserialized into a structured type.
+type UnknownMessage struct {
+	// Type is the value of the type field in the message's data.
+	Type string
+
+	// Data contains the raw data of the message.
+	Data []byte
 }
 
 // UnmarshalJSON deserializes incoming messages sent by Stripe into the
@@ -23,21 +36,18 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 
 	switch incomingMessageTypeOnly.Type {
 	case "webhook_event":
-		var evt WebhookEvent
-		if err := json.Unmarshal(data, &evt); err != nil {
+		if err := json.Unmarshal(data, &m.WebhookEvent); err != nil {
 			return err
 		}
-
-		m.WebhookEvent = &evt
 	case "request_log_event":
-		var evt RequestLogEvent
-		if err := json.Unmarshal(data, &evt); err != nil {
+		if err := json.Unmarshal(data, &m.RequestLogEvent); err != nil {
 			return err
 		}
-
-		m.RequestLogEvent = &evt
 	default:
-		return fmt.Errorf("Unexpected message type: %s", incomingMessageTypeOnly.Type)
+		m.Unknown = &UnknownMessage{
+			Type: incomingMessageTypeOnly.Type,
+			Data: data,
+		}
 	}
 
 	return nil
