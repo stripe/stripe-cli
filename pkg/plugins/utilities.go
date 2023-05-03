@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -113,20 +114,20 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 		return err
 	}
 
-	pluginManifestURL := fmt.Sprintf("%s/%s", pluginData.PluginBaseURL, "plugins.toml")
-	body, err := FetchRemoteResource(pluginManifestURL)
+	pluginList, err := fetchAndMergeManifests(pluginData)
 	if err != nil {
-		return err
-	}
-
-	if err := validatePluginManifest(body); err != nil {
 		return err
 	}
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
 
-	err = afero.WriteFile(fs, pluginManifestPath, body, 0644)
+	body := new(bytes.Buffer)
+	if err := toml.NewEncoder(body).Encode(pluginList); err != nil {
+		return err
+	}
+
+	err = afero.WriteFile(fs, pluginManifestPath, body.Bytes(), 0644)
 
 	if err != nil {
 		return err
@@ -135,16 +136,77 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 	return nil
 }
 
-func validatePluginManifest(body []byte) error {
+func fetchAndMergeManifests(pluginData requests.PluginData) (*PluginList, error) {
+	pluginList, err := fetchPluginList(pluginData.PluginBaseURL, "plugins.toml")
+	if err != nil {
+		return nil, err
+	}
+
+	additionalPluginLists := []*PluginList{}
+	for _, filename := range pluginData.AdditionalManifests {
+		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
+		if err != nil {
+			return nil, err
+		}
+		additionalPluginLists = append(additionalPluginLists, additionalPluginList)
+	}
+
+	mergePluginLists(pluginList, additionalPluginLists)
+
+	return pluginList, nil
+}
+
+func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
+	pluginManifestURL := fmt.Sprintf("%s/%s", baseURL, manifestFilename)
+	body, err := FetchRemoteResource(pluginManifestURL)
+	if err != nil {
+		return nil, err
+	}
+	return validatePluginManifest(body)
+}
+
+func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+		return nil, fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return fmt.Errorf("Received an empty plugin manifest")
+		return nil, fmt.Errorf("Received an empty plugin manifest")
 	}
-	return nil
+	return &manifestBody, nil
+}
+
+// mergePluginLists merges additional plugin lists into the main plugin list, in place
+func mergePluginLists(pluginList *PluginList, additionalPluginLists []*PluginList) {
+	for _, list := range additionalPluginLists {
+		for _, pl := range list.Plugins {
+			addPluginToList(pluginList, pl)
+		}
+	}
+}
+
+func addPluginToList(pluginList *PluginList, pl Plugin) {
+	idx := findPluginIndex(pluginList, pl)
+	if idx == -1 {
+		pluginList.Plugins = append(pluginList.Plugins, pl)
+	} else {
+		pluginList.Plugins[idx].Releases = append(pluginList.Plugins[idx].Releases, pl.Releases...)
+
+		// Other code assumes the releases are sorted with latest version last.
+		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
+			return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+		})
+	}
+}
+
+func findPluginIndex(list *PluginList, p Plugin) int {
+	for i, pp := range list.Plugins {
+		if pp.MagicCookieValue == p.MagicCookieValue {
+			return i
+		}
+	}
+	return -1
 }
 
 // AddEntryToPluginManifest update plugins.toml with a new release version
@@ -245,6 +307,10 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("remote resource not found: url=%s", url)
 	}
 
 	defer resp.Body.Close()

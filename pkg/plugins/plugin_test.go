@@ -24,7 +24,7 @@ func TestInstall(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
@@ -42,7 +42,7 @@ func TestInstallFailsIfChecksumCouldNotBeFound(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL)
@@ -62,7 +62,7 @@ func TestInstallationFailsIfChecksumDoesNotMatch(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appB")
 	err := plugin.Install(context.Background(), config, fs, "1.2.1", testServers.StripeServer.URL)
@@ -82,7 +82,7 @@ func TestInstallCleansOtherVersionsOfPlugin(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	// Download plugin version 0.0.1
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
@@ -111,7 +111,7 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	// Download valid plugin
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
@@ -138,7 +138,7 @@ func TestUninstall(t *testing.T) {
 	config := &TestConfig{}
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
-	testServers := setUpServers(t, manifestContent)
+	testServers := setUpServers(t, manifestContent, nil)
 
 	// install a plugin to be uninstalled
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
