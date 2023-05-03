@@ -87,6 +87,8 @@ var Events = map[string]string{
 	"quote.accepted":                           "triggers/quote.accepted.json",
 }
 
+// FixtureVariants is a map of events to any available variants of that event's fixtures. Not all events have variants,
+// some only have the canonical fixture found in `Events`.
 var FixtureVariants = map[string][]string{
 	"issuing_cardholder.created": {
 		"triggers/issuing_cardholder.created.gb.json",
