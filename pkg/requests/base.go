@@ -242,10 +242,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			}
 		}
 
-		experimentalHeaders := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers"))
-		if experimentalHeaders != "" {
-			if err := rb.experimentalRequestSigning(req, experimentalHeaders); err != nil {
-				return err
+		if rb.Profile != nil {
+			if experimentalHeaders := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers")); experimentalHeaders != "" {
+				if err := rb.experimentalRequestSigning(req, experimentalHeaders); err != nil {
+					return err
+				}
 			}
 		}
 
