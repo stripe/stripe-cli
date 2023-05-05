@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -296,4 +297,19 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	t.Run("non-RequestError", func(t *testing.T) {
 		require.False(t, IsAPIKeyExpiredError(fmt.Errorf("other")))
 	})
+}
+
+func TestExperimental(t *testing.T) {
+	p := &config.Profile{
+		ProfileName: "tests",
+	}
+	p.WriteConfigField("experimental.contextual_name", "test-name")
+	p.WriteConfigField("experimental.private_key", "test-key")
+	rb := Base{Profile: p}
+
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	err := rb.experimentalRequestSigning(req, "Stripe-Context=test-context;Authorization=STRIPE-SIG-PREFIX 123")
+	require.NoError(t, err)
+	require.Equal(t, "test-context", req.Header.Get("Stripe-Context"))
+	require.Equal(t, "STRIPE-SIG-PREFIX 123", req.Header.Get("Authorization"))
 }

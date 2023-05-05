@@ -241,29 +241,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 				return err
 			}
 		}
-		headers := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers"))
-		name := viper.GetString(rb.Profile.GetConfigField("experimental.contextual_name"))
-		if headers != "" {
-			keyToValues := strings.Split(strings.Trim(headers, ";"), ";")
-			for _, pair := range keyToValues {
-				header := strings.Split(pair, "=")
-				if len(header) != 2 {
-					continue
-				}
-				headerName := header[0]
-				headerValue := header[1]
-				if strings.Contains(headerName, "Context") {
-					fmt.Printf("Operating in %s %s...\n", ansi.Bold(name), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
-				} else if strings.Contains(headerName, "Authorization") {
-					if len(strings.Split(strings.TrimSpace(headerValue), " ")) == 1 {
-						creds, err := rb.Profile.GetSessionCredentials()
-						if err != nil {
-							return err
-						}
-						headerValue += creds.UAT
-					}
-				}
-				req.Header.Set(headerName, headerValue)
+
+		experimentalHeaders := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers"))
+		if experimentalHeaders != "" {
+			if err := rb.experimentalRequestSigning(req, experimentalHeaders); err != nil {
+				return err
 			}
 		}
 
@@ -514,4 +496,34 @@ func normalizePath(path string) string {
 	}
 
 	return "/v1/" + path
+}
+
+func (rb *Base) experimentalRequestSigning(req *http.Request, headers string) error {
+	name := viper.GetString(rb.Profile.GetConfigField("experimental.contextual_name"))
+	privKey := viper.GetString(rb.Profile.GetConfigField("experimental.private_key"))
+
+	keyToValues := strings.Split(strings.Trim(headers, ";"), ";")
+	for _, pair := range keyToValues {
+		header := strings.Split(pair, "=")
+		if len(header) != 2 {
+			continue
+		}
+		headerName := header[0]
+		headerValue := header[1]
+		if headerName == stripeContextHeaderName {
+			fmt.Printf("Operating in %s %s...\n", ansi.Bold(name), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
+		} else if headerName == authorizationHeaderName && privKey == "" {
+			creds, err := rb.Profile.GetSessionCredentials()
+			if err != nil {
+				return err
+			}
+			headerValue += creds.UAT
+			privKey = creds.PrivateKey
+		}
+		req.Header.Set(headerName, headerValue)
+	}
+	// Must sign the request AFTER all headers have been set
+	SignRequest(req, privKey)
+
+	return nil
 }
