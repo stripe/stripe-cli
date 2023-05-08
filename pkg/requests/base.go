@@ -523,8 +523,10 @@ func (rb *Base) experimentalRequestSigning(req *http.Request, headers string) er
 		}
 		req.Header.Set(headerName, headerValue)
 	}
-	// Must sign the request AFTER all headers have been set
-	SignRequest(req, privKey)
+	if len(keyToValues) > 0 {
+		// Must sign the request AFTER all headers have been set
+		SignRequest(req, privKey)
+	}
 
 	return nil
 }

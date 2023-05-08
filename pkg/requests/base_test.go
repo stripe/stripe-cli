@@ -299,7 +299,7 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	})
 }
 
-func TestExperimental(t *testing.T) {
+func TestRequestSigning(t *testing.T) {
 	p := &config.Profile{
 		ProfileName: "tests",
 	}
@@ -312,4 +312,19 @@ func TestExperimental(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-context", req.Header.Get("Stripe-Context"))
 	require.Equal(t, "STRIPE-SIG-PREFIX 123", req.Header.Get("Authorization"))
+}
+
+func TestRequestSigningShouldNotBeCalled(t *testing.T) {
+	p := &config.Profile{
+		ProfileName: "tests",
+	}
+	p.WriteConfigField("experimental.contextual_name", "")
+	p.WriteConfigField("experimental.private_key", "")
+	rb := Base{Profile: p}
+
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	err := rb.experimentalRequestSigning(req, "")
+	require.NoError(t, err)
+	require.Equal(t, "", req.Header.Get("Stripe-Context"))
+	require.Equal(t, "", req.Header.Get("Authorization"))
 }
