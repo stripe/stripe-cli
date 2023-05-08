@@ -421,6 +421,34 @@ func getKeyExpiresAt() string {
 	return time.Now().AddDate(0, 0, KeyValidInDays).UTC().Format(DateStringFormat)
 }
 
+// ExperimentalFields are currently only used for request signing
+type ExperimentalFields struct {
+	ContextualName string
+	PrivateKey     string
+	StripeHeaders  string
+}
+
+// GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
+func (p *Profile) GetExperimentalFields() ExperimentalFields {
+	if err := viper.ReadInConfig(); err == nil {
+		experimentalPrefix := "experimental."
+		name := viper.GetString(p.GetConfigField(experimentalPrefix + "contextual_name"))
+		privKey := viper.GetString(p.GetConfigField(experimentalPrefix + "private_key"))
+		headers := viper.GetString(p.GetConfigField(experimentalPrefix + "stripe_headers"))
+
+		return ExperimentalFields{
+			ContextualName: name,
+			PrivateKey:     privKey,
+			StripeHeaders:  headers,
+		}
+	}
+	return ExperimentalFields{
+		ContextualName: "",
+		PrivateKey:     "",
+		StripeHeaders:  "",
+	}
+}
+
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -457,7 +485,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	}
 
 	if creds.AccountID == "" || creds.AccountID != currentAccountID {
-		return nil, errors.New("no session")
+		return nil, errors.New("found a session, but it doesn't match your current account")
 	}
 
 	return &creds, nil

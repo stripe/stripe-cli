@@ -100,6 +100,49 @@ test_mode_key_expires_at = '` + expiresAt + `'
 	cleanUp(c.ProfilesFile)
 }
 
+func TestExperimentalFields(t *testing.T) {
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	p := Profile{
+		ProfileName:    "tests",
+		DeviceName:     "st-testing",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "test-account-display-name",
+	}
+	c := &Config{
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+
+	v := viper.New()
+
+	v.SetConfigFile(profilesFile)
+	err := p.writeProfile(v)
+	require.NoError(t, err)
+
+	require.FileExists(t, c.ProfilesFile)
+
+	require.NoError(t, err)
+
+	experimentalFields := p.GetExperimentalFields()
+	require.Equal(t, "", experimentalFields.ContextualName)
+	require.Equal(t, "", experimentalFields.StripeHeaders)
+	require.Equal(t, "", experimentalFields.PrivateKey)
+
+	p.WriteConfigField("experimental.stripe_headers", "test-headers")
+	p.WriteConfigField("experimental.contextual_name", "test-name")
+	p.WriteConfigField("experimental.private_key", "test-key")
+
+	experimentalFields = p.GetExperimentalFields()
+	require.Equal(t, "test-name", experimentalFields.ContextualName)
+	require.Equal(t, "test-headers", experimentalFields.StripeHeaders)
+	require.Equal(t, "test-key", experimentalFields.PrivateKey)
+
+	cleanUp(c.ProfilesFile)
+}
+
 func helperLoadBytes(t *testing.T, name string) []byte {
 	bytes, err := os.ReadFile(name)
 	if err != nil {

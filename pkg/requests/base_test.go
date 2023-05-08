@@ -303,27 +303,31 @@ func TestRequestSigning(t *testing.T) {
 	p := &config.Profile{
 		ProfileName: "tests",
 	}
-	p.WriteConfigField("experimental.contextual_name", "test-name")
-	p.WriteConfigField("experimental.private_key", "test-key")
 	rb := Base{Profile: p}
 
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	err := rb.experimentalRequestSigning(req, "Stripe-Context=test-context;Authorization=STRIPE-SIG-PREFIX 123")
+	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
+		StripeHeaders:  "Stripe-Context=test-context;Authorization=TEST-PREFIX 123",
+		ContextualName: "test-name",
+		PrivateKey:     "test-key",
+	})
 	require.NoError(t, err)
 	require.Equal(t, "test-context", req.Header.Get("Stripe-Context"))
-	require.Equal(t, "STRIPE-SIG-PREFIX 123", req.Header.Get("Authorization"))
+	require.Equal(t, "TEST-PREFIX 123", req.Header.Get("Authorization"))
 }
 
 func TestRequestSigningShouldNotBeCalled(t *testing.T) {
 	p := &config.Profile{
 		ProfileName: "tests",
 	}
-	p.WriteConfigField("experimental.contextual_name", "")
-	p.WriteConfigField("experimental.private_key", "")
 	rb := Base{Profile: p}
 
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	err := rb.experimentalRequestSigning(req, "")
+	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
+		StripeHeaders:  "",
+		ContextualName: "",
+		PrivateKey:     "",
+	})
 	require.NoError(t, err)
 	require.Equal(t, "", req.Header.Get("Stripe-Context"))
 	require.Equal(t, "", req.Header.Get("Authorization"))

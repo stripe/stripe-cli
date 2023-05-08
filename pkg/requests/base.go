@@ -19,7 +19,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
@@ -243,8 +242,10 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 		}
 
 		if rb.Profile != nil {
-			if experimentalHeaders := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers")); experimentalHeaders != "" {
-				if err := rb.experimentalRequestSigning(req, experimentalHeaders); err != nil {
+			experimentalFields := rb.Profile.GetExperimentalFields()
+			if experimentalFields.StripeHeaders != "" {
+				err := rb.experimentalRequestSigning(req, experimentalFields)
+				if err != nil {
 					return err
 				}
 			}
@@ -499,11 +500,10 @@ func normalizePath(path string) string {
 	return "/v1/" + path
 }
 
-func (rb *Base) experimentalRequestSigning(req *http.Request, headers string) error {
-	name := viper.GetString(rb.Profile.GetConfigField("experimental.contextual_name"))
-	privKey := viper.GetString(rb.Profile.GetConfigField("experimental.private_key"))
+func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields config.ExperimentalFields) error {
+	privKey := experimentalFields.PrivateKey
 
-	keyToValues := strings.Split(strings.Trim(headers, ";"), ";")
+	keyToValues := strings.Split(strings.Trim(experimentalFields.StripeHeaders, ";"), ";")
 	for _, pair := range keyToValues {
 		header := strings.Split(pair, "=")
 		if len(header) != 2 {
@@ -512,7 +512,7 @@ func (rb *Base) experimentalRequestSigning(req *http.Request, headers string) er
 		headerName := header[0]
 		headerValue := header[1]
 		if headerName == stripeContextHeaderName {
-			fmt.Printf("Operating in %s %s...\n", ansi.Bold(name), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
+			fmt.Printf("Operating in %s %s...\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
 		} else if headerName == authorizationHeaderName && privKey == "" {
 			creds, err := rb.Profile.GetSessionCredentials()
 			if err != nil {
