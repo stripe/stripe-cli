@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
@@ -300,11 +301,7 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 }
 
 func TestRequestSigning(t *testing.T) {
-	p := &config.Profile{
-		ProfileName: "tests",
-	}
-	rb := Base{Profile: p}
-
+	rb := Base{}
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
 		StripeHeaders:  "Stripe-Context=test-context;Authorization=TEST-PREFIX 123",
@@ -317,11 +314,7 @@ func TestRequestSigning(t *testing.T) {
 }
 
 func TestRequestSigningShouldNotBeCalled(t *testing.T) {
-	p := &config.Profile{
-		ProfileName: "tests",
-	}
-	rb := Base{Profile: p}
-
+	rb := Base{}
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
 		StripeHeaders:  "",
