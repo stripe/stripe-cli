@@ -19,6 +19,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
@@ -240,6 +241,32 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 				return err
 			}
 		}
+		headers := viper.GetString(rb.Profile.GetConfigField("experimental.stripe_headers"))
+		name := viper.GetString(rb.Profile.GetConfigField("experimental.contextual_name"))
+		if headers != "" {
+			keyToValues := strings.Split(strings.Trim(headers, ";"), ";")
+			for _, pair := range keyToValues {
+				header := strings.Split(pair, "=")
+				if len(header) != 2 {
+					continue
+				}
+				headerName := header[0]
+				headerValue := header[1]
+				if strings.Contains(headerName, "Context") {
+					fmt.Printf("Operating in %s %s...\n", ansi.Bold(name), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
+				} else if strings.Contains(headerName, "Authorization") {
+					if len(strings.Split(strings.TrimSpace(headerValue), " ")) == 1 {
+						creds, err := rb.Profile.GetSessionCredentials()
+						if err != nil {
+							return err
+						}
+						headerValue += creds.UAT
+					}
+				}
+				req.Header.Set(headerName, headerValue)
+			}
+		}
+
 		return nil
 	}
 

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -417,4 +419,46 @@ func isRedactedAPIKey(apiKey string) bool {
 
 func getKeyExpiresAt() string {
 	return time.Now().AddDate(0, 0, KeyValidInDays).UTC().Format(DateStringFormat)
+}
+
+// SessionCredentials are the credentials needed for this session
+type SessionCredentials struct {
+	UAT        string `json:"uat"`
+	PrivateKey string `json:"private_key"`
+	AccountID  string `json:"account_id"`
+}
+
+// GetSessionCredentials retrieves the session credentials from the keyring
+func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
+	key := p.GetConfigField("stripe_cli_session")
+	ring, err := keyring.Open(keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	})
+	if err != nil {
+		return nil, err
+	}
+	keyringItem, err := ring.Get(key)
+	if err != nil {
+		if err == keyring.ErrKeyNotFound {
+			return nil, errors.New("no session")
+		}
+		return nil, err
+	}
+
+	creds := SessionCredentials{}
+	if err := json.Unmarshal(keyringItem.Data, &creds); err != nil {
+		return nil, err
+	}
+
+	currentAccountID, err := p.GetAccountID()
+	if err != nil {
+		return nil, err
+	}
+
+	if creds.AccountID == "" || creds.AccountID != currentAccountID {
+		return nil, errors.New("no session")
+	}
+
+	return &creds, nil
 }
