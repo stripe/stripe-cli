@@ -16,6 +16,34 @@ const (
 	ed25519PrivateKey = "MC4CAQAwBQYDK2VwBCIEID7ElTmBLNFhFziW+YlR1SRv6/xvGq6RTbSFXmGvTBtz"
 )
 
+func TestEd25519P256Sha256GetHeaders(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set(stripeContextHeaderName, "test-context")
+	req.Header.Set(authorizationHeaderName, "STRIPE-SIG-PREFIX 123")
+	getCurrentUnixTime = func() string {
+		return "1683296385"
+	}
+	err := SignRequest(req, ed25519PrivateKey)
+	require.NoError(t, err)
+	require.Equal(t, "sha-256=:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=:", req.Header.Get(contentDigestHeaderName))
+	require.Equal(t, `sig1=("stripe-context" "stripe-account" "authorization");created=1683296385`, req.Header.Get(signatureInputHeaderName))
+	require.Regexp(t, regexp.MustCompile("sig1=:.*:"), req.Header.Get(signatureHeaderName))
+}
+
+func TestEd25519P256Sha256PostHeaders(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodPost, "/test", nil)
+	req.Header.Set(stripeContextHeaderName, "test-context")
+	req.Header.Set(authorizationHeaderName, "STRIPE-SIG-PREFIX 123")
+	getCurrentUnixTime = func() string {
+		return "1683296385"
+	}
+	err := SignRequest(req, ed25519PrivateKey)
+	require.NoError(t, err)
+	require.Equal(t, "sha-256=:47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=:", req.Header.Get(contentDigestHeaderName))
+	require.Equal(t, `sig1=("stripe-context" "stripe-account" "authorization" "content-type" "content-digest");created=1683296385`, req.Header.Get(signatureInputHeaderName))
+	require.Regexp(t, regexp.MustCompile("sig1=:.*:"), req.Header.Get(signatureHeaderName))
+}
+
 func TestEcdsaP256Sha256GetHeaders(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set(stripeContextHeaderName, "test-context")
@@ -44,7 +72,7 @@ func TestEcdsaP256Sha256PostHeaders(t *testing.T) {
 	require.Regexp(t, regexp.MustCompile("sig1=:.*:"), req.Header.Get(signatureHeaderName))
 }
 
-func TestBuildSignatureGet(t *testing.T) {
+func TestBuildSignatureForGetRequest(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set(stripeContextHeaderName, "test-context")
 	req.Header.Set(authorizationHeaderName, "STRIPE-SIG-PREFIX 123")
@@ -57,7 +85,7 @@ func TestBuildSignatureGet(t *testing.T) {
 	require.Equal(t, "\"stripe-context\": test-context\n\"stripe-account\": \n\"authorization\": STRIPE-SIG-PREFIX 123\n\"@signature-params\": (\"stripe-context\" \"stripe-account\" \"authorization\");created=1683296385", result)
 }
 
-func TestBuildSignaturePost(t *testing.T) {
+func TestBuildSignatureForPostRequest(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/test", nil)
 	req.Header.Set(stripeContextHeaderName, "test-context")
 	req.Header.Set(authorizationHeaderName, "STRIPE-SIG-PREFIX 123")
