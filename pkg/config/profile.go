@@ -335,6 +335,9 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
+	// Remove experimental fields during login
+	runtimeViper = p.removeExperimentalFields(runtimeViper)
+
 	runtimeViper.SetConfigFile(profilesFile)
 
 	// Ensure we preserve the config file type
@@ -428,6 +431,8 @@ type ExperimentalFields struct {
 	StripeHeaders  string
 }
 
+var experimentalPrefix = "experimental."
+
 // GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
 func (p *Profile) GetExperimentalFields() ExperimentalFields {
 	if err := viper.ReadInConfig(); err == nil {
@@ -447,6 +452,13 @@ func (p *Profile) GetExperimentalFields() ExperimentalFields {
 		PrivateKey:     "",
 		StripeHeaders:  "",
 	}
+}
+
+func (p *Profile) removeExperimentalFields(v *viper.Viper) *viper.Viper {
+	v = p.safeRemove(v, experimentalPrefix+"contextual_name")
+	v = p.safeRemove(v, experimentalPrefix+"private_key")
+	v = p.safeRemove(v, experimentalPrefix+"stripe_headers")
+	return v
 }
 
 // SessionCredentials are the credentials needed for this session

@@ -512,7 +512,8 @@ func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields
 		headerName := header[0]
 		headerValue := header[1]
 		if headerName == stripeContextHeaderName {
-			fmt.Printf("Operating in %s %s...\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")"))
+			displayMessage := fmt.Sprintf("Operating in %s %s\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")..."))
+			fmt.Print(ansi.Color(os.Stdout).Gray(10, displayMessage))
 		} else if headerName == authorizationHeaderName && privKey == "" {
 			creds, err := rb.Profile.GetSessionCredentials()
 			if err != nil {
