@@ -431,15 +431,19 @@ type ExperimentalFields struct {
 	StripeHeaders  string
 }
 
-var experimentalPrefix = "experimental."
+const (
+	experimentalPrefix         = "experimental"
+	experimentalStripeHeaders  = experimentalPrefix + "." + "stripe_headers"
+	experimentalContextualName = experimentalPrefix + "." + "contextual_name"
+	experimentalPrivateKey     = experimentalPrefix + "." + "private_key"
+)
 
 // GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
 func (p *Profile) GetExperimentalFields() ExperimentalFields {
 	if err := viper.ReadInConfig(); err == nil {
-		experimentalPrefix := "experimental."
-		name := viper.GetString(p.GetConfigField(experimentalPrefix + "contextual_name"))
-		privKey := viper.GetString(p.GetConfigField(experimentalPrefix + "private_key"))
-		headers := viper.GetString(p.GetConfigField(experimentalPrefix + "stripe_headers"))
+		name := viper.GetString(p.GetConfigField(experimentalContextualName))
+		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
+		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))
 
 		return ExperimentalFields{
 			ContextualName: name,
@@ -455,9 +459,9 @@ func (p *Profile) GetExperimentalFields() ExperimentalFields {
 }
 
 func (p *Profile) removeExperimentalFields(v *viper.Viper) *viper.Viper {
-	v = p.safeRemove(v, experimentalPrefix+"contextual_name")
-	v = p.safeRemove(v, experimentalPrefix+"private_key")
-	v = p.safeRemove(v, experimentalPrefix+"stripe_headers")
+	v = p.safeRemove(v, experimentalContextualName)
+	v = p.safeRemove(v, experimentalPrivateKey)
+	v = p.safeRemove(v, experimentalStripeHeaders)
 	return v
 }
 
