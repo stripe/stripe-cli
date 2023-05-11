@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,12 +60,19 @@ var KeyRing keyring.Keyring
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	writeErr := p.writeProfile(viper.GetViper())
+	// Remove existing profile first
+	v := p.deleteProfile(viper.GetViper())
+
+	writeErr := p.writeProfile(v)
 	if writeErr != nil {
 		return writeErr
 	}
 
 	return nil
+}
+
+func (p *Profile) deleteProfile(v *viper.Viper) *viper.Viper {
+	return p.safeRemove(v, p.ProfileName)
 }
 
 // GetColor gets the color setting for the user based on the flag or the
@@ -333,6 +342,9 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
+	// Remove experimental fields during login
+	runtimeViper = p.removeExperimentalFields(runtimeViper)
+
 	runtimeViper.SetConfigFile(profilesFile)
 
 	// Ensure we preserve the config file type
@@ -417,4 +429,85 @@ func isRedactedAPIKey(apiKey string) bool {
 
 func getKeyExpiresAt() string {
 	return time.Now().AddDate(0, 0, KeyValidInDays).UTC().Format(DateStringFormat)
+}
+
+// ExperimentalFields are currently only used for request signing
+type ExperimentalFields struct {
+	ContextualName string
+	PrivateKey     string
+	StripeHeaders  string
+}
+
+const (
+	experimentalPrefix         = "experimental"
+	experimentalStripeHeaders  = experimentalPrefix + "." + "stripe_headers"
+	experimentalContextualName = experimentalPrefix + "." + "contextual_name"
+	experimentalPrivateKey     = experimentalPrefix + "." + "private_key"
+)
+
+// GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
+func (p *Profile) GetExperimentalFields() ExperimentalFields {
+	if err := viper.ReadInConfig(); err == nil {
+		name := viper.GetString(p.GetConfigField(experimentalContextualName))
+		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
+		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))
+
+		return ExperimentalFields{
+			ContextualName: name,
+			PrivateKey:     privKey,
+			StripeHeaders:  headers,
+		}
+	}
+	return ExperimentalFields{
+		ContextualName: "",
+		PrivateKey:     "",
+		StripeHeaders:  "",
+	}
+}
+
+func (p *Profile) removeExperimentalFields(v *viper.Viper) *viper.Viper {
+	v = p.safeRemove(v, experimentalPrefix)
+	return v
+}
+
+// SessionCredentials are the credentials needed for this session
+type SessionCredentials struct {
+	UAT        string `json:"uat"`
+	PrivateKey string `json:"private_key"`
+	AccountID  string `json:"account_id"`
+}
+
+// GetSessionCredentials retrieves the session credentials from the keyring
+func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
+	key := p.GetConfigField("stripe_cli_session")
+	ring, err := keyring.Open(keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	})
+	if err != nil {
+		return nil, err
+	}
+	keyringItem, err := ring.Get(key)
+	if err != nil {
+		if err == keyring.ErrKeyNotFound {
+			return nil, errors.New("no session")
+		}
+		return nil, err
+	}
+
+	creds := SessionCredentials{}
+	if err := json.Unmarshal(keyringItem.Data, &creds); err != nil {
+		return nil, err
+	}
+
+	currentAccountID, err := p.GetAccountID()
+	if err != nil {
+		return nil, err
+	}
+
+	if creds.AccountID == "" || creds.AccountID != currentAccountID {
+		return nil, errors.New("found a session, but it doesn't match your current account")
+	}
+
+	return &creds, nil
 }
