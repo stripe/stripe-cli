@@ -459,9 +459,7 @@ func (p *Profile) GetExperimentalFields() ExperimentalFields {
 }
 
 func (p *Profile) removeExperimentalFields(v *viper.Viper) *viper.Viper {
-	v = p.safeRemove(v, experimentalContextualName)
-	v = p.safeRemove(v, experimentalPrivateKey)
-	v = p.safeRemove(v, experimentalStripeHeaders)
+	v = p.safeRemove(v, experimentalPrefix)
 	return v
 }
 
