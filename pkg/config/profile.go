@@ -60,12 +60,19 @@ var KeyRing keyring.Keyring
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	writeErr := p.writeProfile(viper.GetViper())
+	// Remove existing profile first
+	v := p.deleteProfile(viper.GetViper())
+
+	writeErr := p.writeProfile(v)
 	if writeErr != nil {
 		return writeErr
 	}
 
 	return nil
+}
+
+func (p *Profile) deleteProfile(v *viper.Viper) *viper.Viper {
+	return p.safeRemove(v, p.ProfileName)
 }
 
 // GetColor gets the color setting for the user based on the flag or the
