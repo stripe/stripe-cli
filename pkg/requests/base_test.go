@@ -12,6 +12,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -296,4 +298,30 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	t.Run("non-RequestError", func(t *testing.T) {
 		require.False(t, IsAPIKeyExpiredError(fmt.Errorf("other")))
 	})
+}
+
+func TestRequestSigning(t *testing.T) {
+	rb := Base{}
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
+		StripeHeaders:  "Stripe-Context=test-context;Authorization=TEST-PREFIX 123",
+		ContextualName: "test-name",
+		PrivateKey:     "test-key",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "test-context", req.Header.Get("Stripe-Context"))
+	require.Equal(t, "TEST-PREFIX 123", req.Header.Get("Authorization"))
+}
+
+func TestRequestSigningShouldNotBeCalled(t *testing.T) {
+	rb := Base{}
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
+		StripeHeaders:  "",
+		ContextualName: "",
+		PrivateKey:     "",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "", req.Header.Get("Stripe-Context"))
+	require.Equal(t, "", req.Header.Get("Authorization"))
 }

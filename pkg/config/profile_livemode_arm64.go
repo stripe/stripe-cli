@@ -59,7 +59,7 @@ func (p *Profile) retrieveLivemodeValue(key string) (string, error) {
 		}
 	}
 
-	value := strings.TrimSpace(string(out[:]))
+	value := strings.TrimSpace(string(out))
 	// if the string has the well-known prefix, assume it's encoded
 	if strings.HasPrefix(value, encodingPrefix) {
 		dec, err := hex.DecodeString(value[len(encodingPrefix):])
