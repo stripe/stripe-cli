@@ -860,7 +860,6 @@
 | raw | [string](#string) |  | Raw fixture string |
 | api_version | [string](#string) |  | Specify API Version for fixture |
 | edit | [bool](#bool) |  | Whether or not to edit the fixture directly in git&#39;s default IDE |
-| fixture | [string](#string) |  | Specify a fixture to use for the trigger |
 
 
 

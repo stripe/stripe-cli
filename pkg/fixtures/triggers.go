@@ -87,23 +87,6 @@ var Events = map[string]string{
 	"quote.accepted":                           "triggers/quote.accepted.json",
 }
 
-// FixtureVariants is a map of events to any available variants of that event's fixtures. Not all events have variants,
-// some only have the canonical fixture found in `Events`.
-var FixtureVariants = map[string][]string{
-	"issuing_cardholder.created": {
-		"triggers/issuing_cardholder.created.gb.json",
-		"triggers/issuing_cardholder.created.eu.json",
-	},
-	"issuing_card.created": {
-		"triggers/issuing_card.created.gb.json",
-		"triggers/issuing_card.created.eu.json",
-	},
-	"issuing_authorization.request": {
-		"triggers/issuing_authorization.request.gb.json",
-		"triggers/issuing_authorization.request.eu.json",
-	},
-}
-
 // BuildFromFixtureFile creates a new fixture struct for a file
 func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fixture, err := NewFixtureFromFile(
@@ -157,7 +140,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string, edit bool, fixtureName string) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()
@@ -170,14 +153,6 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 
 	if len(raw) == 0 {
 		if file, ok := Events[event]; ok {
-			if len(fixtureName) > 0 {
-				file = fmt.Sprintf("triggers/%s.%s.json", event, fixtureName)
-				_, ok = reverseMap()[file]
-				if !ok {
-					return nil, fmt.Errorf(fmt.Sprintf("The fixture ‘%s’ is not supported for event ‘%s’", fixtureName, event))
-				}
-			}
-
 			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove, edit)
 			if err != nil {
 				return nil, err
@@ -212,12 +187,6 @@ func reverseMap() map[string]string {
 	reversed := make(map[string]string)
 	for name, file := range Events {
 		reversed[file] = name
-	}
-
-	for name, files := range FixtureVariants {
-		for _, file := range files {
-			reversed[file] = name
-		}
 	}
 
 	return reversed

@@ -31,9 +31,6 @@ message TriggerRequest {
 
   // Whether or not to edit the fixture directly in git's default IDE
   bool edit = 9;
-
-  // Specify a fixture to use for the trigger
-  string fixture = 10;
 }
 
 message TriggerResponse {
