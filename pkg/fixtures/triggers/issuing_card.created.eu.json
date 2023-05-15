@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "cardholder",
+      "path": "/v1/issuing/cardholders",
+      "method": "post",
+      "params": {
+        "name": "My Cardholder",
+        "type": "individual",
+        "phone_number": "+34666777888",
+        "individual": {
+          "first_name": "My",
+          "last_name": "Cardholder",
+          "card_issuing": {
+            "user_terms_acceptance": {
+              "date": 1470266163,
+              "ip": "91.121.146.224"
+            }
+          }
+        },
+        "billing": {
+          "address": {
+            "line1": "P. de la Castellana 43",
+            "city": "Madrid",
+            "state": "Madrid",
+            "postal_code": "28046",
+            "country": "ES"
+          }
+        }
+      }
+    },
+    {
+      "name": "card",
+      "path": "/v1/issuing/cards",
+      "method": "post",
+      "params": {
+        "currency": "eur",
+        "type": "virtual",
+        "cardholder": "${cardholder:id}"
+      }
+    }
+  ]
+}
