@@ -47,7 +47,6 @@ require (
 )
 
 require (
-	github.com/alessio/shellescape v1.4.1
 	github.com/hashicorp/go-hclog v1.2.2
 	github.com/hashicorp/go-plugin v1.4.4
 	github.com/joho/godotenv v1.4.0

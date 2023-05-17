@@ -253,6 +253,21 @@ func (c *Config) RemoveAllProfiles() error {
 	return syncConfig(runtimeViper)
 }
 
+func deleteLivemodeKey(key string, profile string) error {
+	fieldID := profile + "." + key
+	existingKeys, err := KeyRing.Keys()
+	if err != nil {
+		return err
+	}
+	for _, item := range existingKeys {
+		if item == fieldID {
+			KeyRing.Remove(fieldID)
+			return nil
+		}
+	}
+	return nil
+}
+
 // isProfile identifies whether a value in the config pertains to a profile.
 func isProfile(value interface{}) bool {
 	// TODO: ianjabour - ideally find a better way to identify projects in config
