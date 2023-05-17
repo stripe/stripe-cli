@@ -21,6 +21,8 @@ builds:
     ldflags:
       - -s -w -X github.com/stripe/stripe-cli/pkg/version.Version={{.Version}}
     binary: stripe
+    env:
+      - CGO_ENABLED=1
     main: ./cmd/stripe/main.go
     goos:
       - darwin
