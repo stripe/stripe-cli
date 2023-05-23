@@ -60,7 +60,7 @@ var KeyRing keyring.Keyring
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
-	// Remove existing profile first
+	// Remove all keys under existing profile first
 	v := p.deleteProfile(viper.GetViper())
 
 	writeErr := p.writeProfile(v)
@@ -72,7 +72,16 @@ func (p *Profile) CreateProfile() error {
 }
 
 func (p *Profile) deleteProfile(v *viper.Viper) *viper.Viper {
-	return p.safeRemove(v, p.ProfileName)
+	for _, key := range v.AllKeys() {
+		if strings.HasPrefix(key, p.ProfileName+".") {
+			newViper, err := removeKey(v, key)
+			if err == nil {
+				// failure to remove a key should not break the login flow
+				v = newViper
+			}
+		}
+	}
+	return v
 }
 
 // GetColor gets the color setting for the user based on the flag or the
@@ -342,9 +351,6 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	// Remove experimental fields during login
-	runtimeViper = p.removeExperimentalFields(runtimeViper)
-
 	runtimeViper.SetConfigFile(profilesFile)
 
 	// Ensure we preserve the config file type
@@ -508,11 +514,6 @@ func (p *Profile) GetExperimentalFields() ExperimentalFields {
 		PrivateKey:     "",
 		StripeHeaders:  "",
 	}
-}
-
-func (p *Profile) removeExperimentalFields(v *viper.Viper) *viper.Viper {
-	v = p.safeRemove(v, experimentalPrefix)
-	return v
 }
 
 // SessionCredentials are the credentials needed for this session
