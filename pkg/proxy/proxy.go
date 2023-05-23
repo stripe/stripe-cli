@@ -259,7 +259,11 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 				ForwardConnectURL: p.cfg.ForwardConnectURL,
 			}
 
-			session, err = p.stripeAuthClient.Authorize(ctx, p.cfg.DeviceName, p.cfg.WebSocketFeature, nil, &devURLMap)
+			session, err = p.stripeAuthClient.Authorize(ctx, stripeauth.CreateSessionRequest{
+				DeviceName:        p.cfg.DeviceName,
+				WebSocketFeatures: []string{p.cfg.WebSocketFeature},
+				DeviceURLMap:      &devURLMap,
+			})
 
 			if err == nil {
 				exitCh <- struct{}{}

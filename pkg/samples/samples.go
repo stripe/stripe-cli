@@ -326,7 +326,10 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 	}
 	authClient := stripeauth.NewClient(stripeClient, nil)
 
-	authSession, err := authClient.Authorize(ctx, deviceName, "webhooks", nil, nil)
+	authSession, err := authClient.Authorize(ctx, stripeauth.CreateSessionRequest{
+		DeviceName:        deviceName,
+		WebSocketFeatures: []string{"webhooks"},
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -39,26 +39,39 @@ type DeviceURLMap struct {
 	ForwardConnectURL string
 }
 
+// CreateSessionRequest defines the API input parameters for client.Authorize.
+type CreateSessionRequest struct {
+	DeviceName        string
+	WebSocketFeatures []string
+
+	Filters      *string
+	DeviceURLMap *DeviceURLMap
+}
+
 // Authorize sends a request to Stripe to initiate a new CLI session.
-func (c *Client) Authorize(ctx context.Context, deviceName string, websocketFeature string, filters *string, devURLMap *DeviceURLMap) (*StripeCLISession, error) {
+func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*StripeCLISession, error) {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "stripeauth.client.Authorize",
 	}).Debug("Authenticating with Stripe...")
 
 	form := url.Values{}
-	form.Add("device_name", deviceName)
-	form.Add("websocket_feature", websocketFeature)
-
-	if filters != nil {
-		form.Add("filters", *filters)
+	form.Add("device_name", req.DeviceName)
+	for _, feature := range req.WebSocketFeatures {
+		form.Add("websocket_features[]", feature)
 	}
 
-	if devURLMap != nil && len(devURLMap.ForwardURL) > 0 {
-		form.Add("forward_to_url", devURLMap.ForwardURL)
+	if req.Filters != nil {
+		form.Add("filters", *req.Filters)
 	}
 
-	if devURLMap != nil && len(devURLMap.ForwardConnectURL) > 0 {
-		form.Add("forward_connect_to_url", devURLMap.ForwardConnectURL)
+	if devURLMap := req.DeviceURLMap; devURLMap != nil {
+		if len(devURLMap.ForwardURL) > 0 {
+			form.Add("forward_to_url", devURLMap.ForwardURL)
+		}
+
+		if len(devURLMap.ForwardConnectURL) > 0 {
+			form.Add("forward_connect_to_url", devURLMap.ForwardConnectURL)
+		}
 	}
 
 	resp, err := c.client.PerformRequest(ctx, http.MethodPost, stripeCLISessionPath, form.Encode(), nil)
