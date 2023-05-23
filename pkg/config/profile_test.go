@@ -167,7 +167,13 @@ func TestOldProfileDeleted(t *testing.T) {
 	err := p.writeProfile(v)
 	require.NoError(t, err)
 
-	require.FileExists(t, c.ProfilesFile)
+	untouchedProfile := Profile{
+		ProfileName:    "foo",
+		DeviceName:     "foo-device-name",
+		TestModeAPIKey: "foo_test_123",
+	}
+	err = untouchedProfile.writeProfile(v)
+	require.NoError(t, err)
 
 	p = Profile{
 		ProfileName:    "test",
@@ -182,11 +188,16 @@ func TestOldProfileDeleted(t *testing.T) {
 
 	require.FileExists(t, c.ProfilesFile)
 
-	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
-	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
+	// Overwrites keys
 	require.Equal(t, "device-after-test", v.GetString(p.GetConfigField(DeviceNameName)))
 	require.Equal(t, "sk_test_456", v.GetString(p.GetConfigField(TestModeAPIKeyName)))
 	require.Equal(t, "", v.GetString(p.GetConfigField(DisplayNameName)))
+	// Deletes nested keys
+	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
+	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
+	// Leaves the other profile untouched
+	require.Equal(t, "foo-device-name", v.GetString(untouchedProfile.GetConfigField(DeviceNameName)))
+	require.Equal(t, "foo_test_123", v.GetString(untouchedProfile.GetConfigField(TestModeAPIKeyName)))
 
 	cleanUp(c.ProfilesFile)
 }
