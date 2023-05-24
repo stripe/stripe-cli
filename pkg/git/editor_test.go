@@ -99,7 +99,7 @@ func TestGetDefaultGitEditor(t *testing.T) {
 			assert.Equal(t, "notepad", newEditor)
 		} else {
 			expectedEditor := os.Getenv("EDITOR")
-			if expectedEditor != "" {
+			if expectedEditor == "" {
 				expectedEditor = "vi"
 			}
 
