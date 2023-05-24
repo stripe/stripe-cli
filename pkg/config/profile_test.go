@@ -143,6 +143,65 @@ func TestExperimentalFields(t *testing.T) {
 	cleanUp(c.ProfilesFile)
 }
 
+func TestOldProfileDeleted(t *testing.T) {
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	p := Profile{
+		ProfileName:    "test",
+		DeviceName:     "device-before-test",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "display-name-before-test",
+	}
+	c := &Config{
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+
+	p.WriteConfigField("experimental.stripe_headers", "test-headers")
+
+	v := viper.New()
+
+	v.SetConfigFile(profilesFile)
+	err := p.writeProfile(v)
+	require.NoError(t, err)
+
+	untouchedProfile := Profile{
+		ProfileName:    "foo",
+		DeviceName:     "foo-device-name",
+		TestModeAPIKey: "foo_test_123",
+	}
+	err = untouchedProfile.writeProfile(v)
+	require.NoError(t, err)
+
+	p = Profile{
+		ProfileName:    "test",
+		DeviceName:     "device-after-test",
+		TestModeAPIKey: "sk_test_456",
+		DisplayName:    "",
+	}
+
+	v = p.deleteProfile(v)
+	err = p.writeProfile(v)
+	require.NoError(t, err)
+
+	require.FileExists(t, c.ProfilesFile)
+
+	// Overwrites keys
+	require.Equal(t, "device-after-test", v.GetString(p.GetConfigField(DeviceNameName)))
+	require.Equal(t, "sk_test_456", v.GetString(p.GetConfigField(TestModeAPIKeyName)))
+	require.Equal(t, "", v.GetString(p.GetConfigField(DisplayNameName)))
+	// Deletes nested keys
+	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
+	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
+	// Leaves the other profile untouched
+	require.Equal(t, "foo-device-name", v.GetString(untouchedProfile.GetConfigField(DeviceNameName)))
+	require.Equal(t, "foo_test_123", v.GetString(untouchedProfile.GetConfigField(TestModeAPIKeyName)))
+
+	cleanUp(c.ProfilesFile)
+}
+
 func helperLoadBytes(t *testing.T, name string) []byte {
 	bytes, err := os.ReadFile(name)
 	if err != nil {
