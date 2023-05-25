@@ -198,7 +198,11 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 		// Try to authorize at least 5 times before failing. Sometimes we have random
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
-			session, err = t.stripeAuthClient.Authorize(ctx, t.cfg.DeviceName, requestLogsWebSocketFeature, &filters, nil)
+			session, err = t.stripeAuthClient.Authorize(ctx, stripeauth.CreateSessionRequest{
+				DeviceName:        t.cfg.DeviceName,
+				WebSocketFeatures: []string{requestLogsWebSocketFeature},
+				Filters:           &filters,
+			})
 
 			if err == nil {
 				exitCh <- struct{}{}
