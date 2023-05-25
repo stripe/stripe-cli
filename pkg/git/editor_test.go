@@ -88,7 +88,7 @@ func TestGetDefaultGitEditor(t *testing.T) {
 		assert.Equal(t, defaultIDE, "value")
 	})
 
-	t.Run("no GIT_EDITOR or EDITOR defaults to vi", func(t *testing.T) {
+	t.Run("no GIT_EDITOR falls back to EDITOR or OS fallback", func(t *testing.T) {
 		prevGitEditor, _ := getDefaultGitEditor()
 		defer setEditorTo(prevGitEditor)
 
@@ -98,7 +98,12 @@ func TestGetDefaultGitEditor(t *testing.T) {
 		if runtime.GOOS == "windows" {
 			assert.Equal(t, "notepad", newEditor)
 		} else {
-			assert.Equal(t, "vi", newEditor)
+			expectedEditor := os.Getenv("EDITOR")
+			if expectedEditor == "" {
+				expectedEditor = "vi"
+			}
+
+			assert.Equal(t, expectedEditor, newEditor)
 		}
 	})
 }
