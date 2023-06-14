@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"math"
 	"os"
+	"time"
 
 	"github.com/briandowns/spinner"
 
@@ -90,7 +92,15 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 			} else {
 				ansi.StopSpinner(s, message, os.Stdout)
 			}
-			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+
+			keyValidityDurationDays := 90
+			if !res.KeyExpiration.IsZero() {
+				keyValidityDurationHours := res.KeyExpiration.Sub(time.Now()).Hours()
+				keyValidityDurationDays = int(math.Round(keyValidityDurationHours / 24.0))
+			}
+
+			keyDurationCourtesyMessage := fmt.Sprintf("Please note: this key will expire after %d days, at which point you'll need to re-authenticate.", keyValidityDurationDays)
+			fmt.Println(ansi.Italic(keyDurationCourtesyMessage))
 			return nil
 		}
 	}

@@ -48,9 +48,6 @@ const (
 	// DateStringFormat is the format for expiredAt date
 	DateStringFormat = "2006-01-02"
 
-	// KeyValidInDays is the number of days the API key is valid for
-	KeyValidInDays = 90
-
 	// KeyManagementService is the key management service name
 	KeyManagementService = "Stripe CLI"
 )

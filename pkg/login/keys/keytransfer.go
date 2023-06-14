@@ -11,6 +11,7 @@ import (
 type AsyncPollResult struct {
 	TestModeAPIKey string
 	Account        *acct.Account
+	KeyExpiration  time.Time
 	Err            error
 }
 
@@ -57,6 +58,7 @@ func (rt *RAKTransfer) AsyncPollKey(ctx context.Context, pollURL string, interva
 
 	ch <- AsyncPollResult{
 		TestModeAPIKey: response.TestModeAPIKey,
+		KeyExpiration:  time.Unix(response.TestModeAPIKeyExpiry, 0),
 		Account:        account,
 		Err:            nil,
 	}
