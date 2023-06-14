@@ -3,6 +3,7 @@ package login
 import (
 	"context"
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"os"
 
 	"github.com/briandowns/spinner"
@@ -77,7 +78,8 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 				return res.Err
 			}
 
-			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
+			apiKey := config.NewAPIKeyFromString(res.TestModeAPIKey, nil)
+			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, apiKey)
 			if err != nil {
 				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 				return err

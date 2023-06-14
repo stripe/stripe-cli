@@ -21,9 +21,9 @@ type Profile struct {
 	DeviceName             string
 	ProfileName            string
 	APIKey                 string
-	LiveModeAPIKey         string
+	LiveModeAPIKey         *APIKey
 	LiveModePublishableKey string
-	TestModeAPIKey         string
+	TestModeAPIKey         *APIKey
 	TestModePublishableKey string
 	TerminalPOSDeviceID    string
 	DisplayName            string
@@ -136,27 +136,28 @@ func (p *Profile) GetAccountID() (string, error) {
 }
 
 // GetAPIKey will return the existing key for the given profile
-func (p *Profile) GetAPIKey(livemode bool) (string, error) {
+func (p *Profile) GetAPIKey(livemode bool) (*APIKey, error) {
 	envKey := os.Getenv("STRIPE_API_KEY")
 	if envKey != "" {
 		err := validators.APIKey(envKey)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return envKey, nil
+		return NewAPIKeyFromString(envKey, p), nil
 	}
 
 	if p.APIKey != "" {
 		err := validators.APIKey(p.APIKey)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
-		return p.APIKey, nil
+		return NewAPIKeyFromString(p.APIKey, p), nil
 	}
 
 	var key string
+	var keyExpiry time.Time
 	var err error
 
 	// Try to fetch the API key from the configuration file
@@ -171,24 +172,40 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 
 		if err := viper.ReadInConfig(); err == nil {
 			key = viper.GetString(p.GetConfigField(TestModeAPIKeyName))
+
+			keyExpiry, err = p.GetExpiresAt(false)
+			if err != nil {
+				// It's OK if we can't detect the expiry of the key right now,
+				// since we only grab it to show a convenience warning if expiry
+				// is happening soon.
+				keyExpiry = time.Time{}
+			}
 		}
 	} else {
 		p.redactAllLivemodeValues()
 		key, err = p.retrieveLivemodeValue(LiveModeAPIKeyName)
 		if err != nil {
-			return "", err
+			return nil, err
+		}
+
+		keyExpiry, err = p.GetExpiresAt(true)
+		if err != nil {
+			// It's OK if we can't detect the expiry of the key right now,
+			// since we only grab it to show a convenience warning if expiry
+			// is happening soon.
+			keyExpiry = time.Time{}
 		}
 	}
 
 	if key != "" {
 		err = validators.APIKey(key)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		return key, nil
+		return NewAPIKey(key, keyExpiry, livemode, p), nil
 	}
 
-	return "", validators.ErrAPIKeyNotConfigured
+	return nil, validators.ErrAPIKeyNotConfigured
 }
 
 // GetExpiresAt returns the API key expirary date
@@ -307,24 +324,23 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper.Set(p.GetConfigField(DeviceNameName), strings.TrimSpace(p.DeviceName))
 	}
 
-	if p.LiveModeAPIKey != "" {
-		expiresAt := getKeyExpiresAt()
-		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), expiresAt)
+	if p.LiveModeAPIKey != nil {
+		runtimeViper.Set(p.GetConfigField(LiveModeKeyExpiresAtName), formatExpirationDate(p.LiveModeAPIKey.Expiration))
 
 		// // store redacted key in config
-		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey)))
+		runtimeViper.Set(p.GetConfigField(LiveModeAPIKeyName), RedactAPIKey(strings.TrimSpace(p.LiveModeAPIKey.Key)))
 
 		// // store actual key in secure keyring
-		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey), "Live mode API key")
+		p.saveLivemodeValue(LiveModeAPIKeyName, strings.TrimSpace(p.LiveModeAPIKey.Key), "Live mode API key")
 	}
 
 	if p.LiveModePublishableKey != "" {
 		runtimeViper.Set(p.GetConfigField(LiveModePubKeyName), strings.TrimSpace(p.LiveModePublishableKey))
 	}
 
-	if p.TestModeAPIKey != "" {
-		runtimeViper.Set(p.GetConfigField(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey))
-		runtimeViper.Set(p.GetConfigField(TestModeKeyExpiresAtName), getKeyExpiresAt())
+	if p.TestModeAPIKey != nil {
+		runtimeViper.Set(p.GetConfigField(TestModeAPIKeyName), strings.TrimSpace(p.TestModeAPIKey.Key))
+		runtimeViper.Set(p.GetConfigField(TestModeKeyExpiresAtName), formatExpirationDate(p.TestModeAPIKey.Expiration))
 	}
 
 	if p.TestModePublishableKey != "" {
@@ -342,7 +358,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 	runtimeViper.MergeInConfig()
 
 	// Do this after we merge the old configs in
-	if p.TestModeAPIKey != "" {
+	if p.TestModeAPIKey != nil {
 		runtimeViper = p.safeRemove(runtimeViper, "secret_key")
 		runtimeViper = p.safeRemove(runtimeViper, "api_key")
 	}
@@ -433,8 +449,8 @@ func isRedactedAPIKey(apiKey string) bool {
 	return true
 }
 
-func getKeyExpiresAt() string {
-	return time.Now().AddDate(0, 0, KeyValidInDays).UTC().Format(DateStringFormat)
+func formatExpirationDate(expirationDate time.Time) string {
+	return expirationDate.UTC().Format(DateStringFormat)
 }
 
 // saveLivemodeValue saves livemode value of given key in keyring

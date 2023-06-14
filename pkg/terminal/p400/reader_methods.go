@@ -2,6 +2,7 @@ package p400
 
 import (
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"math/rand"
 	"runtime"
 	"strconv"
@@ -13,7 +14,7 @@ import (
 // TerminalSessionContext is a type that contains important context most methods need to know to complete the quickstart flow
 // one copy of this is passed around a lot and is mutable for whenever a property needs to change
 type TerminalSessionContext struct {
-	APIKey             string
+	APIKey             *config.APIKey
 	IPAddress          string
 	BaseURL            string
 	LocationID         string

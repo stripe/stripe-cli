@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -69,7 +70,7 @@ func DiscoverReaders(ctx context.Context, tsCtx TerminalSessionContext) ([]Reade
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey:  tsCtx.PstToken,
+		APIKey:  config.NewAPIKeyFromString(tsCtx.PstToken, nil),
 		Verbose: false,
 	}
 

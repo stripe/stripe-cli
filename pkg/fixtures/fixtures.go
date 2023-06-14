@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"io"
 	"os"
 	"path/filepath"
@@ -50,7 +51,7 @@ type FixtureRequest struct {
 // Fixture contains a mapping of an individual fixtures responses for querying
 type Fixture struct {
 	Fs            afero.Fs
-	APIKey        string
+	APIKey        *config.APIKey
 	StripeAccount string
 	Skip          []string
 	Overrides     map[string]interface{}
@@ -62,7 +63,7 @@ type Fixture struct {
 }
 
 // NewFixtureFromFile creates a to later run steps for populating test data
-func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
+func NewFixtureFromFile(fs afero.Fs, apiKey *config.APIKey, stripeAccount, baseURL, file string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,
@@ -130,7 +131,7 @@ func NewFixtureFromFile(fs afero.Fs, apiKey, stripeAccount, baseURL, file string
 }
 
 // NewFixtureFromRawString creates fixtures from user inputted string
-func NewFixtureFromRawString(fs afero.Fs, apiKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
+func NewFixtureFromRawString(fs afero.Fs, apiKey *config.APIKey, stripeAccount, baseURL, raw string) (*Fixture, error) {
 	fxt := Fixture{
 		Fs:            fs,
 		APIKey:        apiKey,

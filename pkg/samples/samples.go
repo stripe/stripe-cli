@@ -336,7 +336,7 @@ func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]str
 
 	return map[string]string{
 		"STRIPE_PUBLISHABLE_KEY": publishableKey,
-		"STRIPE_SECRET_KEY":      apiKey,
+		"STRIPE_SECRET_KEY":      apiKey.Key,
 		"STRIPE_WEBHOOK_SECRET":  authSession.Secret,
 		"STATIC_DIR":             "../client",
 	}, nil

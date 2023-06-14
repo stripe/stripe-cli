@@ -13,6 +13,10 @@ type APIKey struct {
 }
 
 func NewAPIKey(key string, expiration time.Time, livemode bool, profile *Profile) *APIKey {
+	if key == "" {
+		return nil
+	}
+
 	return &APIKey{
 		Key:        key,
 		Livemode:   livemode,
@@ -22,6 +26,10 @@ func NewAPIKey(key string, expiration time.Time, livemode bool, profile *Profile
 }
 
 func NewAPIKeyFromString(key string, profile *Profile) *APIKey {
+	if key == "" {
+		return nil
+	}
+
 	return &APIKey{
 		Key: key,
 		// Not guaranteed to be right, but we'll try our best to infer live/test mode

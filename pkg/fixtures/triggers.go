@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"sort"
 
 	"github.com/spf13/afero"
@@ -94,7 +95,7 @@ var Events = map[string]string{
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
-func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
+func BuildFromFixtureFile(fs afero.Fs, apiKey *config.APIKey, stripeAccount, apiBaseURL, jsonFile string, skip, override, add, remove []string, edit bool) (*Fixture, error) {
 	fixture, err := NewFixtureFromFile(
 		fs,
 		apiKey,
@@ -115,7 +116,7 @@ func BuildFromFixtureFile(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, jsonFi
 }
 
 // BuildFromFixtureString creates a new fixture from a string
-func BuildFromFixtureString(fs afero.Fs, apiKey, stripeAccount, apiBaseURL, raw string) (*Fixture, error) {
+func BuildFromFixtureString(fs afero.Fs, apiKey *config.APIKey, stripeAccount, apiBaseURL, raw string) (*Fixture, error) {
 	fixture, err := NewFixtureFromRawString(fs, apiKey, stripeAccount, apiBaseURL, raw)
 	if err != nil {
 		return nil, err
@@ -146,7 +147,7 @@ func EventNames() []string {
 }
 
 // Trigger triggers a Stripe event.
-func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey string, skip, override, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
+func Trigger(ctx context.Context, event string, stripeAccount string, baseURL string, apiKey *config.APIKey, skip, override, add, remove []string, raw string, apiVersion string, edit bool) ([]string, error) {
 	var fixture *Fixture
 	var err error
 	fs := afero.NewOsFs()

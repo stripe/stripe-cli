@@ -3,6 +3,7 @@ package acct
 import (
 	"context"
 	"encoding/json"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,7 +28,7 @@ func TestGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123", nil))
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -55,7 +56,7 @@ func TestGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, "sk_test_123")
+	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123", nil))
 	require.NoError(t, err)
 	require.Equal(
 		t,

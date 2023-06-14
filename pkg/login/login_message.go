@@ -3,6 +3,7 @@ package login
 import (
 	"context"
 	"fmt"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"os"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -10,7 +11,7 @@ import (
 )
 
 // SuccessMessage returns the display message for a successfully authenticated user
-func SuccessMessage(ctx context.Context, account *acct.Account, baseURL string, apiKey string) (string, error) {
+func SuccessMessage(ctx context.Context, account *acct.Account, baseURL string, apiKey *config.APIKey) (string, error) {
 	// Account will be nil if user did interactive login
 	if account == nil {
 		acc, err := acct.GetUserAccount(ctx, baseURL, apiKey)

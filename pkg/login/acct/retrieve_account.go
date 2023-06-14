@@ -3,6 +3,7 @@ package acct
 import (
 	"context"
 	"encoding/json"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"net/url"
 
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -25,7 +26,7 @@ type Dashboard struct {
 }
 
 // GetUserAccount retrieves the account information
-func GetUserAccount(ctx context.Context, baseURL string, apiKey string) (*Account, error) {
+func GetUserAccount(ctx context.Context, baseURL string, apiKey *config.APIKey) (*Account, error) {
 	parsedBaseURL, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err

@@ -3,6 +3,7 @@ package stripe
 import (
 	"context"
 	"errors"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -99,7 +100,7 @@ func TestPerformRequest_ApiKey_Provided(t *testing.T) {
 	baseURL, _ := url.Parse(ts.URL)
 	client := Client{
 		BaseURL: baseURL,
-		APIKey:  "sk_test_1234",
+		APIKey:  config.NewAPIKeyFromString("sk_test_1234", nil),
 	}
 
 	resp, err := client.PerformRequest(context.Background(), http.MethodGet, "/get", "", nil)

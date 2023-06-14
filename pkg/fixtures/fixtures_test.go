@@ -3,6 +3,7 @@ package fixtures
 import (
 	"context"
 	"errors"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -80,7 +81,8 @@ const failureTestFixture = `
 	]
 }`
 
-const apiKey = "sk_test_1234"
+var apiKey = config.NewAPIKeyFromString("sk_test_1234", nil)
+
 const file = "test_fixture.json"
 const customersPath = "/v1/customers"
 const chargePath = "/v1/charges"

@@ -3,6 +3,7 @@ package login
 import (
 	"context"
 	"encoding/json"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,7 +23,8 @@ func TestDisplayName(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testAccountName
 
-	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	displayName, err := getDisplayName(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -36,7 +38,8 @@ func TestDisplayNameNoName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	displayName, err := getDisplayName(context.Background(), account, "", "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	displayName, err := getDisplayName(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -60,7 +63,8 @@ func TestDisplayNameGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	displayName, err := getDisplayName(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -83,7 +87,8 @@ func TestDisplayNameGetAccountNoName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	displayName, err := getDisplayName(context.Background(), nil, ts.URL, "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	displayName, err := getDisplayName(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,

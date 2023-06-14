@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -12,10 +13,11 @@ import (
 
 func TestWriteProfile(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	expirationTime := time.Now().Add(24 * time.Hour)
 	p := Profile{
 		DeviceName:     "st-testing",
 		ProfileName:    "tests",
-		TestModeAPIKey: "sk_test_123",
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
 		DisplayName:    "test-account-display-name",
 	}
 
@@ -37,7 +39,7 @@ func TestWriteProfile(t *testing.T) {
 	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
-	expiresAt := getKeyExpiresAt()
+	expiresAt := formatExpirationDate(expirationTime)
 	expectedConfig := `[tests]
 device_name = 'st-testing'
 display_name = 'test-account-display-name'
@@ -53,10 +55,11 @@ test_mode_key_expires_at = '` + expiresAt + `'
 
 func TestWriteProfilesMerge(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	expirationTime := time.Now().Add(24 * time.Hour)
 	p := Profile{
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
-		TestModeAPIKey: "sk_test_123",
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
 		DisplayName:    "test-account-display-name",
 	}
 
@@ -80,7 +83,7 @@ func TestWriteProfilesMerge(t *testing.T) {
 	require.FileExists(t, c.ProfilesFile)
 
 	configValues := helperLoadBytes(t, c.ProfilesFile)
-	expiresAt := getKeyExpiresAt()
+	expiresAt := formatExpirationDate(expirationTime)
 	expectedConfig := `[tests]
 device_name = 'st-testing'
 display_name = 'test-account-display-name'
@@ -102,10 +105,11 @@ test_mode_key_expires_at = '` + expiresAt + `'
 
 func TestExperimentalFields(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	expirationTime := time.Now().Add(24 * time.Hour)
 	p := Profile{
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
-		TestModeAPIKey: "sk_test_123",
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
 		DisplayName:    "test-account-display-name",
 	}
 	c := &Config{
@@ -145,10 +149,11 @@ func TestExperimentalFields(t *testing.T) {
 
 func TestOldProfileDeleted(t *testing.T) {
 	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	expirationTime := time.Now().Add(24 * time.Hour)
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
-		TestModeAPIKey: "sk_test_123",
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
 		DisplayName:    "display-name-before-test",
 	}
 	c := &Config{
@@ -170,7 +175,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	untouchedProfile := Profile{
 		ProfileName:    "foo",
 		DeviceName:     "foo-device-name",
-		TestModeAPIKey: "foo_test_123",
+		TestModeAPIKey: NewAPIKey("foo_test_123", expirationTime, false, nil),
 	}
 	err = untouchedProfile.writeProfile(v)
 	require.NoError(t, err)
@@ -178,7 +183,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	p = Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-after-test",
-		TestModeAPIKey: "sk_test_456",
+		TestModeAPIKey: NewAPIKey("sk_test_456", expirationTime, false, nil),
 		DisplayName:    "",
 	}
 
