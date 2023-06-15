@@ -2,13 +2,15 @@ package config
 
 import (
 	"fmt"
-	"github.com/spf13/viper"
-	"github.com/stripe/stripe-cli/pkg/ansi"
 	"math"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/spf13/viper"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 const liveModeKeyLastExpirationWarningField = "live_mode_api_key_last_expiration_warning"

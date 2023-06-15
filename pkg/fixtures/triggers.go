@@ -4,11 +4,11 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"sort"
 
 	"github.com/spf13/afero"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 

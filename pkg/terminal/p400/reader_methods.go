@@ -2,12 +2,12 @@ package p400
 
 import (
 	"fmt"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"math/rand"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 

@@ -2,7 +2,6 @@ package stripe
 
 import (
 	"context"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"io"
 	"net"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 

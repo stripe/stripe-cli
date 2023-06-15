@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/url"
 	"strconv"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 

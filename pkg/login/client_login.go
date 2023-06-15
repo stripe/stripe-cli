@@ -3,7 +3,6 @@ package login
 import (
 	"context"
 	"fmt"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"math"
 	"os"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"

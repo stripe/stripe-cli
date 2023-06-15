@@ -1,10 +1,11 @@
 package p400
 
 import (
-	"github.com/stripe/stripe-cli/pkg/config"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestCreateRabbitServicePayload(t *testing.T) {

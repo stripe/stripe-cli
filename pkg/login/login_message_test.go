@@ -3,13 +3,13 @@ package login
 import (
 	"context"
 	"encoding/json"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 

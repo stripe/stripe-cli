@@ -1,8 +1,9 @@
 package keys
 
 import (
-	"github.com/spf13/afero"
 	"time"
+
+	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/validators"

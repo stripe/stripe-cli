@@ -3,7 +3,6 @@ package stripe
 import (
 	"context"
 	"errors"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestPerformRequest_ParamsEncoding_Delete(t *testing.T) {

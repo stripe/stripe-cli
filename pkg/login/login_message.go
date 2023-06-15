@@ -3,10 +3,10 @@ package login
 import (
 	"context"
 	"fmt"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"os"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 

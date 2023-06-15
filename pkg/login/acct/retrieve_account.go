@@ -3,9 +3,9 @@ package acct
 import (
 	"context"
 	"encoding/json"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"net/url"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 

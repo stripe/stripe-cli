@@ -3,7 +3,6 @@ package stripeauth
 import (
 	"context"
 	"encoding/json"
-	"github.com/stripe/stripe-cli/pkg/config"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
