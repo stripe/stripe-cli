@@ -199,7 +199,10 @@ func (p *Profile) GetAPIKey(livemode bool) (*APIKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewAPIKey(key, keyExpiry, livemode, p), nil
+
+		apiKey := NewAPIKey(key, keyExpiry, livemode, p)
+		apiKey.WarnIfExpirationSoon(p)
+		return apiKey, nil
 	}
 
 	return nil, validators.ErrAPIKeyNotConfigured
