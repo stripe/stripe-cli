@@ -71,8 +71,6 @@ func (k *APIKey) WarnIfExpirationSoon(profile *Profile) {
 		warnMsg := fmt.Sprintf("Your API key will expire in %d days. You can obtain a new key from the Dashboard or `stripe login`.", remainingDays)
 		printWarning(warnMsg)
 		_ = k.setLastExpirationWarning(timeNow(), profile)
-	} else {
-
 	}
 }
 
