@@ -81,7 +81,7 @@ const failureTestFixture = `
 	]
 }`
 
-var apiKey = config.NewAPIKeyFromString("sk_test_1234", nil)
+var apiKey = config.NewAPIKeyFromString("sk_test_1234")
 
 const file = "test_fixture.json"
 const customersPath = "/v1/customers"

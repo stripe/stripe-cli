@@ -21,7 +21,7 @@ func TestSuccessMessage(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testDisplayName
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -36,7 +36,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -49,7 +49,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &acct.Account{}
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -74,7 +74,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	msg, err := SuccessMessage(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -98,7 +98,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	msg, err := SuccessMessage(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(

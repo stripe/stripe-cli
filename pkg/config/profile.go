@@ -141,7 +141,7 @@ func (p *Profile) GetAPIKey(livemode bool) (*APIKey, error) {
 			return nil, err
 		}
 
-		return NewAPIKeyFromString(envKey, p), nil
+		return NewAPIKeyFromString(envKey), nil
 	}
 
 	if p.APIKey != "" {
@@ -150,7 +150,7 @@ func (p *Profile) GetAPIKey(livemode bool) (*APIKey, error) {
 			return nil, err
 		}
 
-		return NewAPIKeyFromString(p.APIKey, p), nil
+		return NewAPIKeyFromString(p.APIKey), nil
 	}
 
 	var key string
@@ -200,7 +200,7 @@ func (p *Profile) GetAPIKey(livemode bool) (*APIKey, error) {
 			return nil, err
 		}
 
-		apiKey := NewAPIKey(key, keyExpiry, livemode, p)
+		apiKey := NewAPIKey(key, keyExpiry, livemode)
 		apiKey.WarnIfExpirationSoon(p)
 		return apiKey, nil
 	}

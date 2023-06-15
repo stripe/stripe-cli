@@ -27,10 +27,10 @@ func InteractiveLogin(ctx context.Context, config *config_pkg.Config) error {
 		return err
 	}
 
-	apiKey := config_pkg.NewAPIKeyFromString(apiKeyString, nil)
+	apiKey := config_pkg.NewAPIKeyFromString(apiKeyString)
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
-	config.Profile.TestModeAPIKey = config_pkg.NewAPIKeyFromString(apiKeyString, &config.Profile)
+	config.Profile.TestModeAPIKey = config_pkg.NewAPIKeyFromString(apiKeyString)
 	displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
 
 	config.Profile.DisplayName = displayName

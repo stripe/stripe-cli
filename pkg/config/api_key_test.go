@@ -14,18 +14,16 @@ func TestNewAPIKeyFromString(t *testing.T) {
 	sampleLivemodeKeyString := "rk_live_1234"
 	sampleTestmodeKeyString := "rk_test_1234"
 
-	livemodeKey := NewAPIKeyFromString(sampleLivemodeKeyString, nil)
-	testmodeKey := NewAPIKeyFromString(sampleTestmodeKeyString, nil)
+	livemodeKey := NewAPIKeyFromString(sampleLivemodeKeyString)
+	testmodeKey := NewAPIKeyFromString(sampleTestmodeKeyString)
 
 	assert.Equal(t, sampleLivemodeKeyString, livemodeKey.Key)
 	assert.True(t, livemodeKey.Livemode)
 	assert.Zero(t, livemodeKey.Expiration)
-	assert.Nil(t, livemodeKey.profile)
 
 	assert.Equal(t, sampleTestmodeKeyString, testmodeKey.Key)
 	assert.False(t, testmodeKey.Livemode)
 	assert.Zero(t, testmodeKey.Expiration)
-	assert.Nil(t, testmodeKey.profile)
 }
 
 func TestWarnIfExpirationSoon(t *testing.T) {
@@ -43,7 +41,6 @@ func TestWarnIfExpirationSoon(t *testing.T) {
 			Key:        "rk_test_1234",
 			Livemode:   false,
 			Expiration: expiration,
-			profile:    nil,
 		}
 
 		config, configCleanup := setupTestConfig(k)
@@ -70,7 +67,6 @@ func TestWarnIfExpirationSoon(t *testing.T) {
 			Key:        "rk_test_1234",
 			Livemode:   false,
 			Expiration: expiration,
-			profile:    nil,
 		}
 
 		config, configCleanup := setupTestConfig(k)
@@ -108,7 +104,6 @@ func TestWarnIfExpirationSoon(t *testing.T) {
 			Key:        "rk_test_1234",
 			Livemode:   false,
 			Expiration: expiration,
-			profile:    nil,
 		}
 
 		config, configCleanup := setupTestConfig(k)
@@ -127,7 +122,7 @@ func TestWarnIfExpirationSoon(t *testing.T) {
 		printed, printWarningCleanup := setupFakePrintWarning()
 		defer printWarningCleanup()
 
-		k := NewAPIKeyFromString("rk_test_1234", nil)
+		k := NewAPIKeyFromString("rk_test_1234")
 
 		config, configCleanup := setupTestConfig(k)
 		defer configCleanup()

@@ -80,7 +80,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 				return res.Err
 			}
 
-			apiKey := config.NewAPIKeyFromString(res.TestModeAPIKey, nil)
+			apiKey := config.NewAPIKeyFromString(res.TestModeAPIKey)
 			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, apiKey)
 			if err != nil {
 				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)

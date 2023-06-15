@@ -70,7 +70,7 @@ func DiscoverReaders(ctx context.Context, tsCtx TerminalSessionContext) ([]Reade
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey:  config.NewAPIKeyFromString(tsCtx.PstToken, nil),
+		APIKey:  config.NewAPIKeyFromString(tsCtx.PstToken),
 		Verbose: false,
 	}
 

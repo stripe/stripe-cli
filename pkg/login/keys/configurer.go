@@ -35,12 +35,12 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 	}
 
 	if response.LiveModeAPIKey != "" {
-		c.cfg.Profile.LiveModeAPIKey = config.NewAPIKey(response.LiveModeAPIKey, time.Unix(response.LiveModeAPIKeyExpiry, 0), true, &c.cfg.Profile)
+		c.cfg.Profile.LiveModeAPIKey = config.NewAPIKey(response.LiveModeAPIKey, time.Unix(response.LiveModeAPIKeyExpiry, 0), true)
 	}
 	c.cfg.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 
 	if response.TestModeAPIKey != "" {
-		c.cfg.Profile.TestModeAPIKey = config.NewAPIKey(response.TestModeAPIKey, time.Unix(response.TestModeAPIKeyExpiry, 0), false, &c.cfg.Profile)
+		c.cfg.Profile.TestModeAPIKey = config.NewAPIKey(response.TestModeAPIKey, time.Unix(response.TestModeAPIKeyExpiry, 0), false)
 	}
 	c.cfg.Profile.TestModePublishableKey = response.TestModePublishableKey
 

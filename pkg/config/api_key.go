@@ -27,10 +27,9 @@ type APIKey struct {
 	Key        string
 	Livemode   bool
 	Expiration time.Time
-	profile    *Profile
 }
 
-func NewAPIKey(key string, expiration time.Time, livemode bool, profile *Profile) *APIKey {
+func NewAPIKey(key string, expiration time.Time, livemode bool) *APIKey {
 	if key == "" {
 		return nil
 	}
@@ -39,11 +38,10 @@ func NewAPIKey(key string, expiration time.Time, livemode bool, profile *Profile
 		Key:        key,
 		Livemode:   livemode,
 		Expiration: expiration,
-		profile:    profile,
 	}
 }
 
-func NewAPIKeyFromString(key string, profile *Profile) *APIKey {
+func NewAPIKeyFromString(key string) *APIKey {
 	if key == "" {
 		return nil
 	}
@@ -55,7 +53,6 @@ func NewAPIKeyFromString(key string, profile *Profile) *APIKey {
 		Livemode: strings.Contains(key, "live"),
 		// Expiration intentionally omitted to leave it as the zero value, since
 		// it's not known when e.g. a key is passed using an environment variable.
-		profile: profile,
 	}
 }
 

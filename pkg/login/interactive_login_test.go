@@ -23,7 +23,7 @@ func TestDisplayName(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testAccountName
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	displayName, err := getDisplayName(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -38,7 +38,7 @@ func TestDisplayNameNoName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	displayName, err := getDisplayName(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -63,7 +63,7 @@ func TestDisplayNameGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	displayName, err := getDisplayName(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
@@ -87,7 +87,7 @@ func TestDisplayNameGetAccountNoName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	var apiKey = config.NewAPIKeyFromString("sk_test_123", nil)
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
 	displayName, err := getDisplayName(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(

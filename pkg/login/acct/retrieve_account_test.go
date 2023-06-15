@@ -28,7 +28,7 @@ func TestGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123", nil))
+	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123"))
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -56,7 +56,7 @@ func TestGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123", nil))
+	acc, err := GetUserAccount(context.Background(), ts.URL, config.NewAPIKeyFromString("sk_test_123"))
 	require.NoError(t, err)
 	require.Equal(
 		t,

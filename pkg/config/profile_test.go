@@ -17,7 +17,7 @@ func TestWriteProfile(t *testing.T) {
 	p := Profile{
 		DeviceName:     "st-testing",
 		ProfileName:    "tests",
-		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false),
 		DisplayName:    "test-account-display-name",
 	}
 
@@ -59,7 +59,7 @@ func TestWriteProfilesMerge(t *testing.T) {
 	p := Profile{
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
-		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false),
 		DisplayName:    "test-account-display-name",
 	}
 
@@ -109,7 +109,7 @@ func TestExperimentalFields(t *testing.T) {
 	p := Profile{
 		ProfileName:    "tests",
 		DeviceName:     "st-testing",
-		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false),
 		DisplayName:    "test-account-display-name",
 	}
 	c := &Config{
@@ -153,7 +153,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	p := Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-before-test",
-		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("sk_test_123", expirationTime, false),
 		DisplayName:    "display-name-before-test",
 	}
 	c := &Config{
@@ -175,7 +175,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	untouchedProfile := Profile{
 		ProfileName:    "foo",
 		DeviceName:     "foo-device-name",
-		TestModeAPIKey: NewAPIKey("foo_test_123", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("foo_test_123", expirationTime, false),
 	}
 	err = untouchedProfile.writeProfile(v)
 	require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	p = Profile{
 		ProfileName:    "test",
 		DeviceName:     "device-after-test",
-		TestModeAPIKey: NewAPIKey("sk_test_456", expirationTime, false, nil),
+		TestModeAPIKey: NewAPIKey("sk_test_456", expirationTime, false),
 		DisplayName:    "",
 	}
 

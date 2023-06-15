@@ -9,7 +9,7 @@ import (
 
 func TestCreateRabbitServicePayload(t *testing.T) {
 	tsCtx := TerminalSessionContext{
-		APIKey: config.NewAPIKeyFromString("sk_123", nil),
+		APIKey: config.NewAPIKeyFromString("sk_123"),
 		DeviceInfo: DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    "pos-1234",

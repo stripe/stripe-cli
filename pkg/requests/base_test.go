@@ -111,7 +111,7 @@ func TestMakeRequest(t *testing.T) {
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
-	apiKey := config.NewAPIKeyFromString("sk_test_1234", nil)
+	apiKey := config.NewAPIKeyFromString("sk_test_1234")
 	_, err := rb.MakeRequest(context.Background(), apiKey, "/foo/bar", params, true)
 	require.NoError(t, err)
 }
@@ -128,7 +128,7 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	apiKey := config.NewAPIKeyFromString("sk_test_1234", nil)
+	apiKey := config.NewAPIKeyFromString("sk_test_1234")
 	_, err := rb.MakeRequest(context.Background(), apiKey, "/foo/bar", params, true)
 	require.Error(t, err)
 	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
@@ -155,7 +155,7 @@ func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	apiKey := config.NewAPIKeyFromString("sk_test_1234", nil)
+	apiKey := config.NewAPIKeyFromString("sk_test_1234")
 	_, err := rb.MakeRequest(context.Background(), apiKey, "/foo/bar", params, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Request failed, status=401, body=")
@@ -193,7 +193,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
 	}
 
-	apiKey := config.NewAPIKeyFromString("sk_test_1234", nil)
+	apiKey := config.NewAPIKeyFromString("sk_test_1234")
 	_, err = rb.MakeMultiPartRequest(context.Background(), apiKey, "/foo/bar", params, true)
 	require.NoError(t, err)
 }
