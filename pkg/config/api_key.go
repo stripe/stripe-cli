@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-const LiveModeKeyLastExpirationWarningField = "live_mode_api_key_last_expiration_warning"
-const TestModeKeyLastExpirationWarningField = "test_mode_api_key_last_expiration_warning"
+const liveModeKeyLastExpirationWarningField = "live_mode_api_key_last_expiration_warning"
+const testModeKeyLastExpirationWarningField = "test_mode_api_key_last_expiration_warning"
 
 const upcomingExpirationThreshold = 14 * 24 * time.Hour
 const imminentExpirationThreshold = 24 * time.Hour
@@ -23,12 +23,15 @@ const upcomingExpirationReminderFrequency = 12 * time.Hour
 var timeNow = time.Now
 var printWarning = printWarningMessage
 
+// APIKey holds various details about an API key like the key itself, its expiration,
+// and whether its for live or testmode usage.
 type APIKey struct {
 	Key        string
 	Livemode   bool
 	Expiration time.Time
 }
 
+// NewAPIKey creates an APIKey from the relevant data
 func NewAPIKey(key string, expiration time.Time, livemode bool) *APIKey {
 	if key == "" {
 		return nil
@@ -41,6 +44,7 @@ func NewAPIKey(key string, expiration time.Time, livemode bool) *APIKey {
 	}
 }
 
+// NewAPIKeyFromString creates an APIKey when only the key is known
 func NewAPIKeyFromString(key string) *APIKey {
 	if key == "" {
 		return nil
@@ -56,6 +60,7 @@ func NewAPIKeyFromString(key string) *APIKey {
 	}
 }
 
+// WarnIfExpirationSoon shows the relevant warning if the key is due to expire soon
 func (k *APIKey) WarnIfExpirationSoon(profile *Profile) {
 	if k.Expiration.IsZero() {
 		return
@@ -110,10 +115,9 @@ func (k *APIKey) setLastExpirationWarning(warningTime time.Time, profile *Profil
 
 func (k *APIKey) expirationWarningField() string {
 	if k.Livemode {
-		return LiveModeKeyLastExpirationWarningField
-	} else {
-		return TestModeKeyLastExpirationWarningField
+		return liveModeKeyLastExpirationWarningField
 	}
+	return testModeKeyLastExpirationWarningField
 }
 
 func printWarningMessage(message string) {

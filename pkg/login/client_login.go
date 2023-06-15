@@ -95,7 +95,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			keyValidityDurationDays := 90
 			if !res.KeyExpiration.IsZero() {
-				keyValidityDurationHours := res.KeyExpiration.Sub(time.Now()).Hours()
+				keyValidityDurationHours := time.Until(res.KeyExpiration).Hours()
 				keyValidityDurationDays = int(math.Round(keyValidityDurationHours / 24.0))
 			}
 
