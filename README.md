@@ -39,6 +39,11 @@ scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
 scoop install stripe
 ```
 
+Stripe CLI is also available on windows via windows package manager(winget):
+
+```sh
+winget install "Stripe Cli"
+```
 ### Docker
 
 The CLI is also available as a Docker image: [`stripe/stripe-cli`](https://hub.docker.com/r/stripe/stripe-cli).
