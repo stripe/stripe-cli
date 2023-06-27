@@ -195,7 +195,9 @@ func init() {
 	rootCmd.AddCommand(newResourcesCmd().cmd)
 	rootCmd.AddCommand(newSamplesCmd().cmd)
 	rootCmd.AddCommand(newServeCmd().cmd)
-	rootCmd.AddCommand(newStatusCmd().cmd)
+	// current stripe status site is being deprecated
+	// hide status command until status site v2 is released
+	// rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
