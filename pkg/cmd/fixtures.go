@@ -33,8 +33,8 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 	}
 
 	fixturesCmd.Cmd = &cobra.Command{
-		Use:   "fixtures",
-		Args:  validators.ExactArgs(1),
+		Use:   "fixtures [file1.json] [file2.json] ...",
+		Args:  validators.MinimumNArgs(1),
 		Short: "Run fixtures to populate your account with data",
 		Long:  `Run fixtures to populate your account with data`,
 		RunE:  fixturesCmd.runFixturesCmd,
@@ -67,31 +67,32 @@ func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fixture, err := fixtures.NewFixtureFromFile(
-		afero.NewOsFs(),
-		apiKey,
-		fc.stripeAccount,
-		fc.apiBaseURL,
-		args[0],
-		fc.skip,
-		fc.override,
-		fc.add,
-		fc.remove,
-		fc.edit,
-	)
-	if err != nil {
-		return err
-	}
+	for _, arg := range args {
+		fixture, err := fixtures.NewFixtureFromFile(
+			afero.NewOsFs(),
+			apiKey,
+			fc.stripeAccount,
+			fc.apiBaseURL,
+			arg,
+			fc.skip,
+			fc.override,
+			fc.add,
+			fc.remove,
+			fc.edit,
+		)
+		if err != nil {
+			return err
+		}
 
-	_, err = fixture.Execute(cmd.Context(), fc.apiVersion)
+		_, err = fixture.Execute(cmd.Context(), fc.apiVersion)
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		return err
-	}
-
-	err = fixture.UpdateEnv()
-	if err != nil {
-		return err
+		err = fixture.UpdateEnv()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
