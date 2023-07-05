@@ -38,8 +38,8 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0
 	golang.org/x/term v0.5.0
-	google.golang.org/genproto v0.0.0-20220810155839-1856144b1d9c // indirect
-	google.golang.org/grpc v1.48.0
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
