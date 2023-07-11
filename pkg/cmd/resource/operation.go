@@ -66,7 +66,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		if oc.Cmd.Flags().Changed(arrayProp) {
 			paramName := strings.ReplaceAll(arrayProp, "-", "_")
 			for _, arrayItem := range *arrayVal {
-				flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
+				if strings.Contains(paramName, ".") {
+					fullParam := constructParamFromDot(paramName)
+					flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", fullParam, arrayItem))
+				} else {
+					flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
+				}
 			}
 		}
 	}
