@@ -72,7 +72,6 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 				} else {
 					flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
 				}
-
 			}
 		}
 	}
