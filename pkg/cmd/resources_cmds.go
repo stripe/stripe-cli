@@ -722,6 +722,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "create", "/v1/credit_notes", http.MethodPost, map[string]string{
 		"amount":                      "integer",
 		"credit_amount":               "integer",
+		"effective_at":                "integer",
 		"invoice":                     "string",
 		"memo":                        "string",
 		"out_of_band_amount":          "integer",
@@ -740,6 +741,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview", "/v1/credit_notes/preview", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
+		"effective_at":       "integer",
 		"invoice":            "string",
 		"memo":               "string",
 		"out_of_band_amount": "integer",
@@ -750,6 +752,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview_lines", "/v1/credit_notes/preview/lines", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
+		"effective_at":       "integer",
 		"ending_before":      "string",
 		"invoice":            "string",
 		"limit":              "integer",
@@ -1057,6 +1060,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"default_tax_rates":                     "array",
 		"description":                           "string",
 		"due_date":                              "integer",
+		"effective_at":                          "integer",
 		"footer":                                "string",
 		"from_invoice.action":                   "string",
 		"from_invoice.invoice":                  "string",
@@ -1170,6 +1174,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"default_tax_rates":                     "array",
 		"description":                           "string",
 		"due_date":                              "integer",
+		"effective_at":                          "integer",
 		"footer":                                "string",
 		"on_behalf_of":                          "string",
 		"payment_settings.default_mandate":      "string",
