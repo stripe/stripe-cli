@@ -181,6 +181,7 @@ var validEvents = map[string]bool{
 	"subscription_schedule.expiring":                           true,
 	"subscription_schedule.released":                           true,
 	"subscription_schedule.updated":                            true,
+	"tax.settings.updated":                                     true,
 	"tax_rate.created":                                         true,
 	"tax_rate.updated":                                         true,
 	"terminal.reader.action_failed":                            true,
