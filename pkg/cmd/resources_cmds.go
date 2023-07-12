@@ -111,6 +111,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
 	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
 	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
+	rTaxSettingssCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "settingss")
 	rTaxTransactionsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "transactions")
 	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
 	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
@@ -3237,6 +3238,17 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTaxSettingssCmd.Cmd, "retrieve", "/v1/tax/settings", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTaxSettingssCmd.Cmd, "update", "/v1/tax/settings", http.MethodPost, map[string]string{
+		"defaults.tax_behavior":           "string",
+		"defaults.tax_code":               "string",
+		"head_office.address.city":        "string",
+		"head_office.address.country":     "string",
+		"head_office.address.line1":       "string",
+		"head_office.address.line2":       "string",
+		"head_office.address.postal_code": "string",
+		"head_office.address.state":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_from_calculation", "/v1/tax/transactions/create_from_calculation", http.MethodPost, map[string]string{
 		"calculation": "string",
