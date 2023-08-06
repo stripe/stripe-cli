@@ -111,6 +111,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
 	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
 	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
+	rTaxSettingssCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "settingss")
 	rTaxTransactionsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "transactions")
 	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
 	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
@@ -722,6 +723,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "create", "/v1/credit_notes", http.MethodPost, map[string]string{
 		"amount":                      "integer",
 		"credit_amount":               "integer",
+		"effective_at":                "integer",
 		"invoice":                     "string",
 		"memo":                        "string",
 		"out_of_band_amount":          "integer",
@@ -740,6 +742,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview", "/v1/credit_notes/preview", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
+		"effective_at":       "integer",
 		"invoice":            "string",
 		"memo":               "string",
 		"out_of_band_amount": "integer",
@@ -750,6 +753,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview_lines", "/v1/credit_notes/preview/lines", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
+		"effective_at":       "integer",
 		"ending_before":      "string",
 		"invoice":            "string",
 		"limit":              "integer",
@@ -1057,6 +1061,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"default_tax_rates":                     "array",
 		"description":                           "string",
 		"due_date":                              "integer",
+		"effective_at":                          "integer",
 		"footer":                                "string",
 		"from_invoice.action":                   "string",
 		"from_invoice.invoice":                  "string",
@@ -1170,6 +1175,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"default_tax_rates":                     "array",
 		"description":                           "string",
 		"due_date":                              "integer",
+		"effective_at":                          "integer",
 		"footer":                                "string",
 		"on_behalf_of":                          "string",
 		"payment_settings.default_mandate":      "string",
@@ -1239,17 +1245,18 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"use_stripe_sdk":                                                    "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "create", "/v1/payment_intents", http.MethodPost, map[string]string{
-		"amount":                            "integer",
-		"application_fee_amount":            "integer",
-		"automatic_payment_methods.enabled": "boolean",
-		"capture_method":                    "string",
-		"confirm":                           "boolean",
-		"confirmation_method":               "string",
-		"currency":                          "string",
-		"customer":                          "string",
-		"description":                       "string",
-		"error_on_requires_action":          "boolean",
-		"mandate":                           "string",
+		"amount":                 "integer",
+		"application_fee_amount": "integer",
+		"automatic_payment_methods.allow_redirects": "string",
+		"automatic_payment_methods.enabled":         "boolean",
+		"capture_method":                            "string",
+		"confirm":                                   "boolean",
+		"confirmation_method":                       "string",
+		"currency":                                  "string",
+		"customer":                                  "string",
+		"description":                               "string",
+		"error_on_requires_action":                  "boolean",
+		"mandate":                                   "string",
 		"mandate_data.customer_acceptance.accepted_at":                      "integer",
 		"mandate_data.customer_acceptance.online.ip_address":                "string",
 		"mandate_data.customer_acceptance.online.user_agent":                "string",
@@ -1983,15 +1990,17 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.us_bank_account.financial_connections.return_url":  "string",
 		"payment_method_options.us_bank_account.networks.requested":                "array",
 		"payment_method_options.us_bank_account.verification_method":               "string",
-		"return_url": "string",
+		"return_url":     "string",
+		"use_stripe_sdk": "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "create", "/v1/setup_intents", http.MethodPost, map[string]string{
-		"attach_to_self":                    "boolean",
-		"automatic_payment_methods.enabled": "boolean",
-		"confirm":                           "boolean",
-		"customer":                          "string",
-		"description":                       "string",
-		"flow_directions":                   "array",
+		"attach_to_self": "boolean",
+		"automatic_payment_methods.allow_redirects": "string",
+		"automatic_payment_methods.enabled":         "boolean",
+		"confirm":                                   "boolean",
+		"customer":                                  "string",
+		"description":                               "string",
+		"flow_directions":                           "array",
 		"mandate_data.customer_acceptance.accepted_at":                             "integer",
 		"mandate_data.customer_acceptance.online.ip_address":                       "string",
 		"mandate_data.customer_acceptance.online.user_agent":                       "string",
@@ -2058,6 +2067,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"single_use.amount":                                                        "integer",
 		"single_use.currency":                                                      "string",
 		"usage":                                                                    "string",
+		"use_stripe_sdk":                                                           "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "list", "/v1/setup_intents", http.MethodGet, map[string]string{
 		"attach_to_self": "boolean",
@@ -3232,6 +3242,17 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rTaxSettingssCmd.Cmd, "retrieve", "/v1/tax/settings", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rTaxSettingssCmd.Cmd, "update", "/v1/tax/settings", http.MethodPost, map[string]string{
+		"defaults.tax_behavior":           "string",
+		"defaults.tax_code":               "string",
+		"head_office.address.city":        "string",
+		"head_office.address.country":     "string",
+		"head_office.address.line1":       "string",
+		"head_office.address.line2":       "string",
+		"head_office.address.postal_code": "string",
+		"head_office.address.state":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_from_calculation", "/v1/tax/transactions/create_from_calculation", http.MethodPost, map[string]string{
 		"calculation": "string",
