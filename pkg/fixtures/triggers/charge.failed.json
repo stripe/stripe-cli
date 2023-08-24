@@ -11,6 +11,7 @@
       "params": {
         "amount": 100,
         "currency": "usd",
+        "payment_method_types": ["card"],
         "payment_method": "pm_card_visa_chargeDeclined",
         "confirm": true,
         "description": "(created by Stripe CLI)"
