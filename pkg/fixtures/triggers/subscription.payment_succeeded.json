@@ -10,11 +10,8 @@
       "params": {
         "type": "card",
         "card": {
-          "number": "4242424242424242",
-          "exp_month": 10,
-          "exp_year": 2026,
-          "cvc": 314
-        }
+          "token": "tok_visa"
+       }
       }
     },
     {
