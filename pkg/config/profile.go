@@ -498,8 +498,9 @@ const (
 )
 
 // GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
+// If the API key is being overriden, via the --api-key flag or STRIPE_API_KEY env variable, this returns an empty struct.
 func (p *Profile) GetExperimentalFields() ExperimentalFields {
-	if err := viper.ReadInConfig(); err == nil {
+	if err := viper.ReadInConfig(); err == nil && os.Getenv("STRIPE_API_KEY") == "" && p.APIKey == "" {
 		name := viper.GetString(p.GetConfigField(experimentalContextualName))
 		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
 		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))
