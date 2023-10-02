@@ -276,6 +276,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 // WriteConfigField updates a configuration field and writes the updated
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
+	viper.ReadInConfig()
 	viper.Set(p.GetConfigField(field), value)
 	return viper.WriteConfig()
 }
