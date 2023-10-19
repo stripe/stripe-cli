@@ -65,7 +65,15 @@
           "token": "tok_visa"
         },
         "billing_details": {
-          "email": "stripe@example.com"
+          "email": "stripe@example.com",
+          "name": "Jenny Rosen",
+          "address": {
+            "line1": "354 Oyster Point Blvd",
+            "postal_code": "94080",
+            "city": "South San Francisco",
+            "state": "CA",
+            "country": "US"
+          }
         }
       }
     },

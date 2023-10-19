@@ -5,27 +5,16 @@
   },
   "fixtures": [
     {
-      "name": "customer",
-      "path": "/v1/customers",
-      "method": "post",
-      "params": {
-        "description": "(created by Stripe CLI)"
-      }
-    },
-    {
       "name": "payment_intent",
       "path": "/v1/payment_intents",
       "method": "post",
       "params": {
-        "amount": 20000,
-        "currency": "jpy",
-        "customer": "${customer:id}",
+        "amount": 2000,
+        "currency": "usd",
+        "confirm": "true",
         "description": "(created by Stripe CLI)",
-        "payment_method_types[]": "customer_balance",
-        "payment_method_data[type]": "customer_balance",
-        "payment_method_options[customer_balance][funding_type]": "bank_transfer",
-        "payment_method_options[customer_balance][bank_transfer][type]": "jp_bank_account",
-        "confirm": "true"
+        "payment_method": "pm_card_authenticationRequired",
+        "payment_method_types": ["card"]
       }
     }
   ]

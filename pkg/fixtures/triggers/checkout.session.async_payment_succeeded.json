@@ -62,12 +62,20 @@
       "path": "/v1/payment_methods",
       "method": "post",
       "params": {
-        "type": "card",
-        "card": {
-          "token": "tok_visa"
+        "type": "sepa_debit",
+        "sepa_debit": {
+          "iban": "AT611904300234573201"
         },
         "billing_details": {
-          "email": "stripe@example.com"
+          "email": "stripe@example.com",
+          "name": "Jenny Rosen",
+          "phone": "1234567890",
+          "address": {
+            "line1": "71 Crown Street",
+            "city": "London",
+            "postal_code": "W10 2WB",
+            "country": "GB"
+          }
         }
       }
     },

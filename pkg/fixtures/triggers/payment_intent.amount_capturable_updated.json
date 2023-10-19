@@ -14,6 +14,7 @@
         "confirmation_method": "manual",
         "currency": "usd",
         "description": "(created by Stripe CLI)",
+        "payment_method_types": ["card"],
         "payment_method": "pm_card_visa",
         "return_url": "https://stripe.com"
       }
