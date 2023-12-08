@@ -52,7 +52,7 @@ const (
 	KeyValidInDays = 90
 
 	// KeyManagementService is the key management service name
-	KeyManagementService = "Stripe CLI"
+	KeyManagementService = "StripeCLI"
 )
 
 // KeyRing ...
