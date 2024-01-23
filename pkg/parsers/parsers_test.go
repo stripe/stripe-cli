@@ -145,6 +145,28 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 	require.Equal(t, output[1], "salary=1000000000")
 }
 
+func TestParseInterfaceDeeplyNested(t *testing.T) {
+	label := make(map[string]interface{})
+	label["custom"] = "First Name"
+	label["type"] = "custom"
+
+	customField := make(map[string]interface{})
+	customField["label"] = label
+
+	customFields := make([]interface{}, 1)
+	customFields[0] = customField
+
+	data := make(map[string]interface{})
+	data["custom_fields"] = customFields
+
+	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	sort.Strings(output)
+
+	require.Equal(t, 2, len(output))
+	require.Equal(t, "custom_fields[0][label][custom]=First Name", output[0])
+	require.Equal(t, "custom_fields[0][label][type]=custom", output[1])
+}
+
 func TestParseInterface(t *testing.T) {
 	address := make(map[string]interface{})
 	address["line1"] = "1 Planet Express St"
