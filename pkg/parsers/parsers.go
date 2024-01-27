@@ -187,7 +187,7 @@ func ParseMap(params map[string]interface{}, parent string, index int, queryResp
 		case reflect.Map:
 			m := value.(map[string]interface{})
 
-			result, err := ParseMap(m, keyname, index, queryRespMap)
+			result, err := ParseMap(m, keyname, -1, queryRespMap)
 
 			if err != nil {
 				return make([]string, 0), err
