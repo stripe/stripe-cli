@@ -14,21 +14,23 @@ import (
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
-	"github.com/stripe/stripe-cli/pkg/config"
+	config_pkg "github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // InteractiveLogin lets the user set configuration on the command line
-func InteractiveLogin(ctx context.Context, config *config.Config) error {
-	apiKey, err := getConfigureAPIKey(os.Stdin)
+func InteractiveLogin(ctx context.Context, config *config_pkg.Config) error {
+	apiKeyString, err := getConfigureAPIKey(os.Stdin)
 	if err != nil {
 		return err
 	}
 
+	apiKey := config_pkg.NewAPIKeyFromString(apiKeyString)
+
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
-	config.Profile.TestModeAPIKey = apiKey
+	config.Profile.TestModeAPIKey = config_pkg.NewAPIKeyFromString(apiKeyString)
 	displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
 
 	config.Profile.DisplayName = displayName
@@ -52,7 +54,7 @@ func InteractiveLogin(ctx context.Context, config *config.Config) error {
 }
 
 // getDisplayName returns the display name for a successfully authenticated user
-func getDisplayName(ctx context.Context, account *acct.Account, baseURL string, apiKey string) (string, error) {
+func getDisplayName(ctx context.Context, account *acct.Account, baseURL string, apiKey *config_pkg.APIKey) (string, error) {
 	// Account will be nil if user did interactive login
 	if account == nil {
 		acc, err := acct.GetUserAccount(ctx, baseURL, apiKey)
@@ -85,7 +87,7 @@ func getConfigureAPIKey(input io.Reader) (string, error) {
 		return "", err
 	}
 
-	fmt.Printf("Your API key is: %s\n", config.RedactAPIKey(apiKey))
+	fmt.Printf("Your API key is: %s\n", config_pkg.RedactAPIKey(apiKey))
 
 	return apiKey, nil
 }

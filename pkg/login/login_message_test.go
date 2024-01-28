@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/acct"
 )
 
@@ -20,7 +21,8 @@ func TestSuccessMessage(t *testing.T) {
 	}
 	account.Settings.Dashboard.DisplayName = testDisplayName
 
-	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -34,7 +36,8 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 		ID: "acct_123",
 	}
 
-	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -45,7 +48,9 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 
 func TestSuccessMessageBasicMessage(t *testing.T) {
 	account := &acct.Account{}
-	msg, err := SuccessMessage(context.Background(), account, "", "sk_test_123")
+
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
+	msg, err := SuccessMessage(context.Background(), account, "", apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -69,7 +74,8 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
@@ -92,7 +98,8 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	msg, err := SuccessMessage(context.Background(), nil, ts.URL, "sk_test_123")
+	var apiKey = config.NewAPIKeyFromString("sk_test_123")
+	msg, err := SuccessMessage(context.Background(), nil, ts.URL, apiKey)
 	require.NoError(t, err)
 	require.Equal(
 		t,
