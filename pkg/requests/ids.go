@@ -16,7 +16,7 @@ var idURLMap = map[string]string{
 	"ic":        "/v1/issuing/cards/",
 	"ich":       "/v1/issuing/cardholders/",
 	"idp":       "/v1/issuing/disputes/",
-	"ii":        "/v1/invoice_items/",
+	"ii":        "/v1/invoiceitems/",
 	"in":        "/v1/invoices/",
 	"ipi":       "/v1/issuing/transactions/",
 	"issfr":     "/v1/radar/early_fraud_warnings/",
