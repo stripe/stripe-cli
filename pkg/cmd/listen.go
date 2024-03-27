@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net/url"
@@ -131,8 +130,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	ctx = withStdinCloseCancel(ctx)
-
 	client := &stripe.Client{
 		APIKey:  key,
 		BaseURL: apiBase,
@@ -197,20 +194,6 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 		<-interruptCh
 		onCancel()
 		cancel()
-	}()
-	return ctx
-}
-
-func withStdinCloseCancel(ctx context.Context) context.Context {
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-		}
-		if scanner.Err() == nil {
-			cancel()
-		}
 	}()
 	return ctx
 }
