@@ -77,6 +77,7 @@ var validEvents = map[string]bool{
 	"financial_connections.account.disconnected":               true,
 	"financial_connections.account.reactivated":                true,
 	"financial_connections.account.refreshed_balance":          true,
+	"financial_connections.account.refreshed_ownership":        true,
 	"financial_connections.account.refreshed_transactions":     true,
 	"identity.verification_session.canceled":                   true,
 	"identity.verification_session.created":                    true,
