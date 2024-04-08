@@ -4,13 +4,15 @@
   },
   "fixtures": [
     {
-      "name": "charge",
-      "path": "/v1/charges",
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
       "method": "post",
       "params": {
-        "source": "tok_createDisputeInquiry",
         "amount": 100,
         "currency": "usd",
+        "payment_method_types": ["card"],
+        "payment_method": "pm_card_createDisputeInquiry",
+        "confirm": true,
         "description": "(created by Stripe CLI)"
       }
     }

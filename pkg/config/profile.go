@@ -52,7 +52,7 @@ const (
 	KeyValidInDays = 90
 
 	// KeyManagementService is the key management service name
-	KeyManagementService = "Stripe CLI"
+	KeyManagementService = "StripeCLI"
 )
 
 // KeyRing ...
@@ -276,6 +276,7 @@ func (p *Profile) RegisterAlias(alias, key string) {
 // WriteConfigField updates a configuration field and writes the updated
 // configuration to disk.
 func (p *Profile) WriteConfigField(field, value string) error {
+	viper.ReadInConfig()
 	viper.Set(p.GetConfigField(field), value)
 	return viper.WriteConfig()
 }
@@ -497,8 +498,9 @@ const (
 )
 
 // GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
+// If the API key is being overridden, via the --api-key flag or STRIPE_API_KEY env variable, this returns an empty struct.
 func (p *Profile) GetExperimentalFields() ExperimentalFields {
-	if err := viper.ReadInConfig(); err == nil {
+	if err := viper.ReadInConfig(); err == nil && os.Getenv("STRIPE_API_KEY") == "" && p.APIKey == "" {
 		name := viper.GetString(p.GetConfigField(experimentalContextualName))
 		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
 		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))

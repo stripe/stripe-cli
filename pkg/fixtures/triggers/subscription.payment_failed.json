@@ -10,10 +10,7 @@
       "params": {
         "type": "card",
         "card": {
-          "number": "4000000000000341",
-          "exp_month": 10,
-          "exp_year": 2026,
-          "cvc": 314
+          "token": "tok_chargeCustomerFail"
         }
       }
     },

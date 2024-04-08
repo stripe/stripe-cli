@@ -178,6 +178,7 @@ func selectOptions(template, label string, options []string) (string, error) {
 		Label:     label,
 		Items:     options,
 		Templates: templates,
+		Size:      7,
 	}
 
 	_, result, err := prompt.Run()
