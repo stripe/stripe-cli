@@ -18,6 +18,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
 	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
 	nsClimateCmd := resource.NewNamespaceCmd(rootCmd, "climate")
+	nsEntitlementsCmd := resource.NewNamespaceCmd(rootCmd, "entitlements")
 	nsFinancialConnectionsCmd := resource.NewNamespaceCmd(rootCmd, "financial_connections")
 	nsForwardingCmd := resource.NewNamespaceCmd(rootCmd, "forwarding")
 	nsIdentityCmd := resource.NewNamespaceCmd(rootCmd, "identity")
@@ -76,6 +77,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rPersonsCmd := resource.NewResourceCmd(rootCmd, "persons")
 	rPlansCmd := resource.NewResourceCmd(rootCmd, "plans")
 	rPricesCmd := resource.NewResourceCmd(rootCmd, "prices")
+	rProductFeaturesCmd := resource.NewResourceCmd(rootCmd, "product_features")
 	rProductsCmd := resource.NewResourceCmd(rootCmd, "products")
 	rPromotionCodesCmd := resource.NewResourceCmd(rootCmd, "promotion_codes")
 	rQuotesCmd := resource.NewResourceCmd(rootCmd, "quotes")
@@ -111,6 +113,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rClimateOrdersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "orders")
 	rClimateProductsCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "products")
 	rClimateSuppliersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "suppliers")
+	rEntitlementsActiveEntitlementsCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "active_entitlements")
+	rEntitlementsFeaturesCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "features")
 	rFinancialConnectionsAccountsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "accounts")
 	rFinancialConnectionsSessionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "sessions")
 	rFinancialConnectionsTransactionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "transactions")
@@ -2038,6 +2042,16 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"tax_behavior":        "string",
 		"transfer_lookup_key": "boolean",
 	}, &Config)
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "create", "/v1/products/{product}/features", http.MethodPost, map[string]string{
+		"entitlement_feature": "string",
+	}, &Config)
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "delete", "/v1/products/{product}/features/{id}", http.MethodDelete, map[string]string{}, &Config)
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "list", "/v1/products/{product}/features", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "retrieve", "/v1/products/{product}/features/{id}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rProductsCmd.Cmd, "create", "/v1/products", http.MethodPost, map[string]string{
 		"active":                                      "boolean",
 		"default_price_data.currency":                 "string",
@@ -3396,6 +3410,27 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rClimateSuppliersCmd.Cmd, "retrieve", "/v1/climate/suppliers/{supplier}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "list", "/v1/entitlements/active_entitlements", http.MethodGet, map[string]string{
+		"customer":       "string",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "retrieve", "/v1/entitlements/active_entitlements/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "create", "/v1/entitlements/features", http.MethodPost, map[string]string{
+		"lookup_key": "string",
+		"name":       "string",
+	}, &Config)
+	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "list", "/v1/entitlements/features", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "retrieve", "/v1/entitlements/features/{id}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "update", "/v1/entitlements/features/{id}", http.MethodPost, map[string]string{
+		"active": "boolean",
+		"name":   "string",
+	}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list", "/v1/financial_connections/accounts", http.MethodGet, map[string]string{
 		"ending_before":  "string",
