@@ -191,11 +191,12 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"type":                                   "string",
 	}, &Config)
 	resource.NewOperationCmd(rAccountSessionsCmd.Cmd, "create", "/v1/account_sessions", http.MethodPost, map[string]string{
-		"account":                                              "string",
-		"components.account_onboarding.enabled":                "boolean",
-		"components.documents.enabled":                         "boolean",
-		"components.payment_details.enabled":                   "boolean",
-		"components.payment_details.features.capture_payments": "boolean",
+		"account":                               "string",
+		"components.account_onboarding.enabled": "boolean",
+		"components.account_onboarding.features.external_account_collection":             "boolean",
+		"components.documents.enabled":                                                   "boolean",
+		"components.payment_details.enabled":                                             "boolean",
+		"components.payment_details.features.capture_payments":                           "boolean",
 		"components.payment_details.features.destination_on_behalf_of_charge_management": "boolean",
 		"components.payment_details.features.dispute_management":                         "boolean",
 		"components.payment_details.features.refund_management":                          "boolean",
