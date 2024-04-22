@@ -22,12 +22,15 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
+      - run: mkdir /etc/yum.repos.d
       - run: echo -e "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
       - run: sudo yum install stripe
       - run: stripe --version
   scoop:
     runs-on: windows-latest
     steps:
+      - run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+      - run: Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
       - run: scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
       - run: scoop install stripe
       - run: stripe --version
