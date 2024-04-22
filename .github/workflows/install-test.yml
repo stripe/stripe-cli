@@ -22,8 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
-      - run: sudo apt update
-      - run: sudo apt install yum
+      - run: apt update
+      - run: apt install yum
       - run: mkdir /etc/yum.repos.d
       - run: echo -e "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
       - run: yum install stripe
