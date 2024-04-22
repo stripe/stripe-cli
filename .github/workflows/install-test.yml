@@ -1,8 +1,9 @@
 on:
   schedule:
     - cron: '0 0 * * *' # Every day at midnight
-  pull_request:
-    types: [opened, edited]
+  push:
+    tags:
+    - '*'
 name: Package manager test
 jobs:
   homebrew:
