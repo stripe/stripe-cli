@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
+      - run: sudo apt update
+      - run: sudo apt install yum
       - run: mkdir /etc/yum.repos.d
       - run: echo -e "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
       - run: yum install stripe
@@ -29,13 +31,8 @@ jobs:
   scoop:
     runs-on: windows-latest
     steps:
-    - name: 'Setup scoop'
-      shell: powershell
-      run: |
-        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-        Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-    - name: 'Test Stripe CLI'
-      shell: powershell
+    - uses: MinoruSekine/setup-scoop@v4
+    - shell: powershell
       run: |
         scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
         scoop install stripe
