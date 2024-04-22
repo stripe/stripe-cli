@@ -192,9 +192,17 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rAccountSessionsCmd.Cmd, "create", "/v1/account_sessions", http.MethodPost, map[string]string{
 		"account":                               "string",
-		"components.account_onboarding.enabled": "boolean",
+		"components.account_management.enabled": "boolean",
+		"components.account_management.features.external_account_collection":             "boolean",
+		"components.account_onboarding.enabled":                                          "boolean",
 		"components.account_onboarding.features.external_account_collection":             "boolean",
+		"components.balances.enabled":                                                    "boolean",
+		"components.balances.features.edit_payout_schedule":                              "boolean",
+		"components.balances.features.instant_payouts":                                   "boolean",
+		"components.balances.features.standard_payouts":                                  "boolean",
 		"components.documents.enabled":                                                   "boolean",
+		"components.notification_banner.enabled":                                         "boolean",
+		"components.notification_banner.features.external_account_collection":            "boolean",
 		"components.payment_details.enabled":                                             "boolean",
 		"components.payment_details.features.capture_payments":                           "boolean",
 		"components.payment_details.features.destination_on_behalf_of_charge_management": "boolean",
@@ -209,6 +217,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"components.payouts.features.edit_payout_schedule":                               "boolean",
 		"components.payouts.features.instant_payouts":                                    "boolean",
 		"components.payouts.features.standard_payouts":                                   "boolean",
+		"components.payouts_list.enabled":                                                "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "capabilities", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "create", "/v1/accounts", http.MethodPost, map[string]string{
@@ -771,6 +780,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                     "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
+		"payment_method_data.allow_redisplay":                               "string",
 		"payment_method_data.au_becs_debit.account_number":                  "string",
 		"payment_method_data.au_becs_debit.bsb_number":                      "string",
 		"payment_method_data.bacs_debit.account_number":                     "string",
@@ -961,10 +971,11 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"test_clock":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "list_payment_methods", "/v1/customers/{customer}/payment_methods", http.MethodGet, map[string]string{
-		"ending_before":  "string",
-		"limit":          "integer",
-		"starting_after": "string",
-		"type":           "string",
+		"allow_redisplay": "string",
+		"ending_before":   "string",
+		"limit":           "integer",
+		"starting_after":  "string",
+		"type":            "string",
 	}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve_payment_method", "/v1/customers/{customer}/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, &Config)
@@ -1231,6 +1242,33 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"transfer_data.amount":                                             "integer",
 		"transfer_data.destination":                                        "string",
 	}, &Config)
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create_preview", "/v1/invoices/create_preview", http.MethodPost, map[string]string{
+		"automatic_tax.enabled":                     "boolean",
+		"automatic_tax.liability.account":           "string",
+		"automatic_tax.liability.type":              "string",
+		"coupon":                                    "string",
+		"currency":                                  "string",
+		"customer":                                  "string",
+		"customer_details.tax.ip_address":           "string",
+		"customer_details.tax_exempt":               "string",
+		"issuer.account":                            "string",
+		"issuer.type":                               "string",
+		"on_behalf_of":                              "string",
+		"schedule":                                  "string",
+		"schedule_details.end_behavior":             "string",
+		"schedule_details.proration_behavior":       "string",
+		"subscription":                              "string",
+		"subscription_details.billing_cycle_anchor": "string",
+		"subscription_details.cancel_at":            "integer",
+		"subscription_details.cancel_at_period_end": "boolean",
+		"subscription_details.cancel_now":           "boolean",
+		"subscription_details.default_tax_rates":    "array",
+		"subscription_details.proration_behavior":   "string",
+		"subscription_details.proration_date":       "integer",
+		"subscription_details.resume_at":            "string",
+		"subscription_details.start_date":           "integer",
+		"subscription_details.trial_end":            "string",
+	}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "delete", "/v1/invoices/{invoice}", http.MethodDelete, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "finalize_invoice", "/v1/invoices/{invoice}/finalize", http.MethodPost, map[string]string{
 		"auto_advance": "boolean",
@@ -1381,6 +1419,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                     "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
+		"payment_method_data.allow_redisplay":                               "string",
 		"payment_method_data.au_becs_debit.account_number":                  "string",
 		"payment_method_data.au_becs_debit.bsb_number":                      "string",
 		"payment_method_data.bacs_debit.account_number":                     "string",
@@ -1433,6 +1472,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                     "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
+		"payment_method_data.allow_redisplay":                               "string",
 		"payment_method_data.au_becs_debit.account_number":                  "string",
 		"payment_method_data.au_becs_debit.bsb_number":                      "string",
 		"payment_method_data.bacs_debit.account_number":                     "string",
@@ -1514,6 +1554,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                     "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
+		"payment_method_data.allow_redisplay":                               "string",
 		"payment_method_data.au_becs_debit.account_number":                  "string",
 		"payment_method_data.au_becs_debit.bsb_number":                      "string",
 		"payment_method_data.bacs_debit.account_number":                     "string",
@@ -1640,6 +1681,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"affirm.display_preference.preference":            "string",
 		"afterpay_clearpay.display_preference.preference": "string",
 		"alipay.display_preference.preference":            "string",
+		"amazon_pay.display_preference.preference":        "string",
 		"apple_pay.display_preference.preference":         "string",
 		"apple_pay_later.display_preference.preference":   "string",
 		"au_becs_debit.display_preference.preference":     "string",
@@ -1671,12 +1713,16 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"revolut_pay.display_preference.preference":       "string",
 		"sepa_debit.display_preference.preference":        "string",
 		"sofort.display_preference.preference":            "string",
+		"swish.display_preference.preference":             "string",
 		"us_bank_account.display_preference.preference":   "string",
 		"wechat_pay.display_preference.preference":        "string",
 		"zip.display_preference.preference":               "string",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "list", "/v1/payment_method_configurations", http.MethodGet, map[string]string{
-		"application": "string",
+		"application":    "string",
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "retrieve", "/v1/payment_method_configurations/{configuration}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "update", "/v1/payment_method_configurations/{configuration}", http.MethodPost, map[string]string{
@@ -1685,6 +1731,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"affirm.display_preference.preference": "string",
 		"afterpay_clearpay.display_preference.preference": "string",
 		"alipay.display_preference.preference":            "string",
+		"amazon_pay.display_preference.preference":        "string",
 		"apple_pay.display_preference.preference":         "string",
 		"apple_pay_later.display_preference.preference":   "string",
 		"au_becs_debit.display_preference.preference":     "string",
@@ -1715,6 +1762,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"revolut_pay.display_preference.preference":       "string",
 		"sepa_debit.display_preference.preference":        "string",
 		"sofort.display_preference.preference":            "string",
+		"swish.display_preference.preference":             "string",
 		"us_bank_account.display_preference.preference":   "string",
 		"wechat_pay.display_preference.preference":        "string",
 		"zip.display_preference.preference":               "string",
@@ -1742,6 +1790,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"acss_debit.account_number":                     "string",
 		"acss_debit.institution_number":                 "string",
 		"acss_debit.transit_number":                     "string",
+		"allow_redisplay":                               "string",
 		"au_becs_debit.account_number":                  "string",
 		"au_becs_debit.bsb_number":                      "string",
 		"bacs_debit.account_number":                     "string",
@@ -1780,6 +1829,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "retrieve", "/v1/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "update", "/v1/payment_methods/{payment_method}", http.MethodPost, map[string]string{
+		"allow_redisplay":                     "string",
 		"billing_details.email":               "string",
 		"billing_details.name":                "string",
 		"billing_details.phone":               "string",
@@ -2255,6 +2305,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                                            "string",
 		"payment_method_data.acss_debit.institution_number":                                        "string",
 		"payment_method_data.acss_debit.transit_number":                                            "string",
+		"payment_method_data.allow_redisplay":                                                      "string",
 		"payment_method_data.au_becs_debit.account_number":                                         "string",
 		"payment_method_data.au_becs_debit.bsb_number":                                             "string",
 		"payment_method_data.bacs_debit.account_number":                                            "string",
@@ -2335,6 +2386,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                                            "string",
 		"payment_method_data.acss_debit.institution_number":                                        "string",
 		"payment_method_data.acss_debit.transit_number":                                            "string",
+		"payment_method_data.allow_redisplay":                                                      "string",
 		"payment_method_data.au_becs_debit.account_number":                                         "string",
 		"payment_method_data.au_becs_debit.bsb_number":                                             "string",
 		"payment_method_data.bacs_debit.account_number":                                            "string",
@@ -2426,6 +2478,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                                            "string",
 		"payment_method_data.acss_debit.institution_number":                                        "string",
 		"payment_method_data.acss_debit.transit_number":                                            "string",
+		"payment_method_data.allow_redisplay":                                                      "string",
 		"payment_method_data.au_becs_debit.account_number":                                         "string",
 		"payment_method_data.au_becs_debit.bsb_number":                                             "string",
 		"payment_method_data.bacs_debit.account_number":                                            "string",
@@ -3283,6 +3336,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_intent_data.transfer_group":                                             "string",
 		"payment_method_collection":                                                      "string",
 		"payment_method_configuration":                                                   "string",
+		"payment_method_data.allow_redisplay":                                            "string",
 		"payment_method_options.acss_debit.currency":                                     "string",
 		"payment_method_options.acss_debit.mandate_options.custom_mandate_url":           "string",
 		"payment_method_options.acss_debit.mandate_options.default_for":                  "array",
@@ -3294,6 +3348,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.affirm.setup_future_usage":                               "string",
 		"payment_method_options.afterpay_clearpay.setup_future_usage":                    "string",
 		"payment_method_options.alipay.setup_future_usage":                               "string",
+		"payment_method_options.amazon_pay.setup_future_usage":                           "string",
 		"payment_method_options.au_becs_debit.setup_future_usage":                        "string",
 		"payment_method_options.bacs_debit.setup_future_usage":                           "string",
 		"payment_method_options.bancontact.setup_future_usage":                           "string",
@@ -3319,6 +3374,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.konbini.expires_after_days":                              "integer",
 		"payment_method_options.konbini.setup_future_usage":                              "string",
 		"payment_method_options.link.setup_future_usage":                                 "string",
+		"payment_method_options.mobilepay.setup_future_usage":                            "string",
 		"payment_method_options.oxxo.expires_after_days":                                 "integer",
 		"payment_method_options.oxxo.setup_future_usage":                                 "string",
 		"payment_method_options.p24.setup_future_usage":                                  "string",
@@ -3345,6 +3401,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"phone_number_collection.enabled":                                                "boolean",
 		"redirect_on_completion":                                                         "string",
 		"return_url":                                                                     "string",
+		"saved_payment_method_options.allow_redisplay_filters":                           "array",
+		"saved_payment_method_options.payment_method_save":                               "string",
 		"setup_intent_data.description":                                                  "string",
 		"setup_intent_data.on_behalf_of":                                                 "string",
 		"shipping_address_collection.allowed_countries":                                  "array",
@@ -3474,7 +3532,6 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	}, &Config)
 	resource.NewOperationCmd(rFinancialConnectionsTransactionsCmd.Cmd, "retrieve", "/v1/financial_connections/transactions/{transaction}", http.MethodGet, map[string]string{}, &Config)
 	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "create", "/v1/forwarding/requests", http.MethodPost, map[string]string{
-		"config":         "string",
 		"payment_method": "string",
 		"replacements":   "array",
 		"request.body":   "string",
@@ -4156,6 +4213,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_data.acss_debit.account_number":                     "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
+		"payment_method_data.allow_redisplay":                               "string",
 		"payment_method_data.au_becs_debit.account_number":                  "string",
 		"payment_method_data.au_becs_debit.bsb_number":                      "string",
 		"payment_method_data.bacs_debit.account_number":                     "string",
