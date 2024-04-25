@@ -30,7 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
-      - run: mkdir /etc/yum.repos.d
+      - run: |
+          mkdir /etc/yum.repos.d
+          echo "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
       - uses: actions/checkout@v3 # v4 does not support ubuntu 18
         with:
           sparse-checkout: |
