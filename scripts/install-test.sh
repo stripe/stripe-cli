@@ -23,8 +23,8 @@ run_install() {
     yum)
         apt-get update
         apt-get -y install yum
-        mkdir /etc/yum.repos.d
         echo "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
+        cat /etc/yum.repos.d/stripe.repo
         yum -y install stripe
     ;;
 
