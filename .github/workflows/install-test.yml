@@ -9,37 +9,24 @@ jobs:
   homebrew:
     runs-on: macos-latest
     steps:
-      - run: brew install stripe/stripe-cli/stripe
-      - run: stripe --version
+      - run: bash scripts/install-test.sh homebrew
   apt:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -s https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | gpg --dearmor | sudo tee /usr/share/keyrings/stripe.gpg
-      - run: echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | sudo tee -a /etc/apt/sources.list.d/stripe.list
-      - run: sudo apt update
-      - run: sudo apt install stripe
-      - run: stripe --version
+      - run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
-      - run: apt-get update
-      - run: apt-get -y install yum
-      - run: mkdir /etc/yum.repos.d
-      - run: echo "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
-      - run: yum -y install stripe
-      - run: stripe --version
+      - run: bash scripts/install-test.sh yum
   scoop:
     runs-on: windows-latest
     steps:
     - uses: MinoruSekine/setup-scoop@v4
     - shell: powershell
-      run: |
-        scoop bucket add stripe https://github.com/stripe/scoop-stripe-cli.git
-        scoop install stripe
-        stripe --version
+      run: bash scripts/install-test.sh scoop
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
     steps:
-      - run: stripe --version
+      - run: bash scripts/install-test.sh docker
