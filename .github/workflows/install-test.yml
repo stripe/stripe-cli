@@ -11,19 +11,39 @@ jobs:
   homebrew:
     runs-on: macos-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh homebrew
   apt:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
     container: ubuntu:18.04
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh yum
   scoop:
     runs-on: windows-latest
     steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/install-test.sh
+        sparse-checkout-cone-mode: false
     - uses: MinoruSekine/setup-scoop@v4
     - shell: powershell
       run: bash scripts/install-test.sh scoop
@@ -31,4 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh docker
