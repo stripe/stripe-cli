@@ -22,7 +22,7 @@ jobs:
     - name: Run Setup
       run: make setup
     - name: Install protoc
-      uses: arduino/setup-protoc@v1.3.0
+      uses: arduino/setup-protoc@v2
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install protoc deps
