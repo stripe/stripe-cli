@@ -56,4 +56,4 @@ jobs:
           sparse-checkout: |
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
-      - run: bash scripts/install-test.sh docker
+      - run: sh scripts/install-test.sh docker
