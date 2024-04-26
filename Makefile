@@ -41,7 +41,6 @@ lint: bin/golangci-lint
 .PHONY: lint
 
 bin/golangci-lint:
-	brew install diffutils
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $(GOLANGCI_LINT_VERSION)
 
 # Clean go.mod
