@@ -21,8 +21,11 @@ jobs:
       uses: actions/checkout@v2
     - name: Run Setup
       run: make setup
+    - name: install diffutils
+      if: runner.os == 'macOS'
+      run: brew install diffutils
     - name: Install protoc
-      uses: arduino/setup-protoc@v1
+      uses: arduino/setup-protoc@v3
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Install protoc deps
