@@ -1,0 +1,62 @@
+on:
+  schedule:
+    - cron: '0 * * * *' # Every hour
+  push:
+    tags:
+    - '*'
+  pull_request:
+    types: [opened, edited]
+name: Package manager test
+jobs:
+  homebrew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/install-test.sh homebrew
+  apt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/install-test.sh apt
+  yum:
+    runs-on: ubuntu-latest
+    container: ubuntu:18.04
+    steps:
+      - run: |
+          mkdir /etc/yum.repos.d
+          echo "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
+      - uses: actions/checkout@v3 # v4 does not support ubuntu 18
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - run: bash scripts/install-test.sh yum
+  scoop:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/install-test.sh
+        sparse-checkout-cone-mode: false
+    - uses: MinoruSekine/setup-scoop@v4
+    - shell: powershell
+      run: bash scripts/install-test.sh scoop
+  docker:
+    runs-on: ubuntu-latest
+    container: stripe/stripe-cli:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - run: sh scripts/install-test.sh docker
