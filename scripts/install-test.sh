@@ -11,7 +11,6 @@ run_install() {
     case $PACKAGE_MANAGER in
     homebrew)
         brew install stripe/stripe-cli/stripe
-        exit 1
     ;;
 
     apt)

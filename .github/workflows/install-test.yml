@@ -66,9 +66,7 @@ jobs:
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - name: Send PagerDuty alert on failure
-        run: echo "simulate pagerduty alert"
-        # Uncomment after testing is confirmed to work:
-        # uses: Entle/action-pagerduty-alert@0.2.0
-        # with:
-        #   pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
-        #   pagerduty-dedup-key: package_manager_install_workflow_failed
+        uses: Entle/action-pagerduty-alert@0.2.0
+        with:
+          pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
+          pagerduty-dedup-key: package_manager_install_workflow_failed
