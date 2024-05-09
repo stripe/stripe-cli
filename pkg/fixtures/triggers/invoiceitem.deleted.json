@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "invoiceitem",
+      "path": "/v1/invoiceitems",
+      "method": "post",
+      "params": {
+        "amount": 2000,
+        "currency": "usd",
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)"
+      }
+    }
+    ,
+    {
+      "name": "invoiceitem_delete",
+      "path": "/v1/invoiceitems/${invoiceitem:id}",
+      "method": "delete"
+    }
+  ]
+}
