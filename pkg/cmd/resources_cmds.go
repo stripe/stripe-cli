@@ -3487,8 +3487,10 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"name":       "string",
 	}, &Config)
 	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "list", "/v1/entitlements/features", http.MethodGet, map[string]string{
+		"archived":       "boolean",
 		"ending_before":  "string",
 		"limit":          "integer",
+		"lookup_key":     "string",
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "retrieve", "/v1/entitlements/features/{id}", http.MethodGet, map[string]string{}, &Config)
