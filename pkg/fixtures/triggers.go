@@ -33,7 +33,7 @@ var Events = map[string]string{
 	"checkout.session.completed":               "triggers/checkout.session.completed.json",
 	"coupon.created":                           "triggers/coupon.created.json",
 	"coupon.deleted":                           "triggers/coupon.deleted.json",
-	"coupon.updated":						    "triggers/coupon.updated.json",
+	"coupon.updated":                           "triggers/coupon.updated.json",
 	"customer.discount.created":                "triggers/customer.discount.created.json",
 	"customer.discount.deleted":                "triggers/customer.discount.deleted.json",
 	"customer.discount.updated":                "triggers/customer.discount.updated.json",
