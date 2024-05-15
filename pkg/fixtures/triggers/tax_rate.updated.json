@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "tax_rate",
+      "path": "/v1/tax_rates",
+      "method": "post",
+      "params": {
+        "display_name": "test",
+        "inclusive": true,
+        "percentage": 10,
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "tax_rate_updated",
+      "path": "/v1/tax_rates/${tax_rate:id}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}

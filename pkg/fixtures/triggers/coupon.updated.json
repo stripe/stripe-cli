@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "coupon",
+      "path": "/v1/coupons",
+      "method": "post",
+      "params": {
+        "percent_off": 20
+      }
+    },{
+      "name": "coupon_updated",
+      "path": "/v1/coupons/${coupon:id}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}
