@@ -11,8 +11,7 @@
       "params": {
         "confirm": "true",
         "description": "(created by Stripe CLI)",
-        "payment_method": "pm_card_authenticationRequired",
-        "payment_method_types": ["card"]
+        "payment_method": "pm_card_authenticationRequired"
       }
     }
   ]
