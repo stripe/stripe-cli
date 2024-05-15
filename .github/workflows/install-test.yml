@@ -60,3 +60,13 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: sh scripts/install-test.sh docker
+  pagerduty:
+    needs: [docker, scoop, yum, apt, homebrew]
+    runs-on: ubuntu-latest
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    steps:
+      - name: Send PagerDuty alert on failure
+        uses: Entle/action-pagerduty-alert@0.2.0
+        with:
+          pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
+          pagerduty-dedup-key: package_manager_install_workflow_failed
