@@ -4135,6 +4135,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "create", "/v1/terminal/configurations", http.MethodPost, map[string]string{
 		"bbpos_wisepos_e.splashscreen": "string",
 		"name":                         "string",
+		"stripe_s700.splashscreen":     "string",
 		"verifone_p400.splashscreen":   "string",
 	}, &Config)
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "delete", "/v1/terminal/configurations/{configuration}", http.MethodDelete, map[string]string{}, &Config)
