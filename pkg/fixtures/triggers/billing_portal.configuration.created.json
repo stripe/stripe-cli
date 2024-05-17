@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "billing_portal",
+      "path": "/v1/billing_portal/configurations",
+      "method": "post",
+      "params": {
+        "business_profile": {
+          "headline": "created by the Stripe CLI",
+          "privacy_policy_url": "https://www.example.com",
+          "terms_of_service_url": "https://www.example.com"
+        },
+        "features": {
+          "subscription_cancel": {
+            "enabled": true
+          }
+        }
+      }
+    }
+  ]
+}

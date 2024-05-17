@@ -1,0 +1,32 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "coupon",
+      "path": "/v1/coupons",
+      "method": "post",
+      "params": {
+        "percent_off": 20
+      }
+    },
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "coupon": "${coupon:id}",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "customer_updated",
+      "path": "/v1/customers/${customer:id}",
+      "method": "post",
+      "params": {
+        "coupon": ""
+      }
+    }
+  ]
+}
