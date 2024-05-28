@@ -9,7 +9,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/google/go-github/v28 v28.1.1
 	github.com/google/go-querystring v1.1.0
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/iancoleman/strcase v0.2.0
@@ -39,7 +39,7 @@ require (
 	golang.org/x/sys v0.18.0
 	golang.org/x/term v0.18.0
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
-	google.golang.org/grpc v1.56.3
+	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -80,7 +80,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
