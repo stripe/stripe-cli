@@ -34,7 +34,7 @@ func (mp *mockProxy) Run(ctx context.Context) error {
 func TestListenStreamsState(t *testing.T) {
 	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestListenStreamsState(t *testing.T) {
 func TestListenStreamsEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestListenStreamsEvents(t *testing.T) {
 func TestListenStreamsEndpointResponses(t *testing.T) {
 	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestListenStreamsEndpointResponses(t *testing.T) {
 func TestListenReturnsEndpointResponseError(t *testing.T) {
 	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -275,7 +275,7 @@ func TestListenReturnsEndpointResponseError(t *testing.T) {
 func TestListenReturnsGenericError(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestListenReturnsGenericError(t *testing.T) {
 func TestListenSucceedsWithAllParams(t *testing.T) {
 	ctx, cancel := context.WithCancel(withAuth(context.Background()))
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
