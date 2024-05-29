@@ -9,10 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
 	"github.com/otiai10/copy"
 	"github.com/spf13/afero"
-	"gopkg.in/src-d/go-git.v4"
 
 	log "github.com/sirupsen/logrus"
 
