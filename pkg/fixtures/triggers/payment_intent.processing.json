@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods",
+      "method": "post",
+      "params": {
+        "type": "sepa_debit",
+        "sepa_debit": {
+          "iban": "AT321904300235473204"
+        },
+        "billing_details": {
+          "name": "Bob",
+          "email": "bob@example.com"
+        }
+      }
+    },
+    {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "payment_method": "${payment_method:id}",
+        "payment_method_types": [ "sepa_debit" ],
+        "amount": 1000,
+        "currency": "eur",
+        "confirm": true,
+        "mandate_data": {
+          "customer_acceptance": {
+            "accepted_at": "1590590577",
+            "type": "offline"
+          }
+        }
+      }
+    }
+  ]
+}

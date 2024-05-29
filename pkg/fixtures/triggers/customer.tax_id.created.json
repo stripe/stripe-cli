@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "tax_id",
+      "path": "/v1/tax_ids",
+      "method": "post",
+      "params": {
+        "type": "eu_vat",
+        "value": "000000000"
+      }
+    },
+    {
+      "name": "tax_id_cleanup",
+      "path": "/v1/tax_ids/${tax_id:id}",
+      "method": "delete"
+    }
+  ]
+}
