@@ -21,7 +21,7 @@ import (
 func TestAllowRequestIfHeaderPresent(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 	md := metadata.New(map[string]string{"foo-bar": "1"})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 
-	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 
 func TestRejectRequestIfMetadataEmpty(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.NewClient("bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
