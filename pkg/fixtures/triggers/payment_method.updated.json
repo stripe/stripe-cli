@@ -1,0 +1,36 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "setup_intent",
+      "path": "/v1/setup_intents",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "payment_method": "pm_card_visa",
+        "confirm": "true",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_method_updated",
+      "path": "/v1/payment_methods/${setup_intent:payment_method}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}

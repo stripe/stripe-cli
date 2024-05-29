@@ -1,0 +1,24 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "fund_cash_balance",
+      "path": "/v1/test_helpers/customers/${customer:id}/fund_cash_balance",
+      "method": "post",
+      "params": {
+        "amount": 1000,
+        "currency": "usd"
+      }
+    }
+  ]
+}

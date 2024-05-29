@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "amount": 1000,
+        "currency": "usd",
+        "payment_method": "pm_card_bypassPending",
+        "confirm": "true"
+      }
+    },
+    {
+      "name": "account",
+      "path": "/v1/accounts",
+      "method": "post"
+    },
+    {
+      "name": "transfer",
+      "path": "/v1/transfers",
+      "method": "post",
+      "params": {
+        "destination": "${account:id}",
+        "amount": 1000,
+        "currency": "usd"
+      }
+    },
+    {
+      "name": "transfer_update",
+      "path": "/v1/transfers/${transfer:id}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "foo": "bar"
+        }
+      }
+    }
+  ]
+}
