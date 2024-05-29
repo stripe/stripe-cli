@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/afero"
-	"gopkg.in/src-d/go-git.v4"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
