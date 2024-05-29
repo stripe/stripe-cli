@@ -48,8 +48,6 @@ var Events = map[string]string{
 	"customer.created":                          "triggers/customer.created.json",
 	"customer.deleted":                          "triggers/customer.deleted.json",
 	"customer.updated":                          "triggers/customer.updated.json",
-	"customer.tax_id.created":                   "triggers/customer.tax_id.created.json",
-	"customer.tax_id.deleted":                   "triggers/customer.tax_id.deleted.json",
 	"customer.source.created":                   "triggers/customer.source.created.json",
 	"customer.source.updated":                   "triggers/customer.source.updated.json",
 	"customer.subscription.created":             "triggers/customer.subscription.created.json",
