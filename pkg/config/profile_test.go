@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -239,6 +240,128 @@ func TestExperimentalFieldsEmptyWhenAPIKeyIsOverridden(t *testing.T) {
 	require.Equal(t, "", experimentalFields.ContextualName)
 	require.Equal(t, "", experimentalFields.StripeHeaders)
 	require.Equal(t, "", experimentalFields.PrivateKey)
+
+	cleanUp(c.ProfilesFile)
+}
+
+func TestLiveModeAPIKeyKeychainItemDeleted(t *testing.T) {
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	p := Profile{
+		ProfileName:    "test",
+		DeviceName:     "device-before-test",
+		LiveModeAPIKey: "",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "display-name-before-test",
+	}
+	c := &Config{
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
+		{
+			Key:  "test.live_mode_api_key",
+			Data: []byte("rk_live_0000000001"),
+		},
+	})
+
+	v := viper.New()
+
+	v.SetConfigFile(profilesFile)
+	err := p.writeProfile(v)
+	require.NoError(t, err)
+
+	err = p.CreateProfile()
+	require.NoError(t, err)
+
+	keys, err := KeyRing.Keys()
+	require.NoError(t, err)
+	require.Empty(t, keys)
+
+	cleanUp(c.ProfilesFile)
+}
+
+func TestLiveModeAPIKeyKeychainItemCreated(t *testing.T) {
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	p := Profile{
+		ProfileName:    "test",
+		DeviceName:     "device-before-test",
+		LiveModeAPIKey: "rk_live_0000000001",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "display-name-before-test",
+	}
+	c := &Config{
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+	KeyRing = keyring.NewArrayKeyring([]keyring.Item{})
+
+	v := viper.New()
+
+	v.SetConfigFile(profilesFile)
+	err := p.writeProfile(v)
+	require.NoError(t, err)
+
+	err = p.CreateProfile()
+	require.NoError(t, err)
+
+	item, err := KeyRing.Get("test.live_mode_api_key")
+	require.NoError(t, err)
+	require.Equal(t, keyring.Item{
+		Key:         "test.live_mode_api_key",
+		Data:        []byte("rk_live_0000000001"),
+		Label:       "test.live_mode_api_key",
+		Description: "Live mode API key",
+	}, item)
+
+	cleanUp(c.ProfilesFile)
+}
+
+func TestLiveModeAPIKeyKeychainItemReplaced(t *testing.T) {
+	profilesFile := filepath.Join(os.TempDir(), "stripe", "config.toml")
+	p := Profile{
+		ProfileName:    "test",
+		DeviceName:     "device-before-test",
+		LiveModeAPIKey: "rk_live_0000000002",
+		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "display-name-before-test",
+	}
+	c := &Config{
+		Color:        "auto",
+		LogLevel:     "info",
+		Profile:      p,
+		ProfilesFile: profilesFile,
+	}
+	c.InitConfig()
+	KeyRing = keyring.NewArrayKeyring([]keyring.Item{
+		{
+			Key:  "test.live_mode_api_key",
+			Data: []byte("rk_live_0000000001"),
+		},
+	})
+
+	v := viper.New()
+
+	v.SetConfigFile(profilesFile)
+	err := p.writeProfile(v)
+	require.NoError(t, err)
+
+	err = p.CreateProfile()
+	require.NoError(t, err)
+
+	item, err := KeyRing.Get("test.live_mode_api_key")
+	require.NoError(t, err)
+	require.Equal(t, keyring.Item{
+		Key:         "test.live_mode_api_key",
+		Data:        []byte("rk_live_0000000002"),
+		Label:       "test.live_mode_api_key",
+		Description: "Live mode API key",
+	}, item)
 
 	cleanUp(c.ProfilesFile)
 }

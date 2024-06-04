@@ -63,6 +63,10 @@ func (p *Profile) CreateProfile() error {
 	// Remove all keys under existing profile first
 	v := p.deleteProfile(viper.GetViper())
 
+	if err := p.deleteLivemodeValue(LiveModeAPIKeyName); err != nil {
+		return err
+	}
+
 	writeErr := p.writeProfile(v)
 	if writeErr != nil {
 		return writeErr
