@@ -17,7 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	g "github.com/stripe/stripe-cli/pkg/git"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
@@ -112,7 +111,7 @@ type SampleManager struct {
 	// Filesystem operations
 	Fs afero.Fs
 	// Git operations.
-	Git g.Interface
+	Git gitpkg.Interface
 
 	Config *config.Config
 
