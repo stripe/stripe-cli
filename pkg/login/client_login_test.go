@@ -56,6 +56,7 @@ func TestLogin(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	c.InitConfig()
 
 	var pollURL string
 
@@ -134,6 +135,7 @@ func TestLoginNoInput(t *testing.T) {
 		Profile:      p,
 		ProfilesFile: profilesFile,
 	}
+	c.InitConfig()
 
 	var pollURL string
 
