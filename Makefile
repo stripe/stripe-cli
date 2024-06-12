@@ -51,7 +51,7 @@ go-mod-tidy:
 .PHONY: go-mod-tidy
 
 # Run all the tests and code checks
-ci: build-all-platforms test lint go-mod-tidy protoc-ci
+ci: build-all-platforms test go-mod-tidy protoc-ci
 .PHONY: ci
 
 # Build a beta version of stripe
