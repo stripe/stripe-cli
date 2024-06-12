@@ -7,6 +7,7 @@ import (
 	"os/signal"
 
 	log "github.com/sirupsen/logrus"
+
 	"github.com/spf13/afero"
 	"github.com/stripe/stripe-cli/pkg/validators"
 
