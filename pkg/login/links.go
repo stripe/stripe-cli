@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/version"
 )
 
 // Links provides the URLs for the CLI to continue the login flow
@@ -30,6 +31,7 @@ func GetLinks(ctx context.Context, baseURL string, deviceName string) (*Links, e
 	}
 
 	data := url.Values{}
+	data.Set("client_version", version.Version)
 	data.Set("device_name", deviceName)
 
 	res, err := client.PerformRequest(ctx, http.MethodPost, stripeCLIAuthPath, data.Encode(), nil)
