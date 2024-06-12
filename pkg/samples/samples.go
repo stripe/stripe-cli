@@ -17,6 +17,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/validators"
+
 	g "github.com/stripe/stripe-cli/pkg/git"
 	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -30,6 +32,8 @@ type SampleConfig struct {
 	PostInstall     map[string]string         `json:"postInstall"`
 	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
+
+const TestPublishableKeyPlaceholder = "pk_test..."
 
 // HasIntegrations returns true if the sample has multiple integrations
 func (sc *SampleConfig) HasIntegrations() bool {
@@ -305,7 +309,7 @@ func (s *SampleManager) Copy(target string) error {
 func ConfigureDotEnv(ctx context.Context, config *config.Config) (map[string]string, error) {
 	publishableKey, _ := config.Profile.GetPublishableKey(false)
 	if publishableKey == "" {
-		return nil, fmt.Errorf("we could not set the publishable key in the .env file; please set this manually or login again to set it automatically next time")
+		publishableKey = TestPublishableKeyPlaceholder
 	}
 
 	apiKey, err := config.Profile.GetAPIKey(false)
@@ -375,6 +379,10 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		err = godotenv.Write(dotenv, envFile)
 		if err != nil {
 			return err
+		}
+
+		if envVars["STRIPE_PUBLISHABLE_KEY"] == TestPublishableKeyPlaceholder {
+			return validators.ErrPubKeyNotConfigured
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
+	"github.com/stripe/stripe-cli/pkg/validators"
 
 	"github.com/go-git/go-git/v5"
 )
@@ -33,6 +34,8 @@ const (
 
 	// DidConfigure means the .env of the sample has finished being configured with the user's Stripe account details
 	DidConfigure
+
+	DidConfigureWithoutTestPubKey
 
 	// Done means sample creation is complete
 	Done
@@ -154,11 +157,15 @@ func (sampleManager *SampleManager) Create(
 
 	err = sampleManager.WriteDotEnv(ctx, targetPath)
 	if err != nil {
-		resultChan <- CreationResult{Err: err}
-		return
+		if err == validators.ErrPubKeyNotConfigured {
+			resultChan <- CreationResult{State: DidConfigureWithoutTestPubKey}
+		} else {
+			resultChan <- CreationResult{Err: err}
+			return
+		}
+	} else {
+		resultChan <- CreationResult{State: DidConfigure}
 	}
-
-	resultChan <- CreationResult{State: DidConfigure}
 
 	resultChan <- CreationResult{State: Done, Path: targetPath, PostInstall: sampleManager.PostInstall()}
 }

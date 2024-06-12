@@ -15,6 +15,8 @@ type ArgValidator func(string) error
 var (
 	// ErrAPIKeyNotConfigured is the error returned when the loaded profile is missing the api key property
 	ErrAPIKeyNotConfigured = errors.New("you have not configured API keys yet")
+	// ErrPubKeyNotConfigured is the error returned when the loaded profile is missing the publishable key property
+	ErrPubKeyNotConfigured = errors.New("you have not configured publishable keys yet")
 	// ErrDeviceNameNotConfigured is the error returned when the loaded profile is missing the device name property
 	ErrDeviceNameNotConfigured = errors.New("you have not configured your device name yet")
 	// ErrAccountIDNotConfigured is the error returned when the loaded profile is missing the account_id property
