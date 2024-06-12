@@ -33,6 +33,7 @@ type SampleConfig struct {
 	Integrations    []SampleConfigIntegration `json:"integrations"`
 }
 
+// TestPublishableKeyPlaceholder is the placeholder for empty publishable key in the .env file
 const TestPublishableKeyPlaceholder = "pk_test..."
 
 // HasIntegrations returns true if the sample has multiple integrations

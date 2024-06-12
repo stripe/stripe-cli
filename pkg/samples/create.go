@@ -35,6 +35,7 @@ const (
 	// DidConfigure means the .env of the sample has finished being configured with the user's Stripe account details
 	DidConfigure
 
+	// DidConfigureWithoutTestPubKey means the .env of the sample has finished being configured without the publishable key
 	DidConfigureWithoutTestPubKey
 
 	// Done means sample creation is complete
