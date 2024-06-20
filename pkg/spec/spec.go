@@ -95,6 +95,7 @@ var supportedSchemaFields = []string{
 	"x-stripeParam",
 	"x-stripeResource",
 	"x-stripeEvent",
+	"deprecated",
 
 	// This is currently a hint for the server-side so I haven't included it in
 	// Schema yet. If we do start validating responses that come out of
