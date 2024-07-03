@@ -25,7 +25,7 @@ type WebhookEndpoint struct {
 }
 
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
-func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
+func WebhookEndpointsList(ctx context.Context, baseURL string, apiVersion string, apiKey *config.APIKey, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
 		data:    []string{"limit=30"},
 		version: apiVersion,
@@ -64,7 +64,7 @@ func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPe
 }
 
 // WebhookEndpointCreate creates a new webhook endpoint
-func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url, description string, connect bool, profile *config.Profile) error {
+func WebhookEndpointCreate(ctx context.Context, baseURL string, apiVersion string, apiKey *config.APIKey, url, description string, connect bool, profile *config.Profile) error {
 	if strings.TrimSpace(url) == "" {
 		return fmt.Errorf("url cannot be empty")
 	}

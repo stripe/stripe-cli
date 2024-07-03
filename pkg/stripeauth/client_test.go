@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -38,7 +39,7 @@ func TestAuthorize(t *testing.T) {
 	defer ts.Close()
 
 	baseURL, _ := url.Parse(ts.URL)
-	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+	client := NewClient(&stripe.Client{APIKey: config.NewAPIKeyFromString("sk_test_123"), BaseURL: baseURL}, nil)
 
 	session, err := client.Authorize(context.Background(), CreateSessionRequest{
 		DeviceName:        "my-device",
@@ -61,7 +62,7 @@ func TestUserAgent(t *testing.T) {
 	defer ts.Close()
 
 	baseURL, _ := url.Parse(ts.URL)
-	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+	client := NewClient(&stripe.Client{APIKey: config.NewAPIKeyFromString("sk_test_123"), BaseURL: baseURL}, nil)
 
 	_, err := client.Authorize(context.Background(), CreateSessionRequest{
 		DeviceName:        "my-device",
@@ -88,7 +89,7 @@ func TestStripeClientUserAgent(t *testing.T) {
 	defer ts.Close()
 
 	baseURL, _ := url.Parse(ts.URL)
-	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+	client := NewClient(&stripe.Client{APIKey: config.NewAPIKeyFromString("sk_test_123"), BaseURL: baseURL}, nil)
 
 	_, err := client.Authorize(context.Background(), CreateSessionRequest{
 		DeviceName:        "my-device",
@@ -109,7 +110,7 @@ func TestAuthorizeWithURLDeviceMap(t *testing.T) {
 	defer ts.Close()
 
 	baseURL, _ := url.Parse(ts.URL)
-	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+	client := NewClient(&stripe.Client{APIKey: config.NewAPIKeyFromString("sk_test_123"), BaseURL: baseURL}, nil)
 
 	devURLMap := DeviceURLMap{
 		ForwardURL:        "http://localhost:3000/events",

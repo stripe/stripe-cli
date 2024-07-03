@@ -23,8 +23,10 @@ type PollAPIKeyResponse struct {
 	AccountID              string `json:"account_id"`
 	AccountDisplayName     string `json:"account_display_name"`
 	LiveModeAPIKey         string `json:"livemode_key_secret"`
+	LiveModeAPIKeyExpiry   int64  `json:"livemode_key_expiry"`
 	LiveModePublishableKey string `json:"livemode_key_publishable"`
 	TestModeAPIKey         string `json:"testmode_key_secret"`
+	TestModeAPIKeyExpiry   int64  `json:"testmode_key_expiry"`
 	TestModePublishableKey string `json:"testmode_key_publishable"`
 }
 
