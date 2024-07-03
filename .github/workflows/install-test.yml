@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch: {}
   schedule:
     - cron: '0 * * * *' # Every hour
   push:
@@ -28,12 +29,19 @@ jobs:
       - run: bash scripts/install-test.sh apt
   yum:
     runs-on: ubuntu-latest
-    container: ubuntu:18.04
+    container: fedora:latest
     steps:
       - run: |
-          mkdir /etc/yum.repos.d
-          echo "[Stripe]\nname=stripe\nbaseurl=https://packages.stripe.dev/stripe-cli-rpm-local/\nenabled=1\ngpgcheck=0" >> /etc/yum.repos.d/stripe.repo
-      - uses: actions/checkout@v3 # v4 does not support ubuntu 18
+          if [ ! -d "/etc/yum.repos.d" ]; then
+              sudo mkdir /etc/yum.repos.d
+          fi
+              echo "[Stripe]
+          name=stripe
+          baseurl=https://packages.stripe.dev/stripe-cli-rpm-local/
+          enabled=1
+          gpgcheck=0" | sudo tee /etc/yum.repos.d/stripe.repo
+
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: |
             scripts/install-test.sh
