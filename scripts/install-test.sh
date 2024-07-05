@@ -21,8 +21,6 @@ run_install() {
     ;;
 
     yum)
-        apt-get update
-        apt-get -y install yum
         yum -y install stripe
     ;;
 
