@@ -84,5 +84,5 @@ jobs:
             --timestamp date \
             --source "Stripe CLI GitHub Actions" \
             --severity critical \
-            --key run_details --value "https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
+            --keys run_details --values "https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
 
