@@ -79,7 +79,7 @@ jobs:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
         run: |
           sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-          pd auth:set "$PAGERDUTY_INTEGRATION_KEY"
+          pd auth:set -t "$PAGERDUTY_INTEGRATION_KEY" -d
           pd event alert --summary "Failed to install Stripe CLI on one or more operating systems." \\
             --timestamp date \\
             --source "Stripe CLI GitHub Actions" \\
