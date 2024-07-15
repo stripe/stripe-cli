@@ -71,7 +71,8 @@ jobs:
   pagerduty:
     needs: [docker, scoop, yum, apt, homebrew]
     runs-on: ubuntu-latest
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() }}
+    # if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - shell: bash
         env:
