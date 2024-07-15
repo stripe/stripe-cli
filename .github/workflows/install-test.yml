@@ -71,8 +71,7 @@ jobs:
   pagerduty:
     needs: [docker, scoop, yum, apt, homebrew]
     runs-on: ubuntu-latest
-    if: ${{ always() }}
-    # if: ${{ always() && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
       - shell: bash
         env:
@@ -80,9 +79,7 @@ jobs:
         run: |
           sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
           pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-            --summary "Failed to install Stripe CLI on one or more operating systems." \
+            --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
             --timestamp "\"$(date)\"" \
             --source "Stripe CLI GitHub Actions" \
-            --severity critical \
-            --keys run_details --values "https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml"
-
+            --severity critical
