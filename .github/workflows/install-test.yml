@@ -73,8 +73,13 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && contains(needs.*.result, 'failure') }}
     steps:
-      - name: Send PagerDuty alert on failure
-        uses: Entle/action-pagerduty-alert@0.2.0
-        with:
-          pagerduty-integration-key: '${{ secrets.PAGERDUTY_INTEGRATION_KEY }}'
-          pagerduty-dedup-key: package_manager_install_workflow_failed
+      - shell: bash
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+        run: |
+          sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
+          pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
+            --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
+            --timestamp "\"$(date)\"" \
+            --source "Stripe CLI GitHub Actions" \
+            --severity critical
