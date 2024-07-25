@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +12,8 @@ import (
 	"time"
 
 	ws "github.com/gorilla/websocket"
-	// log "github.com/sirupsen/logrus"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -176,30 +178,42 @@ func TestClientExpiredError(t *testing.T) {
 	}
 }
 
-/* func TestClientWebhookReconnect(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
-	wg := &sync.WaitGroup{}
-	wg.Add(20)
+// This test is a regression test for deadlocks that can be encountered
+// when the write pump is interrupted by closed connections at inopportune
+// times.
+//
+// The goal is to simulate a scenario where the read pump is shut down but the
+// client still has messages to send. The read pump should be shut down because
+// in the majority of cases it is how the client ends up stopped. However, there's
+// no hard synchronization between the read and write pumps so we have to defend
+// against race conditions where the read side is shut down, hence this test.
+func TestWritePumpInterruptionRequeued(t *testing.T) {
+	serverReceivedMessages := make(chan string, 10)
+	wg := sync.WaitGroup{}
+
 	upgrader := ws.Upgrader{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		wg.Add(1)
+
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
 		c, err := upgrader.Upgrade(w, r, nil)
 		require.NoError(t, err)
 
+		require.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
+
 		defer c.Close()
 
-		swg := &sync.WaitGroup{}
-		swg.Add(1)
+		msgType, msg, err := c.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, msgType, ws.TextMessage)
+		serverReceivedMessages <- string(msg)
 
-		go func() {
-			for {
-				if _, _, err := c.ReadMessage(); err != nil {
-					swg.Done()
-					return
-				}
-			}
-		}()
-
-		swg.Wait()
+		// To simulate a forced reconnection, the server closes the connection
+		// after receiving any messages
+		c.WriteControl(ws.CloseMessage, ws.FormatCloseMessage(ws.CloseNormalClosure, ""), time.Now().Add(5*time.Second))
+		c.Close()
 		wg.Done()
 	}))
 
@@ -207,18 +221,15 @@ func TestClientExpiredError(t *testing.T) {
 
 	url := "ws" + strings.TrimPrefix(ts.URL, "http")
 
-	rcvMsgChan := make(chan WebhookEvent)
-
 	client := NewClient(
 		url,
 		"websocket-random-id",
 		"webhook-payloads",
 		&Config{
-			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
-				rcvMsgChan <- *msg.WebhookEvent
-			}),
-			Log:               log.StandardLogger(),
-			ReconnectInterval: 10 * time.Second,
+			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {}),
+			WriteWait:    10 * time.Second,
+			PongWait:     60 * time.Second,
+			PingPeriod:   60 * time.Hour,
 		},
 	)
 
@@ -226,5 +237,37 @@ func TestClientExpiredError(t *testing.T) {
 
 	defer client.Stop()
 
+	actualMessages := []string{}
+	connectedChan := client.Connected()
+	<-connectedChan
+	go func() { client.stopReadPump <- struct{}{} }()
+
+	for i := 0; i < 2; i++ {
+		client.SendMessage(NewEventAck(fmt.Sprintf("event_%d", i), fmt.Sprintf("event_%d", i)))
+		// Needed to deflake the test from racing against itself
+		// Something to do with the buffering
+		time.Sleep(100 * time.Millisecond)
+
+		msg := <-serverReceivedMessages
+		actualMessages = append(actualMessages, msg)
+		wg.Wait()
+	}
+
 	wg.Wait()
-} */
+
+	for {
+		exhausted := false
+		select {
+		case msg := <-serverReceivedMessages:
+			actualMessages = append(actualMessages, msg)
+		default:
+			exhausted = true
+		}
+
+		if exhausted {
+			break
+		}
+	}
+
+	assert.Len(t, actualMessages, 2)
+}
