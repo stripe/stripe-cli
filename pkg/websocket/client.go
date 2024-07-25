@@ -537,7 +537,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		WebSocketAuthorizedFeature: websocketAuthorizedFeature,
 		cfg:                        cfg,
 		done:                       make(chan struct{}),
-		send:                       make(chan *OutgoingMessage),
+		send:                       make(chan *OutgoingMessage, 10),
 		NotifyExpired:              make(chan struct{}),
 	}
 }
