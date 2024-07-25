@@ -8,7 +8,7 @@ import (
 type IncomingMessage struct {
 	*WebhookEvent
 	*RequestLogEvent
-
+	*StripeV2Event
 	// Unknown will be present if the incoming message type does not match the
 	// list known to the CLI.
 	Unknown *UnknownMessage
@@ -41,6 +41,10 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 		}
 	case "request_log_event":
 		if err := json.Unmarshal(data, &m.RequestLogEvent); err != nil {
+			return err
+		}
+	case "v2_event":
+		if err := json.Unmarshal(data, &m.StripeV2Event); err != nil {
 			return err
 		}
 	default:

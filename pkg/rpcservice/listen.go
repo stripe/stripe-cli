@@ -17,7 +17,10 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 )
 
-const webhooksWebSocketFeature = "webhooks"
+const (
+	webhooksWebSocketFeature     = "webhooks"
+	destinationsWebSocketFeature = "v2_events"
+)
 
 var httpMethodMap = map[string]rpc.ListenResponse_EndpointResponse_Data_HttpMethod{
 	http.MethodDelete: rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_DELETE,
@@ -65,7 +68,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		ForwardConnectURL:     req.ForwardConnectTo,
 		ForwardConnectHeaders: req.ConnectHeaders,
 		UseConfiguredWebhooks: req.UseConfiguredWebhooks,
-		WebSocketFeature:      webhooksWebSocketFeature,
+		WebSocketFeatures:     []string{webhooksWebSocketFeature}, // todo:@charliecruzan add support for new params to rpc
 		UseLatestAPIVersion:   req.Latest,
 		SkipVerify:            req.SkipVerify,
 		Log:                   logger,

@@ -43,6 +43,9 @@ type EndpointRoute struct {
 
 	// Status is whether or not the endpoint is enabled.
 	Status string
+
+	// IsEventDestination indicates whether this is a Thin endpoint
+	IsEventDestination bool
 }
 
 // EndpointResponse describes the response to a Stripe event from an endpoint
@@ -70,10 +73,14 @@ type Config struct {
 
 	// URL to which events are forwarded to
 	ForwardURL string
+	// URL to which Thin events are forwarded to
+	ForwardThinURL string
 	// Headers to inject when forwarding events
 	ForwardHeaders []string
 	// URL to which Connect events are forwarded to
 	ForwardConnectURL string
+	// URL to which Connect Thin events are forwarded to
+	ForwardThinConnectURL string
 	// Headers to inject when forwarding Connect events
 	ForwardConnectHeaders []string
 	// UseConfiguredWebhooks loads webhooks config from user's account
@@ -81,15 +88,19 @@ type Config struct {
 
 	// List of events to listen and proxy
 	Events []string
+	// List of Thin-type events to listen and proxy
+	ThinEvents []string
 
-	// WebSocketFeature is the feature specified for the websocket connection
-	WebSocketFeature string
+	// WebSocketFeatures is the feature specified for the websocket connection
+	WebSocketFeatures []string
 	// Indicates whether to print full JSON objects to stdout
 	PrintJSON bool
 
 	// Specifies the format to print to stdout.
 	Format string
 
+	// Stripe API version associated with the provided classic payload event types
+	APIVersion string
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
@@ -221,9 +232,9 @@ func (p *Proxy) Run(ctx context.Context) error {
 // GetSessionSecret creates a session and returns the webhook signing secret.
 func GetSessionSecret(ctx context.Context, client stripe.RequestPerformer, deviceName string) (string, error) {
 	p, err := Init(ctx, &Config{
-		Client:           client,
-		DeviceName:       deviceName,
-		WebSocketFeature: "webhooks",
+		Client:            client,
+		DeviceName:        deviceName,
+		WebSocketFeatures: []string{"webhooks"},
 	})
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -261,7 +272,7 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 
 			session, err = p.stripeAuthClient.Authorize(ctx, stripeauth.CreateSessionRequest{
 				DeviceName:        p.cfg.DeviceName,
-				WebSocketFeatures: []string{p.cfg.WebSocketFeature},
+				WebSocketFeatures: p.cfg.WebSocketFeatures,
 				DeviceURLMap:      &devURLMap,
 			})
 
@@ -377,11 +388,34 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 				EventTypes:     cfg.Events,
 			})
 		}
+
+		if len(cfg.ForwardThinURL) > 0 {
+			// Thin endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:             parseURL(cfg.ForwardThinURL),
+				ForwardHeaders:  cfg.ForwardHeaders,
+				Connect:         false,
+				EventTypes:      cfg.ThinEvents,
+				IsEventDestination: true,
+			})
+		}
+
+		if len(cfg.ForwardThinConnectURL) > 0 {
+			// Thin connect endpoints
+			endpointRoutes = append(endpointRoutes, EndpointRoute{
+				URL:             parseURL(cfg.ForwardThinConnectURL),
+				ForwardHeaders:  cfg.ForwardConnectHeaders,
+				Connect:         true,
+				EventTypes:      cfg.ThinEvents,
+				IsEventDestination: true,
+			})
+		}
 	}
 
 	processorConfig := &WebhookEventProcessorConfig{
 		Log:                 cfg.Log,
 		Events:              cfg.Events,
+		ThinEvents:          cfg.ThinEvents,
 		OutCh:               cfg.OutCh,
 		UseLatestAPIVersion: cfg.UseLatestAPIVersion,
 		SkipVerify:          cfg.SkipVerify,
@@ -437,6 +471,7 @@ type eventContext struct {
 	webhookID             string
 	webhookConversationID string
 	event                 *StripeEvent
+	v2Event               *websocket.V2EventPayload
 }
 
 //

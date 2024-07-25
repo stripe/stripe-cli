@@ -44,6 +44,7 @@ func TestClientHandler(t *testing.T) {
 			"emptyHeader:", ":", "::", "removeControlCharacters:	tab"}, // custom headers
 		false,
 		[]string{"*"},
+		false,
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
 				buf, err := io.ReadAll(resp.Body)
@@ -107,6 +108,7 @@ func TestClientHandler_Redirects(t *testing.T) {
 		[]string{},
 		false,
 		[]string{"*"},
+		false,
 		&EndpointConfig{
 			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
 				require.Equal(t, http.StatusMovedPermanently, resp.StatusCode)

@@ -21,6 +21,9 @@ type WebhookEventProcessorConfig struct {
 	// List of events to listen and proxy
 	Events []string
 
+	// List of thin events to listen and proxy
+	ThinEvents []string
+
 	// OutCh is the channel to send logs and statuses to for processing in other packages
 	OutCh chan websocket.IElement
 
@@ -41,6 +44,7 @@ type WebhookEventProcessor struct {
 
 	// Events is the supported event types for the command
 	events          map[string]bool
+	thinEvents      map[string]bool
 	endpointClients []*EndpointClient
 	sendMessage     func(*websocket.OutgoingMessage)
 }
@@ -52,6 +56,7 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 		cfg:         cfg,
 		events:      convertToMap(cfg.Events),
 		sendMessage: sendMessage,
+		thinEvents:  convertToMap(cfg.ThinEvents),
 	}
 
 	for _, route := range routes {
@@ -61,6 +66,7 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 			route.ForwardHeaders,
 			route.Connect,
 			route.EventTypes,
+			route.IsEventDestination,
 			&EndpointConfig{
 				HTTPClient: &http.Client{
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -87,13 +93,18 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 //
 // ProcessEvent implements the websocket.EndpointResponseHandler interface.
 func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
-	if msg.WebhookEvent == nil {
+	switch {
+	case msg.WebhookEvent != nil:
+		p.processEvent(msg.WebhookEvent)
+	case msg.StripeV2Event != nil:
+		p.processV2Event(msg.StripeV2Event)
+	default:
 		p.cfg.Log.Debug("WebSocket specified for Webhooks received non-webhook event")
 		return
 	}
+}
 
-	webhookEvent := msg.WebhookEvent
-
+func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEvent) {
 	p.cfg.Log.WithFields(log.Fields{
 		"prefix":                   "proxy.WebhookEventProcessor.ProcessEvent",
 		"webhook_id":               webhookEvent.WebhookID,
@@ -159,6 +170,40 @@ func (p *WebhookEventProcessor) ProcessEvent(msg websocket.IncomingMessage) {
 	}
 }
 
+func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event) {
+	p.cfg.Log.WithFields(log.Fields{
+		"prefix":     "proxy.WebhookEventProcessor.ProcessV2Event",
+		"event_id":   v2Event.Payload.ID,
+		"event_type": v2Event.Type,
+	}).Debugf("Processing webhook event")
+
+	// ack the event
+	p.sendMessage(websocket.NewEventAck(v2Event.Payload.ID, "")) // TODO(@charliecruzan): what to use instead of webhook conversation ID
+
+	// skip further event processing if the event type is not enabled
+	if !p.thinEvents[v2Event.Payload.Type] && !p.thinEvents["*"] {
+		return
+	}
+
+	// notify consumers
+	p.cfg.OutCh <- websocket.DataElement{
+		Data: v2Event.Payload,
+	}
+
+	// TODO(@charliecruzan): handle setting these args to log response on server properly
+	evtCtx := eventContext{
+		webhookID:             "",
+		webhookConversationID: "",
+		v2Event:               &v2Event.Payload,
+	}
+
+	for _, endpoint := range p.endpointClients {
+		if endpoint.isEventDestination && endpoint.SupportsEventType(false, v2Event.Payload.Type) {
+			go endpoint.PostV2(v2Event.Payload, evtCtx)
+		}
+	}
+}
+
 func (p *WebhookEventProcessor) filterWebhookEvent(msg *websocket.WebhookEvent) bool {
 	if msg.Endpoint.APIVersion != nil && !p.cfg.UseLatestAPIVersion {
 		p.cfg.Log.WithFields(log.Fields{
@@ -191,11 +236,20 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 
 	body := truncate(string(buf), maxBodySize, true)
 
-	p.cfg.OutCh <- websocket.DataElement{
-		Data: EndpointResponse{
-			Event: evtCtx.event,
-			Resp:  resp,
-		},
+	if evtCtx.event != nil {
+		p.cfg.OutCh <- websocket.DataElement{
+			Data: EndpointResponse{
+				Event: evtCtx.event,
+				Resp:  resp,
+			},
+		}
+	} else if evtCtx.v2Event != nil {
+		p.cfg.OutCh <- websocket.DataElement{
+			Data: websocket.V2EventWebhookResponse{
+				Event: evtCtx.v2Event,
+				Resp:  resp,
+			},
+		}
 	}
 
 	idx := 0

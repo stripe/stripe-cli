@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"regexp"
@@ -67,6 +68,8 @@ type EndpointClient struct {
 
 	// Optional configuration parameters
 	cfg *EndpointConfig
+
+	isEventDestination bool
 }
 
 // SupportsEventType takes an event of a webhook and compares it to the internal
@@ -123,12 +126,54 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 	return nil
 }
 
+// PostV2 sends a message to a local event destination
+func (c *EndpointClient) PostV2(payload websocket.V2EventPayload, evtCtx eventContext) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	// Set request headers to the same values that Stripe uses when
+	// invoking the webhook event destination.
+	req.Header.Add("Content-Type", "application/json; charset=utf-8")
+	req.Header.Add("Cache-Control", "no-cache")
+	req.Header.Add("User-Agent", "Stripe/2.0 (+https://stripe.com/docs/beta-apis/event-destinations)")
+	req.Header.Add("Accept", "*/*")
+
+	// add custom headers
+	for k, v := range c.headers {
+		if strings.ToLower(k) == "host" {
+			req.Host = v
+		} else {
+			req.Header.Add(k, v)
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		c.cfg.OutCh <- websocket.ErrorElement{
+			Error: FailedToPostError{Err: err},
+		}
+		return err
+	}
+	defer resp.Body.Close()
+
+	c.cfg.ResponseHandler.ProcessResponse(evtCtx, c.URL, resp)
+
+	return nil
+}
+
 //
 // Public functions
 //
 
 // NewEndpointClient returns a new EndpointClient.
-func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+func NewEndpointClient(url string, headers []string, connect bool, events []string, isEventDestination bool, cfg *EndpointConfig) *EndpointClient {
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -151,11 +196,12 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 	}
 
 	return &EndpointClient{
-		URL:     url,
-		headers: convertToMapAndSanitize(headers),
-		connect: connect,
-		events:  convertToMap(events),
-		cfg:     cfg,
+		URL:                url,
+		headers:            convertToMapAndSanitize(headers),
+		connect:            connect,
+		events:             convertToMap(events),
+		isEventDestination: isEventDestination,
+		cfg:                cfg,
 	}
 }
 
