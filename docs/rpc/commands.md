@@ -305,6 +305,10 @@
 | live | [bool](#bool) |  | Receive live events (default: test) |
 | skip_verify | [bool](#bool) |  | Skip certificate verification when forwarding to HTTPS endpoints |
 | use_configured_webhooks | [bool](#bool) |  | Load webhook endpoint configuration from the webhooks API/dashboard |
+| slim_events | [string](#string) | repeated | A list of thin-type events to listen for. Defaults to none. |
+| forward_thin_to | [string](#string) |  | The URL to forward thin webhook events to |
+| forward_thin_connect_to | [string](#string) |  | The URL to forward thin Connect webhook events to (default: same as normal thin events) |
+| api_version | [string](#string) |  | The Stripe API version associated with the provided snapshot payload event types |
 
 
 
