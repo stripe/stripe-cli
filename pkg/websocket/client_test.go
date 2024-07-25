@@ -240,7 +240,7 @@ func TestWritePumpInterruptionRequeued(t *testing.T) {
 	actualMessages := []string{}
 	connectedChan := client.Connected()
 	<-connectedChan
-	go func() { client.stopReadPump <- struct{}{} }()
+	go func() { client.terminateReadPump() }()
 
 	for i := 0; i < 2; i++ {
 		client.SendMessage(NewEventAck(fmt.Sprintf("event_%d", i), fmt.Sprintf("event_%d", i)))
