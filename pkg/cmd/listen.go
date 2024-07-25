@@ -81,7 +81,7 @@ Stripe account.`,
 	lc.cmd.Flags().MarkHidden("thin-events")
 	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
 	lc.cmd.Flags().MarkHidden("forward-thin-to")
-	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to (default: same as normal thin events)")
+	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
 	lc.cmd.Flags().MarkHidden("forward-thin-connect-to")
 	lc.cmd.Flags().StringVar(&lc.APIVersion, "api-version", "", "Stripe API version associated with the provided snapshot payload event types. (default: your account's default API version)")
 	lc.cmd.Flags().MarkHidden("api-version")
@@ -277,8 +277,8 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 				color := ansi.Color(os.Stdout)
 				outputStr := fmt.Sprintf("%s   --> %s [%s]",
 					color.Faint(localTime),
-					ansi.Bold(data.Type), // TODO(@charliecruzan): linkify
-					data.ID,              // TODO(@charliecruzan): linkify
+					ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
+					ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
 				)
 				fmt.Println(outputStr)
 				return nil
@@ -329,7 +329,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					ansi.ColorizeStatus(resp.StatusCode),
 					resp.Request.Method,
 					resp.Request.URL,
-					ansi.Linkify(event.ID, fmt.Sprintf("%s/events/%s", proxy.BaseDashboardURL(false, ""), event.ID), logger.Out), // TODO(@charliecruzan): linkify correctly
+					ansi.Linkify(event.ID, fmt.Sprintf("https://dashboard.stripe.com/events/%s", event.ID), logger.Out),
 				)
 				fmt.Println(outputStr)
 				return nil

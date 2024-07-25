@@ -60,11 +60,6 @@ message V2StripeEvent {
     string url = 3;
   }
 
-  message Reason {
-    // the type
-    string type = 1;
-  }
-
   // timestamp event was created
   string created = 1;
 
@@ -77,12 +72,12 @@ message V2StripeEvent {
   // The object type, i.e. 'event'
   string object = 4;
 
-  // The reason for the event
-  Reason reason = 5;
-
   // The resource related to the event
-  RelatedObject related_object = 6;
+  RelatedObject related_object = 5;
 
   // Description of the event (e.g., invoice.created or charge.refunded).
-  string type = 7;
+  string type = 6;
+
+  // Conext of the event
+  string context = 7;
 }

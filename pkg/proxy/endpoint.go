@@ -87,6 +87,16 @@ func (c *EndpointClient) SupportsEventType(connect bool, eventType string) bool 
 	return false
 }
 
+// SupportsContext takes the context string of an event, and determines whether the endpoint supports
+// this context
+func (c *EndpointClient) SupportsContext(context string) bool {
+	if c.connect {
+		return context != ""
+	}
+
+	return context == ""
+}
+
 // Post sends a message to the local endpoint.
 func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[string]string) error {
 	c.cfg.Log.WithFields(log.Fields{

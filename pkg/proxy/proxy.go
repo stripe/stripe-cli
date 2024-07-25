@@ -392,10 +392,10 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		if len(cfg.ForwardThinURL) > 0 {
 			// Thin endpoints
 			endpointRoutes = append(endpointRoutes, EndpointRoute{
-				URL:             parseURL(cfg.ForwardThinURL),
-				ForwardHeaders:  cfg.ForwardHeaders,
-				Connect:         false,
-				EventTypes:      cfg.ThinEvents,
+				URL:                parseURL(cfg.ForwardThinURL),
+				ForwardHeaders:     cfg.ForwardHeaders,
+				Connect:            false,
+				EventTypes:         cfg.ThinEvents,
 				IsEventDestination: true,
 			})
 		}
@@ -403,10 +403,10 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		if len(cfg.ForwardThinConnectURL) > 0 {
 			// Thin connect endpoints
 			endpointRoutes = append(endpointRoutes, EndpointRoute{
-				URL:             parseURL(cfg.ForwardThinConnectURL),
-				ForwardHeaders:  cfg.ForwardConnectHeaders,
-				Connect:         true,
-				EventTypes:      cfg.ThinEvents,
+				URL:                parseURL(cfg.ForwardThinConnectURL),
+				ForwardHeaders:     cfg.ForwardConnectHeaders,
+				Connect:            true,
+				EventTypes:         cfg.ThinEvents,
 				IsEventDestination: true,
 			})
 		}

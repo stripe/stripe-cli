@@ -253,10 +253,6 @@ func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
 }
 
 func buildStripeV2EventResp(raw *websocket.V2EventPayload) (*rpc.ListenResponse, error) {
-	reason := rpc.V2StripeEvent_Reason{
-		Type: raw.Reason.Type,
-	}
-
 	relatedObject := rpc.V2StripeEvent_RelatedObject{
 		Id:   raw.RelatedObject.ID,
 		Type: raw.RelatedObject.Type,
@@ -270,9 +266,9 @@ func buildStripeV2EventResp(raw *websocket.V2EventPayload) (*rpc.ListenResponse,
 				Data:          raw.Data,
 				Id:            raw.ID,
 				Object:        raw.Object,
-				Reason:        &reason,
 				RelatedObject: &relatedObject,
 				Type:          raw.Type,
+				Context:       raw.Context,
 			},
 		},
 	}, nil

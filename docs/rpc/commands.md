@@ -10,7 +10,6 @@
     - [StripeEvent](#rpc-StripeEvent)
     - [StripeEvent.Request](#rpc-StripeEvent-Request)
     - [V2StripeEvent](#rpc-V2StripeEvent)
-    - [V2StripeEvent.Reason](#rpc-V2StripeEvent-Reason)
     - [V2StripeEvent.RelatedObject](#rpc-V2StripeEvent-RelatedObject)
   
 - [events_resend.proto](#events_resend-proto)
@@ -187,24 +186,9 @@
 | data | [bytes](#bytes) |  | Object containing data associated with the event. |
 | id | [string](#string) |  | unique id of the event |
 | object | [string](#string) |  | The object type, i.e. &#39;event&#39; |
-| reason | [V2StripeEvent.Reason](#rpc-V2StripeEvent-Reason) |  | The reason for the event |
 | related_object | [V2StripeEvent.RelatedObject](#rpc-V2StripeEvent-RelatedObject) |  | The resource related to the event |
 | type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
-
-
-
-
-
-
-<a name="rpc-V2StripeEvent-Reason"></a>
-
-### V2StripeEvent.Reason
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| type | [string](#string) |  | the type |
+| context | [string](#string) |  | Conext of the event |
 
 
 
