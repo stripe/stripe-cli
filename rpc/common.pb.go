@@ -143,6 +143,108 @@ func (x *StripeEvent) GetPendingWebhooks() int64 {
 	return 0
 }
 
+type V2StripeEvent struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// timestamp event was created
+	Created string `protobuf:"bytes,1,opt,name=created,proto3" json:"created,omitempty"`
+	// Object containing data associated with the event.
+	Data []byte `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	// unique id of the event
+	Id string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	// The object type, i.e. 'event'
+	Object string `protobuf:"bytes,4,opt,name=object,proto3" json:"object,omitempty"`
+	// The reason for the event
+	Reason *V2StripeEvent_Reason `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	// The resource related to the event
+	RelatedObject *V2StripeEvent_RelatedObject `protobuf:"bytes,6,opt,name=related_object,json=relatedObject,proto3" json:"related_object,omitempty"`
+	// Description of the event (e.g., invoice.created or charge.refunded).
+	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+}
+
+func (x *V2StripeEvent) Reset() {
+	*x = V2StripeEvent{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_common_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *V2StripeEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*V2StripeEvent) ProtoMessage() {}
+
+func (x *V2StripeEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use V2StripeEvent.ProtoReflect.Descriptor instead.
+func (*V2StripeEvent) Descriptor() ([]byte, []int) {
+	return file_common_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *V2StripeEvent) GetCreated() string {
+	if x != nil {
+		return x.Created
+	}
+	return ""
+}
+
+func (x *V2StripeEvent) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *V2StripeEvent) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *V2StripeEvent) GetObject() string {
+	if x != nil {
+		return x.Object
+	}
+	return ""
+}
+
+func (x *V2StripeEvent) GetReason() *V2StripeEvent_Reason {
+	if x != nil {
+		return x.Reason
+	}
+	return nil
+}
+
+func (x *V2StripeEvent) GetRelatedObject() *V2StripeEvent_RelatedObject {
+	if x != nil {
+		return x.RelatedObject
+	}
+	return nil
+}
+
+func (x *V2StripeEvent) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
 type StripeEvent_Request struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -160,7 +262,7 @@ type StripeEvent_Request struct {
 func (x *StripeEvent_Request) Reset() {
 	*x = StripeEvent_Request{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_common_proto_msgTypes[1]
+		mi := &file_common_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -173,7 +275,7 @@ func (x *StripeEvent_Request) String() string {
 func (*StripeEvent_Request) ProtoMessage() {}
 
 func (x *StripeEvent_Request) ProtoReflect() protoreflect.Message {
-	mi := &file_common_proto_msgTypes[1]
+	mi := &file_common_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -199,6 +301,120 @@ func (x *StripeEvent_Request) GetId() string {
 func (x *StripeEvent_Request) GetIdempotencyKey() string {
 	if x != nil {
 		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type V2StripeEvent_RelatedObject struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// unique ID of the resource
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The resource type
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	// The API url to GET the resource details
+	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (x *V2StripeEvent_RelatedObject) Reset() {
+	*x = V2StripeEvent_RelatedObject{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_common_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *V2StripeEvent_RelatedObject) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*V2StripeEvent_RelatedObject) ProtoMessage() {}
+
+func (x *V2StripeEvent_RelatedObject) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use V2StripeEvent_RelatedObject.ProtoReflect.Descriptor instead.
+func (*V2StripeEvent_RelatedObject) Descriptor() ([]byte, []int) {
+	return file_common_proto_rawDescGZIP(), []int{1, 0}
+}
+
+func (x *V2StripeEvent_RelatedObject) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *V2StripeEvent_RelatedObject) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *V2StripeEvent_RelatedObject) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+type V2StripeEvent_Reason struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// the type
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+}
+
+func (x *V2StripeEvent_Reason) Reset() {
+	*x = V2StripeEvent_Reason{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_common_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *V2StripeEvent_Reason) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*V2StripeEvent_Reason) ProtoMessage() {}
+
+func (x *V2StripeEvent_Reason) ProtoReflect() protoreflect.Message {
+	mi := &file_common_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use V2StripeEvent_Reason.ProtoReflect.Descriptor instead.
+func (*V2StripeEvent_Reason) Descriptor() ([]byte, []int) {
+	return file_common_proto_rawDescGZIP(), []int{1, 1}
+}
+
+func (x *V2StripeEvent_Reason) GetType() string {
+	if x != nil {
+		return x.Type
 	}
 	return ""
 }
@@ -232,10 +448,31 @@ var file_common_proto_rawDesc = []byte{
 	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x27, 0x0a,
 	0x0f, 0x69, 0x64, 0x65, 0x6d, 0x70, 0x6f, 0x74, 0x65, 0x6e, 0x63, 0x79, 0x5f, 0x6b, 0x65, 0x79,
 	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x69, 0x64, 0x65, 0x6d, 0x70, 0x6f, 0x74, 0x65,
-	0x6e, 0x63, 0x79, 0x4b, 0x65, 0x79, 0x42, 0x22, 0x5a, 0x20, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62,
-	0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x73, 0x74, 0x72, 0x69, 0x70, 0x65, 0x2f, 0x73, 0x74, 0x72, 0x69,
-	0x70, 0x65, 0x2d, 0x63, 0x6c, 0x69, 0x2f, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x6e, 0x63, 0x79, 0x4b, 0x65, 0x79, 0x22, 0xda, 0x02, 0x0a, 0x0d, 0x56, 0x32, 0x53, 0x74, 0x72,
+	0x69, 0x70, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x72, 0x65, 0x61,
+	0x74, 0x65, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x72, 0x65, 0x61, 0x74,
+	0x65, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c,
+	0x52, 0x04, 0x64, 0x61, 0x74, 0x61, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x16, 0x0a, 0x06, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74,
+	0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x31,
+	0x0a, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19,
+	0x2e, 0x72, 0x70, 0x63, 0x2e, 0x56, 0x32, 0x53, 0x74, 0x72, 0x69, 0x70, 0x65, 0x45, 0x76, 0x65,
+	0x6e, 0x74, 0x2e, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x52, 0x06, 0x72, 0x65, 0x61, 0x73, 0x6f,
+	0x6e, 0x12, 0x47, 0x0a, 0x0e, 0x72, 0x65, 0x6c, 0x61, 0x74, 0x65, 0x64, 0x5f, 0x6f, 0x62, 0x6a,
+	0x65, 0x63, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x20, 0x2e, 0x72, 0x70, 0x63, 0x2e,
+	0x56, 0x32, 0x53, 0x74, 0x72, 0x69, 0x70, 0x65, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x2e, 0x52, 0x65,
+	0x6c, 0x61, 0x74, 0x65, 0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x52, 0x0d, 0x72, 0x65, 0x6c,
+	0x61, 0x74, 0x65, 0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79,
+	0x70, 0x65, 0x18, 0x07, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x1a, 0x45,
+	0x0a, 0x0d, 0x52, 0x65, 0x6c, 0x61, 0x74, 0x65, 0x64, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x12,
+	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12,
+	0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74,
+	0x79, 0x70, 0x65, 0x12, 0x10, 0x0a, 0x03, 0x75, 0x72, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x03, 0x75, 0x72, 0x6c, 0x1a, 0x1c, 0x0a, 0x06, 0x52, 0x65, 0x61, 0x73, 0x6f, 0x6e, 0x12,
+	0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74,
+	0x79, 0x70, 0x65, 0x42, 0x22, 0x5a, 0x20, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f,
+	0x6d, 0x2f, 0x73, 0x74, 0x72, 0x69, 0x70, 0x65, 0x2f, 0x73, 0x74, 0x72, 0x69, 0x70, 0x65, 0x2d,
+	0x63, 0x6c, 0x69, 0x2f, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -250,20 +487,25 @@ func file_common_proto_rawDescGZIP() []byte {
 	return file_common_proto_rawDescData
 }
 
-var file_common_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_common_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_common_proto_goTypes = []interface{}{
-	(*StripeEvent)(nil),         // 0: rpc.StripeEvent
-	(*StripeEvent_Request)(nil), // 1: rpc.StripeEvent.Request
-	(*structpb.Struct)(nil),     // 2: google.protobuf.Struct
+	(*StripeEvent)(nil),                 // 0: rpc.StripeEvent
+	(*V2StripeEvent)(nil),               // 1: rpc.V2StripeEvent
+	(*StripeEvent_Request)(nil),         // 2: rpc.StripeEvent.Request
+	(*V2StripeEvent_RelatedObject)(nil), // 3: rpc.V2StripeEvent.RelatedObject
+	(*V2StripeEvent_Reason)(nil),        // 4: rpc.V2StripeEvent.Reason
+	(*structpb.Struct)(nil),             // 5: google.protobuf.Struct
 }
 var file_common_proto_depIdxs = []int32{
-	2, // 0: rpc.StripeEvent.data:type_name -> google.protobuf.Struct
-	1, // 1: rpc.StripeEvent.request:type_name -> rpc.StripeEvent.Request
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	5, // 0: rpc.StripeEvent.data:type_name -> google.protobuf.Struct
+	2, // 1: rpc.StripeEvent.request:type_name -> rpc.StripeEvent.Request
+	4, // 2: rpc.V2StripeEvent.reason:type_name -> rpc.V2StripeEvent.Reason
+	3, // 3: rpc.V2StripeEvent.related_object:type_name -> rpc.V2StripeEvent.RelatedObject
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_common_proto_init() }
@@ -285,7 +527,43 @@ func file_common_proto_init() {
 			}
 		}
 		file_common_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*V2StripeEvent); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_common_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*StripeEvent_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_common_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*V2StripeEvent_RelatedObject); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_common_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*V2StripeEvent_Reason); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -303,7 +581,7 @@ func file_common_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_common_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

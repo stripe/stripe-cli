@@ -64,6 +64,8 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		},
 		DeviceName:            deviceName,
 		ForwardURL:            req.ForwardTo,
+		ForwardThinURL:        req.ForwardThinTo,
+		ForwardThinConnectURL: req.ForwardThinConnectTo,
 		ForwardHeaders:        req.Headers,
 		ForwardConnectURL:     req.ForwardConnectTo,
 		ForwardConnectHeaders: req.ConnectHeaders,
@@ -73,6 +75,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		SkipVerify:            req.SkipVerify,
 		Log:                   logger,
 		Events:                req.Events,
+		ThinEvents:            req.ThinEvents,
 		OutCh:                 proxyOutCh,
 
 		// Hidden for debugging
@@ -118,8 +121,22 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 				}
 				(*stream).Send(resp)
 				return nil
+			case websocket.V2EventPayload:
+				resp, err := buildStripeV2EventResp(&data)
+				if err != nil {
+					return err
+				}
+				(*stream).Send(resp)
+				return nil
 			case proxy.EndpointResponse:
 				resp, err := buildEndpointResponseResp(&data)
+				if err != nil {
+					return err
+				}
+				(*stream).Send(resp)
+				return nil
+			case websocket.V2EventWebhookResponse:
+				resp, err := buildV2EndpointResponseResp(&data)
 				if err != nil {
 					return err
 				}
@@ -134,6 +151,23 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 			return nil
 		},
 	}
+}
+
+func buildV2EndpointResponseResp(raw *websocket.V2EventWebhookResponse) (*rpc.ListenResponse, error) {
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_EndpointResponse_{
+			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+				Content: &rpc.ListenResponse_EndpointResponse_Data_{
+					Data: &rpc.ListenResponse_EndpointResponse_Data{
+						EventId:    raw.Event.ID,
+						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+						Status:     int64(raw.Resp.StatusCode),
+						Url:        raw.Resp.Request.URL.String(),
+					},
+				},
+			},
+		},
+	}, nil
 }
 
 func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse, error) {
@@ -213,6 +247,32 @@ func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
 				Livemode:        raw.Livemode,
 				PendingWebhooks: int64(raw.PendingWebhooks),
 				Request:         &request,
+			},
+		},
+	}, nil
+}
+
+func buildStripeV2EventResp(raw *websocket.V2EventPayload) (*rpc.ListenResponse, error) {
+	reason := rpc.V2StripeEvent_Reason{
+		Type: raw.Reason.Type,
+	}
+
+	relatedObject := rpc.V2StripeEvent_RelatedObject{
+		Id:   raw.RelatedObject.ID,
+		Type: raw.RelatedObject.Type,
+		Url:  raw.RelatedObject.URL,
+	}
+
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_V2StripeEvent{
+			V2StripeEvent: &rpc.V2StripeEvent{
+				Created:       raw.Created,
+				Data:          raw.Data,
+				Id:            raw.ID,
+				Object:        raw.Object,
+				Reason:        &reason,
+				RelatedObject: &relatedObject,
+				Type:          raw.Type,
 			},
 		},
 	}, nil

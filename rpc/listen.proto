@@ -37,7 +37,7 @@ message ListenRequest {
   bool use_configured_webhooks = 9;
 
   // A list of thin-type events to listen for. Defaults to none.
-  repeated string slim_events = 10;
+  repeated string thin_events = 10;
 
   // The URL to forward thin webhook events to
   string forward_thin_to = 11;
@@ -95,5 +95,8 @@ message ListenResponse {
 
     // A response from an endpoint
     EndpointResponse endpoint_response = 3;
+
+    // A V2 Stripe event
+    V2StripeEvent v2_stripe_event = 4;
   }
 }
