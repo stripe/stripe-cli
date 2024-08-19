@@ -137,7 +137,7 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 }
 
 // PostV2 sends a message to a local event destination
-func (c *EndpointClient) PostV2(payload websocket.V2EventPayload, evtCtx eventContext) error {
+func (c *EndpointClient) PostV2(evtCtx eventContext, payload websocket.V2EventPayload, headers map[string]string) error {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -148,12 +148,9 @@ func (c *EndpointClient) PostV2(payload websocket.V2EventPayload, evtCtx eventCo
 		return err
 	}
 
-	// Set request headers to the same values that Stripe uses when
-	// invoking the webhook event destination.
-	req.Header.Add("Content-Type", "application/json; charset=utf-8")
-	req.Header.Add("Cache-Control", "no-cache")
-	req.Header.Add("User-Agent", "Stripe/2.0 (+https://stripe.com/docs/beta-apis/event-destinations)")
-	req.Header.Add("Accept", "*/*")
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
 
 	// add custom headers
 	for k, v := range c.headers {

@@ -199,7 +199,7 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 
 	for _, endpoint := range p.endpointClients {
 		if endpoint.isEventDestination && endpoint.SupportsContext(v2Event.Payload.Context) {
-			go endpoint.PostV2(v2Event.Payload, evtCtx)
+			go endpoint.PostV2(evtCtx, v2Event.Payload, v2Event.HTTPHeaders)
 		}
 	}
 }
