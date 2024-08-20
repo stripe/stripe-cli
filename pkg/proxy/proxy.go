@@ -347,12 +347,24 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		}
 	}
 
+	if len(cfg.ThinEvents) > 0 {
+		for _, event := range cfg.ThinEvents {
+			if _, found := validV2Events[event]; !found {
+				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+			}
+		}
+	}
+
 	// build from --forward-to urls if --forward-connect-to was not provided
 	if len(cfg.ForwardConnectURL) == 0 {
 		cfg.ForwardConnectURL = cfg.ForwardURL
 	}
 	if len(cfg.ForwardConnectHeaders) == 0 {
 		cfg.ForwardConnectHeaders = cfg.ForwardHeaders
+	}
+
+	if len(cfg.ForwardThinConnectURL) == 0 {
+		cfg.ForwardThinConnectURL = cfg.ForwardThinURL
 	}
 
 	// build endpoint routes

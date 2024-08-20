@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"regexp"
@@ -137,13 +136,8 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 }
 
 // PostV2 sends a message to a local event destination
-func (c *EndpointClient) PostV2(evtCtx eventContext, payload websocket.V2EventPayload, headers map[string]string) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewReader(data))
+func (c *EndpointClient) PostV2(evtCtx eventContext, body string, headers map[string]string) error {
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
 	if err != nil {
 		return err
 	}

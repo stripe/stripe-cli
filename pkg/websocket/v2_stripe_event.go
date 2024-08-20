@@ -13,7 +13,7 @@ type V2EventPayload struct {
 	Object        string               `json:"object"`
 	RelatedObject primaryRelatedObject `json:"related_object"`
 	Type          string               `json:"type"`
-	Context       string               `json:"context"`
+	Context       string               `json:"context,omitempty"`
 }
 
 type primaryRelatedObject struct {

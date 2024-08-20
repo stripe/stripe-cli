@@ -158,7 +158,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 		}
 
 		for _, endpoint := range p.endpointClients {
-			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) {
+			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) && !endpoint.isEventDestination {
 				// TODO: handle errors returned by endpointClients
 				go endpoint.Post(
 					evtCtx,
@@ -171,34 +171,42 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 }
 
 func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event) {
+	var evt websocket.V2EventPayload
+
+	err := json.Unmarshal([]byte(v2Event.Payload), &evt)
+	if err != nil {
+		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
+		return
+	}
+
 	p.cfg.Log.WithFields(log.Fields{
 		"prefix":     "proxy.WebhookEventProcessor.ProcessV2Event",
-		"event_id":   v2Event.Payload.ID,
-		"event_type": v2Event.Type,
+		"event_id":   evt.ID,
+		"event_type": evt.Type,
 	}).Debugf("Processing webhook event")
 
 	// ack the event
-	p.sendMessage(websocket.NewEventAck(v2Event.Payload.ID, "")) // TODO(@charliecruzan): what to use instead of webhook conversation ID
+	p.sendMessage(websocket.NewEventAck(evt.ID, "")) // TODO(@charliecruzan): what to use instead of webhook conversation ID
 
 	// skip further event processing if the event type is not enabled
-	if !p.thinEvents[v2Event.Payload.Type] && !p.thinEvents["*"] {
+	if !p.thinEvents[evt.Type] && !p.thinEvents["*"] {
 		return
 	}
 
 	// notify consumers
 	p.cfg.OutCh <- websocket.DataElement{
-		Data: v2Event.Payload,
+		Data: evt,
 	}
 
 	// TODO(@charliecruzan): handle setting these args to log response on server properly
 	evtCtx := eventContext{
 		webhookID:             "",
 		webhookConversationID: "",
-		v2Event:               &v2Event.Payload,
+		v2Event:               &evt,
 	}
 
 	for _, endpoint := range p.endpointClients {
-		if endpoint.isEventDestination && endpoint.SupportsContext(v2Event.Payload.Context) {
+		if endpoint.isEventDestination && endpoint.SupportsContext(evt.Context) {
 			go endpoint.PostV2(evtCtx, v2Event.Payload, v2Event.HTTPHeaders)
 		}
 	}

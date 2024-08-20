@@ -53,8 +53,8 @@ type StripeV2Event struct {
 	Type string `json:"type"`
 
 	// Payload
-	Payload     V2EventPayload    `json:"event_payload"`
 	HTTPHeaders map[string]string `json:"http_headers"`
+	Payload     string            `json:"payload"`
 }
 
 // V2EventWebhookResponse is a tuple of a v2 event and the response returned by
