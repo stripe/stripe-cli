@@ -137,7 +137,7 @@ func TestParseInterfaceFromRaw(t *testing.T) {
 	parsedFixtureData := make(map[string]interface{})
 	json.Unmarshal(rawFixtureData, &parsedFixtureData)
 
-	output, _ := ParseInterface(parsedFixtureData, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(parsedFixtureData, make(map[string]gjson.Result))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 2)
@@ -159,7 +159,7 @@ func TestParseInterfaceDeeplyNested(t *testing.T) {
 	data := make(map[string]interface{})
 	data["custom_fields"] = customFields
 
-	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 	sort.Strings(output)
 
 	require.Equal(t, 2, len(output))
@@ -189,7 +189,7 @@ func TestParseInterface(t *testing.T) {
 	data["address"] = address
 	data["tax_id_data"] = taxIDData
 
-	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 8)
@@ -214,7 +214,7 @@ func TestParseWithQueryIgnoreDefault(t *testing.T) {
 	data["amount"] = "100"
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output, _ := ParseInterface(data, queryRespMap)
+	output, _ := ParseToFormData(data, queryRespMap)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 4)
@@ -232,7 +232,7 @@ func TestParseWithQueryDefaultValue(t *testing.T) {
 	data := make(map[string]interface{})
 	data["currency"] = "${cust_bender:currency|usd}"
 
-	output, _ := ParseInterface(data, queryRespMap)
+	output, _ := ParseToFormData(data, queryRespMap)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "currency=usd", output[0])
@@ -242,7 +242,7 @@ func TestParseNoEnv(t *testing.T) {
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_NOT_SET|+1234567890}"
 
-	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234567890", output[0])
@@ -262,7 +262,7 @@ func TestParseWithLocalEnv(t *testing.T) {
 	path, _ := ParsePath(httpPath, queryRespMap)
 	assert.Equal(t, "/v1/customers/cust_12345", path)
 
-	output, _ := ParseInterface(data, queryRespMap)
+	output, _ := ParseToFormData(data, queryRespMap)
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -278,7 +278,7 @@ func TestParseWithEnvFile(t *testing.T) {
 
 	data := make(map[string]interface{})
 	data["phone"] = "${.env:PHONE_FILE|+1234567890}"
-	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "phone=+1234", output[0])
@@ -294,7 +294,7 @@ func TestParseWithEnvSubstring(t *testing.T) {
 
 	data := make(map[string]interface{})
 	data["url"] = "${.env:BASE_API_URL}/hook/stripe"
-	output, _ := ParseInterface(data, make(map[string]gjson.Result))
+	output, _ := ParseToFormData(data, make(map[string]gjson.Result))
 
 	require.Equal(t, len(output), 1)
 	require.Equal(t, "url=https://myexample.com/hook/stripe", output[0])
@@ -314,7 +314,7 @@ func TestParseArray(t *testing.T) {
 	data["second_timezone"] = "${cust_bender:timezones.1}"
 	data["third_timezone"] = "${cust_bender:timezones.2|notimezonefound}"
 
-	output, _ := ParseInterface(data, queryRespMap)
+	output, _ := ParseToFormData(data, queryRespMap)
 	sort.Strings(output)
 
 	require.Equal(t, len(output), 5)

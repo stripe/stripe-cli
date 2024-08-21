@@ -45,7 +45,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 
 	params := getParamsFromReq(req)
 
-	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, true)
+	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, true, nil)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
