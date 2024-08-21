@@ -78,6 +78,69 @@ func TestClientWebhookEventHandler(t *testing.T) {
 	require.Equal(t, "{}", rcvMsg.EventPayload)
 }
 
+func TestClientWebhookV2EventHandler(t *testing.T) {
+	upgrader := ws.Upgrader{}
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "websocket-random-id", r.Header.Get("Websocket-Id"))
+		c, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+
+		require.Equal(t, "websocket_feature=webhook-payloads", r.URL.RawQuery)
+
+		defer c.Close()
+
+		evt := StripeV2Event{
+			Payload: "{}",
+			HTTPHeaders: map[string]string{
+				"User-Agent":       "TestAgent/v1",
+				"Stripe-Signature": "t=123,v1=hunter2",
+			},
+			Type: "v2_event",
+		}
+
+		msg, err := json.Marshal(evt)
+		require.NoError(t, err)
+
+		err = c.WriteMessage(ws.TextMessage, msg)
+		require.NoError(t, err)
+	}))
+
+	defer ts.Close()
+
+	url := "ws" + strings.TrimPrefix(ts.URL, "http")
+
+	var rcvMsg StripeV2Event
+
+	rcvMsgChan := make(chan StripeV2Event)
+
+	client := NewClient(
+		url,
+		"websocket-random-id",
+		"webhook-payloads",
+		&Config{
+			EventHandler: EventHandlerFunc(func(msg IncomingMessage) {
+				rcvMsgChan <- *msg.StripeV2Event
+			}),
+		},
+	)
+
+	go client.Run(context.Background())
+
+	defer client.Stop()
+
+	select {
+	case rcvMsg = <-rcvMsgChan:
+	case <-time.After(500 * time.Millisecond):
+		require.FailNow(t, "Timed out waiting for response from test server")
+	}
+
+	require.Equal(t, "TestAgent/v1", rcvMsg.HTTPHeaders["User-Agent"])
+	require.Equal(t, "t=123,v1=hunter2", rcvMsg.HTTPHeaders["Stripe-Signature"])
+	require.Equal(t, "{}", rcvMsg.Payload)
+}
+
 func TestClientRequestLogEventHandler(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)

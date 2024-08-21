@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,21 @@ func TestUnmarshalWebhookEvent(t *testing.T) {
 	require.Equal(t, "wc_123", msg.WebhookEvent.WebhookConversationID)
 }
 
+func TestUnmarshalWebhookV2Event(t *testing.T) {
+	var data = `{"type": "v2_event", "payload": "foo", "http_headers": {"Request-Header": "bar"}}`
+
+	var msg IncomingMessage
+	err := json.Unmarshal([]byte(data), &msg)
+	require.NoError(t, err)
+
+	require.NotNil(t, msg.StripeV2Event)
+	require.Nil(t, msg.RequestLogEvent)
+
+	require.Equal(t, "foo", msg.StripeV2Event.Payload)
+	require.Equal(t, "bar", msg.StripeV2Event.HTTPHeaders["Request-Header"])
+	require.Equal(t, "v2_event", msg.StripeV2Event.Type)
+}
+
 func TestMarshalWebhookResponse(t *testing.T) {
 	msg := NewWebhookResponse(
 		"wh_123",
@@ -45,6 +61,29 @@ func TestMarshalWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
 	require.Equal(t, "foo", gjson.Get(json, "body").String())
 	require.Equal(t, "bar", gjson.Get(json, "http_headers.Response-Header").String())
+}
+
+func TestMarshalV2EventWebhookResponse(t *testing.T) {
+	headers := make(http.Header)
+	headers.Add("Response-Header", "bar")
+	msg := V2EventWebhookResponse{
+		Event: &V2EventPayload{
+			ID: "evt_123",
+		},
+		Resp: &http.Response{
+			Header:     headers,
+			StatusCode: 200,
+			Status:     "200 OK",
+		},
+	}
+
+	buf, err := json.Marshal(msg)
+	require.NoError(t, err)
+
+	json := string(buf)
+	require.Equal(t, "evt_123", gjson.Get(json, "Event.id").String())
+	require.Equal(t, "200 OK", gjson.Get(json, "Resp.Status").String())
+	require.Equal(t, "bar", gjson.Get(json, "Resp.Header.Response-Header").Array()[0].String())
 }
 
 func TestNewWebhookResponse(t *testing.T) {

@@ -70,7 +70,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		ForwardConnectURL:     req.ForwardConnectTo,
 		ForwardConnectHeaders: req.ConnectHeaders,
 		UseConfiguredWebhooks: req.UseConfiguredWebhooks,
-		WebSocketFeatures:     []string{webhooksWebSocketFeature}, // todo:@charliecruzan add support for new params to rpc
+		WebSocketFeatures:     getFeatures(req),
 		UseLatestAPIVersion:   req.Latest,
 		SkipVerify:            req.SkipVerify,
 		Log:                   logger,
@@ -281,4 +281,18 @@ func getRPCMethodFromRequestMethod(raw string) rpc.ListenResponse_EndpointRespon
 		httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_UNSPECIFIED
 	}
 	return httpMethodResponse
+}
+
+func getFeatures(req *rpc.ListenRequest) []string {
+	features := []string{}
+
+	if len(req.Events) > 0 {
+		features = append(features, webhooksWebSocketFeature)
+	}
+
+	if len(req.ThinEvents) > 0 {
+		features = append(features, destinationsWebSocketFeature)
+	}
+
+	return features
 }

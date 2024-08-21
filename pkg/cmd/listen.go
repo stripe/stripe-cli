@@ -42,7 +42,6 @@ type listenCmd struct {
 	events                []string
 	thinEvents            []string
 	latestAPIVersion      bool
-	APIVersion            string
 	livemode              bool
 	useConfiguredWebhooks bool
 	printJSON             bool
@@ -73,18 +72,16 @@ Stripe account.`,
 	}
 
 	lc.cmd.Flags().StringSliceVar(&lc.forwardConnectHeaders, "connect-headers", []string{}, "A comma-separated list of custom headers to forward for Connect. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of snapshot events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
-	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward snapshot events to")
+	lc.cmd.Flags().StringSliceVarP(&lc.events, "events", "e", []string{"*"}, "A comma-separated list of specific events to listen for. For a list of all possible events, see: https://stripe.com/docs/api/events/types")
+	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
-	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward snapshot Connect webhook events to (default: same as normal events)")
+	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
 	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
 	lc.cmd.Flags().MarkHidden("thin-events")
 	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
 	lc.cmd.Flags().MarkHidden("forward-thin-to")
 	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
 	lc.cmd.Flags().MarkHidden("forward-thin-connect-to")
-	lc.cmd.Flags().StringVar(&lc.APIVersion, "api-version", "", "Stripe API version associated with the provided snapshot payload event types. (default: your account's default API version)")
-	lc.cmd.Flags().MarkHidden("api-version")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -176,7 +173,6 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
 		WebSocketFeatures:     lc.getFeatures(),
 		PrintJSON:             lc.printJSON,
-		APIVersion:            lc.APIVersion,
 		UseLatestAPIVersion:   lc.latestAPIVersion,
 		SkipVerify:            lc.skipVerify,
 		Log:                   logger,

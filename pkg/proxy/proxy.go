@@ -99,8 +99,6 @@ type Config struct {
 	// Specifies the format to print to stdout.
 	Format string
 
-	// Stripe API version associated with the provided classic payload event types
-	APIVersion string
 	// Indicates whether to filter events formatted with the default or latest API version
 	UseLatestAPIVersion bool
 	// Indicates whether to skip certificate verification when forwarding webhooks to HTTPS endpoints
