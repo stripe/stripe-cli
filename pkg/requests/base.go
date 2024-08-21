@@ -203,6 +203,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
 }
 
+// MakeV2Request will make a application/json request to the Stripe API with the specific payload given to it.
 func (rb *Base) MakeV2Request(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error, jsonPayload string) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
