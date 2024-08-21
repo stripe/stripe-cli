@@ -79,16 +79,30 @@ type Client struct {
 	// Optional configuration parameters
 	cfg *Config
 
-	conn        *ws.Conn
-	done        chan struct{}
-	isConnected bool
+	conn             *ws.Conn
+	done             chan struct{}
+	isConnected      bool
+	isConnectedMutex sync.RWMutex
 
-	NotifyExpired chan struct{}
-	notifyClose   chan error
-	send          chan *OutgoingMessage
-	stopReadPump  chan struct{}
-	stopWritePump chan struct{}
-	wg            *sync.WaitGroup
+	NotifyExpired     chan struct{}
+	notifyClose       chan error
+	send              chan *OutgoingMessage
+	stopReadPumpMutex sync.RWMutex
+	stopReadPump      chan struct{}
+	stopWritePump     chan struct{}
+	wg                *sync.WaitGroup
+}
+
+func (c *Client) setIsConnected(newValue bool) {
+	c.isConnectedMutex.Lock()
+	defer c.isConnectedMutex.Unlock()
+	c.isConnected = newValue
+}
+
+func (c *Client) getIsConnected() bool {
+	c.isConnectedMutex.RLock()
+	defer c.isConnectedMutex.RUnlock()
+	return c.isConnected
 }
 
 // Connected returns a channel that's closed when the client has finished
@@ -97,7 +111,7 @@ func (c *Client) Connected() <-chan struct{} {
 	d := make(chan struct{})
 
 	go func() {
-		for !c.isConnected {
+		for !c.getIsConnected() {
 			time.Sleep(100 * time.Millisecond)
 		}
 		close(d)
@@ -109,7 +123,7 @@ func (c *Client) Connected() <-chan struct{} {
 // Run starts listening for incoming webhook requests from Stripe.
 func (c *Client) Run(ctx context.Context) {
 	for {
-		c.isConnected = false
+		c.setIsConnected(false)
 		c.cfg.Log.WithFields(log.Fields{
 			"prefix": "websocket.client.Run",
 		}).Debug("Attempting to connect to Stripe")
@@ -171,6 +185,8 @@ func (c *Client) Run(ctx context.Context) {
 // Close executes a proper closure handshake then closes the connection
 // list of close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
 func (c *Client) Close(closeCode int, text string) {
+	c.stopReadPumpMutex.Lock()
+	defer c.stopReadPumpMutex.Unlock()
 	close(c.stopReadPump)
 	close(c.stopWritePump)
 	if c.conn != nil {
@@ -271,7 +287,7 @@ func (c *Client) connect(ctx context.Context) error {
 	defer resp.Body.Close()
 
 	c.changeConnection(conn)
-	c.isConnected = true
+	c.setIsConnected(true)
 
 	c.wg = &sync.WaitGroup{}
 	c.wg.Add(2)
@@ -289,6 +305,8 @@ func (c *Client) connect(ctx context.Context) error {
 
 // changeConnection takes a new connection and recreates the channels.
 func (c *Client) changeConnection(conn *ws.Conn) {
+	c.stopReadPumpMutex.Lock()
+	defer c.stopReadPumpMutex.Unlock()
 	c.conn = conn
 	c.notifyClose = make(chan error)
 	c.stopReadPump = make(chan struct{})
@@ -461,6 +479,12 @@ func (c *Client) writePump() {
 	}
 }
 
+func (c *Client) terminateReadPump() {
+	c.stopReadPumpMutex.Lock()
+	defer c.stopReadPumpMutex.Unlock()
+	c.stopReadPump <- struct{}{}
+}
+
 //
 // Public functions
 //
@@ -513,7 +537,7 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		WebSocketAuthorizedFeature: websocketAuthorizedFeature,
 		cfg:                        cfg,
 		done:                       make(chan struct{}),
-		send:                       make(chan *OutgoingMessage),
+		send:                       make(chan *OutgoingMessage, 10),
 		NotifyExpired:              make(chan struct{}),
 	}
 }
