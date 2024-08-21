@@ -138,7 +138,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 	}).Trace("Webhook event trace")
 
 	// at this point the message is valid so we can acknowledge it
-	ackMessage := websocket.NewEventAck(webhookEvent.WebhookID, webhookEvent.WebhookConversationID)
+	ackMessage := websocket.NewEventAck(evt.ID, webhookEvent.WebhookConversationID, webhookEvent.WebhookID)
 	p.sendMessage(ackMessage)
 
 	if p.filterWebhookEvent(webhookEvent) {
@@ -186,7 +186,7 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 	}).Debugf("Processing webhook event")
 
 	// ack the event
-	p.sendMessage(websocket.NewEventAck(evt.ID, "")) // TODO(@charliecruzan): what to use instead of webhook conversation ID
+	p.sendMessage(websocket.NewEventAck(evt.ID, "", v2Event.EventDestinationID))
 
 	// skip further event processing if the event type is not enabled
 	if !p.thinEvents[evt.Type] && !p.thinEvents["*"] {
@@ -198,7 +198,6 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 		Data: evt,
 	}
 
-	// TODO(@charliecruzan): handle setting these args to log response on server properly
 	evtCtx := eventContext{
 		webhookID:             v2Event.EventDestinationID,
 		webhookConversationID: "",

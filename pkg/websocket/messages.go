@@ -74,14 +74,16 @@ type EventAck struct {
 	Type                  string `json:"type"` // always "event_ack"
 	WebhookConversationID string `json:"webhook_conversation_id"`
 	EventID               string `json:"event_id"` // ID of the event
+	WebhookID             string `json:"webhook_id"`
 }
 
 // NewEventAck returns a new EventAck message.
-func NewEventAck(eventID, webhookConversationID string) *OutgoingMessage {
+func NewEventAck(eventID, webhookConversationID string, webhookID string) *OutgoingMessage {
 	return &OutgoingMessage{
 		EventAck: &EventAck{
 			EventID:               eventID,
 			WebhookConversationID: webhookConversationID,
+			WebhookID:             webhookID,
 			Type:                  "event_ack",
 		},
 	}
