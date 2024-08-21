@@ -51,7 +51,7 @@
       "params": {}
     },
     {
-      "name": "billing_meter_event_stream",
+      "name": "create_billing_meter_event_stream",
       "path": "/v2/billing/meter_event_stream",
       "method": "post",
       "api_base": "https://events.stripe.com",

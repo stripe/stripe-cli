@@ -126,7 +126,7 @@ var Events = map[string]string{
 	"transfer.created":                          "triggers/transfer.created.json",
 	"transfer.reversed":                         "triggers/transfer.reversed.json",
 	"transfer.updated":                          "triggers/transfer.updated.json",
-	"billing.meter.thing":                       "triggers/billing.meter.thing.json",
+	"billing.meter.error_report_triggered":      "triggers/billing.meter.error_report_triggered.json",
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
