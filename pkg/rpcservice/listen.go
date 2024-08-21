@@ -121,7 +121,7 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 				}
 				(*stream).Send(resp)
 				return nil
-			case websocket.V2EventPayload:
+			case proxy.V2EventPayload:
 				resp, err := buildStripeV2EventResp(&data)
 				if err != nil {
 					return err
@@ -130,13 +130,6 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 				return nil
 			case proxy.EndpointResponse:
 				resp, err := buildEndpointResponseResp(&data)
-				if err != nil {
-					return err
-				}
-				(*stream).Send(resp)
-				return nil
-			case websocket.V2EventWebhookResponse:
-				resp, err := buildV2EndpointResponseResp(&data)
 				if err != nil {
 					return err
 				}
@@ -153,38 +146,39 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 	}
 }
 
-func buildV2EndpointResponseResp(raw *websocket.V2EventWebhookResponse) (*rpc.ListenResponse, error) {
-	return &rpc.ListenResponse{
-		Content: &rpc.ListenResponse_EndpointResponse_{
-			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
-				Content: &rpc.ListenResponse_EndpointResponse_Data_{
-					Data: &rpc.ListenResponse_EndpointResponse_Data{
-						EventId:    raw.Event.ID,
-						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
-						Status:     int64(raw.Resp.StatusCode),
-						Url:        raw.Resp.Request.URL.String(),
-					},
-				},
-			},
-		},
-	}, nil
-}
-
 func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse, error) {
-	return &rpc.ListenResponse{
-		Content: &rpc.ListenResponse_EndpointResponse_{
-			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
-				Content: &rpc.ListenResponse_EndpointResponse_Data_{
-					Data: &rpc.ListenResponse_EndpointResponse_Data{
-						EventId:    raw.Event.ID,
-						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
-						Status:     int64(raw.Resp.StatusCode),
-						Url:        raw.Resp.Request.URL.String(),
+	if raw.Event != nil {
+		return &rpc.ListenResponse{
+			Content: &rpc.ListenResponse_EndpointResponse_{
+				EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_Data_{
+						Data: &rpc.ListenResponse_EndpointResponse_Data{
+							EventId:    raw.Event.ID,
+							HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+							Status:     int64(raw.Resp.StatusCode),
+							Url:        raw.Resp.Request.URL.String(),
+						},
 					},
 				},
 			},
-		},
-	}, nil
+		}, nil
+	} else if raw.V2Event != nil {
+		return &rpc.ListenResponse{
+			Content: &rpc.ListenResponse_EndpointResponse_{
+				EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_Data_{
+						Data: &rpc.ListenResponse_EndpointResponse_Data{
+							EventId:    raw.Event.ID,
+							HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+							Status:     int64(raw.Resp.StatusCode),
+							Url:        raw.Resp.Request.URL.String(),
+						},
+					},
+				},
+			},
+		}, nil
+	}
+	return nil, fmt.Errorf("received unexpected endpoint response")
 }
 
 func buildEndpointResponseErrorResp(raw error) *rpc.ListenResponse {
@@ -252,7 +246,7 @@ func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
 	}, nil
 }
 
-func buildStripeV2EventResp(raw *websocket.V2EventPayload) (*rpc.ListenResponse, error) {
+func buildStripeV2EventResp(raw *proxy.V2EventPayload) (*rpc.ListenResponse, error) {
 	relatedObject := rpc.V2StripeEvent_RelatedObject{
 		Id:   raw.RelatedObject.ID,
 		Type: raw.RelatedObject.Type,

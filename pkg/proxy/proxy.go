@@ -50,8 +50,9 @@ type EndpointRoute struct {
 
 // EndpointResponse describes the response to a Stripe event from an endpoint
 type EndpointResponse struct {
-	Event *StripeEvent
-	Resp  *http.Response
+	Event   *StripeEvent
+	V2Event *V2EventPayload
+	Resp    *http.Response
 }
 
 // FailedToReadResponseError describes a failure to read the response from an endpoint
@@ -481,7 +482,7 @@ type eventContext struct {
 	webhookID             string
 	webhookConversationID string
 	event                 *StripeEvent
-	v2Event               *websocket.V2EventPayload
+	v2Event               *V2EventPayload
 }
 
 //

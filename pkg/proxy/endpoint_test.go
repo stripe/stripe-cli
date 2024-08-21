@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
 func TestClientHandler(t *testing.T) {
@@ -187,7 +186,7 @@ func TestClientHandler_EventDestination(t *testing.T) {
 		},
 	)
 
-	evt := &websocket.V2EventPayload{
+	evt := &V2EventPayload{
 		ID: "evt_123",
 	}
 	evtCtx := eventContext{

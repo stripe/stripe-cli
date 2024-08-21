@@ -1,9 +1,5 @@
 package websocket
 
-import (
-	"net/http"
-)
-
 // WebhookEndpoint contains properties about the fake "endpoint" used to
 // format the webhook event.
 type WebhookEndpoint struct {
@@ -53,13 +49,7 @@ type StripeV2Event struct {
 	Type string `json:"type"`
 
 	// Payload
-	HTTPHeaders map[string]string `json:"http_headers"`
-	Payload     string            `json:"payload"`
-}
-
-// V2EventWebhookResponse is a tuple of a v2 event and the response returned by
-// the server after forwarding the event.
-type V2EventWebhookResponse struct {
-	Event *V2EventPayload
-	Resp  *http.Response
+	HTTPHeaders        map[string]string `json:"http_headers"`
+	Payload            string            `json:"payload"`
+	EventDestinationID string            `json:"id"`
 }

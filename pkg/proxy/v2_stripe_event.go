@@ -1,4 +1,4 @@
-package websocket
+package proxy
 
 import (
 	"encoding/json"

@@ -266,7 +266,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 		},
 		VisitData: func(de websocket.DataElement) error {
 			switch data := de.Data.(type) {
-			case websocket.V2EventPayload:
+			case proxy.V2EventPayload:
 
 				localTime := time.Now().Format(timeLayout)
 
@@ -302,6 +302,14 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 			case proxy.EndpointResponse:
 				event := data.Event
 				resp := data.Resp
+				v2Event := data.V2Event
+				var link string
+				if event != nil {
+					link = ansi.Linkify(event.ID, event.URLForEventID(), logger.Out)
+				} else if v2Event != nil {
+					// todo(@charliecruzan): Add link support once inspector supports v2 events
+					link = event.ID
+				}
 				localTime := time.Now().Format(timeLayout)
 
 				color := ansi.Color(os.Stdout)
@@ -310,22 +318,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					ansi.ColorizeStatus(resp.StatusCode),
 					resp.Request.Method,
 					resp.Request.URL,
-					ansi.Linkify(event.ID, event.URLForEventID(), logger.Out),
-				)
-				fmt.Println(outputStr)
-				return nil
-			case websocket.V2EventWebhookResponse:
-				event := data.Event
-				resp := data.Resp
-				localTime := time.Now().Format(timeLayout)
-
-				color := ansi.Color(os.Stdout)
-				outputStr := fmt.Sprintf("%s  <--  [%d] %s %s [%s]",
-					color.Faint(localTime),
-					ansi.ColorizeStatus(resp.StatusCode),
-					resp.Request.Method,
-					resp.Request.URL,
-					ansi.Linkify(event.ID, fmt.Sprintf("https://dashboard.stripe.com/events/%s", event.ID), logger.Out),
+					link,
 				)
 				fmt.Println(outputStr)
 				return nil

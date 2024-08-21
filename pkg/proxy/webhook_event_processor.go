@@ -171,7 +171,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 }
 
 func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event) {
-	var evt websocket.V2EventPayload
+	var evt V2EventPayload
 
 	err := json.Unmarshal([]byte(v2Event.Payload), &evt)
 	if err != nil {
@@ -200,7 +200,7 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 
 	// TODO(@charliecruzan): handle setting these args to log response on server properly
 	evtCtx := eventContext{
-		webhookID:             "",
+		webhookID:             v2Event.EventDestinationID,
 		webhookConversationID: "",
 		v2Event:               &evt,
 	}
@@ -253,9 +253,9 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 		}
 	} else if evtCtx.v2Event != nil {
 		p.cfg.OutCh <- websocket.DataElement{
-			Data: websocket.V2EventWebhookResponse{
-				Event: evtCtx.v2Event,
-				Resp:  resp,
+			Data: EndpointResponse{
+				V2Event: evtCtx.v2Event,
+				Resp:    resp,
 			},
 		}
 	}
