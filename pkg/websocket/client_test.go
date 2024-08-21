@@ -306,7 +306,7 @@ func TestWritePumpInterruptionRequeued(t *testing.T) {
 	go func() { client.terminateReadPump() }()
 
 	for i := 0; i < 2; i++ {
-		client.SendMessage(NewEventAck(fmt.Sprintf("event_%d", i), fmt.Sprintf("event_%d", i)))
+		client.SendMessage(NewEventAck(fmt.Sprintf("event_%d", i), fmt.Sprintf("event_%d", i), fmt.Sprintf("event_%d", i)))
 		// Needed to deflake the test from racing against itself
 		// Something to do with the buffering
 		time.Sleep(100 * time.Millisecond)
