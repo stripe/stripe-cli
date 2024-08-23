@@ -4,43 +4,6 @@
   },
   "fixtures": [
     {
-      "name": "create_customer",
-      "path": "/v1/customers",
-      "method": "post",
-      "params": {
-        "description": "(created by Stripe CLI)"
-      }
-    },
-    {
-      "name": "list_billing_meters",
-      "path": "/v1/billing/meters",
-      "method": "get",
-      "params": {
-        "status": "active"
-      }
-    },
-    {
-      "name": "billing_meter",
-      "path": "/v1/billing/meters",
-      "method": "post",
-      "params": {
-        "display_name": "Stripe CLI Billing Meter",
-        "event_name": "stripe_cli_billing_meter_for_fixture",
-        "default_aggregation": {
-          "formula": "sum"
-        }
-      },
-      "expected_error_type": "invalid_request_error"
-    },
-    {
-      "name": "list_billing_meters_after_creation",
-      "path": "/v1/billing/meters",
-      "method": "get",
-      "params": {
-        "status": "active"
-      }
-    },
-    {
       "name": "billing_meter_event_session",
       "path": "/v2/billing/meter_event_session",
       "method": "post",
@@ -62,12 +25,11 @@
       },
       "params": {
         "as_of": "${time-now-RFC3339}",
-        "event_name": "${list_billing_meters_after_creation:data.0.event_name}",
+        "event_name": "  ",
         "external_identifier":"4242424242424242",
         "timestamp":"${time-now-RFC3339}",
         "payload": {
-          "value":"1",
-          "stripe_customer_id":"${create_customer:id}"
+          "stripe_customer_id":"cus_123foo"
           }
         }
     }
