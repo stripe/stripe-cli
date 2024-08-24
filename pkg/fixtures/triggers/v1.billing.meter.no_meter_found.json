@@ -24,12 +24,10 @@
         "Authorization": "STRIPE-V2-ACCESS-TOKEN ${billing_meter_event_session:authentication_token}"
       },
       "params": {
-        "as_of": "${time-now-RFC3339}",
-        "event_name": "  ",
-        "external_identifier":"4242424242424242",
+        "event_name": "not_a_real_stripe_meter_event",
         "timestamp":"${time-now-RFC3339}",
         "payload": {
-          "stripe_customer_id":"cus_123foo"
+          "value":"10"
           }
         }
     }
