@@ -51,5 +51,5 @@ type StripeV2Event struct {
 	// Payload
 	HTTPHeaders        map[string]string `json:"http_headers"`
 	Payload            string            `json:"payload"`
-	EventDestinationID string            `json:"id"`
+	EventDestinationID string            `json:"destination_id"`
 }
