@@ -24,7 +24,7 @@
         "Authorization": "STRIPE-V2-ACCESS-TOKEN ${billing_meter_event_session:authentication_token}"
       },
       "params": {
-        "event_name": "not_a_real_stripe_meter_event",
+        "event_name": "${generate-uuid}",
         "timestamp":"${time-now-RFC3339}",
         "payload": {
           "value":"10"
