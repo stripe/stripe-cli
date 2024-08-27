@@ -308,7 +308,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					link = ansi.Linkify(event.ID, event.URLForEventID(), logger.Out)
 				} else if v2Event != nil {
 					// todo(@charliecruzan): Add link support once inspector supports v2 events
-					link = event.ID
+					link = v2Event.ID
 				}
 				localTime := time.Now().Format(timeLayout)
 
