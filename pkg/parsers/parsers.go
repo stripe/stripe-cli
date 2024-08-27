@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/tidwall/gjson"
 
@@ -289,6 +290,8 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 
 	if queryString == "${time-now-RFC3339}" {
 		return time.Now().Format(time.RFC3339), nil
+	} else if queryString == "${generate-uuid}" {
+		return uuid.NewString(), nil
 	}
 
 	if query, isQuery := ToFixtureQuery(queryString); isQuery {

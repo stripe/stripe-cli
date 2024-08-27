@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -410,6 +411,23 @@ func TestParseWithTimeNow(t *testing.T) {
 	require.Equal(t, len(output), 1)
 	// Check for equality except for seconds
 	require.True(t, strings.HasPrefix(output[0], "time="+expectedOutput[:len(expectedOutput)-3]))
+}
+
+func TestParseWithUUID(t *testing.T) {
+	queryRespMap := map[string]gjson.Result{
+		"cust_bender": gjson.Parse(`{"id": "cust_bend123456789"}`),
+	}
+
+	data := make(map[string]interface{})
+	data["identifier"] = "${generate-uuid}"
+
+	output, _ := ParseToFormData(data, queryRespMap)
+	require.Equal(t, len(output), 1)
+	require.True(t, strings.HasPrefix(output[0], "identifier="))
+	generatedUUID := strings.Split(output[0], "=")
+	res, err := uuid.Parse(generatedUUID[1])
+	require.Nil(t, err)
+	require.NotNil(t, res)
 }
 
 func TestParseArray(t *testing.T) {

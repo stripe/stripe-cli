@@ -57,9 +57,9 @@
       "params": {
         "event_name": "${list_billing_meters_after_creation:data.0.event_name}",
         "timestamp":"${time-now-RFC3339}",
+        "identifier": "${generate-uuid}",
         "payload": {
-          "value":"1",
-          "stripe_customer_id":"cus_1nonexistentcustomer"
+          "value":"1"
           }
         }
     }
