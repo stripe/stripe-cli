@@ -26,10 +26,12 @@ type WebhookResponse struct {
 	Type                  string            `json:"type"`
 	WebhookConversationID string            `json:"webhook_conversation_id"`
 	WebhookID             string            `json:"webhook_id"`
+	RequestHeaders        map[string]string `json:"request_headers"`
+	RequestBody           string            `json:"request_body"`
 }
 
 // NewWebhookResponse returns a new webhookResponse message.
-func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, status int, body string, headers map[string]string) *OutgoingMessage {
+func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, status int, body string, headers map[string]string, requestBody string, requestHeaders map[string]string) *OutgoingMessage {
 	return &OutgoingMessage{
 		WebhookResponse: &WebhookResponse{
 			WebhookID:             webhookID,
@@ -39,6 +41,8 @@ func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, sta
 			Body:                  body,
 			HTTPHeaders:           headers,
 			Type:                  "webhook_response",
+			RequestHeaders:        requestHeaders,
+			RequestBody:           requestBody,
 		},
 	}
 }

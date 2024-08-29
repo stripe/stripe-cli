@@ -97,17 +97,17 @@ func (c *EndpointClient) SupportsContext(context string) bool {
 }
 
 // Post sends a message to the local endpoint.
-func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[string]string) error {
+func (c *EndpointClient) Post(evtCtx eventContext) error {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "proxy.EndpointClient.Post",
 	}).Debug("Forwarding event to local endpoint")
 
-	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(evtCtx.requestBody)))
 	if err != nil {
 		return err
 	}
 
-	for k, v := range headers {
+	for k, v := range evtCtx.requestHeaders {
 		req.Header.Add(k, v)
 	}
 
@@ -136,13 +136,13 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 }
 
 // PostV2 sends a message to a local event destination
-func (c *EndpointClient) PostV2(evtCtx eventContext, body string, headers map[string]string) error {
-	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
+func (c *EndpointClient) PostV2(evtCtx eventContext) error {
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(evtCtx.requestBody)))
 	if err != nil {
 		return err
 	}
 
-	for k, v := range headers {
+	for k, v := range evtCtx.requestHeaders {
 		req.Header.Add(k, v)
 	}
 

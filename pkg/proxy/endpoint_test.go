@@ -66,14 +66,14 @@ func TestClientHandler(t *testing.T) {
 		webhookID:             "wh_123",
 		webhookConversationID: "wc_123",
 		event:                 evt,
-	}
-	payload := "{}"
-	headers := map[string]string{
-		"User-Agent":       "TestAgent/v1",
-		"Stripe-Signature": "t=123,v1=hunter2",
+		requestBody:           "{}",
+		requestHeaders: map[string]string{
+			"User-Agent":       "TestAgent/v1",
+			"Stripe-Signature": "t=123,v1=hunter2",
+		},
 	}
 
-	err := client.Post(evtCtx, payload, headers)
+	err := client.Post(evtCtx)
 	require.NoError(t, err)
 
 	wg.Wait()
@@ -124,14 +124,14 @@ func TestClientHandler_Redirects(t *testing.T) {
 		webhookID:             "wh_123",
 		webhookConversationID: "wc_123",
 		event:                 evt,
-	}
-	payload := "{}"
-	headers := map[string]string{
-		"User-Agent":       "TestAgent/v1",
-		"Stripe-Signature": "t=123,v1=hunter2",
+		requestBody:           "{}",
+		requestHeaders: map[string]string{
+			"User-Agent":       "TestAgent/v1",
+			"Stripe-Signature": "t=123,v1=hunter2",
+		},
 	}
 
-	err := client.Post(evtCtx, payload, headers)
+	err := client.Post(evtCtx)
 	require.NoError(t, err)
 
 	wg.Wait()
@@ -193,14 +193,14 @@ func TestClientHandler_EventDestination(t *testing.T) {
 		webhookID:             "",
 		webhookConversationID: "",
 		v2Event:               evt,
-	}
-	payload := "{}"
-	headers := map[string]string{
-		"User-Agent":       "TestAgent/v1",
-		"Stripe-Signature": "t=123,v1=hunter2",
+		requestBody:           "{}",
+		requestHeaders: map[string]string{
+			"User-Agent":       "TestAgent/v1",
+			"Stripe-Signature": "t=123,v1=hunter2",
+		},
 	}
 
-	err := client.PostV2(evtCtx, payload, headers)
+	err := client.PostV2(evtCtx)
 	require.NoError(t, err)
 
 	wg.Wait()

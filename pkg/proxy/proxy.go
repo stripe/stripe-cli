@@ -481,6 +481,8 @@ func ExtractRequestData(data interface{}) (StripeRequest, error) {
 type eventContext struct {
 	webhookID             string
 	webhookConversationID string
+	requestBody           string
+	requestHeaders        map[string]string
 	event                 *StripeEvent
 	v2Event               *V2EventPayload
 }

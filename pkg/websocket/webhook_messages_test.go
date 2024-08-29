@@ -49,6 +49,8 @@ func TestMarshalWebhookResponse(t *testing.T) {
 		200,
 		"foo",
 		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
 	)
 
 	buf, err := json.Marshal(msg)
@@ -73,6 +75,8 @@ func TestMarshalV2EventWebhookResponse(t *testing.T) {
 		200,
 		"foo",
 		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
 	)
 
 	buf, err := json.Marshal(msg)
@@ -95,6 +99,8 @@ func TestNewWebhookResponse(t *testing.T) {
 		200,
 		"foo",
 		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
 	)
 
 	require.NotNil(t, msg.WebhookResponse)

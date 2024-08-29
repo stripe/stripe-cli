@@ -149,6 +149,8 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 		webhookID:             webhookEvent.WebhookID,
 		webhookConversationID: webhookEvent.WebhookConversationID,
 		event:                 &evt,
+		requestBody:           webhookEvent.EventPayload,
+		requestHeaders:        webhookEvent.HTTPHeaders,
 	}
 
 	if p.events["*"] || p.events[evt.Type] {
@@ -160,11 +162,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 		for _, endpoint := range p.endpointClients {
 			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) && !endpoint.isEventDestination {
 				// TODO: handle errors returned by endpointClients
-				go endpoint.Post(
-					evtCtx,
-					webhookEvent.EventPayload,
-					webhookEvent.HTTPHeaders,
-				)
+				go endpoint.Post(evtCtx)
 			}
 		}
 	}
@@ -202,11 +200,13 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 		webhookID:             v2Event.EventDestinationID,
 		webhookConversationID: "",
 		v2Event:               &evt,
+		requestBody:           v2Event.Payload,
+		requestHeaders:        v2Event.HTTPHeaders,
 	}
 
 	for _, endpoint := range p.endpointClients {
 		if endpoint.isEventDestination && endpoint.SupportsContext(evt.Context) {
-			go endpoint.PostV2(evtCtx, v2Event.Payload, v2Event.HTTPHeaders)
+			go endpoint.PostV2(evtCtx)
 		}
 	}
 }
@@ -278,6 +278,8 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 		resp.StatusCode,
 		body,
 		headers,
+		evtCtx.requestBody,
+		evtCtx.requestHeaders,
 	)
 	p.sendMessage(msg)
 }
