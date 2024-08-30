@@ -132,6 +132,7 @@ type Schema struct {
 	XExpansionResources *ExpansionResources `json:"x-expansionResources,omitempty"`
 	XResourceID         string              `json:"x-resourceId,omitempty"`
 	XStripeOperations   *[]StripeOperation  `json:"x-stripeOperations,omitempty"`
+	XStripeMostCommon   []string            `json:"x-stripeMostCommon,omitempty"`
 }
 
 func (s *Schema) String() string {
