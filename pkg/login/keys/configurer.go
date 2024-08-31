@@ -1,6 +1,8 @@
 package keys
 
 import (
+	"time"
+
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -33,10 +35,16 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		return validateErr
 	}
 
-	c.cfg.Profile.LiveModeAPIKey = response.LiveModeAPIKey
+	if response.LiveModeAPIKey != "" {
+		c.cfg.Profile.LiveModeAPIKey = config.NewAPIKey(response.LiveModeAPIKey, time.Unix(response.LiveModeAPIKeyExpiry, 0), true)
+	}
 	c.cfg.Profile.LiveModePublishableKey = response.LiveModePublishableKey
-	c.cfg.Profile.TestModeAPIKey = response.TestModeAPIKey
+
+	if response.TestModeAPIKey != "" {
+		c.cfg.Profile.TestModeAPIKey = config.NewAPIKey(response.TestModeAPIKey, time.Unix(response.TestModeAPIKeyExpiry, 0), false)
+	}
 	c.cfg.Profile.TestModePublishableKey = response.TestModePublishableKey
+
 	c.cfg.Profile.DisplayName = response.AccountDisplayName
 	c.cfg.Profile.AccountID = response.AccountID
 

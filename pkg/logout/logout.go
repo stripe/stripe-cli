@@ -11,7 +11,7 @@ func Logout(config *config.Config) error {
 	liveKey, _ := config.Profile.GetAPIKey(true)
 	testKey, _ := config.Profile.GetAPIKey(false)
 
-	if liveKey == "" && testKey == "" {
+	if liveKey == nil && testKey == nil {
 		fmt.Println("You are already logged out.")
 		return nil
 	}

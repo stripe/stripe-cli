@@ -4,11 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestCreateRabbitServicePayload(t *testing.T) {
 	tsCtx := TerminalSessionContext{
-		APIKey: "sk_123",
+		APIKey: config.NewAPIKeyFromString("sk_123"),
 		DeviceInfo: DeviceInfo{
 			DeviceClass:   "POS",
 			DeviceUUID:    "pos-1234",

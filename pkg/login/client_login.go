@@ -3,11 +3,14 @@ package login
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
+	"time"
 
 	"github.com/briandowns/spinner"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login/keys"
 	"github.com/stripe/stripe-cli/pkg/open"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -77,7 +80,8 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 				return res.Err
 			}
 
-			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
+			apiKey := config.NewAPIKeyFromString(res.TestModeAPIKey)
+			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, apiKey)
 			if err != nil {
 				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 				return err
@@ -88,7 +92,15 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 			} else {
 				ansi.StopSpinner(s, message, os.Stdout)
 			}
-			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
+
+			keyValidityDurationDays := 90
+			if !res.KeyExpiration.IsZero() {
+				keyValidityDurationHours := time.Until(res.KeyExpiration).Hours()
+				keyValidityDurationDays = int(math.Round(keyValidityDurationHours / 24.0))
+			}
+
+			keyDurationCourtesyMessage := fmt.Sprintf("Please note: this key will expire after %d days, at which point you'll need to re-authenticate.", keyValidityDurationDays)
+			fmt.Println(ansi.Italic(keyDurationCourtesyMessage))
 			return nil
 		}
 	}

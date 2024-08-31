@@ -12,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
@@ -35,7 +36,7 @@ type Client struct {
 
 	// API key used to authenticate requests sent by this client. If left
 	// empty, the `Authorization` header will be omitted.
-	APIKey string
+	APIKey *config.APIKey
 
 	// When this is enabled, request and response headers will be printed to
 	// stdout.
@@ -82,8 +83,8 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	if c.APIKey != nil {
+		req.Header.Set("Authorization", "Bearer "+c.APIKey.Key)
 	}
 
 	if configure != nil {
@@ -107,7 +108,11 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	livemode := strings.Contains(c.APIKey, "live")
+
+	livemode := false
+	if c.APIKey != nil {
+		livemode = c.APIKey.Livemode
+	}
 	go sendTelemetryEvent(ctx, requestID, livemode)
 	return resp, nil
 }

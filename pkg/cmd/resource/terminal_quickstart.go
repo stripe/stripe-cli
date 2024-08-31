@@ -43,7 +43,7 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 		return fmt.Errorf(err.Error())
 	}
 
-	err = validators.APIKeyNotRestricted(key)
+	err = validators.APIKeyNotRestricted(key.Key)
 
 	if err != nil {
 		return fmt.Errorf(err.Error())

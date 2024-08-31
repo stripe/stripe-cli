@@ -16,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 const testFixture = `
@@ -80,7 +82,8 @@ const failureTestFixture = `
 	]
 }`
 
-const apiKey = "sk_test_1234"
+var apiKey = config.NewAPIKeyFromString("sk_test_1234")
+
 const file = "test_fixture.json"
 const customersPath = "/v1/customers"
 const chargePath = "/v1/charges"
