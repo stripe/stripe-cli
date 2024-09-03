@@ -24,7 +24,7 @@ type WebhookResponse struct {
 	HTTPHeaders           map[string]string `json:"http_headers"`
 	Body                  string            `json:"body"`
 	Type                  string            `json:"type"`
-	WebhookConversationID string            `json:"webhook_conversation_id"`
+	WebhookConversationID string            `json:"webhook_conversation_id,omitempty"`
 	WebhookID             string            `json:"webhook_id"`
 	RequestHeaders        map[string]string `json:"request_headers"`
 	RequestBody           string            `json:"request_body"`
