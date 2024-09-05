@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+permissions:
+  actions: write
+  contents: write
+
 jobs:
   build-mac:
     runs-on: macos-latest
