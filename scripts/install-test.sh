@@ -69,11 +69,16 @@ then
                 echo "Install failed again. Retrying for the last time in 180 seconds..."
                 sleep 180
                 run_install
-                if [ "$PACKAGE_MANAGER" = "homebrew" ]
+                if ! run_install
                 then
                 trigger_pagerduty_alert
                 fi
             fi
         fi
     fi
+fi
+
+if [ "$PACKAGE_MANAGER" = "homebrew" ]
+then
+    trigger_pagerduty_alert
 fi
