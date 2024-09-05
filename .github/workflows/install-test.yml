@@ -18,6 +18,8 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh homebrew
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   apt:
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +29,8 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh apt
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   yum:
     runs-on: ubuntu-latest
     container: fedora:latest
@@ -47,6 +51,8 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: bash scripts/install-test.sh yum
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   scoop:
     runs-on: windows-latest
     steps:
@@ -58,6 +64,8 @@ jobs:
     - uses: MinoruSekine/setup-scoop@v4
     - shell: powershell
       run: bash scripts/install-test.sh scoop
+      env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
@@ -68,18 +76,5 @@ jobs:
             scripts/install-test.sh
           sparse-checkout-cone-mode: false
       - run: sh scripts/install-test.sh docker
-  pagerduty:
-    needs: [docker, scoop, yum, apt, homebrew]
-    runs-on: ubuntu-latest
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
-    steps:
-      - shell: bash
         env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
-        run: |
-          sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
-          pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
-            --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
-            --timestamp "\"$(date)\"" \
-            --source "Stripe CLI GitHub Actions" \
-            --severity critical
