@@ -77,8 +77,3 @@ then
         fi
     fi
 fi
-
-if [ "$PACKAGE_MANAGER" = "homebrew" ]
-then
-    trigger_pagerduty_alert
-fi
