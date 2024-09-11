@@ -125,19 +125,19 @@ func (c *Client) Run(ctx context.Context) {
 	for {
 		c.setIsConnected(false)
 		c.cfg.Log.WithFields(log.Fields{
-			"prefix": "websocket.client.Run",
+			"prefix": "websocket.Client.Run",
 		}).Debug("Attempting to connect to Stripe")
 
 		var err error
 		err = c.connect(ctx)
 		for err != nil {
 			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.client.Run",
+				"prefix": "websocket.Client.Run",
 			}).Debug("Failed to connect to Stripe. Retrying...")
 
 			if err == ErrUnknownID {
 				c.cfg.Log.WithFields(log.Fields{
-					"prefix": "websocket.client.Run",
+					"prefix": "websocket.Client.Run",
 				}).Debug("Websocket session is expired.")
 				select {
 				case <-ctx.Done():
@@ -168,7 +168,7 @@ func (c *Client) Run(ctx context.Context) {
 			return
 		case <-c.notifyClose:
 			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.client.Run",
+				"prefix": "websocket.Client.Run",
 			}).Debug("Disconnected from Stripe")
 			c.Close(ws.CloseGoingAway, "Server closed the connection")
 			c.wg.Wait()
@@ -177,7 +177,15 @@ func (c *Client) Run(ctx context.Context) {
 				"prefix": "websocket.Client.Run",
 			}).Debug("Resetting the connection")
 			c.Close(ws.CloseNormalClosure, "Resetting the connection")
+
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.Client.Run",
+			}).Debug("Waiting on client wg")
 			c.wg.Wait()
+
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.Client.Run",
+			}).Debug("Client wg is done")
 		}
 	}
 }
@@ -185,13 +193,28 @@ func (c *Client) Run(ctx context.Context) {
 // Close executes a proper closure handshake then closes the connection
 // list of close codes: https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
 func (c *Client) Close(closeCode int, text string) {
+	c.cfg.Log.WithFields(log.Fields{
+		"prefix": "websocket.Client.Close",
+	}).Debug("Acquiring stopReadPumpMutex")
 	c.stopReadPumpMutex.Lock()
 	defer c.stopReadPumpMutex.Unlock()
+
+	c.cfg.Log.WithFields(log.Fields{
+		"prefix": "websocket.Client.Close",
+	}).Debug("Closing stopReadPump channel")
 	close(c.stopReadPump)
+
+	c.cfg.Log.WithFields(log.Fields{
+		"prefix": "websocket.Client.Close",
+	}).Debug("Closing stopWritePump channel")
 	close(c.stopWritePump)
+
 	if c.conn != nil {
 		message := ws.FormatCloseMessage(closeCode, text)
 
+		c.cfg.Log.WithFields(log.Fields{
+			"prefix": "websocket.Client.Close",
+		}).Debug("Writing control close message")
 		err := c.conn.WriteControl(ws.CloseMessage, message, time.Now().Add(c.cfg.WriteWait))
 		if err != nil {
 			c.cfg.Log.WithFields(log.Fields{
@@ -199,7 +222,15 @@ func (c *Client) Close(closeCode int, text string) {
 				"error":  err,
 			}).Debug("Error while trying to send close frame")
 		}
+
+		c.cfg.Log.WithFields(log.Fields{
+			"prefix": "websocket.Client.Close",
+		}).Debug("Waiting for connection close delay period")
 		time.Sleep(c.cfg.CloseDelayPeriod)
+
+		c.cfg.Log.WithFields(log.Fields{
+			"prefix": "websocket.Client.Close",
+		}).Debug("Closing ws connection")
 		c.conn.Close()
 	}
 }
@@ -297,7 +328,7 @@ func (c *Client) connect(ctx context.Context) error {
 	go c.writePump()
 
 	c.cfg.Log.WithFields(log.Fields{
-		"prefix": "websocket.client.connect",
+		"prefix": "websocket.Client.connect",
 	}).Debug("Connected!")
 
 	return err
@@ -308,7 +339,11 @@ func (c *Client) changeConnection(conn *ws.Conn) {
 	c.stopReadPumpMutex.Lock()
 	defer c.stopReadPumpMutex.Unlock()
 	c.conn = conn
-	c.notifyClose = make(chan error)
+	if os.Getenv("STRIPE_CLI_CANARY") == "true" {
+		c.notifyClose = make(chan error, 1)
+	} else {
+		c.notifyClose = make(chan error)
+	}
 	c.stopReadPump = make(chan struct{})
 	c.stopWritePump = make(chan struct{})
 }
@@ -329,47 +364,89 @@ func (c *Client) readPump() {
 
 		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
 		if err != nil {
-			c.cfg.Log.Debug("SetReadDeadline error: ", err)
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.Client.readPump",
+			}).Debug("SetReadDeadline error: ", err)
 		}
 
 		return nil
 	})
 
 	for {
-		c.cfg.Log.Debug("Setting read deadline: ")
-		err := c.conn.SetReadDeadline(time.Now().Add(c.cfg.PongWait))
+		readDeadline := time.Now().Add(c.cfg.PongWait)
+		c.cfg.Log.WithFields(log.Fields{
+			"prefix": "websocket.Client.readPump",
+		}).Debug("Setting read deadline: ", readDeadline)
+		err := c.conn.SetReadDeadline(readDeadline)
 		if err != nil {
-			c.cfg.Log.Debug("SetReadDeadline error: ", err)
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix": "websocket.Client.readPump",
+			}).Debug("SetReadDeadline error: ", err)
 		}
+
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			select {
-			case <-c.stopReadPump:
-				c.cfg.Log.WithFields(log.Fields{
-					"prefix": "websocket.Client.readPump",
-				}).Debug("stopReadPump")
-			default:
-				switch {
-				case !ws.IsCloseError(err):
-					// read errors do not prevent websocket reconnects in the CLI so we should
-					// only display this on debug-level logging
+			if os.Getenv("STRIPE_CLI_CANARY") == "true" {
+				select {
+				case <-c.stopReadPump:
 					c.cfg.Log.WithFields(log.Fields{
-						"prefix": "websocket.Client.Close",
-					}).Debug("read error: ", err)
-				case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
-					c.cfg.Log.WithFields(log.Fields{
-						"prefix": "websocket.Client.Close",
-					}).Error("close error: ", err)
-					c.cfg.Log.WithFields(log.Fields{
-						"prefix": "stripecli.ADDITIONAL_INFO",
-					}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
-				default:
-					c.cfg.Log.Error("other error: ", err)
-					c.cfg.Log.WithFields(log.Fields{
-						"prefix": "stripecli.ADDITIONAL_INFO",
-					}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+						"prefix": "websocket.Client.readPump",
+					}).Debug("stopReadPump")
+				case c.notifyClose <- err:
+					switch {
+					case !ws.IsCloseError(err):
+						// read errors do not prevent websocket reconnects in the CLI so we should
+						// only display this on debug-level logging
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.readPump",
+						}).Debug("read error: ", err)
+					case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.readPump",
+						}).Error("close error: ", err)
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+					default:
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("other error: ", err)
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+					}
 				}
-				c.notifyClose <- err
+			} else {
+				select {
+				case <-c.stopReadPump:
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.readPump",
+					}).Debug("stopReadPump")
+				default:
+					switch {
+					case !ws.IsCloseError(err):
+						// read errors do not prevent websocket reconnects in the CLI so we should
+						// only display this on debug-level logging
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.readPump",
+						}).Debug("read error: ", err)
+					case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.readPump",
+						}).Error("close error: ", err)
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+					default:
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("other error: ", err)
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "stripecli.ADDITIONAL_INFO",
+						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
+					}
+					c.notifyClose <- err
+				}
 			}
 
 			return
@@ -382,7 +459,10 @@ func (c *Client) readPump() {
 
 		var msg IncomingMessage
 		if err = json.Unmarshal(data, &msg); err != nil {
-			c.cfg.Log.Debug("Received malformed message: ", err)
+			c.cfg.Log.WithFields(log.Fields{
+				"prefix":  "websocket.Client.readPump",
+				"message": string(data),
+			}).Debug("Received malformed message: ", err)
 
 			continue
 		}
@@ -410,7 +490,9 @@ func (c *Client) writePump() {
 		case outMsg, ok := <-c.send:
 			err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteWait))
 			if err != nil {
-				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.Client.writePump",
+				}).Debug("SetWriteDeadline error: ", err)
 			}
 
 			if !ok {
@@ -420,7 +502,9 @@ func (c *Client) writePump() {
 
 				err = c.conn.WriteMessage(ws.CloseMessage, ws.FormatCloseMessage(ws.CloseNormalClosure, ""))
 				if err != nil {
-					c.cfg.Log.Debug("WriteMessage error: ", err)
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Debug("WriteMessage error: ", err)
 				}
 
 				return
@@ -433,18 +517,41 @@ func (c *Client) writePump() {
 			err = c.conn.WriteJSON(outMsg)
 			if err != nil {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
-					c.cfg.Log.Error("write error: ", err)
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Error("Unexpected close error on WriteJSON: ", err)
+				} else {
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Error("Error on WriteJSON: ", err)
 				}
+
 				// Requeue the message to be processed when writePump restarts
 				c.send <- outMsg
-				c.notifyClose <- err
+
+				if os.Getenv("STRIPE_CLI_CANARY") == "true" {
+					select {
+					case <-c.stopWritePump:
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.writePump",
+						}).Debug("stopWritePump - Failed to WriteJSON; connection is resetting")
+					case c.notifyClose <- err:
+						c.cfg.Log.WithFields(log.Fields{
+							"prefix": "websocket.Client.writePump",
+						}).Debug("Failed to WriteJSON; closing connection")
+					}
+				} else {
+					c.notifyClose <- err
+				}
 
 				return
 			}
 		case <-ticker.C:
 			err := c.conn.SetWriteDeadline(time.Now().Add(c.cfg.WriteWait))
 			if err != nil {
-				c.cfg.Log.Debug("SetWriteDeadline error: ", err)
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.Client.writePump",
+				}).Debug("SetWriteDeadline error: ", err)
 			}
 
 			c.cfg.Log.WithFields(log.Fields{
@@ -453,7 +560,13 @@ func (c *Client) writePump() {
 
 			if err = c.conn.WriteMessage(ws.PingMessage, nil); err != nil {
 				if ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure) {
-					c.cfg.Log.Error("write error: ", err)
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Error("Unexpected close error when writing ping message: ", err)
+				} else {
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Error("Error when writing ping message: ", err)
 				}
 
 				// writing to notifyClose during a reset will cause a deadlock
@@ -465,7 +578,7 @@ func (c *Client) writePump() {
 				case <-c.stopWritePump:
 					c.cfg.Log.WithFields(log.Fields{
 						"prefix": "websocket.Client.writePump",
-					}).Debug("Failed to send ping; connection is resetting")
+					}).Debug("stopWritePump - Failed to send ping; connection is resetting")
 				}
 				return
 			}

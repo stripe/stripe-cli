@@ -43,6 +43,15 @@ run_install() {
     stripe --version
 }
 
+trigger_pagerduty_alert() {
+    sh -c "$(curl -sL https://raw.githubusercontent.com/martindstone/pagerduty-cli/master/install.sh)"
+    pd event alert --routing_key "$PAGERDUTY_INTEGRATION_KEY" \
+    --summary "Failed to install Stripe CLI on one or more operating systems. Investigate here: https://github.com/stripe/stripe-cli/actions/workflows/install-test.yml" \
+    --timestamp "\"$(date)\"" \
+    --source "Stripe CLI GitHub Actions" \
+    --severity critical
+}
+
 if ! run_install
 then
     echo "Install failed. Retrying in 30 seconds..."
@@ -60,6 +69,10 @@ then
                 echo "Install failed again. Retrying for the last time in 180 seconds..."
                 sleep 180
                 run_install
+                if ! run_install
+                then
+                trigger_pagerduty_alert
+                fi
             fi
         fi
     fi

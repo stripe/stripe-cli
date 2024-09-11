@@ -21,11 +21,8 @@
     },
     {
       "name": "payment_method_detach",
-      "path": "/v1/payment_methods/${payment_method_attach.id}/detach",
-      "method": "post",
-      "params": {
-        "customer": "${customer:id}"
-      }
+      "path": "/v1/payment_methods/${payment_method_attach:id}/detach",
+      "method": "post"
     }
   ]
 }
