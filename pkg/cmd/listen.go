@@ -23,18 +23,24 @@ import (
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
-const webhooksWebSocketFeature = "webhooks"
-const timeLayout = "2006-01-02 15:04:05"
-const outputFormatJSON = "JSON"
+const (
+	webhooksWebSocketFeature     = "webhooks"
+	destinationsWebSocketFeature = "v2_events"
+	timeLayout                   = "2006-01-02 15:04:05"
+	outputFormatJSON             = "JSON"
+)
 
 type listenCmd struct {
 	cmd *cobra.Command
 
 	forwardURL            string
+	forwardThinURL        string
 	forwardHeaders        []string
 	forwardConnectHeaders []string
 	forwardConnectURL     string
+	forwardThinConnectURL string
 	events                []string
+	thinEvents            []string
 	latestAPIVersion      bool
 	livemode              bool
 	useConfiguredWebhooks bool
@@ -70,6 +76,12 @@ Stripe account.`,
 	lc.cmd.Flags().StringVarP(&lc.forwardURL, "forward-to", "f", "", "The URL to forward webhook events to")
 	lc.cmd.Flags().StringSliceVarP(&lc.forwardHeaders, "headers", "H", []string{}, "A comma-separated list of custom headers to forward. Ex: \"Key1:Value1, Key2:Value2\"")
 	lc.cmd.Flags().StringVarP(&lc.forwardConnectURL, "forward-connect-to", "c", "", "The URL to forward Connect webhook events to (default: same as normal events)")
+	lc.cmd.Flags().StringSliceVar(&lc.thinEvents, "thin-events", []string{}, "A comma-separated list of thin events to listen for.")
+	lc.cmd.Flags().MarkHidden("thin-events")
+	lc.cmd.Flags().StringVar(&lc.forwardThinURL, "forward-thin-to", "", "The URL to forward thin events to")
+	lc.cmd.Flags().MarkHidden("forward-thin-to")
+	lc.cmd.Flags().StringVar(&lc.forwardThinConnectURL, "forward-thin-connect-to", "", "The URL to forward thin Connect events to")
+	lc.cmd.Flags().MarkHidden("forward-thin-connect-to")
 	lc.cmd.Flags().BoolVarP(&lc.latestAPIVersion, "latest", "l", false, "Receive events formatted with the latest API version (default: your account's default API version)")
 	lc.cmd.Flags().BoolVar(&lc.livemode, "live", false, "Receive live events (default: test)")
 	lc.cmd.Flags().BoolVarP(&lc.printJSON, "print-json", "j", false, "Print full JSON objects to stdout.")
@@ -153,11 +165,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Client:                client,
 		DeviceName:            deviceName,
 		ForwardURL:            lc.forwardURL,
+		ForwardThinURL:        lc.forwardThinURL,
 		ForwardHeaders:        lc.forwardHeaders,
 		ForwardConnectURL:     lc.forwardConnectURL,
+		ForwardThinConnectURL: lc.forwardThinConnectURL,
 		ForwardConnectHeaders: lc.forwardConnectHeaders,
 		UseConfiguredWebhooks: lc.useConfiguredWebhooks,
-		WebSocketFeature:      webhooksWebSocketFeature,
+		WebSocketFeatures:     lc.getFeatures(),
 		PrintJSON:             lc.printJSON,
 		UseLatestAPIVersion:   lc.latestAPIVersion,
 		SkipVerify:            lc.skipVerify,
@@ -165,6 +179,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		NoWSS:                 lc.noWSS,
 		Timeout:               lc.timeout,
 		Events:                lc.events,
+		ThinEvents:            lc.thinEvents,
 		OutCh:                 proxyOutCh,
 	})
 	if err != nil {
@@ -251,6 +266,18 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 		},
 		VisitData: func(de websocket.DataElement) error {
 			switch data := de.Data.(type) {
+			case proxy.V2EventPayload:
+
+				localTime := time.Now().Format(timeLayout)
+
+				color := ansi.Color(os.Stdout)
+				outputStr := fmt.Sprintf("%s   --> %s [%s]",
+					color.Faint(localTime),
+					ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
+					ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
+				)
+				fmt.Println(outputStr)
+				return nil
 			case proxy.StripeEvent:
 				if strings.ToUpper(format) == outputFormatJSON || printJSON {
 					fmt.Println(de.Marshaled)
@@ -275,6 +302,14 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 			case proxy.EndpointResponse:
 				event := data.Event
 				resp := data.Resp
+				v2Event := data.V2Event
+				var link string
+				if event != nil {
+					link = ansi.Linkify(event.ID, event.URLForEventID(), logger.Out)
+				} else if v2Event != nil {
+					// todo(@charliecruzan): Add link support once inspector supports v2 events
+					link = v2Event.ID
+				}
 				localTime := time.Now().Format(timeLayout)
 
 				color := ansi.Color(os.Stdout)
@@ -283,7 +318,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 					ansi.ColorizeStatus(resp.StatusCode),
 					resp.Request.Method,
 					resp.Request.URL,
-					ansi.Linkify(event.ID, event.URLForEventID(), logger.Out),
+					link,
 				)
 				fmt.Println(outputStr)
 				return nil
@@ -292,4 +327,18 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 			}
 		},
 	}
+}
+
+func (lc *listenCmd) getFeatures() []string {
+	features := []string{}
+
+	if len(lc.events) > 0 {
+		features = append(features, webhooksWebSocketFeature)
+	}
+
+	if len(lc.thinEvents) > 0 {
+		features = append(features, destinationsWebSocketFeature)
+	}
+
+	return features
 }

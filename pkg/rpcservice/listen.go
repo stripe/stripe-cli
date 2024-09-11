@@ -17,7 +17,10 @@ import (
 	"github.com/stripe/stripe-cli/rpc"
 )
 
-const webhooksWebSocketFeature = "webhooks"
+const (
+	webhooksWebSocketFeature     = "webhooks"
+	destinationsWebSocketFeature = "v2_events"
+)
 
 var httpMethodMap = map[string]rpc.ListenResponse_EndpointResponse_Data_HttpMethod{
 	http.MethodDelete: rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_DELETE,
@@ -61,15 +64,18 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		},
 		DeviceName:            deviceName,
 		ForwardURL:            req.ForwardTo,
+		ForwardThinURL:        req.ForwardThinTo,
+		ForwardThinConnectURL: req.ForwardThinConnectTo,
 		ForwardHeaders:        req.Headers,
 		ForwardConnectURL:     req.ForwardConnectTo,
 		ForwardConnectHeaders: req.ConnectHeaders,
 		UseConfiguredWebhooks: req.UseConfiguredWebhooks,
-		WebSocketFeature:      webhooksWebSocketFeature,
+		WebSocketFeatures:     getFeatures(req),
 		UseLatestAPIVersion:   req.Latest,
 		SkipVerify:            req.SkipVerify,
 		Log:                   logger,
 		Events:                req.Events,
+		ThinEvents:            req.ThinEvents,
 		OutCh:                 proxyOutCh,
 
 		// Hidden for debugging
@@ -115,6 +121,13 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 				}
 				(*stream).Send(resp)
 				return nil
+			case proxy.V2EventPayload:
+				resp, err := buildStripeV2EventResp(&data)
+				if err != nil {
+					return err
+				}
+				(*stream).Send(resp)
+				return nil
 			case proxy.EndpointResponse:
 				resp, err := buildEndpointResponseResp(&data)
 				if err != nil {
@@ -134,20 +147,38 @@ func createProxyVisitor(stream *rpc.StripeCLI_ListenServer) *websocket.Visitor {
 }
 
 func buildEndpointResponseResp(raw *proxy.EndpointResponse) (*rpc.ListenResponse, error) {
-	return &rpc.ListenResponse{
-		Content: &rpc.ListenResponse_EndpointResponse_{
-			EndpointResponse: &rpc.ListenResponse_EndpointResponse{
-				Content: &rpc.ListenResponse_EndpointResponse_Data_{
-					Data: &rpc.ListenResponse_EndpointResponse_Data{
-						EventId:    raw.Event.ID,
-						HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
-						Status:     int64(raw.Resp.StatusCode),
-						Url:        raw.Resp.Request.URL.String(),
+	if raw.Event != nil {
+		return &rpc.ListenResponse{
+			Content: &rpc.ListenResponse_EndpointResponse_{
+				EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_Data_{
+						Data: &rpc.ListenResponse_EndpointResponse_Data{
+							EventId:    raw.Event.ID,
+							HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+							Status:     int64(raw.Resp.StatusCode),
+							Url:        raw.Resp.Request.URL.String(),
+						},
 					},
 				},
 			},
-		},
-	}, nil
+		}, nil
+	} else if raw.V2Event != nil {
+		return &rpc.ListenResponse{
+			Content: &rpc.ListenResponse_EndpointResponse_{
+				EndpointResponse: &rpc.ListenResponse_EndpointResponse{
+					Content: &rpc.ListenResponse_EndpointResponse_Data_{
+						Data: &rpc.ListenResponse_EndpointResponse_Data{
+							EventId:    raw.Event.ID,
+							HttpMethod: getRPCMethodFromRequestMethod(raw.Resp.Request.Method),
+							Status:     int64(raw.Resp.StatusCode),
+							Url:        raw.Resp.Request.URL.String(),
+						},
+					},
+				},
+			},
+		}, nil
+	}
+	return nil, fmt.Errorf("received unexpected endpoint response")
 }
 
 func buildEndpointResponseErrorResp(raw error) *rpc.ListenResponse {
@@ -215,6 +246,28 @@ func buildStripeEventResp(raw *proxy.StripeEvent) (*rpc.ListenResponse, error) {
 	}, nil
 }
 
+func buildStripeV2EventResp(raw *proxy.V2EventPayload) (*rpc.ListenResponse, error) {
+	relatedObject := rpc.V2StripeEvent_RelatedObject{
+		Id:   raw.RelatedObject.ID,
+		Type: raw.RelatedObject.Type,
+		Url:  raw.RelatedObject.URL,
+	}
+
+	return &rpc.ListenResponse{
+		Content: &rpc.ListenResponse_V2StripeEvent{
+			V2StripeEvent: &rpc.V2StripeEvent{
+				Created:       raw.Created,
+				Data:          raw.Data,
+				Id:            raw.ID,
+				Object:        raw.Object,
+				RelatedObject: &relatedObject,
+				Type:          raw.Type,
+				Context:       raw.Context,
+			},
+		},
+	}, nil
+}
+
 func getRPCMethodFromRequestMethod(raw string) rpc.ListenResponse_EndpointResponse_Data_HttpMethod {
 	var httpMethodResponse rpc.ListenResponse_EndpointResponse_Data_HttpMethod
 	httpMethodResponse, ok := httpMethodMap[raw]
@@ -222,4 +275,18 @@ func getRPCMethodFromRequestMethod(raw string) rpc.ListenResponse_EndpointRespon
 		httpMethodResponse = rpc.ListenResponse_EndpointResponse_Data_HTTP_METHOD_UNSPECIFIED
 	}
 	return httpMethodResponse
+}
+
+func getFeatures(req *rpc.ListenRequest) []string {
+	features := []string{}
+
+	if len(req.Events) > 0 {
+		features = append(features, webhooksWebSocketFeature)
+	}
+
+	if len(req.ThinEvents) > 0 {
+		features = append(features, destinationsWebSocketFeature)
+	}
+
+	return features
 }

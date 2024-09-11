@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +26,21 @@ func TestUnmarshalWebhookEvent(t *testing.T) {
 	require.Equal(t, "wc_123", msg.WebhookEvent.WebhookConversationID)
 }
 
+func TestUnmarshalWebhookV2Event(t *testing.T) {
+	var data = `{"type": "v2_event", "payload": "foo", "http_headers": {"Request-Header": "bar"}}`
+
+	var msg IncomingMessage
+	err := json.Unmarshal([]byte(data), &msg)
+	require.NoError(t, err)
+
+	require.NotNil(t, msg.StripeV2Event)
+	require.Nil(t, msg.RequestLogEvent)
+
+	require.Equal(t, "foo", msg.StripeV2Event.Payload)
+	require.Equal(t, "bar", msg.StripeV2Event.HTTPHeaders["Request-Header"])
+	require.Equal(t, "v2_event", msg.StripeV2Event.Type)
+}
+
 func TestMarshalWebhookResponse(t *testing.T) {
 	msg := NewWebhookResponse(
 		"wh_123",
@@ -33,6 +49,9 @@ func TestMarshalWebhookResponse(t *testing.T) {
 		200,
 		"foo",
 		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
+		"evt_123",
 	)
 
 	buf, err := json.Marshal(msg)
@@ -45,6 +64,35 @@ func TestMarshalWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
 	require.Equal(t, "foo", gjson.Get(json, "body").String())
 	require.Equal(t, "bar", gjson.Get(json, "http_headers.Response-Header").String())
+	require.Equal(t, "evt_123", gjson.Get(json, "notification_id").String())
+}
+
+func TestMarshalV2EventWebhookResponse(t *testing.T) {
+	headers := make(http.Header)
+	headers.Add("Response-Header", "bar")
+	msg := NewWebhookResponse(
+		"ed_123",
+		"",
+		"http://localhost:5000/webhooks",
+		200,
+		"foo",
+		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
+		"evt_123",
+	)
+
+	buf, err := json.Marshal(msg)
+	require.NoError(t, err)
+
+	json := string(buf)
+	require.Equal(t, "ed_123", gjson.Get(json, "webhook_id").String())
+	require.Equal(t, "", gjson.Get(json, "webhook_conversation_id").String())
+	require.Equal(t, "http://localhost:5000/webhooks", gjson.Get(json, "forward_url").String())
+	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
+	require.Equal(t, "foo", gjson.Get(json, "body").String())
+	require.Equal(t, "bar", gjson.Get(json, "http_headers.Response-Header").String())
+	require.Equal(t, "evt_123", gjson.Get(json, "notification_id").String())
 }
 
 func TestNewWebhookResponse(t *testing.T) {
@@ -55,6 +103,9 @@ func TestNewWebhookResponse(t *testing.T) {
 		200,
 		"foo",
 		map[string]string{"Response-Header": "bar"},
+		"{}",
+		map[string]string{"Request-Header": "foo"},
+		"evt_123",
 	)
 
 	require.NotNil(t, msg.WebhookResponse)
@@ -65,4 +116,5 @@ func TestNewWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, msg.Status)
 	require.Equal(t, "foo", msg.Body)
 	require.Equal(t, "bar", msg.HTTPHeaders["Response-Header"])
+	require.Equal(t, "evt_123", msg.WebhookResponse.NotificationID)
 }

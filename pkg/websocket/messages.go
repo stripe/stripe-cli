@@ -8,7 +8,7 @@ import (
 type IncomingMessage struct {
 	*WebhookEvent
 	*RequestLogEvent
-
+	*StripeV2Event
 	// Unknown will be present if the incoming message type does not match the
 	// list known to the CLI.
 	Unknown *UnknownMessage
@@ -43,6 +43,10 @@ func (m *IncomingMessage) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(data, &m.RequestLogEvent); err != nil {
 			return err
 		}
+	case "v2_event":
+		if err := json.Unmarshal(data, &m.StripeV2Event); err != nil {
+			return err
+		}
 	default:
 		m.Unknown = &UnknownMessage{
 			Type: incomingMessageTypeOnly.Type,
@@ -70,14 +74,16 @@ type EventAck struct {
 	Type                  string `json:"type"` // always "event_ack"
 	WebhookConversationID string `json:"webhook_conversation_id"`
 	EventID               string `json:"event_id"` // ID of the event
+	WebhookID             string `json:"webhook_id"`
 }
 
 // NewEventAck returns a new EventAck message.
-func NewEventAck(eventID, webhookConversationID string) *OutgoingMessage {
+func NewEventAck(eventID, webhookConversationID string, webhookID string) *OutgoingMessage {
 	return &OutgoingMessage{
 		EventAck: &EventAck{
 			EventID:               eventID,
 			WebhookConversationID: webhookConversationID,
+			WebhookID:             webhookID,
 			Type:                  "event_ack",
 		},
 	}

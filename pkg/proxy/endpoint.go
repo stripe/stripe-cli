@@ -67,6 +67,8 @@ type EndpointClient struct {
 
 	// Optional configuration parameters
 	cfg *EndpointConfig
+
+	isEventDestination bool
 }
 
 // SupportsEventType takes an event of a webhook and compares it to the internal
@@ -84,18 +86,28 @@ func (c *EndpointClient) SupportsEventType(connect bool, eventType string) bool 
 	return false
 }
 
+// SupportsContext takes the context string of an event, and determines whether the endpoint supports
+// this context
+func (c *EndpointClient) SupportsContext(context string) bool {
+	if c.connect {
+		return context != ""
+	}
+
+	return context == ""
+}
+
 // Post sends a message to the local endpoint.
-func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[string]string) error {
+func (c *EndpointClient) Post(evtCtx eventContext) error {
 	c.cfg.Log.WithFields(log.Fields{
 		"prefix": "proxy.EndpointClient.Post",
 	}).Debug("Forwarding event to local endpoint")
 
-	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(body)))
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(evtCtx.requestBody)))
 	if err != nil {
 		return err
 	}
 
-	for k, v := range headers {
+	for k, v := range evtCtx.requestHeaders {
 		req.Header.Add(k, v)
 	}
 
@@ -123,12 +135,46 @@ func (c *EndpointClient) Post(evtCtx eventContext, body string, headers map[stri
 	return nil
 }
 
+// PostV2 sends a message to a local event destination
+func (c *EndpointClient) PostV2(evtCtx eventContext) error {
+	req, err := http.NewRequest(http.MethodPost, c.URL, bytes.NewBuffer([]byte(evtCtx.requestBody)))
+	if err != nil {
+		return err
+	}
+
+	for k, v := range evtCtx.requestHeaders {
+		req.Header.Add(k, v)
+	}
+
+	// add custom headers
+	for k, v := range c.headers {
+		if strings.ToLower(k) == "host" {
+			req.Host = v
+		} else {
+			req.Header.Add(k, v)
+		}
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		c.cfg.OutCh <- websocket.ErrorElement{
+			Error: FailedToPostError{Err: err},
+		}
+		return err
+	}
+	defer resp.Body.Close()
+
+	c.cfg.ResponseHandler.ProcessResponse(evtCtx, c.URL, resp)
+
+	return nil
+}
+
 //
 // Public functions
 //
 
 // NewEndpointClient returns a new EndpointClient.
-func NewEndpointClient(url string, headers []string, connect bool, events []string, cfg *EndpointConfig) *EndpointClient {
+func NewEndpointClient(url string, headers []string, connect bool, events []string, isEventDestination bool, cfg *EndpointConfig) *EndpointClient {
 	if cfg == nil {
 		cfg = &EndpointConfig{}
 	}
@@ -151,11 +197,12 @@ func NewEndpointClient(url string, headers []string, connect bool, events []stri
 	}
 
 	return &EndpointClient{
-		URL:     url,
-		headers: convertToMapAndSanitize(headers),
-		connect: connect,
-		events:  convertToMap(events),
-		cfg:     cfg,
+		URL:                url,
+		headers:            convertToMapAndSanitize(headers),
+		connect:            connect,
+		events:             convertToMap(events),
+		isEventDestination: isEventDestination,
+		cfg:                cfg,
 	}
 }
 

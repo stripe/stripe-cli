@@ -31,15 +31,16 @@ func (e *StripeEvent) IsConnect() bool {
 
 // URLForEventID builds a full URL from a StripeEvent ID.
 func (e *StripeEvent) URLForEventID() string {
-	return fmt.Sprintf("%s/events/%s", baseDashboardURL(e.Livemode, e.Account), e.ID)
+	return fmt.Sprintf("%s/events/%s", BaseDashboardURL(e.Livemode, e.Account), e.ID)
 }
 
 // URLForEventType builds a full URL from a StripeEvent Type.
 func (e *StripeEvent) URLForEventType() string {
-	return fmt.Sprintf("%s/events?type=%s", baseDashboardURL(e.Livemode, e.Account), e.Type)
+	return fmt.Sprintf("%s/events?type=%s", BaseDashboardURL(e.Livemode, e.Account), e.Type)
 }
 
-func baseDashboardURL(livemode bool, account string) string {
+// BaseDashboardURL constructs a dashboard URL with (optionally) the test and account values appended
+func BaseDashboardURL(livemode bool, account string) string {
 	maybeTest := ""
 	if !livemode {
 		maybeTest = "/test"

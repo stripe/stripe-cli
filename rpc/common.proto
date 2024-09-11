@@ -47,3 +47,37 @@ message StripeEvent {
   // to the URLs you’ve specified.
   int64 pending_webhooks = 9;
 }
+
+message V2StripeEvent {
+  message RelatedObject {
+    // unique ID of the resource
+    string id = 1;
+
+    // The resource type
+    string type = 2;
+
+    // The API url to GET the resource details
+    string url = 3;
+  }
+
+  // timestamp event was created
+  string created = 1;
+
+  // Object containing data associated with the event.
+  bytes data = 2;
+
+  // unique id of the event
+  string id = 3;
+
+  // The object type, i.e. 'event'
+  string object = 4;
+
+  // The resource related to the event
+  RelatedObject related_object = 5;
+
+  // Description of the event (e.g., invoice.created or charge.refunded).
+  string type = 6;
+
+  // Conext of the event
+  string context = 7;
+}

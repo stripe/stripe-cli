@@ -9,6 +9,8 @@
 - [common.proto](#common-proto)
     - [StripeEvent](#rpc-StripeEvent)
     - [StripeEvent.Request](#rpc-StripeEvent-Request)
+    - [V2StripeEvent](#rpc-V2StripeEvent)
+    - [V2StripeEvent.RelatedObject](#rpc-V2StripeEvent-RelatedObject)
   
 - [events_resend.proto](#events_resend-proto)
     - [EventsResendRequest](#rpc-EventsResendRequest)
@@ -171,6 +173,44 @@
 
 
 
+
+<a name="rpc-V2StripeEvent"></a>
+
+### V2StripeEvent
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| created | [string](#string) |  | timestamp event was created |
+| data | [bytes](#bytes) |  | Object containing data associated with the event. |
+| id | [string](#string) |  | unique id of the event |
+| object | [string](#string) |  | The object type, i.e. &#39;event&#39; |
+| related_object | [V2StripeEvent.RelatedObject](#rpc-V2StripeEvent-RelatedObject) |  | The resource related to the event |
+| type | [string](#string) |  | Description of the event (e.g., invoice.created or charge.refunded). |
+| context | [string](#string) |  | Conext of the event |
+
+
+
+
+
+
+<a name="rpc-V2StripeEvent-RelatedObject"></a>
+
+### V2StripeEvent.RelatedObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | unique ID of the resource |
+| type | [string](#string) |  | The resource type |
+| url | [string](#string) |  | The API url to GET the resource details |
+
+
+
+
+
  
 
  
@@ -305,6 +345,10 @@
 | live | [bool](#bool) |  | Receive live events (default: test) |
 | skip_verify | [bool](#bool) |  | Skip certificate verification when forwarding to HTTPS endpoints |
 | use_configured_webhooks | [bool](#bool) |  | Load webhook endpoint configuration from the webhooks API/dashboard |
+| thin_events | [string](#string) | repeated | A list of thin-type events to listen for. Defaults to none. |
+| forward_thin_to | [string](#string) |  | The URL to forward thin webhook events to |
+| forward_thin_connect_to | [string](#string) |  | The URL to forward thin Connect webhook events to (default: same as normal thin events) |
+| api_version | [string](#string) |  | The Stripe API version associated with the provided snapshot payload event types |
 
 
 
@@ -322,6 +366,7 @@
 | state | [ListenResponse.State](#rpc-ListenResponse-State) |  | Check if the stream ready |
 | stripe_event | [StripeEvent](#rpc-StripeEvent) |  | A Stripe event |
 | endpoint_response | [ListenResponse.EndpointResponse](#rpc-ListenResponse-EndpointResponse) |  | A response from an endpoint |
+| v2_stripe_event | [V2StripeEvent](#rpc-V2StripeEvent) |  | A V2 Stripe event |
 
 
 

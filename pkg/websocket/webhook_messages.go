@@ -24,12 +24,15 @@ type WebhookResponse struct {
 	HTTPHeaders           map[string]string `json:"http_headers"`
 	Body                  string            `json:"body"`
 	Type                  string            `json:"type"`
-	WebhookConversationID string            `json:"webhook_conversation_id"`
-	WebhookID             string            `json:"webhook_id"`
+	WebhookConversationID string            `json:"webhook_conversation_id,omitempty"`
+	WebhookID             string            `json:"webhook_id,omitempty"`
+	RequestHeaders        map[string]string `json:"request_headers"`
+	RequestBody           string            `json:"request_body"`
+	NotificationID        string            `json:"notification_id,omitempty"`
 }
 
 // NewWebhookResponse returns a new webhookResponse message.
-func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, status int, body string, headers map[string]string) *OutgoingMessage {
+func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, status int, body string, headers map[string]string, requestBody string, requestHeaders map[string]string, notificationID string) *OutgoingMessage {
 	return &OutgoingMessage{
 		WebhookResponse: &WebhookResponse{
 			WebhookID:             webhookID,
@@ -39,6 +42,20 @@ func NewWebhookResponse(webhookID, webhookConversationID, forwardURL string, sta
 			Body:                  body,
 			HTTPHeaders:           headers,
 			Type:                  "webhook_response",
+			RequestHeaders:        requestHeaders,
+			RequestBody:           requestBody,
+			NotificationID:        notificationID,
 		},
 	}
+}
+
+// StripeV2Event is the websocket wire representation of a v2 event.
+type StripeV2Event struct {
+	// Type is v2_event
+	Type string `json:"type"`
+
+	// Payload
+	HTTPHeaders        map[string]string `json:"http_headers"`
+	Payload            string            `json:"payload"`
+	EventDestinationID string            `json:"destination_id"`
 }
