@@ -52,7 +52,7 @@
       "headers": {
         "Content-Type": "application/json",
         "Stripe-Version": "unsafe-development",
-        "Authorization": "STRIPE-V2-ACCESS-TOKEN ${billing_meter_event_session:authentication_token}"
+        "Authorization": "Bearer ${billing_meter_event_session:authentication_token}"
       },
       "params": {
         "event_name": "${list_billing_meters_after_creation:data.0.event_name}",
