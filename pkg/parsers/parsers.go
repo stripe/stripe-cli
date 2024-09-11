@@ -1,6 +1,7 @@
 package parsers
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -8,7 +9,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/tidwall/gjson"
 
@@ -85,14 +88,14 @@ func ParsePath(httpPath string, queryRespMap map[string]gjson.Result) (string, e
 	return httpPath, nil
 }
 
-// ParseInterface is the primary entrypoint into building the request
+// ParseToFormData is the primary entrypoint into building the request
 // data for fixtures. The data will always be provided as an
 // interface{} and this will need to use reflection to determine how
 // to proceed. There are two primary paths here, `parseMap` and
 // `ParseArray`, which will recursively traverse and convert the data
 //
 // This returns an array of clean form data to make the request.
-func ParseInterface(params interface{}, queryRespMap map[string]gjson.Result) ([]string, error) {
+func ParseToFormData(params interface{}, queryRespMap map[string]gjson.Result) ([]string, error) {
 	var data []string
 
 	var cleanData []string
@@ -100,14 +103,14 @@ func ParseInterface(params interface{}, queryRespMap map[string]gjson.Result) ([
 	switch v := reflect.ValueOf(params); v.Kind() {
 	case reflect.Map:
 		m := params.(map[string]interface{})
-		parsed, err := ParseMap(m, "", -1, queryRespMap)
+		parsed, err := ParseMapForFormData(m, "", -1, queryRespMap)
 		if err != nil {
 			return make([]string, 0), err
 		}
 		data = append(data, parsed...)
 	case reflect.Array:
 		a := params.([]interface{})
-		parsed, err := ParseArray(a, "", queryRespMap)
+		parsed, err := ParseArrayForFormData(a, "", queryRespMap)
 		if err != nil {
 			return make([]string, 0), err
 		}
@@ -124,10 +127,10 @@ func ParseInterface(params interface{}, queryRespMap map[string]gjson.Result) ([
 	return cleanData, nil
 }
 
-// ParseMap recursively parses a map of string => interface{} until
+// ParseMapForFormData recursively parses a map of string => interface{} until
 // each leaf node has a terminal type (String, Int, etc) that can no
 // longer be recursively traversed.
-func ParseMap(params map[string]interface{}, parent string, index int, queryRespMap map[string]gjson.Result) ([]string, error) {
+func ParseMapForFormData(params map[string]interface{}, parent string, index int, queryRespMap map[string]gjson.Result) ([]string, error) {
 	data := make([]string, len(params))
 
 	var keyname string
@@ -187,7 +190,7 @@ func ParseMap(params map[string]interface{}, parent string, index int, queryResp
 		case reflect.Map:
 			m := value.(map[string]interface{})
 
-			result, err := ParseMap(m, keyname, -1, queryRespMap)
+			result, err := ParseMapForFormData(m, keyname, -1, queryRespMap)
 
 			if err != nil {
 				return make([]string, 0), err
@@ -197,7 +200,7 @@ func ParseMap(params map[string]interface{}, parent string, index int, queryResp
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
 
-			result, err := ParseArray(a, keyname, queryRespMap)
+			result, err := ParseArrayForFormData(a, keyname, queryRespMap)
 
 			if err != nil {
 				return make([]string, 0), err
@@ -213,11 +216,11 @@ func ParseMap(params map[string]interface{}, parent string, index int, queryResp
 	return data, nil
 }
 
-// ParseArray is similar to parseMap but doesn't have to build the
+// ParseArrayForFormData is similar to parseMap but doesn't have to build the
 // multi-depth keys. Form data arrays contain brackets with nothing
 // inside the bracket to designate an array instead of a key value
 // pair.
-func ParseArray(params []interface{}, parent string, queryRespMap map[string]gjson.Result) ([]string, error) {
+func ParseArrayForFormData(params []interface{}, parent string, queryRespMap map[string]gjson.Result) ([]string, error) {
 	data := make([]string, len(params))
 
 	// The index is only used for arrays of maps
@@ -238,14 +241,14 @@ func ParseArray(params []interface{}, parent string, queryRespMap map[string]gjs
 			// When we parse arrays of maps, we want to track the index of the element for the request
 			// ex: lines[0][id] = "id_0000", lines[1][id] = "id_1234", etc.
 			index++
-			parsed, err := ParseMap(m, parent, index, queryRespMap)
+			parsed, err := ParseMapForFormData(m, parent, index, queryRespMap)
 			if err != nil {
 				return make([]string, 0), err
 			}
 			data = append(data, parsed...)
 		case reflect.Array, reflect.Slice:
 			a := value.([]interface{})
-			parsed, err := ParseArray(a, parent, queryRespMap)
+			parsed, err := ParseArrayForFormData(a, parent, queryRespMap)
 			if err != nil {
 				return make([]string, 0), err
 			}
@@ -284,6 +287,12 @@ func findSimilarQueryNames(queryRespMap map[string]gjson.Result, name string) ([
 //	$<name of fixture>:dot.path.to.field
 func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (string, error) {
 	value := queryString
+
+	if queryString == "${time-now-RFC3339}" {
+		return time.Now().Format(time.RFC3339), nil
+	} else if queryString == "${generate-uuid}" {
+		return uuid.NewString(), nil
+	}
 
 	if query, isQuery := ToFixtureQuery(queryString); isQuery {
 		name := query.Name
@@ -334,7 +343,7 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 
 		result := queryRespMap[name].Get(query.Query)
 		if len(result.String()) != 0 {
-			return result.String(), nil
+			value = strings.ReplaceAll(queryString, query.Match, result.String())
 		}
 
 		return value, nil
@@ -395,4 +404,106 @@ func getEnvVar(key string) (string, error) {
 	}
 
 	return envValue, nil
+}
+
+// ParseToApplicationJSON is the primary entrypoint into building the request
+// data for v2 fixtures. The data will always be provided as an
+// interface{} and this will need to use reflection to determine how
+// to proceed. There are two primary paths here, `parseMap` and
+// `ParseArray`, which will recursively traverse and convert the data
+//
+// This returns an interface of clean application/json data to make the request.
+func ParseToApplicationJSON(params interface{}, queryRespMap map[string]gjson.Result) (interface{}, error) {
+	var parsed interface{}
+	var err error
+
+	switch v := reflect.ValueOf(params); v.Kind() {
+	case reflect.Map:
+		parsed, err = parseMapForApplicationJSON(params.(map[string]interface{}), queryRespMap)
+		if err != nil {
+			return make(map[string]interface{}), err
+		}
+	case reflect.Array, reflect.Slice:
+		parsed, err = parseArrayForApplicationJSON(params.([]interface{}), queryRespMap)
+		if err != nil {
+			return make([]string, 0), err
+		}
+	default:
+	}
+
+	return parsed, nil
+}
+
+func parseMapForApplicationJSON(params map[string]interface{}, responses map[string]gjson.Result) (map[string]interface{}, error) {
+	result := params
+
+	for key, value := range params {
+		switch v := reflect.ValueOf(value); v.Kind() {
+		case reflect.String:
+			parsed, err := ParseQuery(v.String(), responses)
+			if err != nil {
+				return make(map[string]interface{}), err
+			}
+
+			switch {
+			case parsed[0:1] == "[" && parsed[len(parsed)-1:] == "]":
+				paramArray := make([]interface{}, 0)
+				json.Unmarshal([]byte(parsed), &paramArray)
+				result[key] = paramArray
+			case parsed[0:1] == "{" && parsed[len(parsed)-1:] == "}":
+				paramMap := make(map[string]interface{})
+				json.Unmarshal([]byte(parsed), &paramMap)
+				result[key] = paramMap
+			default:
+				result[key] = parsed
+			}
+		case reflect.Map:
+			parsed, err := parseMapForApplicationJSON(value.(map[string]interface{}), responses)
+			if err != nil {
+				return make(map[string]interface{}), err
+			}
+			result[key] = parsed
+		case reflect.Array, reflect.Slice:
+			parsed, err := parseArrayForApplicationJSON(value.([]interface{}), responses)
+			if err != nil {
+				return make(map[string]interface{}), err
+			}
+			result[key] = parsed
+		default:
+			result[key] = value
+		}
+	}
+
+	return result, nil
+}
+
+func parseArrayForApplicationJSON(params []interface{}, responses map[string]gjson.Result) ([]interface{}, error) {
+	data := make([]interface{}, 0)
+
+	for _, value := range params {
+		switch v := reflect.ValueOf(value); v.Kind() {
+		case reflect.String:
+			parsed, err := ParseQuery(v.String(), responses)
+			if err != nil {
+				return make([]interface{}, 0), err
+			}
+			data = append(data, parsed)
+		case reflect.Map:
+			parsed, err := parseMapForApplicationJSON(value.(map[string]interface{}), responses)
+			if err != nil {
+				return make([]interface{}, 0), err
+			}
+			data = append(data, parsed)
+		case reflect.Array, reflect.Slice:
+			parsed, err := parseArrayForApplicationJSON(value.([]interface{}), responses)
+			if err != nil {
+				return make([]interface{}, 0), err
+			}
+			data = append(data, parsed)
+		default:
+			data = append(data, value)
+		}
+	}
+
+	return data, nil
 }

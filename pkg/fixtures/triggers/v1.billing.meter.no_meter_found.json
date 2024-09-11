@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "billing_meter_event_session",
+      "path": "/v2/billing/meter_event_session",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "unsafe-development"
+      },
+      "params": {}
+    },
+    {
+      "name": "create_billing_meter_event_stream",
+      "path": "/v2/billing/meter_event_stream",
+      "method": "post",
+      "api_base": "https://events.stripe.com",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "unsafe-development",
+        "Authorization": "Bearer ${billing_meter_event_session:authentication_token}"
+      },
+      "params": {
+        "event_name": "${generate-uuid}",
+        "timestamp":"${time-now-RFC3339}",
+        "payload": {
+          "value":"10"
+          }
+        }
+    }
+  ]
+}

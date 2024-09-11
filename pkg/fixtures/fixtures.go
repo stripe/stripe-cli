@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,8 @@ type FixtureRequest struct {
 	Params            map[string]interface{} `json:"params"`
 	IdempotencyKey    string                 `json:"idempotency_key,omitempty"`
 	Context           string                 `json:"context,omitempty"`
+	APIBase           string                 `json:"api_base,omitempty"`
+	Headers           map[string]string      `json:"headers,omitempty"`
 }
 
 // Fixture contains a mapping of an individual fixtures responses for querying
@@ -310,6 +313,9 @@ func (fxt *Fixture) Execute(ctx context.Context, apiVersion string) ([]string, e
 }
 
 func errWasExpected(err error, expectedErrorType string) bool {
+	if expectedErrorType == "" {
+		return false
+	}
 	if rerr, ok := err.(requests.RequestError); ok {
 		return rerr.ErrorType == expectedErrorType
 	}
@@ -326,14 +332,42 @@ func (fxt *Fixture) UpdateEnv() error {
 	return nil
 }
 
+func (fxt *Fixture) getAPIBase(request FixtureRequest) string {
+	if request.APIBase != "" {
+		return request.APIBase
+	}
+	return fxt.BaseURL
+}
+
+func (fxt *Fixture) unsupportedAPIKey(path string) bool {
+	return strings.HasPrefix(path, "/v2/") && !strings.HasPrefix(fxt.APIKey, "sk_")
+}
+
+func (fxt *Fixture) addCustomHeaders(headers map[string]string) func(req *http.Request) error {
+	return func(req *http.Request) error {
+		for k, v := range headers {
+			value, err := parsers.ParseQuery(v, fxt.Responses)
+			if err != nil {
+				return fmt.Errorf("error parsing %s field: %w", k, err)
+			}
+			req.Header.Set(k, value)
+		}
+		return nil
+	}
+}
+
 func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVersion string) ([]byte, error) {
 	req := requests.Base{
 		Method:         strings.ToUpper(data.Method),
 		SuppressOutput: true,
-		APIBaseURL:     fxt.BaseURL,
+		APIBaseURL:     fxt.getAPIBase(data),
 	}
 
 	path, err := parsers.ParsePath(data.Path, fxt.Responses)
+
+	if fxt.unsupportedAPIKey(path) {
+		return make([]byte, 0), fmt.Errorf("this trigger must be run with a secret API key (starts with 'sk_')")
+	}
 
 	if err != nil {
 		return make([]byte, 0), err
@@ -352,12 +386,29 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		params.SetIdempotency(idempotencyKey)
 	}
 
-	return req.MakeRequest(ctx, fxt.APIKey, path, params, true)
+	var additionalConfigure func(req *http.Request) error
+	if data.Headers != nil {
+		additionalConfigure = fxt.addCustomHeaders(data.Headers)
+	}
+
+	if strings.HasPrefix(path, "/v2/") {
+		jsonPayload := ""
+		if strings.ToLower(data.Method) == "post" {
+			jsonPayload, err = fxt.createJSONPayload(data.Params)
+			if err != nil {
+				return make([]byte, 0), err
+			}
+		}
+
+		return req.MakeV2Request(ctx, fxt.APIKey, path, params, true, additionalConfigure, jsonPayload)
+	}
+
+	return req.MakeRequest(ctx, fxt.APIKey, path, params, true, additionalConfigure)
 }
 
 func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	parsed, err := parsers.ParseInterface(params, fxt.Responses)
+	parsed, err := parsers.ParseToFormData(params, fxt.Responses)
 	if err != nil {
 		return &requestParams, err
 	}
@@ -370,6 +421,23 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 	}
 
 	return &requestParams, nil
+}
+
+func (fxt *Fixture) createJSONPayload(params interface{}) (string, error) {
+	if params == nil {
+		return "{}", nil
+	}
+	parsedJSON, err := parsers.ParseToApplicationJSON(params, fxt.Responses)
+	if err != nil {
+		return "", err
+	}
+
+	jsonParams, err := json.Marshal(parsedJSON)
+	if err != nil {
+		return "", err
+	}
+
+	return string(jsonParams), nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
