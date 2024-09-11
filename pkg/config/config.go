@@ -132,6 +132,12 @@ func (c *Config) InitConfig() {
 		}).Debug("Using profiles file")
 	}
 
+	if os.Getenv("STRIPE_CLI_CANARY") == "true" {
+		log.WithFields(log.Fields{
+			"prefix": "config.Config.InitConfig",
+		}).Debug("Running with STRIPE_CLI_CANARY=true")
+	}
+
 	if c.Profile.DeviceName == "" {
 		deviceName, err := os.Hostname()
 		if err != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -27,10 +26,6 @@ type InstallCmd struct {
 	Cmd *cobra.Command
 	fs  afero.Fs
 
-	archiveURL     string
-	archivePath    string
-	localPluginDir string
-
 	apiBaseURL string
 }
 
@@ -42,17 +37,12 @@ func NewInstallCmd(config *config.Config) *InstallCmd {
 
 	ic.Cmd = &cobra.Command{
 		Use:   "install",
-		Args:  validators.MaximumNArgs(1),
+		Args:  validators.ExactArgs(1),
 		Short: "Install a Stripe CLI plugin",
 		Long: `Install a Stripe CLI plugin. To download a specific version, run stripe install [plugin_name]@[version].
 			By default, the most recent version will be installed.`,
 		RunE: ic.runInstallCmd,
 	}
-
-	ic.Cmd.Flags().StringVar(&ic.archiveURL, "archive-url", "", "Install a plugin by an archive URL")
-	ic.Cmd.Flags().StringVar(&ic.archivePath, "archive-path", "", "Install a plugin by a local archive path")
-	ic.Cmd.Flags().StringVar(&ic.localPluginDir, "local", "", "Install a development version plugin from a local development folder")
-	ic.Cmd.Flags().Bool("archive", false, "Install a plugin by archive data from stdout")
 
 	// Hidden configuration flags, useful for dev/debugging
 	ic.Cmd.Flags().StringVar(&ic.apiBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
@@ -78,11 +68,6 @@ func parseInstallArg(arg string) (string, string) {
 func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error {
 	pluginName, version := parseInstallArg(arg)
 
-	if pluginName == "-" && hasPipedData() {
-		// -: reads data from stdout
-		return plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
-	}
-
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 
 	if err != nil {
@@ -104,47 +89,6 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 	return err
 }
 
-func (ic *InstallCmd) installPluginByArchive(cmd *cobra.Command) error {
-	switch {
-	case ic.archiveURL == "" && ic.archivePath == "":
-		// no arhive URL or path was provided. try to read from piped stdin
-		readFromArchive, err := cmd.Flags().GetBool("archive")
-		if err != nil {
-			return err
-		}
-
-		if readFromArchive {
-			if !hasPipedData() {
-				return fmt.Errorf("Please pipe into stdout: curl <url> | stripe plugin install --archive")
-			}
-
-			return plugins.ExtractStdoutArchive(cmd.Context(), ic.cfg)
-		}
-
-		return fmt.Errorf("To install a plugin from archive, please provide archive url/path or pipe archive data into stdout")
-	case ic.archiveURL != "":
-		return plugins.FetchAndExtractRemoteArchive(cmd.Context(), ic.cfg, ic.archiveURL)
-	case ic.archivePath != "":
-		return plugins.ExtractLocalArchive(cmd.Context(), ic.cfg, ic.archivePath)
-	}
-
-	return nil
-}
-
-func (ic *InstallCmd) installPluginFromLocalDir() error {
-	os.Chdir(ic.localPluginDir)
-
-	cmd := exec.Command("make", "install")
-	stdout, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	// Print the output
-	fmt.Println(string(stdout))
-	return nil
-}
-
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	var err error
 	color := ansi.Color(os.Stdout)
@@ -163,29 +107,15 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	if len(args) == 0 {
-		if ic.localPluginDir != "" {
-			err = ic.installPluginFromLocalDir()
-			if err != nil {
-				return err
-			}
-		} else {
-			err = ic.installPluginByArchive(cmd)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		// Refresh the plugin before proceeding
-		err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
-		if err != nil {
-			return err
-		}
+	// Refresh the plugin before proceeding
+	err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
+	if err != nil {
+		return err
+	}
 
-		err = ic.installPluginByName(cmd, args[0])
-		if err != nil {
-			return err
-		}
+	err = ic.installPluginByName(cmd, args[0])
+	if err != nil {
+		return err
 	}
 
 	if err == nil {
@@ -208,9 +138,4 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 		cancel()
 	}()
 	return ctx
-}
-
-func hasPipedData() bool {
-	info, _ := os.Stdin.Stat()
-	return info.Mode()&os.ModeCharDevice == 0
 }
