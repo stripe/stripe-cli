@@ -51,6 +51,7 @@ func TestMarshalWebhookResponse(t *testing.T) {
 		map[string]string{"Response-Header": "bar"},
 		"{}",
 		map[string]string{"Request-Header": "foo"},
+		"evt_123",
 	)
 
 	buf, err := json.Marshal(msg)
@@ -63,6 +64,7 @@ func TestMarshalWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
 	require.Equal(t, "foo", gjson.Get(json, "body").String())
 	require.Equal(t, "bar", gjson.Get(json, "http_headers.Response-Header").String())
+	require.Equal(t, "evt_123", gjson.Get(json, "notification_id").String())
 }
 
 func TestMarshalV2EventWebhookResponse(t *testing.T) {
@@ -77,6 +79,7 @@ func TestMarshalV2EventWebhookResponse(t *testing.T) {
 		map[string]string{"Response-Header": "bar"},
 		"{}",
 		map[string]string{"Request-Header": "foo"},
+		"evt_123",
 	)
 
 	buf, err := json.Marshal(msg)
@@ -89,6 +92,7 @@ func TestMarshalV2EventWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, int(gjson.Get(json, "status").Num))
 	require.Equal(t, "foo", gjson.Get(json, "body").String())
 	require.Equal(t, "bar", gjson.Get(json, "http_headers.Response-Header").String())
+	require.Equal(t, "evt_123", gjson.Get(json, "notification_id").String())
 }
 
 func TestNewWebhookResponse(t *testing.T) {
@@ -101,6 +105,7 @@ func TestNewWebhookResponse(t *testing.T) {
 		map[string]string{"Response-Header": "bar"},
 		"{}",
 		map[string]string{"Request-Header": "foo"},
+		"evt_123",
 	)
 
 	require.NotNil(t, msg.WebhookResponse)
@@ -111,4 +116,5 @@ func TestNewWebhookResponse(t *testing.T) {
 	require.Equal(t, 200, msg.Status)
 	require.Equal(t, "foo", msg.Body)
 	require.Equal(t, "bar", msg.HTTPHeaders["Response-Header"])
+	require.Equal(t, "evt_123", msg.WebhookResponse.NotificationID)
 }

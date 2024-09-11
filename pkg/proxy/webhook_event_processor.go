@@ -242,8 +242,9 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 	}
 
 	body := truncate(string(buf), maxBodySize, true)
-
+	var eventID string
 	if evtCtx.event != nil {
+		eventID = evtCtx.event.ID
 		p.cfg.OutCh <- websocket.DataElement{
 			Data: EndpointResponse{
 				Event: evtCtx.event,
@@ -251,6 +252,7 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 			},
 		}
 	} else if evtCtx.v2Event != nil {
+		eventID = evtCtx.v2Event.ID
 		p.cfg.OutCh <- websocket.DataElement{
 			Data: EndpointResponse{
 				V2Event: evtCtx.v2Event,
@@ -280,6 +282,7 @@ func (p *WebhookEventProcessor) processEndpointResponse(evtCtx eventContext, for
 		headers,
 		evtCtx.requestBody,
 		evtCtx.requestHeaders,
+		eventID,
 	)
 	p.sendMessage(msg)
 }
