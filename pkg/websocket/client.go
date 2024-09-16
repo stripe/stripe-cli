@@ -551,12 +551,6 @@ func (c *Client) writePump() {
 	}
 }
 
-func (c *Client) terminateReadPump() {
-	c.stopReadPumpMutex.Lock()
-	defer c.stopReadPumpMutex.Unlock()
-	c.stopReadPump <- struct{}{}
-}
-
 //
 // Public functions
 //
