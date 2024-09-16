@@ -23,11 +23,6 @@ type primaryRelatedObject struct {
 }
 
 // URLForEventID builds a full URL from a V2StripeEvent ID.
-func (e *V2EventPayload) URLForEventID() string {
-	return fmt.Sprintf("https://dashboard.stripe.com/events/%s", e.ID)
-}
-
-// URLForEventType builds a full URL from a V2StripeEvent Type.
-func (e *V2EventPayload) URLForEventType() string {
-	return fmt.Sprintf("https://dashboard.stripe.com/events?type=%s", e.Type)
+func (e *V2EventPayload) URLForEventID(cliEndpointId string) string {
+	return fmt.Sprintf("https://dashboard.stripe.com/workbench/webhooks/%s?event=%s", cliEndpointId, e.ID)
 }
