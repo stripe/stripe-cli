@@ -3,11 +3,12 @@ package resource
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
@@ -143,7 +144,7 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 * Hint: If you're trying to test webhook events, you can always use %s or %s.
 			`
 
-			fmt.Println(fmt.Sprintf(output, ansi.Bold(path), ansi.Linkify("Dashboard", "https://dashboard.stripe.com", log.StandardLogger().Out), parentCmd.Name(), ansi.Bold("stripe trigger v1.billing.meter.no_meter_found"), ansi.Bold("stripe trigger v1.billing.meter.error_report_triggered")))
+			fmt.Println(fmt.Sprintf(output, ansi.Bold(path), ansi.Linkify("Dashboard", "https://dashboard.stripe.com", os.Stdout), parentCmd.Name(), ansi.Bold("stripe trigger v1.billing.meter.no_meter_found"), ansi.Bold("stripe trigger v1.billing.meter.error_report_triggered")))
 		},
 	}
 	parentCmd.AddCommand(cmd)
