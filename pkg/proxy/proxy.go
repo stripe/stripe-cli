@@ -67,7 +67,8 @@ func (f FailedToReadResponseError) Error() string {
 // Config provides the configuration of a Proxy
 type Config struct {
 	// DeviceName is the name of the device sent to Stripe to help identify the device
-	DeviceName string
+	DeviceName  string
+	DeviceToken *string
 
 	// Client is a configured stripe client used to execute authenticated calls to the Stripe API.
 	Client stripe.RequestPerformer
@@ -156,7 +157,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 	for nAttempts < maxConnectAttempts {
 		session, err := p.createSession(ctx)
-
+		*p.cfg.DeviceToken = session.DeviceToken
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
 				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
