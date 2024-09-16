@@ -107,6 +107,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rBillingMeterEventSummarysCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_summarys")
 	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
 	rBillingMetersCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meters")
+	rBillingMeterEventSessionCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_session")
+	rBillingMeterEventStreamCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_stream")
 	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
 	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
 	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
@@ -3246,6 +3248,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "update", "/v1/billing/meters/{id}", http.MethodPost, map[string]string{
 		"display_name": "string",
 	}, &Config)
+	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventSessionCmd.Cmd, "create", "/v2/billing/meter_event_session")
+	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
 		"business_profile.headline":                                "string",
 		"business_profile.privacy_policy_url":                      "string",
