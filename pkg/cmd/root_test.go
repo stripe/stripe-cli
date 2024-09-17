@@ -110,3 +110,13 @@ func TestReadProjectFlagHasPrecedence(t *testing.T) {
 
 	require.Equal(t, Config.Profile.ProfileName, "from-flag")
 }
+
+func TestV2BillingOverrides(t *testing.T) {
+	Execute(context.Background())
+
+	output, err := executeCommand(rootCmd, "billing")
+
+	require.Contains(t, output, "meter_event_session")
+	require.Contains(t, output, "meter_event_stream")
+	require.NoError(t, err)
+}

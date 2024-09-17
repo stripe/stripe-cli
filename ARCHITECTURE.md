@@ -14,7 +14,7 @@ The CLI uses the [Cobra library](https://github.com/spf13/cobra) for command str
 
 In addition to the handwritten commands, the CLI also has many auto-generated resources that correspond to base [API resources](https://stripe.com/docs/api/charges). These commands are registered in `pkg/cmd/resources_cmds.go`, calling the generic `NewNamespaceCmd` function for each resource. These auto-generated commands hold no functionality on their own and mostly rely on [operation commands](#operation-commands) to do anything (see below).
 
-The big list of commands found in `resources_cmds.go` is _iself_ is an auto-generated file. It's built by running `pkg/gen/gen_resource_cmds.go`, which gets a big list of resources from OpenAPI via `api/openapi-spec/spec3.sdk.json` and generates the big command file via the `pkg/gen/resources_cmds.go.tpl` template. Generated commands can be manually overridden, as we do with `pkg/cmd/resource/events.go` taking precedence over the generated `events` command.
+The big list of commands found in `resources_cmds.go` is _itself_ an auto-generated file. It's built by running `pkg/gen/gen_resource_cmds.go`, which gets a big list of resources from OpenAPI via `api/openapi-spec/spec3.sdk.json` and generates the big command file via the `pkg/gen/resources_cmds.go.tpl` template. Generated commands can be manually overridden, as we do with `pkg/cmd/resource/events.go` taking precedence over the generated `events` command.
 
 ### Operation Commands
 
