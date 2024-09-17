@@ -11,4 +11,5 @@ type StripeCLISession struct {
 	WebSocketURL                string `json:"websocket_url"`
 	DefaultVersion              string `json:"default_version"`
 	LatestVersion               string `json:"latest_version"`
+	DeviceToken                 string `json:"device_token"`
 }

@@ -52,6 +52,7 @@ type listenCmd struct {
 	apiBaseURL            string
 	noWSS                 bool
 	timeout               int64
+	deviceToken           string
 }
 
 func newListenCmd() *listenCmd {
@@ -158,12 +159,13 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	logger := log.StandardLogger()
-	proxyVisitor := createVisitor(logger, lc.format, lc.printJSON)
+	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
 
 	p, err := proxy.Init(ctx, &proxy.Config{
 		Client:                client,
 		DeviceName:            deviceName,
+		DeviceToken:           &lc.deviceToken,
 		ForwardURL:            lc.forwardURL,
 		ForwardThinURL:        lc.forwardThinURL,
 		ForwardHeaders:        lc.forwardHeaders,
@@ -213,7 +215,7 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 	return ctx
 }
 
-func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket.Visitor {
+func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON bool) *websocket.Visitor {
 	var s *spinner.Spinner
 
 	return &websocket.Visitor{
@@ -273,8 +275,8 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 				color := ansi.Color(os.Stdout)
 				outputStr := fmt.Sprintf("%s   --> %s [%s]",
 					color.Faint(localTime),
-					ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
-					ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
+					ansi.Bold(data.Type),
+					ansi.Linkify(data.ID, data.URLForEventID(lc.deviceToken), logger.Out),
 				)
 				fmt.Println(outputStr)
 				return nil
@@ -307,8 +309,7 @@ func createVisitor(logger *log.Logger, format string, printJSON bool) *websocket
 				if event != nil {
 					link = ansi.Linkify(event.ID, event.URLForEventID(), logger.Out)
 				} else if v2Event != nil {
-					// todo(@charliecruzan): Add link support once inspector supports v2 events
-					link = v2Event.ID
+					link = ansi.Linkify(v2Event.ID, v2Event.URLForEventID(lc.deviceToken), logger.Out)
 				}
 				localTime := time.Now().Format(timeLayout)
 
