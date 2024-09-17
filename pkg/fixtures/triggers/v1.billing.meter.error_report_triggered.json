@@ -48,7 +48,7 @@
       "name": "create_billing_meter_event_stream",
       "path": "/v2/billing/meter_event_stream",
       "method": "post",
-      "api_base": "https://events.stripe.com",
+      "api_base": "https://meter-events.stripe.com",
       "headers": {
         "Content-Type": "application/json",
         "Stripe-Version": "unsafe-development",
