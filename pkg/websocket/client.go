@@ -339,11 +339,7 @@ func (c *Client) changeConnection(conn *ws.Conn) {
 	c.stopReadPumpMutex.Lock()
 	defer c.stopReadPumpMutex.Unlock()
 	c.conn = conn
-	if os.Getenv("STRIPE_CLI_CANARY") == "true" {
-		c.notifyClose = make(chan error, 1)
-	} else {
-		c.notifyClose = make(chan error)
-	}
+	c.notifyClose = make(chan error, 1)
 	c.stopReadPump = make(chan struct{})
 	c.stopWritePump = make(chan struct{})
 }
@@ -386,66 +382,33 @@ func (c *Client) readPump() {
 
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if os.Getenv("STRIPE_CLI_CANARY") == "true" {
-				select {
-				case <-c.stopReadPump:
+			select {
+			case <-c.stopReadPump:
+				c.cfg.Log.WithFields(log.Fields{
+					"prefix": "websocket.Client.readPump",
+				}).Debug("stopReadPump")
+			case c.notifyClose <- err:
+				switch {
+				case !ws.IsCloseError(err):
+					// read errors do not prevent websocket reconnects in the CLI so we should
+					// only display this on debug-level logging
 					c.cfg.Log.WithFields(log.Fields{
 						"prefix": "websocket.Client.readPump",
-					}).Debug("stopReadPump")
-				case c.notifyClose <- err:
-					switch {
-					case !ws.IsCloseError(err):
-						// read errors do not prevent websocket reconnects in the CLI so we should
-						// only display this on debug-level logging
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.readPump",
-						}).Debug("read error: ", err)
-					case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.readPump",
-						}).Error("close error: ", err)
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
-					default:
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("other error: ", err)
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
-					}
-				}
-			} else {
-				select {
-				case <-c.stopReadPump:
+					}).Debug("read error: ", err)
+				case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
 					c.cfg.Log.WithFields(log.Fields{
 						"prefix": "websocket.Client.readPump",
-					}).Debug("stopReadPump")
+					}).Error("close error: ", err)
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "stripecli.ADDITIONAL_INFO",
+					}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
 				default:
-					switch {
-					case !ws.IsCloseError(err):
-						// read errors do not prevent websocket reconnects in the CLI so we should
-						// only display this on debug-level logging
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.readPump",
-						}).Debug("read error: ", err)
-					case ws.IsUnexpectedCloseError(err, ws.CloseNormalClosure):
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.readPump",
-						}).Error("close error: ", err)
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
-					default:
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("other error: ", err)
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "stripecli.ADDITIONAL_INFO",
-						}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
-					}
-					c.notifyClose <- err
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "stripecli.ADDITIONAL_INFO",
+					}).Error("other error: ", err)
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "stripecli.ADDITIONAL_INFO",
+					}).Error("If you run into issues, please re-run with `--log-level debug` and share the output with the Stripe team on GitHub.")
 				}
 			}
 
@@ -529,19 +492,15 @@ func (c *Client) writePump() {
 				// Requeue the message to be processed when writePump restarts
 				c.send <- outMsg
 
-				if os.Getenv("STRIPE_CLI_CANARY") == "true" {
-					select {
-					case <-c.stopWritePump:
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.writePump",
-						}).Debug("stopWritePump - Failed to WriteJSON; connection is resetting")
-					case c.notifyClose <- err:
-						c.cfg.Log.WithFields(log.Fields{
-							"prefix": "websocket.Client.writePump",
-						}).Debug("Failed to WriteJSON; closing connection")
-					}
-				} else {
-					c.notifyClose <- err
+				select {
+				case <-c.stopWritePump:
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Debug("stopWritePump - Failed to WriteJSON; connection is resetting")
+				case c.notifyClose <- err:
+					c.cfg.Log.WithFields(log.Fields{
+						"prefix": "websocket.Client.writePump",
+					}).Debug("Failed to WriteJSON; closing connection")
 				}
 
 				return
@@ -590,12 +549,6 @@ func (c *Client) writePump() {
 			return
 		}
 	}
-}
-
-func (c *Client) terminateReadPump() {
-	c.stopReadPumpMutex.Lock()
-	defer c.stopReadPumpMutex.Unlock()
-	c.stopReadPump <- struct{}{}
 }
 
 //
