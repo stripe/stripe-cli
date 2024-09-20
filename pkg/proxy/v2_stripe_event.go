@@ -26,3 +26,8 @@ type primaryRelatedObject struct {
 func (e *V2EventPayload) URLForEventID(cliEndpointID string) string {
 	return fmt.Sprintf("https://dashboard.stripe.com/workbench/webhooks/%s?event=%s", cliEndpointID, e.ID)
 }
+
+// IsConnect returns true if this event is associated with a connected account
+func (e *V2EventPayload) IsConnect() bool {
+	return e.Context != ""
+}

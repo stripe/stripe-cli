@@ -55,13 +55,17 @@
         "Authorization": "Bearer ${billing_meter_event_session:authentication_token}"
       },
       "params": {
-        "event_name": "${list_billing_meters_after_creation:data.0.event_name}",
-        "timestamp":"${time-now-RFC3339}",
-        "identifier": "${generate-uuid}",
-        "payload": {
-          "value":"1"
+        "events": [
+          {
+            "event_name": "${list_billing_meters_after_creation:data.0.event_name}",
+            "timestamp":"${time-now-RFC3339}",
+            "identifier": "${generate-uuid}",
+            "payload": {
+              "value":"1"
+            }
           }
-        }
+        ]
+      }
     }
   ]
 }
