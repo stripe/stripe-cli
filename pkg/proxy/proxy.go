@@ -157,7 +157,6 @@ func (p *Proxy) Run(ctx context.Context) error {
 
 	for nAttempts < maxConnectAttempts {
 		session, err := p.createSession(ctx)
-		*p.cfg.DeviceToken = session.DeviceToken
 		if err != nil {
 			p.cfg.OutCh <- websocket.ErrorElement{
 				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
@@ -165,6 +164,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 			return err
 		}
 
+		*p.cfg.DeviceToken = session.DeviceToken
 		p.webSocketClient = websocket.NewClient(
 			session.WebSocketURL,
 			session.WebSocketID,
