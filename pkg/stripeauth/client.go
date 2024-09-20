@@ -35,8 +35,10 @@ type Client struct {
 // DeviceURLMap is a mapping of the urls that the device is listening
 // for forwarded events on.
 type DeviceURLMap struct {
-	ForwardURL        string
-	ForwardConnectURL string
+	ForwardURL            string
+	ForwardConnectURL     string
+	ForwardThinURL        string
+	ForwardThinConnectURL string
 }
 
 // CreateSessionRequest defines the API input parameters for client.Authorize.
@@ -68,9 +70,14 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 		if len(devURLMap.ForwardURL) > 0 {
 			form.Add("forward_to_url", devURLMap.ForwardURL)
 		}
-
 		if len(devURLMap.ForwardConnectURL) > 0 {
 			form.Add("forward_connect_to_url", devURLMap.ForwardConnectURL)
+		}
+		if len(devURLMap.ForwardThinURL) > 0 {
+			form.Add("forward_thin_to_url", devURLMap.ForwardThinURL)
+		}
+		if len(devURLMap.ForwardThinConnectURL) > 0 {
+			form.Add("forward_thin_connect_to_url", devURLMap.ForwardThinConnectURL)
 		}
 	}
 

@@ -103,6 +103,8 @@ func TestAuthorizeWithURLDeviceMap(t *testing.T) {
 		require.Equal(t, "webhooks", r.FormValue("websocket_features[]"))
 		require.Equal(t, "http://localhost:3000/events", r.FormValue("forward_to_url"))
 		require.Equal(t, "http://localhost:3000/connect/events", r.FormValue("forward_connect_to_url"))
+		require.Equal(t, "http://localhost:3000/thin/events", r.FormValue("forward_thin_to_url"))
+		require.Equal(t, "http://localhost:3000/thin/connect/events", r.FormValue("forward_thin_connect_to_url"))
 
 		w.Write([]byte(`{}`))
 	}))
@@ -112,8 +114,10 @@ func TestAuthorizeWithURLDeviceMap(t *testing.T) {
 	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
 
 	devURLMap := DeviceURLMap{
-		ForwardURL:        "http://localhost:3000/events",
-		ForwardConnectURL: "http://localhost:3000/connect/events",
+		ForwardURL:            "http://localhost:3000/events",
+		ForwardConnectURL:     "http://localhost:3000/connect/events",
+		ForwardThinURL:        "http://localhost:3000/thin/events",
+		ForwardThinConnectURL: "http://localhost:3000/thin/connect/events",
 	}
 
 	_, err := client.Authorize(context.Background(), CreateSessionRequest{
