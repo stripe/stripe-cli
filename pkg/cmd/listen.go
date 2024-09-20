@@ -284,7 +284,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				color := ansi.Color(os.Stdout)
 				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 					color.Faint(localTime),
-					maybeConnect,
+					color.BrightBlue(maybeConnect),
 					ansi.Bold(data.Type),
 					ansi.Linkify(data.ID, data.URLForEventID(lc.deviceToken), logger.Out),
 				)
@@ -304,7 +304,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 					color := ansi.Color(os.Stdout)
 					outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 						color.Faint(localTime),
-						maybeConnect,
+						color.BrightBlue(maybeConnect),
 						ansi.Linkify(ansi.Bold(data.Type), data.URLForEventType(), logger.Out),
 						ansi.Linkify(data.ID, data.URLForEventID(), logger.Out),
 					)
