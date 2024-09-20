@@ -266,8 +266,10 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 		// transient errors that we just need to retry for.
 		for i := 0; i <= 5; i++ {
 			devURLMap := stripeauth.DeviceURLMap{
-				ForwardURL:        p.cfg.ForwardURL,
-				ForwardConnectURL: p.cfg.ForwardConnectURL,
+				ForwardURL:            p.cfg.ForwardURL,
+				ForwardConnectURL:     p.cfg.ForwardConnectURL,
+				ForwardThinURL:        p.cfg.ForwardThinURL,
+				ForwardThinConnectURL: p.cfg.ForwardThinConnectURL,
 			}
 
 			session, err = p.stripeAuthClient.Authorize(ctx, stripeauth.CreateSessionRequest{
