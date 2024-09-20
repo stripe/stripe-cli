@@ -269,12 +269,22 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 		VisitData: func(de websocket.DataElement) error {
 			switch data := de.Data.(type) {
 			case proxy.V2EventPayload:
+				if strings.ToUpper(format) == outputFormatJSON || printJSON {
+					fmt.Println(de.Marshaled)
+					return nil
+				}
+
+				maybeConnect := ""
+				if data.IsConnect() {
+					maybeConnect = "connect "
+				}
 
 				localTime := time.Now().Format(timeLayout)
 
 				color := ansi.Color(os.Stdout)
-				outputStr := fmt.Sprintf("%s   --> %s [%s]",
+				outputStr := fmt.Sprintf("%s   --> %s%s [%s]",
 					color.Faint(localTime),
+					maybeConnect,
 					ansi.Bold(data.Type),
 					ansi.Linkify(data.ID, data.URLForEventID(lc.deviceToken), logger.Out),
 				)
