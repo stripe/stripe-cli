@@ -9,3 +9,4 @@ default_cassette.yaml
 .vscode/*.log
 stripe-completion.bash
 stripe-completion.zsh
+.env
