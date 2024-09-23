@@ -9,7 +9,7 @@
       "method": "post",
       "headers": {
         "Content-Type": "application/json",
-        "Stripe-Version": "unsafe-development"
+        "Stripe-Version": "2024-09-30.acacia"
       },
       "params": {}
     },
@@ -20,7 +20,7 @@
       "api_base": "https://meter-events.stripe.com",
       "headers": {
         "Content-Type": "application/json",
-        "Stripe-Version": "unsafe-development",
+        "Stripe-Version": "2024-09-30.acacia",
         "Authorization": "Bearer ${billing_meter_event_session:authentication_token}"
       },
       "params": {
