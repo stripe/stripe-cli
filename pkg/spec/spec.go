@@ -89,6 +89,7 @@ var supportedSchemaFields = []string{
 	"x-expansionResources",
 	"x-resourceId",
 	"x-stripeOperations",
+	"x-stripeMostCommon",
 
 	// This is currently being used to store additional metadata for our SDKs. It's
 	// passed through our Spec and should be ignored
