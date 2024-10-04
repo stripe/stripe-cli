@@ -131,7 +131,7 @@ func ParseToFormData(params interface{}, queryRespMap map[string]gjson.Result) (
 // each leaf node has a terminal type (String, Int, etc) that can no
 // longer be recursively traversed.
 func ParseMapForFormData(params map[string]interface{}, parent string, index int, queryRespMap map[string]gjson.Result) ([]string, error) {
-	data := make([]string, len(params))
+	data := make([]string, 0, len(params))
 
 	var keyname string
 
