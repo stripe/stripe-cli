@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -60,6 +61,13 @@ var rootCmd = &cobra.Command{
 			telemetryMetadata.SetCobraCommandContext(cmd)
 			telemetryMetadata.SetMerchant(merchant)
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
+
+			flags := []string{}
+			cmd.Flags().Visit(func(flag *pflag.Flag) {
+				flags = append(flags, flag.Name)
+			})
+			flagsStr := strings.Join(flags, ",")
+			telemetryMetadata.SetCommandFlags(flagsStr)
 		}
 
 		// plugins send their own telemetry due to having richer context than the CLI does
