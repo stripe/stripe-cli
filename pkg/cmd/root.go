@@ -61,14 +61,14 @@ var rootCmd = &cobra.Command{
 			telemetryMetadata.SetCobraCommandContext(cmd)
 			telemetryMetadata.SetMerchant(merchant)
 			telemetryMetadata.SetUserAgent(useragent.GetEncodedUserAgent())
-		}
 
-		flags := []string{}
-		cmd.Flags().Visit(func(flag *pflag.Flag) {
-			flags = append(flags, flag.Name)
-		})
-		flagsStr := strings.Join(flags, ",")
-		telemetryMetadata.SetCommandFlags(flagsStr)
+			flags := []string{}
+			cmd.Flags().Visit(func(flag *pflag.Flag) {
+				flags = append(flags, flag.Name)
+			})
+			flagsStr := strings.Join(flags, ",")
+			telemetryMetadata.SetCommandFlags(flagsStr)
+		}
 
 		// plugins send their own telemetry due to having richer context than the CLI does
 		if !plugins.IsPluginCommand(cmd) {
