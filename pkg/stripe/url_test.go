@@ -7,16 +7,16 @@ import (
 )
 
 func TestValidateAPIBaseURLWorks(t *testing.T) {
-	assert.Nil(t, ValidateAPIBaseUrl("https://api.stripe.com"))
-	assert.Nil(t, ValidateAPIBaseUrl("https://qa-api.stripe.com"))
-	assert.Nil(t, ValidateAPIBaseUrl("http://foo-api-mydev.dev.stripe.me"))
-	assert.Nil(t, ValidateAPIBaseUrl("https://foo-lv5r9y--api-mydev.dev.stripe.me/"))
+	assert.Nil(t, ValidateAPIBaseURL("https://api.stripe.com"))
+	assert.Nil(t, ValidateAPIBaseURL("https://qa-api.stripe.com"))
+	assert.Nil(t, ValidateAPIBaseURL("http://foo-api-mydev.dev.stripe.me"))
+	assert.Nil(t, ValidateAPIBaseURL("https://foo-lv5r9y--api-mydev.dev.stripe.me/"))
 
-	assert.Error(t, ValidateAPIBaseUrl("https://example.com"))
-	assert.Error(t, ValidateAPIBaseUrl("https://unknowndomain"))
-	assert.Error(t, ValidateAPIBaseUrl("http://127.0.0.1:1337 "))
-	assert.Error(t, ValidateAPIBaseUrl("localhost"))
-	assert.Error(t, ValidateAPIBaseUrl("anything_else"))
+	assert.Error(t, ValidateAPIBaseURL("https://example.com"))
+	assert.Error(t, ValidateAPIBaseURL("https://unknowndomain"))
+	assert.Error(t, ValidateAPIBaseURL("http://127.0.0.1:1337 "))
+	assert.Error(t, ValidateAPIBaseURL("localhost"))
+	assert.Error(t, ValidateAPIBaseURL("anything_else"))
 }
 
 func TestValidateDashboardBaseURLWorks(t *testing.T) {

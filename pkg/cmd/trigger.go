@@ -69,7 +69,7 @@ needed to create the triggered event as well as the corresponding API objects.
 func (tc *triggerCmd) runTriggerCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
-	if err := stripe.ValidateAPIBaseUrl(tc.apiBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(tc.apiBaseURL); err != nil {
 		return err
 	}
 

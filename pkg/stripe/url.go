@@ -29,8 +29,8 @@ const devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev.dev.s
 var errInvalidAPIBaseURL = errors.New("invalid API base URL")
 var errInvalidDashboardBaseURL = errors.New("invalid dashboard base URL")
 
-// ValidateAPIBaseUrl returns an error if apiBaseURL isn't allowed
-func ValidateAPIBaseUrl(apiBaseURL string) error {
+// ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
+func ValidateAPIBaseURL(apiBaseURL string) error {
 	if apiBaseURL == DefaultAPIBaseURL {
 		return nil
 	}

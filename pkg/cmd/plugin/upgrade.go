@@ -46,7 +46,7 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 }
 
 func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseUrl(uc.apiBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(uc.apiBaseURL); err != nil {
 		return err
 	}
 

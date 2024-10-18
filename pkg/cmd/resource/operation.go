@@ -41,7 +41,7 @@ type OperationCmd struct {
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseUrl(oc.APIBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(oc.APIBaseURL); err != nil {
 		return err
 	}
 

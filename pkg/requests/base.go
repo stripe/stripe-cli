@@ -109,7 +109,7 @@ var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseUrl(rb.APIBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(rb.APIBaseURL); err != nil {
 		return err
 	}
 

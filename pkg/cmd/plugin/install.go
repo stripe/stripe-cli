@@ -90,7 +90,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 }
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseUrl(ic.apiBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
 		return err
 	}
 

@@ -58,7 +58,7 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 func (fc *FixturesCmd) runFixturesCmd(cmd *cobra.Command, args []string) error {
 	version.CheckLatestVersion()
 
-	if err := stripe.ValidateAPIBaseUrl(fc.apiBaseURL); err != nil {
+	if err := stripe.ValidateAPIBaseURL(fc.apiBaseURL); err != nil {
 		return err
 	}
 
