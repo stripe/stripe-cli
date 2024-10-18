@@ -42,7 +42,7 @@ func newServeCmd() *serveCmd {
 
 			fmt.Println("Starting static file server at address", fmt.Sprintf("http://localhost:%s", port))
 			http.Handle("/", http.FileServer(http.Dir(absoluteDir)))
-			return http.ListenAndServe(fmt.Sprintf(":%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
+			return http.ListenAndServe(fmt.Sprintf("localhost:%s", port), handlers.LoggingHandler(os.Stdout, http.DefaultServeMux))
 		},
 	}
 
