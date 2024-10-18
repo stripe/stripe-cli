@@ -14,10 +14,10 @@ func TestValidateAPIBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1"))
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1:1337"))
 
-	assert.Error(t, ValidateAPIBaseURL("https://example.com"))
-	assert.Error(t, ValidateAPIBaseURL("https://unknowndomain"))
-	assert.Error(t, ValidateAPIBaseURL("localhost"))
-	assert.Error(t, ValidateAPIBaseURL("anything_else"))
+	assert.ErrorIs(t, ValidateAPIBaseURL("https://example.com"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateAPIBaseURL("https://unknowndomain"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateAPIBaseURL("localhost"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateAPIBaseURL("anything_else"), errInvalidAPIBaseURL)
 }
 
 func TestValidateDashboardBaseURLWorks(t *testing.T) {
@@ -28,8 +28,8 @@ func TestValidateDashboardBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateDashboardBaseURL("http://127.0.0.1"))
 	assert.Nil(t, ValidateDashboardBaseURL("http://127.0.0.1:1337"))
 
-	assert.Error(t, ValidateDashboardBaseURL("https://example.com"))
-	assert.Error(t, ValidateDashboardBaseURL("https://unknowndomain"))
-	assert.Error(t, ValidateDashboardBaseURL("localhost"))
-	assert.Error(t, ValidateDashboardBaseURL("anything_else"))
+	assert.ErrorIs(t, ValidateDashboardBaseURL("https://example.com"), errInvalidDashboardBaseURL)
+	assert.ErrorIs(t, ValidateDashboardBaseURL("https://unknowndomain"), errInvalidDashboardBaseURL)
+	assert.ErrorIs(t, ValidateDashboardBaseURL("localhost"), errInvalidDashboardBaseURL)
+	assert.ErrorIs(t, ValidateDashboardBaseURL("anything_else"), errInvalidDashboardBaseURL)
 }

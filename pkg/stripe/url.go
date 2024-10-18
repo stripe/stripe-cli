@@ -5,81 +5,60 @@ import (
 	"regexp"
 )
 
-// DefaultAPIBaseURL is the default base URL for API requests
-const DefaultAPIBaseURL = "https://api.stripe.com"
+const (
+	// DefaultAPIBaseURL is the default base URL for API requests
+	DefaultAPIBaseURL   = "https://api.stripe.com"
+	qaAPIBaseURL        = "https://qa-api.stripe.com"
+	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+api-mydev.dev.stripe.me`
 
-// qaAPIBaseURL is the base URL for API requests in QA
-const qaAPIBaseURL = "https://qa-api.stripe.com"
+	// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
+	DefaultFilesAPIBaseURL = "https://files.stripe.com"
 
-// devAPIBaseURLRegexp is the base URL for API requests in dev
-const devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+api-mydev.dev.stripe.me`
+	// DefaultDashboardBaseURL is the default base URL for dashboard requests
+	DefaultDashboardBaseURL   = "https://dashboard.stripe.com"
+	qaDashboardBaseURL        = "https://qa-dashboard.stripe.com"
+	devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev\.dev\.stripe\.me`
 
-// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
-const DefaultFilesAPIBaseURL = "https://files.stripe.com"
+	// localhostURLRegexp is used in tests
+	localhostURLRegexp = `http:\/\/127\.0\.0\.1(:[0-9]+)?`
+)
 
-// DefaultDashboardBaseURL is the default base URL for dashboard requests
-const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
+var (
+	errInvalidAPIBaseURL       = errors.New("invalid API base URL")
+	errInvalidDashboardBaseURL = errors.New("invalid dashboard base URL")
+)
 
-// qaDashboardBaseURL is the base URL for dashboard requests in QA
-const qaDashboardBaseURL = "https://qa-dashboard.stripe.com"
-
-// devDashboardBaseURLRegexp is the base URL for dashboard requests in dev
-const devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev\.dev\.stripe\.me`
-
-// localhostURLRegexp is used in tests
-const localhostURLRegexp = `http:\/\/127\.0\.0\.1(:[0-9]+)?`
-
-var errInvalidAPIBaseURL = errors.New("invalid API base URL")
-var errInvalidDashboardBaseURL = errors.New("invalid dashboard base URL")
+func isValid(url string, exactStrings []string, regexpStrings []string) bool {
+	for _, s := range exactStrings {
+		if url == s {
+			return true
+		}
+	}
+	for _, r := range regexpStrings {
+		matched, err := regexp.Match(r, []byte(url))
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
+}
 
 // ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
 func ValidateAPIBaseURL(apiBaseURL string) error {
-	if apiBaseURL == DefaultAPIBaseURL {
+	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL}
+	regexpStrings := []string{devAPIBaseURLRegexp, localhostURLRegexp}
+	if isValid(apiBaseURL, exactStrings, regexpStrings) {
 		return nil
 	}
-	if apiBaseURL == qaAPIBaseURL {
-		return nil
-	}
-
-	matchedDev, err := regexp.Match(devAPIBaseURLRegexp, []byte(apiBaseURL))
-	if err != nil {
-		return errInvalidAPIBaseURL
-	}
-
-	matchedLocalhost, err := regexp.Match(localhostURLRegexp, []byte(apiBaseURL))
-	if err != nil {
-		return errInvalidAPIBaseURL
-	}
-
-	if !matchedDev && !matchedLocalhost {
-		return errInvalidAPIBaseURL
-	}
-
-	return nil
+	return errInvalidAPIBaseURL
 }
 
-// ValidateDashboardBaseURL returns true if dashboardBaseURL is allowed
+// ValidateDashboardBaseURL returns an error if dashboardBaseURL isn't allowed
 func ValidateDashboardBaseURL(dashboardBaseURL string) error {
-	if dashboardBaseURL == DefaultDashboardBaseURL {
+	exactStrings := []string{DefaultDashboardBaseURL, qaDashboardBaseURL}
+	regexpStrings := []string{devDashboardBaseURLRegexp, localhostURLRegexp}
+	if isValid(dashboardBaseURL, exactStrings, regexpStrings) {
 		return nil
 	}
-	if dashboardBaseURL == qaDashboardBaseURL {
-		return nil
-	}
-
-	matchedDev, err := regexp.Match(devDashboardBaseURLRegexp, []byte(dashboardBaseURL))
-	if err != nil {
-		return errInvalidDashboardBaseURL
-	}
-
-	matchedLocalhost, err := regexp.Match(localhostURLRegexp, []byte(dashboardBaseURL))
-	if err != nil {
-		return errInvalidAPIBaseURL
-	}
-
-	if !matchedDev && !matchedLocalhost {
-		return errInvalidAPIBaseURL
-	}
-
-	return nil
+	return errInvalidDashboardBaseURL
 }
