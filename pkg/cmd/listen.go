@@ -116,6 +116,10 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+		return err
+	}
+
 	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
 		version.CheckLatestVersion()
 	}

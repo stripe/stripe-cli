@@ -12,6 +12,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -40,6 +41,10 @@ type OperationCmd struct {
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(oc.APIBaseURL); err != nil {
+		return err
+	}
+
 	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
 	if err != nil {
 		return err

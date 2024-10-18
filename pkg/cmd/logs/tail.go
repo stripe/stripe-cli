@@ -146,6 +146,10 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 }
 
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(tailCmd.apiBaseURL); err != nil {
+		return err
+	}
+
 	err := tailCmd.validateArgs()
 	if err != nil {
 		return err

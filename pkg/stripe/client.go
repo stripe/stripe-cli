@@ -15,15 +15,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
-// DefaultAPIBaseURL is the default base URL for API requests
-const DefaultAPIBaseURL = "https://api.stripe.com"
-
-// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
-const DefaultFilesAPIBaseURL = "https://files.stripe.com"
-
-// DefaultDashboardBaseURL is the default base URL for dashboard requests
-const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
-
 // APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
 

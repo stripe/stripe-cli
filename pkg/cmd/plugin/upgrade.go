@@ -46,6 +46,10 @@ func NewUpgradeCmd(config *config.Config) *UpgradeCmd {
 }
 
 func (uc *UpgradeCmd) runUpgradeCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(uc.apiBaseURL); err != nil {
+		return err
+	}
+
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.upgradeCmd.runUpgradeCmd",
