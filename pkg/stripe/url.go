@@ -24,7 +24,10 @@ const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
 const qaDashboardBaseURL = "https://qa-dashboard.stripe.com"
 
 // devDashboardBaseURLRegexp is the base URL for dashboard requests in dev
-const devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev.dev.stripe.me`
+const devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev\.dev\.stripe\.me`
+
+// localhostURLRegexp is used in tests
+const localhostURLRegexp = `http:\/\/127\.0\.0\.1(:[0-9]+)?`
 
 var errInvalidAPIBaseURL = errors.New("invalid API base URL")
 var errInvalidDashboardBaseURL = errors.New("invalid dashboard base URL")
@@ -37,13 +40,21 @@ func ValidateAPIBaseURL(apiBaseURL string) error {
 	if apiBaseURL == qaAPIBaseURL {
 		return nil
 	}
-	matched, err := regexp.Match(devAPIBaseURLRegexp, []byte(apiBaseURL))
+
+	matchedDev, err := regexp.Match(devAPIBaseURLRegexp, []byte(apiBaseURL))
 	if err != nil {
 		return errInvalidAPIBaseURL
 	}
-	if !matched {
+
+	matchedLocalhost, err := regexp.Match(localhostURLRegexp, []byte(apiBaseURL))
+	if err != nil {
 		return errInvalidAPIBaseURL
 	}
+
+	if !matchedDev && !matchedLocalhost {
+		return errInvalidAPIBaseURL
+	}
+
 	return nil
 }
 
@@ -55,12 +66,20 @@ func ValidateDashboardBaseURL(dashboardBaseURL string) error {
 	if dashboardBaseURL == qaDashboardBaseURL {
 		return nil
 	}
-	matched, err := regexp.Match(devDashboardBaseURLRegexp, []byte(dashboardBaseURL))
+
+	matchedDev, err := regexp.Match(devDashboardBaseURLRegexp, []byte(dashboardBaseURL))
 	if err != nil {
 		return errInvalidDashboardBaseURL
 	}
-	if !matched {
-		return errInvalidDashboardBaseURL
+
+	matchedLocalhost, err := regexp.Match(localhostURLRegexp, []byte(dashboardBaseURL))
+	if err != nil {
+		return errInvalidAPIBaseURL
 	}
+
+	if !matchedDev && !matchedLocalhost {
+		return errInvalidAPIBaseURL
+	}
+
 	return nil
 }
