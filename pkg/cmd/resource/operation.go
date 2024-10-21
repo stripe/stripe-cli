@@ -112,6 +112,10 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		if displayName != "" {
 			fmt.Printf("> Account Name: %s\n", displayName)
 		}
+		if strings.HasPrefix(path, "/v1/accounts/") {
+			connectedAccountID := strings.Split(path, "/")[3]
+			fmt.Printf("> Connected Account: %s\n", connectedAccountID)
+		}
 
 		// call the confirm command from base request
 		confirmation, err := oc.Confirm()
