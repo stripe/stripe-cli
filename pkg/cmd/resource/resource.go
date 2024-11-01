@@ -133,5 +133,7 @@ func PostProcessResourceCommands(rootCmd *cobra.Command, cfg *config.Config) err
 		return err
 	}
 
+	HideAliasedCommands(rootCmd)
+
 	return nil
 }
