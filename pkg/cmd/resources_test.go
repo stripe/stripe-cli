@@ -51,9 +51,11 @@ func TestAliasedResourcesCallPrincipleAPI(t *testing.T) {
 	defer ts.Close()
 
 	apiBase := fmt.Sprintf("--api-base=%s", ts.URL)
-	_, err := executeCommand(rootCmd, apiBase, "invoice_line_items", "list", "in_123")
+	apiKey := "--api-key=rk_test_1234567890"
+
+	_, err := executeCommand(rootCmd, apiBase, apiKey, "invoice_line_items", "list", "in_123")
 	require.NoError(t, err)
-	_, err = executeCommand(rootCmd, apiBase, "line_items", "list", "in_123")
+	_, err = executeCommand(rootCmd, apiBase, apiKey, "line_items", "list", "in_123")
 	require.NoError(t, err)
 }
 
