@@ -25,6 +25,9 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, out
 
 	c, err = root.ExecuteC()
 
+	// Resets args for the next test run to avoid arguments for flags being carried over
+	root.SetArgs([]string{})
+
 	return c, buf.String(), err
 }
 

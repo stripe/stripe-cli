@@ -62,6 +62,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rFeeRefundsCmd := resource.NewResourceCmd(rootCmd, "fee_refunds")
 	rFileLinksCmd := resource.NewResourceCmd(rootCmd, "file_links")
 	rFilesCmd := resource.NewResourceCmd(rootCmd, "files")
+	rInvoiceLineItemsCmd := resource.NewResourceCmd(rootCmd, "invoice_line_items")
 	rInvoiceRenderingTemplatesCmd := resource.NewResourceCmd(rootCmd, "invoice_rendering_templates")
 	rInvoiceitemsCmd := resource.NewResourceCmd(rootCmd, "invoiceitems")
 	rInvoicesCmd := resource.NewResourceCmd(rootCmd, "invoices")
@@ -1189,6 +1190,30 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rFilesCmd.Cmd, "retrieve", "/v1/files/{file}", http.MethodGet, map[string]string{}, &Config)
+	resource.NewOperationCmd(rInvoiceLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, &Config)
+	resource.NewOperationCmd(rInvoiceLineItemsCmd.Cmd, "update", "/v1/invoices/{invoice}/lines/{line_item_id}", http.MethodPost, map[string]string{
+		"amount":                              "integer",
+		"description":                         "string",
+		"discountable":                        "boolean",
+		"period.end":                          "integer",
+		"period.start":                        "integer",
+		"price":                               "string",
+		"price_data.currency":                 "string",
+		"price_data.product":                  "string",
+		"price_data.product_data.description": "string",
+		"price_data.product_data.images":      "array",
+		"price_data.product_data.name":        "string",
+		"price_data.product_data.tax_code":    "string",
+		"price_data.tax_behavior":             "string",
+		"price_data.unit_amount":              "integer",
+		"price_data.unit_amount_decimal":      "string",
+		"quantity":                            "integer",
+		"tax_rates":                           "array",
+	}, &Config)
 	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "archive", "/v1/invoice_rendering_templates/{template}/archive", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "list", "/v1/invoice_rendering_templates", http.MethodGet, map[string]string{
 		"ending_before":  "string",

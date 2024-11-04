@@ -111,39 +111,69 @@ func getTemplateData() (*TemplateData, error) {
 			continue
 		}
 
-		origNsName, origResName := parseSchemaName(name)
+		err := genCmdTemplate(name, name, data, stripeAPI)
+		if err != nil {
+			return nil, err
+		}
 
-		// Iterate over every operation for the resource
-		for _, op := range *schema.XStripeOperations {
-			// We're only implementing "service" operations
-			if op.MethodOn != "service" {
-				continue
+		alias := resource.GetCmdAlias(name)
+
+		if alias != "" {
+			// Aliased commands write a second entry into the resource commands, and use post-processing to hide the
+			// command from the index (e.g. when running `stripe resources`)
+			err := genCmdTemplate(name, alias, data, stripeAPI)
+			if err != nil {
+				return nil, err
 			}
-
-			nsName := origNsName
-			resName := origResName
-			subResName := ""
-
-			if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
-				// create entry in the test_helpers namespace
-				if nsName != "" {
-					data, err = addToTemplateData(data, test_helpers_path, nsName, resName, stripeAPI, op)
-				} else {
-					data, err = addToTemplateData(data, test_helpers_path, resName, "", stripeAPI, op)
-				}
-
-				// add test_helpers as a sub-resource to the current namespace-resource entry
-				subResName = test_helpers_path
-			}
-
-			data, err = addToTemplateData(data, nsName, resName, subResName, stripeAPI, op)
 		}
 	}
 
 	return data, nil
 }
 
-func addToTemplateData(data *TemplateData, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) (*TemplateData, error) {
+func genCmdTemplate(schemaName string, cmdName string, data *TemplateData, stripeAPI *spec.Spec) error {
+	origNsName, origResName := parseSchemaName(cmdName)
+	schema := stripeAPI.Components.Schemas[schemaName]
+
+	// Iterate over every operation for the resource
+	for _, op := range *schema.XStripeOperations {
+		// We're only implementing "service" operations
+		if op.MethodOn != "service" {
+			continue
+		}
+
+		nsName := origNsName
+		resName := origResName
+		subResName := ""
+
+		if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
+			// create entry in the test_helpers namespace
+			if nsName != "" {
+				err := addToTemplateData(data, test_helpers_path, nsName, resName, stripeAPI, op)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := addToTemplateData(data, test_helpers_path, resName, "", stripeAPI, op)
+				if err != nil {
+					return err
+				}
+			}
+
+			// add test_helpers as a sub-resource to the current namespace-resource entry
+			subResName = test_helpers_path
+		}
+
+		err := addToTemplateData(data, nsName, resName, subResName, stripeAPI, op)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func addToTemplateData(data *TemplateData, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) error {
 	hasSubResources := subResName != ""
 
 	if _, ok := data.Namespaces[nsName]; !ok {
@@ -156,6 +186,7 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 	resCmdName := resource.GetResourceCmdName(resName)
 	if _, ok := data.Namespaces[nsName].Resources[resCmdName]; !ok {
 		data.Namespaces[nsName].Resources[resCmdName] = &ResourceData{
+
 			Operations:   make(map[string]*OperationData),
 			SubResources: make(map[string]*ResourceData),
 		}
@@ -187,7 +218,7 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 
 		// Skip deprecated methods
 		if specOp.Deprecated != nil && *specOp.Deprecated == true {
-			return data, nil
+			return nil
 		}
 
 		if strings.ToUpper(httpString) == http.MethodPost {
@@ -255,7 +286,7 @@ func addToTemplateData(data *TemplateData, nsName, resName, subResName string, s
 		}
 	}
 
-	return data, nil
+	return nil
 }
 
 func parseSchemaName(name string) (string, string) {
