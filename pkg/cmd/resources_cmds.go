@@ -1779,6 +1779,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_intent_data.transfer_group":                  "string",
 		"payment_method_collection":                           "string",
 		"payment_method_types":                                "array",
+		"submit_type":                                         "string",
 		"subscription_data.invoice_settings.issuer.account":   "string",
 		"subscription_data.invoice_settings.issuer.type":      "string",
 		"tax_id_collection.enabled":                           "boolean",
@@ -2039,6 +2040,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"registered_address.line2":               "string",
 		"registered_address.postal_code":         "string",
 		"registered_address.state":               "string",
+		"relationship.authorizer":                "boolean",
 		"relationship.director":                  "boolean",
 		"relationship.executive":                 "boolean",
 		"relationship.legal_guardian":            "boolean",
@@ -2108,6 +2110,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"registered_address.line2":               "string",
 		"registered_address.postal_code":         "string",
 		"registered_address.state":               "string",
+		"relationship.authorizer":                "boolean",
 		"relationship.director":                  "boolean",
 		"relationship.executive":                 "boolean",
 		"relationship.legal_guardian":            "boolean",
@@ -3190,6 +3193,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"person.registered_address.line2":                           "string",
 		"person.registered_address.postal_code":                     "string",
 		"person.registered_address.state":                           "string",
+		"person.relationship.authorizer":                            "boolean",
 		"person.relationship.director":                              "boolean",
 		"person.relationship.executive":                             "boolean",
 		"person.relationship.legal_guardian":                        "boolean",
@@ -3465,6 +3469,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"return_url":     "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "create", "/v1/checkout/sessions", http.MethodPost, map[string]string{
+		"adaptive_pricing.enabled":                                   "boolean",
 		"after_expiration.recovery.allow_promotion_codes":            "boolean",
 		"after_expiration.recovery.enabled":                          "boolean",
 		"allow_promotion_codes":                                      "boolean",
@@ -3535,6 +3540,10 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.boleto.expires_after_days":                               "integer",
 		"payment_method_options.boleto.setup_future_usage":                               "string",
 		"payment_method_options.card.installments.enabled":                               "boolean",
+		"payment_method_options.card.request_extended_authorization":                     "string",
+		"payment_method_options.card.request_incremental_authorization":                  "string",
+		"payment_method_options.card.request_multicapture":                               "string",
+		"payment_method_options.card.request_overcapture":                                "string",
 		"payment_method_options.card.request_three_d_secure":                             "string",
 		"payment_method_options.card.setup_future_usage":                                 "string",
 		"payment_method_options.card.statement_descriptor_suffix_kana":                   "string",
@@ -3550,19 +3559,23 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.giropay.setup_future_usage":                              "string",
 		"payment_method_options.grabpay.setup_future_usage":                              "string",
 		"payment_method_options.ideal.setup_future_usage":                                "string",
+		"payment_method_options.kakao_pay.capture_method":                                "string",
 		"payment_method_options.kakao_pay.setup_future_usage":                            "string",
 		"payment_method_options.klarna.setup_future_usage":                               "string",
 		"payment_method_options.konbini.expires_after_days":                              "integer",
 		"payment_method_options.konbini.setup_future_usage":                              "string",
+		"payment_method_options.kr_card.capture_method":                                  "string",
 		"payment_method_options.kr_card.setup_future_usage":                              "string",
 		"payment_method_options.link.setup_future_usage":                                 "string",
 		"payment_method_options.mobilepay.setup_future_usage":                            "string",
 		"payment_method_options.multibanco.setup_future_usage":                           "string",
+		"payment_method_options.naver_pay.capture_method":                                "string",
 		"payment_method_options.naver_pay.setup_future_usage":                            "string",
 		"payment_method_options.oxxo.expires_after_days":                                 "integer",
 		"payment_method_options.oxxo.setup_future_usage":                                 "string",
 		"payment_method_options.p24.setup_future_usage":                                  "string",
 		"payment_method_options.p24.tos_shown_and_accepted":                              "boolean",
+		"payment_method_options.payco.capture_method":                                    "string",
 		"payment_method_options.paynow.setup_future_usage":                               "string",
 		"payment_method_options.paypal.capture_method":                                   "string",
 		"payment_method_options.paypal.preferred_locale":                                 "string",
@@ -3571,6 +3584,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.paypal.setup_future_usage":                               "string",
 		"payment_method_options.pix.expires_after_seconds":                               "integer",
 		"payment_method_options.revolut_pay.setup_future_usage":                          "string",
+		"payment_method_options.samsung_pay.capture_method":                              "string",
 		"payment_method_options.sepa_debit.setup_future_usage":                           "string",
 		"payment_method_options.sofort.setup_future_usage":                               "string",
 		"payment_method_options.swish.reference":                                         "string",
@@ -3830,6 +3844,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"fuel.unit":                                              "string",
 		"fuel.unit_cost_decimal":                                 "string",
 		"is_amount_controllable":                                 "boolean",
+		"merchant_amount":                                        "integer",
+		"merchant_currency":                                      "string",
 		"merchant_data.category":                                 "string",
 		"merchant_data.city":                                     "string",
 		"merchant_data.country":                                  "string",
@@ -3872,6 +3888,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "increment", "/v1/test_helpers/issuing/authorizations/{authorization}/increment", http.MethodPost, map[string]string{
 		"increment_amount":       "integer",
 		"is_amount_controllable": "boolean",
+	}, &Config)
+	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "respond", "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond", http.MethodPost, map[string]string{
+		"confirmed": "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "reverse", "/v1/test_helpers/issuing/authorizations/{authorization}/reverse", http.MethodPost, map[string]string{
 		"reverse_amount": "integer",
@@ -4612,6 +4631,8 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"fuel.unit":                                              "string",
 		"fuel.unit_cost_decimal":                                 "string",
 		"is_amount_controllable":                                 "boolean",
+		"merchant_amount":                                        "integer",
+		"merchant_currency":                                      "string",
 		"merchant_data.category":                                 "string",
 		"merchant_data.city":                                     "string",
 		"merchant_data.country":                                  "string",
@@ -4654,6 +4675,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "increment", "/v1/test_helpers/issuing/authorizations/{authorization}/increment", http.MethodPost, map[string]string{
 		"increment_amount":       "integer",
 		"is_amount_controllable": "boolean",
+	}, &Config)
+	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "respond", "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond", http.MethodPost, map[string]string{
+		"confirmed": "boolean",
 	}, &Config)
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "reverse", "/v1/test_helpers/issuing/authorizations/{authorization}/reverse", http.MethodPost, map[string]string{
 		"reverse_amount": "integer",
