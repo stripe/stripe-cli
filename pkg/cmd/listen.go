@@ -68,7 +68,9 @@ API version, filter events, or even load your saved webhook endpoints from your
 Stripe account.`,
 		Example: `stripe listen
   stripe listen --events charge.captured,charge.updated \
-    --forward-to localhost:3000/events`,
+    --forward-to localhost:3000/events
+  stripe listen --thin-events v1.billing.meter.no_meter_found \
+    --forward-thin-to localhost:3000/thin-events`,
 		RunE: lc.runListenCmd,
 	}
 
