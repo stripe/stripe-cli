@@ -12,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
@@ -109,18 +110,36 @@ func (c *Config) InitConfig() {
 	if c.ProfilesFile != "" {
 		viper.SetConfigFile(c.ProfilesFile)
 	} else {
-		configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		configFile := filepath.Join(configFolder, "config.toml")
-		c.ProfilesFile = configFile
-		viper.SetConfigType("toml")
-		viper.SetConfigFile(configFile)
-		viper.SetConfigPermissions(os.FileMode(0600))
+		currPath, _ := os.Getwd()
+		envFile := filepath.Join(currPath, ".env")
+		var fs = afero.NewOsFs()
+		envFileExists, _ := afero.Exists(fs, envFile)
+		if envFileExists {
+			c.ProfilesFile = envFile
+			viper.SetConfigFile(envFile)
+			if err := viper.ReadInConfig(); err == nil {
+				log.WithFields(log.Fields{
+					"prefix": "config.Config.InitConfig",
+					"path":   viper.ConfigFileUsed(),
+				}).Debug("Using .env file")
+			}
+		}
 
-		// Try to change permissions manually, because we used to create files
-		// with default permissions (0644)
-		err := os.Chmod(configFile, os.FileMode(0600))
-		if err != nil && !os.IsNotExist(err) {
-			log.Fatalf("%s", err)
+		// If the STRIPE_API_KEY is not set, check/create the config.toml profile file
+		if !viper.IsSet("STRIPE_API_KEY") {
+			configFolder := c.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+			configFile := filepath.Join(configFolder, "config.toml")
+			c.ProfilesFile = configFile
+			viper.SetConfigType("toml")
+			viper.SetConfigFile(configFile)
+			viper.SetConfigPermissions(os.FileMode(0600))
+
+			// Try to change permissions manually, because we used to create files
+			// with default permissions (0644)
+			err := os.Chmod(configFile, os.FileMode(0600))
+			if err != nil && !os.IsNotExist(err) {
+				log.Fatalf("%s", err)
+			}
 		}
 	}
 
