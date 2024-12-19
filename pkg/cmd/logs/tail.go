@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/briandowns/spinner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -27,6 +29,8 @@ import (
 )
 
 const outputFormatJSON = "JSON"
+
+var newlineRegex = regexp.MustCompile("[\r\n]")
 
 // TailCmd wraps the configuration for the tail command
 type TailCmd struct {
@@ -289,6 +293,8 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
+			sanitizePayload(&log)
+
 			if strings.ToUpper(format) == outputFormatJSON {
 				fmt.Println(ansi.ColorizeJSON(de.Marshaled, false, os.Stdout))
 				return nil
@@ -336,4 +342,26 @@ func urlForRequestID(payload *logtailing.EventPayload) string {
 	}
 
 	return fmt.Sprintf("https://dashboard.stripe.com%s/logs/%s", maybeTest, payload.RequestID)
+}
+
+func sanitize(str string) string {
+	withoutAnsi := stripansi.Strip(str)
+	withoutNewlines := newlineRegex.ReplaceAllLiteralString(withoutAnsi, "")
+	return strings.TrimSpace(withoutNewlines)
+}
+
+func sanitizePayload(payload *logtailing.EventPayload) {
+	payload.Error.Charge = sanitize(payload.Error.Charge)
+	payload.Error.Code = sanitize(payload.Error.Code)
+	payload.Error.DeclineCode = sanitize(payload.Error.DeclineCode)
+	payload.Error.ErrorInsight = sanitize(payload.Error.ErrorInsight)
+	payload.Error.Message = sanitize(payload.Error.Message)
+	payload.Error.Param = sanitize(payload.Error.Param)
+	payload.Error.Type = sanitize(payload.Error.Type)
+
+	payload.Method = sanitize(payload.Method)
+
+	payload.RequestID = sanitize(payload.RequestID)
+
+	payload.URL = sanitize(payload.URL)
 }
