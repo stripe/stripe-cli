@@ -72,6 +72,7 @@ then
                 if ! run_install
                 then
                 trigger_pagerduty_alert
+                exit 1
                 fi
             fi
         fi
