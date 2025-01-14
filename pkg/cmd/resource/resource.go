@@ -53,6 +53,8 @@ func GetResourceCmdName(name string) string {
 		return "terminal"
 	case "settings":
 		return "settings"
+	case "meter_event_summary":
+		return "meter_event_summaries"
 	default:
 		return name + "s"
 	}
