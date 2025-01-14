@@ -110,7 +110,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rBillingCreditBalanceTransactionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_transactions")
 	rBillingCreditGrantsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_grants")
 	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
-	rBillingMeterEventSummarysCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_summarys")
+	rBillingMeterEventSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_summaries")
 	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
 	rBillingMetersCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meters")
 	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
@@ -3377,7 +3377,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"event_name":        "string",
 		"type":              "string",
 	}, &Config)
-	resource.NewOperationCmd(rBillingMeterEventSummarysCmd.Cmd, "list", "/v1/billing/meters/{id}/event_summaries", http.MethodGet, map[string]string{
+	resource.NewOperationCmd(rBillingMeterEventSummariesCmd.Cmd, "list", "/v1/billing/meters/{id}/event_summaries", http.MethodGet, map[string]string{
 		"customer":              "string",
 		"end_time":              "integer",
 		"ending_before":         "string",
