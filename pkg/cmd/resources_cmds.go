@@ -106,7 +106,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
 	rAppsSecretsCmd := resource.NewResourceCmd(nsAppsCmd.Cmd, "secrets")
 	rBillingAlertsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "alerts")
-	rBillingCreditBalanceSummarysCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_summarys")
+	rBillingCreditBalanceSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_summaries")
 	rBillingCreditBalanceTransactionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_transactions")
 	rBillingCreditGrantsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_grants")
 	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
@@ -3338,7 +3338,7 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "retrieve", "/v1/billing/alerts/{id}", http.MethodGet, map[string]string{}, &Config)
-	resource.NewOperationCmd(rBillingCreditBalanceSummarysCmd.Cmd, "retrieve", "/v1/billing/credit_balance_summary", http.MethodGet, map[string]string{
+	resource.NewOperationCmd(rBillingCreditBalanceSummariesCmd.Cmd, "retrieve", "/v1/billing/credit_balance_summary", http.MethodGet, map[string]string{
 		"customer": "string",
 	}, &Config)
 	resource.NewOperationCmd(rBillingCreditBalanceTransactionsCmd.Cmd, "list", "/v1/billing/credit_balance_transactions", http.MethodGet, map[string]string{
