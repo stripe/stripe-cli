@@ -37,7 +37,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.48
+        version: v1.50
     - name: Run Tests
       run: make ci
       shell: bash
