@@ -1,3 +1,4 @@
+version: 2
 env:
   - GO111MODULE=on
 before:
@@ -29,10 +30,11 @@ builds:
     goarch:
       - arm64
 archives:
-  - replacements:
-      linux: linux
-      386: i386
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_
+      {{- if eq .Arch "386" }}i386
+      {{- else if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
     files:
       - none*
 changelog:
@@ -44,7 +46,7 @@ changelog:
 checksum:
   name_template: "{{ .ProjectName }}-linux-checksums.txt"
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Version }}-next"
 nfpms:
   - id: deb
     package_name: stripe

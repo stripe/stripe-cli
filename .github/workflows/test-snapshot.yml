@@ -37,10 +37,11 @@ jobs:
         with:
           go-version: 1.22.0
       - name: Run GoReleaser Snapshot
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v6
         with:
-          version: v0.184.0
-          args: release -f .goreleaser/linux.yml --rm-dist --snapshot
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/linux.yml --clean --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
