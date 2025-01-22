@@ -30,7 +30,7 @@ jobs:
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
       DOCKER_CLI_EXPERIMENTAL: "enabled"
