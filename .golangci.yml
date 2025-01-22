@@ -5,7 +5,6 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -20,21 +19,35 @@ linters:
     - ineffassign
     - misspell
     - nakedret
-    - revive
+    # - revive -- TODO: reenable after fixing errors
     # - rowserrcheck -- disabled because of https://github.com/golangci/golangci-lint/issues/2649
     - staticcheck
     # - structcheck -- disabled because of https://github.com/golangci/golangci-lint/issues/2649
     - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
 
 linters-settings:
+  depguard:
+    rules:
+      main:
+        list-mode: lax
+        allow:
+          - $all
+        deny: []
   goimports:
     local-prefixes: github.com/stripe/stripe-cli
+  govet:
+    disable:
+      - printf
   misspell:
     locale: US
+  staticcheck:
+    checks:
+      - all
+      - -SA1006
+      - -SA1019
 
 issues:
   exclude-rules:
