@@ -10,7 +10,7 @@ linters:
     - dogsled
     - dupl
     - exportloopref
-    - gocritic
+    # - gocritic -- disabled because of https://github.com/golangci/golangci-lint/issues/2649
     - gocyclo
     - gofmt
     - goimports
