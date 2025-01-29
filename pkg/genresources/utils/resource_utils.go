@@ -1,4 +1,4 @@
-package gen
+package utils
 
 import "github.com/stripe/stripe-cli/pkg/spec"
 

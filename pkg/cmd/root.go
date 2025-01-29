@@ -1,5 +1,5 @@
-//go:generate go run ../gen/gen_resources_cmds.go
-//go:generate go run ../gen/gen_events_list.go
+//go:generate go run ../genresources/gen_resources_cmds.go
+//go:generate go run ../geneventslist/gen_events_list.go
 
 package cmd
 

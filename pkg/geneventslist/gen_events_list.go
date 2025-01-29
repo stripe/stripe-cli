@@ -1,6 +1,3 @@
-//go:build events_list
-// +build events_list
-
 package main
 
 import (
@@ -20,7 +17,7 @@ type TemplateData struct {
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
 
-	pathTemplate = "../gen/events_list.go.tpl"
+	pathTemplate = "../geneventslist/events_list.go.tpl"
 
 	pathName = "events_list.go.tpl"
 
