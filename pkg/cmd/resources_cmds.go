@@ -11,6 +11,13 @@ import (
 )
 
 func addAllResourcesCmds(rootCmd *cobra.Command) {
+	v1root := rootCmd
+	addV1ResourcesCmds(v1root)
+	v2root := resource.NewNamespaceCmd(rootCmd, "v2").Cmd
+	addV2ResourcesCmds(v2root)
+}
+
+func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, "")
 	nsAppsCmd := resource.NewNamespaceCmd(rootCmd, "apps")
@@ -5146,4 +5153,69 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 		"status":            "string",
 	}, &Config)
 	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "retrieve", "/v1/treasury/transactions/{id}", http.MethodGet, map[string]string{}, &Config)
+}
+
+func addV2ResourcesCmds(rootCmd *cobra.Command) {
+	// Namespace commands
+	_ = resource.NewNamespaceCmd(rootCmd, "")
+	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
+	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
+
+	// Resource commands
+	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
+	rBillingMeterEventSessionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_sessions")
+	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
+	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
+	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
+
+	// Operation commands
+	resource.NewOperationCmd(rBillingMeterEventAdjustmentsCmd.Cmd, "create", "/v2/billing/meter_event_adjustments", http.MethodPost, map[string]string{
+		"cancel.identifier": "string",
+		"event_name":        "string",
+		"type":              "string",
+	}, &Config)
+	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v2/billing/meter_events", http.MethodPost, map[string]string{
+		"event_name": "string",
+		"identifier": "string",
+		"timestamp":  "string",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "create", "/v2/core/event_destinations", http.MethodPost, map[string]string{
+		"amazon_eventbridge.aws_account_id": "string",
+		"amazon_eventbridge.aws_region":     "string",
+		"description":                       "string",
+		"enabled_events":                    "array",
+		"event_payload":                     "string",
+		"events_from":                       "array",
+		"include":                           "array",
+		"name":                              "string",
+		"snapshot_api_version":              "string",
+		"type":                              "string",
+		"webhook_endpoint.url":              "string",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "delete", "/v2/core/event_destinations/{id}", http.MethodDelete, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "disable", "/v2/core/event_destinations/{id}/disable", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "enable", "/v2/core/event_destinations/{id}/enable", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "list", "/v2/core/event_destinations", http.MethodGet, map[string]string{
+		"include": "array",
+		"limit":   "integer",
+		"page":    "string",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "retrieve", "/v2/core/event_destinations/{id}", http.MethodGet, map[string]string{
+		"include": "array",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "update", "/v2/core/event_destinations/{id}", http.MethodPost, map[string]string{
+		"description":          "string",
+		"enabled_events":       "array",
+		"include":              "array",
+		"name":                 "string",
+		"webhook_endpoint.url": "string",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
+		"limit":     "integer",
+		"object_id": "string",
+		"page":      "string",
+	}, &Config)
+	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, &Config)
 }

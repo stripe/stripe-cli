@@ -17,7 +17,7 @@ type PluginData struct {
 // GetPluginData returns the plugin download information
 func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) (PluginData, error) {
 	params := &RequestParameters{
-		data:    []string{},
+		data:    map[string]interface{}{},
 		version: apiVersion,
 	}
 

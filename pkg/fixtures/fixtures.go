@@ -391,29 +391,12 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
 
-	if strings.HasPrefix(path, "/v2/") {
-		jsonPayload := ""
-		if strings.ToLower(data.Method) == "post" {
-			jsonPayload, err = fxt.createJSONPayload(data.Params)
-			if err != nil {
-				return make([]byte, 0), err
-			}
-		}
-
-		return req.MakeV2Request(ctx, fxt.APIKey, path, params, true, additionalConfigure, jsonPayload)
-	}
-
 	return req.MakeRequest(ctx, fxt.APIKey, path, params, true, additionalConfigure)
 }
 
-func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
+func (fxt *Fixture) createParams(params map[string]interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	parsed, err := parsers.ParseToFormData(params, fxt.Responses)
-	if err != nil {
-		return &requestParams, err
-	}
-	requestParams.AppendData(parsed)
-
+	requestParams.AppendData(params)
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	if apiVersion != "" {

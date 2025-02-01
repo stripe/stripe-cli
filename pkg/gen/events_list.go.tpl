@@ -6,4 +6,6 @@ var validEvents = map[string]bool{ {{ range $_, $nsName := .Events }}
 "{{ $nsName }}": true, {{end}}
 }
 
-
+var validThinEvents = map[string]bool{ {{ range $_, $nsName := .ThinEvents }}
+"{{ $nsName }}": true, {{end}}
+}

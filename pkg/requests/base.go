@@ -12,18 +12,23 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
-	data          []string
+	data          map[string]interface{}
+	raw_data      string
 	expand        []string
 	startingAfter string
 	endingBefore  string
@@ -34,8 +39,14 @@ type RequestParameters struct {
 }
 
 // AppendData appends data to the request parameters.
-func (r *RequestParameters) AppendData(data []string) {
-	r.data = append(r.data, data...)
+func (r *RequestParameters) AppendData(data map[string]interface{}) {
+	if r.data == nil {
+		r.data = make(map[string]interface{})
+	}
+
+	for k, v := range data {
+		r.data[k] = v
+	}
 }
 
 // AppendExpand appends fields to the expand parameter.
@@ -103,6 +114,7 @@ type Base struct {
 
 	autoConfirm bool
 	showHeaders bool
+	rawData     string
 }
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
@@ -150,7 +162,7 @@ func (rb *Base) InitFlags() {
 		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
 	}
 
-	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
+	rb.Cmd.Flags().StringVarP(&rb.rawData, "data", "d", "", "Data for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
@@ -207,22 +219,6 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
 }
 
-// MakeV2Request will make a application/json request to the Stripe API with the specific payload given to it.
-func (rb *Base) MakeV2Request(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error, jsonPayload string) ([]byte, error) {
-	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
-		Verbose: rb.showHeaders,
-	}
-
-	return rb.performRequest(ctx, client, path, params, jsonPayload, errOnStatus, additionalConfigure)
-}
-
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
 func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
@@ -242,7 +238,18 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 // MakeRequestWithClient will make a request to the Stripe API with the specific
 // variables given to it using the provided client.
 func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
-	data, err := rb.BuildDataForRequest(params)
+	apiGeneration := stripe.V1Request
+	if stripe.IsV2Path(path) {
+		apiGeneration = stripe.V2Request
+	}
+
+	var data string
+	var err error
+	if apiGeneration == stripe.V2Request {
+		data, err = BuildDataForV2Request(rb.Method, path, params.data, make(map[string]interface{}))
+	} else {
+		data, err = rb.BuildDataForRequest(params)
+	}
 	if err != nil {
 		return []byte{}, err
 	}
@@ -254,7 +261,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
-		rb.setVersionHeader(req, params)
+		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
 				return err
@@ -338,7 +345,12 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	values := []string{}
 
 	if len(params.data) > 0 || len(params.expand) > 0 {
-		for _, datum := range params.data {
+		parsed, err := parsers.ParseToFormData(params, make(map[string]gjson.Result))
+		if err != nil {
+			return "", err
+		}
+
+		for _, datum := range parsed {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
@@ -375,11 +387,84 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	return encode(keys, values), nil
 }
 
+// BuildDataForV2Request encodes the parameters for the API request.
+//
+// For GET requests, it merges these params and URL-encodes them:
+//
+//  1. the URL query params
+//  2. params from the --data flag
+//  3. any additional params from the caller
+//
+// For non-GET requests, it merges these params and marshalls them to JSON:
+//
+//  1. params from the --data flag
+//  2. any additional params from the caller
+func BuildDataForV2Request(method string, path string, data map[string]interface{}, additionalParams map[string]interface{}) (string, error) {
+	// GET params are URL encoded
+	if method == http.MethodGet {
+		pathFragment, err := url.Parse(path)
+		if err != nil {
+			return "", err
+		}
+		urlQueryParams := pathFragment.Query()
+		if err := setQueryParams(&urlQueryParams, data); err != nil {
+			return "", err
+		}
+		if err := setQueryParams(&urlQueryParams, additionalParams); err != nil {
+			return "", err
+		}
+		return urlQueryParams.Encode(), nil
+	}
+
+	// non-GET params are marshaled to JSON
+	for k, v := range additionalParams {
+		data[k] = v
+	}
+	marshaled, err := json.Marshal(data)
+	if err != nil {
+		return "", err
+	}
+
+	params := string(marshaled)
+
+	if params == "{}" {
+		params = ""
+	}
+	return params, nil
+}
+
+func setQueryParams(queryParams *url.Values, paramsMap map[string]interface{}) error {
+	for k, v := range paramsMap {
+		switch val := reflect.ValueOf(v); val.Kind() {
+		case reflect.Slice:
+			for _, vv := range v.([]interface{}) {
+				str, err := toString(vv)
+				if err != nil {
+					return err
+				}
+				queryParams.Add(k, str)
+			}
+		default:
+			str, err := toString(v)
+			if err != nil {
+				return err
+			}
+			queryParams.Set(k, str)
+		}
+	}
+	return nil
+}
+
 func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer, string, error) {
 	var body bytes.Buffer
 	mp := multipart.NewWriter(&body)
 	defer mp.Close()
-	for _, datum := range params.data {
+
+	parsed, err := parsers.ParseToFormData(params, make(map[string]gjson.Result))
+	if err != nil {
+		return nil, "", err
+	}
+	for _, datum := range parsed {
 		splitDatum := strings.SplitN(datum, "=", 2)
 
 		if len(splitDatum) < 2 {
@@ -453,10 +538,13 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 	}
 }
 
-func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters) {
+func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
 	if params.version != "" {
 		request.Header.Set("Stripe-Version", params.version)
+	} else if stripe.IsV2Path(path) {
+		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
 	}
+
 }
 
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
@@ -550,4 +638,19 @@ func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields
 	}
 
 	return nil
+}
+
+func toString(value interface{}) (string, error) {
+	switch val := reflect.ValueOf(value); val.Kind() {
+	case reflect.String:
+		return val.String(), nil
+	case reflect.Float64:
+		return fmt.Sprintf("%v", val.Float()), nil
+	case reflect.Int:
+		return strconv.FormatInt(val.Int(), 10), nil
+	case reflect.Bool:
+		return strconv.FormatBool(val.Bool()), nil
+	default:
+		return "", fmt.Errorf("unsupported query param type: %s", val.Kind().String())
+	}
 }
