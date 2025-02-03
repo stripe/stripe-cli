@@ -18,7 +18,7 @@ import (
 
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
+	params := &RequestParameters{data: map[string]interface{}{"bender": "robot", "fry": "human"}}
 	expected := "bender=robot&fry=human"
 
 	output, _ := rb.BuildDataForRequest(params)
@@ -27,7 +27,7 @@ func TestBuildDataForRequest(t *testing.T) {
 
 func TestBuildDataForRequestParamOrdering(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"fry=human", "bender=robot"}}
+	params := &RequestParameters{data: map[string]interface{}{"fry": "human", "bender": "robot"}}
 	expected := "fry=human&bender=robot"
 
 	output, _ := rb.BuildDataForRequest(params)
@@ -77,7 +77,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
+	params := &RequestParameters{data: map[string]interface{}{"bender": "robot", "fry": "Invalid data argument: fry"}}
 	expected := "Invalid data argument: fry"
 
 	data, err := rb.BuildDataForRequest(params)
@@ -107,7 +107,7 @@ func TestMakeRequest(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
-		data:   []string{"bender=robot", "fry=human"},
+		data:   map[string]interface{}{"bender": "robot", "fry": "human"},
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
@@ -187,7 +187,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 	defer os.Remove(tempFile.Name())
 
 	params := &RequestParameters{
-		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
+		data: map[string]interface{}{"purpose": "app_upload", "file": fmt.Sprintf("@%v", tempFile.Name())},
 	}
 
 	_, err = rb.MakeMultiPartRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)
