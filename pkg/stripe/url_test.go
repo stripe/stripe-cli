@@ -8,6 +8,9 @@ import (
 
 func TestValidateAPIBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateAPIBaseURL("https://api.stripe.com"))
+	assert.Nil(t, ValidateAPIBaseURL("https://api.stripe.com/v1"))
+	assert.Nil(t, ValidateAPIBaseURL("https://api.stripe.com/v2"))
+	assert.Nil(t, ValidateAPIBaseURL("https://api.stripe.com/v100"))
 	assert.Nil(t, ValidateAPIBaseURL("https://qa-api.stripe.com"))
 	assert.Nil(t, ValidateAPIBaseURL("http://foo-api-mydev.dev.stripe.me"))
 	assert.Nil(t, ValidateAPIBaseURL("https://foo-lv5r9y--api-mydev.dev.stripe.me/"))
@@ -18,6 +21,7 @@ func TestValidateAPIBaseURLWorks(t *testing.T) {
 	assert.ErrorIs(t, ValidateAPIBaseURL("https://unknowndomain"), errInvalidAPIBaseURL)
 	assert.ErrorIs(t, ValidateAPIBaseURL("localhost"), errInvalidAPIBaseURL)
 	assert.ErrorIs(t, ValidateAPIBaseURL("anything_else"), errInvalidAPIBaseURL)
+	assert.ErrorIs(t, ValidateAPIBaseURL("https://api.stripe.com/v1.1"), errInvalidAPIBaseURL)
 }
 
 func TestValidateDashboardBaseURLWorks(t *testing.T) {

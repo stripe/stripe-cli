@@ -8,6 +8,7 @@ import (
 const (
 	// DefaultAPIBaseURL is the default base URL for API requests
 	DefaultAPIBaseURL   = "https://api.stripe.com"
+	APIBaseURLRegexp    = `^https:\/\/api\.stripe\.com\/v\d+$`
 	qaAPIBaseURL        = "https://qa-api.stripe.com"
 	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+api-mydev.dev.stripe.me`
 
@@ -46,7 +47,7 @@ func isValid(url string, exactStrings []string, regexpStrings []string) bool {
 // ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
 func ValidateAPIBaseURL(apiBaseURL string) error {
 	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL}
-	regexpStrings := []string{devAPIBaseURLRegexp, localhostURLRegexp}
+	regexpStrings := []string{APIBaseURLRegexp, devAPIBaseURLRegexp, localhostURLRegexp}
 	if isValid(apiBaseURL, exactStrings, regexpStrings) {
 		return nil
 	}
