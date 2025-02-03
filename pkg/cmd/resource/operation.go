@@ -398,13 +398,3 @@ func constructedNestedBoolParams(params map[string]interface{}, paramKeys []stri
 func getParamName(prop string) string {
 	return strings.ReplaceAll(prop, "-", "_")
 }
-
-func isValidEnum(enum string, enumOptions []string) bool {
-	for _, enumOption := range enumOptions {
-		enumOption = strings.ReplaceAll(enumOption, "'", "")
-		if enumOption == enum {
-			return true
-		}
-	}
-	return false
-}
