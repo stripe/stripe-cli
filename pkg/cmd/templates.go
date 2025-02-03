@@ -148,7 +148,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Italic("To see more resource commands, run `stripe resources help`"),
 		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
 		ansi.Bold("Other commands:"),
-		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global flags:"),

@@ -406,23 +406,6 @@ func (fxt *Fixture) createParams(params map[string]interface{}, apiVersion strin
 	return &requestParams, nil
 }
 
-func (fxt *Fixture) createJSONPayload(params interface{}) (string, error) {
-	if params == nil {
-		return "{}", nil
-	}
-	parsedJSON, err := parsers.ParseToApplicationJSON(params, fxt.Responses)
-	if err != nil {
-		return "", err
-	}
-
-	jsonParams, err := json.Marshal(parsedJSON)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonParams), nil
-}
-
 func (fxt *Fixture) updateEnv(env map[string]string) error {
 	dir, err := os.Getwd()
 	if err != nil {
