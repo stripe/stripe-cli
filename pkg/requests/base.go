@@ -246,7 +246,7 @@ func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.Request
 	var data string
 	var err error
 	if apiGeneration == stripe.V2Request {
-		data, err = BuildDataForV2Request(rb.Method, path, params.data, make(map[string]interface{}))
+		data, err = BuildDataForV2Request(rb.Method, path, rb.rawData, make(map[string]interface{}))
 	} else {
 		data, err = rb.BuildDataForRequest(params)
 	}
@@ -405,7 +405,12 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 //
 //  1. params from the --data flag
 //  2. any additional params from the caller
-func BuildDataForV2Request(method string, path string, data map[string]interface{}, additionalParams map[string]interface{}) (string, error) {
+func BuildDataForV2Request(method string, path string, data string, additionalParams map[string]interface{}) (string, error) {
+	dataFlagParams, err := parseDataFlag(data)
+	if err != nil {
+		return "", err
+	}
+
 	// GET params are URL encoded
 	if method == http.MethodGet {
 		pathFragment, err := url.Parse(path)
@@ -413,7 +418,7 @@ func BuildDataForV2Request(method string, path string, data map[string]interface
 			return "", err
 		}
 		urlQueryParams := pathFragment.Query()
-		if err := setQueryParams(&urlQueryParams, data); err != nil {
+		if err := setQueryParams(&urlQueryParams, dataFlagParams); err != nil {
 			return "", err
 		}
 		if err := setQueryParams(&urlQueryParams, additionalParams); err != nil {
@@ -424,9 +429,9 @@ func BuildDataForV2Request(method string, path string, data map[string]interface
 
 	// non-GET params are marshaled to JSON
 	for k, v := range additionalParams {
-		data[k] = v
+		dataFlagParams[k] = v
 	}
-	marshaled, err := json.Marshal(data)
+	marshaled, err := json.Marshal(dataFlagParams)
 	if err != nil {
 		return "", err
 	}
@@ -437,6 +442,19 @@ func BuildDataForV2Request(method string, path string, data map[string]interface
 		params = ""
 	}
 	return params, nil
+}
+
+func parseDataFlag(data string) (map[string]interface{}, error) {
+	dataFlagParams := make(map[string]interface{})
+	if data == "" {
+		return dataFlagParams, nil
+	}
+
+	if err := json.Unmarshal([]byte(data), &dataFlagParams); err != nil {
+		return nil, fmt.Errorf("data is invalid json: %s", data)
+	}
+
+	return dataFlagParams, nil
 }
 
 func setQueryParams(queryParams *url.Values, paramsMap map[string]interface{}) error {
