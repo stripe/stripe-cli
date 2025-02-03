@@ -16,11 +16,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
