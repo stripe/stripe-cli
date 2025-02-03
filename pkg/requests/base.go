@@ -28,7 +28,6 @@ import (
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
 	data          map[string]interface{}
-	raw_data      string
 	expand        []string
 	startingAfter string
 	endingBefore  string
@@ -550,7 +549,6 @@ func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameter
 	} else if stripe.IsV2Path(path) {
 		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
 	}
-
 }
 
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
