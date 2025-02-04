@@ -29,7 +29,6 @@ import (
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
 	data          []string
-	flagParams    map[string]interface{}
 	expand        []string
 	startingAfter string
 	endingBefore  string
@@ -233,6 +232,9 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 // variables given to it using the provided client.
 func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	apiGeneration := stripe.V1Request
 	if stripe.IsV2Path(path) {
@@ -369,7 +371,7 @@ func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestPara
 	return dataStr, nil
 }
 
-// createV1Params combine the data flag and property flag parameters into request paramters
+// createV1Params combine the data flag and property flag parameters into request parameters
 func createV1Params(dataFlagParams []string, additionalParams interface{}, queryRespMap map[string]gjson.Result) (*RequestParameters, error) {
 	requestParams := RequestParameters{}
 
