@@ -344,21 +344,7 @@ func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestPara
 		APIBaseURL:     apiBaseURL,
 	}
 
-	dataFlagParams := make([]string, 0)
-	for _, datum := range requestParams.data {
-		split := strings.SplitN(datum, "=", 2)
-		if len(split) < 2 {
-			return "", fmt.Errorf("Invalid data argument: %s", datum)
-		}
-
-		if _, ok := additionalParams[split[0]]; ok {
-			return "", fmt.Errorf("Flag \"%s\" already set", split[0])
-		}
-
-		dataFlagParams = append(dataFlagParams, datum)
-	}
-
-	v1Params, err := createV1Params(dataFlagParams, additionalParams, queryRespMap)
+	v1Params, err := createV1Params(requestParams, additionalParams, queryRespMap)
 	if err != nil {
 		return "", err
 	}
@@ -372,21 +358,40 @@ func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestPara
 }
 
 // createV1Params combine the data flag and property flag parameters into request parameters
-func createV1Params(dataFlagParams []string, additionalParams interface{}, queryRespMap map[string]gjson.Result) (*RequestParameters, error) {
-	requestParams := RequestParameters{}
+func createV1Params(requestParams *RequestParameters, additionalParams map[string]interface{}, queryRespMap map[string]gjson.Result) (*RequestParameters, error) {
+	// clean up data param arrays
+	dataFlagParams := make([]string, 0)
+	for _, datum := range requestParams.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return nil, fmt.Errorf("Invalid data argument: %s", datum)
+		}
 
-	requestParams.AppendData(dataFlagParams)
+		if _, ok := additionalParams[split[0]]; ok {
+			return nil, fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+
+		dataFlagParams = append(dataFlagParams, datum)
+	}
+
+	// merge params
+	result := RequestParameters{}
+	result.AppendData(dataFlagParams)
+	result.AppendExpand(requestParams.expand)
+	result.startingAfter = requestParams.startingAfter
+	result.endingBefore = requestParams.endingBefore
+	result.SetIdempotency(requestParams.idempotency)
+	result.limit = requestParams.limit
+	result.SetStripeAccount("")
+	result.SetVersion("")
 
 	parsed, err := parsers.ParseToFormData(additionalParams, queryRespMap)
 	if err != nil {
-		return &requestParams, err
+		return &result, err
 	}
-	requestParams.AppendData(parsed)
+	result.AppendData(parsed)
 
-	requestParams.SetStripeAccount("")
-	requestParams.SetVersion("")
-
-	return &requestParams, nil
+	return &result, nil
 }
 
 // BuildDataForRequest builds request payload
