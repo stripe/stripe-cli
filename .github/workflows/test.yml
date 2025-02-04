@@ -38,6 +38,7 @@ jobs:
       uses: golangci/golangci-lint-action@v6
       with:
         version: v1.63.4
+        args: --timeout=3m
     - name: Run Tests
       run: make ci
       shell: bash
