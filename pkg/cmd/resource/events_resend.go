@@ -19,9 +19,7 @@ func (erc *EventsResendCmd) runEventsResendCmd(cmd *cobra.Command, args []string
 	// `for_stripecli=true` to the request so the event is replayed to the
 	// Stripe CLI.
 	if !erc.opCmd.Cmd.Flags().Changed("webhook-endpoint") {
-		erc.opCmd.Parameters.AppendData(map[string]interface{}{
-			"for_stripecli": "true",
-		})
+		erc.opCmd.Parameters.AppendData([]string{"for_stripecli=true"})
 	}
 
 	return erc.opCmd.runOperationCmd(cmd, args)

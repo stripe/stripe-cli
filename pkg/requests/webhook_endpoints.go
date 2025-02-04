@@ -27,7 +27,7 @@ type WebhookEndpoint struct {
 // WebhookEndpointsList returns all the webhook endpoints on a users' account
 func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey string, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
-		data:    map[string]interface{}{"limit": "30"},
+		data:    []string{"limit=30"},
 		version: apiVersion,
 	}
 
@@ -37,7 +37,7 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey strin
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	resp, _ := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, true, nil)
+	resp, _ := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
@@ -47,7 +47,7 @@ func WebhookEndpointsList(ctx context.Context, baseURL, apiVersion, apiKey strin
 // WebhookEndpointsListWithClient returns all the webhook endpoints on a users' account
 func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPerformer, apiVersion string, profile *config.Profile) WebhookEndpointList {
 	params := &RequestParameters{
-		data:    map[string]interface{}{"limit": "30"},
+		data:    []string{"limit=30"},
 		version: apiVersion,
 	}
 
@@ -56,7 +56,7 @@ func WebhookEndpointsListWithClient(ctx context.Context, client stripe.RequestPe
 		Method:         http.MethodGet,
 		SuppressOutput: true,
 	}
-	resp, _ := base.MakeRequestWithClient(ctx, client, "/v1/webhook_endpoints", params, true, nil)
+	resp, _ := base.MakeRequestWithClient(ctx, client, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	data := WebhookEndpointList{}
 	json.Unmarshal(resp, &data)
 
@@ -69,15 +69,15 @@ func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url
 		return fmt.Errorf("url cannot be empty")
 	}
 
-	data := map[string]interface{}{
-		"url":            url,
-		"enabled_events": []string{"*"},
+	data := []string{
+		fmt.Sprintf("url=%s", url),
+		"enabled_events[]=*",
 	}
 	if description != "" {
-		data["description"] = description
+		data = append(data, fmt.Sprintf("description=%s", description))
 	}
 	if connect {
-		data["connect"] = true // connect is false by default for webhook endpoint creation
+		data = append(data, "connect=true") // connect is false by default for webhook endpoint creation
 	}
 
 	params := &RequestParameters{
@@ -91,7 +91,7 @@ func WebhookEndpointCreate(ctx context.Context, baseURL, apiVersion, apiKey, url
 		SuppressOutput: true,
 		APIBaseURL:     baseURL,
 	}
-	_, err := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, true, nil)
+	_, err := base.MakeRequest(ctx, apiKey, "/v1/webhook_endpoints", params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return err
 	}

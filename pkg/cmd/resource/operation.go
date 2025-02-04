@@ -62,8 +62,6 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	oc.Parameters.AppendData(requestParams)
-
 	if oc.HTTPVerb == http.MethodDelete {
 		// display account information and confirm whether user wants to proceed
 		var mode = "Test"
@@ -94,12 +92,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		// if confirmation is provided, make the request
-		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false, nil)
+		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false, nil)
+	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 

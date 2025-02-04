@@ -48,7 +48,7 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		return nil, err
 	}
 
-	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, true, nil)
+	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
@@ -107,15 +107,7 @@ func getParamsFromReq(req *rpc.EventsResendRequest) (*requests.RequestParameters
 	params := requests.RequestParameters{}
 
 	if len(req.Data) > 0 {
-		for _, datum := range req.Data {
-			split := strings.SplitN(datum, "=", 2)
-			if len(split) < 2 {
-				return nil, status.Errorf(codes.InvalidArgument, "Invalid data argument: %s", datum)
-			}
-			params.AppendData(map[string]interface{}{
-				split[0]: split[1],
-			})
-		}
+		params.AppendData(req.Data)
 	}
 
 	if len(req.Expand) > 0 {
@@ -135,19 +127,13 @@ func getParamsFromReq(req *rpc.EventsResendRequest) (*requests.RequestParameters
 	}
 
 	if req.WebhookEndpoint == "" {
-		params.AppendData(map[string]interface{}{
-			"for_stripecli": "true",
-		})
+		params.AppendData([]string{"for_stripecli=true"})
 	} else {
-		params.AppendData((map[string]interface{}{
-			"webhook_endpoint": req.WebhookEndpoint,
-		}))
+		params.AppendData([]string{fmt.Sprintf("webhook_endpoint=%s", req.WebhookEndpoint)})
 	}
 
 	if req.Account != "" {
-		params.AppendData((map[string]interface{}{
-			"account": req.Account,
-		}))
+		params.AppendData([]string{fmt.Sprintf("account=%s", req.Account)})
 	}
 
 	return &params, nil

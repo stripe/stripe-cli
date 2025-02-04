@@ -391,12 +391,16 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
 
-	return req.MakeRequest(ctx, fxt.APIKey, path, params, true, additionalConfigure)
+	return req.MakeRequest(ctx, fxt.APIKey, path, params, make(map[string]interface{}), true, additionalConfigure)
 }
 
-func (fxt *Fixture) createParams(params map[string]interface{}, apiVersion string) (*requests.RequestParameters, error) {
+func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	requestParams.AppendData(params)
+	parsed, err := parsers.ParseToFormData(params, fxt.Responses)
+	if err != nil {
+		return &requestParams, err
+	}
+	requestParams.AppendData(parsed)
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	if apiVersion != "" {

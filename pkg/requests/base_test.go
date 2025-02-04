@@ -18,7 +18,7 @@ import (
 
 func TestBuildDataForRequest(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: map[string]interface{}{"bender": "robot", "fry": "human"}}
+	params := &RequestParameters{data: []string{"bender=robot", "fry=human"}}
 	expected := "bender=robot&fry=human"
 
 	output, _ := rb.BuildDataForRequest(params)
@@ -27,7 +27,7 @@ func TestBuildDataForRequest(t *testing.T) {
 
 func TestBuildDataForRequestParamOrdering(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: map[string]interface{}{"fry": "human", "bender": "robot"}}
+	params := &RequestParameters{data: []string{"fry=human", "bender=robot"}}
 	expected := "fry=human&bender=robot"
 
 	output, _ := rb.BuildDataForRequest(params)
@@ -77,7 +77,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
-	params := &RequestParameters{data: map[string]interface{}{"bender": "robot", "fry": "Invalid data argument: fry"}}
+	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
 	expected := "Invalid data argument: fry"
 
 	data, err := rb.BuildDataForRequest(params)
@@ -107,11 +107,11 @@ func TestMakeRequest(t *testing.T) {
 	rb.Method = http.MethodGet
 
 	params := &RequestParameters{
-		data:   map[string]interface{}{"bender": "robot", "fry": "human"},
+		data:   []string{"bender=robot", "fry=human"},
 		expand: []string{"futurama.employees", "futurama.ships"},
 	}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true, nil)
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
 }
 
@@ -127,7 +127,7 @@ func TestMakeRequest_ErrOnStatus(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true, nil)
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
 	require.Error(t, err)
 	require.Equal(t, "Request failed, status=500, body=:(", err.Error())
 }
@@ -153,7 +153,7 @@ func TestMakeRequest_ErrOnAPIKeyExpired(t *testing.T) {
 
 	params := &RequestParameters{}
 
-	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, false, nil)
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), false, nil)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Request failed, status=401, body=")
 }
@@ -187,7 +187,7 @@ func TestMakeMultiPartRequest(t *testing.T) {
 	defer os.Remove(tempFile.Name())
 
 	params := &RequestParameters{
-		data: map[string]interface{}{"purpose": "app_upload", "file": fmt.Sprintf("@%v", tempFile.Name())},
+		data: []string{"purpose=app_upload", fmt.Sprintf("file=@%v", tempFile.Name())},
 	}
 
 	_, err = rb.MakeMultiPartRequest(context.Background(), "sk_test_1234", "/foo/bar", params, true)

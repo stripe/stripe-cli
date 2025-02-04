@@ -28,7 +28,8 @@ import (
 
 // RequestParameters captures the structure of the parameters that can be sent to Stripe
 type RequestParameters struct {
-	data          map[string]interface{}
+	data          []string
+	flagParams    map[string]interface{}
 	expand        []string
 	startingAfter string
 	endingBefore  string
@@ -39,14 +40,8 @@ type RequestParameters struct {
 }
 
 // AppendData appends data to the request parameters.
-func (r *RequestParameters) AppendData(data map[string]interface{}) {
-	if r.data == nil {
-		r.data = make(map[string]interface{})
-	}
-
-	for k, v := range data {
-		r.data[k] = v
-	}
+func (r *RequestParameters) AppendData(data []string) {
+	r.data = append(r.data, data...)
 }
 
 // AppendExpand appends fields to the expand parameter.
@@ -114,7 +109,6 @@ type Base struct {
 
 	autoConfirm bool
 	showHeaders bool
-	rawData     string
 }
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
@@ -151,7 +145,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = rb.MakeRequest(cmd.Context(), apiKey, path, &rb.Parameters, false, nil)
+	_, err = rb.MakeRequest(cmd.Context(), apiKey, path, &rb.Parameters, make(map[string]interface{}), false, nil)
 
 	return err
 }
@@ -162,7 +156,7 @@ func (rb *Base) InitFlags() {
 		rb.Cmd.Flags().BoolVarP(&rb.autoConfirm, "confirm", "c", false, "Skip the warning prompt and automatically confirm the command being entered")
 	}
 
-	rb.Cmd.Flags().StringVarP(&rb.rawData, "data", "d", "", "Data for the API request")
+	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.data, "data", "d", []string{}, "Data for the API request")
 	rb.Cmd.Flags().StringArrayVarP(&rb.Parameters.expand, "expand", "e", []string{}, "Response attributes to expand inline")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
@@ -220,7 +214,7 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 }
 
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -232,23 +226,24 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 		Verbose: rb.showHeaders,
 	}
 
-	return rb.MakeRequestWithClient(ctx, client, path, params, errOnStatus, additionalConfigure)
+	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)
 }
 
 // MakeRequestWithClient will make a request to the Stripe API with the specific
 // variables given to it using the provided client.
-func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
+
 	apiGeneration := stripe.V1Request
 	if stripe.IsV2Path(path) {
 		apiGeneration = stripe.V2Request
 	}
 
 	var data string
-	var err error
 	if apiGeneration == stripe.V2Request {
-		data, err = BuildDataForV2Request(rb.Method, path, rb.rawData, make(map[string]interface{}))
+		data, err = BuildDataForV2Request(rb.Method, path, params.data, additionalParams)
 	} else {
-		data, err = rb.BuildDataForRequest(params)
+		data, err = BuildDataForV1Request(rb.Method, parsedBaseURL.Path, params, additionalParams, make(map[string]gjson.Result))
 	}
 	if err != nil {
 		return []byte{}, err
@@ -339,6 +334,59 @@ func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
 }
 
+// BuildV1RequestData transforms the v2 post data into v1 post request param shape
+func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestParameters, additionalParams map[string]interface{}, queryRespMap map[string]gjson.Result) (string, error) {
+	req := Base{
+		Method:         strings.ToUpper(method),
+		SuppressOutput: true,
+		APIBaseURL:     apiBaseURL,
+	}
+
+	dataFlagParams := make([]string, 0)
+	for _, datum := range requestParams.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return "", fmt.Errorf("Invalid data argument: %s", datum)
+		}
+
+		if _, ok := additionalParams[split[0]]; ok {
+			return "", fmt.Errorf("Flag \"%s\" already set", split[0])
+		}
+
+		dataFlagParams = append(dataFlagParams, datum)
+	}
+
+	v1Params, err := createV1Params(dataFlagParams, additionalParams, queryRespMap)
+	if err != nil {
+		return "", err
+	}
+
+	dataStr, err := req.BuildDataForRequest(v1Params)
+	if err != nil {
+		return "", err
+	}
+
+	return dataStr, nil
+}
+
+// createV1Params combine the data flag and property flag parameters into request paramters
+func createV1Params(dataFlagParams []string, additionalParams interface{}, queryRespMap map[string]gjson.Result) (*RequestParameters, error) {
+	requestParams := RequestParameters{}
+
+	requestParams.AppendData(dataFlagParams)
+
+	parsed, err := parsers.ParseToFormData(additionalParams, queryRespMap)
+	if err != nil {
+		return &requestParams, err
+	}
+	requestParams.AppendData(parsed)
+
+	requestParams.SetStripeAccount("")
+	requestParams.SetVersion("")
+
+	return &requestParams, nil
+}
+
 // BuildDataForRequest builds request payload
 // Note: We converted to using two arrays to track keys and values, with our own
 // implementation of Go's url.Values Encode function due to our query parameters being
@@ -351,12 +399,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	values := []string{}
 
 	if len(params.data) > 0 || len(params.expand) > 0 {
-		parsed, err := parsers.ParseToFormData(params, make(map[string]gjson.Result))
-		if err != nil {
-			return "", err
-		}
-
-		for _, datum := range parsed {
+		for _, datum := range params.data {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
@@ -405,7 +448,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 //
 //  1. params from the --data flag
 //  2. any additional params from the caller
-func BuildDataForV2Request(method string, path string, data string, additionalParams map[string]interface{}) (string, error) {
+func BuildDataForV2Request(method string, path string, data []string, additionalParams map[string]interface{}) (string, error) {
 	dataFlagParams, err := parseDataFlag(data)
 	if err != nil {
 		return "", err
@@ -444,13 +487,17 @@ func BuildDataForV2Request(method string, path string, data string, additionalPa
 	return params, nil
 }
 
-func parseDataFlag(data string) (map[string]interface{}, error) {
+func parseDataFlag(data []string) (map[string]interface{}, error) {
 	dataFlagParams := make(map[string]interface{})
-	if data == "" {
+	if len(data) == 0 {
 		return dataFlagParams, nil
 	}
 
-	if err := json.Unmarshal([]byte(data), &dataFlagParams); err != nil {
+	if len(data) > 1 {
+		return nil, fmt.Errorf("v2 API takes request 'data' params in a full json string.")
+	}
+
+	if err := json.Unmarshal([]byte(strings.TrimSpace(data[0])), &dataFlagParams); err != nil {
 		return nil, fmt.Errorf("data is invalid json: %s", data)
 	}
 
