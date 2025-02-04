@@ -538,11 +538,7 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 	mp := multipart.NewWriter(&body)
 	defer mp.Close()
 
-	parsed, err := parsers.ParseToFormData(params, make(map[string]gjson.Result))
-	if err != nil {
-		return nil, "", err
-	}
-	for _, datum := range parsed {
+	for _, datum := range params.data {
 		splitDatum := strings.SplitN(datum, "=", 2)
 
 		if len(splitDatum) < 2 {
