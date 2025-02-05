@@ -1,0 +1,1144 @@
+{
+  "openapi" : "3.0.0",
+  "info" : {
+    "title" : "Stripe API v2",
+    "description" : "The v2 endpoints of the Stripe REST API. Please see https://stripe.com/docs/api for more\n    details.",
+    "termsOfService" : "https://stripe.com/us/terms/",
+    "contact" : {
+      "name" : "Stripe Dev Platform Team",
+      "url" : "https://stripe.com",
+      "email" : "dev-platform@stripe.com"
+    },
+    "version" : "2025-01-27.acacia",
+    "x-stripeSpecFilename" : "spec3.v2.sdk"
+  },
+  "servers" : [ {
+    "url" : "https://api.stripe.com/"
+  } ],
+  "security" : [ {
+    "basicAuth" : [ ],
+    "bearerAuth" : [ ]
+  } ],
+  "paths" : {
+    "/v2/core/events/{id}" : {
+      "get" : {
+        "description" : "Retrieves the details of an event.",
+        "operationId" : "GetCoreEventsId",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Unique identifier for the object.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    },
+    "/v2/billing/meter_event_session" : {
+      "post" : {
+        "description" : "Creates a meter event session to send usage on the high-throughput meter event stream. Authentication tokens are only valid for 15 minutes, so you will need to create a new meter event session when your token expires.",
+        "operationId" : "PostBillingMeterEventSession"
+      }
+    },
+    "/v2/core/event_destinations/{id}/enable" : {
+      "post" : {
+        "description" : "Enable an event destination.",
+        "operationId" : "PostCoreEventDestinationsIdEnable",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to enable.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    },
+    "/v2/core/event_destinations/{id}/disable" : {
+      "post" : {
+        "description" : "Disable an event destination.",
+        "operationId" : "PostCoreEventDestinationsIdDisable",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to disable.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    },
+    "/v2/billing/meter_event_adjustments" : {
+      "post" : {
+        "description" : "Creates a meter event adjustment to cancel a previously sent meter event.",
+        "operationId" : "PostBillingMeterEventAdjustments",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "required" : [ "cancel", "event_name", "type" ],
+                "type" : "object",
+                "properties" : {
+                  "cancel" : {
+                    "required" : [ "identifier" ],
+                    "type" : "object",
+                    "properties" : {
+                      "identifier" : {
+                        "type" : "string",
+                        "description" : "Unique identifier for the event. You can only cancel events within 24 hours of Stripe receiving them."
+                      }
+                    },
+                    "description" : "Specifies which event to cancel."
+                  },
+                  "event_name" : {
+                    "type" : "string",
+                    "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "description" : "Specifies whether to cancel a single event or a range of events for a time period. Time period cancellation is not supported yet.",
+                    "enum" : [ "cancel" ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/core/event_destinations/{id}/ping" : {
+      "post" : {
+        "description" : "Send a `ping` event to an event destination.",
+        "operationId" : "PostCoreEventDestinationsIdPing",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to ping.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    },
+    "/v2/core/event_destinations" : {
+      "get" : {
+        "description" : "Lists all event destinations.",
+        "operationId" : "GetCoreEventDestinations",
+        "parameters" : [ {
+          "name" : "include",
+          "in" : "query",
+          "description" : "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
+          "required" : false,
+          "style" : "deepObject",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "webhook_endpoint.url" ]
+            }
+          }
+        }, {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The page size.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "integer"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "The requested page.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      },
+      "post" : {
+        "description" : "Create a new event destination.",
+        "operationId" : "PostCoreEventDestinations",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "required" : [ "enabled_events", "event_payload", "name", "type" ],
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "type" : "string",
+                    "description" : "An optional description of what the event destination is used for."
+                  },
+                  "enabled_events" : {
+                    "type" : "array",
+                    "description" : "The list of events to enable for this endpoint.",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
+                  "enumeratively_enabled_all_events_during_creation" : {
+                    "type" : "boolean",
+                    "description" : "Internal field to track if all available events were selected during creation.\nWe do not allow wildcards (e.g., \"*\") to subscribe to all events in v2.\nThis field helps maintain compatibility with the existing dashboard functionality that allows selecting all events.",
+                    "x-stripeNotPublic" : true
+                  },
+                  "event_payload" : {
+                    "type" : "string",
+                    "description" : "Payload type of events being subscribed to.",
+                    "enum" : [ "snapshot", "thin" ]
+                  },
+                  "events_from" : {
+                    "type" : "array",
+                    "description" : "Where events should be routed from.",
+                    "items" : {
+                      "type" : "string",
+                      "enum" : [ "other_accounts", "self" ]
+                    }
+                  },
+                  "include" : {
+                    "type" : "array",
+                    "description" : "Additional fields to include in the response.",
+                    "items" : {
+                      "type" : "string",
+                      "enum" : [ "webhook_endpoint.signing_secret", "webhook_endpoint.url" ]
+                    }
+                  },
+                  "metadata" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "string"
+                    },
+                    "description" : "Metadata."
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "description" : "Event destination name."
+                  },
+                  "snapshot_api_version" : {
+                    "type" : "string",
+                    "description" : "If using the snapshot event payload, the API version events are rendered as."
+                  },
+                  "type" : {
+                    "type" : "string",
+                    "description" : "Event destination type.",
+                    "enum" : [ "amazon_eventbridge", "reverse_api", "webhook_endpoint" ]
+                  },
+                  "amazon_eventbridge" : {
+                    "required" : [ "aws_account_id", "aws_region" ],
+                    "type" : "object",
+                    "properties" : {
+                      "aws_account_id" : {
+                        "type" : "string",
+                        "description" : "The AWS account ID."
+                      },
+                      "aws_region" : {
+                        "type" : "string",
+                        "description" : "The region of the AWS event source."
+                      }
+                    },
+                    "description" : "Amazon EventBridge configuration."
+                  },
+                  "reverse_api" : {
+                    "required" : [ "url" ],
+                    "type" : "object",
+                    "properties" : {
+                      "url" : {
+                        "type" : "string",
+                        "description" : "The URL of the webhook endpoint."
+                      }
+                    },
+                    "description" : "Reverse API configuration.",
+                    "x-stripeNotPublic" : true
+                  },
+                  "webhook_endpoint" : {
+                    "required" : [ "url" ],
+                    "type" : "object",
+                    "properties" : {
+                      "url" : {
+                        "type" : "string",
+                        "description" : "The URL of the webhook endpoint."
+                      }
+                    },
+                    "description" : "Webhook endpoint configuration."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/billing/meter_events" : {
+      "post" : {
+        "description" : "Creates a meter event. Events are validated synchronously, but are processed asynchronously. Supports up to 1,000 events per second in livemode. For higher rate-limits, please use meter event streams instead.",
+        "operationId" : "PostBillingMeterEvents",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "required" : [ "event_name", "payload" ],
+                "type" : "object",
+                "properties" : {
+                  "event_name" : {
+                    "type" : "string",
+                    "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
+                  },
+                  "identifier" : {
+                    "type" : "string",
+                    "description" : "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period."
+                  },
+                  "payload" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "string"
+                    },
+                    "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about\nthe\n[payload](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage#payload-key-overrides)."
+                  },
+                  "timestamp" : {
+                    "type" : "string",
+                    "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
+                    "format" : "date-time"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/billing/meter_event_stream" : {
+      "post" : {
+        "description" : "Creates meter events. Events are processed asynchronously, including validation. Requires a meter event session for authentication. Supports up to 10,000 requests per second in livemode. For even higher rate-limits, contact sales.",
+        "operationId" : "PostBillingMeterEventStream",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "required" : [ "events" ],
+                "type" : "object",
+                "properties" : {
+                  "events" : {
+                    "type" : "array",
+                    "description" : "List of meter events to include in the request.",
+                    "items" : {
+                      "required" : [ "event_name", "payload" ],
+                      "type" : "object",
+                      "properties" : {
+                        "event_name" : {
+                          "type" : "string",
+                          "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
+                        },
+                        "identifier" : {
+                          "type" : "string",
+                          "description" : "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period."
+                        },
+                        "payload" : {
+                          "type" : "object",
+                          "additionalProperties" : {
+                            "type" : "string"
+                          },
+                          "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about\nthe\n[payload](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage#payload-key-overrides)."
+                        },
+                        "timestamp" : {
+                          "type" : "string",
+                          "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
+                          "format" : "date-time"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/core/events" : {
+      "get" : {
+        "description" : "List events, going back up to 30 days.",
+        "operationId" : "GetCoreEvents",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "The page size.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "integer"
+          }
+        }, {
+          "name" : "object_id",
+          "in" : "query",
+          "description" : "Primary object ID used to retrieve related events.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "The requested page.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    },
+    "/v2/core/event_destinations/{id}" : {
+      "get" : {
+        "description" : "Retrieves the details of an event destination.",
+        "operationId" : "GetCoreEventDestinationsId",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to retrieve.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "include",
+          "in" : "query",
+          "description" : "Additional fields to include in the response.",
+          "required" : false,
+          "style" : "deepObject",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "webhook_endpoint.url" ]
+            }
+          }
+        } ]
+      },
+      "post" : {
+        "description" : "Update the details of an event destination.",
+        "operationId" : "PostCoreEventDestinationsId",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to update.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "description" : {
+                    "type" : "string",
+                    "description" : "An optional description of what the event destination is used for."
+                  },
+                  "enabled_events" : {
+                    "type" : "array",
+                    "description" : "The list of events to enable for this endpoint.",
+                    "items" : {
+                      "type" : "string"
+                    }
+                  },
+                  "include" : {
+                    "type" : "array",
+                    "description" : "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
+                    "items" : {
+                      "type" : "string",
+                      "enum" : [ "webhook_endpoint.url" ]
+                    }
+                  },
+                  "metadata" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "string"
+                    },
+                    "description" : "Metadata."
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "description" : "Event destination name."
+                  },
+                  "webhook_endpoint" : {
+                    "required" : [ "url" ],
+                    "type" : "object",
+                    "properties" : {
+                      "url" : {
+                        "type" : "string",
+                        "description" : "The URL of the webhook endpoint."
+                      }
+                    },
+                    "description" : "Webhook endpoint configuration."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "description" : "Delete an event destination.",
+        "operationId" : "DeleteCoreEventDestinationsId",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "Identifier for the event destination to delete.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "v1.billing.meter.error_report_triggered" : {
+        "required" : [ "data", "related_object", "type" ],
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "required" : [ "developer_message_summary", "reason", "validation_end", "validation_start" ],
+            "type" : "object",
+            "properties" : {
+              "reason" : {
+                "required" : [ "error_count", "error_types" ],
+                "type" : "object",
+                "properties" : {
+                  "error_count" : {
+                    "type" : "integer",
+                    "description" : "The total error count within this window."
+                  },
+                  "error_types" : {
+                    "type" : "array",
+                    "description" : "The error details.",
+                    "items" : {
+                      "required" : [ "code", "error_count", "sample_errors" ],
+                      "type" : "object",
+                      "properties" : {
+                        "code" : {
+                          "type" : "string",
+                          "description" : "Open Enum.",
+                          "enum" : [ "archived_meter", "meter_event_customer_not_found", "meter_event_dimension_count_too_high", "meter_event_invalid_value", "meter_event_no_customer_defined", "missing_dimension_payload_keys", "no_meter", "timestamp_in_future", "timestamp_too_far_in_past" ]
+                        },
+                        "error_count" : {
+                          "type" : "integer",
+                          "description" : "The number of errors of this type."
+                        },
+                        "sample_errors" : {
+                          "type" : "array",
+                          "description" : "A list of sample errors of this type.",
+                          "items" : {
+                            "required" : [ "error_message", "request" ],
+                            "type" : "object",
+                            "properties" : {
+                              "error_message" : {
+                                "type" : "string",
+                                "description" : "The error message."
+                              },
+                              "request" : {
+                                "required" : [ "identifier" ],
+                                "type" : "object",
+                                "properties" : {
+                                  "identifier" : {
+                                    "type" : "string",
+                                    "description" : "The request idempotency key."
+                                  }
+                                },
+                                "description" : "The request causes the error."
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "description" : "This contains information about why meter error happens."
+              },
+              "developer_message_summary" : {
+                "type" : "string",
+                "description" : "Extra field included in the event's `data` when fetched from /v2/events."
+              },
+              "validation_start" : {
+                "type" : "string",
+                "description" : "The start of the window that is encapsulated by this summary.",
+                "format" : "date-time"
+              },
+              "validation_end" : {
+                "type" : "string",
+                "description" : "The end of the window that is encapsulated by this summary.",
+                "format" : "date-time"
+              }
+            },
+            "description" : "Additional data about the event."
+          },
+          "related_object" : {
+            "required" : [ "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "Object tag of the resource relevant to the event.",
+                "enum" : [ "billing.meter" ]
+              }
+            },
+            "description" : "Object containing the reference to API resource relevant to the event."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of the event.",
+            "enum" : [ "v1.billing.meter.error_report_triggered" ]
+          }
+        },
+        "description" : "This event occurs when there are invalid async usage events for a given meter.",
+        "x-stripeEvent" : {
+          "kind" : "thin",
+          "type" : "v1.billing.meter.error_report_triggered"
+        }
+      },
+      "v1.billing.meter.no_meter_found" : {
+        "required" : [ "data", "type" ],
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "required" : [ "developer_message_summary", "reason", "validation_end", "validation_start" ],
+            "type" : "object",
+            "properties" : {
+              "reason" : {
+                "required" : [ "error_count", "error_types" ],
+                "type" : "object",
+                "properties" : {
+                  "error_count" : {
+                    "type" : "integer",
+                    "description" : "The total error count within this window."
+                  },
+                  "error_types" : {
+                    "type" : "array",
+                    "description" : "The error details.",
+                    "items" : {
+                      "required" : [ "code", "error_count", "sample_errors" ],
+                      "type" : "object",
+                      "properties" : {
+                        "code" : {
+                          "type" : "string",
+                          "description" : "Open Enum.",
+                          "enum" : [ "archived_meter", "meter_event_customer_not_found", "meter_event_dimension_count_too_high", "meter_event_invalid_value", "meter_event_no_customer_defined", "missing_dimension_payload_keys", "no_meter", "timestamp_in_future", "timestamp_too_far_in_past" ]
+                        },
+                        "error_count" : {
+                          "type" : "integer",
+                          "description" : "The number of errors of this type."
+                        },
+                        "sample_errors" : {
+                          "type" : "array",
+                          "description" : "A list of sample errors of this type.",
+                          "items" : {
+                            "required" : [ "error_message", "request" ],
+                            "type" : "object",
+                            "properties" : {
+                              "error_message" : {
+                                "type" : "string",
+                                "description" : "The error message."
+                              },
+                              "request" : {
+                                "required" : [ "identifier" ],
+                                "type" : "object",
+                                "properties" : {
+                                  "identifier" : {
+                                    "type" : "string",
+                                    "description" : "The request idempotency key."
+                                  }
+                                },
+                                "description" : "The request causes the error."
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "description" : "This contains information about why meter error happens."
+              },
+              "developer_message_summary" : {
+                "type" : "string",
+                "description" : "Extra field included in the event's `data` when fetched from /v2/events."
+              },
+              "validation_start" : {
+                "type" : "string",
+                "description" : "The start of the window that is encapsulated by this summary.",
+                "format" : "date-time"
+              },
+              "validation_end" : {
+                "type" : "string",
+                "description" : "The end of the window that is encapsulated by this summary.",
+                "format" : "date-time"
+              }
+            },
+            "description" : "Additional data about the event."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of the event.",
+            "enum" : [ "v1.billing.meter.no_meter_found" ]
+          }
+        },
+        "description" : "This event occurs when async usage events have missing or invalid meter ids.",
+        "x-stripeEvent" : {
+          "kind" : "thin",
+          "type" : "v1.billing.meter.no_meter_found"
+        }
+      },
+      "v2.billing.meter_event" : {
+        "required" : [ "created", "event_name", "identifier", "livemode", "object", "payload", "timestamp" ],
+        "type" : "object",
+        "properties" : {
+          "created" : {
+            "type" : "string",
+            "description" : "The creation time of this meter event.",
+            "format" : "date-time"
+          },
+          "event_name" : {
+            "type" : "string",
+            "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
+          },
+          "identifier" : {
+            "type" : "string",
+            "description" : "A unique identifier for the event. If not provided, one will be generated. We recommend using a globally unique identifier for this. We’ll enforce uniqueness within a rolling 24 hour period."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
+          },
+          "object" : {
+            "type" : "string",
+            "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
+            "enum" : [ "v2.billing.meter_event" ]
+          },
+          "payload" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about the payload."
+          },
+          "timestamp" : {
+            "type" : "string",
+            "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
+            "format" : "date-time"
+          }
+        },
+        "description" : "Fix me empty_doc_string.",
+        "x-resourceId" : "v2.billing.meter_event",
+        "x-stripeOperations" : [ {
+          "method_name" : "create",
+          "method_on" : "service",
+          "method_type" : "create",
+          "operation" : "post",
+          "path" : "/v2/billing/meter_events"
+        } ]
+      },
+      "v2.billing.meter_event_adjustment" : {
+        "required" : [ "cancel", "created", "event_name", "id", "livemode", "object", "status", "type" ],
+        "type" : "object",
+        "properties" : {
+          "cancel" : {
+            "required" : [ "identifier" ],
+            "type" : "object",
+            "properties" : {
+              "identifier" : {
+                "type" : "string",
+                "description" : "Unique identifier for the event. You can only cancel events within 24 hours of Stripe receiving them."
+              }
+            },
+            "description" : "Specifies which event to cancel."
+          },
+          "created" : {
+            "type" : "string",
+            "description" : "The time the adjustment was created.",
+            "format" : "date-time"
+          },
+          "event_name" : {
+            "type" : "string",
+            "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "The unique id of this meter event adjustment."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
+          },
+          "object" : {
+            "type" : "string",
+            "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
+            "enum" : [ "v2.billing.meter_event_adjustment" ]
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "Open Enum. The meter event adjustment’s status.",
+            "enum" : [ "complete", "pending" ]
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Open Enum. Specifies whether to cancel a single event or a range of events for a time period. Time period cancellation is not supported yet.",
+            "enum" : [ "cancel" ]
+          }
+        },
+        "x-resourceId" : "v2.billing.meter_event_adjustment",
+        "x-stripeOperations" : [ {
+          "method_name" : "create",
+          "method_on" : "service",
+          "method_type" : "create",
+          "operation" : "post",
+          "path" : "/v2/billing/meter_event_adjustments"
+        } ]
+      },
+      "v2.billing.meter_event_session" : {
+        "required" : [ "authentication_token", "created", "expires_at", "id", "livemode", "object" ],
+        "type" : "object",
+        "properties" : {
+          "authentication_token" : {
+            "type" : "string",
+            "description" : "The authentication token for this session.  Use this token when calling the\nhigh-throughput meter event API."
+          },
+          "created" : {
+            "type" : "string",
+            "description" : "The creation time of this session.",
+            "format" : "date-time"
+          },
+          "expires_at" : {
+            "type" : "string",
+            "description" : "The time at which this session will expire.",
+            "format" : "date-time"
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "The unique id of this auth session."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
+          },
+          "object" : {
+            "type" : "string",
+            "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
+            "enum" : [ "v2.billing.meter_event_session" ]
+          }
+        },
+        "x-resourceId" : "v2.billing.meter_event_session",
+        "x-stripeOperations" : [ {
+          "method_name" : "create",
+          "method_on" : "service",
+          "method_type" : "create",
+          "operation" : "post",
+          "path" : "/v2/billing/meter_event_session"
+        } ]
+      },
+      "v2.core.event" : {
+        "required" : [ "created", "id", "livemode", "object", "type" ],
+        "type" : "object",
+        "properties" : {
+          "context" : {
+            "type" : "string",
+            "description" : "Authentication context needed to fetch the event or related object."
+          },
+          "created" : {
+            "type" : "string",
+            "description" : "Time at which the object was created.",
+            "format" : "date-time"
+          },
+          "data" : {
+            "description" : "Additional data about the event."
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "Unique identifier for the event."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
+          },
+          "object" : {
+            "type" : "string",
+            "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
+            "enum" : [ "v2.core.event" ]
+          },
+          "reason" : {
+            "required" : [ "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "Event reason type.",
+                "enum" : [ "request" ]
+              },
+              "request" : {
+                "required" : [ "id", "idempotency_key" ],
+                "type" : "object",
+                "properties" : {
+                  "id" : {
+                    "type" : "string",
+                    "description" : "ID of the API request that caused the event."
+                  },
+                  "idempotency_key" : {
+                    "type" : "string",
+                    "description" : "The idempotency key transmitted during the request."
+                  }
+                },
+                "description" : "Information on the API request that instigated the event."
+              }
+            },
+            "description" : "Reason for the event."
+          },
+          "related_object" : {
+            "required" : [ "id", "type", "url" ],
+            "type" : "object",
+            "properties" : {
+              "id" : {
+                "type" : "string",
+                "description" : "Unique identifier for the object relevant to the event."
+              },
+              "type" : {
+                "type" : "string",
+                "description" : "Object tag of the resource relevant to the event."
+              },
+              "url" : {
+                "type" : "string",
+                "description" : "URL to retrieve the resource."
+              }
+            },
+            "description" : "Object containing the reference to API resource relevant to the event."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of the event."
+          }
+        },
+        "x-resourceId" : "v2.core.event",
+        "x-stripeOperations" : [ {
+          "method_name" : "ping",
+          "method_on" : "service",
+          "method_type" : "custom",
+          "operation" : "post",
+          "path" : "/v2/core/event_destinations/{id}/ping"
+        }, {
+          "method_name" : "list",
+          "method_on" : "service",
+          "method_type" : "list",
+          "operation" : "get",
+          "path" : "/v2/core/events"
+        }, {
+          "method_name" : "retrieve",
+          "method_on" : "service",
+          "method_type" : "retrieve",
+          "operation" : "get",
+          "path" : "/v2/core/events/{id}"
+        } ]
+      },
+      "v2.core.event_destination" : {
+        "required" : [ "created", "description", "enabled_events", "event_payload", "id", "livemode", "name", "object", "status", "type", "updated" ],
+        "type" : "object",
+        "properties" : {
+          "created" : {
+            "type" : "string",
+            "description" : "Time at which the object was created.",
+            "format" : "date-time"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "An optional description of what the event destination is used for."
+          },
+          "enabled_events" : {
+            "type" : "array",
+            "description" : "The list of events to enable for this endpoint.",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "event_payload" : {
+            "type" : "string",
+            "description" : "Payload type of events being subscribed to.",
+            "enum" : [ "snapshot", "thin" ]
+          },
+          "events_from" : {
+            "type" : "array",
+            "description" : "Where events should be routed from.",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "other_accounts", "self" ]
+            }
+          },
+          "id" : {
+            "type" : "string",
+            "description" : "Unique identifier for the object."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
+          },
+          "metadata" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "description" : "Metadata."
+          },
+          "name" : {
+            "type" : "string",
+            "description" : "Event destination name."
+          },
+          "object" : {
+            "type" : "string",
+            "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
+            "enum" : [ "v2.core.event_destination" ]
+          },
+          "snapshot_api_version" : {
+            "type" : "string",
+            "description" : "If using the snapshot event payload, the API version events are rendered as."
+          },
+          "status" : {
+            "type" : "string",
+            "description" : "Status. It can be set to either enabled or disabled.",
+            "enum" : [ "disabled", "enabled" ]
+          },
+          "status_details" : {
+            "type" : "object",
+            "properties" : {
+              "disabled" : {
+                "required" : [ "reason" ],
+                "type" : "object",
+                "properties" : {
+                  "reason" : {
+                    "type" : "string",
+                    "description" : "Reason event destination has been disabled.",
+                    "enum" : [ "no_aws_event_source_exists", "user" ]
+                  }
+                },
+                "description" : "Details about why the event destination has been disabled."
+              }
+            },
+            "description" : "Additional information about event destination status."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "Event destination type.",
+            "enum" : [ "amazon_eventbridge", "reverse_api", "webhook_endpoint" ]
+          },
+          "updated" : {
+            "type" : "string",
+            "description" : "Time at which the object was last updated.",
+            "format" : "date-time"
+          },
+          "amazon_eventbridge" : {
+            "required" : [ "aws_account_id", "aws_event_source_arn", "aws_event_source_status" ],
+            "type" : "object",
+            "properties" : {
+              "aws_account_id" : {
+                "type" : "string",
+                "description" : "The AWS account ID."
+              },
+              "aws_event_source_arn" : {
+                "type" : "string",
+                "description" : "The ARN of the AWS event source."
+              },
+              "aws_event_source_status" : {
+                "type" : "string",
+                "description" : "The state of the AWS event source.",
+                "enum" : [ "active", "deleted", "pending", "unknown" ]
+              }
+            },
+            "description" : "Amazon EventBridge configuration."
+          },
+          "reverse_api" : {
+            "required" : [ "url" ],
+            "type" : "object",
+            "properties" : {
+              "url" : {
+                "type" : "string",
+                "description" : "The URL of the webhook endpoint."
+              }
+            },
+            "description" : "Reverse API configuration.",
+            "x-stripeNotPublic" : true
+          },
+          "webhook_endpoint" : {
+            "type" : "object",
+            "properties" : {
+              "signing_secret" : {
+                "type" : "string",
+                "description" : "The signing secret of the webhook endpoint, only includable on creation."
+              },
+              "url" : {
+                "type" : "string",
+                "description" : "The URL of the webhook endpoint, includable."
+              }
+            },
+            "description" : "Webhook endpoint configuration."
+          }
+        },
+        "x-resourceId" : "v2.core.event_destination",
+        "x-stripeOperations" : [ {
+          "method_name" : "list",
+          "method_on" : "service",
+          "method_type" : "list",
+          "operation" : "get",
+          "path" : "/v2/core/event_destinations"
+        }, {
+          "method_name" : "create",
+          "method_on" : "service",
+          "method_type" : "create",
+          "operation" : "post",
+          "path" : "/v2/core/event_destinations"
+        }, {
+          "method_name" : "delete",
+          "method_on" : "service",
+          "method_type" : "delete",
+          "operation" : "delete",
+          "path" : "/v2/core/event_destinations/{id}"
+        }, {
+          "method_name" : "retrieve",
+          "method_on" : "service",
+          "method_type" : "retrieve",
+          "operation" : "get",
+          "path" : "/v2/core/event_destinations/{id}"
+        }, {
+          "method_name" : "update",
+          "method_on" : "service",
+          "method_type" : "update",
+          "operation" : "post",
+          "path" : "/v2/core/event_destinations/{id}"
+        }, {
+          "method_name" : "disable",
+          "method_on" : "service",
+          "method_type" : "custom",
+          "operation" : "post",
+          "path" : "/v2/core/event_destinations/{id}/disable"
+        }, {
+          "method_name" : "enable",
+          "method_on" : "service",
+          "method_type" : "custom",
+          "operation" : "post",
+          "path" : "/v2/core/event_destinations/{id}/enable"
+        } ]
+      }
+    }
+  }
+}

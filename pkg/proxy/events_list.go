@@ -244,3 +244,8 @@ var validEvents = map[string]bool{
 	"treasury.received_credit.succeeded":                       true,
 	"treasury.received_debit.created":                          true,
 }
+
+var validThinEvents = map[string]bool{
+	"v1.billing.meter.error_report_triggered": true,
+	"v1.billing.meter.no_meter_found":         true,
+}

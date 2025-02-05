@@ -43,9 +43,12 @@ func (srv *RPCService) EventsResend(ctx context.Context, req *rpc.EventsResendRe
 		APIBaseURL:     baseURL,
 	}
 
-	params := getParamsFromReq(req)
+	params, err := getParamsFromReq(req)
+	if err != nil {
+		return nil, err
+	}
 
-	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, true, nil)
+	stripeResp, err := stripeReq.MakeRequest(ctx, apiKey, path, params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	}
@@ -100,7 +103,7 @@ func formatURL(path string, urlParams []string) string {
 	return fmt.Sprintf(format, s...)
 }
 
-func getParamsFromReq(req *rpc.EventsResendRequest) *requests.RequestParameters {
+func getParamsFromReq(req *rpc.EventsResendRequest) (*requests.RequestParameters, error) {
 	params := requests.RequestParameters{}
 
 	if len(req.Data) > 0 {
@@ -133,5 +136,5 @@ func getParamsFromReq(req *rpc.EventsResendRequest) *requests.RequestParameters 
 		params.AppendData([]string{fmt.Sprintf("account=%s", req.Account)})
 	}
 
-	return &params
+	return &params, nil
 }

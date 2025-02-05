@@ -174,4 +174,9 @@ protoc-gen-plugin:
 	@echo "Successfully compiled proto files for plugins"
 .PHONY: protoc-plugin
 
+resource:
+	./scripts/sync-openapi-v2.sh
+	@echo "✨ Successfully built Stripe CLI with latest API resources."
+.PHONY: resource
+
 .DEFAULT_GOAL := build

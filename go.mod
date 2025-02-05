@@ -2,6 +2,8 @@ module github.com/stripe/stripe-cli
 
 go 1.22.0
 
+toolchain go1.23.5
+
 require (
 	github.com/BurntSushi/toml v1.2.0
 	github.com/briandowns/spinner v1.19.0

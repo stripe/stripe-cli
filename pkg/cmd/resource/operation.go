@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -34,10 +35,10 @@ type OperationCmd struct {
 	Path      string
 	URLParams []string
 
-	stringFlags map[string]*string
-	arrayFlags  map[string]*[]string
-
-	data []string
+	stringFlags  map[string]*string
+	arrayFlags   map[string]*[]string
+	integerFlags map[string]*int
+	boolFlags    map[string]*bool
 }
 
 func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error {
@@ -51,51 +52,15 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	}
 
 	path := formatURL(oc.Path, args)
+	requestParams := make(map[string]interface{})
+	oc.addStringRequestParams(requestParams)
+	oc.addIntRequestParams(requestParams)
+	oc.addBoolRequestParams(requestParams)
 
-	flagParams := make([]string, 0)
-
-	for stringProp, stringVal := range oc.stringFlags {
-		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
-		if oc.Cmd.Flags().Changed(stringProp) {
-			paramName := strings.ReplaceAll(stringProp, "-", "_")
-			if strings.Contains(paramName, ".") {
-				fullParam := constructParamFromDot(paramName)
-				flagParams = append(flagParams, fmt.Sprintf("%s=%s", fullParam, *stringVal))
-			} else {
-				flagParams = append(flagParams, fmt.Sprintf("%s=%s", paramName, *stringVal))
-			}
-		}
+	err = oc.addArrayRequestParams(requestParams)
+	if err != nil {
+		return err
 	}
-
-	for arrayProp, arrayVal := range oc.arrayFlags {
-		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
-		if oc.Cmd.Flags().Changed(arrayProp) {
-			paramName := strings.ReplaceAll(arrayProp, "-", "_")
-			for _, arrayItem := range *arrayVal {
-				if strings.Contains(paramName, ".") {
-					fullParam := constructParamFromDot(paramName)
-					flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", fullParam, arrayItem))
-				} else {
-					flagParams = append(flagParams, fmt.Sprintf("%s[]=%s", paramName, arrayItem))
-				}
-			}
-		}
-	}
-
-	for _, datum := range oc.data {
-		split := strings.SplitN(datum, "=", 2)
-		if len(split) < 2 {
-			return fmt.Errorf("Invalid data argument: %s", datum)
-		}
-
-		if _, ok := oc.stringFlags[split[0]]; ok {
-			return fmt.Errorf("Flag \"%s\" already set", split[0])
-		}
-
-		flagParams = append(flagParams, datum)
-	}
-
-	oc.Parameters.AppendData(flagParams)
 
 	if oc.HTTPVerb == http.MethodDelete {
 		// display account information and confirm whether user wants to proceed
@@ -127,12 +92,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		}
 
 		// if confirmation is provided, make the request
-		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false, nil)
+		_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, false, nil)
+	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 
@@ -161,7 +126,8 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 }
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, propFlags map[string]string, cfg *config.Config) *OperationCmd {
+func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
+	propFlags map[string]string, cfg *config.Config) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
@@ -174,8 +140,10 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		Path:      path,
 		URLParams: urlParams,
 
-		stringFlags: make(map[string]*string),
-		arrayFlags:  make(map[string]*[]string),
+		arrayFlags:   make(map[string]*[]string),
+		stringFlags:  make(map[string]*string),
+		integerFlags: make(map[string]*int),
+		boolFlags:    make(map[string]*bool),
 	}
 	cmd := &cobra.Command{
 		Use:         name,
@@ -188,10 +156,17 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string, prop
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
-		if propType == "array" {
+
+		switch propType {
+		case "array":
 			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
-		} else {
+		case "string":
 			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		case "integer":
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+		case "boolean":
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 	}
@@ -298,4 +273,126 @@ func constructParamFromDot(dotParam string) string {
 	}
 
 	return param
+}
+
+func (oc *OperationCmd) addStringRequestParams(requestParams map[string]interface{}) {
+	for stringProp, stringVal := range oc.stringFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(stringProp) {
+			paramName := getParamName(stringProp)
+			if strings.Contains(paramName, ".") {
+				constructedNestedStringParams(requestParams, strings.Split(paramName, "."), stringVal)
+			} else {
+				requestParams[paramName] = *stringVal
+			}
+		}
+	}
+}
+
+func (oc *OperationCmd) addIntRequestParams(requestParams map[string]interface{}) {
+	for intProp, intVal := range oc.integerFlags {
+		if oc.Cmd.Flags().Changed(intProp) {
+			paramName := getParamName(intProp)
+			if strings.Contains(paramName, ".") {
+				constructedNestedIntParams(requestParams, strings.Split(paramName, "."), intVal)
+			} else {
+				requestParams[paramName] = *intVal
+			}
+		}
+	}
+}
+
+func (oc *OperationCmd) addBoolRequestParams(requestParams map[string]interface{}) {
+	for boolProp, boolVal := range oc.boolFlags {
+		if oc.Cmd.Flags().Changed(boolProp) {
+			paramName := getParamName(boolProp)
+			if strings.Contains(paramName, ".") {
+				constructedNestedBoolParams(requestParams, strings.Split(paramName, "."), boolVal)
+			} else {
+				requestParams[paramName] = *boolVal
+			}
+		}
+	}
+}
+
+func (oc *OperationCmd) addArrayRequestParams(requestParams map[string]interface{}) error {
+	for arrayProp, arrayVal := range oc.arrayFlags {
+		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
+		if oc.Cmd.Flags().Changed(arrayProp) {
+			paramName := getParamName(arrayProp)
+			for _, arrayItem := range *arrayVal {
+				if _, ok := requestParams[paramName]; !ok {
+					requestParams[paramName] = make([]interface{}, 0)
+				}
+				switch v := reflect.ValueOf(requestParams[paramName]); v.Kind() {
+				case reflect.Array, reflect.Slice:
+					requestParams[paramName] = append(requestParams[paramName].([]interface{}), arrayItem)
+				default:
+					return fmt.Errorf("array parameter flag %s has conflict with another non-array parameter flag", paramName)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func constructedNestedStringParams(params map[string]interface{}, paramKeys []string, stringVal *string) {
+	if len(paramKeys) == 0 {
+		return
+	}
+
+	field := paramKeys[0]
+
+	if len(paramKeys) == 1 {
+		params[field] = *stringVal
+		return
+	}
+
+	if _, ok := params[field]; !ok {
+		params[field] = make(map[string]interface{}, 0)
+	}
+
+	constructedNestedStringParams(params[field].(map[string]interface{}), paramKeys[1:], stringVal)
+}
+
+func constructedNestedIntParams(params map[string]interface{}, paramKeys []string, intVal *int) {
+	if len(paramKeys) == 0 {
+		return
+	}
+
+	field := paramKeys[0]
+
+	if len(paramKeys) == 1 {
+		params[field] = *intVal
+		return
+	}
+
+	if _, ok := params[field]; !ok {
+		params[field] = make(map[string]interface{}, 0)
+	}
+
+	constructedNestedIntParams(params[field].(map[string]interface{}), paramKeys[1:], intVal)
+}
+
+func constructedNestedBoolParams(params map[string]interface{}, paramKeys []string, boolVal *bool) {
+	if len(paramKeys) == 0 {
+		return
+	}
+
+	field := paramKeys[0]
+
+	if len(paramKeys) == 1 {
+		params[field] = *boolVal
+		return
+	}
+
+	if _, ok := params[field]; !ok {
+		params[field] = make(map[string]interface{}, 0)
+	}
+
+	constructedNestedBoolParams(params[field].(map[string]interface{}), paramKeys[1:], boolVal)
+}
+
+func getParamName(prop string) string {
+	return strings.ReplaceAll(prop, "-", "_")
 }

@@ -391,19 +391,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
 
-	if strings.HasPrefix(path, "/v2/") {
-		jsonPayload := ""
-		if strings.ToLower(data.Method) == "post" {
-			jsonPayload, err = fxt.createJSONPayload(data.Params)
-			if err != nil {
-				return make([]byte, 0), err
-			}
-		}
-
-		return req.MakeV2Request(ctx, fxt.APIKey, path, params, true, additionalConfigure, jsonPayload)
-	}
-
-	return req.MakeRequest(ctx, fxt.APIKey, path, params, true, additionalConfigure)
+	return req.MakeRequest(ctx, fxt.APIKey, path, params, make(map[string]interface{}), true, additionalConfigure)
 }
 
 func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
@@ -413,7 +401,6 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 		return &requestParams, err
 	}
 	requestParams.AppendData(parsed)
-
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
 	if apiVersion != "" {
@@ -421,23 +408,6 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 	}
 
 	return &requestParams, nil
-}
-
-func (fxt *Fixture) createJSONPayload(params interface{}) (string, error) {
-	if params == nil {
-		return "{}", nil
-	}
-	parsedJSON, err := parsers.ParseToApplicationJSON(params, fxt.Responses)
-	if err != nil {
-		return "", err
-	}
-
-	jsonParams, err := json.Marshal(parsedJSON)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonParams), nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
