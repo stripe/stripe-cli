@@ -94,6 +94,7 @@ var Events = map[string]string{
 	"payment_method.detached":                   "triggers/payment_method.detached.json",
 	"payment_method.updated":                    "triggers/payment_method.updated.json",
 	"payout.created":                            "triggers/payout.created.json",
+	"payout.failed":                            "triggers/payout.failed.json",
 	"payout.updated":                            "triggers/payout.updated.json",
 	"plan.created":                              "triggers/plan.created.json",
 	"plan.deleted":                              "triggers/plan.deleted.json",
