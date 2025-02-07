@@ -28,7 +28,7 @@ func GetPluginData(ctx context.Context, baseURL, apiVersion, apiKey string, prof
 		APIBaseURL:     baseURL,
 	}
 	// /v1/stripecli/get-plugin-url
-	resp, err := base.MakeRequest(ctx, apiKey, "/v1/stripecli/get-plugin-url", params, true, nil)
+	resp, err := base.MakeRequest(ctx, apiKey, "/v1/stripecli/get-plugin-url", params, make(map[string]interface{}), true, nil)
 	if err != nil {
 		return PluginData{}, err
 	}

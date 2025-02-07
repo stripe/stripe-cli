@@ -6,7 +6,7 @@ PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with c
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
-export GOLANGCI_LINT_VERSION := v1.48.0
+export GOLANGCI_LINT_VERSION := v1.63.4
 
 # Install all the build and lint dependencies
 setup:
@@ -173,5 +173,10 @@ protoc-gen-plugin:
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
 	@echo "Successfully compiled proto files for plugins"
 .PHONY: protoc-plugin
+
+resource:
+	./scripts/sync-openapi-v2.sh
+	@echo "✨ Successfully built Stripe CLI with latest API resources."
+.PHONY: resource
 
 .DEFAULT_GOAL := build

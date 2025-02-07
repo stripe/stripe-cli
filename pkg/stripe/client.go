@@ -18,6 +18,14 @@ import (
 // APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
 
+// v1 and v2 API interop constants
+const (
+	V1ContentType = "application/x-www-form-urlencoded"
+	V2ContentType = "application/json"
+	V1Request     = "v1"
+	V2Request     = "v2"
+)
+
 // Client is the API client used to sent requests to Stripe.
 type Client struct {
 	// The base URL (protocol + hostname) used for all requests sent by this
@@ -68,8 +76,13 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	// if path starts with v1
+	if IsV2Path(path) {
+		req.Header.Set("Content-Type", V2ContentType)
+	} else {
+		req.Header.Set("Content-Type", V1ContentType)
+	}
 	req.Header.Set("Accept-Encoding", "identity")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
@@ -160,4 +173,9 @@ func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *
 	return &http.Client{
 		Transport: httpTransport,
 	}
+}
+
+// IsV2Path checks if the path is for V1 API
+func IsV2Path(path string) bool {
+	return strings.HasPrefix(path, "/"+V2Request)
 }

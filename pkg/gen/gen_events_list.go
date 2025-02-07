@@ -14,11 +14,14 @@ import (
 )
 
 type TemplateData struct {
-	Events []string
+	Events     []string
+	ThinEvents []string
 }
 
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
+
+	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
 
 	pathTemplate = "../gen/events_list.go.tpl"
 
@@ -30,8 +33,6 @@ const (
 func main() {
 	// generate `events_list.go` from OpenAPI spec file
 	// code for this func from gen_resources_cmds.go
-
-	// load spec
 	templateData, err := getTemplateData()
 	if err != nil {
 		panic(err)
@@ -65,11 +66,24 @@ func main() {
 }
 
 func getTemplateData() (*TemplateData, error) {
-	data := &TemplateData{
-		Events: make([]string, 0),
+	eventsV1, err := getV1EventList()
+	if err != nil {
+		return nil, err
+	}
+	eventsV2, err := getV2EventList()
+	if err != nil {
+		return nil, err
 	}
 
-	// load API spec
+	data := &TemplateData{
+		Events:     eventsV1,
+		ThinEvents: eventsV2,
+	}
+
+	return data, nil
+}
+
+func getV1EventList() ([]string, error) {
 	api, err := spec.LoadSpec(pathStripeSpec)
 	if err != nil {
 		return nil, err
@@ -78,10 +92,30 @@ func getTemplateData() (*TemplateData, error) {
 	postRequest := api.Paths["/v1/webhook_endpoints"]["post"]
 	requestSchema := postRequest.RequestBody.Content["application/x-www-form-urlencoded"].Schema
 	events := requestSchema.Properties["enabled_events"].Items.Enum
+	eventList := make([]string, 0)
 	for _, e := range events {
-		data.Events = append(data.Events, e.(string))
+		eventList = append(eventList, e.(string))
+	}
+	return eventList, nil
+}
+
+func getV2EventList() ([]string, error) {
+	api, err := spec.LoadSpec(pathStripeSpecV2)
+	if err != nil {
+		return nil, err
 	}
 
-	return data, nil
+	eventList := make([]string, 0)
+	// Iterate over every resource schema
+	for _, schema := range api.Components.Schemas {
+		// Skip resources that don't have any operations
+		if schema.XStripeEvent == nil {
+			continue
+		}
 
+		eventType := schema.XStripeEvent.EventType
+		eventList = append(eventList, eventType)
+	}
+
+	return eventList, nil
 }

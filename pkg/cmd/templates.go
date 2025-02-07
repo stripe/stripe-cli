@@ -123,6 +123,7 @@ func getUsageTemplate() string {
   {{rpad "customers" 29}} Make requests (create, delete, list, etc) on customers
   {{rpad "payment_intents" 29}} Make requests (cancel, capture, confirm, etc) on payment intents
   {{rpad "..." 29}} %s
+  {{rpad "v2" 29}} %s
 
 %s{{range $index, $cmd := .Commands}}{{if (not (or (index $.Annotations $cmd.Name) $cmd.Hidden))}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
@@ -145,6 +146,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Resource commands:"),
 		ansi.Italic("To see more resource commands, run `stripe resources help`"),
+		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
