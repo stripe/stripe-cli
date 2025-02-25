@@ -12,7 +12,7 @@ SHA=$(git rev-parse HEAD)
 
 echo "⏳ Retrieving v2 openapi spec..."
 
-./scripts/api-services/apiv2 apispecdump --version="2025-01-27.acacia" --format OPENAPI_JSON --variant SDK --out-file spec3.v2.sdk.json
+./scripts/api-services/apiv2 apispecdump --version="2025-02-24.acacia" --format OPENAPI_JSON --variant SDK --out-file spec3.v2.sdk.json
 
 popd
 
