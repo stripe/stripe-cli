@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"go/format"
 	"os"
+	"sort"
 	"text/template"
 
 	"github.com/stripe/stripe-cli/pkg/spec"
@@ -116,6 +117,10 @@ func getV2EventList() ([]string, error) {
 		eventType := schema.XStripeEvent.EventType
 		eventList = append(eventList, eventType)
 	}
+
+	// Sort the eventList so that we have consistent
+	// ordering when testing in CI
+	sort.Strings(eventList)
 
 	return eventList, nil
 }
