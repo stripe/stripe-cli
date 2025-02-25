@@ -3403,6 +3403,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"effective_at":                          "integer",
 		"expires_at":                            "integer",
 		"name":                                  "string",
+		"priority":                              "integer",
 	}, &Config)
 	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "expire", "/v1/billing/credit_grants/{id}/expire", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "list", "/v1/billing/credit_grants", http.MethodGet, map[string]string{
@@ -3580,14 +3581,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.acss_debit.mandate_options.payment_schedule":             "string",
 		"payment_method_options.acss_debit.mandate_options.transaction_type":             "string",
 		"payment_method_options.acss_debit.setup_future_usage":                           "string",
+		"payment_method_options.acss_debit.target_date":                                  "string",
 		"payment_method_options.acss_debit.verification_method":                          "string",
 		"payment_method_options.affirm.setup_future_usage":                               "string",
 		"payment_method_options.afterpay_clearpay.setup_future_usage":                    "string",
 		"payment_method_options.alipay.setup_future_usage":                               "string",
 		"payment_method_options.amazon_pay.setup_future_usage":                           "string",
 		"payment_method_options.au_becs_debit.setup_future_usage":                        "string",
+		"payment_method_options.au_becs_debit.target_date":                               "string",
 		"payment_method_options.bacs_debit.mandate_options.reference_prefix":             "string",
 		"payment_method_options.bacs_debit.setup_future_usage":                           "string",
+		"payment_method_options.bacs_debit.target_date":                                  "string",
 		"payment_method_options.bancontact.setup_future_usage":                           "string",
 		"payment_method_options.boleto.expires_after_days":                               "integer",
 		"payment_method_options.boleto.setup_future_usage":                               "string",
@@ -3597,6 +3601,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.card.request_multicapture":                               "string",
 		"payment_method_options.card.request_overcapture":                                "string",
 		"payment_method_options.card.request_three_d_secure":                             "string",
+		"payment_method_options.card.restrictions.brands_blocked":                        "array",
 		"payment_method_options.card.setup_future_usage":                                 "string",
 		"payment_method_options.card.statement_descriptor_suffix_kana":                   "string",
 		"payment_method_options.card.statement_descriptor_suffix_kanji":                  "string",
@@ -3639,11 +3644,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.samsung_pay.capture_method":                              "string",
 		"payment_method_options.sepa_debit.mandate_options.reference_prefix":             "string",
 		"payment_method_options.sepa_debit.setup_future_usage":                           "string",
+		"payment_method_options.sepa_debit.target_date":                                  "string",
 		"payment_method_options.sofort.setup_future_usage":                               "string",
 		"payment_method_options.swish.reference":                                         "string",
 		"payment_method_options.us_bank_account.financial_connections.permissions":       "array",
 		"payment_method_options.us_bank_account.financial_connections.prefetch":          "array",
 		"payment_method_options.us_bank_account.setup_future_usage":                      "string",
+		"payment_method_options.us_bank_account.target_date":                             "string",
 		"payment_method_options.us_bank_account.verification_method":                     "string",
 		"payment_method_options.wechat_pay.app_id":                                       "string",
 		"payment_method_options.wechat_pay.client":                                       "string",
@@ -3694,7 +3701,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, &Config)
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, &Config)
-	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "update", "/v1/checkout/sessions/{session}", http.MethodPost, map[string]string{}, &Config)
+	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "update", "/v1/checkout/sessions/{session}", http.MethodPost, map[string]string{
+		"collected_information.shipping_details.address.city":        "string",
+		"collected_information.shipping_details.address.country":     "string",
+		"collected_information.shipping_details.address.line1":       "string",
+		"collected_information.shipping_details.address.line2":       "string",
+		"collected_information.shipping_details.address.postal_code": "string",
+		"collected_information.shipping_details.address.state":       "string",
+		"collected_information.shipping_details.name":                "string",
+	}, &Config)
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "cancel", "/v1/climate/orders/{order}/cancel", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "create", "/v1/climate/orders", http.MethodPost, map[string]string{
 		"amount":                  "integer",
