@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
+
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -17,7 +19,6 @@ func newFeedbackdCmd() *feedbackCmd {
 			Args:  validators.NoArgs,
 			Short: "Provide us with feedback on the CLI",
 			Run: func(cmd *cobra.Command, args []string) {
-
 				output := `
      _        _
  ___| |_ _ __(_)_ __   ___
