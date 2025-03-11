@@ -9,7 +9,7 @@
       "method": "post",
       "params": {
         "name": "myproduct",
-        "description": "(created by Stripe CLI)t"
+        "description": "(created by Stripe CLI)"
       }
     },
     {
