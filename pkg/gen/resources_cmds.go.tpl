@@ -11,9 +11,11 @@ import (
 )
 
 func addAllResourcesCmds(rootCmd *cobra.Command) {
-	{{ range $specVersion, $vData := .Versions }}{{ if eq $specVersion "v1" }}v1root := rootCmd{{ else }}
+	{{ range $specVersion, $vData := .Versions }}{{ if eq $specVersion "v1" }}v1root := rootCmd{{ else if eq $specVersion "v2-preview" }}
+	previewRoot := resource.NewNamespaceCmd(rootCmd, "preview").Cmd
+	previewV2Root := resource.NewNamespaceCmd(previewRoot, "v2").Cmd{{ else }}
 	{{ $specVersion }}root := resource.NewNamespaceCmd(rootCmd, "{{ $specVersion }}").Cmd{{ end }}
-	add{{ $specVersion | ToCamel }}ResourcesCmds({{ $specVersion }}root){{ end }}
+	add{{ $specVersion | ToCamel }}ResourcesCmds({{ if eq $specVersion "v2-preview" }}previewV2Root{{ else }}{{ $specVersion }}root{{ end }}){{ end }}
 }
 
 {{ range $specVersion, $vData := .Versions }}

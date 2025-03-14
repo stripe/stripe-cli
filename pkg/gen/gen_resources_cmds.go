@@ -23,8 +23,9 @@ import (
 type SpecVersion = string
 
 const (
-	V1Spec SpecVersion = "v1"
-	V2Spec SpecVersion = "v2"
+	V1Spec        SpecVersion = "v1"
+	V2Spec        SpecVersion = "v2"
+	V2PreviewSpec SpecVersion = "v2-preview"
 )
 
 type TemplateData struct {
@@ -60,6 +61,8 @@ const (
 
 	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
 
+	pathStripeSpecV2Preview = "../../api/openapi-spec/spec3.v2.sdk.preview.json"
+
 	pathTemplate = "../gen/resources_cmds.go.tpl"
 
 	pathName = "resources_cmds.go.tpl"
@@ -90,6 +93,11 @@ func main() {
 		panic(err)
 	}
 
+	v2PreviewSpec, err := spec.LoadSpec(pathStripeSpecV2Preview)
+	if err != nil {
+		panic(err)
+	}
+
 	// Generate the stripe version header
 	v2Version := v2Spec.Info.Version
 
@@ -97,8 +105,9 @@ func main() {
 
 	// Prepare the template data
 	specs := map[SpecVersion]*spec.Spec{
-		V1Spec: v1Spec,
-		V2Spec: v2Spec,
+		V1Spec:        v1Spec,
+		V2Spec:        v2Spec,
+		V2PreviewSpec: v2PreviewSpec,
 	}
 	templateData, err := getTemplateData(specs)
 	if err != nil {
@@ -184,7 +193,8 @@ func getTemplateData(apiSpecs map[SpecVersion]*spec.Spec) (*TemplateData, error)
 				continue
 			}
 
-			if schema.XStripeNotPublic {
+			// Skip non-public resources except for preview resources
+			if schema.XStripeNotPublic && version != V2PreviewSpec {
 				continue
 			}
 
@@ -394,7 +404,7 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 
 func getMediaType(specVersion SpecVersion) string {
 	mediaType := "application/x-www-form-urlencoded"
-	if specVersion == V2Spec {
+	if specVersion == V2Spec || specVersion == V2PreviewSpec {
 		mediaType = "application/json"
 	}
 
