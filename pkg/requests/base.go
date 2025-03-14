@@ -288,7 +288,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	body, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
-		requestError := compileRequestError(body, resp.StatusCode, stripe.IsV2Path(path))
+		requestError := compileRequestError(body, resp.StatusCode)
 		return []byte{}, requestError
 	}
 
@@ -304,7 +304,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	return body, nil
 }
 
-func compileRequestError(body []byte, statusCode int, isV2 bool) RequestError {
+func compileRequestError(body []byte, statusCode int) RequestError {
 	type requestErrorContent struct {
 		Code string `json:"code"`
 		Type string `json:"type"`
@@ -318,10 +318,6 @@ func compileRequestError(body []byte, statusCode int, isV2 bool) RequestError {
 	json.Unmarshal(body, &errorBody)
 
 	msg := "Request failed"
-	if statusCode == 401 && isV2 {
-		msg = "V2 commands must be run with a secret API key (starts with 'sk_')"
-	}
-
 	return RequestError{
 		msg:        msg,
 		StatusCode: statusCode,
