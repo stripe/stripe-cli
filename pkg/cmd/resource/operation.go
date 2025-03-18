@@ -321,14 +321,18 @@ func (oc *OperationCmd) addArrayRequestParams(requestParams map[string]interface
 		if oc.Cmd.Flags().Changed(arrayProp) {
 			paramName := getParamName(arrayProp)
 			for _, arrayItem := range *arrayVal {
-				if _, ok := requestParams[paramName]; !ok {
-					requestParams[paramName] = make([]interface{}, 0)
-				}
-				switch v := reflect.ValueOf(requestParams[paramName]); v.Kind() {
-				case reflect.Array, reflect.Slice:
-					requestParams[paramName] = append(requestParams[paramName].([]interface{}), arrayItem)
-				default:
-					return fmt.Errorf("array parameter flag %s has conflict with another non-array parameter flag", paramName)
+				if strings.Contains(paramName, ".") {
+					constructedNestedArrayParams(requestParams, strings.Split(paramName, "."), arrayItem)
+				} else {
+					if _, ok := requestParams[paramName]; !ok {
+						requestParams[paramName] = make([]interface{}, 0)
+					}
+					switch v := reflect.ValueOf(requestParams[paramName]); v.Kind() {
+					case reflect.Array, reflect.Slice:
+						requestParams[paramName] = append(requestParams[paramName].([]interface{}), arrayItem)
+					default:
+						return fmt.Errorf("array parameter flag %s has conflict with another non-array parameter flag", paramName)
+					}
 				}
 			}
 		}
@@ -391,6 +395,28 @@ func constructedNestedBoolParams(params map[string]interface{}, paramKeys []stri
 	}
 
 	constructedNestedBoolParams(params[field].(map[string]interface{}), paramKeys[1:], boolVal)
+}
+
+func constructedNestedArrayParams(params map[string]interface{}, paramKeys []string, arrayVal string) {
+	if len(paramKeys) == 0 {
+		return
+	}
+
+	field := paramKeys[0]
+
+	if len(paramKeys) == 1 {
+		if _, ok := params[field]; !ok {
+			params[field] = make([]interface{}, 0)
+		}
+		params[field] = append(params[field].([]interface{}), arrayVal)
+		return
+	}
+
+	if _, ok := params[field]; !ok {
+		params[field] = make(map[string]interface{}, 0)
+	}
+
+	constructedNestedArrayParams(params[field].(map[string]interface{}), paramKeys[1:], arrayVal)
 }
 
 func getParamName(prop string) string {
