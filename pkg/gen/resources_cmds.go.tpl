@@ -32,9 +32,9 @@ func add{{ $specVersion | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
 	// Operation commands{{ range $nsName, $nsData := $vData.Namespaces }}{{ range $resName, $resData := $nsData.Resources }}{{ range $opName, $opData := $resData.Operations }}
 	resource.NewOperationCmd(r{{ (printf "%s_%s" $nsName $resName) | ToCamel }}Cmd.Cmd, "{{ $opName }}", "{{ $opData.Path }}", http.Method{{ $opData.HTTPVerb | ToCamel }}, map[string]string{ {{range $prop, $propType := $opData.PropFlags }}
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
-	}, &Config){{ end }}{{ range $subResName, $subResData := $resData.SubResources }}{{range $opName, $opData := $subResData.Operations }}
+	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ range $subResName, $subResData := $resData.SubResources }}{{range $opName, $opData := $subResData.Operations }}
 	resource.NewOperationCmd(r{{ (printf "%s_%s_%s" $nsName $resName $subResName) | ToCamel }}Cmd.Cmd, "{{ $opName }}", "{{ $opData.Path }}", http.Method{{ $opData.HTTPVerb | ToCamel }}, map[string]string{ {{range $prop, $propType := $opData.PropFlags }}
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
-	}, &Config){{ end }}{{ end }}{{ end }}{{ end }}
+	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ end }}{{ end }}{{ end }}
 }
 {{ end }}
