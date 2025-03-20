@@ -53,7 +53,8 @@ type OperationData struct {
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
 type StripeVersionTemplateData struct {
-	StripeVersion string
+	StripeVersion        string
+	StripePreviewVersion string
 }
 
 const (
@@ -100,8 +101,9 @@ func main() {
 
 	// Generate the stripe version header
 	v2Version := v2Spec.Info.Version
+	v2PreviewVersion := v2PreviewSpec.Info.Version
 
-	generateStripeVersionHeader(v2Version)
+	generateStripeVersionHeader(v2Version, v2PreviewVersion)
 
 	// Prepare the template data
 	specs := map[SpecVersion]*spec.Spec{
@@ -147,10 +149,11 @@ func main() {
 	}
 }
 
-func generateStripeVersionHeader(version string) {
+func generateStripeVersionHeader(version string, previewVersion string) {
 	// This generates `stripe_version_header.go`
 	stripeVersionTemplateData := &StripeVersionTemplateData{
-		StripeVersion: version,
+		StripeVersion:        version,
+		StripePreviewVersion: previewVersion,
 	}
 
 	tmpl := template.Must(template.
