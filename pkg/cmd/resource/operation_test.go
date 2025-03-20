@@ -18,7 +18,7 @@ import (
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{})
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{}, false)
 
 	require.Equal(t, "foo", oc.Name)
 	require.Equal(t, "/v1/bars/{id}", oc.Path)
@@ -65,7 +65,7 @@ func TestRunOperationCmd(t *testing.T) {
 		"param_array":            "array",
 	}, &config.Config{
 		Profile: profile,
-	})
+	}, false)
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -108,7 +108,7 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 		"param1": "string",
 	}, &config.Config{
 		Profile: profile,
-	})
+	}, false)
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -128,7 +128,7 @@ func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
 		"param1": "string",
 		"param2": "string",
-	}, &config.Config{})
+	}, &config.Config{}, false)
 
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
