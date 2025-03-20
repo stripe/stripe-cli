@@ -35,6 +35,8 @@ type OperationCmd struct {
 	Path      string
 	URLParams []string
 
+	IsPreviewCommand bool
+
 	stringFlags  map[string]*string
 	arrayFlags   map[string]*[]string
 	integerFlags map[string]*int
@@ -127,18 +129,20 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 
 // NewOperationCmd returns a new OperationCmd.
 func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, cfg *config.Config) *OperationCmd {
+	propFlags map[string]string, cfg *config.Config, isPreview bool) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
-			Method:  httpVerb,
-			Profile: &cfg.Profile,
+			Method:           httpVerb,
+			Profile:          &cfg.Profile,
+			IsPreviewCommand: isPreview,
 		},
-		Name:      name,
-		HTTPVerb:  httpVerb,
-		Path:      path,
-		URLParams: urlParams,
+		Name:             name,
+		HTTPVerb:         httpVerb,
+		Path:             path,
+		URLParams:        urlParams,
+		IsPreviewCommand: isPreview,
 
 		arrayFlags:   make(map[string]*[]string),
 		stringFlags:  make(map[string]*string),
