@@ -93,6 +93,7 @@ var validEvents = map[string]bool{
 	"invoice.finalized":                                        true,
 	"invoice.marked_uncollectible":                             true,
 	"invoice.overdue":                                          true,
+	"invoice.overpaid":                                         true,
 	"invoice.paid":                                             true,
 	"invoice.payment_action_required":                          true,
 	"invoice.payment_failed":                                   true,
