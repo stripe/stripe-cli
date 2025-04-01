@@ -49,6 +49,7 @@ type OperationData struct {
 	Path      string
 	HTTPVerb  string
 	PropFlags map[string]string
+	EnumFlags map[string][]spec.StripeEnumValue
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
@@ -319,19 +320,21 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 			return nil
 		}
 
-		properties := getMethodProperties(specVersion, specOp, op)
+		properties, enums := getMethodProperties(specVersion, specOp, op)
 
 		if hasSubResources {
 			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
+				EnumFlags: enums,
 			}
 		} else {
 			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
+				EnumFlags: enums,
 			}
 		}
 	}
@@ -339,13 +342,14 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 	return nil
 }
 
-func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spec.StripeOperation) map[string]string {
+func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spec.StripeOperation) (map[string]string, map[string][]spec.StripeEnumValue) {
 	httpString := string(op.Operation)
 	properties := make(map[string]string)
+	enumValues := make(map[string][]spec.StripeEnumValue)
 
 	if strings.ToUpper(httpString) == http.MethodPost {
 		if specOp.RequestBody == nil {
-			return properties
+			return properties, enumValues
 		}
 
 		mediaType := getMediaType(specVersion)
@@ -367,7 +371,6 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 					for prop, propType := range denormalizedProps {
 						properties[prop] = propType
 					}
-
 				} else {
 					scalarType := gen.GetType(schema)
 
@@ -376,6 +379,11 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 					}
 
 					properties[propName] = *scalarType
+
+					// Save enum values if they exist
+					if len(schema.XStripeEnum) > 0 {
+						enumValues[propName] = schema.XStripeEnum
+					}
 				}
 			}
 		}
@@ -402,7 +410,7 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 		}
 	}
 
-	return properties
+	return properties, enumValues
 }
 
 func getMediaType(specVersion SpecVersion) string {

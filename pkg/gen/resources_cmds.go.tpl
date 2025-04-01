@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
 func addAllResourcesCmds(rootCmd *cobra.Command) {
@@ -32,9 +33,13 @@ func add{{ $specVersion | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
 	// Operation commands{{ range $nsName, $nsData := $vData.Namespaces }}{{ range $resName, $resData := $nsData.Resources }}{{ range $opName, $opData := $resData.Operations }}
 	resource.NewOperationCmd(r{{ (printf "%s_%s" $nsName $resName) | ToCamel }}Cmd.Cmd, "{{ $opName }}", "{{ $opData.Path }}", http.Method{{ $opData.HTTPVerb | ToCamel }}, map[string]string{ {{range $prop, $propType := $opData.PropFlags }}
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
+	}, map[string][]spec.StripeEnumValue{ {{range $prop, $enumValues := $opData.EnumFlags }}
+		"{{ $prop }}": {{ printf "%#v" $enumValues }},{{ end }}
 	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ range $subResName, $subResData := $resData.SubResources }}{{range $opName, $opData := $subResData.Operations }}
 	resource.NewOperationCmd(r{{ (printf "%s_%s_%s" $nsName $resName $subResName) | ToCamel }}Cmd.Cmd, "{{ $opName }}", "{{ $opData.Path }}", http.Method{{ $opData.HTTPVerb | ToCamel }}, map[string]string{ {{range $prop, $propType := $opData.PropFlags }}
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
+	}, map[string][]spec.StripeEnumValue{ {{range $prop, $enumValues := $opData.EnumFlags }}
+		"{{ $prop }}": {{ printf "%#v" $enumValues }},{{ end }}
 	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ end }}{{ end }}{{ end }}
 }
 {{ end }}

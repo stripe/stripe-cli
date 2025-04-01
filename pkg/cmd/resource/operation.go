@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -129,7 +130,7 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 
 // NewOperationCmd returns a new OperationCmd.
 func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, cfg *config.Config, isPreview bool) *OperationCmd {
+	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 	operationCmd := &OperationCmd{
@@ -161,15 +162,28 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 
+		// Create flag description
+		var description string
+		if enums, hasEnum := enumFlags[prop]; hasEnum {
+			// Create a description that includes enum values
+			enumValues := []string{}
+			for _, enum := range enums {
+				enumValues = append(enumValues, fmt.Sprintf("%s (%s)", enum.Value, enum.Description))
+			}
+			description = fmt.Sprintf("Possible values: %s", strings.Join(enumValues, ", "))
+		} else {
+			description = "" // Default empty description
+		}
+
 		switch propType {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, description)
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, description)
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, description)
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})

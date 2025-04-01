@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
 // EventsResendCmd represents the event resend API operation command. This
@@ -31,7 +32,7 @@ func NewEventsResendCmd(parentCmd *cobra.Command, cfg *config.Config) *EventsRes
 		opCmd: NewOperationCmd(parentCmd, "resend", "/v1/events/{event}/retry", http.MethodPost, map[string]string{
 			"account":          "string",
 			"webhook_endpoint": "string",
-		}, cfg, false),
+		}, map[string][]spec.StripeEnumValue{}, cfg, false),
 	}
 
 	eventsResendCmd.opCmd.Cmd.RunE = eventsResendCmd.runEventsResendCmd

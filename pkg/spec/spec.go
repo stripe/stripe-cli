@@ -77,6 +77,12 @@ type StripeError struct {
 	HttpStatusCode int    `json:"httpStatusCode"`
 }
 
+// StripeEnumValue represents a single value in a Stripe enum
+type StripeEnumValue struct {
+	Description string `json:"description"`
+	Value       string `json:"value"`
+}
+
 // This is a list of fields that either we handle properly or we're confident
 // it's safe to ignore. If a field not in this list appears in the OpenAPI spec,
 // then we'll get an error so we remember to update stripe-mock to support it.
@@ -104,6 +110,7 @@ var supportedSchemaFields = []string{
 	"x-stripeEvent",
 	"x-stripeNotPublic",
 	"x-stripeError",
+	"x-stripeEnum",
 
 	// This is currently being used to store additional metadata for our SDKs. It's
 	// passed through our Spec and should be ignored
@@ -151,6 +158,7 @@ type Schema struct {
 	XStripeEvent        *StripeEvent        `json:"x-stripeEvent,omitempty"`
 	XStripeNotPublic    bool                `json:"x-stripeNotPublic,omitempty"`
 	XStripeError        *StripeError        `json:"x-stripeError"`
+	XStripeEnum         []StripeEnumValue   `json:"x-stripeEnum,omitempty"`
 }
 
 func (s *Schema) String() string {
