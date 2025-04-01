@@ -8,7 +8,6 @@ linters:
     - depguard
     - dogsled
     - dupl
-    - exportloopref
     - gocritic
     - gocyclo
     - gofmt

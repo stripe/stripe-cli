@@ -312,7 +312,7 @@ func formatOutput(format string, eventPayload string) string {
 		outputJSON, _ := json.Marshal(event)
 		return fmt.Sprintln(ansi.ColorizeJSON(string(outputJSON), false, os.Stdout))
 	default:
-		return fmt.Sprintf("%s", "Unrecognized output format %s\n"+format)
+		return fmt.Sprintf("Unrecognized output format %s\n", format)
 	}
 }
 

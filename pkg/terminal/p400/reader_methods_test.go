@@ -14,14 +14,14 @@ func TestSetParentTraceID(t *testing.T) {
 }
 
 // Disabling this test, we're prepparing to deprecate and remove the command
-//func TestGeneratePosDeviceID(t *testing.T) {
-//	var seed int64 = 12345
+// func TestGeneratePosDeviceID(t *testing.T) {
+// 	var seed int64 = 12345
 //
-//	expected := "pos-vehnedrwfja"
-//	posid := GeneratePOSDeviceID(seed)
+// 	expected := "pos-vehnedrwfja"
+// 	posid := GeneratePOSDeviceID(seed)
 //
-//	require.Equal(t, expected, posid, "they should be equal")
-//}
+// 	require.Equal(t, expected, posid, "they should be equal")
+// }
 
 func TestSetTransactionContext(t *testing.T) {
 	tsCtx := TerminalSessionContext{
