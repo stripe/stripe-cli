@@ -611,13 +611,14 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 }
 
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
-	if params.version != "" {
+	switch {
+	case params.version != "":
 		// User explicitly provided a version, use it
 		request.Header.Set("Stripe-Version", params.version)
-	} else if rb.IsPreviewCommand {
+	case rb.IsPreviewCommand:
 		// If this is a preview command, use the preview version
 		request.Header.Set("Stripe-Version", StripePreviewVersionHeaderValue)
-	} else if stripe.IsV2Path(path) {
+	case stripe.IsV2Path(path):
 		// Otherwise, if it's a v2 path, use the normal v2 version
 		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
 	}
