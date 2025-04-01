@@ -32,7 +32,7 @@ We'd love to know what you think of the CLI:
 * Report bugs or issues on GitHub: https://github.com/stripe/stripe-cli/issues
 				`
 
-				fmt.Println(fmt.Sprintf(output))
+				fmt.Println(fmt.Sprintf("%s", output))
 			},
 		},
 	}
