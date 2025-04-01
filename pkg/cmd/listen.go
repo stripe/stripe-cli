@@ -247,7 +247,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 					color.Red("ERROR"),
 					ee.Error,
 				)
-				log.Errorf(errStr)
+				log.Errorf("%s", errStr)
 
 				// Don't exit program
 				return nil

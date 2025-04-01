@@ -338,7 +338,7 @@ func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (strin
 				errorStrings = append(errorStrings, suggestions)
 			}
 
-			return "", fmt.Errorf(strings.Join(errorStrings, "\n"))
+			return "", fmt.Errorf("%s", strings.Join(errorStrings, "\n"))
 		}
 
 		result := queryRespMap[name].Get(query.Query)
