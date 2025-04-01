@@ -5217,6 +5217,7 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":   "integer",
 		"page":    "string",
 	}, &Config)
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "retrieve", "/v2/core/event_destinations/{id}", http.MethodGet, map[string]string{
 		"include": "array",
 	}, &Config)
@@ -5232,6 +5233,5 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"object_id": "string",
 		"page":      "string",
 	}, &Config)
-	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, &Config)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, &Config)
 }
