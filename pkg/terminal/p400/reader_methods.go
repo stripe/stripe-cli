@@ -201,7 +201,7 @@ func GetOSString() string {
 // GeneratePOSDeviceID creates a pseudorandom alpha string id for a point-of-sale quasi-unique identifier
 // mostly used for TransactionContext related tracking / tracing and is semi-persistent to a machine but not determinant
 func GeneratePOSDeviceID(seed int64) string {
-	rand.Seed(seed)
+	rand.New(rand.NewSource(seed))
 
 	idLength := 11
 	bytes := make([]byte, idLength)

@@ -190,15 +190,13 @@ func (s *SampleManager) Initialize(app string) error {
 	} else {
 		err := s.Git.Pull(appPath)
 		if err != nil {
-			if err != nil {
-				switch e := err.Error(); e {
-				case git.NoErrAlreadyUpToDate.Error():
-					// Repo is already up to date. This isn't a program
-					// error to continue as normal
-					break
-				default:
-					return err
-				}
+			switch e := err.Error(); e {
+			case git.NoErrAlreadyUpToDate.Error():
+				// Repo is already up to date. This isn't a program
+				// error to continue as normal
+				break
+			default:
+				return err
 			}
 		}
 	}
@@ -452,7 +450,7 @@ func (s *SampleManager) GetSampleConfig(sampleName string, forceRefresh bool) (*
 	if _, ok := samplesList[sampleName]; !ok {
 		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
 To see supported samples, run 'stripe samples list'`, sampleName)
-		return nil, fmt.Errorf(errorMessage)
+		return nil, fmt.Errorf("%s", errorMessage)
 	}
 
 	err = s.Initialize(sampleName)
