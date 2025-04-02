@@ -106,6 +106,8 @@ type Base struct {
 
 	Livemode bool
 
+	IsPreviewCommand bool
+
 	autoConfirm bool
 	showHeaders bool
 }
@@ -288,7 +290,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	body, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
-		requestError := compileRequestError(body, resp.StatusCode, stripe.IsV2Path(path))
+		requestError := compileRequestError(body, resp.StatusCode)
 		return []byte{}, requestError
 	}
 
@@ -304,7 +306,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	return body, nil
 }
 
-func compileRequestError(body []byte, statusCode int, isV2 bool) RequestError {
+func compileRequestError(body []byte, statusCode int) RequestError {
 	type requestErrorContent struct {
 		Code string `json:"code"`
 		Type string `json:"type"`
@@ -318,10 +320,6 @@ func compileRequestError(body []byte, statusCode int, isV2 bool) RequestError {
 	json.Unmarshal(body, &errorBody)
 
 	msg := "Request failed"
-	if statusCode == 401 && isV2 {
-		msg = "V2 commands must be run with a secret API key (starts with 'sk_')"
-	}
-
 	return RequestError{
 		msg:        msg,
 		StatusCode: statusCode,
@@ -613,9 +611,15 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 }
 
 func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
-	if params.version != "" {
+	switch {
+	case params.version != "":
+		// User explicitly provided a version, use it
 		request.Header.Set("Stripe-Version", params.version)
-	} else if stripe.IsV2Path(path) {
+	case rb.IsPreviewCommand:
+		// If this is a preview command, use the preview version
+		request.Header.Set("Stripe-Version", StripePreviewVersionHeaderValue)
+	case stripe.IsV2Path(path):
+		// Otherwise, if it's a v2 path, use the normal v2 version
 		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
 	}
 }

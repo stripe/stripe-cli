@@ -23,8 +23,9 @@ import (
 type SpecVersion = string
 
 const (
-	V1Spec SpecVersion = "v1"
-	V2Spec SpecVersion = "v2"
+	V1Spec        SpecVersion = "v1"
+	V2Spec        SpecVersion = "v2"
+	V2PreviewSpec SpecVersion = "v2-preview"
 )
 
 type TemplateData struct {
@@ -48,17 +49,21 @@ type OperationData struct {
 	Path      string
 	HTTPVerb  string
 	PropFlags map[string]string
+	EnumFlags map[string][]spec.StripeEnumValue
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
 type StripeVersionTemplateData struct {
-	StripeVersion string
+	StripeVersion        string
+	StripePreviewVersion string
 }
 
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
 
 	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
+
+	pathStripeSpecV2Preview = "../../api/openapi-spec/spec3.v2.sdk.preview.json"
 
 	pathTemplate = "../gen/resources_cmds.go.tpl"
 
@@ -90,15 +95,22 @@ func main() {
 		panic(err)
 	}
 
+	v2PreviewSpec, err := spec.LoadSpec(pathStripeSpecV2Preview)
+	if err != nil {
+		panic(err)
+	}
+
 	// Generate the stripe version header
 	v2Version := v2Spec.Info.Version
+	v2PreviewVersion := v2PreviewSpec.Info.Version
 
-	generateStripeVersionHeader(v2Version)
+	generateStripeVersionHeader(v2Version, v2PreviewVersion)
 
 	// Prepare the template data
 	specs := map[SpecVersion]*spec.Spec{
-		V1Spec: v1Spec,
-		V2Spec: v2Spec,
+		V1Spec:        v1Spec,
+		V2Spec:        v2Spec,
+		V2PreviewSpec: v2PreviewSpec,
 	}
 	templateData, err := getTemplateData(specs)
 	if err != nil {
@@ -138,10 +150,11 @@ func main() {
 	}
 }
 
-func generateStripeVersionHeader(version string) {
+func generateStripeVersionHeader(version string, previewVersion string) {
 	// This generates `stripe_version_header.go`
 	stripeVersionTemplateData := &StripeVersionTemplateData{
-		StripeVersion: version,
+		StripeVersion:        version,
+		StripePreviewVersion: previewVersion,
 	}
 
 	tmpl := template.Must(template.
@@ -184,7 +197,8 @@ func getTemplateData(apiSpecs map[SpecVersion]*spec.Spec) (*TemplateData, error)
 				continue
 			}
 
-			if schema.XStripeNotPublic {
+			// Skip non-public resources except for preview resources
+			if schema.XStripeNotPublic && version != V2PreviewSpec {
 				continue
 			}
 
@@ -306,19 +320,21 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 			return nil
 		}
 
-		properties := getMethodProperties(specVersion, specOp, op)
+		properties, enums := getMethodProperties(specVersion, specOp, op)
 
 		if hasSubResources {
 			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
+				EnumFlags: enums,
 			}
 		} else {
 			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
+				EnumFlags: enums,
 			}
 		}
 	}
@@ -326,13 +342,14 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 	return nil
 }
 
-func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spec.StripeOperation) map[string]string {
+func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spec.StripeOperation) (map[string]string, map[string][]spec.StripeEnumValue) {
 	httpString := string(op.Operation)
 	properties := make(map[string]string)
+	enumValues := make(map[string][]spec.StripeEnumValue)
 
 	if strings.ToUpper(httpString) == http.MethodPost {
 		if specOp.RequestBody == nil {
-			return properties
+			return properties, enumValues
 		}
 
 		mediaType := getMediaType(specVersion)
@@ -354,7 +371,6 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 					for prop, propType := range denormalizedProps {
 						properties[prop] = propType
 					}
-
 				} else {
 					scalarType := gen.GetType(schema)
 
@@ -363,6 +379,11 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 					}
 
 					properties[propName] = *scalarType
+
+					// Save enum values if they exist
+					if len(schema.XStripeEnum) > 0 {
+						enumValues[propName] = schema.XStripeEnum
+					}
 				}
 			}
 		}
@@ -389,12 +410,12 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 		}
 	}
 
-	return properties
+	return properties, enumValues
 }
 
 func getMediaType(specVersion SpecVersion) string {
 	mediaType := "application/x-www-form-urlencoded"
-	if specVersion == V2Spec {
+	if specVersion == V2Spec || specVersion == V2PreviewSpec {
 		mediaType = "application/json"
 	}
 

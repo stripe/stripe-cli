@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
@@ -65,7 +66,7 @@ func TestSetCobraCommandContext(t *testing.T) {
 func TestSetCobraCommandContext_SetsGeneratedResourceForGeneratedCommands(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{})
+	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false)
 	tel := stripe.NewEventMetadata()
 	tel.SetCobraCommandContext(oc.Cmd)
 	require.True(t, tel.GeneratedResource)
