@@ -44,7 +44,6 @@ device_name = 'st-testing'
 display_name = 'test-account-display-name'
 test_mode_api_key = 'sk_test_123'
 test_mode_key_expires_at = '` + expiresAt + `'
-
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))
@@ -93,7 +92,6 @@ device_name = 'st-testing'
 display_name = 'test-account-display-name'
 test_mode_api_key = 'sk_test_123'
 test_mode_key_expires_at = '` + expiresAt + `'
-
 `
 
 	require.EqualValues(t, expectedConfig, string(configValues))
