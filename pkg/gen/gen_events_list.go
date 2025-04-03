@@ -133,7 +133,6 @@ func getV2EventList() ([]string, error) {
 	return eventList, nil
 }
 
-// New function to get preview events
 func getPreviewEventList() ([]string, error) {
 	api, err := spec.LoadSpec(pathStripeSpecV2Preview)
 	if err != nil {
