@@ -15,14 +15,17 @@ import (
 )
 
 type TemplateData struct {
-	Events     []string
-	ThinEvents []string
+	Events        []string
+	ThinEvents    []string
+	PreviewEvents []string
 }
 
 const (
 	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
 
 	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
+
+	pathStripeSpecV2Preview = "../../api/openapi-spec/spec3.v2.sdk.preview.json"
 
 	pathTemplate = "../gen/events_list.go.tpl"
 
@@ -75,10 +78,15 @@ func getTemplateData() (*TemplateData, error) {
 	if err != nil {
 		return nil, err
 	}
+	previewEvents, err := getPreviewEventList()
+	if err != nil {
+		return nil, err
+	}
 
 	data := &TemplateData{
-		Events:     eventsV1,
-		ThinEvents: eventsV2,
+		Events:        eventsV1,
+		ThinEvents:    eventsV2,
+		PreviewEvents: previewEvents,
 	}
 
 	return data, nil
@@ -110,6 +118,31 @@ func getV2EventList() ([]string, error) {
 	// Iterate over every resource schema
 	for _, schema := range api.Components.Schemas {
 		// Skip resources that don't have any operations
+		if schema.XStripeEvent == nil {
+			continue
+		}
+
+		eventType := schema.XStripeEvent.EventType
+		eventList = append(eventList, eventType)
+	}
+
+	// Sort the eventList so that we have consistent
+	// ordering when testing in CI
+	sort.Strings(eventList)
+
+	return eventList, nil
+}
+
+func getPreviewEventList() ([]string, error) {
+	api, err := spec.LoadSpec(pathStripeSpecV2Preview)
+	if err != nil {
+		return nil, err
+	}
+
+	eventList := make([]string, 0)
+	// Iterate over every resource schema
+	for _, schema := range api.Components.Schemas {
+		// Skip resources that don't have any events
 		if schema.XStripeEvent == nil {
 			continue
 		}
