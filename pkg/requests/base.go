@@ -36,6 +36,7 @@ type RequestParameters struct {
 	limit         string
 	version       string
 	stripeAccount string
+	stripeContext string
 }
 
 // AppendData appends data to the request parameters.
@@ -56,6 +57,11 @@ func (r *RequestParameters) SetIdempotency(value string) {
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// SetStripeContext sets the value for the `Stripe-Context` header.
+func (r *RequestParameters) SetStripeContext(value string) {
+	r.stripeContext = value
 }
 
 // SetVersion sets the value for the `Stripe-Version` header.
@@ -162,6 +168,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
@@ -260,6 +267,7 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
+		rb.setStripeContextHeader(req, params)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
@@ -627,6 +635,12 @@ func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameter
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
 	if params.stripeAccount != "" {
 		request.Header.Set("Stripe-Account", params.stripeAccount)
+	}
+}
+
+func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeContext != "" {
+		request.Header.Set("Stripe-Context", params.stripeContext)
 	}
 }
 
