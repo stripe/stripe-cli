@@ -275,16 +275,6 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			}
 		}
 
-		if rb.Profile != nil {
-			experimentalFields := rb.Profile.GetExperimentalFields()
-			if experimentalFields.StripeHeaders != "" {
-				err := rb.experimentalRequestSigning(req, experimentalFields)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
 		return nil
 	}
 
@@ -697,38 +687,6 @@ func normalizePath(path string) string {
 	}
 
 	return "/v1/" + path
-}
-
-func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields config.ExperimentalFields) error {
-	privKey := experimentalFields.PrivateKey
-
-	keyToValues := strings.Split(strings.Trim(experimentalFields.StripeHeaders, ";"), ";")
-	for _, pair := range keyToValues {
-		header := strings.Split(pair, "=")
-		if len(header) != 2 {
-			continue
-		}
-		headerName := header[0]
-		headerValue := header[1]
-		if headerName == stripeContextHeaderName {
-			displayMessage := fmt.Sprintf("Operating in %s %s\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")..."))
-			fmt.Print(ansi.Color(os.Stdout).Gray(10, displayMessage))
-		} else if headerName == authorizationHeaderName && privKey == "" {
-			creds, err := rb.Profile.GetSessionCredentials()
-			if err != nil {
-				return err
-			}
-			headerValue += creds.UAT
-			privKey = creds.PrivateKey
-		}
-		req.Header.Set(headerName, headerValue)
-	}
-	if len(keyToValues) > 0 {
-		// Must sign the request AFTER all headers have been set
-		SignRequest(req, privKey)
-	}
-
-	return nil
 }
 
 func toString(value interface{}) (string, error) {
