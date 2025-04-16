@@ -36,6 +36,7 @@ type RequestParameters struct {
 	limit         string
 	version       string
 	stripeAccount string
+	stripeContext string
 }
 
 // AppendData appends data to the request parameters.
@@ -56,6 +57,11 @@ func (r *RequestParameters) SetIdempotency(value string) {
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// SetStripeContext sets the value for the `Stripe-Context` header.
+func (r *RequestParameters) SetStripeContext(value string) {
+	r.stripeContext = value
 }
 
 // SetVersion sets the value for the `Stripe-Version` header.
@@ -162,6 +168,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
@@ -260,20 +267,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
+		rb.setStripeContextHeader(req, params)
 		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
 				return err
-			}
-		}
-
-		if rb.Profile != nil {
-			experimentalFields := rb.Profile.GetExperimentalFields()
-			if experimentalFields.StripeHeaders != "" {
-				err := rb.experimentalRequestSigning(req, experimentalFields)
-				if err != nil {
-					return err
-				}
 			}
 		}
 
@@ -630,6 +628,12 @@ func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestPar
 	}
 }
 
+func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeContext != "" {
+		request.Header.Set("Stripe-Context", params.stripeContext)
+	}
+}
+
 func (rb *Base) confirmCommand() (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	return rb.getUserConfirmation(reader)
@@ -683,38 +687,6 @@ func normalizePath(path string) string {
 	}
 
 	return "/v1/" + path
-}
-
-func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields config.ExperimentalFields) error {
-	privKey := experimentalFields.PrivateKey
-
-	keyToValues := strings.Split(strings.Trim(experimentalFields.StripeHeaders, ";"), ";")
-	for _, pair := range keyToValues {
-		header := strings.Split(pair, "=")
-		if len(header) != 2 {
-			continue
-		}
-		headerName := header[0]
-		headerValue := header[1]
-		if headerName == stripeContextHeaderName {
-			displayMessage := fmt.Sprintf("Operating in %s %s\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")..."))
-			fmt.Print(ansi.Color(os.Stdout).Gray(10, displayMessage))
-		} else if headerName == authorizationHeaderName && privKey == "" {
-			creds, err := rb.Profile.GetSessionCredentials()
-			if err != nil {
-				return err
-			}
-			headerValue += creds.UAT
-			privKey = creds.PrivateKey
-		}
-		req.Header.Set(headerName, headerValue)
-	}
-	if len(keyToValues) > 0 {
-		// Must sign the request AFTER all headers have been set
-		SignRequest(req, privKey)
-	}
-
-	return nil
 }
 
 func toString(value interface{}) (string, error) {

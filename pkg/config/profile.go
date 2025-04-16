@@ -486,41 +486,6 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return nil
 }
 
-// ExperimentalFields are currently only used for request signing
-type ExperimentalFields struct {
-	ContextualName string
-	PrivateKey     string
-	StripeHeaders  string
-}
-
-const (
-	experimentalPrefix         = "experimental"
-	experimentalStripeHeaders  = experimentalPrefix + "." + "stripe_headers"
-	experimentalContextualName = experimentalPrefix + "." + "contextual_name"
-	experimentalPrivateKey     = experimentalPrefix + "." + "private_key"
-)
-
-// GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
-// If the API key is being overridden, via the --api-key flag or STRIPE_API_KEY env variable, this returns an empty struct.
-func (p *Profile) GetExperimentalFields() ExperimentalFields {
-	if err := viper.ReadInConfig(); err == nil && os.Getenv("STRIPE_API_KEY") == "" && p.APIKey == "" {
-		name := viper.GetString(p.GetConfigField(experimentalContextualName))
-		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
-		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))
-
-		return ExperimentalFields{
-			ContextualName: name,
-			PrivateKey:     privKey,
-			StripeHeaders:  headers,
-		}
-	}
-	return ExperimentalFields{
-		ContextualName: "",
-		PrivateKey:     "",
-		StripeHeaders:  "",
-	}
-}
-
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
