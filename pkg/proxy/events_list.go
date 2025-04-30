@@ -249,6 +249,7 @@ var validEvents = map[string]bool{
 var validThinEvents = map[string]bool{
 	"v1.billing.meter.error_report_triggered": true,
 	"v1.billing.meter.no_meter_found":         true,
+	"v2.core.event_destination.ping":          true,
 }
 
 var validPreviewEvents = map[string]bool{
