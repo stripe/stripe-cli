@@ -5391,6 +5391,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"nationalities":                                     "array",
 		"phone":                                             "string",
 		"political_exposure":                                "string",
+		"relationship.authorizer":                           "boolean",
 		"relationship.director":                             "boolean",
 		"relationship.executive":                            "boolean",
 		"relationship.legal_guardian":                       "boolean",
@@ -5456,6 +5457,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"nationalities":                                     "array",
 		"phone":                                             "string",
 		"political_exposure":                                "string",
+		"relationship.authorizer":                           "boolean",
 		"relationship.director":                             "boolean",
 		"relationship.executive":                            "boolean",
 		"relationship.legal_guardian":                       "boolean",
@@ -5715,6 +5717,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.customer.automatic_indirect_tax.exempt":                           "string",
 		"configuration.customer.automatic_indirect_tax.ip_address":                       "string",
 		"configuration.customer.automatic_indirect_tax.location_source":                  "string",
+		"configuration.customer.automatic_indirect_tax.validate_location":                "string",
 		"configuration.customer.billing.default_payment_method":                          "string",
 		"configuration.customer.billing.invoice.footer":                                  "string",
 		"configuration.customer.billing.invoice.next_sequence":                           "integer",
@@ -6053,6 +6056,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"to.payout_method":              "string",
 		"to.recipient":                  "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "retrieve", "/v2/money_management/outbound_payment_quotes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "cancel", "/v2/money_management/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "create", "/v2/money_management/outbound_payments", http.MethodPost, map[string]string{
 		"amount.amount":                  "integer",

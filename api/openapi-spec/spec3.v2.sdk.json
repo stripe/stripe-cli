@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-03-31.basil",
+    "version" : "2025-04-30.basil",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
@@ -1007,7 +1007,7 @@
             "enum" : [ "v1.billing.meter.error_report_triggered" ]
           }
         },
-        "description" : "This event occurs when there are invalid async usage events for a given meter.",
+        "description" : "Occurs when a Meter has invalid async usage events.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v1.billing.meter.error_report_triggered"
@@ -1099,7 +1099,7 @@
             "enum" : [ "v1.billing.meter.no_meter_found" ]
           }
         },
-        "description" : "This event occurs when async usage events have missing or invalid meter ids.",
+        "description" : "Occurs when a Meter's id is missing or invalid in async usage events.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v1.billing.meter.no_meter_found"
@@ -1122,10 +1122,6 @@
             "type" : "string",
             "description" : "A unique identifier for the event. If not provided, one will be generated. We recommend using a globally unique identifier for this. We’ll enforce uniqueness within a rolling 24 hour period."
           },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
-          },
           "object" : {
             "type" : "string",
             "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
@@ -1142,6 +1138,10 @@
             "type" : "string",
             "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
             "format" : "date-time"
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
         "description" : "Fix me empty_doc_string.",
@@ -1186,10 +1186,6 @@
             "type" : "string",
             "description" : "The unique id of this meter event adjustment."
           },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
-          },
           "object" : {
             "type" : "string",
             "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
@@ -1204,6 +1200,10 @@
             "type" : "string",
             "description" : "Open Enum. Specifies whether to cancel a single event or a range of events for a time period. Time period cancellation is not supported yet.",
             "enum" : [ "cancel" ]
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
         "x-resourceId" : "v2.billing.meter_event_adjustment",
@@ -1241,14 +1241,14 @@
             "type" : "string",
             "description" : "The unique id of this auth session."
           },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
-          },
           "object" : {
             "type" : "string",
             "description" : "String representing the object's type. Objects of the same type share the same value of the object field.",
             "enum" : [ "v2.billing.meter_event_session" ]
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
         "x-resourceId" : "v2.billing.meter_event_session",
@@ -1283,10 +1283,6 @@
           "id" : {
             "type" : "string",
             "description" : "Unique identifier for the event."
-          },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           },
           "object" : {
             "type" : "string",
@@ -1342,6 +1338,10 @@
           "type" : {
             "type" : "string",
             "description" : "The type of the event."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
         "description" : "Events are generated to keep you informed of activity in your business account. APIs in the /v2 namespace generate [thin events](https://docs.stripe.com/event-destinations#benefits-of-thin-events) which have small, unversioned payloads that include a reference to the ID of the object that has changed. The Events v2 API returns these new thin events. [Retrieve the event object](https://docs.stripe.com/event-destinations#fetch-data) for additional data about the event. Use the related object ID in the event payload to [fetch the API resource](https://docs.stripe.com/event-destinations#retrieve-the-object-associated-with-thin-events) of the object associated with the event. Comparatively, events generated by most API v1 include a versioned snapshot of an API object in their payload.",
@@ -1401,10 +1401,6 @@
             "type" : "string",
             "description" : "Unique identifier for the object."
           },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
-          },
           "metadata" : {
             "type" : "object",
             "additionalProperties" : {
@@ -1457,6 +1453,10 @@
             "type" : "string",
             "description" : "Time at which the object was last updated.",
             "format" : "date-time"
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           },
           "amazon_eventbridge" : {
             "required" : [ "aws_account_id", "aws_event_source_arn", "aws_event_source_status" ],
@@ -1548,6 +1548,39 @@
           "operation" : "post",
           "path" : "/v2/core/event_destinations/{id}/ping"
         } ]
+      },
+      "v2.core.event_destination.ping" : {
+        "required" : [ "data", "related_object", "type" ],
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : { },
+            "description" : "Additional data about the event."
+          },
+          "related_object" : {
+            "required" : [ "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "Object tag of the resource relevant to the event.",
+                "enum" : [ "v2.core.event_destination" ]
+              }
+            },
+            "description" : "Object containing the reference to API resource relevant to the event."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of the event.",
+            "enum" : [ "v2.core.event_destination.ping" ]
+          }
+        },
+        "description" : "A ping event used to test the connection to an event destination.",
+        "x-stripeEvent" : {
+          "kind" : "thin",
+          "type" : "v2.core.event_destination.ping"
+        }
       },
       "v2.deleted_object" : {
         "required" : [ "id" ],
