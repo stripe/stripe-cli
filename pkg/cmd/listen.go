@@ -135,6 +135,12 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if strings.Contains(key, "sk_org") {
+		log.Errorf("The listen command is not supported in an organization sandbox at this time.")
+		return nil
+	}
+
 	apiBase, err := url.Parse(lc.apiBaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse API base url: %w", err)
