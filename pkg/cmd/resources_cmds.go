@@ -327,6 +327,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"capabilities.pay_by_bank_payments.requested":                "boolean",
 		"capabilities.payco_payments.requested":                      "boolean",
 		"capabilities.paynow_payments.requested":                     "boolean",
+		"capabilities.pix_payments.requested":                        "boolean",
 		"capabilities.promptpay_payments.requested":                  "boolean",
 		"capabilities.revolut_pay_payments.requested":                "boolean",
 		"capabilities.samsung_pay_payments.requested":                "boolean",
@@ -565,6 +566,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"capabilities.pay_by_bank_payments.requested":                "boolean",
 		"capabilities.payco_payments.requested":                      "boolean",
 		"capabilities.paynow_payments.requested":                     "boolean",
+		"capabilities.pix_payments.requested":                        "boolean",
 		"capabilities.promptpay_payments.requested":                  "boolean",
 		"capabilities.revolut_pay_payments.requested":                "boolean",
 		"capabilities.samsung_pay_payments.requested":                "boolean",
@@ -1338,6 +1340,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"unit_amount_decimal":            "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "add_lines", "/v1/invoices/{invoice}/add_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "attach_payment", "/v1/invoices/{invoice}/attach_payment", http.MethodPost, map[string]string{
+		"payment_intent": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create", "/v1/invoices", http.MethodPost, map[string]string{
 		"account_tax_ids":                       "array",
 		"application_fee_amount":                "integer",
@@ -1849,22 +1854,27 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"grabpay.display_preference.preference":           "string",
 		"ideal.display_preference.preference":             "string",
 		"jcb.display_preference.preference":               "string",
+		"kakao_pay.display_preference.preference":         "string",
 		"klarna.display_preference.preference":            "string",
 		"konbini.display_preference.preference":           "string",
+		"kr_card.display_preference.preference":           "string",
 		"link.display_preference.preference":              "string",
 		"mobilepay.display_preference.preference":         "string",
 		"multibanco.display_preference.preference":        "string",
 		"name": "string",
+		"naver_pay.display_preference.preference":       "string",
 		"nz_bank_account.display_preference.preference": "string",
 		"oxxo.display_preference.preference":            "string",
 		"p24.display_preference.preference":             "string",
 		"parent":                                        "string",
 		"pay_by_bank.display_preference.preference":     "string",
+		"payco.display_preference.preference":           "string",
 		"paynow.display_preference.preference":          "string",
 		"paypal.display_preference.preference":          "string",
 		"pix.display_preference.preference":             "string",
 		"promptpay.display_preference.preference":       "string",
 		"revolut_pay.display_preference.preference":     "string",
+		"samsung_pay.display_preference.preference":     "string",
 		"satispay.display_preference.preference":        "string",
 		"sepa_debit.display_preference.preference":      "string",
 		"sofort.display_preference.preference":          "string",
@@ -1908,21 +1918,26 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"grabpay.display_preference.preference":           "string",
 		"ideal.display_preference.preference":             "string",
 		"jcb.display_preference.preference":               "string",
+		"kakao_pay.display_preference.preference":         "string",
 		"klarna.display_preference.preference":            "string",
 		"konbini.display_preference.preference":           "string",
+		"kr_card.display_preference.preference":           "string",
 		"link.display_preference.preference":              "string",
 		"mobilepay.display_preference.preference":         "string",
 		"multibanco.display_preference.preference":        "string",
 		"name": "string",
+		"naver_pay.display_preference.preference":       "string",
 		"nz_bank_account.display_preference.preference": "string",
 		"oxxo.display_preference.preference":            "string",
 		"p24.display_preference.preference":             "string",
 		"pay_by_bank.display_preference.preference":     "string",
+		"payco.display_preference.preference":           "string",
 		"paynow.display_preference.preference":          "string",
 		"paypal.display_preference.preference":          "string",
 		"pix.display_preference.preference":             "string",
 		"promptpay.display_preference.preference":       "string",
 		"revolut_pay.display_preference.preference":     "string",
+		"samsung_pay.display_preference.preference":     "string",
 		"satispay.display_preference.preference":        "string",
 		"sepa_debit.display_preference.preference":      "string",
 		"sofort.display_preference.preference":          "string",
@@ -3690,6 +3705,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"redirect_on_completion":                                                         "string",
 		"return_url":                                                                     "string",
 		"saved_payment_method_options.allow_redisplay_filters":                           "array",
+		"saved_payment_method_options.payment_method_remove":                             "string",
 		"saved_payment_method_options.payment_method_save":                               "string",
 		"setup_intent_data.description":                                                  "string",
 		"setup_intent_data.on_behalf_of":                                                 "string",
@@ -4613,6 +4629,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"display_name":            "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "cancel_action", "/v1/terminal/readers/{reader}/cancel_action", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_inputs", "/v1/terminal/readers/{reader}/collect_inputs", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "create", "/v1/terminal/readers", http.MethodPost, map[string]string{
 		"label":             "string",
 		"location":          "string",
@@ -4632,6 +4649,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_intent":                              "string",
 		"process_config.allow_redisplay":              "string",
 		"process_config.enable_customer_cancellation": "boolean",
+		"process_config.return_url":                   "string",
 		"process_config.skip_tipping":                 "boolean",
 		"process_config.tipping.amount_eligible":      "integer",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
@@ -4664,6 +4682,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"interac_present.number": "string",
 		"type":                   "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "succeed_input_collection", "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection", http.MethodPost, map[string]string{
+		"skip_non_required_inputs": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTestHelpersConfirmationTokensCmd.Cmd, "create", "/v1/test_helpers/confirmation_tokens", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -4919,6 +4941,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"interac_present.number": "string",
 		"type":                   "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "succeed_input_collection", "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection", http.MethodPost, map[string]string{
+		"skip_non_required_inputs": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "advance", "/v1/test_helpers/test_clocks/{test_clock}/advance", http.MethodPost, map[string]string{
 		"frozen_time": "integer",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
@@ -5097,7 +5123,6 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"destination_payment_method_data.billing_details.email":                         "string",
 		"destination_payment_method_data.billing_details.name":                          "string",
 		"destination_payment_method_data.billing_details.phone":                         "string",
-		"destination_payment_method_data.billing_details.tax_id":                        "string",
 		"destination_payment_method_data.financial_account":                             "string",
 		"destination_payment_method_data.type":                                          "string",
 		"destination_payment_method_data.us_bank_account.account_holder_type":           "string",
