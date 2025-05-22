@@ -103,6 +103,7 @@ var validEvents = map[string]bool{
 	"invoice.updated":                                          true,
 	"invoice.voided":                                           true,
 	"invoice.will_be_due":                                      true,
+	"invoice_payment.paid":                                     true,
 	"invoiceitem.created":                                      true,
 	"invoiceitem.deleted":                                      true,
 	"issuing_authorization.created":                            true,
