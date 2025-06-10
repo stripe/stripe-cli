@@ -53,7 +53,7 @@ require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/ProtonMail/go-crypto v1.1.6 // indirect
-	github.com/cloudflare/circl v1.6.0 // indirect
+	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/dvsekhvalnov/jose2go v1.8.0 // indirect
