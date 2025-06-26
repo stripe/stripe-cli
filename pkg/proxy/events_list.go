@@ -202,6 +202,7 @@ var validEvents = map[string]bool{
 	"tax_rate.updated":                                         true,
 	"terminal.reader.action_failed":                            true,
 	"terminal.reader.action_succeeded":                         true,
+	"terminal.reader.action_updated":                           true,
 	"test_helpers.test_clock.advancing":                        true,
 	"test_helpers.test_clock.created":                          true,
 	"test_helpers.test_clock.deleted":                          true,
