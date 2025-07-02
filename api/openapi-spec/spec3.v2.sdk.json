@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-04-30.basil",
+    "version" : "2025-06-30.basil",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
@@ -1576,7 +1576,7 @@
             "enum" : [ "v2.core.event_destination.ping" ]
           }
         },
-        "description" : "A ping event used to test the connection to an event destination.",
+        "description" : "A ping event used to test the connection to an EventDestination.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.core.event_destination.ping"
