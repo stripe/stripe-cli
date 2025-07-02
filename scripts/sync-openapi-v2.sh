@@ -18,7 +18,7 @@ echo "⏳ Retrieving v2 openapi spec..."
 popd
 
 rm -f api/openapi-spec/spec3.v2.sdk.json
-rm -f api/openapi-spec/spec3.v2.preview.sdk.json
+rm -f api/openapi-spec/spec3.v2.sdk.preview.json
 
 echo "$SHA" > api/ZOOLANDER_SHA
 
