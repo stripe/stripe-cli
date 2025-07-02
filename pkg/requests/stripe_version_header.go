@@ -6,4 +6,4 @@ package requests
 const StripeVersionHeaderValue = "2025-06-30.basil"
 
 // StripePreviewVersionHeaderValue is the api version header value for preview features
-const StripePreviewVersionHeaderValue = "2025-04-30.preview"
+const StripePreviewVersionHeaderValue = "2025-06-30.preview"
