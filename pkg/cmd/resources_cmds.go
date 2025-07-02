@@ -5331,7 +5331,11 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"type":              "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v2/billing/meter_event_stream", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v2/billing/meter_events", http.MethodPost, map[string]string{
+		"event_name": "string",
+		"identifier": "string",
+		"timestamp":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "create", "/v2/core/event_destinations", http.MethodPost, map[string]string{
 		"amazon_eventbridge.aws_account_id": "string",
 		"amazon_eventbridge.aws_region":     "string",
