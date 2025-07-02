@@ -1155,12 +1155,6 @@
           "method_on" : "service",
           "method_type" : "create",
           "operation" : "post",
-          "path" : "/v2/billing/meter_event_stream"
-        }, {
-          "method_name" : "create",
-          "method_on" : "service",
-          "method_type" : "create",
-          "operation" : "post",
           "path" : "/v2/billing/meter_events"
         } ]
       },
