@@ -180,6 +180,8 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, description)
 		case "string":
 			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
+		case "number":
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
 		case "integer":
 			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, description)
 		case "boolean":
