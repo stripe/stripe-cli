@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-06-30.preview",
+    "version" : "2025-07-30.preview",
     "x-stripeSpecFilename" : "spec3.v2.preview.cli"
   },
   "servers" : [ {
@@ -1218,6 +1218,27 @@
                                   }
                                 },
                                 "description" : "Details on the Account's acceptance of the [Stripe Services Agreement](https://docs.stripe.com/connect/updating-accounts#tos-acceptance)."
+                              },
+                              "storer" : {
+                                "required" : [ "date", "ip" ],
+                                "type" : "object",
+                                "properties" : {
+                                  "date" : {
+                                    "type" : "string",
+                                    "description" : "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                                    "format" : "date-time"
+                                  },
+                                  "ip" : {
+                                    "type" : "string",
+                                    "description" : "The IP address from which the Account's representative accepted the terms of service."
+                                  },
+                                  "user_agent" : {
+                                    "type" : "string",
+                                    "description" : "The user agent of the browser from which the Account's representative accepted the terms of service."
+                                  }
+                                },
+                                "description" : "Details on the Account's acceptance of Treasury-specific terms of service.",
+                                "x-stripeNotPublic" : true
                               }
                             },
                             "description" : "Attestations of accepted terms of service agreements."
@@ -2663,6 +2684,12 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_missing"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_currency"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
                 }
@@ -3357,12 +3384,12 @@
     },
     "/v2/payments/off_session_payments" : {
       "get" : {
-        "description" : "List OSPs matching filter.",
+        "description" : "Returns a list of OffSessionPayments matching a filter.",
         "operationId" : "GetPaymentsOffSessionPayments",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
-          "description" : "The page size limit, if not provided the default is 20.",
+          "description" : "The page size limit. If not provided, the default is 20.",
           "required" : false,
           "style" : "simple",
           "schema" : {
@@ -3398,7 +3425,7 @@
                     },
                     "data" : {
                       "type" : "array",
-                      "description" : "The OSP objects matching the list request.",
+                      "description" : "The list of OffSessionPayment objects.",
                       "items" : {
                         "$ref" : "#/components/schemas/v2.payments.off_session_payment"
                       }
@@ -3424,7 +3451,7 @@
         "x-stripeNotPublic" : true
       },
       "post" : {
-        "description" : "Create OSP.",
+        "description" : "Creates an OffSessionPayment object.",
         "operationId" : "PostPaymentsOffSessionPayments",
         "requestBody" : {
           "content" : {
@@ -3447,31 +3474,31 @@
                         "nullable" : false
                       }
                     },
-                    "description" : "Amount you want to collect."
+                    "description" : "The “presentment amount” to be collected from the customer."
                   },
                   "cadence" : {
                     "type" : "string",
-                    "description" : "The frequency of the OSP.",
+                    "description" : "The frequency of the underlying payment.",
                     "enum" : [ "recurring", "unscheduled" ]
                   },
                   "customer" : {
                     "type" : "string",
-                    "description" : "Customer that owns the provided payment method."
+                    "description" : "ID of the Customer to which this OffSessionPayment belongs."
                   },
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
                       "type" : "string"
                     },
-                    "description" : "Any of your internal data you want to track here."
+                    "description" : "Set of [key-value pairs](https://docs.corp.stripe.com/api/metadata) that you can\nattach to an object. This can be useful for storing additional information about\nthe object in a structured format. Learn more about\n[storing information in metadata](https://docs.corp.stripe.com/payments/payment-intents#storing-information-in-metadata)."
                   },
                   "on_behalf_of" : {
                     "type" : "string",
-                    "description" : "The OBO merchant you want to use."
+                    "description" : "The account (if any) for which the funds of the OffSessionPayment are intended."
                   },
                   "payment_method" : {
                     "type" : "string",
-                    "description" : "Payment method you want to debit. Must be attached to a customer and set up for off-session usage."
+                    "description" : "ID of the payment method used in this OffSessionPayment."
                   },
                   "retry_details" : {
                     "required" : [ "retry_strategy" ],
@@ -3479,23 +3506,23 @@
                     "properties" : {
                       "retry_strategy" : {
                         "type" : "string",
-                        "description" : "How you want Stripe to retry the payment.",
+                        "description" : "Indicates the strategy for how you want Stripe to retry the payment.",
                         "enum" : [ "none", "smart" ]
                       }
                     },
-                    "description" : "How you want stripe to retry the OSP."
+                    "description" : "Details about the OffSessionPayment retries."
                   },
                   "statement_descriptor" : {
                     "type" : "string",
-                    "description" : "String you want to appear on your customer's statement."
+                    "description" : "Text that appears on the customer’s statement as the statement descriptor for a\nnon-card charge. This value overrides the account’s default statement descriptor.\nFor information about requirements, including the 22-character limit, see the\n[Statement Descriptor docs](https://docs.stripe.com/get-started/account/statement-descriptors)."
                   },
                   "statement_descriptor_suffix" : {
                     "type" : "string",
-                    "description" : "Suffix appended to your account level descriptor."
+                    "description" : "Provides information about a card charge. Concatenated to the account’s\n[statement descriptor prefix](https://docs.stripe.com/get-started/account/statement-descriptors#static)\nto form the complete statement descriptor that appears on the customer’s statement."
                   },
                   "test_clock" : {
                     "type" : "string",
-                    "description" : "Test clock to be used for testing your retry handling. Only usable in a sandbox."
+                    "description" : "Test clock that can be used to advance the retry attempts in a sandbox."
                   },
                   "transfer_data" : {
                     "required" : [ "destination" ],
@@ -3503,14 +3530,14 @@
                     "properties" : {
                       "amount" : {
                         "type" : "integer",
-                        "description" : "Amount in minor units that you want to transfer."
+                        "description" : "The amount transferred to the destination account. This transfer will occur\nautomatically after the payment succeeds. If no amount is specified, by default\nthe entire payment amount is transferred to the destination account. The amount\nmust be less than or equal to the\n[amount_requested](https://docs.corp.stripe.com/api/v2/off-session-payments/object?api-version=2025-05-28.preview#v2_off_session_payment_object-amount_requested),\nand must be a positive integer representing how much to transfer in the smallest\ncurrency unit (e.g., 100 cents to charge $1.00)."
                       },
                       "destination" : {
                         "type" : "string",
-                        "description" : "ID of the connected account where you want money to go."
+                        "description" : "The account (if any) that the payment is attributed to for tax reporting, and\nwhere funds from the payment are transferred to after payment success."
                       }
                     },
-                    "description" : "How you want to transfer the funds to your connected accounts."
+                    "description" : "The data that automatically creates a Transfer after the payment finalizes. Learn more about the use case for [connected accounts](https://docs.corp.stripe.com/payments/connected-accounts)."
                   }
                 }
               }
@@ -4234,12 +4261,28 @@
                         "required" : [ "configurations", "refresh_url" ],
                         "type" : "object",
                         "properties" : {
+                          "collection_options" : {
+                            "type" : "object",
+                            "properties" : {
+                              "fields" : {
+                                "type" : "string",
+                                "description" : "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
+                                "enum" : [ "currently_due", "eventually_due" ]
+                              },
+                              "future_requirements" : {
+                                "type" : "string",
+                                "description" : "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+                                "enum" : [ "include", "omit" ]
+                              }
+                            },
+                            "description" : "Specifies the requirements that Stripe collects from v2/core/accounts in the Onboarding flow."
+                          },
                           "configurations" : {
                             "type" : "array",
-                            "description" : "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
+                            "description" : "Open Enum. A v2/core/account can be configured to enable certain functionality. The configuration param targets the v2/core/account_link to collect information for the specified v2/core/account configuration/s.",
                             "items" : {
                               "type" : "string",
-                              "enum" : [ "recipient" ]
+                              "enum" : [ "customer", "merchant", "recipient", "storer" ]
                             }
                           },
                           "refresh_url" : {
@@ -4257,12 +4300,28 @@
                         "required" : [ "configurations", "refresh_url" ],
                         "type" : "object",
                         "properties" : {
+                          "collection_options" : {
+                            "type" : "object",
+                            "properties" : {
+                              "fields" : {
+                                "type" : "string",
+                                "description" : "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
+                                "enum" : [ "currently_due", "eventually_due" ]
+                              },
+                              "future_requirements" : {
+                                "type" : "string",
+                                "description" : "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+                                "enum" : [ "include", "omit" ]
+                              }
+                            },
+                            "description" : "Specifies the requirements that Stripe collects from v2/core/accounts in the Onboarding flow."
+                          },
                           "configurations" : {
                             "type" : "array",
                             "description" : "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
                             "items" : {
                               "type" : "string",
-                              "enum" : [ "recipient" ]
+                              "enum" : [ "customer", "merchant", "recipient", "storer" ]
                             }
                           },
                           "refresh_url" : {
@@ -4301,6 +4360,8 @@
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.configs_must_match_to_use_account_links"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
@@ -4553,6 +4614,8 @@
                     "$ref" : "#/components/schemas/v2.error.cop_not_accepted"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.delivery_option_not_supported"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.financial_address_creation_required"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.from_balance_type_not_found"
                   }, {
@@ -6275,6 +6338,12 @@
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_missing"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_currency"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -9084,6 +9153,25 @@
                                   }
                                 },
                                 "description" : "Details on the Account's acceptance of the [Stripe Services Agreement](https://docs.stripe.com/connect/updating-accounts#tos-acceptance)."
+                              },
+                              "storer" : {
+                                "type" : "object",
+                                "properties" : {
+                                  "date" : {
+                                    "type" : "string",
+                                    "description" : "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                                    "format" : "date-time"
+                                  },
+                                  "ip" : {
+                                    "type" : "string",
+                                    "description" : "The IP address from which the Account's representative accepted the terms of service."
+                                  },
+                                  "user_agent" : {
+                                    "type" : "string",
+                                    "description" : "The user agent of the browser from which the Account's representative accepted the terms of service."
+                                  }
+                                },
+                                "description" : "Details on the Account's acceptance of Treasury-specific terms of service."
                               }
                             },
                             "description" : "Attestations of accepted terms of service agreements."
@@ -10430,6 +10518,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.delivery_option_not_supported"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.financial_address_creation_required"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.from_balance_type_not_found"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.from_balance_unsupported_currency"
@@ -10897,12 +10987,12 @@
     },
     "/v2/payments/off_session_payments/{id}/cancel" : {
       "post" : {
-        "description" : "Cancel OSP.",
+        "description" : "Cancel an OffSessionPayment that has previously been created.",
         "operationId" : "PostPaymentsOffSessionPaymentsIdCancel",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
-          "description" : "The ID of the off-session payment you want to cancel.",
+          "description" : "Unique identifier for the object you want to cancel.",
           "required" : true,
           "style" : "simple",
           "schema" : {
@@ -11103,12 +11193,12 @@
     },
     "/v2/payments/off_session_payments/{id}" : {
       "get" : {
-        "description" : "Retrieve OSP by ID.",
+        "description" : "Retrieves the details of an OffSessionPayment that has previously been created.",
         "operationId" : "GetPaymentsOffSessionPaymentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
-          "description" : "ID of the OSP you want to retrieve.",
+          "description" : "Unique identifier for the object you want to retrieve.",
           "required" : true,
           "style" : "simple",
           "schema" : {
@@ -14262,6 +14352,26 @@
                           }
                         },
                         "description" : "Details on the Account's acceptance of the [Stripe Services Agreement](https://docs.stripe.com/connect/updating-accounts#tos-acceptance)."
+                      },
+                      "storer" : {
+                        "type" : "object",
+                        "properties" : {
+                          "date" : {
+                            "type" : "string",
+                            "description" : "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                            "format" : "date-time"
+                          },
+                          "ip" : {
+                            "type" : "string",
+                            "description" : "The IP address from which the Account's representative accepted the terms of service."
+                          },
+                          "user_agent" : {
+                            "type" : "string",
+                            "description" : "The user agent of the browser from which the Account's representative accepted the terms of service."
+                          }
+                        },
+                        "description" : "Details on the Account's acceptance of Treasury-specific terms of service.",
+                        "x-stripeNotPublic" : true
                       }
                     },
                     "description" : "Attestations of accepted terms of service agreements."
@@ -15940,12 +16050,28 @@
                 "required" : [ "configurations", "refresh_url" ],
                 "type" : "object",
                 "properties" : {
+                  "collection_options" : {
+                    "type" : "object",
+                    "properties" : {
+                      "fields" : {
+                        "type" : "string",
+                        "description" : "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
+                        "enum" : [ "currently_due", "eventually_due" ]
+                      },
+                      "future_requirements" : {
+                        "type" : "string",
+                        "description" : "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+                        "enum" : [ "include", "omit" ]
+                      }
+                    },
+                    "description" : "Specifies the requirements that Stripe collects from v2/core/accounts in the Onboarding flow."
+                  },
                   "configurations" : {
                     "type" : "array",
-                    "description" : "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
+                    "description" : "Open Enum. A v2/core/account can be configured to enable certain functionality. The configuration param targets the v2/core/account_link to collect information for the specified v2/core/account configuration/s.",
                     "items" : {
                       "type" : "string",
-                      "enum" : [ "recipient" ]
+                      "enum" : [ "customer", "merchant", "recipient", "storer" ]
                     }
                   },
                   "refresh_url" : {
@@ -15963,12 +16089,28 @@
                 "required" : [ "configurations", "refresh_url" ],
                 "type" : "object",
                 "properties" : {
+                  "collection_options" : {
+                    "type" : "object",
+                    "properties" : {
+                      "fields" : {
+                        "type" : "string",
+                        "description" : "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
+                        "enum" : [ "currently_due", "eventually_due" ]
+                      },
+                      "future_requirements" : {
+                        "type" : "string",
+                        "description" : "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+                        "enum" : [ "include", "omit" ]
+                      }
+                    },
+                    "description" : "Specifies the requirements that Stripe collects from v2/core/accounts in the Onboarding flow."
+                  },
                   "configurations" : {
                     "type" : "array",
                     "description" : "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
                     "items" : {
                       "type" : "string",
-                      "enum" : [ "recipient" ]
+                      "enum" : [ "customer", "merchant", "recipient", "storer" ]
                     }
                   },
                   "refresh_url" : {
@@ -15990,7 +16132,7 @@
             "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
-        "description" : "AccountLinks are the means by which a Merchant grants an Account permission to access Stripe-hosted applications, such as Recipient Onboarding. This API is only available for users enrolled in the public preview for Global Payouts.",
+        "description" : "AccountLinks are the means by which a Merchant grants an Account permission to access Stripe-hosted applications, such as Recipient Onboarding. This API is only available for users enrolled in the public preview for Accounts v2.",
         "x-resourceId" : "v2.core.account_link",
         "x-stripeResource" : {
           "in_package" : "v2.core",
@@ -16004,7 +16146,7 @@
           "path" : "/v2/core/account_links"
         } ]
       },
-      "v2.core.account_link.completed" : {
+      "v2.core.account_link.returned" : {
         "required" : [ "data", "type" ],
         "type" : "object",
         "properties" : {
@@ -16026,7 +16168,7 @@
                 "description" : "Configurations on the Account that was onboarded via the account link.",
                 "items" : {
                   "type" : "string",
-                  "enum" : [ "recipient" ]
+                  "enum" : [ "customer", "merchant", "recipient", "storer" ]
                 }
               }
             },
@@ -16035,13 +16177,13 @@
           "type" : {
             "type" : "string",
             "description" : "The type of the event.",
-            "enum" : [ "v2.core.account_link.completed" ]
+            "enum" : [ "v2.core.account_link.returned" ]
           }
         },
         "description" : "Occurs when the generated AccountLink is completed.",
         "x-stripeEvent" : {
           "kind" : "thin",
-          "type" : "v2.core.account_link.completed"
+          "type" : "v2.core.account_link.returned"
         },
         "x-stripeNotPublic" : true
       },
@@ -18728,6 +18870,40 @@
         },
         "description" : "Account cannot be closed without specifying the right configurations."
       },
+      "v2.error.configs_must_match_to_use_account_links" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "applied_configurations", "code", "message", "user_message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "configs_must_match_to_use_account_links" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "applied_configurations" : {
+                "type" : "array",
+                "description" : "The applied configurations that should be specified.",
+                "items" : {
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Account cannot be onboard via v2/core/account_links without specifying the right configurations."
+      },
       "v2.error.configuration_creation_invalid" : {
         "required" : [ "error" ],
         "type" : "object",
@@ -19389,6 +19565,29 @@
           }
         },
         "description" : "The compartment has reached its limit on open FinancialAccounts."
+      },
+      "v2.error.financial_address_creation_required" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "financial_address_creation_required" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Error returned when there is no active financial address required for GB\nOBPs or OBTs."
       },
       "v2.error.financial_address_invalid_page_token" : {
         "required" : [ "error" ],
@@ -20633,7 +20832,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "You may only cancel an Off-Session Payment when it has a status of pending or pending_retry."
+        "description" : "You may only cancel an OffSessionPayment when it has a status of `pending` or `pending_retry`."
       },
       "v2.error.off_session_payment_test_clock_in_livemode" : {
         "required" : [ "error" ],
@@ -20679,7 +20878,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "The off-session payments API has limits on the maximum and minimum amounts you may charge in each currency."
+        "description" : "The Off-Session Payments API has limits on the maximum amount you may charge in each currency."
       },
       "v2.error.osp_amount_too_small" : {
         "required" : [ "error" ],
@@ -20702,7 +20901,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "The off-session payments API has limits on the maximum and minimum amounts you may charge in each currency."
+        "description" : "The Off-Session Payments API has limits on the minimum amount you may charge in each currency."
       },
       "v2.error.osp_generic_invalid_request" : {
         "required" : [ "error" ],
@@ -20725,7 +20924,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "See error message for more details."
+        "description" : "A generic error occurred during payment. See error message for more details."
       },
       "v2.error.osp_invalid_payment_method_type" : {
         "required" : [ "error" ],
@@ -20748,7 +20947,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "Indicates that the payment method you provided is not compatible with the off-session payments API.\nThe off-session payments API currently only supports card payment methods, including ones generated from.\nwallets."
+        "description" : "Indicates that the payment method you provided is not compatible with the Off-Session Payments API.\nThe Off-Session Payments API currently only supports card payment methods, including ones generated from\nwallets."
       },
       "v2.error.osp_payment_method_not_attached" : {
         "required" : [ "error" ],
@@ -20771,7 +20970,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "To use the off-session payments API, you must first attach the payment method to the customer via the\n/v1/setup_intents API."
+        "description" : "To use the Off-Session Payments API, you must first attach the PaymentMethod to the Customer via the\nSetup Intents API."
       },
       "v2.error.osp_pm_not_setup_for_off_session" : {
         "required" : [ "error" ],
@@ -20794,7 +20993,7 @@
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "To use the off-session payments API, you must first set up the payment method for off-session usage via the\n/v1/setup_intents API."
+        "description" : "To use the Off-Session Payments API, you must first set up the PaymentMethod for off-session usage via the\nSetup Intents API."
       },
       "v2.error.osp_pm_set_up_only_on_connected_account" : {
         "required" : [ "error" ],
@@ -24413,12 +24612,17 @@
             "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           },
           "bank_account" : {
-            "required" : [ "archived", "bank_name", "country", "enabled_delivery_options", "last4", "supported_currencies" ],
+            "required" : [ "archived", "bank_account_type", "bank_name", "country", "enabled_delivery_options", "last4", "supported_currencies" ],
             "type" : "object",
             "properties" : {
               "archived" : {
                 "type" : "boolean",
                 "description" : "Whether this PayoutMethodBankAccount object was archived. PayoutMethodBankAccount objects can be archived through\nthe /archive API, and they will not be automatically archived by Stripe. Archived PayoutMethodBankAccount objects\ncannot be used as payout methods and will not appear in the payout method list."
+              },
+              "bank_account_type" : {
+                "type" : "string",
+                "description" : "The type of bank account (checking or savings).",
+                "enum" : [ "checking", "savings" ]
               },
               "bank_name" : {
                 "type" : "string",
@@ -24508,6 +24712,40 @@
           "operation" : "post",
           "path" : "/v2/money_management/payout_methods/{id}/unarchive"
         } ]
+      },
+      "v2.money_management.payout_method.updated" : {
+        "required" : [ "data", "related_object", "type" ],
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : { },
+            "description" : "Additional data about the event."
+          },
+          "related_object" : {
+            "required" : [ "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "Object tag of the resource relevant to the event.",
+                "enum" : [ "v2.money_management.payout_method" ]
+              }
+            },
+            "description" : "Object containing the reference to API resource relevant to the event."
+          },
+          "type" : {
+            "type" : "string",
+            "description" : "The type of the event.",
+            "enum" : [ "v2.money_management.payout_method.updated" ]
+          }
+        },
+        "description" : "Occurs when a PayoutMethod is updated.",
+        "x-stripeEvent" : {
+          "kind" : "thin",
+          "type" : "v2.money_management.payout_method.updated"
+        },
+        "x-stripeNotPublic" : true
       },
       "v2.money_management.payout_methods_bank_account_spec" : {
         "required" : [ "countries", "livemode", "object" ],
@@ -25718,40 +25956,6 @@
           "path" : "/v2/money_management/transaction_entries/{id}"
         } ]
       },
-      "v2.off_session_payment.requires_capture" : {
-        "required" : [ "data", "related_object", "type" ],
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "type" : "object",
-            "properties" : { },
-            "description" : "Additional data about the event."
-          },
-          "related_object" : {
-            "required" : [ "type" ],
-            "type" : "object",
-            "properties" : {
-              "type" : {
-                "type" : "string",
-                "description" : "Object tag of the resource relevant to the event.",
-                "enum" : [ "v2.payments.off_session_payment" ]
-              }
-            },
-            "description" : "Object containing the reference to API resource relevant to the event."
-          },
-          "type" : {
-            "type" : "string",
-            "description" : "The type of the event.",
-            "enum" : [ "v2.off_session_payment.requires_capture" ]
-          }
-        },
-        "description" : "Off session payment requires capture event definition.",
-        "x-stripeEvent" : {
-          "kind" : "thin",
-          "type" : "v2.off_session_payment.requires_capture"
-        },
-        "x-stripeNotPublic" : true
-      },
       "v2.payments.off_session_payment" : {
         "required" : [ "amount_requested", "cadence", "compartment_id", "created", "customer", "id", "livemode", "metadata", "object", "payment_method", "retry_details", "status" ],
         "type" : "object",
@@ -25770,38 +25974,38 @@
                 "nullable" : false
               }
             },
-            "description" : "The amount you requested to be collected on the OSP upon creation."
+            "description" : "The “presentment amount” to be collected from the customer."
           },
           "cadence" : {
             "type" : "string",
-            "description" : "The frequency of the underlying payment that this OSP represents.",
+            "description" : "The frequency of the underlying payment.",
             "enum" : [ "recurring", "unscheduled" ]
           },
           "compartment_id" : {
             "type" : "string",
-            "description" : "ID of owning compartment."
+            "description" : "ID of the owning compartment."
           },
           "created" : {
             "type" : "string",
-            "description" : "Timestamp of creation.",
+            "description" : "Creation time of the OffSessionPayment. Represented as a RFC 3339 date & time UTC\nvalue in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
             "format" : "date-time"
           },
           "customer" : {
             "type" : "string",
-            "description" : "Customer owning the supplied payment method."
+            "description" : "ID of the Customer to which this OffSessionPayment belongs."
           },
           "failure_reason" : {
             "type" : "string",
-            "description" : "Reason why the OSP failed.",
+            "description" : "The reason why the OffSessionPayment failed.",
             "enum" : [ "rejected_by_partner", "retries_exhausted" ]
           },
           "id" : {
             "type" : "string",
-            "description" : "ID of the OSP."
+            "description" : "Unique identifier for the object.."
           },
           "last_authorization_attempt_error" : {
             "type" : "string",
-            "description" : "Last error returned by the financial partner for a failed authorization."
+            "description" : "The payment error encountered in the previous attempt to authorize the payment."
           },
           "latest_payment_attempt_record" : {
             "type" : "string",
@@ -25809,14 +26013,14 @@
           },
           "livemode" : {
             "type" : "boolean",
-            "description" : "True if the txn is livemode, false otherwise."
+            "description" : "Has the value true if the object exists in live mode or the value false if the object exists in test mode."
           },
           "metadata" : {
             "type" : "object",
             "additionalProperties" : {
               "type" : "string"
             },
-            "description" : "Metadata you provided."
+            "description" : "Set of [key-value pairs](https://docs.corp.stripe.com/api/metadata) that you can\nattach to an object. This can be useful for storing additional information about\nthe object in a structured format. Learn more about\n[storing information in metadata](https://docs.corp.stripe.com/payments/payment-intents#storing-information-in-metadata)."
           },
           "object" : {
             "type" : "string",
@@ -25825,15 +26029,15 @@
           },
           "on_behalf_of" : {
             "type" : "string",
-            "description" : "OBO, same as on the PI."
+            "description" : "The account (if any) for which the funds of the OffSessionPayment are intended."
           },
           "payment_method" : {
             "type" : "string",
-            "description" : "ID of payment method."
+            "description" : "ID of the payment method used in this OffSessionPayment."
           },
           "payment_record" : {
             "type" : "string",
-            "description" : "Payment record associated with the OSP. consistent across attempts."
+            "description" : "Payment record associated with the OffSessionPayment."
           },
           "retry_details" : {
             "required" : [ "attempts", "retry_strategy" ],
@@ -25845,28 +26049,28 @@
               },
               "retry_strategy" : {
                 "type" : "string",
-                "description" : "How you want Stripe to retry the payment.",
+                "description" : "Indicates the strategy for how you want Stripe to retry the payment.",
                 "enum" : [ "none", "smart" ]
               }
             },
-            "description" : "Details about the OSP retries."
+            "description" : "Details about the OffSessionPayment retries."
           },
           "statement_descriptor" : {
             "type" : "string",
-            "description" : "Statement descriptor you provided."
+            "description" : "Text that appears on the customer’s statement as the statement descriptor for a\nnon-card charge. This value overrides the account’s default statement descriptor.\nFor information about requirements, including the 22-character limit, see the\n[Statement Descriptor docs](https://docs.stripe.com/get-started/account/statement-descriptors)."
           },
           "statement_descriptor_suffix" : {
             "type" : "string",
-            "description" : "Statement descriptor suffix you provided, similar to that on the PI."
+            "description" : "Provides information about a card charge. Concatenated to the account’s\n[statement descriptor prefix](https://docs.stripe.com/get-started/account/statement-descriptors#static)\nto form the complete statement descriptor that appears on the customer’s statement."
           },
           "status" : {
             "type" : "string",
-            "description" : "Status of the OSP.",
+            "description" : "Status of this OffSessionPayment, one of `pending`, `pending_retry`, `processing`,\n`failed`, `canceled`, `requires_capture`, or `succeeded`.",
             "enum" : [ "canceled", "failed", "pending", "pending_retry", "processing", "requires_capture", "succeeded" ]
           },
           "test_clock" : {
             "type" : "string",
-            "description" : "Test clock to be used to advance the retry attempts."
+            "description" : "Test clock that can be used to advance the retry attempts in a sandbox."
           },
           "transfer_data" : {
             "required" : [ "destination" ],
@@ -25874,17 +26078,17 @@
             "properties" : {
               "amount" : {
                 "type" : "integer",
-                "description" : "Amount in minor units that you want to transfer."
+                "description" : "The amount transferred to the destination account. This transfer will occur\nautomatically after the payment succeeds. If no amount is specified, by default\nthe entire payment amount is transferred to the destination account. The amount\nmust be less than or equal to the\n[amount_requested](https://docs.corp.stripe.com/api/v2/off-session-payments/object?api-version=2025-05-28.preview#v2_off_session_payment_object-amount_requested),\nand must be a positive integer representing how much to transfer in the smallest\ncurrency unit (e.g., 100 cents to charge $1.00)."
               },
               "destination" : {
                 "type" : "string",
-                "description" : "ID of the connected account where you want money to go."
+                "description" : "The account (if any) that the payment is attributed to for tax reporting, and\nwhere funds from the payment are transferred to after payment success."
               }
             },
-            "description" : "Instructions for the transfer to be made with this OSP after successful money movement."
+            "description" : "The data that automatically creates a Transfer after the payment finalizes. Learn more about the use case for [connected accounts](https://docs.corp.stripe.com/payments/connected-accounts)."
           }
         },
-        "description" : "Off-session payment resource.",
+        "description" : "OffSessionPayment resource.",
         "x-resourceId" : "v2.payments.off_session_payment",
         "x-stripeResource" : {
           "in_package" : "v2.payments",
@@ -25943,7 +26147,7 @@
             "enum" : [ "v2.payments.off_session_payment.authorization_attempt_failed" ]
           }
         },
-        "description" : "Off session payment authorization attempt failed event definition.",
+        "description" : "Sent after a failed authorization if there are still retries available on the OffSessionPayment.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.authorization_attempt_failed"
@@ -25977,7 +26181,7 @@
             "enum" : [ "v2.payments.off_session_payment.authorization_attempt_started" ]
           }
         },
-        "description" : "Off session payment authorization attempt started event definition.",
+        "description" : "Sent when our internal scheduling system kicks off an attempt at authorization, whether it's a\nretry or an initial authorization.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.authorization_attempt_started"
@@ -26011,7 +26215,7 @@
             "enum" : [ "v2.payments.off_session_payment.canceled" ]
           }
         },
-        "description" : "Off session payment canceled event definition.",
+        "description" : "Sent immediately following a user's call to the Off-Session Payments cancel endpoint.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.canceled"
@@ -26045,7 +26249,7 @@
             "enum" : [ "v2.payments.off_session_payment.created" ]
           }
         },
-        "description" : "Off session payment created event definition.",
+        "description" : "Sent immediately following a user's call to the Off-Session Payments create endpoint.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.created"
@@ -26079,7 +26283,7 @@
             "enum" : [ "v2.payments.off_session_payment.failed" ]
           }
         },
-        "description" : "Off session payment failed event definition.",
+        "description" : "Sent after a failed authorization if there are no retries remaining, or if the failure is unretryable.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.failed"
@@ -26113,7 +26317,7 @@
             "enum" : [ "v2.payments.off_session_payment.succeeded" ]
           }
         },
-        "description" : "Off session payment succeeded event definition.",
+        "description" : "Sent immediately after a successful authorization.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.payments.off_session_payment.succeeded"
