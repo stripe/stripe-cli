@@ -214,6 +214,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"components.account_onboarding.enabled":                                            "boolean",
 		"components.account_onboarding.features.disable_stripe_user_authentication":        "boolean",
 		"components.account_onboarding.features.external_account_collection":               "boolean",
+		"components.balance_report.enabled":                                                "boolean",
 		"components.balances.enabled":                                                      "boolean",
 		"components.balances.features.disable_stripe_user_authentication":                  "boolean",
 		"components.balances.features.edit_payout_schedule":                                "boolean",
@@ -265,6 +266,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"components.payments.features.destination_on_behalf_of_charge_management":          "boolean",
 		"components.payments.features.dispute_management":                                  "boolean",
 		"components.payments.features.refund_management":                                   "boolean",
+		"components.payout_details.enabled":                                                "boolean",
+		"components.payout_reconciliation_report.enabled":                                  "boolean",
 		"components.payouts.enabled":                                                       "boolean",
 		"components.payouts.features.disable_stripe_user_authentication":                   "boolean",
 		"components.payouts.features.edit_payout_schedule":                                 "boolean",
@@ -1617,6 +1620,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"customer":                                  "string",
 		"description":                               "string",
 		"error_on_requires_action":                  "boolean",
+		"excluded_payment_method_types":             "array",
 		"mandate":                                   "string",
 		"off_session":                               "boolean",
 		"on_behalf_of":                              "string",
@@ -2069,6 +2073,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"description":          "string",
 		"destination":          "string",
 		"method":               "string",
+		"payout_method":        "string",
 		"source_type":          "string",
 		"statement_descriptor": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
@@ -3569,6 +3574,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"features.subscription_update.enabled":                     "boolean",
 		"features.subscription_update.proration_behavior":          "string",
 		"login_page.enabled":                                       "boolean",
+		"name":                                                     "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "list", "/v1/billing_portal/configurations", http.MethodGet, map[string]string{
 		"active":         "boolean",
@@ -3597,6 +3603,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"features.subscription_update.enabled":                     "boolean",
 		"features.subscription_update.proration_behavior":          "string",
 		"login_page.enabled":                                       "boolean",
+		"name":                                                     "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
 		"configuration": "string",
@@ -3734,6 +3741,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.paypal.reference":                                        "string",
 		"payment_method_options.paypal.risk_correlation_id":                              "string",
 		"payment_method_options.paypal.setup_future_usage":                               "string",
+		"payment_method_options.pix.amount_includes_iof":                                 "string",
 		"payment_method_options.pix.expires_after_seconds":                               "integer",
 		"payment_method_options.pix.setup_future_usage":                                  "string",
 		"payment_method_options.revolut_pay.setup_future_usage":                          "string",
@@ -4137,6 +4145,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "create", "/v1/issuing/cards", http.MethodPost, map[string]string{
 		"cardholder":                                   "string",
 		"currency":                                     "string",
+		"exp_month":                                    "integer",
+		"exp_year":                                     "integer",
 		"financial_account":                            "string",
 		"personalization_design":                       "string",
 		"pin.encrypted_number":                         "string",
@@ -4775,6 +4785,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
 		"amount_tip":             "integer",
+		"card.cvc":               "string",
+		"card.exp_month":         "integer",
+		"card.exp_year":          "integer",
+		"card.number":            "string",
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
@@ -5034,6 +5048,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rTestHelpersRefundsCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
 		"amount_tip":             "integer",
+		"card.cvc":               "string",
+		"card.exp_month":         "integer",
+		"card.exp_year":          "integer",
+		"card.number":            "string",
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
