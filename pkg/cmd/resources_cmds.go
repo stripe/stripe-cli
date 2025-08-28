@@ -5874,6 +5874,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"include": "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "update", "/v2/core/accounts/{id}", http.MethodPost, map[string]string{
+		"configuration.customer.applied":                                                    "boolean",
 		"configuration.customer.automatic_indirect_tax.exempt":                              "string",
 		"configuration.customer.automatic_indirect_tax.ip_address":                          "string",
 		"configuration.customer.automatic_indirect_tax.location_source":                     "string",
@@ -5894,6 +5895,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.customer.shipping.name":                                              "string",
 		"configuration.customer.shipping.phone":                                             "string",
 		"configuration.customer.test_clock":                                                 "string",
+		"configuration.merchant.applied":                                                    "boolean",
 		"configuration.merchant.bacs_debit_payments.display_name":                           "string",
 		"configuration.merchant.branding.icon":                                              "string",
 		"configuration.merchant.branding.logo":                                              "string",
@@ -5958,11 +5960,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.merchant.support.email":                                              "string",
 		"configuration.merchant.support.phone":                                              "string",
 		"configuration.merchant.support.url":                                                "string",
+		"configuration.recipient.applied":                                                   "boolean",
 		"configuration.recipient.capabilities.bank_accounts.local.requested":                "boolean",
 		"configuration.recipient.capabilities.bank_accounts.wire.requested":                 "boolean",
 		"configuration.recipient.capabilities.cards.requested":                              "boolean",
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested":    "boolean",
 		"configuration.recipient.default_outbound_destination":                              "string",
+		"configuration.storer.applied":                                                      "boolean",
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested":     "boolean",
 		"configuration.storer.capabilities.holds_currencies.gbp.requested":                  "boolean",
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested":       "boolean",
@@ -6187,6 +6191,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"forwarding_settings.payout_method":  "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "create", "/v2/money_management/financial_accounts", http.MethodPost, map[string]string{
+		"display_name":             "string",
 		"storage.holds_currencies": "array",
 		"type":                     "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
