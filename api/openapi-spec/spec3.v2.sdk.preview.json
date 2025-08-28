@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-07-30.preview",
+    "version" : "2025-08-27.preview",
     "x-stripeSpecFilename" : "spec3.v2.preview.cli"
   },
   "servers" : [ {
@@ -23,7 +23,7 @@
     "/v2/core/accounts" : {
       "get" : {
         "description" : "Returns a list of Accounts.",
-        "operationId" : "GetCoreAccounts",
+        "operationId" : "GetV2CoreAccounts",
         "parameters" : [ {
           "name" : "applied_configurations",
           "in" : "query",
@@ -62,6 +62,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -102,7 +103,7 @@
       },
       "post" : {
         "description" : "An Account is a representation of a company, individual or other entity that a user interacts with. Accounts contain identifying information about the entity, and configurations that store the features an account has access to. An account can be configured as any or all of the following configurations: Customer, Merchant and/or Recipient.",
-        "operationId" : "PostCoreAccounts",
+        "operationId" : "PostV2CoreAccounts",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1536,7 +1537,7 @@
                                 "type" : {
                                   "type" : "string",
                                   "description" : "Open Enum. The ID number type of a business entity.",
-                                  "enum" : [ "ae_crn", "ae_vat", "at_fn", "au_abn", "au_acn", "au_in", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "nl_kvk", "no_orgnr", "nz_bn", "pl_regon", "pt_vat", "ro_cui", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
+                                  "enum" : [ "ae_crn", "ae_vat", "ao_nif", "at_fn", "au_abn", "au_acn", "au_in", "az_tin", "bd_etin", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cr_cpj", "cr_nite", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "do_rcn", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "gt_nit", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "kz_bin", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "mz_nuit", "nl_kvk", "no_orgnr", "nz_bn", "pe_ruc", "pk_ntn", "pl_regon", "pt_vat", "ro_cui", "sa_crn", "sa_tin", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
                                 },
                                 "value" : {
                                   "type" : "string",
@@ -1964,7 +1965,7 @@
                                 "type" : {
                                   "type" : "string",
                                   "description" : "The ID number type of an individual.",
-                                  "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                                  "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                                 },
                                 "value" : {
                                   "type" : "string",
@@ -2322,7 +2323,7 @@
     "/v2/money_management/outbound_transfers/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an existing OutboundTransfer by passing the unique OutboundTransfer ID from either the OutboundPayment create or list response.",
-        "operationId" : "GetMoneyManagementOutboundTransfersId",
+        "operationId" : "GetV2MoneyManagementOutboundTransfersId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2365,7 +2366,7 @@
     "/v2/money_management/received_credits/{id}" : {
       "get" : {
         "description" : "Retrieve a ReceivedCredit by ID.",
-        "operationId" : "GetMoneyManagementReceivedCreditsId",
+        "operationId" : "GetV2MoneyManagementReceivedCreditsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2408,7 +2409,7 @@
     "/v2/core/event_destinations" : {
       "get" : {
         "description" : "Lists all event destinations.",
-        "operationId" : "GetCoreEventDestinations",
+        "operationId" : "GetV2CoreEventDestinations",
         "parameters" : [ {
           "name" : "include",
           "in" : "query",
@@ -2448,6 +2449,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -2487,7 +2489,7 @@
       },
       "post" : {
         "description" : "Create a new event destination.",
-        "operationId" : "PostCoreEventDestinations",
+        "operationId" : "PostV2CoreEventDestinations",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2609,7 +2611,7 @@
     "/v2/test_helpers/financial_addresses/{id}/credit" : {
       "post" : {
         "description" : "Simulate crediting a FinancialAddress in a Sandbox environment. This can be used to add virtual funds and increase your balance for testing.",
-        "operationId" : "PostTestHelpersFinancialAddressesIdCredit",
+        "operationId" : "PostV2TestHelpersFinancialAddressesIdCredit",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2703,7 +2705,7 @@
     "/v2/money_management/financial_accounts" : {
       "get" : {
         "description" : "Lists FinancialAccounts in this compartment.",
-        "operationId" : "GetMoneyManagementFinancialAccounts",
+        "operationId" : "GetV2MoneyManagementFinancialAccounts",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -2741,6 +2743,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -2781,7 +2784,7 @@
       },
       "post" : {
         "description" : "Creates a new FinancialAccount.",
-        "operationId" : "PostMoneyManagementFinancialAccounts",
+        "operationId" : "PostV2MoneyManagementFinancialAccounts",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -2789,6 +2792,10 @@
                 "required" : [ "type" ],
                 "type" : "object",
                 "properties" : {
+                  "display_name" : {
+                    "type" : "string",
+                    "description" : "A descriptive name for the FinancialAccount, up to 50 characters long. This name will be used in the Stripe Dashboard and embedded components."
+                  },
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
@@ -2864,7 +2871,7 @@
     "/v2/core/events/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an event.",
-        "operationId" : "GetCoreEventsId",
+        "operationId" : "GetV2CoreEventsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2906,7 +2913,7 @@
     "/v2/money_management/inbound_transfers" : {
       "get" : {
         "description" : "Retrieves a list of InboundTransfers.",
-        "operationId" : "GetMoneyManagementInboundTransfers",
+        "operationId" : "GetV2MoneyManagementInboundTransfers",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -2983,6 +2990,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -3025,7 +3033,7 @@
       },
       "post" : {
         "description" : "InboundTransfers APIs are used to create, retrieve or list InboundTransfers.",
-        "operationId" : "PostMoneyManagementInboundTransfers",
+        "operationId" : "PostV2MoneyManagementInboundTransfers",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -3132,7 +3140,7 @@
     "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee" : {
       "post" : {
         "description" : "Confirm that you have received the result of the Confirmation of Payee request, and that you are okay with\nproceeding to pay out to this bank account despite the account not matching, partially matching, or the service\nbeing unavailable. Once you confirm this, you will be able to send OutboundPayments, but this may lead to\nfunds being sent to the wrong account, which we might not be able to recover.",
-        "operationId" : "PostCoreVaultGbBankAccountsIdAcknowledgeConfirmationOfPayee",
+        "operationId" : "PostV2CoreVaultGbBankAccountsIdAcknowledgeConfirmationOfPayee",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3177,7 +3185,7 @@
     "/v2/money_management/received_debits" : {
       "get" : {
         "description" : "Retrieves a list of ReceivedDebits, given the selected filters.",
-        "operationId" : "GetMoneyManagementReceivedDebits",
+        "operationId" : "GetV2MoneyManagementReceivedDebits",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -3204,6 +3212,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -3246,7 +3255,7 @@
     "/v2/money_management/payout_methods" : {
       "get" : {
         "description" : "List objects that adhere to the PayoutMethod interface.",
-        "operationId" : "GetMoneyManagementPayoutMethods",
+        "operationId" : "GetV2MoneyManagementPayoutMethods",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -3300,6 +3309,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -3342,7 +3352,7 @@
     "/v2/money_management/inbound_transfers/{id}" : {
       "get" : {
         "description" : "Retrieve an InboundTransfer by ID.",
-        "operationId" : "GetMoneyManagementInboundTransfersId",
+        "operationId" : "GetV2MoneyManagementInboundTransfersId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3385,7 +3395,7 @@
     "/v2/payments/off_session_payments" : {
       "get" : {
         "description" : "Returns a list of OffSessionPayments matching a filter.",
-        "operationId" : "GetPaymentsOffSessionPayments",
+        "operationId" : "GetV2PaymentsOffSessionPayments",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -3412,6 +3422,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -3452,7 +3463,7 @@
       },
       "post" : {
         "description" : "Creates an OffSessionPayment object.",
-        "operationId" : "PostPaymentsOffSessionPayments",
+        "operationId" : "PostV2PaymentsOffSessionPayments",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -3592,7 +3603,7 @@
     "/v2/money_management/adjustments/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an Adjustment by ID.",
-        "operationId" : "GetMoneyManagementAdjustmentsId",
+        "operationId" : "GetV2MoneyManagementAdjustmentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3635,7 +3646,7 @@
     "/v2/money_management/outbound_setup_intents/{id}" : {
       "get" : {
         "description" : "Retrieve an OutboundSetupIntent object.",
-        "operationId" : "GetMoneyManagementOutboundSetupIntentsId",
+        "operationId" : "GetV2MoneyManagementOutboundSetupIntentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3676,7 +3687,7 @@
       },
       "post" : {
         "description" : "Update an OutboundSetupIntent object.",
-        "operationId" : "PostMoneyManagementOutboundSetupIntentsId",
+        "operationId" : "PostV2MoneyManagementOutboundSetupIntentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3805,7 +3816,7 @@
     "/v2/core/vault/gb_bank_accounts/{id}/archive" : {
       "post" : {
         "description" : "Archive a GBBankAccount object. Archived GBBankAccount objects cannot be used as outbound destinations\nand will not appear in the outbound destination list.",
-        "operationId" : "PostCoreVaultGbBankAccountsIdArchive",
+        "operationId" : "PostV2CoreVaultGbBankAccountsIdArchive",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -3848,7 +3859,7 @@
     "/v2/money_management/financial_addresses" : {
       "get" : {
         "description" : "List all FinancialAddresses for a FinancialAccount.",
-        "operationId" : "GetMoneyManagementFinancialAddresses",
+        "operationId" : "GetV2MoneyManagementFinancialAddresses",
         "parameters" : [ {
           "name" : "financial_account",
           "in" : "query",
@@ -3897,6 +3908,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -3939,7 +3951,7 @@
       },
       "post" : {
         "description" : "Create a new FinancialAddress for a FinancialAccount.",
-        "operationId" : "PostMoneyManagementFinancialAddresses",
+        "operationId" : "PostV2MoneyManagementFinancialAddresses",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -4008,7 +4020,7 @@
     "/v2/money_management/received_debits/{id}" : {
       "get" : {
         "description" : "Retrieves a single ReceivedDebit by ID.",
-        "operationId" : "GetMoneyManagementReceivedDebitsId",
+        "operationId" : "GetV2MoneyManagementReceivedDebitsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4051,7 +4063,7 @@
     "/v2/money_management/financial_accounts/{id}/close" : {
       "post" : {
         "description" : "Closes a FinancialAccount with or without forwarding settings.",
-        "operationId" : "PostMoneyManagementFinancialAccountsIdClose",
+        "operationId" : "PostV2MoneyManagementFinancialAccountsIdClose",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4123,7 +4135,7 @@
     "/v2/billing/meter_event_adjustments" : {
       "post" : {
         "description" : "Creates a meter event adjustment to cancel a previously sent meter event.",
-        "operationId" : "PostBillingMeterEventAdjustments",
+        "operationId" : "PostV2BillingMeterEventAdjustments",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -4187,7 +4199,7 @@
     "/v2/money_management/outbound_payments/{id}/cancel" : {
       "post" : {
         "description" : "Cancels an OutboundPayment. Only processing OutboundPayments can be canceled.",
-        "operationId" : "PostMoneyManagementOutboundPaymentsIdCancel",
+        "operationId" : "PostV2MoneyManagementOutboundPaymentsIdCancel",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4236,7 +4248,7 @@
     "/v2/core/account_links" : {
       "post" : {
         "description" : "Creates an AccountLink object that includes a single-use Stripe URL that the merchant can redirect their user to in order to take them to a Stripe-hosted application such as Recipient Onboarding.",
-        "operationId" : "PostCoreAccountLinks",
+        "operationId" : "PostV2CoreAccountLinks",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -4377,7 +4389,7 @@
     "/v2/money_management/outbound_transfers" : {
       "get" : {
         "description" : "Returns a list of OutboundTransfers that match the provided filters.",
-        "operationId" : "GetMoneyManagementOutboundTransfers",
+        "operationId" : "GetV2MoneyManagementOutboundTransfers",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -4467,6 +4479,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -4509,7 +4522,7 @@
       },
       "post" : {
         "description" : "Creates an OutboundTransfer.",
-        "operationId" : "PostMoneyManagementOutboundTransfers",
+        "operationId" : "PostV2MoneyManagementOutboundTransfers",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -4656,7 +4669,7 @@
     "/v2/money_management/outbound_setup_intents/{id}/cancel" : {
       "post" : {
         "description" : "Cancel an OutboundSetupIntent object.",
-        "operationId" : "PostMoneyManagementOutboundSetupIntentsIdCancel",
+        "operationId" : "PostV2MoneyManagementOutboundSetupIntentsIdCancel",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -4701,7 +4714,7 @@
     "/v2/core/accounts/{account_id}/persons" : {
       "get" : {
         "description" : "Returns a list of Persons associated with an Account.",
-        "operationId" : "GetCoreAccountsAccountIdPersons",
+        "operationId" : "GetV2CoreAccountsAccountIdPersons",
         "parameters" : [ {
           "name" : "account_id",
           "in" : "path",
@@ -4737,6 +4750,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -4781,7 +4795,7 @@
       },
       "post" : {
         "description" : "Create a Person associated with an Account.",
-        "operationId" : "PostCoreAccountsAccountIdPersons",
+        "operationId" : "PostV2CoreAccountsAccountIdPersons",
         "parameters" : [ {
           "name" : "account_id",
           "in" : "path",
@@ -5083,7 +5097,7 @@
                         "type" : {
                           "type" : "string",
                           "description" : "The ID number type of an individual.",
-                          "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                          "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                         },
                         "value" : {
                           "type" : "string",
@@ -5376,7 +5390,7 @@
     "/v2/money_management/transactions/{id}" : {
       "get" : {
         "description" : "Retrieves the details of a Transaction by ID.",
-        "operationId" : "GetMoneyManagementTransactionsId",
+        "operationId" : "GetV2MoneyManagementTransactionsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5419,7 +5433,7 @@
     "/v2/money_management/outbound_setup_intents" : {
       "get" : {
         "description" : "List the OutboundSetupIntent objects.",
-        "operationId" : "GetMoneyManagementOutboundSetupIntents",
+        "operationId" : "GetV2MoneyManagementOutboundSetupIntents",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -5446,6 +5460,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -5486,7 +5501,7 @@
       },
       "post" : {
         "description" : "Create an OutboundSetupIntent object.",
-        "operationId" : "PostMoneyManagementOutboundSetupIntents",
+        "operationId" : "PostV2MoneyManagementOutboundSetupIntents",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -5627,7 +5642,7 @@
     "/v2/core/vault/us_bank_accounts/{id}/archive" : {
       "post" : {
         "description" : "Archive a USBankAccount object. USBankAccount objects will not be automatically archived by Stripe.\nArchived USBankAccount objects cannot be used as outbound destinations\nand will not appear in the outbound destination list.",
-        "operationId" : "PostCoreVaultUsBankAccountsIdArchive",
+        "operationId" : "PostV2CoreVaultUsBankAccountsIdArchive",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5672,7 +5687,7 @@
     "/v2/core/event_destinations/{id}/ping" : {
       "post" : {
         "description" : "Send a `ping` event to an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdPing",
+        "operationId" : "PostV2CoreEventDestinationsIdPing",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5714,7 +5729,7 @@
     "/v2/money_management/financial_accounts/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an existing FinancialAccount.",
-        "operationId" : "GetMoneyManagementFinancialAccountsId",
+        "operationId" : "GetV2MoneyManagementFinancialAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5757,7 +5772,7 @@
     "/v2/money_management/transactions" : {
       "get" : {
         "description" : "Returns a list of Transactions that match the provided filters.",
-        "operationId" : "GetMoneyManagementTransactions",
+        "operationId" : "GetV2MoneyManagementTransactions",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -5852,6 +5867,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -5896,7 +5912,7 @@
     "/v2/core/event_destinations/{id}/disable" : {
       "post" : {
         "description" : "Disable an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdDisable",
+        "operationId" : "PostV2CoreEventDestinationsIdDisable",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5940,7 +5956,7 @@
     "/v2/money_management/outbound_payments/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an existing OutboundPayment by passing the unique OutboundPayment ID from either the OutboundPayment create or list response.",
-        "operationId" : "GetMoneyManagementOutboundPaymentsId",
+        "operationId" : "GetV2MoneyManagementOutboundPaymentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -5983,7 +5999,7 @@
     "/v2/money_management/adjustments" : {
       "get" : {
         "description" : "Returns a list of Adjustments that match the provided filters.",
-        "operationId" : "GetMoneyManagementAdjustments",
+        "operationId" : "GetV2MoneyManagementAdjustments",
         "parameters" : [ {
           "name" : "adjusted_flow",
           "in" : "query",
@@ -6069,6 +6085,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -6113,7 +6130,7 @@
     "/v2/money_management/payout_methods/{id}" : {
       "get" : {
         "description" : "Retrieve a PayoutMethod object.",
-        "operationId" : "GetMoneyManagementPayoutMethodsId",
+        "operationId" : "GetV2MoneyManagementPayoutMethodsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6158,7 +6175,7 @@
     "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee" : {
       "post" : {
         "description" : "Initiate Confirmation of Payee (CoP) in order to verify that the owner of a UK bank account matches\nwho you expect. This must be done on all UK bank accounts before sending domestic OutboundPayments. If\nthe result is a partial match or a non match, explicit acknowledgement using AcknowledgeConfirmationOfPayee\nis required before sending funds.",
-        "operationId" : "PostCoreVaultGbBankAccountsIdInitiateConfirmationOfPayee",
+        "operationId" : "PostV2CoreVaultGbBankAccountsIdInitiateConfirmationOfPayee",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6223,7 +6240,7 @@
     "/v2/core/accounts/{id}/close" : {
       "post" : {
         "description" : "Removes access to the Account and its associated resources.",
-        "operationId" : "PostCoreAccountsIdClose",
+        "operationId" : "PostV2CoreAccountsIdClose",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6301,7 +6318,7 @@
     "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits" : {
       "post" : {
         "description" : "Generates microdeposits for a FinancialAddress in a Sandbox environment.",
-        "operationId" : "PostTestHelpersFinancialAddressesIdGenerateMicrodeposits",
+        "operationId" : "PostV2TestHelpersFinancialAddressesIdGenerateMicrodeposits",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6358,7 +6375,7 @@
     "/v2/money_management/transaction_entries/{id}" : {
       "get" : {
         "description" : "Retrieves the details of a TransactionEntry by ID.",
-        "operationId" : "GetMoneyManagementTransactionEntriesId",
+        "operationId" : "GetV2MoneyManagementTransactionEntriesId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6398,85 +6415,10 @@
         "x-stripeNotPublic" : true
       }
     },
-    "/v2/billing/meter_event_stream" : {
-      "post" : {
-        "description" : "Creates meter events. Events are processed asynchronously, including validation. Requires a meter event session for authentication. Supports up to 10,000 requests per second in livemode. For even higher rate-limits, contact sales.",
-        "operationId" : "PostBillingMeterEventStream",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "required" : [ "events" ],
-                "type" : "object",
-                "properties" : {
-                  "events" : {
-                    "type" : "array",
-                    "description" : "List of meter events to include in the request.",
-                    "items" : {
-                      "required" : [ "event_name", "payload" ],
-                      "type" : "object",
-                      "properties" : {
-                        "event_name" : {
-                          "type" : "string",
-                          "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
-                        },
-                        "identifier" : {
-                          "type" : "string",
-                          "description" : "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period."
-                        },
-                        "payload" : {
-                          "type" : "object",
-                          "additionalProperties" : {
-                            "type" : "string"
-                          },
-                          "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about\nthe\n[payload](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage#payload-key-overrides)."
-                        },
-                        "timestamp" : {
-                          "type" : "string",
-                          "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
-                          "format" : "date-time"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses" : {
-          "200" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              }
-            }
-          },
-          "default" : {
-            "description" : "Error response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "oneOf" : [ {
-                    "$ref" : "#/components/schemas/v2.error.billing_meter_event_session_expired"
-                  }, {
-                    "$ref" : "#/components/schemas/v2.error"
-                  } ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v2/core/event_destinations/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an event destination.",
-        "operationId" : "GetCoreEventDestinationsId",
+        "operationId" : "GetV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6529,7 +6471,7 @@
       },
       "post" : {
         "description" : "Update the details of an event destination.",
-        "operationId" : "PostCoreEventDestinationsId",
+        "operationId" : "PostV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6568,7 +6510,8 @@
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
-                      "type" : "string"
+                      "type" : "string",
+                      "nullable" : true
                     },
                     "description" : "Metadata."
                   },
@@ -6623,7 +6566,7 @@
       },
       "delete" : {
         "description" : "Delete an event destination.",
-        "operationId" : "DeleteCoreEventDestinationsId",
+        "operationId" : "DeleteV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -6667,7 +6610,7 @@
     "/v2/core/accounts/{account_id}/persons/{id}" : {
       "get" : {
         "description" : "Retrieves a Person associated with an Account.",
-        "operationId" : "GetCoreAccountsAccountIdPersonsId",
+        "operationId" : "GetV2CoreAccountsAccountIdPersonsId",
         "parameters" : [ {
           "name" : "account_id",
           "in" : "path",
@@ -6721,7 +6664,7 @@
       },
       "post" : {
         "description" : "Updates a Person associated with an Account.",
-        "operationId" : "PostCoreAccountsAccountIdPersonsId",
+        "operationId" : "PostV2CoreAccountsAccountIdPersonsId",
         "parameters" : [ {
           "name" : "account_id",
           "in" : "path",
@@ -7028,7 +6971,7 @@
                         "type" : {
                           "type" : "string",
                           "description" : "The ID number type of an individual.",
-                          "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                          "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                         },
                         "value" : {
                           "type" : "string",
@@ -7045,7 +6988,8 @@
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
-                      "type" : "string"
+                      "type" : "string",
+                      "nullable" : true
                     },
                     "description" : "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                   },
@@ -7313,7 +7257,7 @@
       },
       "delete" : {
         "description" : "Delete a Person associated with an Account.",
-        "operationId" : "DeleteCoreAccountsAccountIdPersonsId",
+        "operationId" : "DeleteV2CoreAccountsAccountIdPersonsId",
         "parameters" : [ {
           "name" : "account_id",
           "in" : "path",
@@ -7369,7 +7313,7 @@
     "/v2/money_management/outbound_payment_quotes" : {
       "post" : {
         "description" : "Creates an OutboundPaymentQuote usable in an OutboundPayment.",
-        "operationId" : "PostMoneyManagementOutboundPaymentQuotes",
+        "operationId" : "PostV2MoneyManagementOutboundPaymentQuotes",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -7507,7 +7451,7 @@
     "/v2/core/vault/us_bank_accounts" : {
       "post" : {
         "description" : "Create a USBankAccount object.",
-        "operationId" : "PostCoreVaultUsBankAccounts",
+        "operationId" : "PostV2CoreVaultUsBankAccounts",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -7577,7 +7521,7 @@
     "/v2/money_management/transaction_entries" : {
       "get" : {
         "description" : "Returns a list of TransactionEntries that match the provided filters.",
-        "operationId" : "GetMoneyManagementTransactionEntries",
+        "operationId" : "GetV2MoneyManagementTransactionEntries",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -7663,6 +7607,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -7707,7 +7652,7 @@
     "/v2/core/vault/gb_bank_accounts" : {
       "post" : {
         "description" : "Create a GB bank account.",
-        "operationId" : "PostCoreVaultGbBankAccounts",
+        "operationId" : "PostV2CoreVaultGbBankAccounts",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -7787,7 +7732,7 @@
     "/v2/money_management/payout_methods/{id}/archive" : {
       "post" : {
         "description" : "Archive a PayoutMethod object. Archived objects cannot be used as payout methods\nand will not appear in the payout method list.",
-        "operationId" : "PostMoneyManagementPayoutMethodsIdArchive",
+        "operationId" : "PostV2MoneyManagementPayoutMethodsIdArchive",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -7834,7 +7779,7 @@
     "/v2/billing/meter_events" : {
       "post" : {
         "description" : "Creates a meter event. Events are validated synchronously, but are processed asynchronously. Supports up to 1,000 events per second in livemode. For higher rate-limits, please use meter event streams instead.",
-        "operationId" : "PostBillingMeterEvents",
+        "operationId" : "PostV2BillingMeterEvents",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -7910,7 +7855,7 @@
     "/v2/money_management/financial_addresses/{id}" : {
       "get" : {
         "description" : "Retrieve a FinancialAddress. By default, the FinancialAddress will be returned in its unexpanded state, revealing only the last 4 digits of the account number.",
-        "operationId" : "GetMoneyManagementFinancialAddressesId",
+        "operationId" : "GetV2MoneyManagementFinancialAddressesId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -7966,7 +7911,7 @@
     "/v2/money_management/outbound_transfers/{id}/cancel" : {
       "post" : {
         "description" : "Cancels an OutboundTransfer. Only processing OutboundTransfers can be canceled.",
-        "operationId" : "PostMoneyManagementOutboundTransfersIdCancel",
+        "operationId" : "PostV2MoneyManagementOutboundTransfersIdCancel",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -8015,7 +7960,7 @@
     "/v2/core/accounts/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an Account.",
-        "operationId" : "GetCoreAccountsId",
+        "operationId" : "GetV2CoreAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -8073,7 +8018,7 @@
       },
       "post" : {
         "description" : "Updates the details of an Account.",
-        "operationId" : "PostCoreAccountsId",
+        "operationId" : "PostV2CoreAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -8096,6 +8041,10 @@
                       "customer" : {
                         "type" : "object",
                         "properties" : {
+                          "applied" : {
+                            "type" : "boolean",
+                            "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                          },
                           "automatic_indirect_tax" : {
                             "type" : "object",
                             "properties" : {
@@ -8252,6 +8201,10 @@
                       "merchant" : {
                         "type" : "object",
                         "properties" : {
+                          "applied" : {
+                            "type" : "boolean",
+                            "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                          },
                           "bacs_debit_payments" : {
                             "type" : "object",
                             "properties" : {
@@ -8826,6 +8779,10 @@
                       "recipient" : {
                         "type" : "object",
                         "properties" : {
+                          "applied" : {
+                            "type" : "boolean",
+                            "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                          },
                           "capabilities" : {
                             "type" : "object",
                             "properties" : {
@@ -8894,6 +8851,10 @@
                       "storer" : {
                         "type" : "object",
                         "properties" : {
+                          "applied" : {
+                            "type" : "boolean",
+                            "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                          },
                           "capabilities" : {
                             "type" : "object",
                             "properties" : {
@@ -9467,7 +9428,7 @@
                                 "type" : {
                                   "type" : "string",
                                   "description" : "Open Enum. The ID number type of a business entity.",
-                                  "enum" : [ "ae_crn", "ae_vat", "at_fn", "au_abn", "au_acn", "au_in", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "nl_kvk", "no_orgnr", "nz_bn", "pl_regon", "pt_vat", "ro_cui", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
+                                  "enum" : [ "ae_crn", "ae_vat", "ao_nif", "at_fn", "au_abn", "au_acn", "au_in", "az_tin", "bd_etin", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cr_cpj", "cr_nite", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "do_rcn", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "gt_nit", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "kz_bin", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "mz_nuit", "nl_kvk", "no_orgnr", "nz_bn", "pe_ruc", "pk_ntn", "pl_regon", "pt_vat", "ro_cui", "sa_crn", "sa_tin", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
                                 },
                                 "value" : {
                                   "type" : "string",
@@ -9890,7 +9851,7 @@
                                 "type" : {
                                   "type" : "string",
                                   "description" : "The ID number type of an individual.",
-                                  "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                                  "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                                 },
                                 "value" : {
                                   "type" : "string",
@@ -9907,7 +9868,8 @@
                           "metadata" : {
                             "type" : "object",
                             "additionalProperties" : {
-                              "type" : "string"
+                              "type" : "string",
+                              "nullable" : true
                             },
                             "description" : "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                           },
@@ -10083,7 +10045,8 @@
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
-                      "type" : "string"
+                      "type" : "string",
+                      "nullable" : true
                     },
                     "description" : "Set of key-value pairs that you can attach to an object. This can be useful for storing additional information about the object in a structured format."
                   }
@@ -10148,6 +10111,14 @@
                     "$ref" : "#/components/schemas/v2.error.capability_not_available_without_other_capability"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.capability_not_available_without_other_capability_in_country"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.configuration_cannot_be_deactivated"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.configuration_cannot_be_deactivated_due_to_other_capability_requirement"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.configuration_cannot_be_deactivated_due_to_other_configuration"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.configuration_cannot_be_updated_while_deactivated"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.configuration_creation_invalid"
                   }, {
@@ -10244,7 +10215,7 @@
     "/v2/money_management/outbound_payments" : {
       "get" : {
         "description" : "Returns a list of OutboundPayments that match the provided filters.",
-        "operationId" : "GetMoneyManagementOutboundPayments",
+        "operationId" : "GetV2MoneyManagementOutboundPayments",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -10343,6 +10314,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -10385,7 +10357,7 @@
       },
       "post" : {
         "description" : "Creates an OutboundPayment.",
-        "operationId" : "PostMoneyManagementOutboundPayments",
+        "operationId" : "PostV2MoneyManagementOutboundPayments",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -10583,7 +10555,7 @@
     "/v2/billing/meter_event_session" : {
       "post" : {
         "description" : "Creates a meter event session to send usage on the high-throughput meter event stream. Authentication tokens are only valid for 15 minutes, so you will need to create a new meter event session when your token expires.",
-        "operationId" : "PostBillingMeterEventSession",
+        "operationId" : "PostV2BillingMeterEventSession",
         "responses" : {
           "200" : {
             "description" : "Successful response",
@@ -10613,7 +10585,7 @@
     "/v2/money_management/payout_methods/{id}/unarchive" : {
       "post" : {
         "description" : "Unarchive an PayoutMethod object.",
-        "operationId" : "PostMoneyManagementPayoutMethodsIdUnarchive",
+        "operationId" : "PostV2MoneyManagementPayoutMethodsIdUnarchive",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -10660,7 +10632,7 @@
     "/v2/core/event_destinations/{id}/enable" : {
       "post" : {
         "description" : "Enable an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdEnable",
+        "operationId" : "PostV2CoreEventDestinationsIdEnable",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -10704,7 +10676,7 @@
     "/v2/money_management/payout_methods_bank_account_spec" : {
       "get" : {
         "description" : "Fetch the specifications for a set of countries to know which\ncredential fields are required, the validations for each fields, and how to translate these\ncountry-specific fields to the generic fields in the PayoutMethodBankAccount type.",
-        "operationId" : "GetMoneyManagementPayoutMethodsBankAccountSpec",
+        "operationId" : "GetV2MoneyManagementPayoutMethodsBankAccountSpec",
         "parameters" : [ {
           "name" : "countries",
           "in" : "query",
@@ -10750,7 +10722,7 @@
     "/v2/core/vault/us_bank_accounts/{id}" : {
       "get" : {
         "description" : "Retrieve a USBankAccount object.",
-        "operationId" : "GetCoreVaultUsBankAccountsId",
+        "operationId" : "GetV2CoreVaultUsBankAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -10791,7 +10763,7 @@
       },
       "post" : {
         "description" : "Update a USBankAccount object. This is limited to supplying a previously empty routing_number field.",
-        "operationId" : "PostCoreVaultUsBankAccountsId",
+        "operationId" : "PostV2CoreVaultUsBankAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -10867,7 +10839,7 @@
     "/v2/money_management/received_credits" : {
       "get" : {
         "description" : "Retrieves a list of ReceivedCredits.",
-        "operationId" : "GetMoneyManagementReceivedCredits",
+        "operationId" : "GetV2MoneyManagementReceivedCredits",
         "parameters" : [ {
           "name" : "created",
           "in" : "query",
@@ -10944,6 +10916,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -10988,7 +10961,7 @@
     "/v2/payments/off_session_payments/{id}/cancel" : {
       "post" : {
         "description" : "Cancel an OffSessionPayment that has previously been created.",
-        "operationId" : "PostPaymentsOffSessionPaymentsIdCancel",
+        "operationId" : "PostV2PaymentsOffSessionPaymentsIdCancel",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -11031,7 +11004,7 @@
     "/v2/core/events" : {
       "get" : {
         "description" : "List events, going back up to 30 days.",
-        "operationId" : "GetCoreEvents",
+        "operationId" : "GetV2CoreEvents",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -11067,6 +11040,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -11108,7 +11082,7 @@
     "/v2/money_management/outbound_payment_quotes/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an existing OutboundPaymentQuote by passing the unique OutboundPaymentQuote ID.",
-        "operationId" : "GetMoneyManagementOutboundPaymentQuotesId",
+        "operationId" : "GetV2MoneyManagementOutboundPaymentQuotesId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -11151,7 +11125,7 @@
     "/v2/core/vault/gb_bank_accounts/{id}" : {
       "get" : {
         "description" : "Retrieve a GB bank account.",
-        "operationId" : "GetCoreVaultGbBankAccountsId",
+        "operationId" : "GetV2CoreVaultGbBankAccountsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -11194,7 +11168,7 @@
     "/v2/payments/off_session_payments/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an OffSessionPayment that has previously been created.",
-        "operationId" : "GetPaymentsOffSessionPaymentsId",
+        "operationId" : "GetV2PaymentsOffSessionPaymentsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -11255,7 +11229,7 @@
         },
         "x-resourceId" : "financial_address_credit_simulation",
         "x-stripeResource" : {
-          "in_package" : "",
+          "in_package" : "v2",
           "class_name" : "FinancialAddressCreditSimulation"
         },
         "x-stripeOperations" : [ {
@@ -11306,7 +11280,7 @@
         },
         "x-resourceId" : "financial_address_generated_microdeposits",
         "x-stripeResource" : {
-          "in_package" : "",
+          "in_package" : "v2",
           "class_name" : "FinancialAddressGeneratedMicrodeposits"
         },
         "x-stripeOperations" : [ {
@@ -11688,8 +11662,13 @@
             "type" : "object",
             "properties" : {
               "customer" : {
+                "required" : [ "applied" ],
                 "type" : "object",
                 "properties" : {
+                  "applied" : {
+                    "type" : "boolean",
+                    "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                  },
                   "automatic_indirect_tax" : {
                     "type" : "object",
                     "properties" : {
@@ -11880,8 +11859,13 @@
                 "description" : "The Customer Configuration allows the Account to be used in inbound payment flows."
               },
               "merchant" : {
+                "required" : [ "applied" ],
                 "type" : "object",
                 "properties" : {
+                  "applied" : {
+                    "type" : "boolean",
+                    "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                  },
                   "bacs_debit_payments" : {
                     "type" : "object",
                     "properties" : {
@@ -13654,8 +13638,13 @@
                 "description" : "The Merchant configuration allows the Account to act as a connected account and collect payments facilitated by a Connect platform. You can add this configuration to your connected accounts only if you’ve completed onboarding as a Connect platform."
               },
               "recipient" : {
+                "required" : [ "applied" ],
                 "type" : "object",
                 "properties" : {
+                  "applied" : {
+                    "type" : "boolean",
+                    "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                  },
                   "capabilities" : {
                     "type" : "object",
                     "properties" : {
@@ -13874,8 +13863,13 @@
                 "description" : "The Recipient Configuration allows the Account to receive funds."
               },
               "storer" : {
+                "required" : [ "applied" ],
                 "type" : "object",
                 "properties" : {
+                  "applied" : {
+                    "type" : "boolean",
+                    "description" : "Represents the state of the configuration, and can be updated to deactivate or re-apply a configuration."
+                  },
                   "capabilities" : {
                     "type" : "object",
                     "properties" : {
@@ -14668,7 +14662,7 @@
                         "type" : {
                           "type" : "string",
                           "description" : "Open Enum. The ID number type of a business entity.",
-                          "enum" : [ "ae_crn", "ae_vat", "at_fn", "au_abn", "au_acn", "au_in", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "nl_kvk", "no_orgnr", "nz_bn", "pl_regon", "pt_vat", "ro_cui", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
+                          "enum" : [ "ae_crn", "ae_vat", "ao_nif", "at_fn", "au_abn", "au_acn", "au_in", "az_tin", "bd_etin", "be_cbe", "bg_uic", "br_cnpj", "ca_cn", "ca_crarr", "ca_neq", "ca_rid", "ch_chid", "ch_uid", "cr_cpj", "cr_nite", "cy_tic", "cz_ico", "de_hrn", "de_vat", "dk_cvr", "do_rcn", "ee_rk", "es_cif", "fi_yt", "fr_siren", "fr_vat", "gb_crn", "gi_crn", "gr_gemi", "gt_nit", "hk_br", "hk_cr", "hk_mbs", "hu_cjs", "ie_crn", "it_rea", "it_vat", "jp_cn", "kz_bin", "li_uid", "lt_ccrn", "lu_rcs", "lv_urn", "mt_crn", "mx_rfc", "my_brn", "my_coid", "my_sst", "mz_nuit", "nl_kvk", "no_orgnr", "nz_bn", "pe_ruc", "pk_ntn", "pl_regon", "pt_vat", "ro_cui", "sa_crn", "sa_tin", "se_orgnr", "sg_uen", "si_msp", "sk_ico", "th_crn", "th_prn", "th_tin", "us_ein" ]
                         }
                       }
                     }
@@ -15128,7 +15122,7 @@
                         "type" : {
                           "type" : "string",
                           "description" : "The ID number type of an individual.",
-                          "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                          "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                         }
                       }
                     }
@@ -16487,7 +16481,7 @@
                 "type" : {
                   "type" : "string",
                   "description" : "The ID number type of an individual.",
-                  "enum" : [ "ae_eid", "br_cpf", "de_stn", "hk_id", "mx_rfc", "my_nric", "nl_bsn", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
+                  "enum" : [ "ae_eid", "ao_nif", "az_tin", "bd_brc", "bd_etin", "bd_nid", "br_cpf", "cr_cpf", "cr_dimex", "cr_nite", "de_stn", "do_rcn", "gt_nit", "hk_id", "kz_iin", "mx_rfc", "my_nric", "mz_nuit", "nl_bsn", "pe_dni", "pk_cnic", "pk_snic", "sa_tin", "sg_fin", "sg_nric", "th_lc", "th_pin", "us_itin", "us_itin_last_4", "us_ssn", "us_ssn_last_4" ]
                 }
               }
             }
@@ -16893,6 +16887,7 @@
             "format" : "date-time"
           },
           "data" : {
+            "type" : "object",
             "description" : "Additional data about the event."
           },
           "id" : {
@@ -17308,8 +17303,8 @@
         "description" : "Use the GBBankAccounts API to create and manage GB bank account objects",
         "x-resourceId" : "v2.core.vault.gb_bank_account",
         "x-stripeResource" : {
-          "in_package" : "v2.core",
-          "class_name" : "VaultGbBankAccount"
+          "in_package" : "v2.core.vault",
+          "class_name" : "GbBankAccount"
         },
         "x-stripeOperations" : [ {
           "method_name" : "create",
@@ -17394,8 +17389,8 @@
         "description" : "Use the USBankAccounts API to create and manage US bank accounts objects that you can use to receive funds. Note that these are not interchangeable with v1 Tokens.",
         "x-resourceId" : "v2.core.vault.us_bank_account",
         "x-stripeResource" : {
-          "in_package" : "v2.core",
-          "class_name" : "VaultUsBankAccount"
+          "in_package" : "v2.core.vault",
+          "class_name" : "UsBankAccount"
         },
         "x-stripeOperations" : [ {
           "method_name" : "create",
@@ -17429,7 +17424,7 @@
         "properties" : {
           "object" : {
             "type" : "string",
-            "description" : "String representing the object's type. Objects of the same type share the same value of the object field."
+            "description" : "String representing the type of the object that has been deleted. Objects of the same type share the same value of the object field."
           },
           "id" : {
             "type" : "string",
@@ -18903,6 +18898,98 @@
           }
         },
         "description" : "Account cannot be onboard via v2/core/account_links without specifying the right configurations."
+      },
+      "v2.error.configuration_cannot_be_deactivated" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "configuration_cannot_be_deactivated" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Configuration cannot be deactivated."
+      },
+      "v2.error.configuration_cannot_be_deactivated_due_to_other_capability_requirement" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "configuration_cannot_be_deactivated_due_to_other_capability_requirement" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Configuration cannot be deactivated due to a dependency with another capability."
+      },
+      "v2.error.configuration_cannot_be_deactivated_due_to_other_configuration" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "configuration_cannot_be_deactivated_due_to_other_configuration" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Cannot deactivate a configuration due to another configuration depending on it."
+      },
+      "v2.error.configuration_cannot_be_updated_while_deactivated" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "configuration_cannot_be_updated_while_deactivated" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Configuration cannot be updated while deactivated."
       },
       "v2.error.configuration_creation_invalid" : {
         "required" : [ "error" ],
@@ -22418,7 +22505,7 @@
         "description" : "Adjustments represent Stripe-initiated credits or debits to a user balance. They might be used to amend balances due to technical or operational error.",
         "x-resourceId" : "v2.money_management.adjustment",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "Adjustment"
         },
         "x-stripeOperations" : [ {
@@ -22546,6 +22633,10 @@
             "description" : "Time at which the object was created.",
             "format" : "date-time"
           },
+          "display_name" : {
+            "type" : "string",
+            "description" : "A descriptive name for the FinancialAccount, up to 50 characters long. This name will be used in the Stripe Dashboard and embedded components."
+          },
           "id" : {
             "type" : "string",
             "description" : "Unique identifier for the object."
@@ -22555,7 +22646,7 @@
             "additionalProperties" : {
               "type" : "string"
             },
-            "description" : "Metadata associated with the FinancialAccount"
+            "description" : "Metadata associated with the FinancialAccount."
           },
           "object" : {
             "type" : "string",
@@ -22631,10 +22722,10 @@
             "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
-        "description" : "The Financial Account is the container that allows for the configuration of money movement.",
+        "description" : "A FinancialAccount represents a balance and can be used as the source or destination for the money management (`/v2/money_management`) APIs.",
         "x-resourceId" : "v2.money_management.financial_account",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "FinancialAccount"
         },
         "x-stripeOperations" : [ {
@@ -22832,7 +22923,7 @@
         "description" : "A FinancialAddress contains information needed to transfer money to a Financial Account. A Financial Account can have more than one Financial Address.",
         "x-resourceId" : "v2.money_management.financial_address",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "FinancialAddress"
         },
         "x-stripeOperations" : [ {
@@ -23108,7 +23199,7 @@
         "description" : "An InboundTransfer object, representing a money movement from a\nuser owned PaymentMethod to a FinancialAccount belonging to the same user.",
         "x-resourceId" : "v2.money_management.inbound_transfer",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "InboundTransfer"
         },
         "x-stripeOperations" : [ {
@@ -23575,7 +23666,7 @@
         "description" : "OutboundPayment represents a single money movement from one FinancialAccount you own to a payout method someone else owns.",
         "x-resourceId" : "v2.money_management.outbound_payment",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "OutboundPayment"
         },
         "x-stripeOperations" : [ {
@@ -23987,10 +24078,10 @@
             "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
-        "description" : "OutboundPaymentQuote represents a quote",
+        "description" : "OutboundPaymentQuote represents a quote that provides fee and amount estimates for OutboundPayment.",
         "x-resourceId" : "v2.money_management.outbound_payment_quote",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "OutboundPaymentQuote"
         },
         "x-stripeOperations" : [ {
@@ -24074,7 +24165,7 @@
         "description" : "Use the OutboundSetupIntent API to create and setup usable payout methods.",
         "x-resourceId" : "v2.money_management.outbound_setup_intent",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "OutboundSetupIntent"
         },
         "x-stripeOperations" : [ {
@@ -24322,7 +24413,7 @@
         "description" : "OutboundTransfer represents a single money movement from one FinancialAccount you own to a payout method you also own.",
         "x-resourceId" : "v2.money_management.outbound_transfer",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "OutboundTransfer"
         },
         "x-stripeOperations" : [ {
@@ -24684,7 +24775,7 @@
         "description" : "Use the PayoutMethods API to list and interact with PayoutMethod objects.",
         "x-resourceId" : "v2.money_management.payout_method",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "PayoutMethod"
         },
         "x-stripeOperations" : [ {
@@ -24825,7 +24916,7 @@
         "description" : "The PayoutMethodsBankAccountSpec object.",
         "x-resourceId" : "v2.money_management.payout_methods_bank_account_spec",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "PayoutMethodsBankAccountSpec"
         },
         "x-stripeOperations" : [ {
@@ -25051,7 +25142,7 @@
         "description" : "Use ReceivedCredits API to retrieve information on when, where, and how funds are sent into your FinancialAccount.",
         "x-resourceId" : "v2.money_management.received_credit",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "ReceivedCredit"
         },
         "x-stripeOperations" : [ {
@@ -25354,7 +25445,7 @@
         "description" : "ReceivedDebit resource",
         "x-resourceId" : "v2.money_management.received_debit",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "ReceivedDebit"
         },
         "x-stripeOperations" : [ {
@@ -25619,7 +25710,7 @@
           "category" : {
             "type" : "string",
             "description" : "Open Enum. A descriptive category used to classify the Transaction.",
-            "enum" : [ "adjustment", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit", "return", "stripe_fee" ]
+            "enum" : [ "adjustment", "currency_conversion", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit", "return", "stripe_fee" ]
           },
           "created" : {
             "type" : "string",
@@ -25637,11 +25728,15 @@
               "type" : {
                 "type" : "string",
                 "description" : "Open Enum. Type of the flow that created the Transaction. The field matching this value will contain the ID of the flow.",
-                "enum" : [ "adjustment", "fee_transaction", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit" ]
+                "enum" : [ "adjustment", "currency_conversion", "fee_transaction", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit" ]
               },
               "adjustment" : {
                 "type" : "string",
                 "description" : "If applicable, the ID of the Adjustment that created this Transaction."
+              },
+              "currency_conversion" : {
+                "type" : "string",
+                "description" : "In the future, this will be the ID of the currency conversion that created this Transaction. For now, this field is always null."
               },
               "fee_transaction" : {
                 "type" : "string",
@@ -25708,7 +25803,7 @@
         "description" : "Use Transactions to view changes to your FinancialAccount balance over time. Every flow that moves money, such as OutboundPayments or ReceivedCredits, will have one or more Transactions that describes how the flow impacted your balance. Note that while the FinancialAccount balance will always be up to date, be aware that Transactions and TransactionEntries are created shortly after to reflect changes.",
         "x-resourceId" : "v2.money_management.transaction",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "Transaction"
         },
         "x-stripeOperations" : [ {
@@ -25882,7 +25977,7 @@
               "category" : {
                 "type" : "string",
                 "description" : "Closed Enum for now, and will be turned into an Open Enum soon. A descriptive category used to classify the Transaction.",
-                "enum" : [ "adjustment", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit", "return", "stripe_fee" ]
+                "enum" : [ "adjustment", "currency_conversion", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit", "return", "stripe_fee" ]
               },
               "financial_account" : {
                 "type" : "string",
@@ -25895,11 +25990,15 @@
                   "type" : {
                     "type" : "string",
                     "description" : "Open Enum. Type of the flow that created the Transaction. The field matching this value will contain the ID of the flow.",
-                    "enum" : [ "adjustment", "fee_transaction", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit" ]
+                    "enum" : [ "adjustment", "currency_conversion", "fee_transaction", "inbound_transfer", "outbound_payment", "outbound_transfer", "received_credit", "received_debit" ]
                   },
                   "adjustment" : {
                     "type" : "string",
                     "description" : "If applicable, the ID of the Adjustment that created this Transaction."
+                  },
+                  "currency_conversion" : {
+                    "type" : "string",
+                    "description" : "In the future, this will be the ID of the currency conversion that created this Transaction. For now, this field is always null."
                   },
                   "fee_transaction" : {
                     "type" : "string",
@@ -25939,7 +26038,7 @@
         "description" : "TransactionEntries represent individual money movements across different states within a Transaction.",
         "x-resourceId" : "v2.money_management.transaction_entry",
         "x-stripeResource" : {
-          "in_package" : "v2.moneyManagement",
+          "in_package" : "v2.money_management",
           "class_name" : "TransactionEntry"
         },
         "x-stripeOperations" : [ {
@@ -26323,6 +26422,19 @@
           "type" : "v2.payments.off_session_payment.succeeded"
         },
         "x-stripeNotPublic" : true
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "description" : "Basic HTTP authentication. Allowed headers-- Authorization: Basic <api_key> | Authorization: Basic <base64 hash of `api_key:`>",
+        "scheme" : "basic"
+      },
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Bearer HTTP authentication. Allowed headers-- Authorization: Bearer <api_key>",
+        "scheme" : "bearer",
+        "bearerFormat" : "auth-scheme"
       }
     }
   }
