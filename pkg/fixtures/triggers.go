@@ -80,6 +80,7 @@ var Events = map[string]string{
 	"issuing_cardholder.created":                "triggers/issuing_cardholder.created.json",
 	"issuing_cardholder.created.eu":             "triggers/issuing_cardholder.created.eu.json",
 	"issuing_cardholder.created.gb":             "triggers/issuing_cardholder.created.gb.json",
+	"llama.created":                             "triggers/llama.created.json",
 	"payment_intent.amount_capturable_updated":  "triggers/payment_intent.amount_capturable_updated.json",
 	"payment_intent.created":                    "triggers/payment_intent.created.json",
 	"payment_intent.payment_failed":             "triggers/payment_intent.payment_failed.json",
