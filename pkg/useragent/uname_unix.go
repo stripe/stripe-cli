@@ -4,15 +4,10 @@
 package useragent
 
 import (
-	"bytes"
 	"fmt"
 
 	"golang.org/x/sys/unix"
 )
-
-func trimNulls(input []byte) []byte {
-	return bytes.Trim(input, "\x00")
-}
 
 func getUname() string {
 	u := new(unix.Utsname)
