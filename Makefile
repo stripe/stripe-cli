@@ -123,7 +123,6 @@ clean:
 protoc:
 	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
-	@go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5
 	@go mod tidy
 	make protoc-gen-all
 .PHONY: protoc
@@ -136,7 +135,7 @@ protoc-ci: protoc-gen-all
 	@git diff-index -G"^[^\/]|^[\/][^\/]" --quiet HEAD
 .PHONY: proto-ci
 
-protoc-gen-all: protoc-gen-code protoc-gen-docs protoc-gen-plugin
+protoc-gen-all: protoc-gen-code protoc-gen-plugin
 .PHONY: protoc-gen-all
 
 # Generate protobuf go code
@@ -151,17 +150,6 @@ protoc-gen-code:
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
 	@echo "Successfully compiled proto files"
 .PHONY: protoc-compile
-
-# Generate protobuf docs
-protoc-gen-docs:
-	@protoc \
-		--doc_out=./docs/rpc \
-		--doc_opt=markdown,commands.md \
-		--proto_path ./rpc \
-		./rpc/*.proto \
-	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
-	@echo "Successfully generated proto docs"
-.PHONY: protoc-docs
 
 protoc-gen-plugin:
 	@protoc \
