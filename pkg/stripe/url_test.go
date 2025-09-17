@@ -14,6 +14,7 @@ func TestValidateAPIBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateAPIBaseURL("https://qa-api.stripe.com"))
 	assert.Nil(t, ValidateAPIBaseURL("http://foo-api-mydev.dev.stripe.me"))
 	assert.Nil(t, ValidateAPIBaseURL("https://foo-lv5r9y--api-mydev.dev.stripe.me/"))
+	assert.Nil(t, ValidateAPIBaseURL("https://foo-lv5r9y--api-iso.dev.stripe.me"))
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1"))
 	assert.Nil(t, ValidateAPIBaseURL("http://127.0.0.1:1337"))
 
@@ -29,6 +30,7 @@ func TestValidateDashboardBaseURLWorks(t *testing.T) {
 	assert.Nil(t, ValidateDashboardBaseURL("https://qa-dashboard.stripe.com"))
 	assert.Nil(t, ValidateDashboardBaseURL("http://foo-manage-mydev.dev.stripe.me"))
 	assert.Nil(t, ValidateDashboardBaseURL("https://foo-lv5r9y--manage-mydev.dev.stripe.me/"))
+	assert.Nil(t, ValidateDashboardBaseURL("https://foo-0-lv5r9y--manage-dashboard-proxy-mydev.dev.stripe.me/"))
 	assert.Nil(t, ValidateDashboardBaseURL("http://127.0.0.1"))
 	assert.Nil(t, ValidateDashboardBaseURL("http://127.0.0.1:1337"))
 

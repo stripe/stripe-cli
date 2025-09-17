@@ -10,7 +10,7 @@ const (
 	DefaultAPIBaseURL   = "https://api.stripe.com"
 	APIBaseURLRegexp    = `^https:\/\/api\.stripe\.com\/v\d+$`
 	qaAPIBaseURL        = "https://qa-api.stripe.com"
-	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+api-mydev.dev.stripe.me`
+	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+.dev.stripe.me`
 
 	// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
 	DefaultFilesAPIBaseURL = "https://files.stripe.com"
@@ -18,7 +18,7 @@ const (
 	// DefaultDashboardBaseURL is the default base URL for dashboard requests
 	DefaultDashboardBaseURL   = "https://dashboard.stripe.com"
 	qaDashboardBaseURL        = "https://qa-dashboard.stripe.com"
-	devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+manage-mydev\.dev\.stripe\.me`
+	devDashboardBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+\.dev\.stripe\.me`
 
 	// localhostURLRegexp is used in tests
 	localhostURLRegexp = `http:\/\/127\.0\.0\.1(:[0-9]+)?`
