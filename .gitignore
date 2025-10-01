@@ -8,4 +8,5 @@ coverage.txt
 default_cassette.yaml
 .vscode/*.log
 stripe-completion.bash
+stripe-completion.fish
 stripe-completion.zsh
