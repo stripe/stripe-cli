@@ -1079,12 +1079,6 @@
           "class_name" : "MeterEvent"
         },
         "x-stripeOperations" : [ {
-          "method_name" : "create_stream",
-          "method_on" : "service",
-          "method_type" : "custom",
-          "operation" : "post",
-          "path" : "/v2/billing/meter_event_stream"
-        }, {
           "method_name" : "create",
           "method_on" : "service",
           "method_type" : "create",
