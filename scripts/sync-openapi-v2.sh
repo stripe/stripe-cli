@@ -13,8 +13,8 @@ SHA=$(git rev-parse HEAD)
 echo "⏳ Retrieving v2 openapi spec..."
 
 # for apispecdump docs, see https://go/api-v2/dump
-./scripts/api-services/apiv2 apispecdump --version="2025-08-27.basil" --format OPENAPI_JSON --variant CLI --out-file spec3.v2.sdk.json
-./scripts/api-services/apiv2 apispecdump --version="2025-08-27.basil" --format OPENAPI_JSON --variant CLI_PUBLIC_PREVIEW --out-file spec3.v2.sdk.preview.json
+./scripts/api-services/apiv2 apispecdump --version="2025-09-30.clover" --format OPENAPI_JSON --variant CLI --out-file spec3.v2.sdk.json
+./scripts/api-services/apiv2 apispecdump --version="2025-09-30.clover" --format OPENAPI_JSON --variant CLI_PUBLIC_PREVIEW --out-file spec3.v2.sdk.preview.json
 
 popd
 

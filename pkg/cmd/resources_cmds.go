@@ -5550,9 +5550,15 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	rFinancialAddressCreditSimulationsTestHelpersCmd := resource.NewResourceCmd(rFinancialAddressCreditSimulationsCmd.Cmd, "test_helpers")
 	rFinancialAddressGeneratedMicrodepositssCmd := resource.NewResourceCmd(rootCmd, "financial_address_generated_microdepositss")
 	rFinancialAddressGeneratedMicrodepositssTestHelpersCmd := resource.NewResourceCmd(rFinancialAddressGeneratedMicrodepositssCmd.Cmd, "test_helpers")
+	rBillingBillSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_setting_versions")
+	rBillingBillSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_settings")
+	rBillingCadencesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "cadences")
+	rBillingCollectionSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_setting_versions")
+	rBillingCollectionSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_settings")
 	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
 	rBillingMeterEventSessionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_sessions")
 	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
+	rBillingProfilesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "profiles")
 	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
 	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
 	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
@@ -5587,6 +5593,129 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rFinancialAddressGeneratedMicrodepositssTestHelpersCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "list", "/v2/billing/bill_settings/{bill_setting_id}/versions", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "create", "/v2/billing/bill_settings", http.MethodPost, map[string]string{
+		"calculation.tax.type":                  "string",
+		"display_name":                          "string",
+		"invoice.time_until_due.interval":       "string",
+		"invoice.time_until_due.interval_count": "integer",
+		"invoice_rendering_template":            "string",
+		"lookup_key":                            "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "list", "/v2/billing/bill_settings", http.MethodGet, map[string]string{
+		"limit":       "integer",
+		"lookup_keys": "array",
+		"page":        "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "update", "/v2/billing/bill_settings/{id}", http.MethodPost, map[string]string{
+		"calculation.tax.type":                  "string",
+		"display_name":                          "string",
+		"invoice.time_until_due.interval":       "string",
+		"invoice.time_until_due.interval_count": "integer",
+		"invoice_rendering_template":            "string",
+		"live_version":                          "string",
+		"lookup_key":                            "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "cancel", "/v2/billing/cadences/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "create", "/v2/billing/cadences", http.MethodPost, map[string]string{
+		"billing_cycle.day.time.hour":       "integer",
+		"billing_cycle.day.time.minute":     "integer",
+		"billing_cycle.day.time.second":     "integer",
+		"billing_cycle.interval_count":      "integer",
+		"billing_cycle.month.day_of_month":  "integer",
+		"billing_cycle.month.month_of_year": "integer",
+		"billing_cycle.month.time.hour":     "integer",
+		"billing_cycle.month.time.minute":   "integer",
+		"billing_cycle.month.time.second":   "integer",
+		"billing_cycle.type":                "string",
+		"billing_cycle.week.day_of_week":    "integer",
+		"billing_cycle.week.time.hour":      "integer",
+		"billing_cycle.week.time.minute":    "integer",
+		"billing_cycle.week.time.second":    "integer",
+		"billing_cycle.year.day_of_month":   "integer",
+		"billing_cycle.year.month_of_year":  "integer",
+		"billing_cycle.year.time.hour":      "integer",
+		"billing_cycle.year.time.minute":    "integer",
+		"billing_cycle.year.time.second":    "integer",
+		"lookup_key":                        "string",
+		"payer.billing_profile":             "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "list", "/v2/billing/cadences", http.MethodGet, map[string]string{
+		"include":     "array",
+		"limit":       "integer",
+		"lookup_keys": "array",
+		"page":        "string",
+		"test_clock":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "retrieve", "/v2/billing/cadences/{id}", http.MethodGet, map[string]string{
+		"include": "array",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "update", "/v2/billing/cadences/{id}", http.MethodPost, map[string]string{
+		"lookup_key": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingVersionsCmd.Cmd, "list", "/v2/billing/collection_settings/{collection_setting_id}/versions", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "create", "/v2/billing/collection_settings", http.MethodPost, map[string]string{
+		"collection_method":                               "string",
+		"display_name":                                    "string",
+		"email_delivery.payment_due.enabled":              "boolean",
+		"email_delivery.payment_due.include_payment_link": "boolean",
+		"lookup_key":                                      "string",
+		"payment_method_configuration":                    "string",
+		"payment_method_options.acss_debit.mandate_options.transaction_type":                         "string",
+		"payment_method_options.acss_debit.verification_method":                                      "string",
+		"payment_method_options.bancontact.preferred_language":                                       "string",
+		"payment_method_options.card.mandate_options.amount":                                         "integer",
+		"payment_method_options.card.mandate_options.amount_type":                                    "string",
+		"payment_method_options.card.mandate_options.description":                                    "string",
+		"payment_method_options.card.network":                                                        "string",
+		"payment_method_options.card.request_three_d_secure":                                         "string",
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country":             "string",
+		"payment_method_options.customer_balance.bank_transfer.type":                                 "string",
+		"payment_method_options.customer_balance.funding_type":                                       "string",
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": "array",
+		"payment_method_options.us_bank_account.financial_connections.permissions":                   "array",
+		"payment_method_options.us_bank_account.financial_connections.prefetch":                      "array",
+		"payment_method_options.us_bank_account.verification_method":                                 "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "list", "/v2/billing/collection_settings", http.MethodGet, map[string]string{
+		"limit":       "integer",
+		"lookup_keys": "array",
+		"page":        "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "update", "/v2/billing/collection_settings/{id}", http.MethodPost, map[string]string{
+		"collection_method":                               "string",
+		"display_name":                                    "string",
+		"email_delivery.payment_due.enabled":              "boolean",
+		"email_delivery.payment_due.include_payment_link": "boolean",
+		"live_version":                                    "string",
+		"lookup_key":                                      "string",
+		"payment_method_configuration":                    "string",
+		"payment_method_options.acss_debit.mandate_options.transaction_type":                         "string",
+		"payment_method_options.acss_debit.verification_method":                                      "string",
+		"payment_method_options.bancontact.preferred_language":                                       "string",
+		"payment_method_options.card.mandate_options.amount":                                         "integer",
+		"payment_method_options.card.mandate_options.amount_type":                                    "string",
+		"payment_method_options.card.mandate_options.description":                                    "string",
+		"payment_method_options.card.network":                                                        "string",
+		"payment_method_options.card.request_three_d_secure":                                         "string",
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country":             "string",
+		"payment_method_options.customer_balance.bank_transfer.type":                                 "string",
+		"payment_method_options.customer_balance.funding_type":                                       "string",
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": "array",
+		"payment_method_options.us_bank_account.financial_connections.permissions":                   "array",
+		"payment_method_options.us_bank_account.financial_connections.prefetch":                      "array",
+		"payment_method_options.us_bank_account.verification_method":                                 "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rBillingMeterEventAdjustmentsCmd.Cmd, "create", "/v2/billing/meter_event_adjustments", http.MethodPost, map[string]string{
 		"cancel.identifier": "string",
 		"event_name":        "string",
@@ -5597,6 +5726,26 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"event_name": "string",
 		"identifier": "string",
 		"timestamp":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "create", "/v2/billing/profiles", http.MethodPost, map[string]string{
+		"customer":               "string",
+		"default_payment_method": "string",
+		"display_name":           "string",
+		"lookup_key":             "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "list", "/v2/billing/profiles", http.MethodGet, map[string]string{
+		"customer":               "string",
+		"default_payment_method": "string",
+		"limit":                  "integer",
+		"lookup_keys":            "array",
+		"page":                   "string",
+		"status":                 "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "retrieve", "/v2/billing/profiles/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "update", "/v2/billing/profiles/{id}", http.MethodPost, map[string]string{
+		"default_payment_method": "string",
+		"display_name":           "string",
+		"lookup_key":             "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountLinksCmd.Cmd, "create", "/v2/core/account_links", http.MethodPost, map[string]string{
 		"account": "string",
@@ -5836,13 +5985,16 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested":  "boolean",
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested":      "boolean",
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": "boolean",
-		"contact_email":     "string",
-		"dashboard":         "string",
-		"defaults.currency": "string",
-		"defaults.locales":  "array",
-		"defaults.responsibilities.fees_collector":   "string",
-		"defaults.responsibilities.losses_collector": "string",
-		"display_name": "string",
+		"contact_email":                                                                    "string",
+		"dashboard":                                                                        "string",
+		"defaults.currency":                                                                "string",
+		"defaults.locales":                                                                 "array",
+		"defaults.profile.business_url":                                                    "string",
+		"defaults.profile.doing_business_as":                                               "string",
+		"defaults.profile.product_description":                                             "string",
+		"defaults.responsibilities.fees_collector":                                         "string",
+		"defaults.responsibilities.losses_collector":                                       "string",
+		"display_name":                                                                     "string",
 		"identity.attestations.directorship_declaration.date":                              "string",
 		"identity.attestations.directorship_declaration.ip":                                "string",
 		"identity.attestations.directorship_declaration.user_agent":                        "string",
@@ -5890,12 +6042,10 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.documents.proof_of_registration.type":                   "string",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": "array",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type":  "string",
-		"identity.business_details.doing_business_as":                                      "string",
 		"identity.business_details.estimated_worker_count":                                 "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.amount":                "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.currency":              "string",
 		"identity.business_details.phone":                                                  "string",
-		"identity.business_details.product_description":                                    "string",
 		"identity.business_details.registered_name":                                        "string",
 		"identity.business_details.script_addresses.kana.city":                             "string",
 		"identity.business_details.script_addresses.kana.country":                          "string",
@@ -5914,7 +6064,6 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.script_names.kana.registered_name":                      "string",
 		"identity.business_details.script_names.kanji.registered_name":                     "string",
 		"identity.business_details.structure":                                              "string",
-		"identity.business_details.url":                                                    "string",
 		"identity.country":                                                                 "string",
 		"identity.entity_type":                                                             "string",
 		"identity.individual.address.city":                                                 "string",
@@ -6081,13 +6230,16 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested":  "boolean",
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested":      "boolean",
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": "boolean",
-		"contact_email":     "string",
-		"dashboard":         "string",
-		"defaults.currency": "string",
-		"defaults.locales":  "array",
-		"defaults.responsibilities.fees_collector":   "string",
-		"defaults.responsibilities.losses_collector": "string",
-		"display_name": "string",
+		"contact_email":                                                                    "string",
+		"dashboard":                                                                        "string",
+		"defaults.currency":                                                                "string",
+		"defaults.locales":                                                                 "array",
+		"defaults.profile.business_url":                                                    "string",
+		"defaults.profile.doing_business_as":                                               "string",
+		"defaults.profile.product_description":                                             "string",
+		"defaults.responsibilities.fees_collector":                                         "string",
+		"defaults.responsibilities.losses_collector":                                       "string",
+		"display_name":                                                                     "string",
 		"identity.attestations.directorship_declaration.date":                              "string",
 		"identity.attestations.directorship_declaration.ip":                                "string",
 		"identity.attestations.directorship_declaration.user_agent":                        "string",
@@ -6135,12 +6287,10 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.documents.proof_of_registration.type":                   "string",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": "array",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type":  "string",
-		"identity.business_details.doing_business_as":                                      "string",
 		"identity.business_details.estimated_worker_count":                                 "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.amount":                "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.currency":              "string",
 		"identity.business_details.phone":                                                  "string",
-		"identity.business_details.product_description":                                    "string",
 		"identity.business_details.registered_name":                                        "string",
 		"identity.business_details.script_addresses.kana.city":                             "string",
 		"identity.business_details.script_addresses.kana.country":                          "string",
@@ -6159,7 +6309,6 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.script_names.kana.registered_name":                      "string",
 		"identity.business_details.script_names.kanji.registered_name":                     "string",
 		"identity.business_details.structure":                                              "string",
-		"identity.business_details.url":                                                    "string",
 		"identity.country":                                                                 "string",
 		"identity.entity_type":                                                             "string",
 		"identity.individual.address.city":                                                 "string",
@@ -6308,8 +6457,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "retrieve", "/v2/money_management/financial_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "create", "/v2/money_management/financial_addresses", http.MethodPost, map[string]string{
-		"currency":          "string",
 		"financial_account": "string",
+		"type":              "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "list", "/v2/money_management/financial_addresses", http.MethodGet, map[string]string{
 		"financial_account": "string",
@@ -6479,19 +6628,33 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "retrieve", "/v2/money_management/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "cancel", "/v2/payments/off_session_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "capture", "/v2/payments/off_session_payments/{id}/capture", http.MethodPost, map[string]string{
+		"amount_to_capture":           "integer",
+		"statement_descriptor":        "string",
+		"statement_descriptor_suffix": "string",
+		"transfer_data.amount":        "integer",
+		"transfer_data.destination":   "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "create", "/v2/payments/off_session_payments", http.MethodPost, map[string]string{
-		"amount.amount":                "integer",
-		"amount.currency":              "string",
-		"cadence":                      "string",
-		"customer":                     "string",
-		"on_behalf_of":                 "string",
-		"payment_method":               "string",
-		"retry_details.retry_strategy": "string",
-		"statement_descriptor":         "string",
-		"statement_descriptor_suffix":  "string",
-		"test_clock":                   "string",
-		"transfer_data.amount":         "integer",
-		"transfer_data.destination":    "string",
+		"amount.amount":                                      "integer",
+		"amount.currency":                                    "string",
+		"amount_details.discount_amount":                     "integer",
+		"amount_details.shipping.amount":                     "integer",
+		"amount_details.shipping.from_postal_code":           "string",
+		"amount_details.shipping.to_postal_code":             "string",
+		"amount_details.tax.total_tax_amount":                "integer",
+		"cadence":                                            "string",
+		"customer":                                           "string",
+		"on_behalf_of":                                       "string",
+		"payment_method":                                     "string",
+		"payment_method_options.card.network_transaction_id": "string",
+		"retry_details.retry_policy":                         "string",
+		"retry_details.retry_strategy":                       "string",
+		"statement_descriptor":                               "string",
+		"statement_descriptor_suffix":                        "string",
+		"test_clock":                                         "string",
+		"transfer_data.amount":                               "integer",
+		"transfer_data.destination":                          "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "list", "/v2/payments/off_session_payments", http.MethodGet, map[string]string{
 		"limit": "integer",

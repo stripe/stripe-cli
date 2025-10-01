@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-08-27.basil",
+    "version" : "2025-09-30.clover",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
