@@ -257,6 +257,7 @@ var validThinEvents = map[string]bool{
 var validPreviewEvents = map[string]bool{
 	"v1.billing.meter.error_report_triggered":                            true,
 	"v1.billing.meter.no_meter_found":                                    true,
+	"v2.billing.bill_setting.updated":                                    true,
 	"v2.core.account.closed":                                             true,
 	"v2.core.account.created":                                            true,
 	"v2.core.account.updated":                                            true,
@@ -316,5 +317,6 @@ var validPreviewEvents = map[string]bool{
 	"v2.payments.off_session_payment.canceled":                           true,
 	"v2.payments.off_session_payment.created":                            true,
 	"v2.payments.off_session_payment.failed":                             true,
+	"v2.payments.off_session_payment.requires_capture":                   true,
 	"v2.payments.off_session_payment.succeeded":                          true,
 }
