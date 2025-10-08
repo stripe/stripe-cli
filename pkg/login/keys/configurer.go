@@ -33,6 +33,9 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		return validateErr
 	}
 
+	// First, back up the current profile before "default" is overwritten
+	c.cfg.CopyProfile(c.cfg.Profile.ProfileName, c.cfg.Profile.GetDisplayName())
+
 	c.cfg.Profile.LiveModeAPIKey = response.LiveModeAPIKey
 	c.cfg.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 	c.cfg.Profile.TestModeAPIKey = response.TestModeAPIKey

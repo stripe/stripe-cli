@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -35,6 +36,9 @@ type IConfig interface {
 	InitConfig()
 	EditConfig() error
 	PrintConfig() error
+	CopyProfile(source string, target string) error
+	ListProfiles() error
+	SwitchProfile(targetProfileName string) error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
 	WriteConfigField(field string, value interface{}) error
@@ -187,6 +191,71 @@ func (c *Config) EditConfig() error {
 	return err
 }
 
+func (c *Config) CopyProfile(source string, target string) error {
+
+	if source == "" {
+		return fmt.Errorf("source profile name cannot be empty")
+	}
+	if target == "" {
+		return fmt.Errorf("target profile name cannot be empty")
+	}
+
+	if source == target {
+		return fmt.Errorf("cannot copy profile to itself")
+	}
+
+	runtimeViper := viper.GetViper()
+	safeSource := strings.ReplaceAll(source, ".", " ")
+	existing := runtimeViper.GetStringMapString(safeSource)
+	if existing == nil || isProfile(existing) {
+		return fmt.Errorf("source profile '%s' does not exist or is not a profile", source)
+	}
+
+	// TODO: work in Profile, not in maps?
+	safeTarget := strings.ReplaceAll(target, ".", " ")
+	newProfile := existing
+	newProfile["profile_name"] = safeTarget
+
+	runtimeViper.Set(safeTarget, newProfile)
+
+	return syncConfig(runtimeViper)
+}
+
+func (c *Config) ListProfiles() error {
+	runtimeViper := viper.GetViper()
+	var profiles []string
+
+	for key, value := range runtimeViper.AllSettings() {
+		// TODO: there's probably a better way to e.g. hydrate a Profile and read from there?
+		profile, isProfile := value.(map[string]interface{})
+		if isProfile {
+			if key != "default" {
+				displayName, _ := profile["display_name"].(string)
+				profiles = append(profiles, displayName)
+			}
+		}
+	}
+
+	// TODO: sort by most recently used
+	sort.Strings(profiles)
+
+	if len(profiles) == 0 {
+		fmt.Println("No profiles found.")
+	} else {
+		fmt.Println("Available profiles:")
+		for _, profile := range profiles {
+			// TODO: why not c.Profile.DisplayName?
+			if profile == c.Profile.GetDisplayName() {
+				fmt.Printf("  * %s (active)\n", profile)
+			} else {
+				fmt.Printf("    %s\n", profile)
+			}
+		}
+	}
+
+	return nil
+}
+
 // PrintConfig outputs the contents of the configuration file.
 func (c *Config) PrintConfig() error {
 	profileName := c.Profile.ProfileName
@@ -218,6 +287,27 @@ func (c *Config) GetInstalledPlugins() []string {
 	runtimeViper := viper.GetViper()
 
 	return runtimeViper.GetStringSlice("installed_plugins")
+}
+
+func (c *Config) SwitchProfile(profileName string) error {
+	// First copy the active profile to a different key
+	if err := c.CopyProfile("default", c.Profile.GetDisplayName()); err != nil {
+		return err
+	}
+
+	// Then copy the target profile to "default"
+	// This makes the target profile the active one
+	// since the CLI always uses the "default" profile internally
+	if err := c.CopyProfile(profileName, "default"); err != nil {
+		return err
+	}
+
+	// Finally, reload the config to pick up the new "default" profile
+	c.InitConfig()
+
+	fmt.Printf("Switched to profile: %s\n", profileName)
+
+	return nil
 }
 
 // RemoveProfile removes the profile whose name matches the provided
