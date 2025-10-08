@@ -333,7 +333,6 @@ func (c *Config) RemoveProfile(profileName string) error {
 				profileNameAttr = v["profile_name"]
 			}
 			if field == profileName || profileNameAttr == profileName {
-				fmt.Printf("Removing profile: %s\n", profileName)
 				runtimeViper, err = removeKey(runtimeViper, field)
 				if err != nil {
 					return err
