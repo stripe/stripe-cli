@@ -293,6 +293,7 @@ func (c *Config) GetInstalledPlugins() []string {
 
 func (c *Config) SwitchProfile(profileName string) error {
 	// First copy the active profile to a different key
+	// TODO: should this be account id instead of display name?
 	if err := c.CopyProfile("default", c.Profile.GetDisplayName()); err != nil {
 		return err
 	}

@@ -11,9 +11,15 @@ import (
 type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
-	list             bool
 	dashboardBaseURL string
-	switchProfile    string
+}
+
+type loginListCmd struct {
+	cmd *cobra.Command
+}
+
+type loginSwitchCmd struct {
+	cmd *cobra.Command
 }
 
 func newLoginCmd() *loginCmd {
@@ -27,13 +33,37 @@ func newLoginCmd() *loginCmd {
 		RunE:  lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
-	lc.cmd.Flags().BoolVarP(&lc.list, "list", "l", false, "List all available profiles")
-	lc.cmd.Flags().StringVar(&lc.switchProfile, "switch", "", "Switch to a different profile")
+
+	// TODO: a flag to replace existing account?
+	// TODO: what happens to if already logged into that account? - profile name should be the account id
+	// TODO: what happens when we log out; do we pick a new account, or give the user a choice, or just live
+	// in a logged out state but with credentials saved?
 
 	// Hidden configuration flags, useful for dev/debugging
 	lc.cmd.Flags().StringVar(&lc.dashboardBaseURL, "dashboard-base", stripe.DefaultDashboardBaseURL, "Sets the dashboard base URL")
 	lc.cmd.Flags().MarkHidden("dashboard-base") // #nosec G104
 
+	listCmd := &loginListCmd{}
+	listCmd.cmd = &cobra.Command{
+		Use:     "list",
+		Args:    validators.MaximumNArgs(0),
+		Short:   "Lists all available logged-in accounts",
+		Example: `stripe login list`,
+		RunE:    listCmd.listAccountsCmd,
+	}
+
+	lc.cmd.AddCommand(listCmd.cmd)
+
+	switchCmd := &loginSwitchCmd{}
+	switchCmd.cmd = &cobra.Command{
+		Use:     "switch",
+		Args:    validators.ExactArgs(1),
+		Short:   "Switch to a different logged-in account",
+		Example: `stripe login switch <account_name>`,
+		RunE:    switchCmd.switchAccountCmd,
+	}
+
+	lc.cmd.AddCommand(switchCmd.cmd)
 	return lc
 }
 
@@ -41,17 +71,17 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(lc.dashboardBaseURL); err != nil {
 		return err
 	}
-	if lc.list {
-		return Config.ListProfiles()
-	}
-
 	if lc.interactive {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
 
-	if lc.switchProfile != "" {
-		return Config.SwitchProfile(lc.switchProfile)
-	}
-
 	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config)
+}
+
+func (lc *loginListCmd) listAccountsCmd(cmd *cobra.Command, args []string) error {
+	return Config.ListProfiles()
+}
+
+func (lc *loginSwitchCmd) switchAccountCmd(cmd *cobra.Command, args []string) error {
+	return Config.SwitchProfile(args[0])
 }
