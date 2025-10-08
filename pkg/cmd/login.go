@@ -49,7 +49,7 @@ func newLoginCmd() *loginCmd {
 		Args:    validators.MaximumNArgs(0),
 		Short:   "Lists all available logged-in accounts",
 		Example: `stripe login list`,
-		RunE:    listCmd.listAccountsCmd,
+		RunE:    listCmd.listLoggedInAccountsCmd,
 	}
 
 	lc.cmd.AddCommand(listCmd.cmd)
@@ -60,7 +60,7 @@ func newLoginCmd() *loginCmd {
 		Args:    validators.ExactArgs(1),
 		Short:   "Switch to a different logged-in account",
 		Example: `stripe login switch <account_name>`,
-		RunE:    switchCmd.switchAccountCmd,
+		RunE:    switchCmd.switchLoggedInAccountCmd,
 	}
 
 	lc.cmd.AddCommand(switchCmd.cmd)
@@ -78,10 +78,11 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	return login.Login(cmd.Context(), lc.dashboardBaseURL, &Config)
 }
 
-func (lc *loginListCmd) listAccountsCmd(cmd *cobra.Command, args []string) error {
+// TODO: we should support bash completion for account names
+func (lc *loginListCmd) listLoggedInAccountsCmd(cmd *cobra.Command, args []string) error {
 	return Config.ListProfiles()
 }
 
-func (lc *loginSwitchCmd) switchAccountCmd(cmd *cobra.Command, args []string) error {
+func (lc *loginSwitchCmd) switchLoggedInAccountCmd(cmd *cobra.Command, args []string) error {
 	return Config.SwitchProfile(args[0])
 }
