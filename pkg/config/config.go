@@ -3,8 +3,10 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -207,13 +209,13 @@ func (c *Config) CopyProfile(source string, target string) error {
 	runtimeViper := viper.GetViper()
 	safeSource := strings.ReplaceAll(source, ".", " ")
 	existing := runtimeViper.GetStringMapString(safeSource)
-	if existing == nil || isProfile(existing) {
+	if existing == nil || !isProfile(existing) {
 		return fmt.Errorf("source profile '%s' does not exist or is not a profile", source)
 	}
 
 	// TODO: work in Profile, not in maps?
 	safeTarget := strings.ReplaceAll(target, ".", " ")
-	newProfile := existing
+	newProfile := maps.Clone(existing)
 	newProfile["profile_name"] = safeTarget
 
 	runtimeViper.Set(safeTarget, newProfile)
@@ -225,12 +227,12 @@ func (c *Config) ListProfiles() error {
 	runtimeViper := viper.GetViper()
 	var profiles []string
 
-	for key, value := range runtimeViper.AllSettings() {
+	for _, value := range runtimeViper.AllSettings() {
 		// TODO: there's probably a better way to e.g. hydrate a Profile and read from there?
 		profile, isProfile := value.(map[string]interface{})
 		if isProfile {
-			if key != "default" {
-				displayName, _ := profile["display_name"].(string)
+			displayName, _ := profile["display_name"].(string)
+			if !slices.Contains(profiles, displayName) {
 				profiles = append(profiles, displayName)
 			}
 		}
@@ -302,6 +304,11 @@ func (c *Config) SwitchProfile(profileName string) error {
 		return err
 	}
 
+	// Remove the backup
+	// NOTE: this is optional and only to keep the config file clean
+	// TODO: this isnt working and I don't know why
+	c.RemoveProfile(profileName)
+
 	// Finally, reload the config to pick up the new "default" profile
 	c.InitConfig()
 
@@ -317,13 +324,23 @@ func (c *Config) RemoveProfile(profileName string) error {
 	var err error
 
 	for field, value := range runtimeViper.AllSettings() {
-		if isProfile(value) && field == profileName {
-			runtimeViper, err = removeKey(runtimeViper, field)
-			if err != nil {
-				return err
+		if isProfile(value) {
+			var profileNameAttr string
+			switch v := value.(type) {
+			case map[string]interface{}:
+				profileNameAttr = v["profile_name"].(string)
+			case map[string]string:
+				profileNameAttr = v["profile_name"]
 			}
+			if field == profileName || profileNameAttr == profileName {
+				fmt.Printf("Removing profile: %s\n", profileName)
+				runtimeViper, err = removeKey(runtimeViper, field)
+				if err != nil {
+					return err
+				}
 
-			deleteLivemodeKey(LiveModeAPIKeyName, field)
+				deleteLivemodeKey(LiveModeAPIKeyName, field)
+			}
 		}
 	}
 
@@ -368,6 +385,10 @@ func deleteLivemodeKey(key string, profile string) error {
 func isProfile(value interface{}) bool {
 	// TODO: ianjabour - ideally find a better way to identify projects in config
 	_, ok := value.(map[string]interface{})
+	if !ok {
+		_, ok = value.(map[string]string)
+	}
+
 	return ok
 }
 
