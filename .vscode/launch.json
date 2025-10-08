@@ -34,6 +34,15 @@
           "env": {},
           "args":["trigger", "${input:event}"]
         },
+        {
+          "name": "Launch (stripe generate)",
+          "type": "go",
+          "request": "launch",
+          "mode": "auto",
+          "program": "${workspaceFolder}/cmd/stripe/main.go",
+          "env": {},
+          "args":["generate"]
+        },
 
         // Unfortunately, this won't work on resource commands that require more arguments
         // unless we manually add it becacuse we need to pass in each argument separately for this to work.
