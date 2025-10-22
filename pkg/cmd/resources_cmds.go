@@ -82,11 +82,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	rLineItemsCmd := resource.NewResourceCmd(rootCmd, "line_items")
 	rLoginLinksCmd := resource.NewResourceCmd(rootCmd, "login_links")
 	rMandatesCmd := resource.NewResourceCmd(rootCmd, "mandates")
+	rPaymentAttemptRecordsCmd := resource.NewResourceCmd(rootCmd, "payment_attempt_records")
+	rPaymentIntentAmountDetailsLineItemsCmd := resource.NewResourceCmd(rootCmd, "payment_intent_amount_details_line_items")
 	rPaymentIntentsCmd := resource.NewResourceCmd(rootCmd, "payment_intents")
 	rPaymentLinksCmd := resource.NewResourceCmd(rootCmd, "payment_links")
 	rPaymentMethodConfigurationsCmd := resource.NewResourceCmd(rootCmd, "payment_method_configurations")
 	rPaymentMethodDomainsCmd := resource.NewResourceCmd(rootCmd, "payment_method_domains")
 	rPaymentMethodsCmd := resource.NewResourceCmd(rootCmd, "payment_methods")
+	rPaymentRecordsCmd := resource.NewResourceCmd(rootCmd, "payment_records")
 	rPaymentSourcesCmd := resource.NewResourceCmd(rootCmd, "payment_sources")
 	rPayoutsCmd := resource.NewResourceCmd(rootCmd, "payouts")
 	rPersonsCmd := resource.NewResourceCmd(rootCmd, "persons")
@@ -398,6 +401,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"company.ownership_exemption_reason":                         "string",
 		"company.phone":                                              "string",
 		"company.registration_number":                                "string",
+		"company.representative_declaration.date":                    "integer",
+		"company.representative_declaration.ip":                      "string",
+		"company.representative_declaration.user_agent":              "string",
 		"company.structure":                                          "string",
 		"company.tax_id":                                             "string",
 		"company.tax_id_registrar":                                   "string",
@@ -642,6 +648,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"company.ownership_exemption_reason":                         "string",
 		"company.phone":                                              "string",
 		"company.registration_number":                                "string",
+		"company.representative_declaration.date":                    "integer",
+		"company.representative_declaration.ip":                      "string",
+		"company.representative_declaration.user_agent":              "string",
 		"company.structure":                                          "string",
 		"company.tax_id":                                             "string",
 		"company.tax_id_registrar":                                   "string",
@@ -1062,16 +1071,25 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance_transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCustomerSessionsCmd.Cmd, "create", "/v1/customer_sessions", http.MethodPost, map[string]string{
-		"components.buy_button.enabled":                                              "boolean",
-		"components.payment_element.enabled":                                         "boolean",
-		"components.payment_element.features.payment_method_allow_redisplay_filters": "array",
-		"components.payment_element.features.payment_method_redisplay":               "string",
-		"components.payment_element.features.payment_method_redisplay_limit":         "integer",
-		"components.payment_element.features.payment_method_remove":                  "string",
-		"components.payment_element.features.payment_method_save":                    "string",
-		"components.payment_element.features.payment_method_save_usage":              "string",
-		"components.pricing_table.enabled":                                           "boolean",
-		"customer":                                                                   "string",
+		"components.buy_button.enabled":                                                           "boolean",
+		"components.customer_sheet.enabled":                                                       "boolean",
+		"components.customer_sheet.features.payment_method_allow_redisplay_filters":               "array",
+		"components.customer_sheet.features.payment_method_remove":                                "string",
+		"components.mobile_payment_element.enabled":                                               "boolean",
+		"components.mobile_payment_element.features.payment_method_allow_redisplay_filters":       "array",
+		"components.mobile_payment_element.features.payment_method_redisplay":                     "string",
+		"components.mobile_payment_element.features.payment_method_remove":                        "string",
+		"components.mobile_payment_element.features.payment_method_save":                          "string",
+		"components.mobile_payment_element.features.payment_method_save_allow_redisplay_override": "string",
+		"components.payment_element.enabled":                                                      "boolean",
+		"components.payment_element.features.payment_method_allow_redisplay_filters":              "array",
+		"components.payment_element.features.payment_method_redisplay":                            "string",
+		"components.payment_element.features.payment_method_redisplay_limit":                      "integer",
+		"components.payment_element.features.payment_method_remove":                               "string",
+		"components.payment_element.features.payment_method_save":                                 "string",
+		"components.payment_element.features.payment_method_save_usage":                           "string",
+		"components.pricing_table.enabled":                                                        "boolean",
+		"customer":                                                                                "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "balance_transactions", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
 		"ending_before":  "string",
@@ -1381,6 +1399,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "add_lines", "/v1/invoices/{invoice}/add_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "attach_payment", "/v1/invoices/{invoice}/attach_payment", http.MethodPost, map[string]string{
 		"payment_intent": "string",
+		"payment_record": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create", "/v1/invoices", http.MethodPost, map[string]string{
 		"account_tax_ids":                       "array",
@@ -1559,6 +1578,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rMandatesCmd.Cmd, "retrieve", "/v1/mandates/{mandate}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentAttemptRecordsCmd.Cmd, "list", "/v1/payment_attempt_records", http.MethodGet, map[string]string{
+		"limit":          "integer",
+		"payment_record": "string",
+		"starting_after": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentAttemptRecordsCmd.Cmd, "retrieve", "/v1/payment_attempt_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentIntentAmountDetailsLineItemsCmd.Cmd, "list", "/v1/payment_intents/{intent}/amount_details_line_items", http.MethodGet, map[string]string{
+		"ending_before":  "string",
+		"limit":          "integer",
+		"starting_after": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "apply_customer_balance", "/v1/payment_intents/{intent}/apply_customer_balance", http.MethodPost, map[string]string{
 		"amount":   "integer",
 		"currency": "string",
@@ -1567,12 +1597,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"cancellation_reason": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "capture", "/v1/payment_intents/{intent}/capture", http.MethodPost, map[string]string{
-		"amount_to_capture":           "integer",
-		"application_fee_amount":      "integer",
-		"final_capture":               "boolean",
-		"statement_descriptor":        "string",
-		"statement_descriptor_suffix": "string",
-		"transfer_data.amount":        "integer",
+		"amount_details.discount_amount": "integer",
+		"amount_to_capture":              "integer",
+		"application_fee_amount":         "integer",
+		"final_capture":                  "boolean",
+		"statement_descriptor":           "string",
+		"statement_descriptor_suffix":    "string",
+		"transfer_data.amount":           "integer",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "confirm", "/v1/payment_intents/{intent}/confirm", http.MethodPost, map[string]string{
 		"capture_method":                "string",
@@ -1627,8 +1658,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"use_stripe_sdk":                                                    "boolean",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "create", "/v1/payment_intents", http.MethodPost, map[string]string{
-		"amount":                 "integer",
-		"application_fee_amount": "integer",
+		"amount":                                    "integer",
+		"amount_details.discount_amount":            "integer",
+		"application_fee_amount":                    "integer",
 		"automatic_payment_methods.allow_redirects": "string",
 		"automatic_payment_methods.enabled":         "boolean",
 		"capture_method":                            "string",
@@ -1643,6 +1675,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"mandate":                                   "string",
 		"off_session":                               "boolean",
 		"on_behalf_of":                              "string",
+		"payment_details.customer_reference":        "string",
+		"payment_details.order_reference":           "string",
 		"payment_method":                            "string",
 		"payment_method_configuration":              "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -1705,11 +1739,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"use_stripe_sdk":                                                    "boolean",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "increment_authorization", "/v1/payment_intents/{intent}/increment_authorization", http.MethodPost, map[string]string{
-		"amount":                 "integer",
-		"application_fee_amount": "integer",
-		"description":            "string",
-		"statement_descriptor":   "string",
-		"transfer_data.amount":   "integer",
+		"amount":                             "integer",
+		"amount_details.discount_amount":     "integer",
+		"application_fee_amount":             "integer",
+		"description":                        "string",
+		"payment_details.customer_reference": "string",
+		"payment_details.order_reference":    "string",
+		"statement_descriptor":               "string",
+		"transfer_data.amount":               "integer",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "list", "/v1/payment_intents", http.MethodGet, map[string]string{
 		"created":        "integer",
@@ -1808,6 +1845,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"invoice_creation.invoice_data.footer":                                 "string",
 		"invoice_creation.invoice_data.issuer.account":                         "string",
 		"invoice_creation.invoice_data.issuer.type":                            "string",
+		"name_collection.business.enabled":                                     "boolean",
+		"name_collection.business.optional":                                    "boolean",
+		"name_collection.individual.enabled":                                   "boolean",
+		"name_collection.individual.optional":                                  "boolean",
 		"on_behalf_of":                                                         "string",
 		"payment_intent_data.capture_method":                                   "string",
 		"payment_intent_data.description":                                      "string",
@@ -1893,6 +1934,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"card.display_preference.preference":                   "string",
 		"cartes_bancaires.display_preference.preference":       "string",
 		"cashapp.display_preference.preference":                "string",
+		"crypto.display_preference.preference":                 "string",
 		"customer_balance.display_preference.preference":       "string",
 		"eps.display_preference.preference":                    "string",
 		"fpx.display_preference.preference":                    "string",
@@ -1907,6 +1949,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"konbini.display_preference.preference":                "string",
 		"kr_card.display_preference.preference":                "string",
 		"link.display_preference.preference":                   "string",
+		"mb_way.display_preference.preference":                 "string",
 		"mobilepay.display_preference.preference":              "string",
 		"multibanco.display_preference.preference":             "string",
 		"name": "string",
@@ -1958,6 +2001,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"card.display_preference.preference":                   "string",
 		"cartes_bancaires.display_preference.preference":       "string",
 		"cashapp.display_preference.preference":                "string",
+		"crypto.display_preference.preference":                 "string",
 		"customer_balance.display_preference.preference":       "string",
 		"eps.display_preference.preference":                    "string",
 		"fpx.display_preference.preference":                    "string",
@@ -1972,6 +2016,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"konbini.display_preference.preference":                "string",
 		"kr_card.display_preference.preference":                "string",
 		"link.display_preference.preference":                   "string",
+		"mb_way.display_preference.preference":                 "string",
 		"mobilepay.display_preference.preference":              "string",
 		"multibanco.display_preference.preference":             "string",
 		"name": "string",
@@ -2029,6 +2074,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"billing_details.phone":                         "string",
 		"billing_details.tax_id":                        "string",
 		"boleto.tax_id":                                 "string",
+		"custom.type":                                   "string",
 		"customer":                                      "string",
 		"eps.bank":                                      "string",
 		"fpx.account_holder_type":                       "string",
@@ -2077,6 +2123,97 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"us_bank_account.account_holder_type": "string",
 		"us_bank_account.account_type":        "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment", "/v1/payment_records/report_payment", http.MethodPost, map[string]string{
+		"amount_requested.currency": "string",
+		"amount_requested.value":    "integer",
+		"customer_details.customer": "string",
+		"customer_details.email":    "string",
+		"customer_details.name":     "string",
+		"customer_details.phone":    "string",
+		"customer_presence":         "string",
+		"description":               "string",
+		"failed.failed_at":          "integer",
+		"guaranteed.guaranteed_at":  "integer",
+		"initiated_at":              "integer",
+		"outcome":                   "string",
+		"payment_method_details.billing_details.address.city":        "string",
+		"payment_method_details.billing_details.address.country":     "string",
+		"payment_method_details.billing_details.address.line1":       "string",
+		"payment_method_details.billing_details.address.line2":       "string",
+		"payment_method_details.billing_details.address.postal_code": "string",
+		"payment_method_details.billing_details.address.state":       "string",
+		"payment_method_details.billing_details.email":               "string",
+		"payment_method_details.billing_details.name":                "string",
+		"payment_method_details.billing_details.phone":               "string",
+		"payment_method_details.custom.display_name":                 "string",
+		"payment_method_details.custom.type":                         "string",
+		"payment_method_details.payment_method":                      "string",
+		"payment_method_details.type":                                "string",
+		"processor_details.custom.payment_reference":                 "string",
+		"processor_details.type":                                     "string",
+		"shipping_details.address.city":                              "string",
+		"shipping_details.address.country":                           "string",
+		"shipping_details.address.line1":                             "string",
+		"shipping_details.address.line2":                             "string",
+		"shipping_details.address.postal_code":                       "string",
+		"shipping_details.address.state":                             "string",
+		"shipping_details.name":                                      "string",
+		"shipping_details.phone":                                     "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt", "/v1/payment_records/{id}/report_payment_attempt", http.MethodPost, map[string]string{
+		"description":              "string",
+		"failed.failed_at":         "integer",
+		"guaranteed.guaranteed_at": "integer",
+		"initiated_at":             "integer",
+		"outcome":                  "string",
+		"payment_method_details.billing_details.address.city":        "string",
+		"payment_method_details.billing_details.address.country":     "string",
+		"payment_method_details.billing_details.address.line1":       "string",
+		"payment_method_details.billing_details.address.line2":       "string",
+		"payment_method_details.billing_details.address.postal_code": "string",
+		"payment_method_details.billing_details.address.state":       "string",
+		"payment_method_details.billing_details.email":               "string",
+		"payment_method_details.billing_details.name":                "string",
+		"payment_method_details.billing_details.phone":               "string",
+		"payment_method_details.custom.display_name":                 "string",
+		"payment_method_details.custom.type":                         "string",
+		"payment_method_details.payment_method":                      "string",
+		"payment_method_details.type":                                "string",
+		"shipping_details.address.city":                              "string",
+		"shipping_details.address.country":                           "string",
+		"shipping_details.address.line1":                             "string",
+		"shipping_details.address.line2":                             "string",
+		"shipping_details.address.postal_code":                       "string",
+		"shipping_details.address.state":                             "string",
+		"shipping_details.name":                                      "string",
+		"shipping_details.phone":                                     "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_canceled", "/v1/payment_records/{id}/report_payment_attempt_canceled", http.MethodPost, map[string]string{
+		"canceled_at": "integer",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_failed", "/v1/payment_records/{id}/report_payment_attempt_failed", http.MethodPost, map[string]string{
+		"failed_at": "integer",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_guaranteed", "/v1/payment_records/{id}/report_payment_attempt_guaranteed", http.MethodPost, map[string]string{
+		"guaranteed_at": "integer",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_informational", "/v1/payment_records/{id}/report_payment_attempt_informational", http.MethodPost, map[string]string{
+		"customer_details.customer": "string",
+		"customer_details.email":    "string",
+		"customer_details.name":     "string",
+		"customer_details.phone":    "string",
+		"description":               "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_refund", "/v1/payment_records/{id}/report_refund", http.MethodPost, map[string]string{
+		"amount.currency": "string",
+		"amount.value":    "integer",
+		"initiated_at":    "integer",
+		"outcome":         "string",
+		"processor_details.custom.refund_reference": "string",
+		"processor_details.type":                    "string",
+		"refunded.refunded_at":                      "integer",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "retrieve", "/v1/payment_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "create", "/v1/customers/{customer}/sources", http.MethodPost, map[string]string{
 		"source":   "string",
 		"validate": "boolean",
@@ -2647,16 +2784,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "create", "/v1/setup_intents", http.MethodPost, map[string]string{
 		"attach_to_self": "boolean",
-		"automatic_payment_methods.allow_redirects": "string",
-		"automatic_payment_methods.enabled":         "boolean",
-		"confirm":                                   "boolean",
-		"confirmation_token":                        "string",
-		"customer":                                  "string",
-		"description":                               "string",
-		"flow_directions":                           "array",
-		"on_behalf_of":                              "string",
-		"payment_method":                            "string",
-		"payment_method_configuration":              "string",
+		"automatic_payment_methods.allow_redirects":                                                  "string",
+		"automatic_payment_methods.enabled":                                                          "boolean",
+		"confirm":                                                                                    "boolean",
+		"confirmation_token":                                                                         "string",
+		"customer":                                                                                   "string",
+		"description":                                                                                "string",
+		"excluded_payment_method_types":                                                              "array",
+		"flow_directions":                                                                            "array",
+		"on_behalf_of":                                                                               "string",
+		"payment_method":                                                                             "string",
+		"payment_method_configuration":                                                               "string",
 		"payment_method_data.acss_debit.account_number":                                              "string",
 		"payment_method_data.acss_debit.institution_number":                                          "string",
 		"payment_method_data.acss_debit.transit_number":                                              "string",
@@ -2761,12 +2899,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"client_secret": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "update", "/v1/setup_intents/{intent}", http.MethodPost, map[string]string{
-		"attach_to_self":               "boolean",
-		"customer":                     "string",
-		"description":                  "string",
-		"flow_directions":              "array",
-		"payment_method":               "string",
-		"payment_method_configuration": "string",
+		"attach_to_self":                "boolean",
+		"customer":                      "string",
+		"description":                   "string",
+		"excluded_payment_method_types": "array",
+		"flow_directions":               "array",
+		"payment_method":                "string",
+		"payment_method_configuration":  "string",
 		"payment_method_data.acss_debit.account_number":                                              "string",
 		"payment_method_data.acss_debit.institution_number":                                          "string",
 		"payment_method_data.acss_debit.transit_number":                                              "string",
@@ -3260,6 +3399,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"account.company.ownership_exemption_reason":                "string",
 		"account.company.phone":                                     "string",
 		"account.company.registration_number":                       "string",
+		"account.company.representative_declaration.date":           "integer",
+		"account.company.representative_declaration.ip":             "string",
+		"account.company.representative_declaration.user_agent":     "string",
 		"account.company.structure":                                 "string",
 		"account.company.tax_id":                                    "string",
 		"account.company.tax_id_registrar":                          "string",
@@ -3584,25 +3726,26 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"display_name": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
-		"business_profile.headline":                                "string",
-		"business_profile.privacy_policy_url":                      "string",
-		"business_profile.terms_of_service_url":                    "string",
-		"default_return_url":                                       "string",
-		"features.customer_update.allowed_updates":                 "array",
-		"features.customer_update.enabled":                         "boolean",
-		"features.invoice_history.enabled":                         "boolean",
-		"features.payment_method_update.enabled":                   "boolean",
-		"features.subscription_cancel.cancellation_reason.enabled": "boolean",
-		"features.subscription_cancel.cancellation_reason.options": "array",
-		"features.subscription_cancel.enabled":                     "boolean",
-		"features.subscription_cancel.mode":                        "string",
-		"features.subscription_cancel.proration_behavior":          "string",
-		"features.subscription_update.default_allowed_updates":     "array",
-		"features.subscription_update.enabled":                     "boolean",
-		"features.subscription_update.proration_behavior":          "string",
-		"features.subscription_update.trial_update_behavior":       "string",
-		"login_page.enabled":                                       "boolean",
-		"name":                                                     "string",
+		"business_profile.headline":                                   "string",
+		"business_profile.privacy_policy_url":                         "string",
+		"business_profile.terms_of_service_url":                       "string",
+		"default_return_url":                                          "string",
+		"features.customer_update.allowed_updates":                    "array",
+		"features.customer_update.enabled":                            "boolean",
+		"features.invoice_history.enabled":                            "boolean",
+		"features.payment_method_update.enabled":                      "boolean",
+		"features.payment_method_update.payment_method_configuration": "string",
+		"features.subscription_cancel.cancellation_reason.enabled":    "boolean",
+		"features.subscription_cancel.cancellation_reason.options":    "array",
+		"features.subscription_cancel.enabled":                        "boolean",
+		"features.subscription_cancel.mode":                           "string",
+		"features.subscription_cancel.proration_behavior":             "string",
+		"features.subscription_update.default_allowed_updates":        "array",
+		"features.subscription_update.enabled":                        "boolean",
+		"features.subscription_update.proration_behavior":             "string",
+		"features.subscription_update.trial_update_behavior":          "string",
+		"login_page.enabled":                                          "boolean",
+		"name":                                                        "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "list", "/v1/billing_portal/configurations", http.MethodGet, map[string]string{
 		"active":         "boolean",
@@ -3613,26 +3756,27 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "retrieve", "/v1/billing_portal/configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "update", "/v1/billing_portal/configurations/{configuration}", http.MethodPost, map[string]string{
-		"active":                                                   "boolean",
-		"business_profile.headline":                                "string",
-		"business_profile.privacy_policy_url":                      "string",
-		"business_profile.terms_of_service_url":                    "string",
-		"default_return_url":                                       "string",
-		"features.customer_update.allowed_updates":                 "array",
-		"features.customer_update.enabled":                         "boolean",
-		"features.invoice_history.enabled":                         "boolean",
-		"features.payment_method_update.enabled":                   "boolean",
-		"features.subscription_cancel.cancellation_reason.enabled": "boolean",
-		"features.subscription_cancel.cancellation_reason.options": "array",
-		"features.subscription_cancel.enabled":                     "boolean",
-		"features.subscription_cancel.mode":                        "string",
-		"features.subscription_cancel.proration_behavior":          "string",
-		"features.subscription_update.default_allowed_updates":     "array",
-		"features.subscription_update.enabled":                     "boolean",
-		"features.subscription_update.proration_behavior":          "string",
-		"features.subscription_update.trial_update_behavior":       "string",
-		"login_page.enabled":                                       "boolean",
-		"name":                                                     "string",
+		"active":                                                      "boolean",
+		"business_profile.headline":                                   "string",
+		"business_profile.privacy_policy_url":                         "string",
+		"business_profile.terms_of_service_url":                       "string",
+		"default_return_url":                                          "string",
+		"features.customer_update.allowed_updates":                    "array",
+		"features.customer_update.enabled":                            "boolean",
+		"features.invoice_history.enabled":                            "boolean",
+		"features.payment_method_update.enabled":                      "boolean",
+		"features.payment_method_update.payment_method_configuration": "string",
+		"features.subscription_cancel.cancellation_reason.enabled":    "boolean",
+		"features.subscription_cancel.cancellation_reason.options":    "array",
+		"features.subscription_cancel.enabled":                        "boolean",
+		"features.subscription_cancel.mode":                           "string",
+		"features.subscription_cancel.proration_behavior":             "string",
+		"features.subscription_update.default_allowed_updates":        "array",
+		"features.subscription_update.enabled":                        "boolean",
+		"features.subscription_update.proration_behavior":             "string",
+		"features.subscription_update.trial_update_behavior":          "string",
+		"login_page.enabled":                                          "boolean",
+		"name":                                                        "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
 		"configuration": "string",
@@ -3809,6 +3953,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.sepa_debit.target_date":                                  "string",
 		"payment_method_options.sofort.setup_future_usage":                               "string",
 		"payment_method_options.swish.reference":                                         "string",
+		"payment_method_options.twint.setup_future_usage":                                "string",
 		"payment_method_options.us_bank_account.financial_connections.permissions":       "array",
 		"payment_method_options.us_bank_account.financial_connections.prefetch":          "array",
 		"payment_method_options.us_bank_account.setup_future_usage":                      "string",
@@ -4681,6 +4826,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"country_options.th.type":                             "string",
 		"country_options.tj.type":                             "string",
 		"country_options.tr.type":                             "string",
+		"country_options.tw.type":                             "string",
 		"country_options.tz.type":                             "string",
 		"country_options.ua.type":                             "string",
 		"country_options.ug.type":                             "string",
