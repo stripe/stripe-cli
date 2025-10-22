@@ -2,12 +2,15 @@ package proxy
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/requests"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/websocket"
 )
 
@@ -209,4 +212,79 @@ func TestExtractRequestData(t *testing.T) {
 		_, err := ExtractRequestData(evt.RequestData)
 		require.Error(t, err)
 	})
+}
+
+func TestRun_RetryOnAuthorizationServerError(t *testing.T) {
+	nAttempts := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nAttempts++
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/stripecli/sessions", r.URL.Path)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal_server_error"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+
+	cfg := Config{
+		Client: &stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL},
+		OutCh:  make(chan websocket.IElement, 2),
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+
+	err = p.Run(context.Background())
+	require.Error(t, err)
+	require.Equal(t, 6, nAttempts)
+}
+
+func TestRun_NoRetryOnAuthorizationClientError(t *testing.T) {
+	nAttempts := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nAttempts++
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/stripecli/sessions", r.URL.Path)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"bad_request"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+
+	cfg := Config{
+		Client: &stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL},
+		OutCh:  make(chan websocket.IElement, 2),
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+
+	err = p.Run(context.Background())
+	require.Error(t, err)
+	require.Equal(t, 1, nAttempts)
+}
+
+func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
+	nAttempts := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nAttempts++
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/stripecli/sessions", r.URL.Path)
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error":"too_many_requests"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+
+	cfg := Config{
+		Client: &stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL},
+		OutCh:  make(chan websocket.IElement, 2),
+	}
+	p, err := Init(context.Background(), &cfg)
+	require.NoError(t, err)
+
+	err = p.Run(context.Background())
+	require.ErrorContains(t, err, "You have too many `stripe listen` sessions open. Please close some and try again.")
+	require.Equal(t, 1, nAttempts)
 }
