@@ -3,6 +3,7 @@ package stripeauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,15 @@ import (
 )
 
 const stripeCLISessionPath = "/v1/stripecli/sessions"
+
+type AuthorizeHttpError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *AuthorizeHttpError) Error() string {
+	return fmt.Sprintf("Authorization failed, status=%d, body=%s", e.StatusCode, e.Body)
+}
 
 //
 // Public types
@@ -94,8 +104,10 @@ func (c *Client) Authorize(ctx context.Context, req CreateSessionRequest) (*Stri
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("Authorization failed, status=%d, body=%s", resp.StatusCode, body)
-		return nil, err
+		return nil, &AuthorizeHttpError{
+			StatusCode: resp.StatusCode,
+			Body:       string(body),
+		}
 	}
 
 	var session *StripeCLISession
@@ -131,4 +143,12 @@ func NewClient(client stripe.RequestPerformer, cfg *Config) *Client {
 		client: client,
 		cfg:    cfg,
 	}
+}
+
+func IsAuthorizationClientError(err error) (*AuthorizeHttpError, bool) {
+	var clientError *AuthorizeHttpError
+	if errors.As(err, &clientError) && clientError.StatusCode >= 400 && clientError.StatusCode < 500 {
+		return clientError, true
+	}
+	return nil, false
 }

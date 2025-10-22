@@ -45,7 +45,11 @@ func TestAuthorize(t *testing.T) {
 		WebSocketFeatures: []string{"webhooks"},
 	})
 	require.NoError(t, err)
-	require.NoError(t, err)
+
+	clientError, ok := IsAuthorizationClientError(err)
+	require.False(t, ok)
+	require.Nil(t, clientError)
+
 	require.Equal(t, "some-id", session.WebSocketID)
 	require.Equal(t, "wss://example.com/subscribe/acct_123", session.WebSocketURL)
 	require.Equal(t, "webhook-payloads", session.WebSocketAuthorizedFeature)
@@ -126,4 +130,48 @@ func TestAuthorizeWithURLDeviceMap(t *testing.T) {
 		DeviceURLMap:      &devURLMap,
 	})
 	require.NoError(t, err)
+}
+
+func TestAuthorizeClientError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error":"too_many_requests"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+
+	_, err := client.Authorize(context.Background(), CreateSessionRequest{
+		DeviceName:        "my-device",
+		WebSocketFeatures: []string{"webhooks"},
+	})
+
+	require.Error(t, err)
+	clientError, ok := IsAuthorizationClientError(err)
+	require.True(t, ok)
+	require.Equal(t, http.StatusTooManyRequests, clientError.StatusCode)
+	require.Equal(t, `{"error":"too_many_requests"}`, clientError.Body)
+}
+
+func TestAuthorizeServerError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal_server_error"}`))
+	}))
+	defer ts.Close()
+
+	baseURL, _ := url.Parse(ts.URL)
+	client := NewClient(&stripe.Client{APIKey: "sk_test_123", BaseURL: baseURL}, nil)
+
+	_, err := client.Authorize(context.Background(), CreateSessionRequest{
+		DeviceName:        "my-device",
+		WebSocketFeatures: []string{"webhooks"},
+	})
+
+	require.Error(t, err)
+
+	clientError, ok := IsAuthorizationClientError(err)
+	require.False(t, ok)
+	require.Nil(t, clientError)
 }
