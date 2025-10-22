@@ -270,8 +270,8 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 		nAttempts++
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/v1/stripecli/sessions", r.URL.Path)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"bad_request"}`))
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"error":"too_many_requests"}`))
 	}))
 	defer ts.Close()
 
@@ -285,6 +285,6 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 	require.NoError(t, err)
 
 	err = p.Run(context.Background())
-	require.Error(t, err, "You have too many `stripe listen` sessions open. Please close some and try again.")
+	require.ErrorContains(t, err, "You have too many `stripe listen` sessions open. Please close some and try again.")
 	require.Equal(t, 1, nAttempts)
 }

@@ -122,6 +122,6 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 	}
 	tailer := New(&cfg)
 	err := tailer.Run(context.Background())
-	require.Error(t, err, "You have too many `stripe logs tail` sessions open. Please close some and try again.")
+	require.ErrorContains(t, err, "You have too many `stripe logs tail` sessions open. Please close some and try again.")
 	require.Equal(t, 1, nAttempts)
 }
