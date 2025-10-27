@@ -114,6 +114,9 @@ type Config struct {
 
 	// OutCh is the channel to send logs and statuses to for processing in other packages
 	OutCh chan websocket.IElement
+
+	// LoggedInAccountID is the currently logged-in account ID
+	LoggedInAccountID string
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -437,6 +440,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		UseLatestAPIVersion: cfg.UseLatestAPIVersion,
 		SkipVerify:          cfg.SkipVerify,
 		Timeout:             cfg.Timeout,
+		LoggedInAccountID:   cfg.LoggedInAccountID,
 	}
 
 	p := &Proxy{

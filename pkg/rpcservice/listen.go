@@ -50,6 +50,8 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 	}
 	apiBase, _ := url.Parse(stripe.DefaultAPIBaseURL)
 
+	accountID, _ := srv.cfg.UserCfg.Profile.GetAccountID()
+
 	logger := log.StandardLogger()
 	proxyVisitor := createProxyVisitor(&stream)
 	proxyOutCh := make(chan websocket.IElement)
@@ -77,6 +79,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 		Events:                req.Events,
 		ThinEvents:            req.ThinEvents,
 		OutCh:                 proxyOutCh,
+		LoggedInAccountID:     accountID,
 
 		// Hidden for debugging
 		NoWSS: false,
