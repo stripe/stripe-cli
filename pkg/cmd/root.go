@@ -233,13 +233,11 @@ func init() {
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
-	cmd, _, err := rootCmd.Find([]string{"billing"})
+	cmd, _, err := rootCmd.Find([]string{"v2", "billing"})
 	if err != nil {
 		// silently fail
 		return
 	}
-	rBillingMeterEventSessionCmd := resource.NewResourceCmd(cmd, "meter_event_session")
 	rBillingMeterEventStreamCmd := resource.NewResourceCmd(cmd, "meter_event_stream")
-	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventSessionCmd.Cmd, "create", "/v2/billing/meter_event_session")
 	resource.NewUnsupportedV2BillingOperationCmd(rBillingMeterEventStreamCmd.Cmd, "create", "/v2/billing/meter_event_stream")
 }

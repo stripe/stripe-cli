@@ -32,6 +32,35 @@ func TestNewOperationCmd(t *testing.T) {
 	require.Contains(t, oc.Cmd.UsageTemplate(), "<id>")
 }
 
+func TestNewOperationCmd_NumberType(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	oc := NewOperationCmd(parentCmd, "create", "/v1/test", http.MethodPost, map[string]string{
+		"percentage":   "number",
+		"percent_off":  "number",
+		"string_param": "string",
+		"int_param":    "integer",
+		"bool_param":   "boolean",
+	}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false)
+
+	// Check that number type parameters create string flags
+	_, err := oc.Cmd.Flags().GetString("percentage")
+	require.NoError(t, err, "percentage flag should exist as string flag")
+
+	_, err = oc.Cmd.Flags().GetString("percent-off")
+	require.NoError(t, err, "percent-off flag should exist as string flag")
+
+	// Verify other types still work correctly
+	_, err = oc.Cmd.Flags().GetString("string-param")
+	require.NoError(t, err)
+
+	_, err = oc.Cmd.Flags().GetInt("int-param")
+	require.NoError(t, err)
+
+	_, err = oc.Cmd.Flags().GetBool("bool-param")
+	require.NoError(t, err)
+}
+
 func TestRunOperationCmd(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

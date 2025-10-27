@@ -117,9 +117,8 @@ func TestReadProjectFlagHasPrecedence(t *testing.T) {
 func TestV2BillingOverrides(t *testing.T) {
 	Execute(context.Background())
 
-	output, err := executeCommand(rootCmd, "billing")
+	output, err := executeCommand(rootCmd, "v2", "billing")
 
-	require.Contains(t, output, "meter_event_session")
 	require.Contains(t, output, "meter_event_stream")
 	require.NoError(t, err)
 }

@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-04-30.basil",
+    "version" : "2025-09-30.clover",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
@@ -23,7 +23,7 @@
     "/v2/core/events/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an event.",
-        "operationId" : "GetCoreEventsId",
+        "operationId" : "GetV2CoreEventsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -65,7 +65,7 @@
     "/v2/billing/meter_event_session" : {
       "post" : {
         "description" : "Creates a meter event session to send usage on the high-throughput meter event stream. Authentication tokens are only valid for 15 minutes, so you will need to create a new meter event session when your token expires.",
-        "operationId" : "PostBillingMeterEventSession",
+        "operationId" : "PostV2BillingMeterEventSession",
         "responses" : {
           "200" : {
             "description" : "Successful response",
@@ -95,7 +95,7 @@
     "/v2/core/event_destinations/{id}/enable" : {
       "post" : {
         "description" : "Enable an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdEnable",
+        "operationId" : "PostV2CoreEventDestinationsIdEnable",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -139,7 +139,7 @@
     "/v2/core/event_destinations/{id}/disable" : {
       "post" : {
         "description" : "Disable an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdDisable",
+        "operationId" : "PostV2CoreEventDestinationsIdDisable",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -183,7 +183,7 @@
     "/v2/billing/meter_event_adjustments" : {
       "post" : {
         "description" : "Creates a meter event adjustment to cancel a previously sent meter event.",
-        "operationId" : "PostBillingMeterEventAdjustments",
+        "operationId" : "PostV2BillingMeterEventAdjustments",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -247,7 +247,7 @@
     "/v2/core/event_destinations/{id}/ping" : {
       "post" : {
         "description" : "Send a `ping` event to an event destination.",
-        "operationId" : "PostCoreEventDestinationsIdPing",
+        "operationId" : "PostV2CoreEventDestinationsIdPing",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -289,7 +289,7 @@
     "/v2/core/event_destinations" : {
       "get" : {
         "description" : "Lists all event destinations.",
-        "operationId" : "GetCoreEventDestinations",
+        "operationId" : "GetV2CoreEventDestinations",
         "parameters" : [ {
           "name" : "include",
           "in" : "query",
@@ -329,6 +329,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -368,7 +369,7 @@
       },
       "post" : {
         "description" : "Create a new event destination.",
-        "operationId" : "PostCoreEventDestinations",
+        "operationId" : "PostV2CoreEventDestinations",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -490,7 +491,7 @@
     "/v2/billing/meter_events" : {
       "post" : {
         "description" : "Creates a meter event. Events are validated synchronously, but are processed asynchronously. Supports up to 1,000 events per second in livemode. For higher rate-limits, please use meter event streams instead.",
-        "operationId" : "PostBillingMeterEvents",
+        "operationId" : "PostV2BillingMeterEvents",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -563,85 +564,10 @@
         }
       }
     },
-    "/v2/billing/meter_event_stream" : {
-      "post" : {
-        "description" : "Creates meter events. Events are processed asynchronously, including validation. Requires a meter event session for authentication. Supports up to 10,000 requests per second in livemode. For even higher rate-limits, contact sales.",
-        "operationId" : "PostBillingMeterEventStream",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "required" : [ "events" ],
-                "type" : "object",
-                "properties" : {
-                  "events" : {
-                    "type" : "array",
-                    "description" : "List of meter events to include in the request.",
-                    "items" : {
-                      "required" : [ "event_name", "payload" ],
-                      "type" : "object",
-                      "properties" : {
-                        "event_name" : {
-                          "type" : "string",
-                          "description" : "The name of the meter event. Corresponds with the `event_name` field on a meter."
-                        },
-                        "identifier" : {
-                          "type" : "string",
-                          "description" : "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period."
-                        },
-                        "payload" : {
-                          "type" : "object",
-                          "additionalProperties" : {
-                            "type" : "string"
-                          },
-                          "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about\nthe\n[payload](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage#payload-key-overrides)."
-                        },
-                        "timestamp" : {
-                          "type" : "string",
-                          "description" : "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
-                          "format" : "date-time"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses" : {
-          "200" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : { }
-                }
-              }
-            }
-          },
-          "default" : {
-            "description" : "Error response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "oneOf" : [ {
-                    "$ref" : "#/components/schemas/v2.error.billing_meter_event_session_expired"
-                  }, {
-                    "$ref" : "#/components/schemas/v2.error"
-                  } ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/v2/core/events" : {
       "get" : {
         "description" : "List events, going back up to 30 days.",
-        "operationId" : "GetCoreEvents",
+        "operationId" : "GetV2CoreEvents",
         "parameters" : [ {
           "name" : "limit",
           "in" : "query",
@@ -677,6 +603,7 @@
               "application/json" : {
                 "schema" : {
                   "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
                   "properties" : {
                     "next_page_url" : {
                       "type" : "string",
@@ -718,7 +645,7 @@
     "/v2/core/event_destinations/{id}" : {
       "get" : {
         "description" : "Retrieves the details of an event destination.",
-        "operationId" : "GetCoreEventDestinationsId",
+        "operationId" : "GetV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -771,7 +698,7 @@
       },
       "post" : {
         "description" : "Update the details of an event destination.",
-        "operationId" : "PostCoreEventDestinationsId",
+        "operationId" : "PostV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -810,7 +737,8 @@
                   "metadata" : {
                     "type" : "object",
                     "additionalProperties" : {
-                      "type" : "string"
+                      "type" : "string",
+                      "nullable" : true
                     },
                     "description" : "Metadata."
                   },
@@ -865,7 +793,7 @@
       },
       "delete" : {
         "description" : "Delete an event destination.",
-        "operationId" : "DeleteCoreEventDestinationsId",
+        "operationId" : "DeleteV2CoreEventDestinationsId",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -1278,6 +1206,7 @@
             "format" : "date-time"
           },
           "data" : {
+            "type" : "object",
             "description" : "Additional data about the event."
           },
           "id" : {
@@ -1576,7 +1505,7 @@
             "enum" : [ "v2.core.event_destination.ping" ]
           }
         },
-        "description" : "A ping event used to test the connection to an event destination.",
+        "description" : "A ping event used to test the connection to an EventDestination.",
         "x-stripeEvent" : {
           "kind" : "thin",
           "type" : "v2.core.event_destination.ping"
@@ -1588,7 +1517,7 @@
         "properties" : {
           "object" : {
             "type" : "string",
-            "description" : "String representing the object's type. Objects of the same type share the same value of the object field."
+            "description" : "String representing the type of the object that has been deleted. Objects of the same type share the same value of the object field."
           },
           "id" : {
             "type" : "string",
@@ -1891,6 +1820,19 @@
           }
         },
         "description" : "Cannot create multiple usage events for the same customer, meter concurrently."
+      }
+    },
+    "securitySchemes" : {
+      "basicAuth" : {
+        "type" : "http",
+        "description" : "Basic HTTP authentication. Allowed headers-- Authorization: Basic <api_key> | Authorization: Basic <base64 hash of `api_key:`>",
+        "scheme" : "basic"
+      },
+      "bearerAuth" : {
+        "type" : "http",
+        "description" : "Bearer HTTP authentication. Allowed headers-- Authorization: Bearer <api_key>",
+        "scheme" : "bearer",
+        "bearerFormat" : "auth-scheme"
       }
     }
   }
