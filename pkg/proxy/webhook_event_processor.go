@@ -35,6 +35,9 @@ type WebhookEventProcessorConfig struct {
 
 	// Override default timeout
 	Timeout int64
+
+	// LoggedInAccountID is the currently logged-in account ID
+	LoggedInAccountID string
 }
 
 // WebhookEventProcessor encapsulates logic around processing and forwarding
@@ -118,6 +121,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 		p.cfg.Log.Debug("Received malformed event from Stripe, ignoring")
 		return
 	}
+	evt.LoggedInAccountID = p.cfg.LoggedInAccountID
 
 	req, err := ExtractRequestData(evt.RequestData)
 
@@ -127,6 +131,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 	}
 
 	evt.Request = req
+	evt.LoggedInAccountID = p.cfg.LoggedInAccountID
 
 	p.cfg.Log.WithFields(log.Fields{
 		"prefix":                  "proxy.WebhookEventProcessor.ProcessEvent",
