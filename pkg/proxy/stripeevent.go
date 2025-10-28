@@ -47,9 +47,11 @@ func BaseDashboardURL(livemode bool, connectedAccountID, loggedInAccountID strin
 		maybeTest = "/test"
 	}
 
-	account := fmt.Sprintf("/%s", loggedInAccountID)
+	account := ""
 	if connectedAccountID != "" {
 		account = fmt.Sprintf("/%s", connectedAccountID)
+	} else if loggedInAccountID != "" {
+		account = fmt.Sprintf("/%s", loggedInAccountID)
 	}
 
 	return fmt.Sprintf("https://dashboard.stripe.com%s%s", account, maybeTest)
