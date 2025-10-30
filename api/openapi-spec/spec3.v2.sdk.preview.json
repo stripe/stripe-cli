@@ -9,14 +9,15 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-09-30.preview",
+    "version" : "2025-10-29.preview",
     "x-stripeSpecFilename" : "spec3.v2.preview.cli"
   },
   "servers" : [ {
     "url" : "https://api.stripe.com/"
   } ],
   "security" : [ {
-    "basicAuth" : [ ],
+    "basicAuth" : [ ]
+  }, {
     "bearerAuth" : [ ]
   } ],
   "paths" : {
@@ -82,6 +83,15 @@
             "items" : {
               "type" : "string"
             }
+          }
+        }, {
+          "name" : "closed",
+          "in" : "query",
+          "description" : "Filter by whether the account is closed. If omitted, returns only Accounts that are not closed.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "boolean"
           }
         }, {
           "name" : "limit",
@@ -178,7 +188,7 @@
                               "location_source" : {
                                 "type" : "string",
                                 "description" : "The data source used to identify the customer's tax location - defaults to 'identity_address'. Will only be used for automatic tax calculation on the customer's Invoices and Subscriptions.",
-                                "enum" : [ "identity_address", "ip_address", "shipping_address" ]
+                                "enum" : [ "identity_address", "ip_address", "payment_method", "shipping_address" ]
                               }
                             },
                             "description" : "Automatic indirect tax settings to be used when automatic tax calculation is enabled on the customer's invoices, subscriptions, checkout sessions, or payment links. Surfaces if automatic tax calculation is possible given the current customer location information."
@@ -1031,6 +1041,17 @@
                                       }
                                     },
                                     "description" : "Can hold storage-type funds on Stripe in GBP."
+                                  },
+                                  "usd" : {
+                                    "required" : [ "requested" ],
+                                    "type" : "object",
+                                    "properties" : {
+                                      "requested" : {
+                                        "type" : "boolean",
+                                        "description" : "To request a new Capability for an account, pass true. There can be a delay before the requested Capability becomes active."
+                                      }
+                                    },
+                                    "description" : "Can hold storage-type funds on Stripe in USD."
                                   }
                                 },
                                 "description" : "Can hold storage-type funds on Stripe."
@@ -1178,7 +1199,7 @@
                           "fees_collector" : {
                             "type" : "string",
                             "description" : "A value indicating the party responsible for collecting fees from this account.",
-                            "enum" : [ "application", "stripe" ]
+                            "enum" : [ "application", "application_custom", "application_express", "stripe" ]
                           },
                           "losses_collector" : {
                             "type" : "string",
@@ -1262,6 +1283,25 @@
                             },
                             "description" : "Attestation that all Persons with a specific Relationship value have been provided."
                           },
+                          "representative_declaration" : {
+                            "type" : "object",
+                            "properties" : {
+                              "date" : {
+                                "type" : "string",
+                                "description" : "The time marking when the representative attestation was made. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                                "format" : "date-time"
+                              },
+                              "ip" : {
+                                "type" : "string",
+                                "description" : "The IP address from which the representative attestation was made."
+                              },
+                              "user_agent" : {
+                                "type" : "string",
+                                "description" : "The user agent of the browser from which the representative attestation was made."
+                              }
+                            },
+                            "description" : "This hash is used to attest that the representative is authorized to act as the representative of their legal entity."
+                          },
                           "terms_of_service" : {
                             "type" : "object",
                             "properties" : {
@@ -1310,7 +1350,7 @@
                             "description" : "Attestations of accepted terms of service agreements."
                           }
                         },
-                        "description" : "Attestations from the identity's key people, e.g. owners, executives, directors."
+                        "description" : "Attestations from the identity's key people, e.g. owners, executives, directors, representatives."
                       },
                       "business_details" : {
                         "type" : "object",
@@ -2239,6 +2279,8 @@
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.account_capability_not_supported"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.account_controller_express_dash_without_application_losses_or_fees"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.account_controller_stripe_pricing_platform_liable"
@@ -2311,6 +2353,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.entity_type_not_supported_in_country"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.high_risk_activities_none_cant_be_combined_with_other_options"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.id_number_invalid"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
@@ -2336,6 +2380,8 @@
                     "$ref" : "#/components/schemas/v2.error.phone_invalid"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.platform_registration_required"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.purpose_of_funds_description_must_be_empty_for_non_other_purpose_of_funds"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.script_characters_invalid"
                   }, {
@@ -3249,6 +3295,8 @@
                   "oneOf" : [ {
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.inbound_transfer_from_closed_financial_account_unsupported"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.inbound_transfer_from_payment_method_not_found"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.inbound_transfer_from_payment_method_type_unsupported"
@@ -3260,6 +3308,8 @@
                     "$ref" : "#/components/schemas/v2.error.inbound_transfer_to_financial_account_not_found"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_with_managed_financial_account"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -4144,6 +4194,81 @@
         "x-stripeNotPublic" : true
       }
     },
+    "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits" : {
+      "post" : {
+        "description" : "Confirm microdeposits amounts or descriptor code that you have received from the Send Microdeposits request. Once you correctly confirm this, this US Bank Account will be verified and eligible to transfer funds with.",
+        "operationId" : "PostV2CoreVaultUsBankAccountsIdConfirmMicrodeposits",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The ID of the USBankAccount object.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "amounts" : {
+                    "type" : "array",
+                    "description" : "Two amounts received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account.",
+                    "items" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "descriptor_code" : {
+                    "type" : "string",
+                    "description" : "Descriptor code received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/v2.core.vault.us_bank_account"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "Error response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.idempotency_error"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_confirm_microdeposits_error"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_microdeposits_not_sent_before_confirming"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_microdeposits_timed_out"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_verification_failed"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error"
+                  } ]
+                }
+              }
+            }
+          }
+        },
+        "x-stripeNotPublic" : true
+      }
+    },
     "/v2/money_management/financial_addresses" : {
       "get" : {
         "description" : "List all FinancialAddresses for a FinancialAccount.",
@@ -4297,6 +4422,8 @@
                     "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.unsupported_currency"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_with_managed_financial_account"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -4466,6 +4593,8 @@
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_on_managed_financial_account_resource"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -4989,6 +5118,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.no_suitable_delivery_options_for_large_amount"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.outbound_flow_from_closed_financial_account_unsupported"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.outbound_transfer_not_allowed"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.outbound_transfer_recipient_verification_already_consumed"
@@ -5016,6 +5147,8 @@
                     "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.unsupported_currency"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_with_managed_financial_account"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -6563,6 +6696,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.blocked_payout_method_card"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.blocked_payout_method_crypto_wallet"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.invalid_fields"
@@ -6583,7 +6718,11 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.limit_payout_method_card"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.limit_payout_method_crypto_wallet"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.unsupported_payout_method_bank_account"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_payout_method_crypto_wallet"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -6902,6 +7041,72 @@
                 "schema" : {
                   "oneOf" : [ {
                     "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error"
+                  } ]
+                }
+              }
+            }
+          }
+        },
+        "x-stripeNotPublic" : true
+      },
+      "post" : {
+        "description" : "Updates an existing FinancialAccount.",
+        "operationId" : "PostV2MoneyManagementFinancialAccountsId",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "ID of the FinancialAccount to get updated.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "display_name" : {
+                    "type" : "string",
+                    "description" : "A descriptive name for the FinancialAccount, up to 50 characters long. This name will be used in the Stripe Dashboard and embedded components."
+                  },
+                  "metadata" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "string",
+                      "nullable" : true
+                    },
+                    "description" : "Metadata associated with the FinancialAccount."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/v2.money_management.financial_account"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "Error response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_on_managed_financial_account_resource"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -7714,7 +7919,7 @@
     },
     "/v2/core/accounts/{id}/close" : {
       "post" : {
-        "description" : "Removes access to the Account and its associated resources.",
+        "description" : "Removes access to the Account and its associated resources. Closed Accounts can no longer be operated on, but limited information can still be retrieved through the API in order to be able to track their history.",
         "operationId" : "PostV2CoreAccountsIdClose",
         "parameters" : [ {
           "name" : "id",
@@ -8018,6 +8223,55 @@
                     "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.unsupported_currency"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error"
+                  } ]
+                }
+              }
+            }
+          }
+        },
+        "x-stripeNotPublic" : true
+      }
+    },
+    "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits" : {
+      "post" : {
+        "description" : "Send microdeposits in order to verify your US Bank Account so it is eligible to transfer funds. This will start the verification process and you must Confirm Microdeposits to successfully verify your US Bank Account.",
+        "operationId" : "PostV2CoreVaultUsBankAccountsIdSendMicrodeposits",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "description" : "The ID of the USBankAccount object.",
+          "required" : true,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/v2.core.vault.us_bank_account"
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "Error response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.idempotency_error"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_microdeposits_failed_to_send"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.us_bank_account_verification_failed"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -9050,10 +9304,10 @@
                           },
                           "include_payment_link" : {
                             "type" : "boolean",
-                            "description" : "If true the payment link to hosted invocie page would be included in email and PDF of the invoice."
+                            "description" : "If true the payment link to hosted invoice page would be included in email and PDF of the invoice."
                           }
                         },
-                        "description" : "Controls emails for when the payment is due. For example after the invoice is finilized and transition to Open state."
+                        "description" : "Controls emails for when the payment is due. For example after the invoice is finalized and transitions to Open state."
                       }
                     },
                     "description" : "Email delivery settings."
@@ -9514,6 +9768,10 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.not_found"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.outbound_flow_from_closed_financial_account_unsupported"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.outbound_payment_not_allowed"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.payout_method_expired"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.payout_method_invalid"
@@ -9524,7 +9782,13 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.recipient_feature_not_active_for_suitable_delivery_option"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_missing"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.storer_capability_not_active"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.to_recipient_not_found"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_with_managed_financial_account"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -9537,6 +9801,83 @@
       }
     },
     "/v2/core/vault/us_bank_accounts" : {
+      "get" : {
+        "description" : "List USBankAccount objects. Optionally filter by verification status.",
+        "operationId" : "GetV2CoreVaultUsBankAccounts",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Optionally set the maximum number of results per page. Defaults to 10.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "integer"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "The pagination token.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "verification_status",
+          "in" : "query",
+          "description" : "Optionally filter by verification status. Mutually exclusive with `unverified`, `verified`, `awaiting_verification`, and `verification_failed`.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
+                  "properties" : {
+                    "next_page_url" : {
+                      "type" : "string",
+                      "description" : "URL to fetch the next page of the list. If there are no more pages, the value is null.",
+                      "nullable" : true
+                    },
+                    "previous_page_url" : {
+                      "type" : "string",
+                      "description" : "URL to fetch the previous page of the list. If there are no previous pages, the value is null.",
+                      "nullable" : true
+                    },
+                    "data" : {
+                      "type" : "array",
+                      "description" : "The retrieved GB Bank Accounts.",
+                      "items" : {
+                        "$ref" : "#/components/schemas/v2.core.vault.us_bank_account"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "Error response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error"
+                  } ]
+                }
+              }
+            }
+          }
+        },
+        "x-stripeNotPublic" : true
+      },
       "post" : {
         "description" : "Create a USBankAccount object.",
         "operationId" : "PostV2CoreVaultUsBankAccounts",
@@ -9738,6 +10079,74 @@
       }
     },
     "/v2/core/vault/gb_bank_accounts" : {
+      "get" : {
+        "description" : "List objects that can be used as destinations for outbound money movement via OutboundPayment.",
+        "operationId" : "GetV2CoreVaultGbBankAccounts",
+        "parameters" : [ {
+          "name" : "limit",
+          "in" : "query",
+          "description" : "Optionally set the maximum number of results per page. Defaults to 10.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "integer"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "description" : "The pagination token.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "required" : [ "data", "next_page_url", "previous_page_url" ],
+                  "type" : "object",
+                  "properties" : {
+                    "next_page_url" : {
+                      "type" : "string",
+                      "description" : "URL to fetch the next page of the list. If there are no more pages, the value is null.",
+                      "nullable" : true
+                    },
+                    "previous_page_url" : {
+                      "type" : "string",
+                      "description" : "URL to fetch the previous page of the list. If there are no previous pages, the value is null.",
+                      "nullable" : true
+                    },
+                    "data" : {
+                      "type" : "array",
+                      "description" : "The retrieved GB Bank Accounts.",
+                      "items" : {
+                        "$ref" : "#/components/schemas/v2.core.vault.gb_bank_account"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default" : {
+            "description" : "Error response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error"
+                  } ]
+                }
+              }
+            }
+          }
+        },
+        "x-stripeNotPublic" : true
+      },
       "post" : {
         "description" : "Create a GB bank account.",
         "operationId" : "PostV2CoreVaultGbBankAccounts",
@@ -10150,7 +10559,7 @@
                               "location_source" : {
                                 "type" : "string",
                                 "description" : "The data source used to identify the customer's tax location - defaults to 'identity_address'. Will only be used for automatic tax calculation on the customer's Invoices and Subscriptions.",
-                                "enum" : [ "identity_address", "ip_address", "shipping_address" ]
+                                "enum" : [ "identity_address", "ip_address", "payment_method", "shipping_address" ]
                               },
                               "validate_location" : {
                                 "type" : "string",
@@ -10976,6 +11385,16 @@
                                       }
                                     },
                                     "description" : "Can hold storage-type funds on Stripe in GBP."
+                                  },
+                                  "usd" : {
+                                    "type" : "object",
+                                    "properties" : {
+                                      "requested" : {
+                                        "type" : "boolean",
+                                        "description" : "To request a new Capability for an account, pass true. There can be a delay before the requested Capability becomes active."
+                                      }
+                                    },
+                                    "description" : "Can hold storage-type funds on Stripe in USD."
                                   }
                                 },
                                 "description" : "Can hold storage-type funds on Stripe."
@@ -11117,7 +11536,7 @@
                           "fees_collector" : {
                             "type" : "string",
                             "description" : "A value indicating the party responsible for collecting fees from this account.",
-                            "enum" : [ "application", "stripe" ]
+                            "enum" : [ "application", "application_custom", "application_express", "stripe" ]
                           },
                           "losses_collector" : {
                             "type" : "string",
@@ -11201,6 +11620,25 @@
                             },
                             "description" : "Attestation that all Persons with a specific Relationship value have been provided."
                           },
+                          "representative_declaration" : {
+                            "type" : "object",
+                            "properties" : {
+                              "date" : {
+                                "type" : "string",
+                                "description" : "The time marking when the representative attestation was made. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                                "format" : "date-time"
+                              },
+                              "ip" : {
+                                "type" : "string",
+                                "description" : "The IP address from which the representative attestation was made."
+                              },
+                              "user_agent" : {
+                                "type" : "string",
+                                "description" : "The user agent of the browser from which the representative attestation was made."
+                              }
+                            },
+                            "description" : "This hash is used to attest that the representative is authorized to act as the representative of their legal entity."
+                          },
                           "terms_of_service" : {
                             "type" : "object",
                             "properties" : {
@@ -11222,6 +11660,25 @@
                                   }
                                 },
                                 "description" : "Details on the Account's acceptance of the [Stripe Services Agreement](https://docs.stripe.com/connect/updating-accounts#tos-acceptance)."
+                              },
+                              "crypto_storer" : {
+                                "type" : "object",
+                                "properties" : {
+                                  "date" : {
+                                    "type" : "string",
+                                    "description" : "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                                    "format" : "date-time"
+                                  },
+                                  "ip" : {
+                                    "type" : "string",
+                                    "description" : "The IP address from which the Account's representative accepted the terms of service."
+                                  },
+                                  "user_agent" : {
+                                    "type" : "string",
+                                    "description" : "The user agent of the browser from which the Account's representative accepted the terms of service."
+                                  }
+                                },
+                                "description" : "Details on the Account's acceptance of Crypto-storer-specific terms of service."
                               },
                               "storer" : {
                                 "type" : "object",
@@ -11246,7 +11703,7 @@
                             "description" : "Attestations of accepted terms of service agreements."
                           }
                         },
-                        "description" : "Attestations from the identity's key people, e.g. owners, executives, directors."
+                        "description" : "Attestations from the identity's key people, e.g. owners, executives, directors, representatives."
                       },
                       "business_details" : {
                         "type" : "object",
@@ -12168,6 +12625,8 @@
               "application/json" : {
                 "schema" : {
                   "oneOf" : [ {
+                    "$ref" : "#/components/schemas/v2.error.account_capability_not_supported"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.account_controller_express_dash_without_application_losses_or_fees"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.account_controller_stripe_pricing_platform_liable"
@@ -12246,6 +12705,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.entity_type_not_supported_in_country"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.high_risk_activities_none_cant_be_combined_with_other_options"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.id_number_invalid"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.idempotency_error"
@@ -12271,6 +12732,8 @@
                     "$ref" : "#/components/schemas/v2.error.person_percent_ownership_invalid"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.phone_invalid"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.purpose_of_funds_description_must_be_empty_for_non_other_purpose_of_funds"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.script_characters_invalid"
                   }, {
@@ -12610,6 +13073,8 @@
                   }, {
                     "$ref" : "#/components/schemas/v2.error.no_suitable_delivery_options_for_large_amount"
                   }, {
+                    "$ref" : "#/components/schemas/v2.error.outbound_flow_from_closed_financial_account_unsupported"
+                  }, {
                     "$ref" : "#/components/schemas/v2.error.outbound_payment_not_allowed"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.outbound_payment_quote_mismatch"
@@ -12655,6 +13120,8 @@
                     "$ref" : "#/components/schemas/v2.error.to_recipient_not_found"
                   }, {
                     "$ref" : "#/components/schemas/v2.error.unsupported_currency"
+                  }, {
+                    "$ref" : "#/components/schemas/v2.error.unsupported_operation_with_managed_financial_account"
                   }, {
                     "$ref" : "#/components/schemas/v2.error"
                   } ]
@@ -12808,10 +13275,10 @@
                           },
                           "include_payment_link" : {
                             "type" : "boolean",
-                            "description" : "If true the payment link to hosted invocie page would be included in email and PDF of the invoice."
+                            "description" : "If true the payment link to hosted invoice page would be included in email and PDF of the invoice."
                           }
                         },
-                        "description" : "Controls emails for when the payment is due. For example after the invoice is finilized and transition to Open state."
+                        "description" : "Controls emails for when the payment is due. For example after the invoice is finalized and transitions to Open state."
                       }
                     },
                     "description" : "Email delivery setting."
@@ -13505,6 +13972,26 @@
         "description" : "List events, going back up to 30 days.",
         "operationId" : "GetV2CoreEvents",
         "parameters" : [ {
+          "name" : "gt",
+          "in" : "query",
+          "description" : "Filter for events created after the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "gte",
+          "in" : "query",
+          "description" : "Filter for events created at or after the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
           "name" : "limit",
           "in" : "query",
           "description" : "The page size.",
@@ -13514,10 +14001,30 @@
             "type" : "integer"
           }
         }, {
+          "name" : "lt",
+          "in" : "query",
+          "description" : "Filter for events created before the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "lte",
+          "in" : "query",
+          "description" : "Filter for events created at or before the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
           "name" : "object_id",
           "in" : "query",
           "description" : "Primary object ID used to retrieve related events.",
-          "required" : true,
+          "required" : false,
           "style" : "simple",
           "schema" : {
             "type" : "string"
@@ -13530,6 +14037,18 @@
           "style" : "simple",
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "name" : "types",
+          "in" : "query",
+          "description" : "An array of up to 20 strings containing specific event names.",
+          "required" : false,
+          "style" : "deepObject",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         } ],
         "responses" : {
@@ -14101,47 +14620,6 @@
           "path" : "/v2/billing/bill_settings/{id}"
         } ]
       },
-      "v2.billing.bill_setting.updated" : {
-        "required" : [ "data", "related_object", "type" ],
-        "type" : "object",
-        "properties" : {
-          "data" : {
-            "required" : [ "updated" ],
-            "type" : "object",
-            "properties" : {
-              "updated" : {
-                "type" : "string",
-                "description" : "Timestamp of when the object was updated.",
-                "format" : "date-time"
-              }
-            },
-            "description" : "Additional data about the event."
-          },
-          "related_object" : {
-            "required" : [ "type" ],
-            "type" : "object",
-            "properties" : {
-              "type" : {
-                "type" : "string",
-                "description" : "Object tag of the resource relevant to the event.",
-                "enum" : [ "v2.billing.bill_setting" ]
-              }
-            },
-            "description" : "Object containing the reference to API resource relevant to the event."
-          },
-          "type" : {
-            "type" : "string",
-            "description" : "The type of the event.",
-            "enum" : [ "v2.billing.bill_setting.updated" ]
-          }
-        },
-        "description" : "This event occurs when a bill setting is updated.",
-        "x-stripeEvent" : {
-          "kind" : "thin",
-          "type" : "v2.billing.bill_setting.updated"
-        },
-        "x-stripeNotPublic" : true
-      },
       "v2.billing.bill_setting_version" : {
         "required" : [ "created", "id", "livemode", "object" ],
         "type" : "object",
@@ -14545,10 +15023,10 @@
                           },
                           "include_payment_link" : {
                             "type" : "boolean",
-                            "description" : "If true the payment link to hosted invocie page would be included in email and PDF of the invoice."
+                            "description" : "If true the payment link to hosted invoice page would be included in email and PDF of the invoice."
                           }
                         },
-                        "description" : "Controls emails for when the payment is due. For example after the invoice is finilized and transition to Open state."
+                        "description" : "Controls emails for when the payment is due. For example after the invoice is finalized and transitions to Open state."
                       }
                     },
                     "description" : "Email delivery settings."
@@ -14811,10 +15289,10 @@
                   },
                   "include_payment_link" : {
                     "type" : "boolean",
-                    "description" : "If true the payment link to hosted invocie page would be included in email and PDF of the invoice."
+                    "description" : "If true the payment link to hosted invoice page would be included in email and PDF of the invoice."
                   }
                 },
-                "description" : "Controls emails for when the payment is due. For example after the invoice is finilized and transition to Open state."
+                "description" : "Controls emails for when the payment is due. For example after the invoice is finalized and transitions to Open state."
               }
             },
             "description" : "Email delivery settings."
@@ -15073,10 +15551,10 @@
                   },
                   "include_payment_link" : {
                     "type" : "boolean",
-                    "description" : "If true the payment link to hosted invocie page would be included in email and PDF of the invoice."
+                    "description" : "If true the payment link to hosted invoice page would be included in email and PDF of the invoice."
                   }
                 },
-                "description" : "Controls emails for when the payment is due. For example after the invoice is finilized and transition to Open state."
+                "description" : "Controls emails for when the payment is due. For example after the invoice is finalized and transitions to Open state."
               }
             },
             "description" : "Email delivery settings."
@@ -15537,6 +16015,10 @@
               "enum" : [ "customer", "merchant", "recipient", "storer" ]
             }
           },
+          "closed" : {
+            "type" : "boolean",
+            "description" : "A value indicating if the Account has been closed."
+          },
           "configuration" : {
             "type" : "object",
             "properties" : {
@@ -15577,7 +16059,7 @@
                       "location_source" : {
                         "type" : "string",
                         "description" : "The data source used to identify the customer's tax location - defaults to 'identity_address'. Will only be used for automatic tax calculation on the customer's Invoices and Subscriptions.",
-                        "enum" : [ "identity_address", "ip_address", "shipping_address" ]
+                        "enum" : [ "identity_address", "ip_address", "payment_method", "shipping_address" ]
                       }
                     },
                     "description" : "Automatic indirect tax settings to be used when automatic tax calculation is enabled on the customer's invoices, subscriptions, checkout sessions, or payment links. Surfaces if automatic tax calculation is possible given the current customer location information."
@@ -17832,6 +18314,42 @@
                               }
                             },
                             "description" : "Can hold storage-type funds on Stripe in GBP."
+                          },
+                          "usd" : {
+                            "required" : [ "requested", "status", "status_details" ],
+                            "type" : "object",
+                            "properties" : {
+                              "requested" : {
+                                "type" : "boolean",
+                                "description" : "Whether the Capability has been requested."
+                              },
+                              "status" : {
+                                "type" : "string",
+                                "description" : "The status of the Capability.",
+                                "enum" : [ "active", "pending", "restricted", "unsupported" ]
+                              },
+                              "status_details" : {
+                                "type" : "array",
+                                "description" : "Additional details regarding the status of the Capability. `status_details` will be empty if the Capability's status is `active`.",
+                                "items" : {
+                                  "required" : [ "code", "resolution" ],
+                                  "type" : "object",
+                                  "properties" : {
+                                    "code" : {
+                                      "type" : "string",
+                                      "description" : "Machine-readable code explaining the reason for the Capability to be in its current status.",
+                                      "enum" : [ "determining_status", "requirements_past_due", "requirements_pending_verification", "restricted_other", "unsupported_business", "unsupported_country", "unsupported_entity_type" ]
+                                    },
+                                    "resolution" : {
+                                      "type" : "string",
+                                      "description" : "Machine-readable code explaining how to make the Capability active.",
+                                      "enum" : [ "contact_stripe", "no_resolution", "provide_info" ]
+                                    }
+                                  }
+                                }
+                              }
+                            },
+                            "description" : "Can hold storage-type funds on Stripe in USD."
                           }
                         },
                         "description" : "Can hold storage-type funds on Stripe."
@@ -18134,7 +18652,7 @@
                   "fees_collector" : {
                     "type" : "string",
                     "description" : "A value indicating the responsible payer of a bundle of Stripe fees for pricing-control eligible products on this Account.",
-                    "enum" : [ "application", "stripe" ]
+                    "enum" : [ "application", "application_custom", "application_express", "stripe" ]
                   },
                   "losses_collector" : {
                     "type" : "string",
@@ -18222,6 +18740,25 @@
                     },
                     "description" : "Attestation that all Persons with a specific Relationship value have been provided."
                   },
+                  "representative_declaration" : {
+                    "type" : "object",
+                    "properties" : {
+                      "date" : {
+                        "type" : "string",
+                        "description" : "The time marking when the representative attestation was made. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+                        "format" : "date-time"
+                      },
+                      "ip" : {
+                        "type" : "string",
+                        "description" : "The IP address from which the representative attestation was made."
+                      },
+                      "user_agent" : {
+                        "type" : "string",
+                        "description" : "The user agent of the browser from which the representative attestation was made."
+                      }
+                    },
+                    "description" : "This hash is used to attest that the representative is authorized to act as the representative of their legal entity."
+                  },
                   "terms_of_service" : {
                     "type" : "object",
                     "properties" : {
@@ -18268,7 +18805,7 @@
                     "description" : "Attestations of accepted terms of service agreements."
                   }
                 },
-                "description" : "Attestations from the identity's key people, e.g. owners, executives, directors."
+                "description" : "Attestations from the identity's key people, e.g. owners, executives, directors, representatives."
               },
               "business_details" : {
                 "type" : "object",
@@ -19275,7 +19812,7 @@
                               "capability" : {
                                 "type" : "string",
                                 "description" : "The name of the Capability which will be restricted.",
-                                "enum" : [ "ach_debit_payments", "acss_debit_payments", "affirm_payments", "afterpay_clearpay_payments", "alma_payments", "amazon_pay_payments", "automatic_indirect_tax", "au_becs_debit_payments", "bacs_debit_payments", "bancontact_payments", "bank_accounts.local", "bank_accounts.wire", "blik_payments", "boleto_payments", "cards", "card_payments", "cartes_bancaires_payments", "cashapp_payments", "eps_payments", "financial_addresses.bank_accounts", "fpx_payments", "gb_bank_transfer_payments", "grabpay_payments", "holds_currencies.gbp", "ideal_payments", "inbound_transfers.financial_accounts", "jcb_payments", "jp_bank_transfer_payments", "kakao_pay_payments", "klarna_payments", "konbini_payments", "kr_card_payments", "link_payments", "mobilepay_payments", "multibanco_payments", "mx_bank_transfer_payments", "naver_pay_payments", "outbound_payments.bank_accounts", "outbound_payments.cards", "outbound_payments.financial_accounts", "outbound_transfers.bank_accounts", "outbound_transfers.financial_accounts", "oxxo_payments", "p24_payments", "payco_payments", "paynow_payments", "pay_by_bank_payments", "promptpay_payments", "revolut_pay_payments", "samsung_pay_payments", "sepa_bank_transfer_payments", "sepa_debit_payments", "stripe_balance.payouts", "stripe_balance.stripe_transfers", "swish_payments", "twint_payments", "us_bank_transfer_payments", "zip_payments" ]
+                                "enum" : [ "ach_debit_payments", "acss_debit_payments", "affirm_payments", "afterpay_clearpay_payments", "alma_payments", "amazon_pay_payments", "automatic_indirect_tax", "au_becs_debit_payments", "bacs_debit_payments", "bancontact_payments", "bank_accounts.local", "bank_accounts.wire", "blik_payments", "boleto_payments", "cards", "card_payments", "cartes_bancaires_payments", "cashapp_payments", "eps_payments", "financial_addresses.bank_accounts", "fpx_payments", "gb_bank_transfer_payments", "grabpay_payments", "holds_currencies.gbp", "holds_currencies.usd", "ideal_payments", "inbound_transfers.financial_accounts", "jcb_payments", "jp_bank_transfer_payments", "kakao_pay_payments", "klarna_payments", "konbini_payments", "kr_card_payments", "link_payments", "mobilepay_payments", "multibanco_payments", "mx_bank_transfer_payments", "naver_pay_payments", "outbound_payments.bank_accounts", "outbound_payments.cards", "outbound_payments.financial_accounts", "outbound_transfers.bank_accounts", "outbound_transfers.financial_accounts", "oxxo_payments", "p24_payments", "payco_payments", "paynow_payments", "pay_by_bank_payments", "promptpay_payments", "revolut_pay_payments", "samsung_pay_payments", "sepa_bank_transfer_payments", "sepa_debit_payments", "stripe_balance.payouts", "stripe_balance.stripe_transfers", "swish_payments", "twint_payments", "us_bank_transfer_payments", "zip_payments" ]
                               },
                               "configuration" : {
                                 "type" : "string",
@@ -21192,6 +21729,12 @@
           "class_name" : "GbBankAccount"
         },
         "x-stripeOperations" : [ {
+          "method_name" : "list",
+          "method_on" : "service",
+          "method_type" : "list",
+          "operation" : "get",
+          "path" : "/v2/core/vault/gb_bank_accounts"
+        }, {
           "method_name" : "create",
           "method_on" : "service",
           "method_type" : "create",
@@ -21224,7 +21767,7 @@
         } ]
       },
       "v2.core.vault.us_bank_account" : {
-        "required" : [ "archived", "bank_account_type", "bank_name", "created", "id", "last4", "livemode", "object" ],
+        "required" : [ "archived", "bank_account_type", "bank_name", "created", "id", "last4", "livemode", "object", "verification" ],
         "type" : "object",
         "properties" : {
           "archived" : {
@@ -21266,6 +21809,40 @@
             "type" : "string",
             "description" : "The ACH routing number of the bank account."
           },
+          "verification" : {
+            "required" : [ "status" ],
+            "type" : "object",
+            "properties" : {
+              "microdeposit_verification_details" : {
+                "required" : [ "expires", "microdeposit_type", "sent" ],
+                "type" : "object",
+                "properties" : {
+                  "expires" : {
+                    "type" : "string",
+                    "description" : "Time when microdeposits will expire and have to be re-sent.",
+                    "format" : "date-time"
+                  },
+                  "microdeposit_type" : {
+                    "type" : "string",
+                    "description" : "Microdeposit type can be amounts or descriptor_type.",
+                    "enum" : [ "amounts", "descriptor_code" ]
+                  },
+                  "sent" : {
+                    "type" : "string",
+                    "description" : "Time when microdeposits were sent.",
+                    "format" : "date-time"
+                  }
+                },
+                "description" : "The microdeposit verification details if the status is awaiting verification."
+              },
+              "status" : {
+                "type" : "string",
+                "description" : "The bank account verification status.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "The bank account verification details."
+          },
           "livemode" : {
             "type" : "boolean",
             "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
@@ -21278,6 +21855,12 @@
           "class_name" : "UsBankAccount"
         },
         "x-stripeOperations" : [ {
+          "method_name" : "list",
+          "method_on" : "service",
+          "method_type" : "list",
+          "operation" : "get",
+          "path" : "/v2/core/vault/us_bank_accounts"
+        }, {
           "method_name" : "create",
           "method_on" : "service",
           "method_type" : "create",
@@ -21301,6 +21884,18 @@
           "method_type" : "custom",
           "operation" : "post",
           "path" : "/v2/core/vault/us_bank_accounts/{id}/archive"
+        }, {
+          "method_name" : "confirm_microdeposits",
+          "method_on" : "service",
+          "method_type" : "custom",
+          "operation" : "post",
+          "path" : "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits"
+        }, {
+          "method_name" : "send_microdeposits",
+          "method_on" : "service",
+          "method_type" : "custom",
+          "operation" : "post",
+          "path" : "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits"
         } ]
       },
       "v2.deleted_object" : {
@@ -21350,6 +21945,29 @@
           }
         },
         "description" : "Stripe error response"
+      },
+      "v2.error.account_capability_not_supported" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "account_capability_not_supported" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Requested capability is not available."
       },
       "v2.error.account_controller_express_dash_without_application_losses_or_fees" : {
         "required" : [ "error" ],
@@ -22505,6 +23123,34 @@
           }
         },
         "description" : "Returned in cases where the card cannot be used due to suspicious activity."
+      },
+      "v2.error.blocked_payout_method_crypto_wallet" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "The type of error returned",
+                "enum" : [ "blocked_by_stripe" ]
+              },
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "blocked_payout_method_crypto_wallet" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned in cases where the crypto wallet cannot be used due to suspicious activity."
       },
       "v2.error.blocked_us_bank_account" : {
         "required" : [ "error" ],
@@ -24233,6 +24879,29 @@
         },
         "description" : "Error returned when rate locking in the used OBPQ is expired."
       },
+      "v2.error.high_risk_activities_none_cant_be_combined_with_other_options" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "high_risk_activities_none_cant_be_combined_with_other_options" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "NONE is combined with another value in the HighRiskActivities list."
+      },
       "v2.error.id_number_invalid" : {
         "required" : [ "error" ],
         "type" : "object",
@@ -24355,6 +25024,29 @@
           }
         },
         "description" : "Identity param has been made immutable due to the state of the account."
+      },
+      "v2.error.inbound_transfer_from_closed_financial_account_unsupported" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "inbound_transfer_from_closed_financial_account_unsupported" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned if an InboundTransfer is made to a closed FinancialAccount."
       },
       "v2.error.inbound_transfer_from_payment_method_not_found" : {
         "required" : [ "error" ],
@@ -25278,7 +25970,7 @@
         "type" : "object",
         "properties" : {
           "error" : {
-            "required" : [ "code", "message", "type" ],
+            "required" : [ "code", "country", "limit", "message", "type" ],
             "type" : "object",
             "properties" : {
               "type" : {
@@ -25294,6 +25986,14 @@
               "message" : {
                 "type" : "string",
                 "description" : "A human-readable message providing more details about the error"
+              },
+              "country" : {
+                "type" : "string",
+                "description" : "The country code of the bank account."
+              },
+              "limit" : {
+                "type" : "integer",
+                "description" : "The maximum number of credentials per workspace for the given type."
               }
             },
             "description" : "Information about the error that occurred"
@@ -25306,7 +26006,7 @@
         "type" : "object",
         "properties" : {
           "error" : {
-            "required" : [ "code", "message", "type" ],
+            "required" : [ "code", "limit", "message", "type" ],
             "type" : "object",
             "properties" : {
               "type" : {
@@ -25322,12 +26022,48 @@
               "message" : {
                 "type" : "string",
                 "description" : "A human-readable message providing more details about the error"
+              },
+              "limit" : {
+                "type" : "integer",
+                "description" : "The maximum number of credentials per workspace for the given type."
               }
             },
             "description" : "Information about the error that occurred"
           }
         },
-        "description" : "Returned when the number of cards has exceeded the limit in a given workspace.\nPayoutMethodCard objects may be archived with the /archive API, at which point they will not count against the limit.\nIf you are not passing a V2 Account ID in the Stripe-Context header you may receive this error since\nyou are creating all your bank account objects in your own workspace."
+        "description" : "Returned when the number of cards has exceeded the limit in a given workspace.\nPayoutMethodCard objects may be archived with the /archive API, at which point they will not count against the limit.\nIf you are not passing a V2 Account ID in the Stripe-Context header you may receive this error since\nyou are creating all your card objects in your own workspace."
+      },
+      "v2.error.limit_payout_method_crypto_wallet" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "limit", "message", "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "The type of error returned",
+                "enum" : [ "quota_exceeded" ]
+              },
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "limit_payout_method_crypto_wallet" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "limit" : {
+                "type" : "integer",
+                "description" : "The maximum number of credentials per workspace for the given type."
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when the number of crypto wallets has exceeded the limit in a given workspace.\nPayoutMethodCryptoWallet objects may be archived with the /archive API, at which point they will not count against the limit.\nIf you are not passing a V2 Account ID in the Stripe-Context header you may receive this error since\nyou are creating all your crypto wallet objects in your own workspace."
       },
       "v2.error.limit_us_bank_account" : {
         "required" : [ "error" ],
@@ -26135,6 +26871,34 @@
           }
         },
         "description" : "To schedule SEPA Debit payment retries with the Off-Session Payments API, you must first enable SEPA Debit retries on the Stripe dashboard."
+      },
+      "v2.error.outbound_flow_from_closed_financial_account_unsupported" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "The type of error returned",
+                "enum" : [ "feature_not_enabled" ]
+              },
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "outbound_flow_from_closed_financial_account_unsupported" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "The user attempts to create an outbound flow from a closed Financial Account."
       },
       "v2.error.outbound_payment_already_canceled" : {
         "required" : [ "error" ],
@@ -27043,6 +27807,29 @@
         },
         "description" : "Platform has not signed up for Connect and cannot create connected accounts."
       },
+      "v2.error.purpose_of_funds_description_must_be_empty_for_non_other_purpose_of_funds" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "purpose_of_funds_description_must_be_empty_for_non_other_purpose_of_funds" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "PurposeOfFundsDescription is not empty while PurposeOfFunds is not OTHER."
+      },
       "v2.error.recipient_amount_limit_exceeded" : {
         "required" : [ "error" ],
         "type" : "object",
@@ -27707,6 +28494,52 @@
         },
         "description" : ""
       },
+      "v2.error.unsupported_operation_on_managed_financial_account_resource" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "unsupported_operation_on_managed_financial_account_resource" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Modification of an object is not allowed on a managed account."
+      },
+      "v2.error.unsupported_operation_with_managed_financial_account" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "unsupported_operation_with_managed_financial_account" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Creation of an object is not allowed with a managed account."
+      },
       "v2.error.unsupported_payout_method_bank_account" : {
         "required" : [ "error" ],
         "type" : "object",
@@ -27724,6 +28557,34 @@
                 "type" : "string",
                 "description" : "Short code to identify the error, should not be handled programmatically",
                 "enum" : [ "unsupported_payout_method_bank_account" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned in cases where Stripe is unable to support this bank at this time."
+      },
+      "v2.error.unsupported_payout_method_crypto_wallet" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "type" ],
+            "type" : "object",
+            "properties" : {
+              "type" : {
+                "type" : "string",
+                "description" : "The type of error returned",
+                "enum" : [ "blocked_by_stripe" ]
+              },
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "unsupported_payout_method_crypto_wallet" ]
               },
               "message" : {
                 "type" : "string",
@@ -27821,6 +28682,38 @@
         },
         "description" : "Returned when the US Bank Account in question is controlled by the Stripe Dashboard, and cannot be archived."
       },
+      "v2.error.us_bank_account_confirm_microdeposits_error" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "user_message", "verification_status" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "us_bank_account_confirm_microdeposits_error" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "verification_status" : {
+                "type" : "string",
+                "description" : "Closed Enum. The verification status of the bank account associated with this error.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when the wrong values were provided to confirm microdeposits."
+      },
       "v2.error.us_bank_account_field_already_exists" : {
         "required" : [ "error" ],
         "type" : "object",
@@ -27852,6 +28745,134 @@
           }
         },
         "description" : "Returned in cases where the bank account cannot be updated due to requesting\nto update a field that already exists."
+      },
+      "v2.error.us_bank_account_microdeposits_failed_to_send" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "user_message", "verification_status" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "us_bank_account_microdeposits_failed_to_send" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "verification_status" : {
+                "type" : "string",
+                "description" : "Closed Enum. The verification status of the bank account associated with this error.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when an attempt is made to confirm microdeposits before the microdeposits have been sent."
+      },
+      "v2.error.us_bank_account_microdeposits_not_sent_before_confirming" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "user_message", "verification_status" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "us_bank_account_microdeposits_not_sent_before_confirming" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "verification_status" : {
+                "type" : "string",
+                "description" : "Closed Enum. The verification status of the bank account associated with this error.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when an attempt is made to confirm microdeposits before the microdeposits have been sent."
+      },
+      "v2.error.us_bank_account_microdeposits_timed_out" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "user_message", "verification_status" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "us_bank_account_microdeposits_timed_out" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "verification_status" : {
+                "type" : "string",
+                "description" : "Closed Enum. The verification status of the bank account associated with this error.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when an attempt to confirm microdeposits has failed because too much time has elapsed since the\nmicrodeposits were sent."
+      },
+      "v2.error.us_bank_account_verification_failed" : {
+        "required" : [ "error" ],
+        "type" : "object",
+        "properties" : {
+          "error" : {
+            "required" : [ "code", "message", "user_message", "verification_status" ],
+            "type" : "object",
+            "properties" : {
+              "code" : {
+                "type" : "string",
+                "description" : "Short code to identify the error, should not be handled programmatically",
+                "enum" : [ "us_bank_account_verification_failed" ]
+              },
+              "message" : {
+                "type" : "string",
+                "description" : "A human-readable message providing more details about the error"
+              },
+              "user_message" : {
+                "type" : "string",
+                "description" : "A user-friendly message that can be shown to end-users"
+              },
+              "verification_status" : {
+                "type" : "string",
+                "description" : "Closed Enum. The verification status of the bank account associated with this error.",
+                "enum" : [ "awaiting_verification", "unverified", "verification_failed", "verified" ]
+              }
+            },
+            "description" : "Information about the error that occurred"
+          }
+        },
+        "description" : "Returned when verification of a US bank account has failed, reaching a terminal failure state."
       },
       "v2.error.v1_account_instead_of_v2_account" : {
         "required" : [ "error" ],
@@ -28229,6 +29250,12 @@
           "method_on" : "service",
           "method_type" : "retrieve",
           "operation" : "get",
+          "path" : "/v2/money_management/financial_accounts/{id}"
+        }, {
+          "method_name" : "update",
+          "method_on" : "service",
+          "method_type" : "update",
+          "operation" : "post",
           "path" : "/v2/money_management/financial_accounts/{id}"
         }, {
           "method_name" : "close",
@@ -31377,7 +32404,12 @@
         "properties" : {
           "data" : {
             "type" : "object",
-            "properties" : { },
+            "properties" : {
+              "v1_id" : {
+                "type" : "string",
+                "description" : "Id of the v1 Transaction corresponding to this Transaction."
+              }
+            },
             "description" : "Additional data about the event."
           },
           "related_object" : {

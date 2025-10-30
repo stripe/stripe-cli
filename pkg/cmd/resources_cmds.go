@@ -5675,9 +5675,14 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"webhook_endpoint.url": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
+		"gt":        "string",
+		"gte":       "string",
 		"limit":     "integer",
+		"lt":        "string",
+		"lte":       "string",
 		"object_id": "string",
 		"page":      "string",
+		"types":     "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 }
@@ -6125,6 +6130,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested":    "boolean",
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested":     "boolean",
 		"configuration.storer.capabilities.holds_currencies.gbp.requested":                  "boolean",
+		"configuration.storer.capabilities.holds_currencies.usd.requested":                  "boolean",
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested":       "boolean",
 		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested":       "boolean",
 		"configuration.storer.capabilities.outbound_payments.cards.requested":               "boolean",
@@ -6151,6 +6157,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.attestations.persons_provided.executives":                                "boolean",
 		"identity.attestations.persons_provided.owners":                                    "boolean",
 		"identity.attestations.persons_provided.ownership_exemption_reason":                "string",
+		"identity.attestations.representative_declaration.date":                            "string",
+		"identity.attestations.representative_declaration.ip":                              "string",
+		"identity.attestations.representative_declaration.user_agent":                      "string",
 		"identity.attestations.terms_of_service.account.date":                              "string",
 		"identity.attestations.terms_of_service.account.ip":                                "string",
 		"identity.attestations.terms_of_service.account.user_agent":                        "string",
@@ -6268,6 +6277,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "list", "/v2/core/accounts", http.MethodGet, map[string]string{
 		"applied_configurations": "array",
+		"closed":                 "boolean",
 		"limit":                  "integer",
 		"page":                   "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
@@ -6370,6 +6380,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.storer.applied":                                                      "boolean",
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested":     "boolean",
 		"configuration.storer.capabilities.holds_currencies.gbp.requested":                  "boolean",
+		"configuration.storer.capabilities.holds_currencies.usd.requested":                  "boolean",
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested":       "boolean",
 		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested":       "boolean",
 		"configuration.storer.capabilities.outbound_payments.cards.requested":               "boolean",
@@ -6396,9 +6407,15 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.attestations.persons_provided.executives":                                "boolean",
 		"identity.attestations.persons_provided.owners":                                    "boolean",
 		"identity.attestations.persons_provided.ownership_exemption_reason":                "string",
+		"identity.attestations.representative_declaration.date":                            "string",
+		"identity.attestations.representative_declaration.ip":                              "string",
+		"identity.attestations.representative_declaration.user_agent":                      "string",
 		"identity.attestations.terms_of_service.account.date":                              "string",
 		"identity.attestations.terms_of_service.account.ip":                                "string",
 		"identity.attestations.terms_of_service.account.user_agent":                        "string",
+		"identity.attestations.terms_of_service.crypto_storer.date":                        "string",
+		"identity.attestations.terms_of_service.crypto_storer.ip":                          "string",
+		"identity.attestations.terms_of_service.crypto_storer.user_agent":                  "string",
 		"identity.attestations.terms_of_service.storer.date":                               "string",
 		"identity.attestations.terms_of_service.storer.ip":                                 "string",
 		"identity.attestations.terms_of_service.storer.user_agent":                         "string",
@@ -6544,9 +6561,14 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"webhook_endpoint.url": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
+		"gt":        "string",
+		"gte":       "string",
 		"limit":     "integer",
+		"lt":        "string",
+		"lte":       "string",
 		"object_id": "string",
 		"page":      "string",
+		"types":     "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "acknowledge_confirmation_of_payee", "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
@@ -6563,15 +6585,29 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"business_type": "string",
 		"name":          "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "list", "/v2/core/vault/gb_bank_accounts", http.MethodGet, map[string]string{
+		"limit": "integer",
+		"page":  "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/gb_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "archive", "/v2/core/vault/us_bank_accounts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "confirm_microdeposits", "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits", http.MethodPost, map[string]string{
+		"amounts":         "array",
+		"descriptor_code": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "create", "/v2/core/vault/us_bank_accounts", http.MethodPost, map[string]string{
 		"account_number":         "string",
 		"bank_account_type":      "string",
 		"fedwire_routing_number": "string",
 		"routing_number":         "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "list", "/v2/core/vault/us_bank_accounts", http.MethodGet, map[string]string{
+		"limit":               "integer",
+		"page":                "string",
+		"verification_status": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/us_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "send_microdeposits", "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "update", "/v2/core/vault/us_bank_accounts/{id}", http.MethodPost, map[string]string{
 		"fedwire_routing_number": "string",
 		"routing_number":         "string",
@@ -6602,6 +6638,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"status": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "retrieve", "/v2/money_management/financial_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "update", "/v2/money_management/financial_accounts/{id}", http.MethodPost, map[string]string{
+		"display_name": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "create", "/v2/money_management/financial_addresses", http.MethodPost, map[string]string{
 		"financial_account": "string",
 		"type":              "string",

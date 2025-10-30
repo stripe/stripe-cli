@@ -9,14 +9,15 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-09-30.clover",
+    "version" : "2025-10-29.clover",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
     "url" : "https://api.stripe.com/"
   } ],
   "security" : [ {
-    "basicAuth" : [ ],
+    "basicAuth" : [ ]
+  }, {
     "bearerAuth" : [ ]
   } ],
   "paths" : {
@@ -569,6 +570,26 @@
         "description" : "List events, going back up to 30 days.",
         "operationId" : "GetV2CoreEvents",
         "parameters" : [ {
+          "name" : "gt",
+          "in" : "query",
+          "description" : "Filter for events created after the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "gte",
+          "in" : "query",
+          "description" : "Filter for events created at or after the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
           "name" : "limit",
           "in" : "query",
           "description" : "The page size.",
@@ -578,10 +599,30 @@
             "type" : "integer"
           }
         }, {
+          "name" : "lt",
+          "in" : "query",
+          "description" : "Filter for events created before the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
+          "name" : "lte",
+          "in" : "query",
+          "description" : "Filter for events created at or before the specified timestamp.",
+          "required" : false,
+          "style" : "simple",
+          "schema" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }, {
           "name" : "object_id",
           "in" : "query",
           "description" : "Primary object ID used to retrieve related events.",
-          "required" : true,
+          "required" : false,
           "style" : "simple",
           "schema" : {
             "type" : "string"
@@ -594,6 +635,18 @@
           "style" : "simple",
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "name" : "types",
+          "in" : "query",
+          "description" : "An array of up to 20 strings containing specific event names.",
+          "required" : false,
+          "style" : "deepObject",
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         } ],
         "responses" : {
