@@ -259,7 +259,6 @@ var validThinEvents = map[string]bool{
 var validPreviewEvents = map[string]bool{
 	"v1.billing.meter.error_report_triggered":                            true,
 	"v1.billing.meter.no_meter_found":                                    true,
-	"v2.billing.bill_setting.updated":                                    true,
 	"v2.core.account.closed":                                             true,
 	"v2.core.account.created":                                            true,
 	"v2.core.account.updated":                                            true,
