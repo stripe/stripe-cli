@@ -8,6 +8,8 @@ on:
   pull_request:
     types: [opened, edited]
 name: Package manager test
+permissions:
+  contents: read
 jobs:
   homebrew:
     runs-on: macos-latest
