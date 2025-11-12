@@ -158,6 +158,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	rRadarValueListsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_lists")
 	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
 	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
+	rTaxAssociationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "associations")
 	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
 	rTaxRegistrationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "registrations")
 	rTaxSettingsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "settings")
@@ -165,6 +166,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
 	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
 	rTerminalLocationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "locations")
+	rTerminalOnboardingLinksCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "onboarding_links")
 	rTerminalReadersCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "readers")
 	rTerminalReadersTestHelpersCmd := resource.NewResourceCmd(rTerminalReadersCmd.Cmd, "test_helpers")
 	rTestHelpersConfirmationTokensCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "confirmation_tokens")
@@ -1056,6 +1058,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"description": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "list", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
+		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
@@ -1092,6 +1095,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"customer":                                                                                "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "balance_transactions", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
+		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
@@ -1327,6 +1331,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_rates":                           "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rInvoicePaymentsCmd.Cmd, "list", "/v1/invoice_payments", http.MethodGet, map[string]string{
+		"created":        "integer",
 		"ending_before":  "string",
 		"invoice":        "string",
 		"limit":          "integer",
@@ -1601,6 +1606,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"amount_to_capture":              "integer",
 		"application_fee_amount":         "integer",
 		"final_capture":                  "boolean",
+		"hooks.inputs.tax.calculation":   "string",
 		"statement_descriptor":           "string",
 		"statement_descriptor_suffix":    "string",
 		"transfer_data.amount":           "integer",
@@ -1610,6 +1616,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"confirmation_token":            "string",
 		"error_on_requires_action":      "boolean",
 		"excluded_payment_method_types": "array",
+		"hooks.inputs.tax.calculation":  "string",
 		"mandate":                       "string",
 		"off_session":                   "boolean",
 		"payment_method":                "string",
@@ -1658,28 +1665,29 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"use_stripe_sdk":                                                    "boolean",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "create", "/v1/payment_intents", http.MethodPost, map[string]string{
-		"amount":                                    "integer",
-		"amount_details.discount_amount":            "integer",
-		"application_fee_amount":                    "integer",
-		"automatic_payment_methods.allow_redirects": "string",
-		"automatic_payment_methods.enabled":         "boolean",
-		"capture_method":                            "string",
-		"confirm":                                   "boolean",
-		"confirmation_method":                       "string",
-		"confirmation_token":                        "string",
-		"currency":                                  "string",
-		"customer":                                  "string",
-		"description":                               "string",
-		"error_on_requires_action":                  "boolean",
-		"excluded_payment_method_types":             "array",
-		"mandate":                                   "string",
-		"off_session":                               "boolean",
-		"on_behalf_of":                              "string",
-		"payment_details.customer_reference":        "string",
-		"payment_details.order_reference":           "string",
-		"payment_method":                            "string",
-		"payment_method_configuration":              "string",
-		"payment_method_data.acss_debit.account_number":                     "string",
+		"amount":                                        "integer",
+		"amount_details.discount_amount":                "integer",
+		"application_fee_amount":                        "integer",
+		"automatic_payment_methods.allow_redirects":     "string",
+		"automatic_payment_methods.enabled":             "boolean",
+		"capture_method":                                "string",
+		"confirm":                                       "boolean",
+		"confirmation_method":                           "string",
+		"confirmation_token":                            "string",
+		"currency":                                      "string",
+		"customer":                                      "string",
+		"description":                                   "string",
+		"error_on_requires_action":                      "boolean",
+		"excluded_payment_method_types":                 "array",
+		"hooks.inputs.tax.calculation":                  "string",
+		"mandate":                                       "string",
+		"off_session":                                   "boolean",
+		"on_behalf_of":                                  "string",
+		"payment_details.customer_reference":            "string",
+		"payment_details.order_reference":               "string",
+		"payment_method":                                "string",
+		"payment_method_configuration":                  "string",
+		"payment_method_data.acss_debit.account_number": "string",
 		"payment_method_data.acss_debit.institution_number":                 "string",
 		"payment_method_data.acss_debit.transit_number":                     "string",
 		"payment_method_data.allow_redisplay":                               "string",
@@ -1743,6 +1751,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"amount_details.discount_amount":     "integer",
 		"application_fee_amount":             "integer",
 		"description":                        "string",
+		"hooks.inputs.tax.calculation":       "string",
 		"payment_details.customer_reference": "string",
 		"payment_details.order_reference":    "string",
 		"statement_descriptor":               "string",
@@ -1771,6 +1780,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"customer":                      "string",
 		"description":                   "string",
 		"excluded_payment_method_types": "array",
+		"hooks.inputs.tax.calculation":  "string",
 		"payment_method":                "string",
 		"payment_method_configuration":  "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -4242,6 +4252,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"risk_assessment.card_testing_risk.invalid_account_number_decline_rate_past_hour": "integer",
 		"risk_assessment.card_testing_risk.invalid_credentials_decline_rate_past_hour":    "integer",
 		"risk_assessment.card_testing_risk.risk_level":                                    "string",
+		"risk_assessment.fraud_risk.level":                                                "string",
+		"risk_assessment.fraud_risk.score":                                                "number",
 		"risk_assessment.merchant_dispute_risk.dispute_rate":                              "integer",
 		"risk_assessment.merchant_dispute_risk.risk_level":                                "string",
 		"verification_data.address_line1_check":                                           "string",
@@ -4649,6 +4661,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "retrieve", "/v1/reporting/report_runs/{report_run}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "list", "/v1/reporting/report_types", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "retrieve", "/v1/reporting/report_types/{report_type}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTaxAssociationsCmd.Cmd, "find", "/v1/tax/associations/find", http.MethodGet, map[string]string{
+		"payment_intent": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "create", "/v1/tax/calculations", http.MethodPost, map[string]string{
 		"currency":                              "string",
 		"customer":                              "string",
@@ -4970,6 +4985,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"display_name_kanji":        "string",
 		"phone":                     "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	resource.NewOperationCmd(rTerminalOnboardingLinksCmd.Cmd, "create", "/v1/terminal/onboarding_links", http.MethodPost, map[string]string{
+		"link_options.apple_terms_and_conditions.allow_relinking":       "boolean",
+		"link_options.apple_terms_and_conditions.merchant_display_name": "string",
+		"link_type":    "string",
+		"on_behalf_of": "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "cancel_action", "/v1/terminal/readers/{reader}/cancel_action", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_inputs", "/v1/terminal/readers/{reader}/collect_inputs", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_payment_method", "/v1/terminal/readers/{reader}/collect_payment_method", http.MethodPost, map[string]string{
@@ -5168,6 +5189,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"risk_assessment.card_testing_risk.invalid_account_number_decline_rate_past_hour": "integer",
 		"risk_assessment.card_testing_risk.invalid_credentials_decline_rate_past_hour":    "integer",
 		"risk_assessment.card_testing_risk.risk_level":                                    "string",
+		"risk_assessment.fraud_risk.level":                                                "string",
+		"risk_assessment.fraud_risk.score":                                                "number",
 		"risk_assessment.merchant_dispute_risk.dispute_rate":                              "integer",
 		"risk_assessment.merchant_dispute_risk.risk_level":                                "string",
 		"verification_data.address_line1_check":                                           "string",
