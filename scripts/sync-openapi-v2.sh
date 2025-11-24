@@ -4,8 +4,8 @@ set -eu -o pipefail
 pushd "$HOME/stripe/zoolander"
 
 # Pull master.
-echo "Bringing master up to date."
-git checkout master && git pull
+echo "Bringing master-passing-tests up to date."
+git checkout master-passing-tests && git pull
 
 # Grab SHA so we can save this to a file for some kind of "paper trail".
 SHA=$(git rev-parse HEAD)
