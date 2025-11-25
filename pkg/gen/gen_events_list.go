@@ -11,22 +11,18 @@ import (
 	"sort"
 	"text/template"
 
+	"github.com/stripe/stripe-cli/pkg/gen"
 	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
 type TemplateData struct {
-	Events        []string
-	ThinEvents    []string
-	PreviewEvents []string
+	Events            []string
+	ThinEvents        []string
+	PreviewEvents     []string
+	PreviewThinEvents []string
 }
 
 const (
-	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
-
-	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
-
-	pathStripeSpecV2Preview = "../../api/openapi-spec/spec3.v2.sdk.preview.json"
-
 	pathTemplate = "../gen/events_list.go.tpl"
 
 	pathName = "events_list.go.tpl"
@@ -37,7 +33,7 @@ const (
 func main() {
 	// generate `events_list.go` from OpenAPI spec file
 	// code for this func from gen_resources_cmds.go
-	templateData, err := getTemplateData()
+	templateData, err := getTemplateDataFromUnifiedSpec()
 	if err != nil {
 		panic(err)
 	}
@@ -69,31 +65,72 @@ func main() {
 
 }
 
+// getTemplateData loads event data from separate V1 and V2 spec files and returns
+// template data with sorted event lists for code generation.
 func getTemplateData() (*TemplateData, error) {
-	eventsV1, err := getV1EventList()
+	eventsV1Set, err := getV1Events(gen.PathStripeSpec)
 	if err != nil {
 		return nil, err
 	}
-	eventsV2, err := getV2EventList()
+	eventsV2Set, err := getThinEvents(gen.PathStripeSpecV2)
 	if err != nil {
 		return nil, err
 	}
-	previewEvents, err := getPreviewEventList()
+	previewEventsV2Set, err := getThinEvents(gen.PathStripeSpecV2Preview)
 	if err != nil {
 		return nil, err
 	}
 
 	data := &TemplateData{
-		Events:        eventsV1,
-		ThinEvents:    eventsV2,
-		PreviewEvents: previewEvents,
+		Events:            setToSortedSlice(eventsV1Set),
+		ThinEvents:        setToSortedSlice(eventsV2Set),
+		PreviewThinEvents: setToSortedSlice(previewEventsV2Set),
 	}
 
 	return data, nil
 }
 
-func getV1EventList() ([]string, error) {
-	api, err := spec.LoadSpec(pathStripeSpec)
+// getTemplateDataFromUnifiedSpec loads event data from unified spec files (which combine
+// V1 and V2 events) and returns template data with sorted event lists for code generation.
+// Preview events are filtered to only include events that don't exist in the non-preview specs.
+// V1 preview events are excluded for now.
+func getTemplateDataFromUnifiedSpec() (*TemplateData, error) {
+	eventsV1Set, err := getV1Events(gen.PathUnifiedSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	thinEventsSet, err := getThinEvents(gen.PathUnifiedSpec)
+	if err != nil {
+		return nil, err
+	}
+	previewThinEventsSet, err := getThinEvents(gen.PathUnifiedPreviewSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter preview thin events to only include events not present in the non-preview list
+	filteredPreviewThinEventsSet := make(map[string]struct{})
+	for e := range previewThinEventsSet {
+		if _, exists := thinEventsSet[e]; !exists {
+			filteredPreviewThinEventsSet[e] = struct{}{}
+		}
+	}
+
+	data := &TemplateData{
+		Events:            setToSortedSlice(eventsV1Set),
+		ThinEvents:        setToSortedSlice(thinEventsSet),
+		PreviewEvents:     nil, // V1 preview events excluded for now
+		PreviewThinEvents: setToSortedSlice(filteredPreviewThinEventsSet),
+	}
+	return data, nil
+}
+
+// getV1Events extracts V1 (classic) event types from an OpenAPI spec file by reading
+// the enabled_events property from the webhook_endpoints endpoint schema.
+// Returns a set (map[string]struct{}) of unique event type strings.
+func getV1Events(pathSpec string) (map[string]struct{}, error) {
+	api, err := spec.LoadSpec(pathSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -101,59 +138,45 @@ func getV1EventList() ([]string, error) {
 	postRequest := api.Paths["/v1/webhook_endpoints"]["post"]
 	requestSchema := postRequest.RequestBody.Content["application/x-www-form-urlencoded"].Schema
 	events := requestSchema.Properties["enabled_events"].Items.Enum
-	eventList := make([]string, 0)
+	eventSet := make(map[string]struct{}, len(events))
 	for _, e := range events {
-		eventList = append(eventList, e.(string))
+		eventSet[e.(string)] = struct{}{}
 	}
-	return eventList, nil
+	return eventSet, nil
 }
 
-func getV2EventList() ([]string, error) {
-	api, err := spec.LoadSpec(pathStripeSpecV2)
+// getThinEvents extracts V2 thin event types from an OpenAPI spec file by iterating
+// through all schemas and finding those marked with x-stripeEvent extension where
+// eventKind is "thin".
+// Returns a set (map[string]struct{}) of unique event type strings.
+func getThinEvents(pathSpec string) (map[string]struct{}, error) {
+	api, err := spec.LoadSpec(pathSpec)
 	if err != nil {
 		return nil, err
 	}
 
-	eventList := make([]string, 0)
-	// Iterate over every resource schema
+	eventSet := make(map[string]struct{})
+	// Iterate over every schema
 	for _, schema := range api.Components.Schemas {
-		// Skip resources that don't have any operations
-		if schema.XStripeEvent == nil {
+		// Skip schemas that do not have x-stripeEvent or are not thin events
+		if schema.XStripeEvent == nil || schema.XStripeEvent.EventKind == nil || *schema.XStripeEvent.EventKind != "thin" {
 			continue
 		}
 
 		eventType := schema.XStripeEvent.EventType
-		eventList = append(eventList, eventType)
+		eventSet[eventType] = struct{}{}
 	}
 
-	// Sort the eventList so that we have consistent
-	// ordering when testing in CI
-	sort.Strings(eventList)
-
-	return eventList, nil
+	return eventSet, nil
 }
 
-func getPreviewEventList() ([]string, error) {
-	api, err := spec.LoadSpec(pathStripeSpecV2Preview)
-	if err != nil {
-		return nil, err
+// setToSortedSlice converts a set (map[string]struct{}) to a sorted slice of strings.
+// Returns a lexicographically sorted []string containing all keys from the input set.
+func setToSortedSlice(set map[string]struct{}) []string {
+	slice := make([]string, 0, len(set))
+	for key := range set {
+		slice = append(slice, key)
 	}
-
-	eventList := make([]string, 0)
-	// Iterate over every resource schema
-	for _, schema := range api.Components.Schemas {
-		// Skip resources that don't have any events
-		if schema.XStripeEvent == nil {
-			continue
-		}
-
-		eventType := schema.XStripeEvent.EventType
-		eventList = append(eventList, eventType)
-	}
-
-	// Sort the eventList so that we have consistent
-	// ordering when testing in CI
-	sort.Strings(eventList)
-
-	return eventList, nil
+	sort.Strings(slice)
+	return slice
 }

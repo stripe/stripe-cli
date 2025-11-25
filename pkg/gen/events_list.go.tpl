@@ -10,6 +10,12 @@ var validThinEvents = map[string]bool{ {{ range $_, $nsName := .ThinEvents }}
 "{{ $nsName }}": true, {{end}}
 }
 
+{{ if and .PreviewEvents (gt (len .PreviewEvents) 0) -}}
 var validPreviewEvents = map[string]bool{ {{ range $_, $nsName := .PreviewEvents }}
+"{{ $nsName }}": true, {{end}}
+}
+
+{{ end -}}
+var validPreviewThinEvents = map[string]bool{ {{ range $_, $nsName := .PreviewThinEvents }}
 "{{ $nsName }}": true, {{end}}
 }

@@ -13,11 +13,12 @@ import (
 
 func addAllResourcesCmds(rootCmd *cobra.Command) {
 	v1root := rootCmd
-	addV1ResourcesCmds(v1root)
 	v2root := resource.NewNamespaceCmd(rootCmd, "v2").Cmd
-	addV2ResourcesCmds(v2root)
 	previewRoot := resource.NewNamespaceCmd(rootCmd, "preview").Cmd
 	previewV2Root := resource.NewNamespaceCmd(previewRoot, "v2").Cmd
+
+	addV1ResourcesCmds(v1root)
+	addV2ResourcesCmds(v2root)
 	addV2PreviewResourcesCmds(previewV2Root)
 }
 
