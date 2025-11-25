@@ -68,8 +68,12 @@ type StripeOperation struct {
 }
 
 // StripeEvent is a struct containing information about a Stripe event.
+//
+// If EventKind is defined and set to "thin", it indicates a thin event.
+// EventKind is optional.
 type StripeEvent struct {
-	EventType string `json:"type"`
+	EventType string  `json:"type"`
+	EventKind *string `json:"kind,omitempty"`
 }
 
 type StripeError struct {
@@ -115,7 +119,9 @@ var supportedSchemaFields = []string{
 	// This is currently being used to store additional metadata for our SDKs. It's
 	// passed through our Spec and should be ignored
 	"x-stripeParam",
+	"x-stripeProperty",
 	"x-stripeResource",
+	"x-stableId",
 	"deprecated",
 
 	// This is currently a hint for the server-side so I haven't included it in
