@@ -5698,11 +5698,7 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"webhook_endpoint.url": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
-		"gt":        "string",
-		"gte":       "string",
 		"limit":     "integer",
-		"lt":        "string",
-		"lte":       "string",
 		"object_id": "string",
 		"page":      "string",
 		"types":     "array",
@@ -5716,7 +5712,6 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
 	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
 	nsMoneyManagementCmd := resource.NewNamespaceCmd(rootCmd, "money_management")
-	nsPaymentsCmd := resource.NewNamespaceCmd(rootCmd, "payments")
 	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
 
 	// Resource commands
@@ -5734,7 +5729,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
 	rBillingProfilesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "profiles")
 	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
+	rCoreAccountPersonTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_person_tokens")
 	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
+	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
 	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
 	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
 	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
@@ -5755,14 +5752,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	rMoneyManagementReceivedDebitsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "received_debits")
 	rMoneyManagementTransactionEntrysCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transaction_entrys")
 	rMoneyManagementTransactionsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transactions")
-	rPaymentsOffSessionPaymentsCmd := resource.NewResourceCmd(nsPaymentsCmd.Cmd, "off_session_payments")
 	rTestHelpersFinancialAddressCreditSimulationsCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_credit_simulations")
 	rTestHelpersFinancialAddressGeneratedMicrodepositssCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_generated_microdepositss")
 
 	// Operation commands
 	resource.NewOperationCmd(rFinancialAddressCreditSimulationsTestHelpersCmd.Cmd, "credit", "/v2/test_helpers/financial_addresses/{id}/credit", http.MethodPost, map[string]string{
-		"amount.amount":        "integer",
 		"amount.currency":      "string",
+		"amount.value":         "integer",
 		"network":              "string",
 		"statement_descriptor": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
@@ -5935,6 +5931,65 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"use_case.account_update.return_url":                                 "string",
 		"use_case.type":                                                      "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "create", "/v2/core/accounts/{account_id}/person_tokens", http.MethodPost, map[string]string{
+		"additional_terms_of_service.account.shown_and_accepted": "boolean",
+		"address.city":                                      "string",
+		"address.country":                                   "string",
+		"address.line1":                                     "string",
+		"address.line2":                                     "string",
+		"address.postal_code":                               "string",
+		"address.state":                                     "string",
+		"address.town":                                      "string",
+		"date_of_birth.day":                                 "integer",
+		"date_of_birth.month":                               "integer",
+		"date_of_birth.year":                                "integer",
+		"documents.company_authorization.files":             "array",
+		"documents.company_authorization.type":              "string",
+		"documents.passport.files":                          "array",
+		"documents.passport.type":                           "string",
+		"documents.primary_verification.front_back.back":    "string",
+		"documents.primary_verification.front_back.front":   "string",
+		"documents.primary_verification.type":               "string",
+		"documents.secondary_verification.front_back.back":  "string",
+		"documents.secondary_verification.front_back.front": "string",
+		"documents.secondary_verification.type":             "string",
+		"documents.visa.files":                              "array",
+		"documents.visa.type":                               "string",
+		"email":                                             "string",
+		"given_name":                                        "string",
+		"legal_gender":                                      "string",
+		"nationalities":                                     "array",
+		"phone":                                             "string",
+		"political_exposure":                                "string",
+		"relationship.authorizer":                           "boolean",
+		"relationship.director":                             "boolean",
+		"relationship.executive":                            "boolean",
+		"relationship.legal_guardian":                       "boolean",
+		"relationship.owner":                                "boolean",
+		"relationship.percent_ownership":                    "string",
+		"relationship.representative":                       "boolean",
+		"relationship.title":                                "string",
+		"script_addresses.kana.city":                        "string",
+		"script_addresses.kana.country":                     "string",
+		"script_addresses.kana.line1":                       "string",
+		"script_addresses.kana.line2":                       "string",
+		"script_addresses.kana.postal_code":                 "string",
+		"script_addresses.kana.state":                       "string",
+		"script_addresses.kana.town":                        "string",
+		"script_addresses.kanji.city":                       "string",
+		"script_addresses.kanji.country":                    "string",
+		"script_addresses.kanji.line1":                      "string",
+		"script_addresses.kanji.line2":                      "string",
+		"script_addresses.kanji.postal_code":                "string",
+		"script_addresses.kanji.state":                      "string",
+		"script_addresses.kanji.town":                       "string",
+		"script_names.kana.given_name":                      "string",
+		"script_names.kana.surname":                         "string",
+		"script_names.kanji.given_name":                     "string",
+		"script_names.kanji.surname":                        "string",
+		"surname":                                           "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/person_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "create", "/v2/core/accounts/{account_id}/persons", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.date":       "string",
 		"additional_terms_of_service.account.ip":         "string",
@@ -5965,6 +6020,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"given_name":                                        "string",
 		"legal_gender":                                      "string",
 		"nationalities":                                     "array",
+		"person_token":                                      "string",
 		"phone":                                             "string",
 		"political_exposure":                                "string",
 		"relationship.authorizer":                           "boolean",
@@ -6031,6 +6087,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"given_name":                                        "string",
 		"legal_gender":                                      "string",
 		"nationalities":                                     "array",
+		"person_token":                                      "string",
 		"phone":                                             "string",
 		"political_exposure":                                "string",
 		"relationship.authorizer":                           "boolean",
@@ -6061,10 +6118,131 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "create", "/v2/core/account_tokens", http.MethodPost, map[string]string{
+		"contact_email": "string",
+		"display_name":  "string",
+		"identity.attestations.directorship_declaration.attested":                          "boolean",
+		"identity.attestations.ownership_declaration.attested":                             "boolean",
+		"identity.attestations.persons_provided.directors":                                 "boolean",
+		"identity.attestations.persons_provided.executives":                                "boolean",
+		"identity.attestations.persons_provided.owners":                                    "boolean",
+		"identity.attestations.persons_provided.ownership_exemption_reason":                "string",
+		"identity.attestations.representative_declaration.attested":                        "boolean",
+		"identity.attestations.terms_of_service.account.shown_and_accepted":                "boolean",
+		"identity.attestations.terms_of_service.storer.shown_and_accepted":                 "boolean",
+		"identity.business_details.address.city":                                           "string",
+		"identity.business_details.address.country":                                        "string",
+		"identity.business_details.address.line1":                                          "string",
+		"identity.business_details.address.line2":                                          "string",
+		"identity.business_details.address.postal_code":                                    "string",
+		"identity.business_details.address.state":                                          "string",
+		"identity.business_details.address.town":                                           "string",
+		"identity.business_details.annual_revenue.amount.currency":                         "string",
+		"identity.business_details.annual_revenue.amount.value":                            "integer",
+		"identity.business_details.annual_revenue.fiscal_year_end":                         "string",
+		"identity.business_details.documents.bank_account_ownership_verification.files":    "array",
+		"identity.business_details.documents.bank_account_ownership_verification.type":     "string",
+		"identity.business_details.documents.company_license.files":                        "array",
+		"identity.business_details.documents.company_license.type":                         "string",
+		"identity.business_details.documents.company_memorandum_of_association.files":      "array",
+		"identity.business_details.documents.company_memorandum_of_association.type":       "string",
+		"identity.business_details.documents.company_ministerial_decree.files":             "array",
+		"identity.business_details.documents.company_ministerial_decree.type":              "string",
+		"identity.business_details.documents.company_registration_verification.files":      "array",
+		"identity.business_details.documents.company_registration_verification.type":       "string",
+		"identity.business_details.documents.company_tax_id_verification.files":            "array",
+		"identity.business_details.documents.company_tax_id_verification.type":             "string",
+		"identity.business_details.documents.primary_verification.front_back.back":         "string",
+		"identity.business_details.documents.primary_verification.front_back.front":        "string",
+		"identity.business_details.documents.primary_verification.type":                    "string",
+		"identity.business_details.documents.proof_of_address.files":                       "array",
+		"identity.business_details.documents.proof_of_address.type":                        "string",
+		"identity.business_details.documents.proof_of_registration.files":                  "array",
+		"identity.business_details.documents.proof_of_registration.type":                   "string",
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": "array",
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type":  "string",
+		"identity.business_details.estimated_worker_count":                                 "integer",
+		"identity.business_details.monthly_estimated_revenue.amount.currency":              "string",
+		"identity.business_details.monthly_estimated_revenue.amount.value":                 "integer",
+		"identity.business_details.phone":                                                  "string",
+		"identity.business_details.registered_name":                                        "string",
+		"identity.business_details.script_addresses.kana.city":                             "string",
+		"identity.business_details.script_addresses.kana.country":                          "string",
+		"identity.business_details.script_addresses.kana.line1":                            "string",
+		"identity.business_details.script_addresses.kana.line2":                            "string",
+		"identity.business_details.script_addresses.kana.postal_code":                      "string",
+		"identity.business_details.script_addresses.kana.state":                            "string",
+		"identity.business_details.script_addresses.kana.town":                             "string",
+		"identity.business_details.script_addresses.kanji.city":                            "string",
+		"identity.business_details.script_addresses.kanji.country":                         "string",
+		"identity.business_details.script_addresses.kanji.line1":                           "string",
+		"identity.business_details.script_addresses.kanji.line2":                           "string",
+		"identity.business_details.script_addresses.kanji.postal_code":                     "string",
+		"identity.business_details.script_addresses.kanji.state":                           "string",
+		"identity.business_details.script_addresses.kanji.town":                            "string",
+		"identity.business_details.script_names.kana.registered_name":                      "string",
+		"identity.business_details.script_names.kanji.registered_name":                     "string",
+		"identity.business_details.structure":                                              "string",
+		"identity.entity_type":                                                             "string",
+		"identity.individual.address.city":                                                 "string",
+		"identity.individual.address.country":                                              "string",
+		"identity.individual.address.line1":                                                "string",
+		"identity.individual.address.line2":                                                "string",
+		"identity.individual.address.postal_code":                                          "string",
+		"identity.individual.address.state":                                                "string",
+		"identity.individual.address.town":                                                 "string",
+		"identity.individual.date_of_birth.day":                                            "integer",
+		"identity.individual.date_of_birth.month":                                          "integer",
+		"identity.individual.date_of_birth.year":                                           "integer",
+		"identity.individual.documents.company_authorization.files":                        "array",
+		"identity.individual.documents.company_authorization.type":                         "string",
+		"identity.individual.documents.passport.files":                                     "array",
+		"identity.individual.documents.passport.type":                                      "string",
+		"identity.individual.documents.primary_verification.front_back.back":               "string",
+		"identity.individual.documents.primary_verification.front_back.front":              "string",
+		"identity.individual.documents.primary_verification.type":                          "string",
+		"identity.individual.documents.secondary_verification.front_back.back":             "string",
+		"identity.individual.documents.secondary_verification.front_back.front":            "string",
+		"identity.individual.documents.secondary_verification.type":                        "string",
+		"identity.individual.documents.visa.files":                                         "array",
+		"identity.individual.documents.visa.type":                                          "string",
+		"identity.individual.email":                                                        "string",
+		"identity.individual.given_name":                                                   "string",
+		"identity.individual.legal_gender":                                                 "string",
+		"identity.individual.nationalities":                                                "array",
+		"identity.individual.phone":                                                        "string",
+		"identity.individual.political_exposure":                                           "string",
+		"identity.individual.relationship.director":                                        "boolean",
+		"identity.individual.relationship.executive":                                       "boolean",
+		"identity.individual.relationship.owner":                                           "boolean",
+		"identity.individual.relationship.percent_ownership":                               "string",
+		"identity.individual.relationship.title":                                           "string",
+		"identity.individual.script_addresses.kana.city":                                   "string",
+		"identity.individual.script_addresses.kana.country":                                "string",
+		"identity.individual.script_addresses.kana.line1":                                  "string",
+		"identity.individual.script_addresses.kana.line2":                                  "string",
+		"identity.individual.script_addresses.kana.postal_code":                            "string",
+		"identity.individual.script_addresses.kana.state":                                  "string",
+		"identity.individual.script_addresses.kana.town":                                   "string",
+		"identity.individual.script_addresses.kanji.city":                                  "string",
+		"identity.individual.script_addresses.kanji.country":                               "string",
+		"identity.individual.script_addresses.kanji.line1":                                 "string",
+		"identity.individual.script_addresses.kanji.line2":                                 "string",
+		"identity.individual.script_addresses.kanji.postal_code":                           "string",
+		"identity.individual.script_addresses.kanji.state":                                 "string",
+		"identity.individual.script_addresses.kanji.town":                                  "string",
+		"identity.individual.script_names.kana.given_name":                                 "string",
+		"identity.individual.script_names.kana.surname":                                    "string",
+		"identity.individual.script_names.kanji.given_name":                                "string",
+		"identity.individual.script_names.kanji.surname":                                   "string",
+		"identity.individual.surname":                                                      "string",
+	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "retrieve", "/v2/core/account_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "close", "/v2/core/accounts/{id}/close", http.MethodPost, map[string]string{
 		"applied_configurations": "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "create", "/v2/core/accounts", http.MethodPost, map[string]string{
+		"account_token": "string",
 		"configuration.customer.automatic_indirect_tax.exempt":                              "string",
 		"configuration.customer.automatic_indirect_tax.ip_address":                          "string",
 		"configuration.customer.automatic_indirect_tax.location_source":                     "string",
@@ -6134,7 +6312,15 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.merchant.capabilities.zip_payments.requested":                        "boolean",
 		"configuration.merchant.card_payments.decline_on.avs_failure":                       "boolean",
 		"configuration.merchant.card_payments.decline_on.cvc_failure":                       "boolean",
+		"configuration.merchant.konbini_payments.support.email":                             "string",
+		"configuration.merchant.konbini_payments.support.hours.end_time":                    "string",
+		"configuration.merchant.konbini_payments.support.hours.start_time":                  "string",
+		"configuration.merchant.konbini_payments.support.phone":                             "string",
 		"configuration.merchant.mcc":                                                        "string",
+		"configuration.merchant.script_statement_descriptor.kana.descriptor":                "string",
+		"configuration.merchant.script_statement_descriptor.kana.prefix":                    "string",
+		"configuration.merchant.script_statement_descriptor.kanji.descriptor":               "string",
+		"configuration.merchant.script_statement_descriptor.kanji.prefix":                   "string",
 		"configuration.merchant.statement_descriptor.descriptor":                            "string",
 		"configuration.merchant.statement_descriptor.prefix":                                "string",
 		"configuration.merchant.support.address.city":                                       "string",
@@ -6152,6 +6338,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.recipient.capabilities.cards.requested":                              "boolean",
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested":    "boolean",
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested":     "boolean",
+		"configuration.storer.capabilities.holds_currencies.eur.requested":                  "boolean",
 		"configuration.storer.capabilities.holds_currencies.gbp.requested":                  "boolean",
 		"configuration.storer.capabilities.holds_currencies.usd.requested":                  "boolean",
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested":       "boolean",
@@ -6196,8 +6383,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.address.postal_code":                                    "string",
 		"identity.business_details.address.state":                                          "string",
 		"identity.business_details.address.town":                                           "string",
-		"identity.business_details.annual_revenue.amount.amount":                           "integer",
 		"identity.business_details.annual_revenue.amount.currency":                         "string",
+		"identity.business_details.annual_revenue.amount.value":                            "integer",
 		"identity.business_details.annual_revenue.fiscal_year_end":                         "string",
 		"identity.business_details.documents.bank_account_ownership_verification.files":    "array",
 		"identity.business_details.documents.bank_account_ownership_verification.type":     "string",
@@ -6221,8 +6408,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": "array",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type":  "string",
 		"identity.business_details.estimated_worker_count":                                 "integer",
-		"identity.business_details.monthly_estimated_revenue.amount.amount":                "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.currency":              "string",
+		"identity.business_details.monthly_estimated_revenue.amount.value":                 "integer",
 		"identity.business_details.phone":                                                  "string",
 		"identity.business_details.registered_name":                                        "string",
 		"identity.business_details.script_addresses.kana.city":                             "string",
@@ -6308,6 +6495,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"include": "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "update", "/v2/core/accounts/{id}", http.MethodPost, map[string]string{
+		"account_token":                                                                     "string",
 		"configuration.customer.applied":                                                    "boolean",
 		"configuration.customer.automatic_indirect_tax.exempt":                              "string",
 		"configuration.customer.automatic_indirect_tax.ip_address":                          "string",
@@ -6381,7 +6569,15 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.merchant.capabilities.zip_payments.requested":                        "boolean",
 		"configuration.merchant.card_payments.decline_on.avs_failure":                       "boolean",
 		"configuration.merchant.card_payments.decline_on.cvc_failure":                       "boolean",
+		"configuration.merchant.konbini_payments.support.email":                             "string",
+		"configuration.merchant.konbini_payments.support.hours.end_time":                    "string",
+		"configuration.merchant.konbini_payments.support.hours.start_time":                  "string",
+		"configuration.merchant.konbini_payments.support.phone":                             "string",
 		"configuration.merchant.mcc":                                                        "string",
+		"configuration.merchant.script_statement_descriptor.kana.descriptor":                "string",
+		"configuration.merchant.script_statement_descriptor.kana.prefix":                    "string",
+		"configuration.merchant.script_statement_descriptor.kanji.descriptor":               "string",
+		"configuration.merchant.script_statement_descriptor.kanji.prefix":                   "string",
 		"configuration.merchant.statement_descriptor.descriptor":                            "string",
 		"configuration.merchant.statement_descriptor.prefix":                                "string",
 		"configuration.merchant.support.address.city":                                       "string",
@@ -6402,6 +6598,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.recipient.default_outbound_destination":                              "string",
 		"configuration.storer.applied":                                                      "boolean",
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested":     "boolean",
+		"configuration.storer.capabilities.holds_currencies.eur.requested":                  "boolean",
 		"configuration.storer.capabilities.holds_currencies.gbp.requested":                  "boolean",
 		"configuration.storer.capabilities.holds_currencies.usd.requested":                  "boolean",
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested":       "boolean",
@@ -6449,8 +6646,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.address.postal_code":                                    "string",
 		"identity.business_details.address.state":                                          "string",
 		"identity.business_details.address.town":                                           "string",
-		"identity.business_details.annual_revenue.amount.amount":                           "integer",
 		"identity.business_details.annual_revenue.amount.currency":                         "string",
+		"identity.business_details.annual_revenue.amount.value":                            "integer",
 		"identity.business_details.annual_revenue.fiscal_year_end":                         "string",
 		"identity.business_details.documents.bank_account_ownership_verification.files":    "array",
 		"identity.business_details.documents.bank_account_ownership_verification.type":     "string",
@@ -6474,8 +6671,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": "array",
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type":  "string",
 		"identity.business_details.estimated_worker_count":                                 "integer",
-		"identity.business_details.monthly_estimated_revenue.amount.amount":                "integer",
 		"identity.business_details.monthly_estimated_revenue.amount.currency":              "string",
+		"identity.business_details.monthly_estimated_revenue.amount.value":                 "integer",
 		"identity.business_details.phone":                                                  "string",
 		"identity.business_details.registered_name":                                        "string",
 		"identity.business_details.script_addresses.kana.city":                             "string",
@@ -6584,11 +6781,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"webhook_endpoint.url": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
-		"gt":        "string",
-		"gte":       "string",
 		"limit":     "integer",
-		"lt":        "string",
-		"lte":       "string",
 		"object_id": "string",
 		"page":      "string",
 		"types":     "array",
@@ -6678,8 +6871,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"include": "array",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "create", "/v2/money_management/inbound_transfers", http.MethodPost, map[string]string{
-		"amount.amount":        "integer",
 		"amount.currency":      "string",
+		"amount.value":         "integer",
 		"description":          "string",
 		"from.currency":        "string",
 		"from.payment_method":  "string",
@@ -6697,8 +6890,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "retrieve", "/v2/money_management/inbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "create", "/v2/money_management/outbound_payment_quotes", http.MethodPost, map[string]string{
-		"amount.amount":                 "integer",
 		"amount.currency":               "string",
+		"amount.value":                  "integer",
 		"delivery_options.bank_account": "string",
 		"from.currency":                 "string",
 		"from.financial_account":        "string",
@@ -6709,8 +6902,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "retrieve", "/v2/money_management/outbound_payment_quotes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "cancel", "/v2/money_management/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "create", "/v2/money_management/outbound_payments", http.MethodPost, map[string]string{
-		"amount.amount":                  "integer",
 		"amount.currency":                "string",
+		"amount.value":                   "integer",
 		"delivery_options.bank_account":  "string",
 		"description":                    "string",
 		"from.currency":                  "string",
@@ -6767,8 +6960,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "cancel", "/v2/money_management/outbound_transfers/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "create", "/v2/money_management/outbound_transfers", http.MethodPost, map[string]string{
-		"amount.amount":                 "integer",
 		"amount.currency":               "string",
+		"amount.value":                  "integer",
 		"delivery_options.bank_account": "string",
 		"description":                   "string",
 		"from.currency":                 "string",
@@ -6835,43 +7028,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"page":              "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "retrieve", "/v2/money_management/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "cancel", "/v2/payments/off_session_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "capture", "/v2/payments/off_session_payments/{id}/capture", http.MethodPost, map[string]string{
-		"amount_to_capture":           "integer",
-		"statement_descriptor":        "string",
-		"statement_descriptor_suffix": "string",
-		"transfer_data.amount":        "integer",
-		"transfer_data.destination":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "create", "/v2/payments/off_session_payments", http.MethodPost, map[string]string{
-		"amount.amount":                                      "integer",
-		"amount.currency":                                    "string",
-		"amount_details.discount_amount":                     "integer",
-		"amount_details.shipping.amount":                     "integer",
-		"amount_details.shipping.from_postal_code":           "string",
-		"amount_details.shipping.to_postal_code":             "string",
-		"amount_details.tax.total_tax_amount":                "integer",
-		"cadence":                                            "string",
-		"customer":                                           "string",
-		"on_behalf_of":                                       "string",
-		"payment_method":                                     "string",
-		"payment_method_options.card.network_transaction_id": "string",
-		"retry_details.retry_policy":                         "string",
-		"retry_details.retry_strategy":                       "string",
-		"statement_descriptor":                               "string",
-		"statement_descriptor_suffix":                        "string",
-		"test_clock":                                         "string",
-		"transfer_data.amount":                               "integer",
-		"transfer_data.destination":                          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "list", "/v2/payments/off_session_payments", http.MethodGet, map[string]string{
-		"limit": "integer",
-		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rPaymentsOffSessionPaymentsCmd.Cmd, "retrieve", "/v2/payments/off_session_payments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rTestHelpersFinancialAddressCreditSimulationsCmd.Cmd, "credit", "/v2/test_helpers/financial_addresses/{id}/credit", http.MethodPost, map[string]string{
-		"amount.amount":        "integer",
 		"amount.currency":      "string",
+		"amount.value":         "integer",
 		"network":              "string",
 		"statement_descriptor": "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
