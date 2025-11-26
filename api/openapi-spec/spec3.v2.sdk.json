@@ -9,7 +9,7 @@
       "url" : "https://stripe.com",
       "email" : "dev-platform@stripe.com"
     },
-    "version" : "2025-10-29.clover",
+    "version" : "2025-11-17.clover",
     "x-stripeSpecFilename" : "spec3.v2.cli"
   },
   "servers" : [ {
@@ -23,6 +23,7 @@
   "paths" : {
     "/v2/core/events/{id}" : {
       "get" : {
+        "summary" : "Retrieve an event",
         "description" : "Retrieves the details of an event.",
         "operationId" : "GetV2CoreEventsId",
         "parameters" : [ {
@@ -65,6 +66,7 @@
     },
     "/v2/billing/meter_event_session" : {
       "post" : {
+        "summary" : "Create a meter event session",
         "description" : "Creates a meter event session to send usage on the high-throughput meter event stream. Authentication tokens are only valid for 15 minutes, so you will need to create a new meter event session when your token expires.",
         "operationId" : "PostV2BillingMeterEventSession",
         "responses" : {
@@ -95,6 +97,7 @@
     },
     "/v2/core/event_destinations/{id}/enable" : {
       "post" : {
+        "summary" : "Enable an event destination",
         "description" : "Enable an event destination.",
         "operationId" : "PostV2CoreEventDestinationsIdEnable",
         "parameters" : [ {
@@ -139,6 +142,7 @@
     },
     "/v2/core/event_destinations/{id}/disable" : {
       "post" : {
+        "summary" : "Disable an event destination",
         "description" : "Disable an event destination.",
         "operationId" : "PostV2CoreEventDestinationsIdDisable",
         "parameters" : [ {
@@ -183,6 +187,7 @@
     },
     "/v2/billing/meter_event_adjustments" : {
       "post" : {
+        "summary" : "Create a meter event adjustment",
         "description" : "Creates a meter event adjustment to cancel a previously sent meter event.",
         "operationId" : "PostV2BillingMeterEventAdjustments",
         "requestBody" : {
@@ -247,6 +252,7 @@
     },
     "/v2/core/event_destinations/{id}/ping" : {
       "post" : {
+        "summary" : "Ping event destination an event",
         "description" : "Send a `ping` event to an event destination.",
         "operationId" : "PostV2CoreEventDestinationsIdPing",
         "parameters" : [ {
@@ -289,6 +295,7 @@
     },
     "/v2/core/event_destinations" : {
       "get" : {
+        "summary" : "List all event destinations",
         "description" : "Lists all event destinations.",
         "operationId" : "GetV2CoreEventDestinations",
         "parameters" : [ {
@@ -369,6 +376,7 @@
         }
       },
       "post" : {
+        "summary" : "Create an event destination",
         "description" : "Create a new event destination.",
         "operationId" : "PostV2CoreEventDestinations",
         "requestBody" : {
@@ -491,6 +499,7 @@
     },
     "/v2/billing/meter_events" : {
       "post" : {
+        "summary" : "Create a meter event",
         "description" : "Creates a meter event. Events are validated synchronously, but are processed asynchronously. Supports up to 1,000 events per second in livemode. For higher rate-limits, please use meter event streams instead.",
         "operationId" : "PostV2BillingMeterEvents",
         "requestBody" : {
@@ -567,27 +576,39 @@
     },
     "/v2/core/events" : {
       "get" : {
+        "summary" : "List all events",
         "description" : "List events, going back up to 30 days.",
         "operationId" : "GetV2CoreEvents",
         "parameters" : [ {
-          "name" : "gt",
+          "name" : "created",
           "in" : "query",
-          "description" : "Filter for events created after the specified timestamp.",
+          "description" : "Set of filters to query events within a range of `created` timestamps.",
           "required" : false,
-          "style" : "simple",
+          "style" : "deepObject",
           "schema" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        }, {
-          "name" : "gte",
-          "in" : "query",
-          "description" : "Filter for events created at or after the specified timestamp.",
-          "required" : false,
-          "style" : "simple",
-          "schema" : {
-            "type" : "string",
-            "format" : "date-time"
+            "type" : "object",
+            "properties" : {
+              "gt" : {
+                "type" : "string",
+                "description" : "Filter for events created after the specified timestamp.",
+                "format" : "date-time"
+              },
+              "gte" : {
+                "type" : "string",
+                "description" : "Filter for events created at or after the specified timestamp.",
+                "format" : "date-time"
+              },
+              "lt" : {
+                "type" : "string",
+                "description" : "Filter for events created before the specified timestamp.",
+                "format" : "date-time"
+              },
+              "lte" : {
+                "type" : "string",
+                "description" : "Filter for events created at or before the specified timestamp.",
+                "format" : "date-time"
+              }
+            }
           }
         }, {
           "name" : "limit",
@@ -597,26 +618,6 @@
           "style" : "simple",
           "schema" : {
             "type" : "integer"
-          }
-        }, {
-          "name" : "lt",
-          "in" : "query",
-          "description" : "Filter for events created before the specified timestamp.",
-          "required" : false,
-          "style" : "simple",
-          "schema" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        }, {
-          "name" : "lte",
-          "in" : "query",
-          "description" : "Filter for events created at or before the specified timestamp.",
-          "required" : false,
-          "style" : "simple",
-          "schema" : {
-            "type" : "string",
-            "format" : "date-time"
           }
         }, {
           "name" : "object_id",
@@ -697,6 +698,7 @@
     },
     "/v2/core/event_destinations/{id}" : {
       "get" : {
+        "summary" : "Retrieve an event destination",
         "description" : "Retrieves the details of an event destination.",
         "operationId" : "GetV2CoreEventDestinationsId",
         "parameters" : [ {
@@ -750,6 +752,7 @@
         }
       },
       "post" : {
+        "summary" : "Update an event destination",
         "description" : "Update the details of an event destination.",
         "operationId" : "PostV2CoreEventDestinationsId",
         "parameters" : [ {
@@ -845,6 +848,7 @@
         }
       },
       "delete" : {
+        "summary" : "Delete an event destination",
         "description" : "Delete an event destination.",
         "operationId" : "DeleteV2CoreEventDestinationsId",
         "parameters" : [ {
@@ -1113,7 +1117,7 @@
             "additionalProperties" : {
               "type" : "string"
             },
-            "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about the payload."
+            "description" : "The payload of the event. This must contain the fields corresponding to a meter’s\n`customer_mapping.event_payload_key` (default is `stripe_customer_id`) and\n`value_settings.event_payload_key` (default is `value`). Read more about\nthe [payload](https://docs.stripe.com/billing/subscriptions/usage-based/recording-usage#payload-key-overrides).."
           },
           "timestamp" : {
             "type" : "string",
@@ -1258,13 +1262,13 @@
             "description" : "Time at which the object was created.",
             "format" : "date-time"
           },
-          "data" : {
-            "type" : "object",
-            "description" : "Additional data about the event."
-          },
           "id" : {
             "type" : "string",
             "description" : "Unique identifier for the event."
+          },
+          "livemode" : {
+            "type" : "boolean",
+            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           },
           "object" : {
             "type" : "string",
@@ -1298,32 +1302,9 @@
             },
             "description" : "Reason for the event."
           },
-          "related_object" : {
-            "required" : [ "id", "type", "url" ],
-            "type" : "object",
-            "properties" : {
-              "id" : {
-                "type" : "string",
-                "description" : "Unique identifier for the object relevant to the event."
-              },
-              "type" : {
-                "type" : "string",
-                "description" : "Object tag of the resource relevant to the event."
-              },
-              "url" : {
-                "type" : "string",
-                "description" : "URL to retrieve the resource."
-              }
-            },
-            "description" : "Object containing the reference to API resource relevant to the event."
-          },
           "type" : {
             "type" : "string",
             "description" : "The type of the event."
-          },
-          "livemode" : {
-            "type" : "boolean",
-            "description" : "Has the value `true` if the object exists in live mode or the value `false` if the object exists in test mode."
           }
         },
         "description" : "Events are generated to keep you informed of activity in your business account. APIs in the /v2 namespace generate [thin events](https://docs.stripe.com/event-destinations#benefits-of-thin-events) which have small, unversioned payloads that include a reference to the ID of the object that has changed. The Events v2 API returns these new thin events. [Retrieve the event object](https://docs.stripe.com/event-destinations#fetch-data) for additional data about the event. Use the related object ID in the event payload to [fetch the API resource](https://docs.stripe.com/event-destinations#retrieve-the-object-associated-with-thin-events) of the object associated with the event. Comparatively, events generated by most API v1 include a versioned snapshot of an API object in their payload.",
