@@ -363,8 +363,8 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	if len(cfg.ThinEvents) > 0 {
 		for _, event := range cfg.ThinEvents {
 			if _, found := validThinEvents[event]; !found {
-				// If not found in validThinEvents, check in validPreviewEvents
-				if _, foundInPreview := validPreviewEvents[event]; !foundInPreview {
+				// If not found in validThinEvents, check in validPreviewThinEvents
+				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
 					cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
 				}
 			}

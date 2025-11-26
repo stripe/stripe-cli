@@ -258,12 +258,10 @@ var validThinEvents = map[string]bool{
 	"v2.core.event_destination.ping":          true,
 }
 
-var validPreviewEvents = map[string]bool{
-	"v1.billing.meter.error_report_triggered":                            true,
-	"v1.billing.meter.no_meter_found":                                    true,
-	"v2.core.account.closed":                                             true,
-	"v2.core.account.created":                                            true,
-	"v2.core.account.updated":                                            true,
+var validPreviewThinEvents = map[string]bool{
+	"v2.core.account.closed":  true,
+	"v2.core.account.created": true,
+	"v2.core.account.updated": true,
 	"v2.core.account[configuration.customer].capability_status_updated":  true,
 	"v2.core.account[configuration.customer].updated":                    true,
 	"v2.core.account[configuration.merchant].capability_status_updated":  true,
@@ -279,7 +277,6 @@ var validPreviewEvents = map[string]bool{
 	"v2.core.account_person.created":                                     true,
 	"v2.core.account_person.deleted":                                     true,
 	"v2.core.account_person.updated":                                     true,
-	"v2.core.event_destination.ping":                                     true,
 	"v2.core.health.event_generation_failure.resolved":                   true,
 	"v2.money_management.adjustment.created":                             true,
 	"v2.money_management.financial_account.created":                      true,
