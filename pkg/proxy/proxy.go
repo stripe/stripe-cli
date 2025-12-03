@@ -355,7 +355,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	} else {
 		for _, event := range cfg.Events {
 			if _, found := validEvents[event]; !found {
-				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+				cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid event\n", event)
 			}
 		}
 	}
@@ -365,7 +365,11 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 			if _, found := validThinEvents[event]; !found {
 				// If not found in validThinEvents, check in validPreviewEvents
 				if _, foundInPreview := validPreviewEvents[event]; !foundInPreview {
-					cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
+					if event == "*" {
+						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
+					} else {
+						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
+					}
 				}
 			}
 		}
