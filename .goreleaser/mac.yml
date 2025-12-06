@@ -29,6 +29,7 @@ builds:
       - darwin
     goarch:
       - arm64
+
 archives:
   - name_template: >-
       {{ .ProjectName }}_{{ .Version }}_
@@ -38,14 +39,17 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
     files:
       - none*
+
 changelog:
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
+
 checksum:
   name_template: "{{ .ProjectName }}-mac-checksums.txt"
+
 snapshot:
   version_template: "{{ .Version }}-next"
 brews:
@@ -60,11 +64,16 @@ brews:
     description: Stripe CLI utility
     install: |
       bin.install "stripe"
-      rm Dir["#{bin}/{stripe-completion.bash,stripe-completion.zsh}"]
+      rm Dir["#{bin}/stripe-completion.*"]
+
       system bin/"stripe", "completion", "--shell", "bash"
       system bin/"stripe", "completion", "--shell", "zsh"
+      system bin/"stripe", "completion", "--shell", "fish"
+
       bash_completion.install "stripe-completion.bash"
       zsh_completion.install "stripe-completion.zsh"
+      fish_completion.install "stripe-completion.fish"
+
       (zsh_completion/"_stripe").write <<~EOS
         #compdef stripe
         _stripe () {
