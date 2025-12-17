@@ -304,6 +304,7 @@ var validPreviewEvents = map[string]bool{
 	"v2.money_management.outbound_transfer.posted":                       true,
 	"v2.money_management.outbound_transfer.returned":                     true,
 	"v2.money_management.outbound_transfer.updated":                      true,
+	"v2.money_management.payout_method.created":                          true,
 	"v2.money_management.payout_method.updated":                          true,
 	"v2.money_management.received_credit.available":                      true,
 	"v2.money_management.received_credit.failed":                         true,
