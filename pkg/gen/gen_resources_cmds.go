@@ -20,19 +20,20 @@ import (
 	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
-type SpecVersion = string
+type ApiNamespace = string
 
 const (
-	V1Spec        SpecVersion = "v1"
-	V2Spec        SpecVersion = "v2"
-	V2PreviewSpec SpecVersion = "v2-preview"
+	V1Namespace        ApiNamespace = "v1"
+	V1PreviewNamespace ApiNamespace = "v1-preview"
+	V2Namespace        ApiNamespace = "v2"
+	V2PreviewNamespace ApiNamespace = "v2-preview"
 )
 
 type TemplateData struct {
-	Versions map[SpecVersion]*VersionData
+	ApiNamespaces map[ApiNamespace]*ApiNamespaceData
 }
 
-type VersionData struct {
+type ApiNamespaceData struct {
 	Namespaces map[string]*NamespaceData
 }
 
@@ -59,17 +60,9 @@ type StripeVersionTemplateData struct {
 }
 
 const (
-	pathStripeSpec = "../../api/openapi-spec/spec3.sdk.json"
-
-	pathStripeSpecV2 = "../../api/openapi-spec/spec3.v2.sdk.json"
-
-	pathStripeSpecV2Preview = "../../api/openapi-spec/spec3.v2.sdk.preview.json"
-
 	pathTemplate = "../gen/resources_cmds.go.tpl"
-
-	pathName = "resources_cmds.go.tpl"
-
-	pathOutput = "resources_cmds.go"
+	pathName     = "resources_cmds.go.tpl"
+	pathOutput   = "resources_cmds.go"
 
 	// stripe version parsing
 	stripeVersionTemplatePath = "../gen/stripe_version_header.go.tpl"
@@ -82,40 +75,18 @@ var test_helpers_path = "test_helpers"
 func main() {
 	// This is the script that generates the `resources.go` file from the
 	// OpenAPI spec files.
+	//
+	// There are two loading strategies:
+	// 1. Legacy: Load separate V1, V2, and V2 Preview spec files
+	// 2. Unified: Load unified spec files that contain both V1 and V2 together
 
-	// Load the v1 OpenAPI spec
-	v1Spec, err := spec.LoadSpec(pathStripeSpec)
-	if err != nil {
-		panic(err)
-	}
-
-	// Load the v2 OpenAPI spec
-	v2Spec, err := spec.LoadSpec(pathStripeSpecV2)
-	if err != nil {
-		panic(err)
-	}
-
-	v2PreviewSpec, err := spec.LoadSpec(pathStripeSpecV2Preview)
+	templateData, gaVersion, previewVersion, err := getTemplateDataFromUnifiedSpec()
 	if err != nil {
 		panic(err)
 	}
 
 	// Generate the stripe version header
-	v2Version := v2Spec.Info.Version
-	v2PreviewVersion := v2PreviewSpec.Info.Version
-
-	generateStripeVersionHeader(v2Version, v2PreviewVersion)
-
-	// Prepare the template data
-	specs := map[SpecVersion]*spec.Spec{
-		V1Spec:        v1Spec,
-		V2Spec:        v2Spec,
-		V2PreviewSpec: v2PreviewSpec,
-	}
-	templateData, err := getTemplateData(specs)
-	if err != nil {
-		panic(err)
-	}
+	generateStripeVersionHeader(gaVersion, previewVersion)
 
 	// Load the template with a custom function map
 	tmpl := template.Must(template.
@@ -184,12 +155,40 @@ func generateStripeVersionHeader(version string, previewVersion string) {
 	}
 }
 
-func getTemplateData(apiSpecs map[SpecVersion]*spec.Spec) (*TemplateData, error) {
-	data := &TemplateData{
-		Versions: make(map[SpecVersion]*VersionData),
+// getTemplateData loads resource data from separate v1, v2, and v2 preview spec files.
+// This is the legacy approach that requires three separate spec files.
+// Returns template data along with GA and preview version strings for the stripe version header.
+func getTemplateData() (*TemplateData, string, string, error) {
+	// Load the v1 OpenAPI spec
+	v1Spec, err := spec.LoadSpec(gen.PathStripeSpec)
+	if err != nil {
+		return nil, "", "", err
 	}
 
-	for version, apiSpec := range apiSpecs {
+	// Load the v2 OpenAPI spec
+	v2Spec, err := spec.LoadSpec(gen.PathStripeSpecV2)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	v2PreviewSpec, err := spec.LoadSpec(gen.PathStripeSpecV2Preview)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	data := &TemplateData{
+		ApiNamespaces: make(map[ApiNamespace]*ApiNamespaceData),
+	}
+
+	// Map API namespaces to their respective specs
+	apiSpecs := map[ApiNamespace]*spec.Spec{
+		V1Namespace:        v1Spec,
+		V2Namespace:        v2Spec,
+		V2PreviewNamespace: v2PreviewSpec,
+	}
+
+	// Process each spec
+	for apiNamespace, apiSpec := range apiSpecs {
 		// Iterate over every resource schema
 		for name, schema := range apiSpec.Components.Schemas {
 			// Skip resources that don't have any operations
@@ -198,32 +197,140 @@ func getTemplateData(apiSpecs map[SpecVersion]*spec.Spec) (*TemplateData, error)
 			}
 
 			// Skip non-public resources except for preview resources
-			if schema.XStripeNotPublic && version != V2PreviewSpec {
+			if schema.XStripeNotPublic && apiNamespace != V2PreviewNamespace {
 				continue
 			}
 
-			err := genCmdTemplate(version, name, name, data, apiSpec)
+			err := genCmdTemplate(apiNamespace, name, name, data, apiSpec)
 			if err != nil {
-				return nil, err
+				return nil, "", "", err
 			}
 
 			alias := resource.GetCmdAlias(name)
-
 			if alias != "" {
 				// Aliased commands write a second entry into the resource commands, and use post-processing to hide the
 				// command from the index (e.g. when running `stripe resources`)
-				err := genCmdTemplate(version, name, alias, data, apiSpec)
+				err := genCmdTemplate(apiNamespace, name, alias, data, apiSpec)
 				if err != nil {
-					return nil, err
+					return nil, "", "", err
 				}
 			}
 		}
 	}
 
-	return data, nil
+	return data, v2Spec.Info.Version, v2PreviewSpec.Info.Version, nil
 }
 
-func genCmdTemplate(specVersion SpecVersion, schemaName string, cmdName string, data *TemplateData, stripeAPI *spec.Spec) error {
+// getTemplateDataFromUnifiedSpec loads resource data from unified spec files that contain
+// both v1 and v2 APIs together. This approach:
+//   - Uses path-based detection to determine v1 vs v2 (see getApiNamespaceFromOperations)
+//   - Processes GA spec for v1/v2 commands, preview spec for v1-preview/v2-preview commands
+//
+// Returns template data along with GA and preview version strings for the stripe version header.
+func getTemplateDataFromUnifiedSpec() (*TemplateData, string, string, error) {
+	// Load both unified specs
+	gaSpec, err := spec.LoadSpec(gen.PathUnifiedSpec)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	previewSpec, err := spec.LoadSpec(gen.PathUnifiedPreviewSpec)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	data := &TemplateData{
+		ApiNamespaces: make(map[ApiNamespace]*ApiNamespaceData),
+	}
+
+	// Process GA spec - resources are split into V1 and V2 based on operation paths
+	for name, schema := range gaSpec.Components.Schemas {
+		if schema.XStripeOperations == nil {
+			continue
+		}
+		if schema.XStripeNotPublic {
+			continue
+		}
+
+		// Determine API namespace from operation paths (v1 vs v2)
+		apiNamespace := getApiNamespaceFromOperations(schema.XStripeOperations, false)
+
+		err := genCmdTemplate(apiNamespace, name, name, data, gaSpec)
+		if err != nil {
+			return nil, "", "", err
+		}
+
+		alias := resource.GetCmdAlias(name)
+		if alias != "" {
+			err := genCmdTemplate(apiNamespace, name, alias, data, gaSpec)
+			if err != nil {
+				return nil, "", "", err
+			}
+		}
+	}
+
+	// Process Preview spec - only v2-preview resources (exclude v1-preview for now)
+	for name, schema := range previewSpec.Components.Schemas {
+		if schema.XStripeOperations == nil {
+			continue
+		}
+
+		// Determine API namespace from operation paths (v1Preview vs v2Preview)
+		apiNamespace := getApiNamespaceFromOperations(schema.XStripeOperations, true)
+
+		// Skip v1-preview resources for now
+		if apiNamespace == V1PreviewNamespace {
+			continue
+		}
+
+		err := genCmdTemplate(apiNamespace, name, name, data, previewSpec)
+		if err != nil {
+			return nil, "", "", err
+		}
+
+		alias := resource.GetCmdAlias(name)
+		if alias != "" {
+			err := genCmdTemplate(apiNamespace, name, alias, data, previewSpec)
+			if err != nil {
+				return nil, "", "", err
+			}
+		}
+	}
+
+	return data, gaSpec.Info.Version, previewSpec.Info.Version, nil
+}
+
+// getApiNamespaceFromOperations determines the ApiNamespace by examining operation paths.
+//
+// The operation path is the authoritative source for determining API namespace, and guides
+// the path to the CLI command.
+//
+// Parameters:
+//   - ops: the list of operations from a schema's x-stripeOperations (must be non-nil and non-empty)
+//   - isPreview: whether this schema comes from the preview spec (determines Preview suffix)
+//
+// Returns V1Namespace/V2Namespace for GA, or V1PreviewNamespace/V2PreviewNamespace for preview.
+func getApiNamespaceFromOperations(ops *[]spec.StripeOperation, isPreview bool) ApiNamespace {
+	if ops == nil || len(*ops) == 0 {
+		panic("getApiNamespaceFromOperations called with nil or empty operations slice")
+	}
+
+	for _, op := range *ops {
+		if strings.HasPrefix(op.Path, "/v2/") {
+			if isPreview {
+				return V2PreviewNamespace
+			}
+			return V2Namespace
+		}
+	}
+	// Default to v1 if no /v2/ paths found (all paths are /v1/*)
+	if isPreview {
+		return V1PreviewNamespace
+	}
+	return V1Namespace
+}
+
+func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string, data *TemplateData, stripeAPI *spec.Spec) error {
 	origNsName, origResName := parseSchemaName(cmdName)
 	schema := stripeAPI.Components.Schemas[schemaName]
 
@@ -245,12 +352,12 @@ func genCmdTemplate(specVersion SpecVersion, schemaName string, cmdName string, 
 		} else if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
 			// create entry in the test_helpers namespace
 			if nsName != "" {
-				err := addToTemplateData(data, specVersion, test_helpers_path, nsName, resName, stripeAPI, op)
+				err := addToTemplateData(data, apiNamespace, test_helpers_path, nsName, resName, stripeAPI, op)
 				if err != nil {
 					return err
 				}
 			} else {
-				err := addToTemplateData(data, specVersion, test_helpers_path, resName, "", stripeAPI, op)
+				err := addToTemplateData(data, apiNamespace, test_helpers_path, resName, "", stripeAPI, op)
 				if err != nil {
 					return err
 				}
@@ -260,7 +367,7 @@ func genCmdTemplate(specVersion SpecVersion, schemaName string, cmdName string, 
 			subResName = test_helpers_path
 		}
 
-		err := addToTemplateData(data, specVersion, nsName, resName, subResName, stripeAPI, op)
+		err := addToTemplateData(data, apiNamespace, nsName, resName, subResName, stripeAPI, op)
 		if err != nil {
 			return err
 		}
@@ -269,25 +376,25 @@ func genCmdTemplate(specVersion SpecVersion, schemaName string, cmdName string, 
 	return nil
 }
 
-func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) error {
+func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, resName, subResName string, stripeAPI *spec.Spec, op spec.StripeOperation) error {
 	hasSubResources := subResName != ""
 
-	if _, ok := data.Versions[specVersion]; !ok {
-		data.Versions[specVersion] = &VersionData{
+	if _, ok := data.ApiNamespaces[apiNamespace]; !ok {
+		data.ApiNamespaces[apiNamespace] = &ApiNamespaceData{
 			Namespaces: make(map[string]*NamespaceData),
 		}
 	}
 
-	if _, ok := data.Versions[specVersion].Namespaces[nsName]; !ok {
-		data.Versions[specVersion].Namespaces[nsName] = &NamespaceData{
+	if _, ok := data.ApiNamespaces[apiNamespace].Namespaces[nsName]; !ok {
+		data.ApiNamespaces[apiNamespace].Namespaces[nsName] = &NamespaceData{
 			Resources: make(map[string]*ResourceData),
 		}
 	}
 
 	// If we haven't seen the resource before, initialize it
 	resCmdName := resource.GetResourceCmdName(resName)
-	if _, ok := data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName]; !ok {
-		data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName] = &ResourceData{
+	if _, ok := data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName]; !ok {
+		data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName] = &ResourceData{
 
 			Operations:   make(map[string]*OperationData),
 			SubResources: make(map[string]*ResourceData),
@@ -301,14 +408,14 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 	if hasSubResources {
 		// If we haven't seen the sub-resource before, initialize it
 		subResCmdName = resource.GetResourceCmdName(subResName)
-		if _, ok := data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
-			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
+		if _, ok := data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
+			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
 				Operations: make(map[string]*OperationData),
 			}
 		}
-		_, operationExists = data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName]
+		_, operationExists = data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName]
 	} else {
-		_, operationExists = data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
+		_, operationExists = data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
 	}
 
 	// If we haven't seen the operation before, initialize it
@@ -320,17 +427,17 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 			return nil
 		}
 
-		properties, enums := getMethodProperties(specVersion, specOp, op)
+		properties, enums := getMethodProperties(apiNamespace, specOp, op)
 
 		if hasSubResources {
-			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
+			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
 				EnumFlags: enums,
 			}
 		} else {
-			data.Versions[specVersion].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
+			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
@@ -342,7 +449,7 @@ func addToTemplateData(data *TemplateData, specVersion SpecVersion, nsName, resN
 	return nil
 }
 
-func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spec.StripeOperation) (map[string]string, map[string][]spec.StripeEnumValue) {
+func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op spec.StripeOperation) (map[string]string, map[string][]spec.StripeEnumValue) {
 	httpString := string(op.Operation)
 	properties := make(map[string]string)
 	enumValues := make(map[string][]spec.StripeEnumValue)
@@ -352,7 +459,7 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 			return properties, enumValues
 		}
 
-		mediaType := getMediaType(specVersion)
+		mediaType := getMediaType(apiNamespace)
 		requestContent := specOp.RequestBody.Content
 
 		if media, ok := requestContent[mediaType]; ok {
@@ -413,12 +520,13 @@ func getMethodProperties(specVersion SpecVersion, specOp *spec.Operation, op spe
 	return properties, enumValues
 }
 
-func getMediaType(specVersion SpecVersion) string {
+// getMediaType returns the content type for request bodies based on API namespace.
+// v1 APIs use form-urlencoded, v2 APIs use JSON.
+func getMediaType(apiNamespace ApiNamespace) string {
 	mediaType := "application/x-www-form-urlencoded"
-	if specVersion == V2Spec || specVersion == V2PreviewSpec {
+	if apiNamespace == V2Namespace || apiNamespace == V2PreviewNamespace {
 		mediaType = "application/json"
 	}
-
 	return mediaType
 }
 
