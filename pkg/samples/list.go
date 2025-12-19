@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/afero"
@@ -21,6 +22,12 @@ type SampleData struct {
 	Name        string `json:"name"`
 	URL         string `json:"URL"`
 	Description string `json:"description"`
+	// Enhanced fields for better user experience
+	DisplayName string   `json:"display_name,omitempty"`
+	Category    string   `json:"category,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Difficulty  string   `json:"difficulty,omitempty"`
+	Language    string   `json:"language,omitempty"`
 }
 
 // SampleList is used to unmarshal the samples array from the JSON response
@@ -30,7 +37,35 @@ type SampleList struct {
 
 // BoldName returns an ansi bold string for the name
 func (sd *SampleData) BoldName() string {
-	return ansi.Bold(sd.Name)
+	displayName := sd.DisplayName
+	if displayName == "" {
+		displayName = sd.Name
+	}
+	return ansi.Bold(displayName)
+}
+
+// GetCategory returns the category with a default fallback
+func (sd *SampleData) GetCategory() string {
+	if sd.Category != "" {
+		return sd.Category
+	}
+	return "General"
+}
+
+// GetDifficulty returns the difficulty with a default fallback
+func (sd *SampleData) GetDifficulty() string {
+	if sd.Difficulty != "" {
+		return sd.Difficulty
+	}
+	return "Intermediate"
+}
+
+// GetLanguage returns the primary language with a default fallback
+func (sd *SampleData) GetLanguage() string {
+	if sd.Language != "" {
+		return sd.Language
+	}
+	return "Multiple"
 }
 
 // GitRepo returns a string of the repo with the .git prefix
@@ -46,6 +81,64 @@ func Names(list map[string]*SampleData) []string {
 	}
 
 	return keys
+}
+
+// GroupByCategory groups samples by their category for better organization
+func GroupByCategory(list map[string]*SampleData) map[string][]*SampleData {
+	grouped := make(map[string][]*SampleData)
+	
+	for _, sample := range list {
+		category := sample.GetCategory()
+		grouped[category] = append(grouped[category], sample)
+	}
+	
+	return grouped
+}
+
+// GetCategories returns a sorted list of all available categories
+func GetCategories(list map[string]*SampleData) []string {
+	categories := make(map[string]bool)
+	
+	for _, sample := range list {
+		categories[sample.GetCategory()] = true
+	}
+	
+	result := make([]string, 0, len(categories))
+	for category := range categories {
+		result = append(result, category)
+	}
+	
+	sort.Strings(result)
+	return result
+}
+
+// FilterByCategory filters samples by a specific category
+func FilterByCategory(list map[string]*SampleData, category string) map[string]*SampleData {
+	filtered := make(map[string]*SampleData)
+	
+	for key, sample := range list {
+		if sample.GetCategory() == category {
+			filtered[key] = sample
+		}
+	}
+	
+	return filtered
+}
+
+// FilterByTag filters samples by a specific tag
+func FilterByTag(list map[string]*SampleData, tag string) map[string]*SampleData {
+	filtered := make(map[string]*SampleData)
+	
+	for key, sample := range list {
+		for _, sampleTag := range sample.Tags {
+			if sampleTag == tag {
+				filtered[key] = sample
+				break
+			}
+		}
+	}
+	
+	return filtered
 }
 
 // SampleLister gets the list of valid stripe samples. It is used both in
