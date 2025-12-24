@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 set -eu -o pipefail
 
-pushd "$HOME/stripe/zoolander"
+zoolander_path="$(mint-path-resolver -repo zoolander)"
+
+if printf '%s\n' "$zoolander_path" | grep -q 'mint'; then
+  branch='master'
+else
+  branch='master-passing-tests'
+fi
+
+pushd "$zoolander_path"
+
+pushd "$(mint-path-resolver -repo zoolander)"
 
 # Pull master.
-echo "Bringing master-passing-tests up to date."
-git checkout master-passing-tests && git pull
+echo "Bringing $branch up to date."
+git checkout "$branch" && git pull
 
 # Grab SHA so we can save this to a file for some kind of "paper trail".
 SHA=$(git rev-parse HEAD)
@@ -23,8 +33,8 @@ rm -f api/openapi-spec/spec3.v2.sdk.preview.json
 
 echo "$SHA" > api/ZOOLANDER_SHA
 
-cp ~/stripe/zoolander/spec3.v2.sdk.json api/openapi-spec/
-cp ~/stripe/zoolander/spec3.v2.sdk.preview.json api/openapi-spec/
+cp "$(mint-path-resolver -repo zoolander)"/spec3.v2.sdk.json api/openapi-spec/
+cp "$(mint-path-resolver -repo zoolander)"/spec3.v2.sdk.preview.json api/openapi-spec/
 
 echo "⏳ Generating resource commands..."
 
