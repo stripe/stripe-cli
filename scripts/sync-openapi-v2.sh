@@ -11,8 +11,6 @@ fi
 
 pushd "$zoolander_path"
 
-pushd "$(mint-path-resolver -repo zoolander)"
-
 # Pull master.
 echo "Bringing $branch up to date."
 git checkout "$branch" && git pull
