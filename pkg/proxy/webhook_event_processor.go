@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/net/http2"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/stripe/stripe-cli/pkg/websocket"
@@ -63,6 +65,11 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 	}
 
 	for _, route := range routes {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
+		}
+		http2.ConfigureTransport(tr)
+
 		// append to endpointClients
 		p.endpointClients = append(p.endpointClients, NewEndpointClient(
 			route.URL,
@@ -75,10 +82,8 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 					CheckRedirect: func(req *http.Request, via []*http.Request) error {
 						return http.ErrUseLastResponse
 					},
-					Timeout: time.Duration(cfg.Timeout) * time.Second,
-					Transport: &http.Transport{
-						TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.SkipVerify},
-					},
+					Timeout:   time.Duration(cfg.Timeout) * time.Second,
+					Transport: tr,
 				},
 				Log:             cfg.Log,
 				ResponseHandler: EndpointResponseHandlerFunc(p.processEndpointResponse),
