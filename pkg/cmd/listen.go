@@ -167,6 +167,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	accountID, _ := Config.Profile.GetAccountID()
+
 	logger := log.StandardLogger()
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
@@ -192,6 +194,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Events:                lc.events,
 		ThinEvents:            lc.thinEvents,
 		OutCh:                 proxyOutCh,
+		LoggedInAccountID:     accountID,
 	})
 	if err != nil {
 		return err
