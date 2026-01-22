@@ -166,9 +166,16 @@ func (c *Config) InitConfig() {
 	}
 
 	// initialize key ring
-	KeyRing, _ = keyring.Open(keyring.Config{
+	KeyRing, err = keyring.Open(keyring.Config{
 		ServiceName: KeyManagementService,
+		FileDir:     "~/.stripe/keys",
 	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "config.Config.InitConfig",
+			"error":  err,
+		}).Warn("Failed to initialize keyring")
+	}
 
 	// redact livemode values for existing configs
 	c.Profile.redactAllLivemodeValues()
