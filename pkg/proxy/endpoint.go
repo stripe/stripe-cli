@@ -155,7 +155,7 @@ func (c *EndpointClient) PostV2(evtCtx eventContext) error {
 		}
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
 		c.cfg.OutCh <- websocket.ErrorElement{
 			Error: FailedToPostError{Err: err},
