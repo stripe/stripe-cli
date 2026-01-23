@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"context"
 	"crypto/tls"
 	"encoding/json"
 	"io"
@@ -42,7 +41,8 @@ type WebhookEventProcessorConfig struct {
 	LoggedInAccountID string
 
 	// MaxForwardConcurrency limits the number of concurrent webhook forwards.
-	// Set to 0 for unbounded (original behavior). Default is 100.
+	// Set to 0 to use the default (100). Higher values allow more concurrent
+	// forwards but use more memory.
 	MaxForwardConcurrency int
 }
 
@@ -62,7 +62,6 @@ type WebhookEventProcessor struct {
 	forwardWg    sync.WaitGroup
 	shutdownOnce sync.Once
 	shutdownChan chan struct{} // Closed to signal shutdown has begun
-	cancelCtx    context.CancelFunc
 }
 
 // NewWebhookEventProcessor constructs a WebhookEventProcessor from the provided
@@ -75,13 +74,14 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 		thinEvents:  convertToMap(cfg.ThinEvents),
 	}
 
-	// Set default concurrency limit if not specified
-	if p.cfg.MaxForwardConcurrency == 0 {
-		p.cfg.MaxForwardConcurrency = 100
+	// Determine concurrency limit (default to 100 if not specified)
+	maxConcurrency := cfg.MaxForwardConcurrency
+	if maxConcurrency == 0 {
+		maxConcurrency = 100
 	}
 
 	// Initialize semaphore for concurrent forwarding
-	p.forwardSem = make(chan struct{}, p.cfg.MaxForwardConcurrency)
+	p.forwardSem = make(chan struct{}, maxConcurrency)
 	p.shutdownChan = make(chan struct{})
 
 	for _, route := range routes {
@@ -118,9 +118,9 @@ func (p *WebhookEventProcessor) Shutdown() {
 	p.shutdownOnce.Do(func() {
 		// Signal shutdown has begun - prevents new forwards from starting
 		close(p.shutdownChan)
-		// Close the semaphore to prevent new forwards
-		close(p.forwardSem)
 		// Wait for all in-flight forwards to complete
+		// Note: forwardSem is intentionally NOT closed to avoid panics.
+		// The shutdownChan check in forwardToEndpoint prevents new acquisitions.
 		p.forwardWg.Wait()
 	})
 }
