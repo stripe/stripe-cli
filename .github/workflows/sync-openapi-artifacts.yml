@@ -37,7 +37,7 @@ jobs:
 
       - name: Download Preview CLI spec
         run: |
-          curl -fsSL "https://b.stripecdn.com/api-artifacts/assets/openapi/${{ inputs.version }}/public-preview/cli.json" \
+          curl -fsSL "https://b.stripecdn.com/api-artifacts/assets/openapi/${{ inputs.version }}/public_preview/cli.json" \
             -o ./api/openapi-spec/spec3.cli.preview.json
 
       - name: Check for changes
