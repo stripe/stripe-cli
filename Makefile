@@ -91,12 +91,6 @@ todo:
 		-nRo -E ' TODO:.*|SkipNow' .
 .PHONY: todo
 
-# Updates the OpenAPI spec
-update-openapi-spec:
-	rm -f ./api/openapi-spec/spec3.sdk.json
-	wget https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.sdk.json -P ./api/openapi-spec
-.PHONY: update-openapi-spec
-
 # Releases a new version
 release:
 # This does not release anything from your local machine but creates a tag
@@ -161,10 +155,5 @@ protoc-gen-plugin:
 	|| (printf ${PROTOC_FAILURE_MESSAGE}; exit 1)
 	@echo "Successfully compiled proto files for plugins"
 .PHONY: protoc-plugin
-
-resource:
-	./scripts/sync-openapi-v2.sh
-	@echo "✨ Successfully built Stripe CLI with latest API resources."
-.PHONY: resource
 
 .DEFAULT_GOAL := build
