@@ -113,6 +113,71 @@ func TestMakeRequest(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestMakeRequest_GetV2(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+
+		reqBody, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/core/events", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "limit=10&types=v2.core.event_destination.ping&types=v1.billing.meter.no_meter_found", r.URL.RawQuery)
+		require.Equal(t, "", string(reqBody))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{
+		data: []string{`{
+			"limit": 10,
+			"types": [
+				"v2.core.event_destination.ping",
+				"v1.billing.meter.no_meter_found"
+			]
+		}`},
+	}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/events", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_PostV2(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+
+		reqBody, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/core/event_destinations", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "", r.URL.RawQuery)
+		require.Equal(t, `{"name":"foo"}`, string(reqBody))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodPost
+
+	params := &RequestParameters{
+		data: []string{`{"name": "foo"}`},
+	}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/event_destinations", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
 func TestMakeRequest_ErrOnStatus(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -245,6 +310,9 @@ func TestNormalizePath(t *testing.T) {
 	require.Equal(t, "/v1/charges", normalizePath("v1/charges"))
 	require.Equal(t, "/v1/charges", normalizePath("/charges"))
 	require.Equal(t, "/v1/charges", normalizePath("charges"))
+
+	require.Equal(t, "/v2/core/events", normalizePath("/v2/core/events"))
+	require.Equal(t, "/v2/core/events", normalizePath("v2/core/events"))
 }
 
 func TestCreateOrNormalizePath(t *testing.T) {
@@ -295,5 +363,37 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 
 	t.Run("non-RequestError", func(t *testing.T) {
 		require.False(t, IsAPIKeyExpiredError(fmt.Errorf("other")))
+	})
+}
+
+func TestParseJSONDataFlag(t *testing.T) {
+	t.Run("no arguments", func(t *testing.T) {
+		data, err := parseJSONDataFlag([]string{})
+		require.Nil(t, err)
+		require.Empty(t, data)
+	})
+	t.Run("empty data", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{""})
+		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+
+		_, err = parseJSONDataFlag([]string{"  "})
+		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+	})
+	t.Run("multiple data arguments", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{`{}`, `{}`})
+		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+	})
+	t.Run("key-value data", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{"x=y"})
+		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+	})
+	t.Run("invalid JSON", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{`{"key": }`})
+		require.Error(t, err)
+	})
+	t.Run("valid JSON", func(t *testing.T) {
+		data, err := parseJSONDataFlag([]string{`{"key": "x=y"}`})
+		require.Nil(t, err)
+		require.Equal(t, map[string]interface{}{"key": "x=y"}, data)
 	})
 }

@@ -3,8 +3,10 @@ package logtailing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -205,6 +207,14 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 			})
 
 			if err == nil {
+				exitCh <- struct{}{}
+				return
+			}
+
+			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
+				if clientError.StatusCode == http.StatusTooManyRequests {
+					err = errors.New("You have too many `stripe logs tail` sessions open. Please close some and try again.")
+				}
 				exitCh <- struct{}{}
 				return
 			}

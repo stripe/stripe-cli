@@ -2,7 +2,8 @@
 # on our build without publishing: https://goreleaser.com/customization/snapshots/
 
 name: test-snapshot
-
+permissions:
+  contents: read
 on:
   push:
     paths:

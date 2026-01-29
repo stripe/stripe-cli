@@ -1,0 +1,83 @@
+name: Sync OpenAPI Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name (e.g., 2025-12-15.clover)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch app installation token
+        uses: tibdex/github-app-token@v1.5.2
+        id: gh-api-token
+        with:
+          app_id: ${{ secrets.GH_APP_STRIPE_OPENAPI_APP_ID }}
+          private_key: ${{ secrets.GH_APP_STRIPE_OPENAPI_PRIVATE_KEY }}
+
+      - name: Get current version
+        id: current-version
+        run: echo "value=$(jq -r '.info.version' ./api/openapi-spec/spec3.cli.json)" >> $GITHUB_OUTPUT
+
+      - name: Download GA CLI spec
+        run: |
+          curl -fsSL "https://b.stripecdn.com/api-artifacts/assets/openapi/${{ inputs.version }}/ga/cli.json" \
+            -o ./api/openapi-spec/spec3.cli.json
+
+      - name: Download Preview CLI spec
+        run: |
+          curl -fsSL "https://b.stripecdn.com/api-artifacts/assets/openapi/${{ inputs.version }}/public_preview/cli.json" \
+            -o ./api/openapi-spec/spec3.cli.preview.json
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet ./api/openapi-spec/; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected, skipping PR creation"
+          else
+            echo "Changes detected, proceeding to run codegen"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Go
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.1
+
+      - name: Run go generate
+        if: steps.changes.outputs.has_changes == 'true'
+        run: go generate ./...
+
+      - name: Create pull request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "OpenAPI Update for ${{ inputs.version }}"
+          body: |
+            Automated OpenAPI spec update.
+
+            - **Previous version:** `${{ steps.current-version.outputs.value }}`
+            - **New version:** `${{ inputs.version }}`
+            - **Initiated by:** @${{ github.actor }}
+
+            [→ Debug this workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          branch: update-openapi
+          base: master
+          token: ${{ steps.gh-api-token.outputs.token }}
+          delete-branch: true
+          commit-message: "Update OpenAPI for ${{ inputs.version }}"
+          committer: "Stripe OpenAPI <105521251+stripe-openapi[bot]@users.noreply.github.com>"
+          author: "Stripe OpenAPI <105521251+stripe-openapi[bot]@users.noreply.github.com>"

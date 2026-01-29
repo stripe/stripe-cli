@@ -114,6 +114,9 @@ type Config struct {
 
 	// OutCh is the channel to send logs and statuses to for processing in other packages
 	OutCh chan websocket.IElement
+
+	// LoggedInAccountID is the currently logged-in account ID
+	LoggedInAccountID string
 }
 
 // A Proxy opens a websocket connection with Stripe, listens for incoming
@@ -283,6 +286,14 @@ func (p *Proxy) createSession(ctx context.Context) (*stripeauth.StripeCLISession
 				return
 			}
 
+			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
+				if clientError.StatusCode == http.StatusTooManyRequests {
+					err = errors.New("You have too many `stripe listen` sessions open. Please close some and try again.")
+				}
+				exitCh <- struct{}{}
+				return
+			}
+
 			select {
 			case <-ctx.Done():
 				exitCh <- struct{}{}
@@ -344,7 +355,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	} else {
 		for _, event := range cfg.Events {
 			if _, found := validEvents[event]; !found {
-				cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid event\n", event)
+				cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid event\n", event)
 			}
 		}
 	}
@@ -352,9 +363,13 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 	if len(cfg.ThinEvents) > 0 {
 		for _, event := range cfg.ThinEvents {
 			if _, found := validThinEvents[event]; !found {
-				// If not found in validThinEvents, check in validPreviewEvents
-				if _, foundInPreview := validPreviewEvents[event]; !foundInPreview {
-					cfg.Log.Infof("Warning: You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
+				// If not found in validThinEvents, check in validPreviewThinEvents
+				if _, foundInPreview := validPreviewThinEvents[event]; !foundInPreview {
+					if event == "*" {
+						cfg.Log.Infof("* is only supported in the CLI, thin event destinations do not support selecting all event types\n")
+					} else {
+						cfg.Log.Warningf("You're attempting to listen for \"%s\", which isn't a valid thin event or preview event\n", event)
+					}
 				}
 			}
 		}
@@ -437,6 +452,7 @@ func Init(ctx context.Context, cfg *Config) (*Proxy, error) {
 		UseLatestAPIVersion: cfg.UseLatestAPIVersion,
 		SkipVerify:          cfg.SkipVerify,
 		Timeout:             cfg.Timeout,
+		LoggedInAccountID:   cfg.LoggedInAccountID,
 	}
 
 	p := &Proxy{

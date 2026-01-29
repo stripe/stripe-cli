@@ -12,15 +12,22 @@ import (
 )
 
 func addAllResourcesCmds(rootCmd *cobra.Command) {
-	{{ range $specVersion, $vData := .Versions }}{{ if eq $specVersion "v1" }}v1root := rootCmd{{ else if eq $specVersion "v2-preview" }}
+	v1root := rootCmd
+	v2root := resource.NewNamespaceCmd(rootCmd, "v2").Cmd
 	previewRoot := resource.NewNamespaceCmd(rootCmd, "preview").Cmd
-	previewV2Root := resource.NewNamespaceCmd(previewRoot, "v2").Cmd{{ else }}
-	{{ $specVersion }}root := resource.NewNamespaceCmd(rootCmd, "{{ $specVersion }}").Cmd{{ end }}
-	add{{ $specVersion | ToCamel }}ResourcesCmds({{ if eq $specVersion "v2-preview" }}previewV2Root{{ else }}{{ $specVersion }}root{{ end }}){{ end }}
+	previewV2Root := resource.NewNamespaceCmd(previewRoot, "v2").Cmd
+
+	addV1ResourcesCmds(v1root)
+	addV2ResourcesCmds(v2root)
+
+	{{- if index .ApiNamespaces "v1-preview" }}
+	addV1PreviewResourcesCmds(previewRoot)
+	{{- end }}
+	addV2PreviewResourcesCmds(previewV2Root)
 }
 
-{{ range $specVersion, $vData := .Versions }}
-func add{{ $specVersion | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
+{{ range $apiNamespace, $vData := .ApiNamespaces }}
+func add{{ $apiNamespace | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
 	// Namespace commands
 	_ = resource.NewNamespaceCmd(rootCmd, ""){{ range $nsName, $nsData := $vData.Namespaces }}{{ if $nsData.Resources }}{{ if ne $nsName "" }}
 	ns{{ $nsName | ToCamel }}Cmd := resource.NewNamespaceCmd(rootCmd, "{{ $nsName }}"){{ end }}{{ end }}{{ end }}
@@ -35,11 +42,11 @@ func add{{ $specVersion | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
 	}, map[string][]spec.StripeEnumValue{ {{range $prop, $enumValues := $opData.EnumFlags }}
 		"{{ $prop }}": {{ printf "%#v" $enumValues }},{{ end }}
-	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ range $subResName, $subResData := $resData.SubResources }}{{range $opName, $opData := $subResData.Operations }}
+	}, &Config, {{ if or (eq $apiNamespace "v1-preview") (eq $apiNamespace "v2-preview") }}true{{ else }}false{{ end }}){{ end }}{{ range $subResName, $subResData := $resData.SubResources }}{{range $opName, $opData := $subResData.Operations }}
 	resource.NewOperationCmd(r{{ (printf "%s_%s_%s" $nsName $resName $subResName) | ToCamel }}Cmd.Cmd, "{{ $opName }}", "{{ $opData.Path }}", http.Method{{ $opData.HTTPVerb | ToCamel }}, map[string]string{ {{range $prop, $propType := $opData.PropFlags }}
 		"{{ $prop }}": "{{ $propType }}",{{ end }}
 	}, map[string][]spec.StripeEnumValue{ {{range $prop, $enumValues := $opData.EnumFlags }}
 		"{{ $prop }}": {{ printf "%#v" $enumValues }},{{ end }}
-	}, &Config, {{ if eq $specVersion "v2-preview" }}true{{ else }}false{{ end }}){{ end }}{{ end }}{{ end }}{{ end }}
+	}, &Config, {{ if or (eq $apiNamespace "v1-preview") (eq $apiNamespace "v2-preview") }}true{{ else }}false{{ end }}){{ end }}{{ end }}{{ end }}{{ end }}
 }
 {{ end }}

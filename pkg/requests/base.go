@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -452,7 +453,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 //  1. params from the --data flag
 //  2. any additional params from the caller
 func BuildDataForV2Request(method string, path string, data []string, additionalParams map[string]interface{}) (string, error) {
-	dataFlagParams, err := parseDataFlag(data)
+	dataFlagParams, err := parseJSONDataFlag(data)
 	if err != nil {
 		return "", err
 	}
@@ -490,17 +491,21 @@ func BuildDataForV2Request(method string, path string, data []string, additional
 	return params, nil
 }
 
-func parseDataFlag(data []string) (map[string]interface{}, error) {
+var jsonDataFlagInvalidErr = errors.New("v2 API takes a single 'data' param containing a full JSON string.")
+
+func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
 	dataFlagParams := make(map[string]interface{})
 	if len(data) == 0 {
 		return dataFlagParams, nil
 	}
 
-	if len(data) > 1 {
-		return nil, fmt.Errorf("v2 API takes request 'data' params in a full json string.")
+	jsonData := strings.TrimSpace(data[0])
+	isKeyValueData, _ := regexp.MatchString(`^\w+=.*$`, jsonData)
+	if len(data) > 1 || len(jsonData) == 0 || isKeyValueData {
+		return nil, jsonDataFlagInvalidErr
 	}
 
-	if err := json.Unmarshal([]byte(strings.TrimSpace(data[0])), &dataFlagParams); err != nil {
+	if err := json.Unmarshal([]byte(jsonData), &dataFlagParams); err != nil {
 		return nil, fmt.Errorf("data is invalid json: %s", data)
 	}
 
@@ -674,11 +679,11 @@ func createOrNormalizePath(arg string) (string, error) {
 }
 
 func normalizePath(path string) string {
-	if strings.HasPrefix(path, "/v1/") {
+	if strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v2/") {
 		return path
 	}
 
-	if strings.HasPrefix(path, "v1/") {
+	if strings.HasPrefix(path, "v1/") || strings.HasPrefix(path, "v2/") {
 		return "/" + path
 	}
 
