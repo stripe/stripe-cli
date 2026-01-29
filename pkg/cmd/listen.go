@@ -122,7 +122,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
+	isJSONMode := strings.ToUpper(lc.format) == outputFormatJSON || lc.printJSON
+	if !lc.onlyPrintSecret && !lc.skipUpdate && !isJSONMode {
 		version.CheckLatestVersion()
 	}
 
@@ -229,35 +230,30 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 
 func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON bool) *websocket.Visitor {
 	var s *spinner.Spinner
+	isJSONMode := strings.ToUpper(format) == outputFormatJSON || printJSON
 
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
 			ansi.StopSpinner(s, "", logger.Out)
 			switch ee.Error.(type) {
 			case proxy.FailedToPostError:
-				color := ansi.Color(os.Stdout)
-				localTime := time.Now().Format(timeLayout)
+				if !isJSONMode {
+					color := ansi.Color(os.Stdout)
+					localTime := time.Now().Format(timeLayout)
 
-				errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
-					color.Faint(localTime),
-					color.Red("ERROR"),
-					ee.Error,
-				)
-				fmt.Println(errStr)
-
+					errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
+						color.Faint(localTime),
+						color.Red("ERROR"),
+						ee.Error,
+					)
+					fmt.Fprint(os.Stderr, errStr)
+				}
 				// Don't exit program
 				return nil
 			case proxy.FailedToReadResponseError:
-				color := ansi.Color(os.Stdout)
-				localTime := time.Now().Format(timeLayout)
-
-				errStr := fmt.Sprintf("%s            [%s] Failed to read response from endpoint, error = %v\n",
-					color.Faint(localTime),
-					color.Red("ERROR"),
-					ee.Error,
-				)
-				log.Errorf("%s", errStr)
-
+				if !isJSONMode {
+					log.Errorf("Failed to read response from endpoint: %v", ee.Error)
+				}
 				// Don't exit program
 				return nil
 			default:
@@ -266,6 +262,9 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 			}
 		},
 		VisitStatus: func(se websocket.StateElement) error {
+			if isJSONMode {
+				return nil
+			}
 			switch se.State {
 			case websocket.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
