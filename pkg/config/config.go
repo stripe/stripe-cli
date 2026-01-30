@@ -208,19 +208,23 @@ func (c *Config) CopyProfile(source string, target string) error {
 
 	runtimeViper := viper.GetViper()
 	safeSource := strings.ReplaceAll(source, ".", " ")
-	existing := runtimeViper.GetStringMapString(safeSource)
-	if existing == nil || !isProfile(existing) {
-		return fmt.Errorf("source profile '%s' does not exist or is not a profile", source)
+	if !runtimeViper.IsSet(safeSource) {
+		return fmt.Errorf("source profile '%s' does not exist", source)
+	}
+	existing := runtimeViper.Get(safeSource)
+	if !isProfile(existing) {
+		return fmt.Errorf("source '%s' is not a profile", source)
 	}
 
-	// TODO: work in Profile, not in maps?
+	// Clone the profile map and update profile_name
 	safeTarget := strings.ReplaceAll(target, ".", " ")
-	newProfile := maps.Clone(existing)
+	existingMap := existing.(map[string]interface{})
+	newProfile := maps.Clone(existingMap)
 	newProfile["profile_name"] = safeTarget
 
 	runtimeViper.Set(safeTarget, newProfile)
 
-	return syncConfig(runtimeViper)
+	return writeConfig(runtimeViper)
 }
 
 func (c *Config) ListProfiles() error {
@@ -246,7 +250,8 @@ func (c *Config) ListProfiles() error {
 	} else {
 		fmt.Println("Available profiles:")
 		for _, profile := range profiles {
-			// TODO: why not c.Profile.DisplayName?
+			// GetDisplayName() reads from the config file to ensure consistency
+			// with the display names we extracted from AllSettings() above
 			if profile == c.Profile.GetDisplayName() {
 				fmt.Printf("  * %s (active)\n", profile)
 			} else {
@@ -305,9 +310,8 @@ func (c *Config) SwitchProfile(profileName string) error {
 		return err
 	}
 
-	// Remove the backup
-	// NOTE: this is optional and only to keep the config file clean
-	// TODO: this isnt working and I don't know why
+	// Remove the old profile key since it's now been copied to "default"
+	// This keeps the config file clean by not having duplicate data
 	c.RemoveProfile(profileName)
 
 	// Finally, reload the config to pick up the new "default" profile
@@ -329,7 +333,9 @@ func (c *Config) RemoveProfile(profileName string) error {
 			var profileNameAttr string
 			switch v := value.(type) {
 			case map[string]interface{}:
-				profileNameAttr = v["profile_name"].(string)
+				if pn, ok := v["profile_name"].(string); ok {
+					profileNameAttr = pn
+				}
 			case map[string]string:
 				profileNameAttr = v["profile_name"]
 			}
@@ -344,7 +350,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return writeConfig(runtimeViper)
 }
 
 // RemoveAllProfiles removes all the profiles from the config file.
@@ -363,7 +369,7 @@ func (c *Config) RemoveAllProfiles() error {
 		}
 	}
 
-	return syncConfig(runtimeViper)
+	return writeConfig(runtimeViper)
 }
 
 func deleteLivemodeKey(key string, profile string) error {
@@ -401,20 +407,26 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	return runtimeViper.WriteConfig()
 }
 
-// syncConfig merges a runtimeViper instance with the config file being used.
-func syncConfig(runtimeViper *viper.Viper) error {
-	runtimeViper.MergeInConfig()
+// writeConfig writes a viper instance to the config file and syncs the global viper.
+func writeConfig(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
 	runtimeViper.SetConfigFile(profilesFile)
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
+	configType := strings.TrimPrefix(filepath.Ext(profilesFile), ".")
+	runtimeViper.SetConfigType(configType)
 
-	err := runtimeViper.WriteConfig()
-	if err != nil {
+	if err := runtimeViper.WriteConfig(); err != nil {
 		return err
 	}
 
-	return nil
+	// Reset global viper and re-read from file.
+	// We must reset because ReadInConfig merges with existing values rather than
+	// replacing them - so deleted keys would persist without this reset.
+	viper.Reset()
+	viper.SetConfigFile(profilesFile)
+	viper.SetConfigType(configType)
+	viper.SetConfigPermissions(os.FileMode(0600))
+
+	return viper.ReadInConfig()
 }
 
 // Temporary workaround until https://github.com/spf13/viper/pull/519 can remove a key from viper
