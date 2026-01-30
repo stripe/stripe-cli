@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -355,17 +354,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeConfig(runtimeViper)
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
