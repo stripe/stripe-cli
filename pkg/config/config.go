@@ -194,7 +194,6 @@ func (c *Config) EditConfig() error {
 }
 
 func (c *Config) CopyProfile(source string, target string) error {
-
 	if source == "" {
 		return fmt.Errorf("source profile name cannot be empty")
 	}
