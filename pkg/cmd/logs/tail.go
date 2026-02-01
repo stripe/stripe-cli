@@ -178,7 +178,10 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	version.CheckLatestVersion()
+	isJSONMode := strings.ToUpper(tailCmd.format) == outputFormatJSON
+	if !isJSONMode {
+		version.CheckLatestVersion()
+	}
 
 	logger := log.StandardLogger()
 
@@ -263,6 +266,7 @@ func (tailCmd *TailCmd) convertArgs() error {
 
 func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 	var s *spinner.Spinner
+	isJSONMode := strings.ToUpper(format) == outputFormatJSON
 
 	return &websocket.Visitor{
 		VisitError: func(ee websocket.ErrorElement) error {
@@ -270,11 +274,18 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 			return ee.Error
 		},
 		VisitWarning: func(we websocket.WarningElement) error {
-			color := ansi.Color(os.Stdout)
-			fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
+			if isJSONMode {
+				fmt.Fprintf(os.Stderr, "Warning: %s\n", we.Warning)
+			} else {
+				color := ansi.Color(os.Stdout)
+				fmt.Printf("%s %s\n", color.Yellow("Warning"), we.Warning)
+			}
 			return nil
 		},
 		VisitStatus: func(se websocket.StateElement) error {
+			if isJSONMode {
+				return nil
+			}
 			switch se.State {
 			case websocket.Loading:
 				s = ansi.StartNewSpinner("Getting ready...", logger.Out)
@@ -295,8 +306,8 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 
 			sanitizePayload(&log)
 
-			if strings.ToUpper(format) == outputFormatJSON {
-				fmt.Println(ansi.ColorizeJSON(de.Marshaled, false, os.Stdout))
+			if isJSONMode {
+				fmt.Println(de.Marshaled)
 				return nil
 			}
 
