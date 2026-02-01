@@ -79,7 +79,7 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 
 			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
 			if err != nil {
-				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
+				fmt.Printf("> Error verifying if the CLI was set up successfully: %s\n", err)
 				return err
 			}
 

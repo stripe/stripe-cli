@@ -76,7 +76,7 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
-	// if path starts with v1
+	// if path starts with v2
 	if IsV2Path(path) {
 		req.Header.Set("Content-Type", V2ContentType)
 	} else {

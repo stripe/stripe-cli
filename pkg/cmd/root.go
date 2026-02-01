@@ -219,9 +219,6 @@ func init() {
 		log.Fatal(err)
 	}
 
-	// config is not initialized by cobra at this point, so we need to temporarily initialize it
-	Config.InitConfig()
-
 	// get a list of installed plugins, validate against the manifest
 	// and finally add each validated plugin as a command
 	nfs := afero.NewOsFs()
