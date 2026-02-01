@@ -225,6 +225,12 @@ func (p *Proxy) Run(ctx context.Context) error {
 		p.webSocketClient.Stop()
 	}
 
+	// Gracefully shutdown the webhook event processor, waiting for
+	// in-flight forwards to complete
+	if p.webhookEventProcessor != nil {
+		p.webhookEventProcessor.Shutdown()
+	}
+
 	log.WithFields(log.Fields{
 		"prefix": "proxy.Proxy.Run",
 	}).Debug("Bye!")
