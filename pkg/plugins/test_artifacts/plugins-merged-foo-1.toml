@@ -56,12 +56,14 @@
     OS = "darwin"
     Version = "2.0.1"
     Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+    Runtime = {node = "24"}
 
   [[Plugin.Release]]
     Arch = "arm64"
     OS = "darwin"
     Version = "2.0.1"
     Sum = "3752e4e3a9f1b17f85b542b355893b8614ad8662a3fb8eba6ebed66d1f9e2a87"
+    Runtime = {node = "24"}
 
   [[Plugin.Release]]
     Arch = "amd64"
