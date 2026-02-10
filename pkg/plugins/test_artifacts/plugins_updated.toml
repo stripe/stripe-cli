@@ -87,15 +87,18 @@
     OS = "darwin"
     Version = "1.2.2"
     Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+    Runtime = {node = "22"}
 
   [[Plugin.Release]]
     Arch = "amd64"
     OS = "linux"
     Version = "1.2.2"
     Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+    Runtime = {node = "22"}
 
   [[Plugin.Release]]
     Arch = "amd64"
     OS = "windows"
     Version = "1.2.2"
     Sum = "2f05d4b689d270cafb02285f35f44866f7dc8a2d368a3f9d1124373eeab31fb1"
+    Runtime = {node = "22"}

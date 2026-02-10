@@ -50,10 +50,11 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string `toml:"Arch"`
-	OS      string `toml:"OS"`
-	Version string `toml:"Version"`
-	Sum     string `toml:"Sum"`
+	Arch    string            `toml:"Arch"`
+	OS      string            `toml:"OS"`
+	Version string            `toml:"Version"`
+	Sum     string            `toml:"Sum"`
+	Runtime map[string]string `toml:"Runtime,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
