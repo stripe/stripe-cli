@@ -32,20 +32,21 @@ type NodeRuntimeConfig struct {
 // For maximum security, checksums can also be verified against GPG signatures.
 //
 // To update checksums for a new Node.js version:
-// 1. Download checksums:
-//    curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
 //
-// 2. (Optional) Verify GPG signature:
-//    curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt.asc"
-//    curl -fsLo "nodejs-keyring.kbx" "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
-//    gpgv --keyring="nodejs-keyring.kbx" --output SHASUMS256.txt < SHASUMS256.txt.asc
+//  1. Download checksums:
+//     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
 //
-// 3. Extract checksums for each platform:
-//    grep "darwin-x64.tar.gz" SHASUMS256.txt      # macOS Intel
-//    grep "darwin-arm64.tar.gz" SHASUMS256.txt    # macOS Apple Silicon
-//    grep "linux-x64.tar.gz" SHASUMS256.txt       # Linux Intel
-//    grep "linux-arm64.tar.gz" SHASUMS256.txt     # Linux ARM
-//    grep "win-x64.zip" SHASUMS256.txt            # Windows
+//  2. (Optional) Verify GPG signature:
+//     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt.asc"
+//     curl -fsLo "nodejs-keyring.kbx" "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
+//     gpgv --keyring="nodejs-keyring.kbx" --output SHASUMS256.txt < SHASUMS256.txt.asc
+//
+//  3. Extract checksums for each platform:
+//     grep "darwin-x64.tar.gz" SHASUMS256.txt      # macOS Intel
+//     grep "darwin-arm64.tar.gz" SHASUMS256.txt    # macOS Apple Silicon
+//     grep "linux-x64.tar.gz" SHASUMS256.txt       # Linux Intel
+//     grep "linux-arm64.tar.gz" SHASUMS256.txt     # Linux ARM
+//     grep "win-x64.zip" SHASUMS256.txt            # Windows
 //
 // 4. Update the checksums in this file and document the verification date
 var nodeRuntimeConfigs = map[string]NodeRuntimeConfig{
