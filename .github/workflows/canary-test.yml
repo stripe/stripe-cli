@@ -37,8 +37,10 @@ jobs:
         with:
           go-version: '1.24.1'
 
-      - name: Build binary
-        run: go build -o ${{ matrix.binary }} ./cmd/stripe
+      - name: Build binary (production-like)
+        run: |
+          go generate ./...
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o ${{ matrix.binary }} ./cmd/stripe
         shell: bash
 
       - name: Run offline canary tests

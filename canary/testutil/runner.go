@@ -166,8 +166,29 @@ func normalizeLineEndings(s string) string {
 
 // CreateTempConfigDir creates a temporary directory for isolated configuration.
 // The caller is responsible for cleaning up the directory.
+// This also creates the stripe subdirectory and an empty config.toml file
+// so that config commands work properly.
 func CreateTempConfigDir(prefix string) (string, error) {
-	return os.MkdirTemp("", fmt.Sprintf("stripe-canary-%s-", prefix))
+	dir, err := os.MkdirTemp("", fmt.Sprintf("stripe-canary-%s-", prefix))
+	if err != nil {
+		return "", err
+	}
+
+	// Create stripe config subdirectory
+	stripeDir := filepath.Join(dir, "stripe")
+	if err := os.MkdirAll(stripeDir, 0755); err != nil {
+		os.RemoveAll(dir)
+		return "", fmt.Errorf("failed to create stripe config dir: %w", err)
+	}
+
+	// Create empty config.toml so config commands work
+	configFile := filepath.Join(stripeDir, "config.toml")
+	if err := os.WriteFile(configFile, []byte(""), 0644); err != nil {
+		os.RemoveAll(dir)
+		return "", fmt.Errorf("failed to create config.toml: %w", err)
+	}
+
+	return dir, nil
 }
 
 // HasAPIKey returns true if STRIPE_API_KEY is set in the environment.

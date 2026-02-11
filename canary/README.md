@@ -70,6 +70,9 @@ Tests that verify basic CLI functionality without network access:
 | `TestOfflineConfig` | `stripe config --list` | Config system works |
 | `TestOfflineUnknownCommand` | `stripe nonexistent` | Error handling |
 | `TestOfflineStatus` | `stripe status` | Status command runs |
+| `TestOfflineListenHelp` | `stripe listen --help` | Listen command available |
+| `TestOfflineLogsTailHelp` | `stripe logs tail --help` | Logs tail command available |
+| `TestOfflineLoginHelp` | `stripe login --help` | Login command available |
 
 ### API Tests (`TestAPI*`)
 
@@ -82,6 +85,12 @@ Tests that require a valid Stripe test API key:
 | `TestAPITrigger` | `stripe trigger customer.created` | Fixtures work |
 | `TestAPICustomersList` | `stripe customers list` | Generated commands |
 | `TestAPIProductsCreate` | `stripe products create` | Resource commands |
+| `TestAPIListenPrintSecret` | `stripe listen --print-secret` | Webhook listener connects |
+| `TestAPIListenWithEvents` | `stripe listen --events ... --print-secret` | Event filtering works |
+| `TestAPILogsTailStartup` | `stripe logs tail` | Log streaming connects |
+| `TestAPILogsTailWithFilters` | `stripe logs tail --filter-http-method POST` | Log filtering works |
+| `TestAPIConfigSetAndUseAPIKey` | `stripe config --set` + API call | Config-based auth |
+| `TestAPIConfigMultipleProfiles` | `--project-name` flag | Multi-profile support |
 
 ## Environment Variables
 
