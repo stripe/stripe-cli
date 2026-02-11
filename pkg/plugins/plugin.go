@@ -381,7 +381,26 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
-	cmd := exec.Command(pluginBinaryPath)
+	// Check if this plugin requires a runtime
+	var cmd *exec.Cmd
+	release := p.getReleaseForVersion(version)
+	if release != nil {
+		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			// Plugin requires Node.js runtime - execute via node
+			nodePath := GetNodeBinaryPath(config, nodeVersion)
+			if nodePath == "" {
+				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
+			}
+			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
+			cmd = exec.Command(nodePath, pluginBinaryPath)
+		} else {
+			// No runtime required - execute binary directly
+			cmd = exec.Command(pluginBinaryPath)
+		}
+	} else {
+		// Couldn't find release info, assume it's a standalone binary
+		cmd = exec.Command(pluginBinaryPath)
+	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")

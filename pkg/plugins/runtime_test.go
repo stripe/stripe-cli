@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -170,4 +171,24 @@ func TestGetReleaseForVersion(t *testing.T) {
 	// Should return nil for non-existent version
 	release = plugin.getReleaseForVersion("2.0.0")
 	require.Nil(t, release)
+}
+
+func TestGetNodeBinaryPath(t *testing.T) {
+	config := &TestConfig{}
+	config.InitConfig()
+
+	// Valid version should return a path
+	path := GetNodeBinaryPath(config, "20")
+	require.NotEmpty(t, path)
+	require.Contains(t, path, "node")
+	require.Contains(t, path, "20.18.1")
+
+	// Should use bin/node on Unix-like systems
+	if runtime.GOOS != "windows" {
+		require.Contains(t, path, "bin/node")
+	}
+
+	// Invalid version should return empty string
+	path = GetNodeBinaryPath(config, "99")
+	require.Empty(t, path)
 }

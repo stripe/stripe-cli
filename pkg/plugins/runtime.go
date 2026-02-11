@@ -94,6 +94,20 @@ func GetNodeRuntimePath(cfg config.IConfig, majorVersion string) string {
 	return filepath.Join(GetRuntimesDir(cfg), "node", runtimeConfig.Version)
 }
 
+// GetNodeBinaryPath returns the path to the node executable for a specific version
+func GetNodeBinaryPath(cfg config.IConfig, majorVersion string) string {
+	runtimePath := GetNodeRuntimePath(cfg, majorVersion)
+	if runtimePath == "" {
+		return ""
+	}
+
+	// Construct path to node binary
+	if runtime.GOOS == "windows" {
+		return filepath.Join(runtimePath, "node.exe")
+	}
+	return filepath.Join(runtimePath, "bin", "node")
+}
+
 // IsRuntimeInstalled checks if a specific Node.js runtime is already installed
 func IsRuntimeInstalled(cfg config.IConfig, fs afero.Fs, majorVersion string) bool {
 	runtimePath := GetNodeRuntimePath(cfg, majorVersion)

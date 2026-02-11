@@ -43,6 +43,25 @@ The runtime is:
 3. Extracted to `~/.config/stripe/runtimes/node/<version>/`
 4. Reused for other plugins requiring the same version
 
+## Runtime Execution
+
+When a plugin is executed, the CLI automatically detects if it requires a runtime:
+
+```bash
+$ stripe generate create-component
+```
+
+Behind the scenes:
+1. CLI reads the plugin's `Release` entry from `plugins.toml`
+2. Checks if the `Runtime` field is present
+3. If Node.js runtime is required:
+   - Locates the installed Node.js binary at `~/.config/stripe/runtimes/node/<version>/bin/node`
+   - Executes: `node /path/to/plugin.js [args...]`
+4. If no runtime required:
+   - Executes plugin binary directly: `/path/to/plugin [args...]`
+
+The plugin continues to use the HashiCorp go-plugin framework for RPC/gRPC communication with the CLI, regardless of whether it's a native binary or JavaScript.
+
 ## Directory Structure
 
 ```
@@ -95,6 +114,43 @@ When adding or updating Node.js versions:
    - `node-vX.Y.Z-win-x64.zip`
 3. Update the `nodeRuntimeConfigs` map in `runtime.go`
 
+## JavaScript Plugin Structure
+
+For a JavaScript plugin to work with the Stripe CLI, it must:
+
+1. **Entry Point**: The downloaded "binary" is actually a `.js` file (e.g., `stripe-cli-generate.js`)
+
+2. **Shebang (Optional)**: Include a Node.js shebang for Unix-like systems:
+   ```javascript
+   #!/usr/bin/env node
+   ```
+
+3. **go-plugin Protocol**: Implement the HashiCorp go-plugin protocol using a Node.js library like [`@hashicorp/go-plugin`](https://github.com/hashicorp/node-go-plugin) to:
+   - Handle the plugin handshake
+   - Implement RPC/gRPC interface
+   - Communicate with the CLI
+
+4. **Example Structure**:
+   ```javascript
+   #!/usr/bin/env node
+   const plugin = require('@hashicorp/go-plugin');
+
+   // Implement your plugin logic
+   class MyPlugin {
+     async runCommand(args) {
+       // Your plugin implementation
+       return { success: true };
+     }
+   }
+
+   // Set up plugin server
+   plugin.server({
+     myPlugin: new MyPlugin()
+   });
+   ```
+
+The CLI handles the runtime invocation transparently - plugin developers don't need to worry about how Node.js is launched.
+
 ## Testing
 
 Tests are located in `runtime_test.go` and cover:
@@ -103,6 +159,7 @@ Tests are located in `runtime_test.go` and cover:
 - Download URL construction
 - Checksum verification
 - Release requirement extraction
+- Runtime-based execution path
 
 Run tests with:
 ```bash
