@@ -28,6 +28,16 @@ cover: test
 	go tool cover -html=coverage.txt
 .PHONY: cover
 
+# Run canary tests (end-to-end tests against the compiled binary)
+canary: build
+	STRIPE_CLI_BINARY=$(PWD)/stripe go test -v -timeout 15m ./canary/...
+.PHONY: canary
+
+# Run offline canary tests only (no API key required)
+canary-offline: build
+	STRIPE_CLI_BINARY=$(PWD)/stripe go test -v -timeout 10m ./canary/... -run "TestOffline"
+.PHONY: canary-offline
+
 # gofmt and goimports all go files
 fmt:
 	go install golang.org/x/tools/cmd/goimports@v0.5
