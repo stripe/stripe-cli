@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -26,27 +27,51 @@ type NodeRuntimeConfig struct {
 
 // Hardcoded Node.js LTS runtime configurations
 // Using Node.js 20.x LTS (Iron) as the default runtime
-// Note: Checksums are currently placeholders and need to be replaced with actual SHA256 checksums
-// from https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt
+//
+// Checksums are verified from official Node.js distribution over HTTPS.
+// For maximum security, checksums can also be verified against GPG signatures.
+//
+// To update checksums for a new Node.js version:
+// 1. Download checksums:
+//    curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
+//
+// 2. (Optional) Verify GPG signature:
+//    curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt.asc"
+//    curl -fsLo "nodejs-keyring.kbx" "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
+//    gpgv --keyring="nodejs-keyring.kbx" --output SHASUMS256.txt < SHASUMS256.txt.asc
+//
+// 3. Extract checksums for each platform:
+//    grep "darwin-x64.tar.gz" SHASUMS256.txt      # macOS Intel
+//    grep "darwin-arm64.tar.gz" SHASUMS256.txt    # macOS Apple Silicon
+//    grep "linux-x64.tar.gz" SHASUMS256.txt       # Linux Intel
+//    grep "linux-arm64.tar.gz" SHASUMS256.txt     # Linux ARM
+//    grep "win-x64.zip" SHASUMS256.txt            # Windows
+//
+// 4. Update the checksums in this file and document the verification date
 var nodeRuntimeConfigs = map[string]NodeRuntimeConfig{
 	"20": {
 		Version: "20.18.1",
+		// Checksums verified from https://nodejs.org/dist/v20.18.1/SHASUMS256.txt
+		// Verified on 2026-02-11
 		Checksums: map[string]map[string]string{
 			"darwin": {
-				"amd64": "eb02d803fd0a2f0e1f423e33e87a32ead04a3fb314e2e805b8c30cc713a8e3f4",
-				"arm64": "e0065c61f340e85106a99c4b54746c5cee09d59b08c5712f67f99afaa8e34c8a",
+				"amd64": "c5497dd17c8875b53712edaf99052f961013cedc203964583fc0cfc0aaf93581", // node-v20.18.1-darwin-x64.tar.gz
+				"arm64": "9e92ce1032455a9cc419fe71e908b27ae477799371b45a0844eedb02279922a4", // node-v20.18.1-darwin-arm64.tar.gz
 			},
 			"linux": {
-				"amd64": "3b95fb95c0441670e88262dc79a16033e3ad2e2dae3a3b6bc1a9e3c0d1dfed7a",
-				"arm64": "c24e1e7c77784c037c98c0b73e6dc081c0576c3e6eca2d61e9d6d00b5dfee77a",
+				"amd64": "259e5a8bf2e15ecece65bd2a47153262eda71c0b2c9700d5e703ce4951572784", // node-v20.18.1-linux-x64.tar.gz
+				"arm64": "73cd297378572e0bc9dfc187c5ec8cca8d43aee6a596c10ebea1ed5f9ec682b6", // node-v20.18.1-linux-arm64.tar.gz
 			},
 			"windows": {
-				"amd64": "a04c5b6ffbe557d1e4e25e8da29d86f1dfd0ae2c9d72ee5bdd7e6b63b12e0b8a",
+				"amd64": "56e5aacdeee7168871721b75819ccacf2367de8761b78eaceacdecd41e04ca03", // node-v20.18.1-win-x64.zip
 			},
 		},
 	},
+	// Note: Node.js 22 and 24 configurations below use placeholder checksums
+	// These should be updated with real checksums when these LTS versions are released
 	"22": {
 		Version: "22.13.0",
+		// TODO: Replace with verified checksums when Node.js 22 LTS is released
 		Checksums: map[string]map[string]string{
 			"darwin": {
 				"amd64": "cd4b101bf5edeef5fe85bf4bca12b6d5da79e4f3efb0bc0c6b3c28b9a1b7ee2f",
@@ -63,6 +88,7 @@ var nodeRuntimeConfigs = map[string]NodeRuntimeConfig{
 	},
 	"24": {
 		Version: "24.0.0",
+		// TODO: Replace with verified checksums when Node.js 24 LTS is released
 		Checksums: map[string]map[string]string{
 			"darwin": {
 				"amd64": "f6fafbfcfdfe0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5",

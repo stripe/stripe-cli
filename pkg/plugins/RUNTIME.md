@@ -103,16 +103,71 @@ Multiple plugins can share the same runtime installation. The CLI checks if a ru
 
 ## Updating Checksums
 
-When adding or updating Node.js versions:
+When adding or updating Node.js versions, follow this process to ensure checksum integrity:
 
-1. Download the SHASUMS256.txt from https://nodejs.org/dist/vX.Y.Z/
-2. Find checksums for:
-   - `node-vX.Y.Z-darwin-x64.tar.gz`
-   - `node-vX.Y.Z-darwin-arm64.tar.gz`
-   - `node-vX.Y.Z-linux-x64.tar.gz`
-   - `node-vX.Y.Z-linux-arm64.tar.gz`
-   - `node-vX.Y.Z-win-x64.zip`
-3. Update the `nodeRuntimeConfigs` map in `runtime.go`
+### 1. Download and Verify Checksums
+
+```bash
+VERSION="20.18.1"
+
+# Download checksums file
+curl -fsO "https://nodejs.org/dist/v${VERSION}/SHASUMS256.txt"
+
+# (Optional but recommended) Verify GPG signature
+curl -fsO "https://nodejs.org/dist/v${VERSION}/SHASUMS256.txt.asc"
+curl -fsLo "nodejs-keyring.kbx" "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
+gpgv --keyring="nodejs-keyring.kbx" --output SHASUMS256-verified.txt < SHASUMS256.txt.asc
+```
+
+### 2. Extract Platform-Specific Checksums
+
+```bash
+# macOS Intel
+grep "darwin-x64.tar.gz" SHASUMS256.txt
+
+# macOS Apple Silicon
+grep "darwin-arm64.tar.gz" SHASUMS256.txt
+
+# Linux Intel
+grep "linux-x64.tar.gz" SHASUMS256.txt
+
+# Linux ARM
+grep "linux-arm64.tar.gz" SHASUMS256.txt
+
+# Windows
+grep "win-x64.zip" SHASUMS256.txt
+```
+
+### 3. Update `runtime.go`
+
+Add the checksums to the `nodeRuntimeConfigs` map:
+
+```go
+"20": {
+    Version: "20.18.1",
+    // Checksums verified from https://nodejs.org/dist/v20.18.1/SHASUMS256.txt
+    // Verified on YYYY-MM-DD
+    Checksums: map[string]map[string]string{
+        "darwin": {
+            "amd64": "abc123...", // node-v20.18.1-darwin-x64.tar.gz
+            "arm64": "def456...", // node-v20.18.1-darwin-arm64.tar.gz
+        },
+        // ... more platforms
+    },
+},
+```
+
+### 4. Run Tests
+
+```bash
+go test ./pkg/plugins/... -v
+```
+
+### Current Status
+
+- ✅ **Node.js 20.18.1**: Checksums verified from official distribution (verified 2026-02-11)
+- ⚠️ **Node.js 22.x**: Placeholder checksums (update when LTS is released)
+- ⚠️ **Node.js 24.x**: Placeholder checksums (update when LTS is released)
 
 ## JavaScript Plugin Structure
 
