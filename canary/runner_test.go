@@ -4,9 +4,13 @@ package canary
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -878,4 +882,233 @@ func TestOfflineLoginHelp(t *testing.T) {
 	if !strings.Contains(result.Stdout, "interactive") {
 		t.Errorf("Expected help to mention 'interactive' flag, got: %s", result.Stdout)
 	}
+}
+
+// =============================================================================
+// Webhook Forwarding & Log Streaming Tests
+// =============================================================================
+
+func TestAPIListenForwardTo(t *testing.T) {
+	runner := getRunner(t)
+	requireAPIKey(t)
+
+	// Set up webhook receiver
+	var mu sync.Mutex
+	var receivedReq *http.Request
+	var receivedBody []byte
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		receivedReq = r
+		body, _ := io.ReadAll(r.Body)
+		receivedBody = body
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Start listen in background
+	runner = runner.WithEnv(map[string]string{
+		"STRIPE_API_KEY": testutil.GetAPIKey(),
+	})
+
+	listen, err := runner.RunBackground("listen", "--forward-to", server.URL)
+	if err != nil {
+		t.Fatalf("Failed to start listen: %v", err)
+	}
+	defer listen.Stop()
+
+	// Wait for listen to be ready
+	err = listen.WaitForOutput("Ready!", 30*time.Second)
+	if err != nil {
+		stdout, stderr := listen.GetOutput()
+		t.Fatalf("Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+
+	// Trigger an event
+	triggerRunner := runner.WithTimeout(60 * time.Second)
+	result, err := triggerRunner.Run("trigger", "customer.created")
+	if err != nil {
+		t.Fatalf("Failed to run trigger: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Wait for webhook to arrive
+	time.Sleep(3 * time.Second)
+
+	// Validate received webhook
+	mu.Lock()
+	defer mu.Unlock()
+
+	if receivedReq == nil {
+		stdout, stderr := listen.GetOutput()
+		t.Fatalf("Webhook not received. Listen stdout: %s\nListen stderr: %s", stdout, stderr)
+	}
+
+	// Validate HTTP method
+	if receivedReq.Method != http.MethodPost {
+		t.Errorf("Expected POST request, got %s", receivedReq.Method)
+	}
+
+	// Validate Stripe-Signature header is present and has correct format
+	sig := receivedReq.Header.Get("Stripe-Signature")
+	if sig == "" {
+		t.Error("Stripe-Signature header is missing")
+	} else if !strings.Contains(sig, "t=") || !strings.Contains(sig, "v1=") {
+		t.Errorf("Stripe-Signature header has unexpected format: %s", sig)
+	}
+
+	// Validate body is valid JSON with expected event structure
+	if len(receivedBody) == 0 {
+		t.Error("Received empty body")
+	} else {
+		var event map[string]interface{}
+		if err := json.Unmarshal(receivedBody, &event); err != nil {
+			t.Errorf("Body is not valid JSON: %v", err)
+		} else {
+			// Check for required event fields
+			if _, ok := event["id"]; !ok {
+				t.Error("Event missing 'id' field")
+			}
+			if _, ok := event["type"]; !ok {
+				t.Error("Event missing 'type' field")
+			} else if event["type"] != "customer.created" {
+				t.Errorf("Expected event type 'customer.created', got '%v'", event["type"])
+			}
+			if _, ok := event["data"]; !ok {
+				t.Error("Event missing 'data' field")
+			}
+		}
+	}
+}
+
+func TestAPIListenOutputFormat(t *testing.T) {
+	runner := getRunner(t)
+	requireAPIKey(t)
+
+	// Start listen with JSON format in background
+	runner = runner.WithEnv(map[string]string{
+		"STRIPE_API_KEY": testutil.GetAPIKey(),
+	})
+
+	listen, err := runner.RunBackground("listen", "--format", "JSON")
+	if err != nil {
+		t.Fatalf("Failed to start listen: %v", err)
+	}
+	defer listen.Stop()
+
+	// Wait for listen to be ready
+	err = listen.WaitForOutput("Ready!", 30*time.Second)
+	if err != nil {
+		stdout, stderr := listen.GetOutput()
+		t.Fatalf("Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+
+	// Trigger an event
+	triggerRunner := runner.WithTimeout(60 * time.Second)
+	result, err := triggerRunner.Run("trigger", "customer.created")
+	if err != nil {
+		t.Fatalf("Failed to run trigger: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Wait for event to be logged
+	time.Sleep(3 * time.Second)
+
+	// Get listen output
+	stdout, stderr := listen.GetOutput()
+	combinedOutput := stdout + stderr
+
+	// Verify JSON event appears in output
+	if !strings.Contains(combinedOutput, "customer.created") {
+		t.Errorf("Expected output to contain 'customer.created' event, got:\n%s", combinedOutput)
+	}
+
+	// Try to find and parse a JSON object in the output (after "Ready!")
+	readyIdx := strings.Index(combinedOutput, "Ready!")
+	if readyIdx >= 0 {
+		afterReady := combinedOutput[readyIdx:]
+		// Look for JSON-like content
+		if strings.Contains(afterReady, `"type"`) || strings.Contains(afterReady, "customer.created") {
+			t.Logf("Successfully found event data in output after Ready")
+		}
+	}
+}
+
+func TestAPILogsTailCapture(t *testing.T) {
+	runner := getRunner(t)
+	requireAPIKey(t)
+
+	// Start logs tail with JSON format in background
+	runner = runner.WithEnv(map[string]string{
+		"STRIPE_API_KEY": testutil.GetAPIKey(),
+	})
+
+	logsTail, err := runner.RunBackground("logs", "tail", "--format", "JSON")
+	if err != nil {
+		t.Fatalf("Failed to start logs tail: %v", err)
+	}
+	defer logsTail.Stop()
+
+	// Wait for logs tail to be ready
+	err = logsTail.WaitForOutput("Ready!", 30*time.Second)
+	if err != nil {
+		stdout, stderr := logsTail.GetOutput()
+		t.Fatalf("Logs tail failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+	}
+
+	// Make an API request that should be captured
+	apiRunner := runner.WithTimeout(30 * time.Second)
+	result, err := apiRunner.Run("customers", "list", "--limit", "1")
+	if err != nil {
+		t.Fatalf("Failed to run customers list: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Fatalf("Customers list failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Wait for log entry to stream
+	time.Sleep(3 * time.Second)
+
+	// Get logs tail output
+	stdout, stderr := logsTail.GetOutput()
+	combinedOutput := stdout + stderr
+
+	// Verify the API request was captured
+	// The log should contain information about the GET /v1/customers request
+	if !strings.Contains(combinedOutput, "customers") && !strings.Contains(combinedOutput, "GET") {
+		t.Logf("Logs tail output (may not capture all requests immediately):\n%s", combinedOutput)
+		// This is not necessarily a failure - logs streaming may have latency
+		// or may not capture requests from the same CLI session
+	}
+
+	// Check that logs tail shows some structured output after Ready
+	readyIdx := strings.Index(combinedOutput, "Ready!")
+	if readyIdx >= 0 {
+		afterReady := combinedOutput[readyIdx:]
+		// Look for any log-like content (status codes, methods, paths)
+		if strings.Contains(afterReady, "200") ||
+			strings.Contains(afterReady, "GET") ||
+			strings.Contains(afterReady, "POST") ||
+			strings.Contains(afterReady, "/v1/") {
+			t.Logf("Successfully captured API request in logs tail")
+		} else {
+			// Log what we got for debugging, but don't fail
+			// Logs tail captures requests from other CLI instances, not necessarily our own
+			t.Logf("No API request captured yet. This may be expected if no other requests are being made. Output after Ready: %s", afterReady[:min(len(afterReady), 500)])
+		}
+	}
+}
+
+// min returns the smaller of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

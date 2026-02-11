@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -199,4 +200,139 @@ func HasAPIKey() bool {
 // GetAPIKey returns the STRIPE_API_KEY from the environment.
 func GetAPIKey() string {
 	return os.Getenv("STRIPE_API_KEY")
+}
+
+// BackgroundProcess represents a running CLI command in the background.
+type BackgroundProcess struct {
+	cmd    *exec.Cmd
+	cancel context.CancelFunc
+	stdout *bytes.Buffer
+	stderr *bytes.Buffer
+	done   chan error
+	mu     sync.Mutex
+}
+
+// RunBackground starts the CLI in background and returns immediately.
+// The returned BackgroundProcess can be used to wait for output, get current output,
+// or stop the process.
+func (r *Runner) RunBackground(args ...string) (*BackgroundProcess, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cmd := exec.CommandContext(ctx, r.BinaryPath, args...)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Build environment
+	cmd.Env = os.Environ()
+
+	// Add config dir if specified
+	if r.ConfigDir != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("XDG_CONFIG_HOME=%s", r.ConfigDir))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("STRIPE_CONFIG_DIR=%s", filepath.Join(r.ConfigDir, "stripe")))
+	}
+
+	// Add custom environment variables
+	for k, v := range r.Env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Disable telemetry by default
+	cmd.Env = append(cmd.Env, "STRIPE_CLI_TELEMETRY_OPTOUT=1")
+
+	if err := cmd.Start(); err != nil {
+		cancel()
+		return nil, fmt.Errorf("failed to start command: %w", err)
+	}
+
+	bp := &BackgroundProcess{
+		cmd:    cmd,
+		cancel: cancel,
+		stdout: &stdout,
+		stderr: &stderr,
+		done:   make(chan error, 1),
+	}
+
+	// Wait for command completion in background
+	go func() {
+		bp.done <- cmd.Wait()
+	}()
+
+	return bp, nil
+}
+
+// WaitForOutput waits until combined output contains the expected string or timeout.
+func (bp *BackgroundProcess) WaitForOutput(contains string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	checkInterval := 100 * time.Millisecond
+
+	for time.Now().Before(deadline) {
+		bp.mu.Lock()
+		combined := bp.stdout.String() + bp.stderr.String()
+		bp.mu.Unlock()
+
+		if strings.Contains(combined, contains) {
+			return nil
+		}
+
+		// Check if process has exited
+		select {
+		case err := <-bp.done:
+			// Process exited, check one more time
+			bp.mu.Lock()
+			combined = bp.stdout.String() + bp.stderr.String()
+			bp.mu.Unlock()
+			if strings.Contains(combined, contains) {
+				// Put the error back for Stop() to retrieve
+				bp.done <- err
+				return nil
+			}
+			return fmt.Errorf("process exited before output appeared: %v (output: %s)", err, combined)
+		default:
+			// Process still running, continue waiting
+		}
+
+		time.Sleep(checkInterval)
+	}
+
+	return fmt.Errorf("timeout waiting for output containing %q", contains)
+}
+
+// GetOutput returns the current stdout and stderr contents.
+func (bp *BackgroundProcess) GetOutput() (stdout, stderr string) {
+	bp.mu.Lock()
+	defer bp.mu.Unlock()
+	return bp.stdout.String(), bp.stderr.String()
+}
+
+// Stop kills the process and returns the final result.
+func (bp *BackgroundProcess) Stop() (*Result, error) {
+	// Cancel the context to kill the process
+	bp.cancel()
+
+	// Wait for the process to exit
+	var exitErr error
+	select {
+	case exitErr = <-bp.done:
+	case <-time.After(5 * time.Second):
+		return nil, fmt.Errorf("timeout waiting for process to stop")
+	}
+
+	bp.mu.Lock()
+	result := &Result{
+		Stdout:   normalizeLineEndings(bp.stdout.String()),
+		Stderr:   normalizeLineEndings(bp.stderr.String()),
+		ExitCode: 0,
+	}
+	bp.mu.Unlock()
+
+	if exitErr != nil {
+		if exitError, ok := exitErr.(*exec.ExitError); ok {
+			result.ExitCode = exitError.ExitCode()
+		}
+		// Don't return error for expected signal termination
+	}
+
+	return result, nil
 }

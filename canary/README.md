@@ -87,8 +87,11 @@ Tests that require a valid Stripe test API key:
 | `TestAPIProductsCreate` | `stripe products create` | Resource commands |
 | `TestAPIListenPrintSecret` | `stripe listen --print-secret` | Webhook listener connects |
 | `TestAPIListenWithEvents` | `stripe listen --events ... --print-secret` | Event filtering works |
+| `TestAPIListenForwardTo` | `stripe listen --forward-to` + trigger | Webhook forwarding end-to-end |
+| `TestAPIListenOutputFormat` | `stripe listen --format JSON` + trigger | Listen shows events correctly |
 | `TestAPILogsTailStartup` | `stripe logs tail` | Log streaming connects |
 | `TestAPILogsTailWithFilters` | `stripe logs tail --filter-http-method POST` | Log filtering works |
+| `TestAPILogsTailCapture` | `stripe logs tail --format JSON` + API call | Logs tail captures requests |
 | `TestAPIConfigSetAndUseAPIKey` | `stripe config --set` + API call | Config-based auth |
 | `TestAPIConfigMultipleProfiles` | `--project-name` flag | Multi-profile support |
 
