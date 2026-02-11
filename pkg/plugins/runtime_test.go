@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -41,8 +42,16 @@ func TestIsRuntimeInstalled(t *testing.T) {
 
 	// Create the runtime directory structure
 	runtimePath := GetNodeRuntimePath(config, "20")
-	nodeBinary := runtimePath + "/bin/node"
-	fs.MkdirAll(runtimePath+"/bin", 0755)
+
+	// Use the correct path based on OS
+	var nodeBinary string
+	if runtime.GOOS == "windows" {
+		nodeBinary = filepath.Join(runtimePath, "node.exe")
+	} else {
+		nodeBinary = filepath.Join(runtimePath, "bin", "node")
+		fs.MkdirAll(filepath.Join(runtimePath, "bin"), 0755)
+	}
+
 	afero.WriteFile(fs, nodeBinary, []byte("fake node binary"), 0755)
 
 	// Now runtime should be detected as installed
