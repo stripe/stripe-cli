@@ -192,3 +192,56 @@ func TestGetNodeBinaryPath(t *testing.T) {
 	path = GetNodeBinaryPath(config, "99")
 	require.Empty(t, path)
 }
+
+func TestIsWithinDirectory(t *testing.T) {
+	tests := []struct {
+		name       string
+		destPath   string
+		targetPath string
+		expected   bool
+	}{
+		{
+			name:       "valid subdirectory",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/runtime/bin/node",
+			expected:   true,
+		},
+		{
+			name:       "valid same directory",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/runtime",
+			expected:   true,
+		},
+		{
+			name:       "path traversal attempt with ..",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/runtime/../../../etc/passwd",
+			expected:   false,
+		},
+		{
+			name:       "direct parent escape",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/other",
+			expected:   false,
+		},
+		{
+			name:       "path traversal in middle",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/runtime/subdir/../../outside/file",
+			expected:   false,
+		},
+		{
+			name:       "clean path with dots",
+			destPath:   "/tmp/runtime",
+			targetPath: "/tmp/runtime/./bin/node",
+			expected:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isWithinDirectory(tt.destPath, tt.targetPath)
+			require.Equal(t, tt.expected, result, "isWithinDirectory(%s, %s)", tt.destPath, tt.targetPath)
+		})
+	}
+}

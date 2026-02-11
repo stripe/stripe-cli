@@ -256,6 +256,23 @@ func extractRuntime(fs afero.Fs, data []byte, destPath string, opsys string) err
 	}
 }
 
+// isWithinDirectory checks if a target path is within the destination directory
+// This prevents path traversal attacks (Zip Slip vulnerability)
+func isWithinDirectory(destPath, targetPath string) bool {
+	// Clean paths to resolve any .. or . components
+	cleanDest := filepath.Clean(destPath)
+	cleanTarget := filepath.Clean(targetPath)
+
+	// Get relative path from dest to target
+	rel, err := filepath.Rel(cleanDest, cleanTarget)
+	if err != nil {
+		return false
+	}
+
+	// If the relative path starts with "..", it's trying to escape
+	return !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != ".."
+}
+
 // extractTarGz extracts a .tar.gz archive
 func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 	gzr, err := gzip.NewReader(strings.NewReader(string(data)))
@@ -282,7 +299,11 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 		}
 		relativePath := parts[1]
 
+		// Prevent Zip Slip: validate that the target path is within destPath
 		targetPath := filepath.Join(destPath, relativePath)
+		if !isWithinDirectory(destPath, targetPath) {
+			return fmt.Errorf("illegal file path in archive: %s", header.Name)
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:

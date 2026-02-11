@@ -97,6 +97,18 @@ Runtime versions and checksums are hardcoded in `runtime.go`:
 
 All downloaded runtimes are verified against hardcoded SHA256 checksums from the official Node.js releases at https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt
 
+### Zip Slip Protection
+
+The runtime extraction includes protection against path traversal attacks (CVE-2018-1263):
+- All extracted file paths are validated before writing
+- Paths attempting to escape the destination directory are rejected
+- Uses `filepath.Rel` to detect `..` sequences in resolved paths
+- Example blocked paths:
+  - `node/../../../etc/passwd`
+  - `bin/../../outside/file`
+
+This prevents malicious archives from writing files outside the intended directory.
+
 ### Deduplication
 
 Multiple plugins can share the same runtime installation. The CLI checks if a runtime is already installed before downloading.
