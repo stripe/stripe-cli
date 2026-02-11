@@ -161,6 +161,20 @@ func (p *Plugin) LookUpLatestVersion() string {
 	return version
 }
 
+// getReleaseForVersion finds the release object for a specific version on the current platform
+func (p *Plugin) getReleaseForVersion(version string) *Release {
+	opsystem := runtime.GOOS
+	arch := runtime.GOARCH
+
+	for _, release := range p.Releases {
+		if release.Version == version && release.OS == opsystem && release.Arch == arch {
+			return &release
+		}
+	}
+
+	return nil
+}
+
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
@@ -182,6 +196,18 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		}).Debugf("install error: %s", err)
 
 		return errors.New("you don't seem to have access to this plugin")
+	}
+
+	// Check if this plugin requires a runtime and install it if needed
+	release := p.getReleaseForVersion(version)
+	if release != nil {
+		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			ansi.StopSpinner(spinner, "", os.Stdout)
+			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
+				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
+			}
+			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+		}
 	}
 
 	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
@@ -210,11 +236,6 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 	// sync list of installed plugins to file
 	cfg.WriteConfigField("installed_plugins", installedList)
-
-	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s', %s", p.Shortname, err)), os.Stdout)
-		return err
-	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(cfg, fs, version)
