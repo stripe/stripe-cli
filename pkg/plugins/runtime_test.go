@@ -169,6 +169,13 @@ func TestGetReleaseForVersion(t *testing.T) {
 				Sum:     "ghi789",
 				Runtime: map[string]string{"node": "20"},
 			},
+			{
+				Arch:    "amd64",
+				OS:      "windows",
+				Version: "1.0.0",
+				Sum:     "jkl012",
+				Runtime: map[string]string{"node": "20"},
+			},
 		},
 	}
 
