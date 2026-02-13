@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"golang.org/x/term"
@@ -379,27 +380,66 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	pluginDir := p.getPluginInstallPath(config, version)
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
-	pluginBinaryPath += GetBinaryExtension()
+
+	// Get release info once to avoid duplicate lookups
+	release := p.getReleaseForVersion(version)
+
+	// Determine the correct file extension based on whether the plugin uses a runtime
+	if release != nil {
+		if _, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			// JavaScript plugin - use .js extension
+			if !strings.HasSuffix(pluginBinaryPath, ".js") {
+				pluginBinaryPath += ".js"
+			}
+		} else {
+			// Native binary - use platform-specific extension
+			pluginBinaryPath += GetBinaryExtension()
+		}
+	} else {
+		// Unknown - try .js first for dev mode, otherwise use binary extension
+		if PluginsPath != "" && !strings.HasSuffix(pluginBinaryPath, ".js") {
+			pluginBinaryPath += ".js"
+		} else {
+			pluginBinaryPath += GetBinaryExtension()
+		}
+	}
 
 	// Check if this plugin requires a runtime
 	var cmd *exec.Cmd
-	release := p.getReleaseForVersion(version)
+	var usesRuntime bool
 	if release != nil {
 		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			// Plugin requires Node.js runtime - execute via node
+			// Plugin requires Node.js runtime - install if not present
+			if !IsRuntimeInstalled(config, fs, nodeVersion) {
+				logger.Debugf("Node.js runtime v%s not installed, installing...", nodeVersion)
+				if err := InstallNodeRuntime(ctx, config, fs, nodeVersion); err != nil {
+					return fmt.Errorf("failed to install required Node.js runtime: %w", err)
+				}
+			}
+
+			// Execute via node
 			nodePath := GetNodeBinaryPath(config, nodeVersion)
 			if nodePath == "" {
 				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
 			}
+
+			// Verify the Node binary actually exists
+			if exists, err := afero.Exists(fs, nodePath); err != nil || !exists {
+				return fmt.Errorf("Node.js runtime binary not found at %s (version %s)", nodePath, nodeVersion)
+			}
+
 			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
 			cmd = exec.Command(nodePath, pluginBinaryPath)
+			usesRuntime = true
 		} else {
 			// No runtime required - execute binary directly
 			cmd = exec.Command(pluginBinaryPath)
+			usesRuntime = false
 		}
 	} else {
 		// Couldn't find release info, assume it's a standalone binary
 		cmd = exec.Command(pluginBinaryPath)
+		usesRuntime = false
 	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
@@ -424,14 +464,36 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		},
 	}
 
-	sum, err := p.getChecksum(version)
-	if err != nil {
-		return err
-	}
+	// Only verify checksum when directly executing plugin binary
+	// When using a runtime (node), we execute the runtime binary, not the plugin
+	if !usesRuntime {
+		sum, err := p.getChecksum(version)
+		if err != nil {
+			return err
+		}
 
-	clientConfig.SecureConfig = &hcplugin.SecureConfig{
-		Checksum: sum,
-		Hash:     sha256.New(),
+		clientConfig.SecureConfig = &hcplugin.SecureConfig{
+			Checksum: sum,
+			Hash:     sha256.New(),
+		}
+	} else {
+		// For runtime-based plugins, manually verify the plugin file's checksum
+		// since go-plugin can't verify it (we're executing the runtime, not the plugin)
+		// Skip verification for local dev builds
+		if version != "local.build.dev" && PluginsPath == "" {
+			logger.Debug("Manually verifying plugin file checksum (executed via runtime)")
+			file, err := fs.Open(pluginBinaryPath)
+			if err != nil {
+				return fmt.Errorf("failed to open plugin file for verification: %w", err)
+			}
+			defer file.Close()
+
+			if err := p.verifyChecksum(file, version); err != nil {
+				return fmt.Errorf("plugin verification failed: %w", err)
+			}
+		} else {
+			logger.Debug("Skipping checksum verification for local dev build")
+		}
 	}
 
 	// start by launching the plugin process / binary
