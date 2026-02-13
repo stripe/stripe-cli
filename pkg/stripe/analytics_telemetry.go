@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -35,14 +36,15 @@ const DefaultTelemetryEndpoint = "https://r.stripe.com/0"
 
 // CLIAnalyticsEventMetadata is the structure that holds telemetry data context that is ultimately sent to the Stripe Analytics Service.
 type CLIAnalyticsEventMetadata struct {
-	InvocationID      string `url:"invocation_id"`      // The invocation id is unique to each context object and represents all events coming from one command / gRPC method call
-	UserAgent         string `url:"user_agent"`         // the application that is used to create this request
-	CommandPath       string `url:"command_path"`       // the command or gRPC method that initiated this request
-	CommandFlags      string `url:"command_flags"`      // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
-	Merchant          string `url:"merchant"`           // the merchant ID: ex. acct_xxxx
-	CLIVersion        string `url:"cli_version"`        // the version of the CLI
-	OS                string `url:"os"`                 // the OS of the system
-	GeneratedResource bool   `url:"generated_resource"` // whether or not this was a generated resource
+	InvocationID      string `url:"invocation_id"`              // The invocation id is unique to each context object and represents all events coming from one command / gRPC method call
+	UserAgent         string `url:"user_agent"`                 // the application that is used to create this request
+	CommandPath       string `url:"command_path"`               // the command or gRPC method that initiated this request
+	CommandFlags      string `url:"command_flags"`              // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
+	Merchant          string `url:"merchant"`                   // the merchant ID: ex. acct_xxxx
+	CLIVersion        string `url:"cli_version"`                // the version of the CLI
+	OS                string `url:"os"`                         // the OS of the system
+	GeneratedResource bool   `url:"generated_resource"`         // whether or not this was a generated resource
+	AIAgent           string `url:"ai_agent,omitempty"`         // the AI coding agent that invoked the CLI, if any
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -72,6 +74,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
+		AIAgent:      detectAIAgent(),
 	}
 }
 
@@ -236,4 +239,30 @@ func TelemetryOptedOut(optoutVar string) bool {
 	optoutVar = strings.ToLower(optoutVar)
 
 	return optoutVar == "1" || optoutVar == "true"
+}
+
+// detectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
+func detectAIAgent() string {
+	if os.Getenv("ANTIGRAVITY_CLI_ALIAS") != "" {
+		return "antigravity"
+	}
+	if os.Getenv("CLAUDECODE") != "" {
+		return "claude_code"
+	}
+	if os.Getenv("CLINE_ACTIVE") != "" {
+		return "cline"
+	}
+	if os.Getenv("CODEX_SANDBOX") != "" {
+		return "codex_cli"
+	}
+	if os.Getenv("CURSOR_AGENT") != "" {
+		return "cursor"
+	}
+	if os.Getenv("GEMINI_CLI") != "" {
+		return "gemini_cli"
+	}
+	if os.Getenv("OPENCODE") != "" {
+		return "open_code"
+	}
+	return ""
 }
