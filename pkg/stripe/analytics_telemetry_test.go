@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -173,41 +172,6 @@ func TestSendEvent(t *testing.T) {
 }
 
 func TestSendEvent_WithAIAgent(t *testing.T) {
-	allEnvVars := []string{
-		"ANTIGRAVITY_CLI_ALIAS",
-		"CLAUDECODE",
-		"CLINE_ACTIVE",
-		"CODEX_SANDBOX",
-		"CURSOR_AGENT",
-		"GEMINI_CLI",
-		"OPENCODE",
-	}
-
-	// Save all env vars
-	savedEnvs := make(map[string]string)
-	for _, envVar := range allEnvVars {
-		savedEnvs[envVar] = os.Getenv(envVar)
-	}
-
-	// Restore all env vars after test
-	defer func() {
-		for envVar, val := range savedEnvs {
-			if val != "" {
-				os.Setenv(envVar, val)
-			} else {
-				os.Unsetenv(envVar)
-			}
-		}
-	}()
-
-	// Clear all env vars first
-	for _, envVar := range allEnvVars {
-		os.Unsetenv(envVar)
-	}
-
-	// Set only CURSOR_AGENT
-	os.Setenv("CURSOR_AGENT", "1")
-
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
 		require.NoError(t, err)
@@ -217,14 +181,17 @@ func TestSendEvent_WithAIAgent(t *testing.T) {
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
 
-	// Create metadata using NewEventMetadata which will detect the env var
-	telemetryMetadata := stripe.NewEventMetadata()
-	telemetryMetadata.InvocationID = "123456"
-	telemetryMetadata.UserAgent = "Unit Test"
-	telemetryMetadata.CLIVersion = "master"
-	telemetryMetadata.OS = "darwin"
-	telemetryMetadata.CommandPath = "stripe test"
-	telemetryMetadata.Merchant = "acct_1234"
+	// Create metadata and manually set AIAgent field
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID:      "123456",
+		UserAgent:         "Unit Test",
+		CLIVersion:        "master",
+		OS:                "darwin",
+		CommandPath:       "stripe test",
+		Merchant:          "acct_1234",
+		GeneratedResource: false,
+		AIAgent:           "cursor",
+	}
 
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
@@ -257,39 +224,28 @@ func TestTelemetryOptedOut(t *testing.T) {
 }
 
 // AI Agent Detection Tests
-func TestNewEventMetadata_DetectsAIAgent(t *testing.T) {
-	// Save original env state
-	originalEnv := os.Getenv("CLAUDECODE")
-	defer func() {
-		if originalEnv != "" {
-			os.Setenv("CLAUDECODE", originalEnv)
-		} else {
-			os.Unsetenv("CLAUDECODE")
+func TestDetectAIAgent_WithClaudeCode(t *testing.T) {
+	// Mock env getter that returns CLAUDECODE
+	getEnv := func(key string) string {
+		if key == "CLAUDECODE" {
+			return "1"
 		}
-	}()
+		return ""
+	}
+	result := stripe.DetectAIAgent(getEnv)
+	require.Equal(t, "claude_code", result)
+}
 
-	// Test with CLAUDECODE set
-	os.Setenv("CLAUDECODE", "1")
-	tel := stripe.NewEventMetadata()
-	require.Equal(t, "claude_code", tel.AIAgent)
-
-	// Test with no AI agent env vars
-	os.Unsetenv("CLAUDECODE")
-	tel = stripe.NewEventMetadata()
-	require.Equal(t, "", tel.AIAgent)
+func TestDetectAIAgent_NoAgentDetected(t *testing.T) {
+	// Mock env getter that returns empty strings
+	getEnv := func(key string) string {
+		return ""
+	}
+	result := stripe.DetectAIAgent(getEnv)
+	require.Equal(t, "", result)
 }
 
 func TestAIAgentDetection_AllAgents(t *testing.T) {
-	allEnvVars := []string{
-		"ANTIGRAVITY_CLI_ALIAS",
-		"CLAUDECODE",
-		"CLINE_ACTIVE",
-		"CODEX_SANDBOX",
-		"CURSOR_AGENT",
-		"GEMINI_CLI",
-		"OPENCODE",
-	}
-
 	tests := []struct {
 		name     string
 		envVar   string
@@ -306,61 +262,27 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Save all env vars
-			savedEnvs := make(map[string]string)
-			for _, envVar := range allEnvVars {
-				savedEnvs[envVar] = os.Getenv(envVar)
-			}
-
-			// Restore all env vars after test
-			defer func() {
-				for envVar, val := range savedEnvs {
-					if val != "" {
-						os.Setenv(envVar, val)
-					} else {
-						os.Unsetenv(envVar)
-					}
+			// Mock env getter that returns only the specific env var being tested
+			getEnv := func(key string) string {
+				if key == tt.envVar {
+					return "true"
 				}
-			}()
-
-			// Clear all env vars first
-			for _, envVar := range allEnvVars {
-				os.Unsetenv(envVar)
+				return ""
 			}
-
-			// Set only the env var being tested
-			os.Setenv(tt.envVar, "true")
-			tel := stripe.NewEventMetadata()
-			require.Equal(t, tt.expected, tel.AIAgent)
+			result := stripe.DetectAIAgent(getEnv)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
 
 func TestAIAgentDetection_Priority(t *testing.T) {
-	// Test that the first matching env var wins
-	// Save original env state
-	originalAntigravity := os.Getenv("ANTIGRAVITY_CLI_ALIAS")
-	originalCursor := os.Getenv("CURSOR_AGENT")
-	defer func() {
-		if originalAntigravity != "" {
-			os.Setenv("ANTIGRAVITY_CLI_ALIAS", originalAntigravity)
-		} else {
-			os.Unsetenv("ANTIGRAVITY_CLI_ALIAS")
+	// Test that the first matching env var wins (antigravity comes before cursor)
+	getEnv := func(key string) string {
+		if key == "ANTIGRAVITY_CLI_ALIAS" || key == "CURSOR_AGENT" {
+			return "1"
 		}
-		if originalCursor != "" {
-			os.Setenv("CURSOR_AGENT", originalCursor)
-		} else {
-			os.Unsetenv("CURSOR_AGENT")
-		}
-	}()
-
-	// Set multiple env vars - should return the first one (antigravity)
-	os.Setenv("ANTIGRAVITY_CLI_ALIAS", "1")
-	os.Setenv("CURSOR_AGENT", "1")
-	tel := stripe.NewEventMetadata()
-	require.Equal(t, "antigravity", tel.AIAgent)
-
-	// Clean up
-	os.Unsetenv("ANTIGRAVITY_CLI_ALIAS")
-	os.Unsetenv("CURSOR_AGENT")
+		return ""
+	}
+	result := stripe.DetectAIAgent(getEnv)
+	require.Equal(t, "antigravity", result)
 }

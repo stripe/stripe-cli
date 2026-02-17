@@ -74,7 +74,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
-		AIAgent:      detectAIAgent(),
+		AIAgent:      DetectAIAgent(os.Getenv),
 	}
 }
 
@@ -241,27 +241,28 @@ func TelemetryOptedOut(optoutVar string) bool {
 	return optoutVar == "1" || optoutVar == "true"
 }
 
-// detectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
-func detectAIAgent() string {
-	if os.Getenv("ANTIGRAVITY_CLI_ALIAS") != "" {
+// DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
+// It accepts an environment getter function to allow testing without modifying the actual environment.
+func DetectAIAgent(getEnv func(string) string) string {
+	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
 		return "antigravity"
 	}
-	if os.Getenv("CLAUDECODE") != "" {
+	if getEnv("CLAUDECODE") != "" {
 		return "claude_code"
 	}
-	if os.Getenv("CLINE_ACTIVE") != "" {
+	if getEnv("CLINE_ACTIVE") != "" {
 		return "cline"
 	}
-	if os.Getenv("CODEX_SANDBOX") != "" {
+	if getEnv("CODEX_SANDBOX") != "" {
 		return "codex_cli"
 	}
-	if os.Getenv("CURSOR_AGENT") != "" {
+	if getEnv("CURSOR_AGENT") != "" {
 		return "cursor"
 	}
-	if os.Getenv("GEMINI_CLI") != "" {
+	if getEnv("GEMINI_CLI") != "" {
 		return "gemini_cli"
 	}
-	if os.Getenv("OPENCODE") != "" {
+	if getEnv("OPENCODE") != "" {
 		return "open_code"
 	}
 	return ""
