@@ -233,6 +233,12 @@ func init() {
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
+
+	generateCmd, err := newGenerateCmd(pluginList, nfs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rootCmd.AddCommand(generateCmd.cmd)
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
