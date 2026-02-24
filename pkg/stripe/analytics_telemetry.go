@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -43,6 +44,7 @@ type CLIAnalyticsEventMetadata struct {
 	CLIVersion        string `url:"cli_version"`        // the version of the CLI
 	OS                string `url:"os"`                 // the OS of the system
 	GeneratedResource bool   `url:"generated_resource"` // whether or not this was a generated resource
+	AIAgent           string `url:"ai_agent,omitempty"` // the AI coding agent that invoked the CLI, if any
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -72,6 +74,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
+		AIAgent:      DetectAIAgent(os.Getenv),
 	}
 }
 
@@ -236,4 +239,31 @@ func TelemetryOptedOut(optoutVar string) bool {
 	optoutVar = strings.ToLower(optoutVar)
 
 	return optoutVar == "1" || optoutVar == "true"
+}
+
+// DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
+// It accepts an environment getter function to allow testing without modifying the actual environment.
+func DetectAIAgent(getEnv func(string) string) string {
+	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
+		return "antigravity"
+	}
+	if getEnv("CLAUDECODE") != "" {
+		return "claude_code"
+	}
+	if getEnv("CLINE_ACTIVE") != "" {
+		return "cline"
+	}
+	if getEnv("CODEX_SANDBOX") != "" {
+		return "codex_cli"
+	}
+	if getEnv("CURSOR_AGENT") != "" {
+		return "cursor"
+	}
+	if getEnv("GEMINI_CLI") != "" {
+		return "gemini_cli"
+	}
+	if getEnv("OPENCODE") != "" {
+		return "open_code"
+	}
+	return ""
 }
