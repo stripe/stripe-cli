@@ -51,6 +51,7 @@ type OperationData struct {
 	HTTPVerb  string
 	PropFlags map[string]string
 	EnumFlags map[string][]spec.StripeEnumValue
+	ServerURL string
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
@@ -358,12 +359,19 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 
 		properties, enums := getMethodProperties(apiNamespace, specOp, op)
 
+		// Extract server URL if specified
+		serverURL := ""
+		if len(specOp.Servers) > 0 {
+			serverURL = specOp.Servers[0].URL
+		}
+
 		if hasSubResources {
 			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
 				EnumFlags: enums,
+				ServerURL: serverURL,
 			}
 		} else {
 			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
@@ -371,6 +379,7 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 				HTTPVerb:  httpString,
 				PropFlags: properties,
 				EnumFlags: enums,
+				ServerURL: serverURL,
 			}
 		}
 	}

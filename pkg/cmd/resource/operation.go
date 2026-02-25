@@ -130,13 +130,21 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 
 // NewOperationCmd returns a new OperationCmd.
 func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool) *OperationCmd {
+	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
+
+	// Use the operation-specific server URL if provided, otherwise use the default API base URL
+	apiBaseURL := stripe.DefaultAPIBaseURL
+	if serverURL != "" {
+		apiBaseURL = serverURL
+	}
+
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
 			Method:           httpVerb,
 			Profile:          &cfg.Profile,
+			APIBaseURL:       apiBaseURL,
 			IsPreviewCommand: isPreview,
 		},
 		Name:             name,

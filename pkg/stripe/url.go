@@ -46,7 +46,7 @@ func isValid(url string, exactStrings []string, regexpStrings []string) bool {
 
 // ValidateAPIBaseURL returns an error if apiBaseURL isn't allowed
 func ValidateAPIBaseURL(apiBaseURL string) error {
-	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL}
+	exactStrings := []string{DefaultAPIBaseURL, qaAPIBaseURL, DefaultFilesAPIBaseURL}
 	regexpStrings := []string{APIBaseURLRegexp, devAPIBaseURLRegexp, localhostURLRegexp}
 	if isValid(apiBaseURL, exactStrings, regexpStrings) {
 		return nil

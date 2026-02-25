@@ -213,7 +213,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"refresh_url":                            "string",
 		"return_url":                             "string",
 		"type":                                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountSessionsCmd.Cmd, "create", "/v1/account_sessions", http.MethodPost, map[string]string{
 		"account":                               "string",
 		"components.account_management.enabled": "boolean",
@@ -283,8 +283,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"components.payouts_list.enabled":                                                  "boolean",
 		"components.tax_registrations.enabled":                                             "boolean",
 		"components.tax_settings.enabled":                                                  "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rAccountsCmd.Cmd, "capabilities", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rAccountsCmd.Cmd, "capabilities", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "create", "/v1/accounts", http.MethodPost, map[string]string{
 		"account_token":                                                  "string",
 		"business_profile.annual_revenue.amount":                         "integer",
@@ -518,23 +518,23 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tos_acceptance.service_agreement":                         "string",
 		"tos_acceptance.user_agent":                                "string",
 		"type":                                                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rAccountsCmd.Cmd, "delete", "/v1/accounts/{account}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rAccountsCmd.Cmd, "delete", "/v1/accounts/{account}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "list", "/v1/accounts", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "persons", "/v1/accounts/{account}/persons", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "reject", "/v1/accounts/{account}/reject", http.MethodPost, map[string]string{
 		"reason": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rAccountsCmd.Cmd, "retrieve", "/v1/account", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rAccountsCmd.Cmd, "retrieve", "/v1/account", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAccountsCmd.Cmd, "update", "/v1/accounts/{account}", http.MethodPost, map[string]string{
 		"account_token":                                                  "string",
 		"business_profile.annual_revenue.amount":                         "integer",
@@ -763,28 +763,28 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tos_acceptance.ip":                                        "string",
 		"tos_acceptance.service_agreement":                         "string",
 		"tos_acceptance.user_agent":                                "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "create", "/v1/apple_pay/domains", http.MethodPost, map[string]string{
 		"domain_name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "delete", "/v1/apple_pay/domains/{domain}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "delete", "/v1/apple_pay/domains/{domain}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "list", "/v1/apple_pay/domains", http.MethodGet, map[string]string{
 		"domain_name":    "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "retrieve", "/v1/apple_pay/domains/{domain}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rApplePayDomainsCmd.Cmd, "retrieve", "/v1/apple_pay/domains/{domain}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rApplicationFeesCmd.Cmd, "list", "/v1/application_fees", http.MethodGet, map[string]string{
 		"charge":         "string",
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rApplicationFeesCmd.Cmd, "retrieve", "/v1/application_fees/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBalanceCmd.Cmd, "retrieve", "/v1/balance", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBalanceSettingssCmd.Cmd, "retrieve", "/v1/balance_settings", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rApplicationFeesCmd.Cmd, "retrieve", "/v1/application_fees/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBalanceCmd.Cmd, "retrieve", "/v1/balance", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBalanceSettingssCmd.Cmd, "retrieve", "/v1/balance_settings", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBalanceSettingssCmd.Cmd, "update", "/v1/balance_settings", http.MethodPost, map[string]string{
 		"payments.debit_negative_balances":               "boolean",
 		"payments.payouts.schedule.interval":             "string",
@@ -792,7 +792,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payments.payouts.schedule.weekly_payout_days":   "array",
 		"payments.payouts.statement_descriptor":          "string",
 		"payments.settlement_timing.delay_days_override": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "list", "/v1/balance_transactions", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"currency":       "string",
@@ -802,9 +802,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"source":         "string",
 		"starting_after": "string",
 		"type":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "retrieve", "/v1/balance_transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBalanceTransactionsCmd.Cmd, "retrieve", "/v1/balance_transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "update", "/v1/accounts/{account}/external_accounts/{id}", http.MethodPost, map[string]string{
 		"account_holder_name":  "string",
 		"account_holder_type":  "string",
@@ -820,16 +820,16 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_month": "string",
 		"exp_year":  "string",
 		"name":      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "verify", "/v1/customers/{customer}/sources/{id}/verify", http.MethodPost, map[string]string{
 		"amounts": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "list", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "retrieve", "/v1/accounts/{account}/capabilities/{capability}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "list", "/v1/accounts/{account}/capabilities", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "retrieve", "/v1/accounts/{account}/capabilities/{capability}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCapabilitiesCmd.Cmd, "update", "/v1/accounts/{account}/capabilities/{capability}", http.MethodPost, map[string]string{
 		"requested": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCardsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCardsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCardsCmd.Cmd, "update", "/v1/accounts/{account}/external_accounts/{id}", http.MethodPost, map[string]string{
 		"account_holder_name":  "string",
 		"account_holder_type":  "string",
@@ -845,11 +845,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_month": "string",
 		"exp_year":  "string",
 		"name":      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCashBalancesCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCashBalancesCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCashBalancesCmd.Cmd, "update", "/v1/customers/{customer}/cash_balance", http.MethodPost, map[string]string{
 		"settings.reconciliation_mode": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rChargesCmd.Cmd, "capture", "/v1/charges/{charge}/capture", http.MethodPost, map[string]string{
 		"amount":                      "integer",
 		"application_fee":             "integer",
@@ -859,7 +859,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix": "string",
 		"transfer_data.amount":        "integer",
 		"transfer_group":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rChargesCmd.Cmd, "create", "/v1/charges", http.MethodPost, map[string]string{
 		"amount":                       "integer",
 		"application_fee":              "integer",
@@ -889,7 +889,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transfer_data.amount":         "integer",
 		"transfer_data.destination":    "string",
 		"transfer_group":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rChargesCmd.Cmd, "list", "/v1/charges", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"customer":       "string",
@@ -898,13 +898,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_intent": "string",
 		"starting_after": "string",
 		"transfer_group": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rChargesCmd.Cmd, "retrieve", "/v1/charges/{charge}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rChargesCmd.Cmd, "retrieve", "/v1/charges/{charge}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rChargesCmd.Cmd, "search", "/v1/charges/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rChargesCmd.Cmd, "update", "/v1/charges/{charge}", http.MethodPost, map[string]string{
 		"customer":                     "string",
 		"description":                  "string",
@@ -921,8 +921,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping.phone":               "string",
 		"shipping.tracking_number":     "string",
 		"transfer_group":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rConfirmationTokensCmd.Cmd, "retrieve", "/v1/confirmation_tokens/{confirmation_token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rConfirmationTokensCmd.Cmd, "retrieve", "/v1/confirmation_tokens/{confirmation_token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rConfirmationTokensTestHelpersCmd.Cmd, "create", "/v1/test_helpers/confirmation_tokens", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -978,13 +978,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping.address.state":       "string",
 		"shipping.name":                "string",
 		"shipping.phone":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCountrySpecsCmd.Cmd, "list", "/v1/country_specs", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCountrySpecsCmd.Cmd, "retrieve", "/v1/country_specs/{country}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCountrySpecsCmd.Cmd, "retrieve", "/v1/country_specs/{country}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCouponsCmd.Cmd, "create", "/v1/coupons", http.MethodPost, map[string]string{
 		"amount_off":          "integer",
 		"applies_to.products": "array",
@@ -996,23 +996,23 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"name":                "string",
 		"percent_off":         "number",
 		"redeem_by":           "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCouponsCmd.Cmd, "delete", "/v1/coupons/{coupon}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCouponsCmd.Cmd, "delete", "/v1/coupons/{coupon}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCouponsCmd.Cmd, "list", "/v1/coupons", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCouponsCmd.Cmd, "retrieve", "/v1/coupons/{coupon}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCouponsCmd.Cmd, "retrieve", "/v1/coupons/{coupon}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCouponsCmd.Cmd, "update", "/v1/coupons/{coupon}", http.MethodPost, map[string]string{
 		"name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNoteLineItemsCmd.Cmd, "list", "/v1/credit_notes/{credit_note}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "create", "/v1/credit_notes", http.MethodPost, map[string]string{
 		"amount":                      "integer",
 		"credit_amount":               "integer",
@@ -1024,7 +1024,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"reason":                      "string",
 		"refund_amount":               "integer",
 		"shipping_cost.shipping_rate": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "list", "/v1/credit_notes", http.MethodGet, map[string]string{
 		"created":          "integer",
 		"customer":         "string",
@@ -1033,7 +1033,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"invoice":          "string",
 		"limit":            "integer",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview", "/v1/credit_notes/preview", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
@@ -1044,7 +1044,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"out_of_band_amount": "integer",
 		"reason":             "string",
 		"refund_amount":      "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "preview_lines", "/v1/credit_notes/preview/lines", http.MethodGet, map[string]string{
 		"amount":             "integer",
 		"credit_amount":      "integer",
@@ -1058,34 +1058,34 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"reason":             "string",
 		"refund_amount":      "integer",
 		"starting_after":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "retrieve", "/v1/credit_notes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "retrieve", "/v1/credit_notes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "update", "/v1/credit_notes/{id}", http.MethodPost, map[string]string{
 		"memo": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "void_credit_note", "/v1/credit_notes/{id}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCreditNotesCmd.Cmd, "void_credit_note", "/v1/credit_notes/{id}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "create", "/v1/customers/{customer}/balance_transactions", http.MethodPost, map[string]string{
 		"amount":      "integer",
 		"currency":    "string",
 		"description": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "list", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"invoice":        "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/balance_transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/balance_transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomerBalanceTransactionsCmd.Cmd, "update", "/v1/customers/{customer}/balance_transactions/{transaction}", http.MethodPost, map[string]string{
 		"description": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "list", "/v1/customers/{customer}/cash_balance_transactions", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance_transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomerCashBalanceTransactionsCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance_transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomerSessionsCmd.Cmd, "create", "/v1/customer_sessions", http.MethodPost, map[string]string{
 		"components.buy_button.enabled":                                                           "boolean",
 		"components.customer_sheet.enabled":                                                       "boolean",
@@ -1107,14 +1107,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"components.pricing_table.enabled":                                                        "boolean",
 		"customer":                                                                                "string",
 		"customer_account":                                                                        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "balance_transactions", "/v1/customers/{customer}/balance_transactions", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"invoice":        "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create", "/v1/customers", http.MethodPost, map[string]string{
 		"balance":       "integer",
 		"business_name": "string",
@@ -1136,16 +1136,16 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_exempt":                              "string",
 		"test_clock":                              "string",
 		"validate":                                "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create_funding_instructions", "/v1/customers/{customer}/funding_instructions", http.MethodPost, map[string]string{
 		"bank_transfer.eu_bank_transfer.country": "string",
 		"bank_transfer.requested_address_types":  "array",
 		"bank_transfer.type":                     "string",
 		"currency":                               "string",
 		"funding_type":                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete", "/v1/customers/{customer}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete_discount", "/v1/customers/{customer}/discount", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete", "/v1/customers/{customer}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "delete_discount", "/v1/customers/{customer}/discount", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "list", "/v1/customers", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"email":          "string",
@@ -1153,21 +1153,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"test_clock":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "list_payment_methods", "/v1/customers/{customer}/payment_methods", http.MethodGet, map[string]string{
 		"allow_redisplay": "string",
 		"ending_before":   "string",
 		"limit":           "integer",
 		"starting_after":  "string",
 		"type":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve_payment_method", "/v1/customers/{customer}/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve", "/v1/customers/{customer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCustomersCmd.Cmd, "retrieve_payment_method", "/v1/customers/{customer}/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "search", "/v1/customers/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "update", "/v1/customers/{customer}", http.MethodPost, map[string]string{
 		"balance":       "integer",
 		"business_name": "string",
@@ -1188,13 +1188,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax.validate_location":                   "string",
 		"tax_exempt":                              "string",
 		"validate":                                "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersTestHelpersCmd.Cmd, "fund_cash_balance", "/v1/test_helpers/customers/{customer}/fund_cash_balance", http.MethodPost, map[string]string{
 		"amount":    "integer",
 		"currency":  "string",
 		"reference": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rDisputesCmd.Cmd, "close", "/v1/disputes/{dispute}/close", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rDisputesCmd.Cmd, "close", "/v1/disputes/{dispute}/close", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "list", "/v1/disputes", http.MethodGet, map[string]string{
 		"charge":         "string",
 		"created":        "integer",
@@ -1202,8 +1202,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"payment_intent": "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rDisputesCmd.Cmd, "retrieve", "/v1/disputes/{dispute}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rDisputesCmd.Cmd, "retrieve", "/v1/disputes/{dispute}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rDisputesCmd.Cmd, "update", "/v1/disputes/{dispute}", http.MethodPost, map[string]string{
 		"evidence.access_activity_log":            "string",
 		"evidence.billing_address":                "string",
@@ -1233,14 +1233,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"evidence.uncategorized_file":             "string",
 		"evidence.uncategorized_text":             "string",
 		"submit":                                  "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEphemeralKeysCmd.Cmd, "create", "/v1/ephemeral_keys", http.MethodPost, map[string]string{
 		"customer":             "string",
 		"issuing_card":         "string",
 		"nonce":                "string",
 		"verification_session": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rEphemeralKeysCmd.Cmd, "delete", "/v1/ephemeral_keys/{key}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rEphemeralKeysCmd.Cmd, "delete", "/v1/ephemeral_keys/{key}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEventsCmd.Cmd, "list", "/v1/events", http.MethodGet, map[string]string{
 		"created":          "integer",
 		"delivery_success": "boolean",
@@ -1249,26 +1249,26 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":   "string",
 		"type":             "string",
 		"types":            "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rEventsCmd.Cmd, "retrieve", "/v1/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rEventsCmd.Cmd, "retrieve", "/v1/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rExchangeRatesCmd.Cmd, "list", "/v1/exchange_rates", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rExchangeRatesCmd.Cmd, "retrieve", "/v1/exchange_rates/{rate_id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rExchangeRatesCmd.Cmd, "retrieve", "/v1/exchange_rates/{rate_id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "create", "/v1/accounts/{account}/external_accounts", http.MethodPost, map[string]string{
 		"default_for_currency": "boolean",
 		"external_account":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "delete", "/v1/accounts/{account}/external_accounts/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "list", "/v1/accounts/{account}/external_accounts", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"object":         "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "retrieve", "/v1/accounts/{account}/external_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "retrieve", "/v1/accounts/{account}/external_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rExternalAccountsCmd.Cmd, "update", "/v1/accounts/{account}/external_accounts/{id}", http.MethodPost, map[string]string{
 		"account_holder_name":  "string",
 		"account_holder_type":  "string",
@@ -1284,21 +1284,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_month": "string",
 		"exp_year":  "string",
 		"name":      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "create", "/v1/application_fees/{id}/refunds", http.MethodPost, map[string]string{
 		"amount": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "list", "/v1/application_fees/{id}/refunds", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "retrieve", "/v1/application_fees/{fee}/refunds/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "update", "/v1/application_fees/{fee}/refunds/{id}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "retrieve", "/v1/application_fees/{fee}/refunds/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "update", "/v1/application_fees/{fee}/refunds/{id}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFileLinksCmd.Cmd, "create", "/v1/file_links", http.MethodPost, map[string]string{
 		"expires_at": "integer",
 		"file":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFileLinksCmd.Cmd, "list", "/v1/file_links", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
@@ -1306,25 +1306,25 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"file":           "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFileLinksCmd.Cmd, "retrieve", "/v1/file_links/{link}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFileLinksCmd.Cmd, "retrieve", "/v1/file_links/{link}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFileLinksCmd.Cmd, "update", "/v1/file_links/{link}", http.MethodPost, map[string]string{
 		"expires_at": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFilesCmd.Cmd, "create", "/v1/files", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFilesCmd.Cmd, "create", "/v1/files", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "https://files.stripe.com/")
 	resource.NewOperationCmd(rFilesCmd.Cmd, "list", "/v1/files", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"purpose":        "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFilesCmd.Cmd, "retrieve", "/v1/files/{file}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFilesCmd.Cmd, "retrieve", "/v1/files/{file}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceLineItemsCmd.Cmd, "update", "/v1/invoices/{invoice}/lines/{line_item_id}", http.MethodPost, map[string]string{
 		"amount":                              "integer",
 		"description":                         "string",
@@ -1344,7 +1344,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"pricing.price":                       "string",
 		"quantity":                            "integer",
 		"tax_rates":                           "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicePaymentsCmd.Cmd, "list", "/v1/invoice_payments", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
@@ -1352,19 +1352,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicePaymentsCmd.Cmd, "retrieve", "/v1/invoice_payments/{invoice_payment}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "archive", "/v1/invoice_rendering_templates/{template}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicePaymentsCmd.Cmd, "retrieve", "/v1/invoice_payments/{invoice_payment}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "archive", "/v1/invoice_rendering_templates/{template}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "list", "/v1/invoice_rendering_templates", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "retrieve", "/v1/invoice_rendering_templates/{template}", http.MethodGet, map[string]string{
 		"version": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "unarchive", "/v1/invoice_rendering_templates/{template}/unarchive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoiceRenderingTemplatesCmd.Cmd, "unarchive", "/v1/invoice_rendering_templates/{template}/unarchive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "create", "/v1/invoiceitems", http.MethodPost, map[string]string{
 		"amount":                         "integer",
 		"currency":                       "string",
@@ -1387,8 +1387,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_code":                       "string",
 		"tax_rates":                      "array",
 		"unit_amount_decimal":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "delete", "/v1/invoiceitems/{invoiceitem}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "delete", "/v1/invoiceitems/{invoiceitem}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "list", "/v1/invoiceitems", http.MethodGet, map[string]string{
 		"created":          "integer",
 		"customer":         "string",
@@ -1398,8 +1398,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":            "integer",
 		"pending":          "boolean",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "retrieve", "/v1/invoiceitems/{invoiceitem}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "retrieve", "/v1/invoiceitems/{invoiceitem}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoiceitemsCmd.Cmd, "update", "/v1/invoiceitems/{invoiceitem}", http.MethodPost, map[string]string{
 		"amount":                         "integer",
 		"description":                    "string",
@@ -1417,12 +1417,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_code":                       "string",
 		"tax_rates":                      "array",
 		"unit_amount_decimal":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "add_lines", "/v1/invoices/{invoice}/add_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "add_lines", "/v1/invoices/{invoice}/add_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "attach_payment", "/v1/invoices/{invoice}/attach_payment", http.MethodPost, map[string]string{
 		"payment_intent": "string",
 		"payment_record": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create", "/v1/invoices", http.MethodPost, map[string]string{
 		"account_tax_ids":                       "array",
 		"application_fee_amount":                "integer",
@@ -1479,7 +1479,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"subscription":                                                     "string",
 		"transfer_data.amount":                                             "integer",
 		"transfer_data.destination":                                        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "create_preview", "/v1/invoices/create_preview", http.MethodPost, map[string]string{
 		"automatic_tax.enabled":           "boolean",
 		"automatic_tax.liability.account": "string",
@@ -1511,11 +1511,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"subscription_details.resume_at":                                 "string",
 		"subscription_details.start_date":                                "integer",
 		"subscription_details.trial_end":                                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "delete", "/v1/invoices/{invoice}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "delete", "/v1/invoices/{invoice}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "finalize_invoice", "/v1/invoices/{invoice}/finalize", http.MethodPost, map[string]string{
 		"auto_advance": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "list", "/v1/invoices", http.MethodGet, map[string]string{
 		"collection_method": "string",
 		"created":           "integer",
@@ -1527,8 +1527,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":    "string",
 		"status":            "string",
 		"subscription":      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "mark_uncollectible", "/v1/invoices/{invoice}/mark_uncollectible", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "mark_uncollectible", "/v1/invoices/{invoice}/mark_uncollectible", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "pay", "/v1/invoices/{invoice}/pay", http.MethodPost, map[string]string{
 		"forgive":          "boolean",
 		"mandate":          "string",
@@ -1536,15 +1536,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"paid_out_of_band": "boolean",
 		"payment_method":   "string",
 		"source":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "remove_lines", "/v1/invoices/{invoice}/remove_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "retrieve", "/v1/invoices/{invoice}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "remove_lines", "/v1/invoices/{invoice}/remove_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "retrieve", "/v1/invoices/{invoice}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "search", "/v1/invoices/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "send_invoice", "/v1/invoices/{invoice}/send", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "send_invoice", "/v1/invoices/{invoice}/send", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rInvoicesCmd.Cmd, "update", "/v1/invoices/{invoice}", http.MethodPost, map[string]string{
 		"account_tax_ids":                       "array",
 		"application_fee_amount":                "integer",
@@ -1573,14 +1573,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"rendering.template":                    "string",
 		"rendering.template_version":            "integer",
 		"statement_descriptor":                  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "update_lines", "/v1/invoices/{invoice}/update_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "update_lines", "/v1/invoices/{invoice}/update_lines", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rInvoicesCmd.Cmd, "void_invoice", "/v1/invoices/{invoice}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rLineItemsCmd.Cmd, "list", "/v1/invoices/{invoice}/lines", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rLineItemsCmd.Cmd, "update", "/v1/invoices/{invoice}/lines/{line_item_id}", http.MethodPost, map[string]string{
 		"amount":                              "integer",
 		"description":                         "string",
@@ -1600,27 +1600,27 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"pricing.price":                       "string",
 		"quantity":                            "integer",
 		"tax_rates":                           "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rMandatesCmd.Cmd, "retrieve", "/v1/mandates/{mandate}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rLoginLinksCmd.Cmd, "create", "/v1/accounts/{account}/login_links", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rMandatesCmd.Cmd, "retrieve", "/v1/mandates/{mandate}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentAttemptRecordsCmd.Cmd, "list", "/v1/payment_attempt_records", http.MethodGet, map[string]string{
 		"limit":          "integer",
 		"payment_record": "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentAttemptRecordsCmd.Cmd, "retrieve", "/v1/payment_attempt_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentAttemptRecordsCmd.Cmd, "retrieve", "/v1/payment_attempt_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentAmountDetailsLineItemsCmd.Cmd, "list", "/v1/payment_intents/{intent}/amount_details_line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "apply_customer_balance", "/v1/payment_intents/{intent}/apply_customer_balance", http.MethodPost, map[string]string{
 		"amount":   "integer",
 		"currency": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "cancel", "/v1/payment_intents/{intent}/cancel", http.MethodPost, map[string]string{
 		"cancellation_reason": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "capture", "/v1/payment_intents/{intent}/capture", http.MethodPost, map[string]string{
 		"amount_details.discount_amount":               "integer",
 		"amount_details.enforce_arithmetic_validation": "boolean",
@@ -1631,7 +1631,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor":                         "string",
 		"statement_descriptor_suffix":                  "string",
 		"transfer_data.amount":                         "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "confirm", "/v1/payment_intents/{intent}/confirm", http.MethodPost, map[string]string{
 		"capture_method":                "string",
 		"confirmation_token":            "string",
@@ -1687,7 +1687,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"return_url":                                                        "string",
 		"setup_future_usage":                                                "string",
 		"use_stripe_sdk":                                                    "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "create", "/v1/payment_intents", http.MethodPost, map[string]string{
 		"amount":                         "integer",
 		"amount_details.discount_amount": "integer",
@@ -1774,7 +1774,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transfer_data.destination":                                         "string",
 		"transfer_group":                                                    "string",
 		"use_stripe_sdk":                                                    "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "increment_authorization", "/v1/payment_intents/{intent}/increment_authorization", http.MethodPost, map[string]string{
 		"amount":                         "integer",
 		"amount_details.discount_amount": "integer",
@@ -1786,7 +1786,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_details.order_reference":              "string",
 		"statement_descriptor":                         "string",
 		"transfer_data.amount":                         "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "list", "/v1/payment_intents", http.MethodGet, map[string]string{
 		"created":          "integer",
 		"customer":         "string",
@@ -1794,15 +1794,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":    "string",
 		"limit":            "integer",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "retrieve", "/v1/payment_intents/{intent}", http.MethodGet, map[string]string{
 		"client_secret": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "search", "/v1/payment_intents/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "update", "/v1/payment_intents/{intent}", http.MethodPost, map[string]string{
 		"amount":                        "integer",
 		"application_fee_amount":        "integer",
@@ -1862,11 +1862,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"statement_descriptor_suffix":                                       "string",
 		"transfer_data.amount":                                              "integer",
 		"transfer_group":                                                    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{
 		"amounts":         "array",
 		"descriptor_code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "create", "/v1/payment_links", http.MethodPost, map[string]string{
 		"after_completion.hosted_confirmation.custom_message":                  "string",
 		"after_completion.redirect.url":                                        "string",
@@ -1916,19 +1916,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_id_collection.required":                                           "string",
 		"transfer_data.amount":                                                 "integer",
 		"transfer_data.destination":                                            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "list", "/v1/payment_links", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "list_line_items", "/v1/payment_links/{payment_link}/line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "retrieve", "/v1/payment_links/{payment_link}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "retrieve", "/v1/payment_links/{payment_link}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentLinksCmd.Cmd, "update", "/v1/payment_links/{payment_link}", http.MethodPost, map[string]string{
 		"active": "boolean",
 		"after_completion.hosted_confirmation.custom_message": "string",
@@ -1960,7 +1960,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"subscription_data.trial_period_days":                 "integer",
 		"tax_id_collection.enabled":                           "boolean",
 		"tax_id_collection.required":                          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "create", "/v1/payment_method_configurations", http.MethodPost, map[string]string{
 		"acss_debit.display_preference.preference":             "string",
 		"affirm.display_preference.preference":                 "string",
@@ -2020,14 +2020,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"us_bank_account.display_preference.preference": "string",
 		"wechat_pay.display_preference.preference":      "string",
 		"zip.display_preference.preference":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "list", "/v1/payment_method_configurations", http.MethodGet, map[string]string{
 		"application":    "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "retrieve", "/v1/payment_method_configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "retrieve", "/v1/payment_method_configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodConfigurationsCmd.Cmd, "update", "/v1/payment_method_configurations/{configuration}", http.MethodPost, map[string]string{
 		"acss_debit.display_preference.preference": "string",
 		"active":                               "boolean",
@@ -2087,27 +2087,27 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"us_bank_account.display_preference.preference": "string",
 		"wechat_pay.display_preference.preference":      "string",
 		"zip.display_preference.preference":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "create", "/v1/payment_method_domains", http.MethodPost, map[string]string{
 		"domain_name": "string",
 		"enabled":     "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "list", "/v1/payment_method_domains", http.MethodGet, map[string]string{
 		"domain_name":    "string",
 		"enabled":        "boolean",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "retrieve", "/v1/payment_method_domains/{payment_method_domain}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "retrieve", "/v1/payment_method_domains/{payment_method_domain}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "update", "/v1/payment_method_domains/{payment_method_domain}", http.MethodPost, map[string]string{
 		"enabled": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "validate", "/v1/payment_method_domains/{payment_method_domain}/validate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentMethodDomainsCmd.Cmd, "validate", "/v1/payment_method_domains/{payment_method_domain}/validate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "attach", "/v1/payment_methods/{payment_method}/attach", http.MethodPost, map[string]string{
 		"customer":         "string",
 		"customer_account": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "create", "/v1/payment_methods", http.MethodPost, map[string]string{
 		"acss_debit.account_number":                     "string",
 		"acss_debit.institution_number":                 "string",
@@ -2152,8 +2152,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"us_bank_account.account_type":                  "string",
 		"us_bank_account.financial_connections_account": "string",
 		"us_bank_account.routing_number":                "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "detach", "/v1/payment_methods/{payment_method}/detach", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "detach", "/v1/payment_methods/{payment_method}/detach", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "list", "/v1/payment_methods", http.MethodGet, map[string]string{
 		"allow_redisplay":  "string",
 		"customer":         "string",
@@ -2162,8 +2162,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":            "integer",
 		"starting_after":   "string",
 		"type":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "retrieve", "/v1/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "retrieve", "/v1/payment_methods/{payment_method}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentMethodsCmd.Cmd, "update", "/v1/payment_methods/{payment_method}", http.MethodPost, map[string]string{
 		"allow_redisplay":                     "string",
 		"billing_details.email":               "string",
@@ -2178,7 +2178,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payto.pay_id":                        "string",
 		"us_bank_account.account_holder_type": "string",
 		"us_bank_account.account_type":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment", "/v1/payment_records/report_payment", http.MethodPost, map[string]string{
 		"amount_requested.currency": "string",
 		"amount_requested.value":    "integer",
@@ -2215,7 +2215,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping_details.address.state":                             "string",
 		"shipping_details.name":                                      "string",
 		"shipping_details.phone":                                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt", "/v1/payment_records/{id}/report_payment_attempt", http.MethodPost, map[string]string{
 		"description":              "string",
 		"failed.failed_at":         "integer",
@@ -2243,23 +2243,23 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping_details.address.state":                             "string",
 		"shipping_details.name":                                      "string",
 		"shipping_details.phone":                                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_canceled", "/v1/payment_records/{id}/report_payment_attempt_canceled", http.MethodPost, map[string]string{
 		"canceled_at": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_failed", "/v1/payment_records/{id}/report_payment_attempt_failed", http.MethodPost, map[string]string{
 		"failed_at": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_guaranteed", "/v1/payment_records/{id}/report_payment_attempt_guaranteed", http.MethodPost, map[string]string{
 		"guaranteed_at": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_payment_attempt_informational", "/v1/payment_records/{id}/report_payment_attempt_informational", http.MethodPost, map[string]string{
 		"customer_details.customer": "string",
 		"customer_details.email":    "string",
 		"customer_details.name":     "string",
 		"customer_details.phone":    "string",
 		"description":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "report_refund", "/v1/payment_records/{id}/report_refund", http.MethodPost, map[string]string{
 		"amount.currency": "string",
 		"amount.value":    "integer",
@@ -2268,20 +2268,20 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"processor_details.custom.refund_reference": "string",
 		"processor_details.type":                    "string",
 		"refunded.refunded_at":                      "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "retrieve", "/v1/payment_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentRecordsCmd.Cmd, "retrieve", "/v1/payment_records/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "create", "/v1/customers/{customer}/sources", http.MethodPost, map[string]string{
 		"source":   "string",
 		"validate": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "list", "/v1/customers/{customer}/sources", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"object":         "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "retrieve", "/v1/customers/{customer}/sources/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPayoutsCmd.Cmd, "cancel", "/v1/payouts/{payout}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPaymentSourcesCmd.Cmd, "retrieve", "/v1/customers/{customer}/sources/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPayoutsCmd.Cmd, "cancel", "/v1/payouts/{payout}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPayoutsCmd.Cmd, "create", "/v1/payouts", http.MethodPost, map[string]string{
 		"amount":               "integer",
 		"currency":             "string",
@@ -2291,7 +2291,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payout_method":        "string",
 		"source_type":          "string",
 		"statement_descriptor": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPayoutsCmd.Cmd, "list", "/v1/payouts", http.MethodGet, map[string]string{
 		"arrival_date":   "integer",
 		"created":        "integer",
@@ -2300,10 +2300,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPayoutsCmd.Cmd, "retrieve", "/v1/payouts/{payout}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPayoutsCmd.Cmd, "reverse", "/v1/payouts/{payout}/reverse", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPayoutsCmd.Cmd, "update", "/v1/payouts/{payout}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPayoutsCmd.Cmd, "retrieve", "/v1/payouts/{payout}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPayoutsCmd.Cmd, "reverse", "/v1/payouts/{payout}/reverse", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPayoutsCmd.Cmd, "update", "/v1/payouts/{payout}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "create", "/v1/accounts/{account}/persons", http.MethodPost, map[string]string{
 		"additional_tos_acceptances.account.date":       "integer",
 		"additional_tos_acceptances.account.ip":         "string",
@@ -2371,14 +2371,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"verification.additional_document.front":         "string",
 		"verification.document.back":                     "string",
 		"verification.document.front":                    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPersonsCmd.Cmd, "delete", "/v1/accounts/{account}/persons/{person}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPersonsCmd.Cmd, "delete", "/v1/accounts/{account}/persons/{person}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "list", "/v1/accounts/{account}/persons", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPersonsCmd.Cmd, "retrieve", "/v1/accounts/{account}/persons/{person}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPersonsCmd.Cmd, "retrieve", "/v1/accounts/{account}/persons/{person}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPersonsCmd.Cmd, "update", "/v1/accounts/{account}/persons/{person}", http.MethodPost, map[string]string{
 		"additional_tos_acceptances.account.date":       "integer",
 		"additional_tos_acceptances.account.ip":         "string",
@@ -2446,7 +2446,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"verification.additional_document.front":         "string",
 		"verification.document.back":                     "string",
 		"verification.document.front":                    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPlansCmd.Cmd, "create", "/v1/plans", http.MethodPost, map[string]string{
 		"active":                    "boolean",
 		"amount":                    "integer",
@@ -2464,8 +2464,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transform_usage.round":     "string",
 		"trial_period_days":         "integer",
 		"usage_type":                "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPlansCmd.Cmd, "delete", "/v1/plans/{plan}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPlansCmd.Cmd, "delete", "/v1/plans/{plan}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPlansCmd.Cmd, "list", "/v1/plans", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"created":        "integer",
@@ -2473,14 +2473,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"product":        "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPlansCmd.Cmd, "retrieve", "/v1/plans/{plan}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPlansCmd.Cmd, "retrieve", "/v1/plans/{plan}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPlansCmd.Cmd, "update", "/v1/plans/{plan}", http.MethodPost, map[string]string{
 		"active":            "boolean",
 		"nickname":          "string",
 		"product":           "string",
 		"trial_period_days": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPricesCmd.Cmd, "create", "/v1/prices", http.MethodPost, map[string]string{
 		"active":                            "boolean",
 		"billing_scheme":                    "string",
@@ -2510,7 +2510,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transform_quantity.round":          "string",
 		"unit_amount":                       "integer",
 		"unit_amount_decimal":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPricesCmd.Cmd, "list", "/v1/prices", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"created":        "integer",
@@ -2521,30 +2521,30 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"product":        "string",
 		"starting_after": "string",
 		"type":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPricesCmd.Cmd, "retrieve", "/v1/prices/{price}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPricesCmd.Cmd, "retrieve", "/v1/prices/{price}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPricesCmd.Cmd, "search", "/v1/prices/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPricesCmd.Cmd, "update", "/v1/prices/{price}", http.MethodPost, map[string]string{
 		"active":              "boolean",
 		"lookup_key":          "string",
 		"nickname":            "string",
 		"tax_behavior":        "string",
 		"transfer_lookup_key": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "create", "/v1/products/{product}/features", http.MethodPost, map[string]string{
 		"entitlement_feature": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "delete", "/v1/products/{product}/features/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "delete", "/v1/products/{product}/features/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "list", "/v1/products/{product}/features", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "retrieve", "/v1/products/{product}/features/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rProductFeaturesCmd.Cmd, "retrieve", "/v1/products/{product}/features/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductsCmd.Cmd, "create", "/v1/products", http.MethodPost, map[string]string{
 		"active":                      "boolean",
 		"default_price_data.currency": "string",
@@ -2571,8 +2571,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"type":                                          "string",
 		"unit_label":                                    "string",
 		"url":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rProductsCmd.Cmd, "delete", "/v1/products/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rProductsCmd.Cmd, "delete", "/v1/products/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductsCmd.Cmd, "list", "/v1/products", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"created":        "integer",
@@ -2583,13 +2583,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 		"type":           "string",
 		"url":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rProductsCmd.Cmd, "retrieve", "/v1/products/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rProductsCmd.Cmd, "retrieve", "/v1/products/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductsCmd.Cmd, "search", "/v1/products/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rProductsCmd.Cmd, "update", "/v1/products/{id}", http.MethodPost, map[string]string{
 		"active":               "boolean",
 		"default_price":        "string",
@@ -2601,7 +2601,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_code":             "string",
 		"unit_label":           "string",
 		"url":                  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPromotionCodesCmd.Cmd, "create", "/v1/promotion_codes", http.MethodPost, map[string]string{
 		"active":                               "boolean",
 		"code":                                 "string",
@@ -2614,7 +2614,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"restrictions.first_time_transaction":  "boolean",
 		"restrictions.minimum_amount":          "integer",
 		"restrictions.minimum_amount_currency": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPromotionCodesCmd.Cmd, "list", "/v1/promotion_codes", http.MethodGet, map[string]string{
 		"active":           "boolean",
 		"code":             "string",
@@ -2625,13 +2625,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":    "string",
 		"limit":            "integer",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rPromotionCodesCmd.Cmd, "retrieve", "/v1/promotion_codes/{promotion_code}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rPromotionCodesCmd.Cmd, "retrieve", "/v1/promotion_codes/{promotion_code}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rPromotionCodesCmd.Cmd, "update", "/v1/promotion_codes/{promotion_code}", http.MethodPost, map[string]string{
 		"active": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rQuotesCmd.Cmd, "accept", "/v1/quotes/{quote}/accept", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rQuotesCmd.Cmd, "cancel", "/v1/quotes/{quote}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rQuotesCmd.Cmd, "accept", "/v1/quotes/{quote}/accept", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rQuotesCmd.Cmd, "cancel", "/v1/quotes/{quote}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "create", "/v1/quotes", http.MethodPost, map[string]string{
 		"application_fee_amount":          "integer",
 		"application_fee_percent":         "number",
@@ -2658,10 +2658,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"subscription_data.effective_date":                            "string",
 		"subscription_data.trial_period_days":                         "integer",
 		"test_clock":                                                  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "finalize_quote", "/v1/quotes/{quote}/finalize", http.MethodPost, map[string]string{
 		"expires_at": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "list", "/v1/quotes", http.MethodGet, map[string]string{
 		"customer":         "string",
 		"customer_account": "string",
@@ -2670,19 +2670,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":   "string",
 		"status":           "string",
 		"test_clock":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "list_computed_upfront_line_items", "/v1/quotes/{quote}/computed_upfront_line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "list_line_items", "/v1/quotes/{quote}/line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rQuotesCmd.Cmd, "pdf", "/v1/quotes/{quote}/pdf", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rQuotesCmd.Cmd, "retrieve", "/v1/quotes/{quote}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rQuotesCmd.Cmd, "pdf", "/v1/quotes/{quote}/pdf", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "https://files.stripe.com/")
+	resource.NewOperationCmd(rQuotesCmd.Cmd, "retrieve", "/v1/quotes/{quote}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rQuotesCmd.Cmd, "update", "/v1/quotes/{quote}", http.MethodPost, map[string]string{
 		"application_fee_amount":              "integer",
 		"application_fee_percent":             "number",
@@ -2704,8 +2704,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"subscription_data.description":       "string",
 		"subscription_data.effective_date":    "string",
 		"subscription_data.trial_period_days": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRefundsCmd.Cmd, "cancel", "/v1/refunds/{refund}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRefundsCmd.Cmd, "cancel", "/v1/refunds/{refund}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "create", "/v1/refunds", http.MethodPost, map[string]string{
 		"amount":                 "integer",
 		"charge":                 "string",
@@ -2717,7 +2717,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"reason":                 "string",
 		"refund_application_fee": "boolean",
 		"reverse_transfer":       "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRefundsCmd.Cmd, "list", "/v1/refunds", http.MethodGet, map[string]string{
 		"charge":         "string",
 		"created":        "integer",
@@ -2725,34 +2725,34 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"payment_intent": "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRefundsCmd.Cmd, "retrieve", "/v1/refunds/{refund}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRefundsCmd.Cmd, "update", "/v1/refunds/{refund}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRefundsTestHelpersCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rReviewsCmd.Cmd, "approve", "/v1/reviews/{review}/approve", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRefundsCmd.Cmd, "retrieve", "/v1/refunds/{refund}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRefundsCmd.Cmd, "update", "/v1/refunds/{refund}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRefundsTestHelpersCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rReviewsCmd.Cmd, "approve", "/v1/reviews/{review}/approve", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rReviewsCmd.Cmd, "list", "/v1/reviews", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rReviewsCmd.Cmd, "retrieve", "/v1/reviews/{review}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rReviewsCmd.Cmd, "retrieve", "/v1/reviews/{review}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rScheduledQueryRunsCmd.Cmd, "list", "/v1/sigma/scheduled_query_runs", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rScheduledQueryRunsCmd.Cmd, "retrieve", "/v1/sigma/scheduled_query_runs/{scheduled_query_run}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rScheduledQueryRunsCmd.Cmd, "retrieve", "/v1/sigma/scheduled_query_runs/{scheduled_query_run}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupAttemptsCmd.Cmd, "list", "/v1/setup_attempts", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"setup_intent":   "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "cancel", "/v1/setup_intents/{intent}/cancel", http.MethodPost, map[string]string{
 		"cancellation_reason": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "confirm", "/v1/setup_intents/{intent}/confirm", http.MethodPost, map[string]string{
 		"confirmation_token": "string",
 		"payment_method":     "string",
@@ -2852,7 +2852,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.us_bank_account.verification_method":                                 "string",
 		"return_url":     "string",
 		"use_stripe_sdk": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "create", "/v1/setup_intents", http.MethodPost, map[string]string{
 		"attach_to_self": "boolean",
 		"automatic_payment_methods.allow_redirects":     "string",
@@ -2967,7 +2967,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"single_use.currency":                                                                        "string",
 		"usage":                                                                                      "string",
 		"use_stripe_sdk":                                                                             "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "list", "/v1/setup_intents", http.MethodGet, map[string]string{
 		"attach_to_self":   "boolean",
 		"created":          "integer",
@@ -2977,10 +2977,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":            "integer",
 		"payment_method":   "string",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "retrieve", "/v1/setup_intents/{intent}", http.MethodGet, map[string]string{
 		"client_secret": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "update", "/v1/setup_intents/{intent}", http.MethodPost, map[string]string{
 		"attach_to_self":                "boolean",
 		"customer":                      "string",
@@ -3085,11 +3085,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.us_bank_account.networks.requested":                                  "array",
 		"payment_method_options.us_bank_account.verification_method":                                 "string",
 		"payment_method_types":                                                                       "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSetupIntentsCmd.Cmd, "verify_microdeposits", "/v1/setup_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{
 		"amounts":         "array",
 		"descriptor_code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "create", "/v1/shipping_rates", http.MethodPost, map[string]string{
 		"delivery_estimate.maximum.unit":  "string",
 		"delivery_estimate.maximum.value": "integer",
@@ -3101,7 +3101,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_behavior":                    "string",
 		"tax_code":                        "string",
 		"type":                            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "list", "/v1/shipping_rates", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"created":        "integer",
@@ -3109,12 +3109,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "retrieve", "/v1/shipping_rates/{shipping_rate_token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "retrieve", "/v1/shipping_rates/{shipping_rate_token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rShippingRatesCmd.Cmd, "update", "/v1/shipping_rates/{shipping_rate_token}", http.MethodPost, map[string]string{
 		"active":       "boolean",
 		"tax_behavior": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "create", "/v1/sources", http.MethodPost, map[string]string{
 		"amount":                  "integer",
 		"currency":                "string",
@@ -3159,16 +3159,16 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"token":                                     "string",
 		"type":                                      "string",
 		"usage":                                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSourcesCmd.Cmd, "detach", "/v1/customers/{customer}/sources/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSourcesCmd.Cmd, "detach", "/v1/customers/{customer}/sources/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "retrieve", "/v1/sources/{source}", http.MethodGet, map[string]string{
 		"client_secret": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "source_transactions", "/v1/sources/{source}/source_transactions", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "update", "/v1/sources/{source}", http.MethodPost, map[string]string{
 		"amount":                  "integer",
 		"mandate.acceptance.date": "integer",
@@ -3203,10 +3203,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"source_order.shipping.name":                "string",
 		"source_order.shipping.phone":               "string",
 		"source_order.shipping.tracking_number":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSourcesCmd.Cmd, "verify", "/v1/sources/{source}/verify", http.MethodPost, map[string]string{
 		"values": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "create", "/v1/subscription_items", http.MethodPost, map[string]string{
 		"payment_behavior":                    "string",
 		"plan":                                "string",
@@ -3223,15 +3223,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"quantity":                            "integer",
 		"subscription":                        "string",
 		"tax_rates":                           "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "delete", "/v1/subscription_items/{item}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "delete", "/v1/subscription_items/{item}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "list", "/v1/subscription_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"subscription":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "retrieve", "/v1/subscription_items/{item}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "retrieve", "/v1/subscription_items/{item}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionItemsCmd.Cmd, "update", "/v1/subscription_items/{item}", http.MethodPost, map[string]string{
 		"off_session":                         "boolean",
 		"payment_behavior":                    "string",
@@ -3248,11 +3248,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"proration_date":                      "integer",
 		"quantity":                            "integer",
 		"tax_rates":                           "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "cancel", "/v1/subscription_schedules/{schedule}/cancel", http.MethodPost, map[string]string{
 		"invoice_now": "boolean",
 		"prorate":     "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "create", "/v1/subscription_schedules", http.MethodPost, map[string]string{
 		"billing_mode.flexible.proration_discounts":         "string",
 		"billing_mode.type":                                 "string",
@@ -3274,7 +3274,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"end_behavior":                                      "string",
 		"from_subscription":                                 "string",
 		"start_date":                                        "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "list", "/v1/subscription_schedules", http.MethodGet, map[string]string{
 		"canceled_at":      "integer",
 		"completed_at":     "integer",
@@ -3286,11 +3286,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"released_at":      "integer",
 		"scheduled":        "boolean",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "release", "/v1/subscription_schedules/{schedule}/release", http.MethodPost, map[string]string{
 		"preserve_cancel_date": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "retrieve", "/v1/subscription_schedules/{schedule}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "retrieve", "/v1/subscription_schedules/{schedule}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionSchedulesCmd.Cmd, "update", "/v1/subscription_schedules/{schedule}", http.MethodPost, map[string]string{
 		"default_settings.application_fee_percent":          "number",
 		"default_settings.automatic_tax.enabled":            "boolean",
@@ -3307,8 +3307,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"default_settings.on_behalf_of":                     "string",
 		"end_behavior":                                      "string",
 		"proration_behavior":                                "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "cancel", "/v1/subscriptions/{subscription_exposed_id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "cancel", "/v1/subscriptions/{subscription_exposed_id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "create", "/v1/subscriptions", http.MethodPost, map[string]string{
 		"application_fee_percent":                            "number",
 		"automatic_tax.enabled":                              "boolean",
@@ -3349,8 +3349,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"trial_from_plan":                                    "boolean",
 		"trial_period_days":                                  "integer",
 		"trial_settings.end_behavior.missing_payment_method": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "delete_discount", "/v1/subscriptions/{subscription_exposed_id}/discount", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "delete_discount", "/v1/subscriptions/{subscription_exposed_id}/discount", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "list", "/v1/subscriptions", http.MethodGet, map[string]string{
 		"collection_method":    "string",
 		"created":              "integer",
@@ -3365,22 +3365,22 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":       "string",
 		"status":               "string",
 		"test_clock":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "migrate", "/v1/subscriptions/{subscription}/migrate", http.MethodPost, map[string]string{
 		"billing_mode.flexible.proration_discounts": "string",
 		"billing_mode.type":                         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "resume", "/v1/subscriptions/{subscription}/resume", http.MethodPost, map[string]string{
 		"billing_cycle_anchor": "string",
 		"proration_behavior":   "string",
 		"proration_date":       "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "retrieve", "/v1/subscriptions/{subscription_exposed_id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "retrieve", "/v1/subscriptions/{subscription_exposed_id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "search", "/v1/subscriptions/search", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
 		"query": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rSubscriptionsCmd.Cmd, "update", "/v1/subscriptions/{subscription_exposed_id}", http.MethodPost, map[string]string{
 		"application_fee_percent":                            "number",
 		"automatic_tax.enabled":                              "boolean",
@@ -3410,24 +3410,24 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"trial_end":                                          "string",
 		"trial_from_plan":                                    "boolean",
 		"trial_settings.end_behavior.missing_payment_method": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxCodesCmd.Cmd, "list", "/v1/tax_codes", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxCodesCmd.Cmd, "retrieve", "/v1/tax_codes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxCodesCmd.Cmd, "retrieve", "/v1/tax_codes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "create", "/v1/customers/{customer}/tax_ids", http.MethodPost, map[string]string{
 		"type":  "string",
 		"value": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "delete", "/v1/customers/{customer}/tax_ids/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "delete", "/v1/customers/{customer}/tax_ids/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "list", "/v1/customers/{customer}/tax_ids", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "retrieve", "/v1/customers/{customer}/tax_ids/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxIdsCmd.Cmd, "retrieve", "/v1/customers/{customer}/tax_ids/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "create", "/v1/tax_rates", http.MethodPost, map[string]string{
 		"active":       "boolean",
 		"country":      "string",
@@ -3438,7 +3438,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"percentage":   "number",
 		"state":        "string",
 		"tax_type":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "list", "/v1/tax_rates", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"created":        "integer",
@@ -3446,8 +3446,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"inclusive":      "boolean",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "retrieve", "/v1/tax_rates/{tax_rate}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "retrieve", "/v1/tax_rates/{tax_rate}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRatesCmd.Cmd, "update", "/v1/tax_rates/{tax_rate}", http.MethodPost, map[string]string{
 		"active":       "boolean",
 		"country":      "string",
@@ -3456,7 +3456,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"jurisdiction": "string",
 		"state":        "string",
 		"tax_type":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTokensCmd.Cmd, "create", "/v1/tokens", http.MethodPost, map[string]string{
 		"account.business_type":                                     "string",
 		"account.company.address.city":                              "string",
@@ -3634,9 +3634,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"person.verification.document.back":                         "string",
 		"person.verification.document.front":                        "string",
 		"pii.id_number":                                             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTokensCmd.Cmd, "retrieve", "/v1/tokens/{token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTopupsCmd.Cmd, "cancel", "/v1/topups/{topup}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTokensCmd.Cmd, "retrieve", "/v1/tokens/{token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTopupsCmd.Cmd, "cancel", "/v1/topups/{topup}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTopupsCmd.Cmd, "create", "/v1/topups", http.MethodPost, map[string]string{
 		"amount":               "integer",
 		"currency":             "string",
@@ -3644,7 +3644,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"source":               "string",
 		"statement_descriptor": "string",
 		"transfer_group":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTopupsCmd.Cmd, "list", "/v1/topups", http.MethodGet, map[string]string{
 		"amount":         "integer",
 		"created":        "integer",
@@ -3652,23 +3652,23 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTopupsCmd.Cmd, "retrieve", "/v1/topups/{topup}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTopupsCmd.Cmd, "retrieve", "/v1/topups/{topup}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTopupsCmd.Cmd, "update", "/v1/topups/{topup}", http.MethodPost, map[string]string{
 		"description": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "create", "/v1/transfers/{id}/reversals", http.MethodPost, map[string]string{
 		"amount":                 "integer",
 		"description":            "string",
 		"refund_application_fee": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "list", "/v1/transfers/{id}/reversals", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "retrieve", "/v1/transfers/{transfer}/reversals/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "update", "/v1/transfers/{transfer}/reversals/{id}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "retrieve", "/v1/transfers/{transfer}/reversals/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTransferReversalsCmd.Cmd, "update", "/v1/transfers/{transfer}/reversals/{id}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTransfersCmd.Cmd, "create", "/v1/transfers", http.MethodPost, map[string]string{
 		"amount":             "integer",
 		"currency":           "string",
@@ -3677,7 +3677,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"source_transaction": "string",
 		"source_type":        "string",
 		"transfer_group":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTransfersCmd.Cmd, "list", "/v1/transfers", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"destination":    "string",
@@ -3685,73 +3685,73 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"transfer_group": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTransfersCmd.Cmd, "retrieve", "/v1/transfers/{transfer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTransfersCmd.Cmd, "retrieve", "/v1/transfers/{transfer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTransfersCmd.Cmd, "update", "/v1/transfers/{transfer}", http.MethodPost, map[string]string{
 		"description": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "create", "/v1/webhook_endpoints", http.MethodPost, map[string]string{
 		"api_version":    "string",
 		"connect":        "boolean",
 		"description":    "string",
 		"enabled_events": "array",
 		"url":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "delete", "/v1/webhook_endpoints/{webhook_endpoint}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "delete", "/v1/webhook_endpoints/{webhook_endpoint}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "list", "/v1/webhook_endpoints", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "retrieve", "/v1/webhook_endpoints/{webhook_endpoint}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "retrieve", "/v1/webhook_endpoints/{webhook_endpoint}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rWebhookEndpointsCmd.Cmd, "update", "/v1/webhook_endpoints/{webhook_endpoint}", http.MethodPost, map[string]string{
 		"description":    "string",
 		"disabled":       "boolean",
 		"enabled_events": "array",
 		"url":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "create", "/v1/apps/secrets", http.MethodPost, map[string]string{
 		"expires_at": "integer",
 		"name":       "string",
 		"payload":    "string",
 		"scope.type": "string",
 		"scope.user": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "delete_where", "/v1/apps/secrets/delete", http.MethodPost, map[string]string{
 		"name":       "string",
 		"scope.type": "string",
 		"scope.user": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "find", "/v1/apps/secrets/find", http.MethodGet, map[string]string{
 		"name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "list", "/v1/apps/secrets", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "activate", "/v1/billing/alerts/{id}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "archive", "/v1/billing/alerts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "activate", "/v1/billing/alerts/{id}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "archive", "/v1/billing/alerts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "create", "/v1/billing/alerts", http.MethodPost, map[string]string{
 		"alert_type":                 "string",
 		"title":                      "string",
 		"usage_threshold.gte":        "integer",
 		"usage_threshold.meter":      "string",
 		"usage_threshold.recurrence": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "deactivate", "/v1/billing/alerts/{id}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "deactivate", "/v1/billing/alerts/{id}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "list", "/v1/billing/alerts", http.MethodGet, map[string]string{
 		"alert_type":     "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"meter":          "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "retrieve", "/v1/billing/alerts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "retrieve", "/v1/billing/alerts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingCreditBalanceSummariesCmd.Cmd, "retrieve", "/v1/billing/credit_balance_summary", http.MethodGet, map[string]string{
 		"customer":         "string",
 		"customer_account": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingCreditBalanceTransactionsCmd.Cmd, "list", "/v1/billing/credit_balance_transactions", http.MethodGet, map[string]string{
 		"credit_grant":     "string",
 		"customer":         "string",
@@ -3759,8 +3759,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":    "string",
 		"limit":            "integer",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingCreditBalanceTransactionsCmd.Cmd, "retrieve", "/v1/billing/credit_balance_transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingCreditBalanceTransactionsCmd.Cmd, "retrieve", "/v1/billing/credit_balance_transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "create", "/v1/billing/credit_grants", http.MethodPost, map[string]string{
 		"amount.monetary.currency":              "string",
 		"amount.monetary.value":                 "integer",
@@ -3773,25 +3773,25 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"expires_at":                            "integer",
 		"name":                                  "string",
 		"priority":                              "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "expire", "/v1/billing/credit_grants/{id}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "expire", "/v1/billing/credit_grants/{id}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "list", "/v1/billing/credit_grants", http.MethodGet, map[string]string{
 		"customer":         "string",
 		"customer_account": "string",
 		"ending_before":    "string",
 		"limit":            "integer",
 		"starting_after":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "retrieve", "/v1/billing/credit_grants/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "retrieve", "/v1/billing/credit_grants/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "update", "/v1/billing/credit_grants/{id}", http.MethodPost, map[string]string{
 		"expires_at": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "void_grant", "/v1/billing/credit_grants/{id}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingCreditGrantsCmd.Cmd, "void_grant", "/v1/billing/credit_grants/{id}/void", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMeterEventAdjustmentsCmd.Cmd, "create", "/v1/billing/meter_event_adjustments", http.MethodPost, map[string]string{
 		"cancel.identifier": "string",
 		"event_name":        "string",
 		"type":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMeterEventSummariesCmd.Cmd, "list", "/v1/billing/meters/{id}/event_summaries", http.MethodGet, map[string]string{
 		"customer":              "string",
 		"end_time":              "integer",
@@ -3800,12 +3800,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"start_time":            "integer",
 		"starting_after":        "string",
 		"value_grouping_window": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v1/billing/meter_events", http.MethodPost, map[string]string{
 		"event_name": "string",
 		"identifier": "string",
 		"timestamp":  "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "create", "/v1/billing/meters", http.MethodPost, map[string]string{
 		"customer_mapping.event_payload_key": "string",
 		"customer_mapping.type":              "string",
@@ -3814,19 +3814,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"event_name":                         "string",
 		"event_time_window":                  "string",
 		"value_settings.event_payload_key":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "deactivate", "/v1/billing/meters/{id}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "deactivate", "/v1/billing/meters/{id}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "list", "/v1/billing/meters", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "reactivate", "/v1/billing/meters/{id}/reactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "retrieve", "/v1/billing/meters/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "reactivate", "/v1/billing/meters/{id}/reactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "retrieve", "/v1/billing/meters/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "update", "/v1/billing/meters/{id}", http.MethodPost, map[string]string{
 		"display_name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
 		"business_profile.headline":                                   "string",
 		"business_profile.privacy_policy_url":                         "string",
@@ -3849,15 +3849,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"features.subscription_update.trial_update_behavior":          "string",
 		"login_page.enabled":                                          "boolean",
 		"name":                                                        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "list", "/v1/billing_portal/configurations", http.MethodGet, map[string]string{
 		"active":         "boolean",
 		"ending_before":  "string",
 		"is_default":     "boolean",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "retrieve", "/v1/billing_portal/configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "retrieve", "/v1/billing_portal/configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "update", "/v1/billing_portal/configurations/{configuration}", http.MethodPost, map[string]string{
 		"active":                                                      "boolean",
 		"business_profile.headline":                                   "string",
@@ -3881,7 +3881,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"features.subscription_update.trial_update_behavior":          "string",
 		"login_page.enabled":                                          "boolean",
 		"name":                                                        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingPortalSessionsCmd.Cmd, "create", "/v1/billing_portal/sessions", http.MethodPost, map[string]string{
 		"configuration":    "string",
 		"customer":         "string",
@@ -3898,7 +3898,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"locale":         "string",
 		"on_behalf_of":   "string",
 		"return_url":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "create", "/v1/checkout/sessions", http.MethodPost, map[string]string{
 		"adaptive_pricing.enabled":                                   "boolean",
 		"after_expiration.recovery.allow_promotion_codes":            "boolean",
@@ -4108,8 +4108,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_id_collection.required":  "string",
 		"ui_mode":                     "string",
 		"wallet_options.link.display": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "expire", "/v1/checkout/sessions/{session}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "expire", "/v1/checkout/sessions/{session}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "list", "/v1/checkout/sessions", http.MethodGet, map[string]string{
 		"created":          "integer",
 		"customer":         "string",
@@ -4121,13 +4121,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":   "string",
 		"status":           "string",
 		"subscription":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "list_line_items", "/v1/checkout/sessions/{session}/line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "retrieve", "/v1/checkout/sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "update", "/v1/checkout/sessions/{session}", http.MethodPost, map[string]string{
 		"collected_information.shipping_details.address.city":        "string",
 		"collected_information.shipping_details.address.country":     "string",
@@ -4136,80 +4136,80 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"collected_information.shipping_details.address.postal_code": "string",
 		"collected_information.shipping_details.address.state":       "string",
 		"collected_information.shipping_details.name":                "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "cancel", "/v1/climate/orders/{order}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "cancel", "/v1/climate/orders/{order}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "create", "/v1/climate/orders", http.MethodPost, map[string]string{
 		"amount":                  "integer",
 		"beneficiary.public_name": "string",
 		"currency":                "string",
 		"metric_tons":             "string",
 		"product":                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "list", "/v1/climate/orders", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "retrieve", "/v1/climate/orders/{order}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "update", "/v1/climate/orders/{order}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "retrieve", "/v1/climate/orders/{order}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "update", "/v1/climate/orders/{order}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateProductsCmd.Cmd, "list", "/v1/climate/products", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rClimateProductsCmd.Cmd, "retrieve", "/v1/climate/products/{product}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rClimateProductsCmd.Cmd, "retrieve", "/v1/climate/products/{product}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateSuppliersCmd.Cmd, "list", "/v1/climate/suppliers", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rClimateSuppliersCmd.Cmd, "retrieve", "/v1/climate/suppliers/{supplier}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rClimateSuppliersCmd.Cmd, "retrieve", "/v1/climate/suppliers/{supplier}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "list", "/v1/entitlements/active_entitlements", http.MethodGet, map[string]string{
 		"customer":       "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "retrieve", "/v1/entitlements/active_entitlements/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "retrieve", "/v1/entitlements/active_entitlements/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "create", "/v1/entitlements/features", http.MethodPost, map[string]string{
 		"lookup_key": "string",
 		"name":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "list", "/v1/entitlements/features", http.MethodGet, map[string]string{
 		"archived":       "boolean",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"lookup_key":     "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "retrieve", "/v1/entitlements/features/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "retrieve", "/v1/entitlements/features/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rEntitlementsFeaturesCmd.Cmd, "update", "/v1/entitlements/features/{id}", http.MethodPost, map[string]string{
 		"active": "boolean",
 		"name":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list", "/v1/financial_connections/accounts", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"session":        "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list_owners", "/v1/financial_connections/accounts/{account}/owners", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"ownership":      "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "refresh", "/v1/financial_connections/accounts/{account}/refresh", http.MethodPost, map[string]string{
 		"features": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "retrieve", "/v1/financial_connections/accounts/{account}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "retrieve", "/v1/financial_connections/accounts/{account}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "subscribe", "/v1/financial_connections/accounts/{account}/subscribe", http.MethodPost, map[string]string{
 		"features": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "unsubscribe", "/v1/financial_connections/accounts/{account}/unsubscribe", http.MethodPost, map[string]string{
 		"features": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsSessionsCmd.Cmd, "create", "/v1/financial_connections/sessions", http.MethodPost, map[string]string{
 		"account_holder.account":          "string",
 		"account_holder.customer":         "string",
@@ -4220,28 +4220,28 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"permissions":                     "array",
 		"prefetch":                        "array",
 		"return_url":                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFinancialConnectionsSessionsCmd.Cmd, "retrieve", "/v1/financial_connections/sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFinancialConnectionsSessionsCmd.Cmd, "retrieve", "/v1/financial_connections/sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsTransactionsCmd.Cmd, "list", "/v1/financial_connections/transactions", http.MethodGet, map[string]string{
 		"account":        "string",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"transacted_at":  "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rFinancialConnectionsTransactionsCmd.Cmd, "retrieve", "/v1/financial_connections/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rFinancialConnectionsTransactionsCmd.Cmd, "retrieve", "/v1/financial_connections/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "create", "/v1/forwarding/requests", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"replacements":   "array",
 		"request.body":   "string",
 		"url":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "list", "/v1/forwarding/requests", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "retrieve", "/v1/forwarding/requests/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "retrieve", "/v1/forwarding/requests/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "list", "/v1/identity/verification_reports", http.MethodGet, map[string]string{
 		"client_reference_id":  "string",
 		"created":              "integer",
@@ -4250,9 +4250,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":       "string",
 		"type":                 "string",
 		"verification_session": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "retrieve", "/v1/identity/verification_reports/{report}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "cancel", "/v1/identity/verification_sessions/{session}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "retrieve", "/v1/identity/verification_reports/{report}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "cancel", "/v1/identity/verification_sessions/{session}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "create", "/v1/identity/verification_sessions", http.MethodPost, map[string]string{
 		"client_reference_id":      "string",
 		"provided_details.email":   "string",
@@ -4264,7 +4264,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"return_url":               "string",
 		"type":                     "string",
 		"verification_flow":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "list", "/v1/identity/verification_sessions", http.MethodGet, map[string]string{
 		"client_reference_id":      "string",
 		"created":                  "integer",
@@ -4274,14 +4274,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"related_customer_account": "string",
 		"starting_after":           "string",
 		"status":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "redact", "/v1/identity/verification_sessions/{session}/redact", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "retrieve", "/v1/identity/verification_sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "redact", "/v1/identity/verification_sessions/{session}/redact", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "retrieve", "/v1/identity/verification_sessions/{session}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIdentityVerificationSessionsCmd.Cmd, "update", "/v1/identity/verification_sessions/{session}", http.MethodPost, map[string]string{
 		"provided_details.email": "string",
 		"provided_details.phone": "string",
 		"type":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "list", "/v1/issuing/authorizations", http.MethodGet, map[string]string{
 		"card":           "string",
 		"cardholder":     "string",
@@ -4290,9 +4290,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "retrieve", "/v1/issuing/authorizations/{authorization}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "update", "/v1/issuing/authorizations/{authorization}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "retrieve", "/v1/issuing/authorizations/{authorization}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "update", "/v1/issuing/authorizations/{authorization}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "capture", "/v1/test_helpers/issuing/authorizations/{authorization}/capture", http.MethodPost, map[string]string{
 		"capture_amount":      "integer",
 		"close_authorization": "boolean",
@@ -4319,7 +4319,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "create", "/v1/test_helpers/issuing/authorizations", http.MethodPost, map[string]string{
 		"amount":                                                 "integer",
 		"amount_details.atm_fee":                                 "integer",
@@ -4372,8 +4372,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"verification_data.expiry_check":                                                  "string",
 		"verification_data.three_d_secure.result":                                         "string",
 		"wallet": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "expire", "/v1/test_helpers/issuing/authorizations/{authorization}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "expire", "/v1/test_helpers/issuing/authorizations/{authorization}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "finalize_amount", "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount", http.MethodPost, map[string]string{
 		"final_amount":                                           "integer",
 		"fleet.cardholder_prompt_data.driver_id":                 "string",
@@ -4392,17 +4392,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"fuel.type":                                              "string",
 		"fuel.unit":                                              "string",
 		"fuel.unit_cost_decimal":                                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "increment", "/v1/test_helpers/issuing/authorizations/{authorization}/increment", http.MethodPost, map[string]string{
 		"increment_amount":       "integer",
 		"is_amount_controllable": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "respond", "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond", http.MethodPost, map[string]string{
 		"confirmed": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingAuthorizationsTestHelpersCmd.Cmd, "reverse", "/v1/test_helpers/issuing/authorizations/{authorization}/reverse", http.MethodPost, map[string]string{
 		"reverse_amount": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardholdersCmd.Cmd, "create", "/v1/issuing/cardholders", http.MethodPost, map[string]string{
 		"billing.address.city":        "string",
 		"billing.address.country":     "string",
@@ -4432,7 +4432,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"spending_controls.spending_limits_currency":   "string",
 		"status": "string",
 		"type":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardholdersCmd.Cmd, "list", "/v1/issuing/cardholders", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"email":          "string",
@@ -4442,8 +4442,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 		"status":         "string",
 		"type":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardholdersCmd.Cmd, "retrieve", "/v1/issuing/cardholders/{cardholder}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardholdersCmd.Cmd, "retrieve", "/v1/issuing/cardholders/{cardholder}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardholdersCmd.Cmd, "update", "/v1/issuing/cardholders/{cardholder}", http.MethodPost, map[string]string{
 		"billing.address.city":        "string",
 		"billing.address.country":     "string",
@@ -4471,7 +4471,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"spending_controls.blocked_merchant_countries": "array",
 		"spending_controls.spending_limits_currency":   "string",
 		"status": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "create", "/v1/issuing/cards", http.MethodPost, map[string]string{
 		"cardholder":                                   "string",
 		"currency":                                     "string",
@@ -4502,7 +4502,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"spending_controls.blocked_merchant_countries": "array",
 		"status": "string",
 		"type":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "list", "/v1/issuing/cards", http.MethodGet, map[string]string{
 		"cardholder":             "string",
 		"created":                "integer",
@@ -4515,8 +4515,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after":         "string",
 		"status":                 "string",
 		"type":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "retrieve", "/v1/issuing/cards/{card}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "retrieve", "/v1/issuing/cards/{card}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingCardsCmd.Cmd, "update", "/v1/issuing/cards/{card}", http.MethodPost, map[string]string{
 		"cancellation_reason":                          "string",
 		"personalization_design":                       "string",
@@ -4539,18 +4539,18 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"spending_controls.blocked_categories":         "array",
 		"spending_controls.blocked_merchant_countries": "array",
 		"status": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "deliver_card", "/v1/test_helpers/issuing/cards/{card}/shipping/deliver", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "fail_card", "/v1/test_helpers/issuing/cards/{card}/shipping/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "return_card", "/v1/test_helpers/issuing/cards/{card}/shipping/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "submit_card", "/v1/test_helpers/issuing/cards/{card}/shipping/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "deliver_card", "/v1/test_helpers/issuing/cards/{card}/shipping/deliver", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "fail_card", "/v1/test_helpers/issuing/cards/{card}/shipping/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "return_card", "/v1/test_helpers/issuing/cards/{card}/shipping/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingCardsTestHelpersCmd.Cmd, "submit_card", "/v1/test_helpers/issuing/cards/{card}/shipping/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "create", "/v1/issuing/disputes", http.MethodPost, map[string]string{
 		"amount":                  "integer",
 		"evidence.reason":         "string",
 		"transaction":             "string",
 		"treasury.received_debit": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "list", "/v1/issuing/disputes", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
@@ -4558,13 +4558,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 		"status":         "string",
 		"transaction":    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "retrieve", "/v1/issuing/disputes/{dispute}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "submit", "/v1/issuing/disputes/{dispute}/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "retrieve", "/v1/issuing/disputes/{dispute}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "submit", "/v1/issuing/disputes/{dispute}/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingDisputesCmd.Cmd, "update", "/v1/issuing/disputes/{dispute}", http.MethodPost, map[string]string{
 		"amount":          "integer",
 		"evidence.reason": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingPersonalizationDesignsCmd.Cmd, "create", "/v1/issuing/personalization_designs", http.MethodPost, map[string]string{
 		"card_logo":                 "string",
 		"carrier_text.footer_body":  "string",
@@ -4576,15 +4576,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"physical_bundle":           "string",
 		"preferences.is_default":    "boolean",
 		"transfer_lookup_key":       "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingPersonalizationDesignsCmd.Cmd, "list", "/v1/issuing/personalization_designs", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"lookup_keys":    "array",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingPersonalizationDesignsCmd.Cmd, "retrieve", "/v1/issuing/personalization_designs/{personalization_design}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingPersonalizationDesignsCmd.Cmd, "retrieve", "/v1/issuing/personalization_designs/{personalization_design}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingPersonalizationDesignsCmd.Cmd, "update", "/v1/issuing/personalization_designs/{personalization_design}", http.MethodPost, map[string]string{
 		"card_logo":              "string",
 		"lookup_key":             "string",
@@ -4592,21 +4592,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"physical_bundle":        "string",
 		"preferences.is_default": "boolean",
 		"transfer_lookup_key":    "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingPersonalizationDesignsTestHelpersCmd.Cmd, "activate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingPersonalizationDesignsTestHelpersCmd.Cmd, "deactivate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingPersonalizationDesignsTestHelpersCmd.Cmd, "activate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingPersonalizationDesignsTestHelpersCmd.Cmd, "deactivate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingPersonalizationDesignsTestHelpersCmd.Cmd, "reject", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject", http.MethodPost, map[string]string{
 		"rejection_reasons.card_logo":    "array",
 		"rejection_reasons.carrier_text": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingPhysicalBundlesCmd.Cmd, "list", "/v1/issuing/physical_bundles", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
 		"type":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingPhysicalBundlesCmd.Cmd, "retrieve", "/v1/issuing/physical_bundles/{physical_bundle}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingPhysicalBundlesCmd.Cmd, "retrieve", "/v1/issuing/physical_bundles/{physical_bundle}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTokensCmd.Cmd, "list", "/v1/issuing/tokens", http.MethodGet, map[string]string{
 		"card":           "string",
 		"created":        "integer",
@@ -4614,11 +4614,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingTokensCmd.Cmd, "retrieve", "/v1/issuing/tokens/{token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingTokensCmd.Cmd, "retrieve", "/v1/issuing/tokens/{token}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTokensCmd.Cmd, "update", "/v1/issuing/tokens/{token}", http.MethodPost, map[string]string{
 		"status": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "list", "/v1/issuing/transactions", http.MethodGet, map[string]string{
 		"card":           "string",
 		"cardholder":     "string",
@@ -4627,9 +4627,9 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 		"type":           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "retrieve", "/v1/issuing/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "update", "/v1/issuing/transactions/{transaction}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "retrieve", "/v1/issuing/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rIssuingTransactionsCmd.Cmd, "update", "/v1/issuing/transactions/{transaction}", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTransactionsTestHelpersCmd.Cmd, "create_force_capture", "/v1/test_helpers/issuing/transactions/create_force_capture", http.MethodPost, map[string]string{
 		"amount":                    "integer",
 		"card":                      "string",
@@ -4666,7 +4666,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTransactionsTestHelpersCmd.Cmd, "create_unlinked_refund", "/v1/test_helpers/issuing/transactions/create_unlinked_refund", http.MethodPost, map[string]string{
 		"amount":                    "integer",
 		"card":                      "string",
@@ -4703,10 +4703,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rIssuingTransactionsTestHelpersCmd.Cmd, "refund", "/v1/test_helpers/issuing/transactions/{transaction}/refund", http.MethodPost, map[string]string{
 		"refund_amount": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarEarlyFraudWarningsCmd.Cmd, "list", "/v1/radar/early_fraud_warnings", http.MethodGet, map[string]string{
 		"charge":         "string",
 		"created":        "integer",
@@ -4714,8 +4714,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"payment_intent": "string",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRadarEarlyFraudWarningsCmd.Cmd, "retrieve", "/v1/radar/early_fraud_warnings/{early_fraud_warning}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRadarEarlyFraudWarningsCmd.Cmd, "retrieve", "/v1/radar/early_fraud_warnings/{early_fraud_warning}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarPaymentEvaluationsCmd.Cmd, "create", "/v1/radar/payment_evaluations", http.MethodPost, map[string]string{
 		"client_device_metadata_details.radar_session":                               "string",
 		"customer_details.customer":                                                  "string",
@@ -4748,12 +4748,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"payment_details.shipping_details.name":                                      "string",
 		"payment_details.shipping_details.phone":                                     "string",
 		"payment_details.statement_descriptor":                                       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "create", "/v1/radar/value_list_items", http.MethodPost, map[string]string{
 		"value":      "string",
 		"value_list": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "delete", "/v1/radar/value_list_items/{item}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "delete", "/v1/radar/value_list_items/{item}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "list", "/v1/radar/value_list_items", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
@@ -4761,14 +4761,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 		"value":          "string",
 		"value_list":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "retrieve", "/v1/radar/value_list_items/{item}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRadarValueListItemsCmd.Cmd, "retrieve", "/v1/radar/value_list_items/{item}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "create", "/v1/radar/value_lists", http.MethodPost, map[string]string{
 		"alias":     "string",
 		"item_type": "string",
 		"name":      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "delete", "/v1/radar/value_lists/{value_list}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "delete", "/v1/radar/value_lists/{value_list}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "list", "/v1/radar/value_lists", http.MethodGet, map[string]string{
 		"alias":          "string",
 		"contains":       "string",
@@ -4776,12 +4776,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "retrieve", "/v1/radar/value_lists/{value_list}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "retrieve", "/v1/radar/value_lists/{value_list}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rRadarValueListsCmd.Cmd, "update", "/v1/radar/value_lists/{value_list}", http.MethodPost, map[string]string{
 		"alias": "string",
 		"name":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "create", "/v1/reporting/report_runs", http.MethodPost, map[string]string{
 		"parameters.columns":            "array",
 		"parameters.connected_account":  "string",
@@ -4792,19 +4792,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"parameters.reporting_category": "string",
 		"parameters.timezone":           "string",
 		"report_type":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "list", "/v1/reporting/report_runs", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "retrieve", "/v1/reporting/report_runs/{report_run}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "list", "/v1/reporting/report_types", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "retrieve", "/v1/reporting/report_types/{report_type}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "retrieve", "/v1/reporting/report_runs/{report_run}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "list", "/v1/reporting/report_types", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "retrieve", "/v1/reporting/report_types/{report_type}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxAssociationsCmd.Cmd, "find", "/v1/tax/associations/find", http.MethodGet, map[string]string{
 		"payment_intent": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "create", "/v1/tax/calculations", http.MethodPost, map[string]string{
 		"currency":                              "string",
 		"customer":                              "string",
@@ -4828,13 +4828,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping_cost.tax_behavior":            "string",
 		"shipping_cost.tax_code":                "string",
 		"tax_date":                              "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "list_line_items", "/v1/tax/calculations/{calculation}/line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "retrieve", "/v1/tax/calculations/{calculation}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxCalculationsCmd.Cmd, "retrieve", "/v1/tax/calculations/{calculation}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRegistrationsCmd.Cmd, "create", "/v1/tax/registrations", http.MethodPost, map[string]string{
 		"active_from": "string",
 		"country":     "string",
@@ -5001,19 +5001,19 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"country_options.zw.standard.place_of_supply_scheme":  "string",
 		"country_options.zw.type":                             "string",
 		"expires_at":                                          "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRegistrationsCmd.Cmd, "list", "/v1/tax/registrations", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxRegistrationsCmd.Cmd, "retrieve", "/v1/tax/registrations/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxRegistrationsCmd.Cmd, "retrieve", "/v1/tax/registrations/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxRegistrationsCmd.Cmd, "update", "/v1/tax/registrations/{id}", http.MethodPost, map[string]string{
 		"active_from": "string",
 		"expires_at":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxSettingsCmd.Cmd, "retrieve", "/v1/tax/settings", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxSettingsCmd.Cmd, "retrieve", "/v1/tax/settings", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxSettingsCmd.Cmd, "update", "/v1/tax/settings", http.MethodPost, map[string]string{
 		"defaults.tax_behavior":           "string",
 		"defaults.tax_code":               "string",
@@ -5023,12 +5023,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"head_office.address.line2":       "string",
 		"head_office.address.postal_code": "string",
 		"head_office.address.state":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_from_calculation", "/v1/tax/transactions/create_from_calculation", http.MethodPost, map[string]string{
 		"calculation": "string",
 		"posted_at":   "integer",
 		"reference":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "create_reversal", "/v1/tax/transactions/create_reversal", http.MethodPost, map[string]string{
 		"flat_amount":              "integer",
 		"mode":                     "string",
@@ -5036,13 +5036,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"reference":                "string",
 		"shipping_cost.amount":     "integer",
 		"shipping_cost.amount_tax": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "list_line_items", "/v1/tax/transactions/{transaction}/line_items", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "retrieve", "/v1/tax/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "retrieve", "/v1/tax/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "create", "/v1/terminal/configurations", http.MethodPost, map[string]string{
 		"bbpos_wisepad3.splashscreen":  "string",
 		"bbpos_wisepos_e.splashscreen": "string",
@@ -5052,21 +5052,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"stripe_s700.splashscreen":     "string",
 		"stripe_s710.splashscreen":     "string",
 		"verifone_p400.splashscreen":   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "delete", "/v1/terminal/configurations/{configuration}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "delete", "/v1/terminal/configurations/{configuration}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "list", "/v1/terminal/configurations", http.MethodGet, map[string]string{
 		"ending_before":      "string",
 		"is_account_default": "boolean",
 		"limit":              "integer",
 		"starting_after":     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "retrieve", "/v1/terminal/configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "retrieve", "/v1/terminal/configurations/{configuration}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "update", "/v1/terminal/configurations/{configuration}", http.MethodPost, map[string]string{
 		"name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalConnectionTokensCmd.Cmd, "create", "/v1/terminal/connection_tokens", http.MethodPost, map[string]string{
 		"location": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "create", "/v1/terminal/locations", http.MethodPost, map[string]string{
 		"address.city":              "string",
 		"address.country":           "string",
@@ -5093,14 +5093,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"display_name_kana":         "string",
 		"display_name_kanji":        "string",
 		"phone":                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "delete", "/v1/terminal/locations/{location}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "delete", "/v1/terminal/locations/{location}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "list", "/v1/terminal/locations", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "retrieve", "/v1/terminal/locations/{location}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "retrieve", "/v1/terminal/locations/{location}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalLocationsCmd.Cmd, "update", "/v1/terminal/locations/{location}", http.MethodPost, map[string]string{
 		"address.city":              "string",
 		"address.country":           "string",
@@ -5127,32 +5127,32 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"display_name_kana":         "string",
 		"display_name_kanji":        "string",
 		"phone":                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalOnboardingLinksCmd.Cmd, "create", "/v1/terminal/onboarding_links", http.MethodPost, map[string]string{
 		"link_options.apple_terms_and_conditions.allow_relinking":       "boolean",
 		"link_options.apple_terms_and_conditions.merchant_display_name": "string",
 		"link_type":    "string",
 		"on_behalf_of": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "cancel_action", "/v1/terminal/readers/{reader}/cancel_action", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_inputs", "/v1/terminal/readers/{reader}/collect_inputs", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "cancel_action", "/v1/terminal/readers/{reader}/cancel_action", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_inputs", "/v1/terminal/readers/{reader}/collect_inputs", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "collect_payment_method", "/v1/terminal/readers/{reader}/collect_payment_method", http.MethodPost, map[string]string{
 		"collect_config.allow_redisplay":              "string",
 		"collect_config.enable_customer_cancellation": "boolean",
 		"collect_config.skip_tipping":                 "boolean",
 		"collect_config.tipping.amount_eligible":      "integer",
 		"payment_intent":                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "confirm_payment_intent", "/v1/terminal/readers/{reader}/confirm_payment_intent", http.MethodPost, map[string]string{
 		"confirm_config.return_url": "string",
 		"payment_intent":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "create", "/v1/terminal/readers", http.MethodPost, map[string]string{
 		"label":             "string",
 		"location":          "string",
 		"registration_code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "delete", "/v1/terminal/readers/{reader}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "delete", "/v1/terminal/readers/{reader}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "list", "/v1/terminal/readers", http.MethodGet, map[string]string{
 		"device_type":    "string",
 		"ending_before":  "string",
@@ -5161,7 +5161,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"serial_number":  "string",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "process_payment_intent", "/v1/terminal/readers/{reader}/process_payment_intent", http.MethodPost, map[string]string{
 		"payment_intent":                              "string",
 		"process_config.allow_redisplay":              "string",
@@ -5169,12 +5169,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"process_config.return_url":                   "string",
 		"process_config.skip_tipping":                 "boolean",
 		"process_config.tipping.amount_eligible":      "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "process_setup_intent", "/v1/terminal/readers/{reader}/process_setup_intent", http.MethodPost, map[string]string{
 		"allow_redisplay": "string",
 		"process_config.enable_customer_cancellation": "boolean",
 		"setup_intent": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "refund_payment", "/v1/terminal/readers/{reader}/refund_payment", http.MethodPost, map[string]string{
 		"amount":                 "integer",
 		"charge":                 "string",
@@ -5182,17 +5182,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"refund_application_fee": "boolean",
 		"refund_payment_config.enable_customer_cancellation": "boolean",
 		"reverse_transfer": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "retrieve", "/v1/terminal/readers/{reader}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "retrieve", "/v1/terminal/readers/{reader}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "set_reader_display", "/v1/terminal/readers/{reader}/set_reader_display", http.MethodPost, map[string]string{
 		"cart.currency": "string",
 		"cart.tax":      "integer",
 		"cart.total":    "integer",
 		"type":          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersCmd.Cmd, "update", "/v1/terminal/readers/{reader}", http.MethodPost, map[string]string{
 		"label": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
 		"amount_tip":             "integer",
 		"card.cvc":               "string",
@@ -5202,11 +5202,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "succeed_input_collection", "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection", http.MethodPost, map[string]string{
 		"skip_non_required_inputs": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersConfirmationTokensCmd.Cmd, "create", "/v1/test_helpers/confirmation_tokens", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -5262,12 +5262,12 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"shipping.address.state":       "string",
 		"shipping.name":                "string",
 		"shipping.phone":               "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersCustomersCmd.Cmd, "fund_cash_balance", "/v1/test_helpers/customers/{customer}/fund_cash_balance", http.MethodPost, map[string]string{
 		"amount":    "integer",
 		"currency":  "string",
 		"reference": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "capture", "/v1/test_helpers/issuing/authorizations/{authorization}/capture", http.MethodPost, map[string]string{
 		"capture_amount":      "integer",
 		"close_authorization": "boolean",
@@ -5294,7 +5294,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "create", "/v1/test_helpers/issuing/authorizations", http.MethodPost, map[string]string{
 		"amount":                                                 "integer",
 		"amount_details.atm_fee":                                 "integer",
@@ -5347,8 +5347,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"verification_data.expiry_check":                                                  "string",
 		"verification_data.three_d_secure.result":                                         "string",
 		"wallet": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "expire", "/v1/test_helpers/issuing/authorizations/{authorization}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "expire", "/v1/test_helpers/issuing/authorizations/{authorization}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "finalize_amount", "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount", http.MethodPost, map[string]string{
 		"final_amount":                                           "integer",
 		"fleet.cardholder_prompt_data.driver_id":                 "string",
@@ -5367,28 +5367,28 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"fuel.type":                                              "string",
 		"fuel.unit":                                              "string",
 		"fuel.unit_cost_decimal":                                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "increment", "/v1/test_helpers/issuing/authorizations/{authorization}/increment", http.MethodPost, map[string]string{
 		"increment_amount":       "integer",
 		"is_amount_controllable": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "respond", "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond", http.MethodPost, map[string]string{
 		"confirmed": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingAuthorizationsCmd.Cmd, "reverse", "/v1/test_helpers/issuing/authorizations/{authorization}/reverse", http.MethodPost, map[string]string{
 		"reverse_amount": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "deliver_card", "/v1/test_helpers/issuing/cards/{card}/shipping/deliver", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "fail_card", "/v1/test_helpers/issuing/cards/{card}/shipping/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "return_card", "/v1/test_helpers/issuing/cards/{card}/shipping/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "submit_card", "/v1/test_helpers/issuing/cards/{card}/shipping/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingPersonalizationDesignsCmd.Cmd, "activate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersIssuingPersonalizationDesignsCmd.Cmd, "deactivate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "deliver_card", "/v1/test_helpers/issuing/cards/{card}/shipping/deliver", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "fail_card", "/v1/test_helpers/issuing/cards/{card}/shipping/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "return_card", "/v1/test_helpers/issuing/cards/{card}/shipping/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "ship_card", "/v1/test_helpers/issuing/cards/{card}/shipping/ship", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingCardsCmd.Cmd, "submit_card", "/v1/test_helpers/issuing/cards/{card}/shipping/submit", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingPersonalizationDesignsCmd.Cmd, "activate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersIssuingPersonalizationDesignsCmd.Cmd, "deactivate", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingPersonalizationDesignsCmd.Cmd, "reject", "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject", http.MethodPost, map[string]string{
 		"rejection_reasons.card_logo":    "array",
 		"rejection_reasons.carrier_text": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingTransactionsCmd.Cmd, "create_force_capture", "/v1/test_helpers/issuing/transactions/create_force_capture", http.MethodPost, map[string]string{
 		"amount":                    "integer",
 		"card":                      "string",
@@ -5425,7 +5425,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingTransactionsCmd.Cmd, "create_unlinked_refund", "/v1/test_helpers/issuing/transactions/create_unlinked_refund", http.MethodPost, map[string]string{
 		"amount":                    "integer",
 		"card":                      "string",
@@ -5462,11 +5462,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"purchase_details.lodging.check_in_at":                                    "integer",
 		"purchase_details.lodging.nights":                                         "integer",
 		"purchase_details.reference":                                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersIssuingTransactionsCmd.Cmd, "refund", "/v1/test_helpers/issuing/transactions/{transaction}/refund", http.MethodPost, map[string]string{
 		"refund_amount": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersRefundsCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersRefundsCmd.Cmd, "expire", "/v1/test_helpers/refunds/{refund}/expire", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "present_payment_method", "/v1/test_helpers/terminal/readers/{reader}/present_payment_method", http.MethodPost, map[string]string{
 		"amount_tip":             "integer",
 		"card.cvc":               "string",
@@ -5476,54 +5476,54 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"card_present.number":    "string",
 		"interac_present.number": "string",
 		"type":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "succeed_input_collection", "/v1/test_helpers/terminal/readers/{reader}/succeed_input_collection", http.MethodPost, map[string]string{
 		"skip_non_required_inputs": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTerminalReadersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "advance", "/v1/test_helpers/test_clocks/{test_clock}/advance", http.MethodPost, map[string]string{
 		"frozen_time": "integer",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "create", "/v1/test_helpers/test_clocks", http.MethodPost, map[string]string{
 		"frozen_time": "integer",
 		"name":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "delete", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "delete", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "list", "/v1/test_helpers/test_clocks", http.MethodGet, map[string]string{
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "retrieve", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTestClocksCmd.Cmd, "retrieve", "/v1/test_helpers/test_clocks/{test_clock}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryInboundTransfersCmd.Cmd, "fail", "/v1/test_helpers/treasury/inbound_transfers/{id}/fail", http.MethodPost, map[string]string{
 		"failure_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryInboundTransfersCmd.Cmd, "return_inbound_transfer", "/v1/test_helpers/treasury/inbound_transfers/{id}/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryInboundTransfersCmd.Cmd, "succeed", "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_payments/{id}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_payments/{id}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryInboundTransfersCmd.Cmd, "return_inbound_transfer", "/v1/test_helpers/treasury/inbound_transfers/{id}/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryInboundTransfersCmd.Cmd, "succeed", "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_payments/{id}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_payments/{id}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "return_outbound_payment", "/v1/test_helpers/treasury/outbound_payments/{id}/return", http.MethodPost, map[string]string{
 		"returned_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryOutboundPaymentsCmd.Cmd, "update", "/v1/test_helpers/treasury/outbound_payments/{id}", http.MethodPost, map[string]string{
 		"tracking_details.ach.trace_id":           "string",
 		"tracking_details.type":                   "string",
 		"tracking_details.us_domestic_wire.chips": "string",
 		"tracking_details.us_domestic_wire.imad":  "string",
 		"tracking_details.us_domestic_wire.omad":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "return_outbound_transfer", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return", http.MethodPost, map[string]string{
 		"returned_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryOutboundTransfersCmd.Cmd, "update", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}", http.MethodPost, map[string]string{
 		"tracking_details.ach.trace_id":           "string",
 		"tracking_details.type":                   "string",
 		"tracking_details.us_domestic_wire.chips": "string",
 		"tracking_details.us_domestic_wire.imad":  "string",
 		"tracking_details.us_domestic_wire.omad":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryReceivedCreditsCmd.Cmd, "create", "/v1/test_helpers/treasury/received_credits", http.MethodPost, map[string]string{
 		"amount":                                 "integer",
 		"currency":                               "string",
@@ -5534,7 +5534,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"initiating_payment_method_details.us_bank_account.account_number":      "string",
 		"initiating_payment_method_details.us_bank_account.routing_number":      "string",
 		"network": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTestHelpersTreasuryReceivedDebitsCmd.Cmd, "create", "/v1/test_helpers/treasury/received_debits", http.MethodPost, map[string]string{
 		"amount":                                 "integer",
 		"currency":                               "string",
@@ -5545,10 +5545,10 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"initiating_payment_method_details.us_bank_account.account_number":      "string",
 		"initiating_payment_method_details.us_bank_account.routing_number":      "string",
 		"network": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "create", "/v1/treasury/credit_reversals", http.MethodPost, map[string]string{
 		"received_credit": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "list", "/v1/treasury/credit_reversals", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
@@ -5556,11 +5556,11 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"received_credit":   "string",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "retrieve", "/v1/treasury/credit_reversals/{credit_reversal}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "retrieve", "/v1/treasury/credit_reversals/{credit_reversal}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "create", "/v1/treasury/debit_reversals", http.MethodPost, map[string]string{
 		"received_debit": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "list", "/v1/treasury/debit_reversals", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
@@ -5569,13 +5569,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"resolution":        "string",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "retrieve", "/v1/treasury/debit_reversals/{debit_reversal}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryDebitReversalsCmd.Cmd, "retrieve", "/v1/treasury/debit_reversals/{debit_reversal}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "close", "/v1/treasury/financial_accounts/{financial_account}/close", http.MethodPost, map[string]string{
 		"forwarding_settings.financial_account": "string",
 		"forwarding_settings.payment_method":    "string",
 		"forwarding_settings.type":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "create", "/v1/treasury/financial_accounts", http.MethodPost, map[string]string{
 		"features.card_issuing.requested":                        "boolean",
 		"features.deposit_insurance.requested":                   "boolean",
@@ -5590,16 +5590,16 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"platform_restrictions.inbound_flows":  "string",
 		"platform_restrictions.outbound_flows": "string",
 		"supported_currencies":                 "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "list", "/v1/treasury/financial_accounts", http.MethodGet, map[string]string{
 		"created":        "integer",
 		"ending_before":  "string",
 		"limit":          "integer",
 		"starting_after": "string",
 		"status":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve", "/v1/treasury/financial_accounts/{financial_account}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve_features", "/v1/treasury/financial_accounts/{financial_account}/features", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve", "/v1/treasury/financial_accounts/{financial_account}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "retrieve_features", "/v1/treasury/financial_accounts/{financial_account}/features", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "update", "/v1/treasury/financial_accounts/{financial_account}", http.MethodPost, map[string]string{
 		"features.card_issuing.requested":                        "boolean",
 		"features.deposit_insurance.requested":                   "boolean",
@@ -5616,7 +5616,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"nickname":                                               "string",
 		"platform_restrictions.inbound_flows":                    "string",
 		"platform_restrictions.outbound_flows":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryFinancialAccountsCmd.Cmd, "update_features", "/v1/treasury/financial_accounts/{financial_account}/features", http.MethodPost, map[string]string{
 		"card_issuing.requested":                        "boolean",
 		"deposit_insurance.requested":                   "boolean",
@@ -5627,8 +5627,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"outbound_payments.us_domestic_wire.requested":  "boolean",
 		"outbound_transfers.ach.requested":              "boolean",
 		"outbound_transfers.us_domestic_wire.requested": "boolean",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "cancel", "/v1/treasury/inbound_transfers/{inbound_transfer}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "cancel", "/v1/treasury/inbound_transfers/{inbound_transfer}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "create", "/v1/treasury/inbound_transfers", http.MethodPost, map[string]string{
 		"amount":                "integer",
 		"currency":              "string",
@@ -5636,21 +5636,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"financial_account":     "string",
 		"origin_payment_method": "string",
 		"statement_descriptor":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "list", "/v1/treasury/inbound_transfers", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
 		"limit":             "integer",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/inbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryInboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/inbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryInboundTransfersTestHelpersCmd.Cmd, "fail", "/v1/test_helpers/treasury/inbound_transfers/{id}/fail", http.MethodPost, map[string]string{
 		"failure_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryInboundTransfersTestHelpersCmd.Cmd, "return_inbound_transfer", "/v1/test_helpers/treasury/inbound_transfers/{id}/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryInboundTransfersTestHelpersCmd.Cmd, "succeed", "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "cancel", "/v1/treasury/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryInboundTransfersTestHelpersCmd.Cmd, "return_inbound_transfer", "/v1/test_helpers/treasury/inbound_transfers/{id}/return", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryInboundTransfersTestHelpersCmd.Cmd, "succeed", "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "cancel", "/v1/treasury/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "create", "/v1/treasury/outbound_payments", http.MethodPost, map[string]string{
 		"amount":                     "integer",
 		"currency":                   "string",
@@ -5671,7 +5671,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"end_user_details.present":                                                      "boolean",
 		"financial_account":                                                             "string",
 		"statement_descriptor":                                                          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "list", "/v1/treasury/outbound_payments", http.MethodGet, map[string]string{
 		"created":           "integer",
 		"customer":          "string",
@@ -5680,21 +5680,21 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":             "integer",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "retrieve", "/v1/treasury/outbound_payments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_payments/{id}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_payments/{id}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsCmd.Cmd, "retrieve", "/v1/treasury/outbound_payments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_payments/{id}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_payments/{id}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "return_outbound_payment", "/v1/test_helpers/treasury/outbound_payments/{id}/return", http.MethodPost, map[string]string{
 		"returned_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundPaymentsTestHelpersCmd.Cmd, "update", "/v1/test_helpers/treasury/outbound_payments/{id}", http.MethodPost, map[string]string{
 		"tracking_details.ach.trace_id":           "string",
 		"tracking_details.type":                   "string",
 		"tracking_details.us_domestic_wire.chips": "string",
 		"tracking_details.us_domestic_wire.imad":  "string",
 		"tracking_details.us_domestic_wire.omad":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "cancel", "/v1/treasury/outbound_transfers/{outbound_transfer}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "cancel", "/v1/treasury/outbound_transfers/{outbound_transfer}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "create", "/v1/treasury/outbound_transfers", http.MethodPost, map[string]string{
 		"amount":                     "integer",
 		"currency":                   "string",
@@ -5704,35 +5704,35 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"destination_payment_method_data.type":              "string",
 		"financial_account":                                 "string",
 		"statement_descriptor":                              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "list", "/v1/treasury/outbound_transfers", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
 		"limit":             "integer",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/outbound_transfers/{outbound_transfer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundTransfersCmd.Cmd, "retrieve", "/v1/treasury/outbound_transfers/{outbound_transfer}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "fail", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "post", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "return_outbound_transfer", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return", http.MethodPost, map[string]string{
 		"returned_details.code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryOutboundTransfersTestHelpersCmd.Cmd, "update", "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}", http.MethodPost, map[string]string{
 		"tracking_details.ach.trace_id":           "string",
 		"tracking_details.type":                   "string",
 		"tracking_details.us_domestic_wire.chips": "string",
 		"tracking_details.us_domestic_wire.imad":  "string",
 		"tracking_details.us_domestic_wire.omad":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "list", "/v1/treasury/received_credits", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
 		"limit":             "integer",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "retrieve", "/v1/treasury/received_credits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryReceivedCreditsCmd.Cmd, "retrieve", "/v1/treasury/received_credits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryReceivedCreditsTestHelpersCmd.Cmd, "create", "/v1/test_helpers/treasury/received_credits", http.MethodPost, map[string]string{
 		"amount":                                 "integer",
 		"currency":                               "string",
@@ -5743,15 +5743,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"initiating_payment_method_details.us_bank_account.account_number":      "string",
 		"initiating_payment_method_details.us_bank_account.routing_number":      "string",
 		"network": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "list", "/v1/treasury/received_debits", http.MethodGet, map[string]string{
 		"ending_before":     "string",
 		"financial_account": "string",
 		"limit":             "integer",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "retrieve", "/v1/treasury/received_debits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryReceivedDebitsCmd.Cmd, "retrieve", "/v1/treasury/received_debits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryReceivedDebitsTestHelpersCmd.Cmd, "create", "/v1/test_helpers/treasury/received_debits", http.MethodPost, map[string]string{
 		"amount":                                 "integer",
 		"currency":                               "string",
@@ -5762,7 +5762,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"initiating_payment_method_details.us_bank_account.account_number":      "string",
 		"initiating_payment_method_details.us_bank_account.routing_number":      "string",
 		"network": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryTransactionEntrysCmd.Cmd, "list", "/v1/treasury/transaction_entries", http.MethodGet, map[string]string{
 		"created":           "integer",
 		"effective_at":      "integer",
@@ -5772,8 +5772,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"order_by":          "string",
 		"starting_after":    "string",
 		"transaction":       "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryTransactionEntrysCmd.Cmd, "retrieve", "/v1/treasury/transaction_entries/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryTransactionEntrysCmd.Cmd, "retrieve", "/v1/treasury/transaction_entries/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "list", "/v1/treasury/transactions", http.MethodGet, map[string]string{
 		"created":           "integer",
 		"ending_before":     "string",
@@ -5782,8 +5782,8 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"order_by":          "string",
 		"starting_after":    "string",
 		"status":            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "retrieve", "/v1/treasury/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rTreasuryTransactionsCmd.Cmd, "retrieve", "/v1/treasury/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 }
 
 func addV2ResourcesCmds(rootCmd *cobra.Command) {
@@ -5809,13 +5809,13 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"cancel.identifier": "string",
 		"event_name":        "string",
 		"type":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v2/billing/meter_events", http.MethodPost, map[string]string{
 		"event_name": "string",
 		"identifier": "string",
 		"timestamp":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountLinksCmd.Cmd, "create", "/v2/core/account_links", http.MethodPost, map[string]string{
 		"account": "string",
 		"use_case.account_onboarding.collection_options.fields":              "string",
@@ -5829,7 +5829,7 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"use_case.account_update.refresh_url":                                "string",
 		"use_case.account_update.return_url":                                 "string",
 		"use_case.type":                                                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "create", "/v2/core/accounts/{account_id}/person_tokens", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.shown_and_accepted": "boolean",
 		"address.city":                                      "string",
@@ -5887,8 +5887,8 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/person_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/person_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "create", "/v2/core/accounts/{account_id}/persons", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.date":       "string",
 		"additional_terms_of_service.account.ip":         "string",
@@ -5949,13 +5949,13 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "delete", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "delete", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "list", "/v2/core/accounts/{account_id}/persons", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "update", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.date":       "string",
 		"additional_terms_of_service.account.ip":         "string",
@@ -6016,7 +6016,7 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "create", "/v2/core/account_tokens", http.MethodPost, map[string]string{
 		"contact_email": "string",
 		"contact_phone": "string",
@@ -6138,11 +6138,11 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.given_name":                                "string",
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "retrieve", "/v2/core/account_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "retrieve", "/v2/core/account_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "close", "/v2/core/accounts/{id}/close", http.MethodPost, map[string]string{
 		"applied_configurations": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "create", "/v2/core/accounts", http.MethodPost, map[string]string{
 		"account_token": "string",
 		"configuration.customer.automatic_indirect_tax.exempt":                           "string",
@@ -6373,16 +6373,16 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
 		"include":                                                                          "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "list", "/v2/core/accounts", http.MethodGet, map[string]string{
 		"applied_configurations": "array",
 		"closed":                 "boolean",
 		"limit":                  "integer",
 		"page":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "retrieve", "/v2/core/accounts/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "update", "/v2/core/accounts/{id}", http.MethodPost, map[string]string{
 		"account_token":                                                                  "string",
 		"configuration.customer.applied":                                                 "boolean",
@@ -6624,7 +6624,7 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
 		"include":                                                                          "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "create", "/v2/core/event_destinations", http.MethodPost, map[string]string{
 		"amazon_eventbridge.aws_account_id": "string",
 		"amazon_eventbridge.aws_region":     "string",
@@ -6637,33 +6637,33 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"snapshot_api_version":              "string",
 		"type":                              "string",
 		"webhook_endpoint.url":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "delete", "/v2/core/event_destinations/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "disable", "/v2/core/event_destinations/{id}/disable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "enable", "/v2/core/event_destinations/{id}/enable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "delete", "/v2/core/event_destinations/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "disable", "/v2/core/event_destinations/{id}/disable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "enable", "/v2/core/event_destinations/{id}/enable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "list", "/v2/core/event_destinations", http.MethodGet, map[string]string{
 		"include": "array",
 		"limit":   "integer",
 		"page":    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "retrieve", "/v2/core/event_destinations/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "update", "/v2/core/event_destinations/{id}", http.MethodPost, map[string]string{
 		"description":          "string",
 		"enabled_events":       "array",
 		"include":              "array",
 		"name":                 "string",
 		"webhook_endpoint.url": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
 		"limit":     "integer",
 		"object_id": "string",
 		"page":      "string",
 		"types":     "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, false)
-	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
+	}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
+	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false, "")
 }
 
 func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
@@ -6721,13 +6721,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"amount.value":         "integer",
 		"network":              "string",
 		"statement_descriptor": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rFinancialAddressGeneratedMicrodepositssTestHelpersCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rFinancialAddressGeneratedMicrodepositssTestHelpersCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "list", "/v2/billing/bill_settings/{bill_setting_id}/versions", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "create", "/v2/billing/bill_settings", http.MethodPost, map[string]string{
 		"calculation.tax.type":                  "string",
 		"display_name":                          "string",
@@ -6735,13 +6735,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"invoice.time_until_due.interval_count": "integer",
 		"invoice_rendering_template":            "string",
 		"lookup_key":                            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "list", "/v2/billing/bill_settings", http.MethodGet, map[string]string{
 		"limit":       "integer",
 		"lookup_keys": "array",
 		"page":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "retrieve", "/v2/billing/bill_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingBillSettingsCmd.Cmd, "update", "/v2/billing/bill_settings/{id}", http.MethodPost, map[string]string{
 		"calculation.tax.type":                  "string",
 		"display_name":                          "string",
@@ -6750,8 +6750,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"invoice_rendering_template":            "string",
 		"live_version":                          "string",
 		"lookup_key":                            "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "cancel", "/v2/billing/cadences/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "cancel", "/v2/billing/cadences/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "create", "/v2/billing/cadences", http.MethodPost, map[string]string{
 		"billing_cycle.day.time.hour":       "integer",
 		"billing_cycle.day.time.minute":     "integer",
@@ -6774,25 +6774,25 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"billing_cycle.year.time.second":    "integer",
 		"lookup_key":                        "string",
 		"payer.billing_profile":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "list", "/v2/billing/cadences", http.MethodGet, map[string]string{
 		"include":     "array",
 		"limit":       "integer",
 		"lookup_keys": "array",
 		"page":        "string",
 		"test_clock":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "retrieve", "/v2/billing/cadences/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCadencesCmd.Cmd, "update", "/v2/billing/cadences/{id}", http.MethodPost, map[string]string{
 		"lookup_key": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCollectionSettingVersionsCmd.Cmd, "list", "/v2/billing/collection_settings/{collection_setting_id}/versions", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingCollectionSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingCollectionSettingVersionsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "create", "/v2/billing/collection_settings", http.MethodPost, map[string]string{
 		"collection_method":                               "string",
 		"display_name":                                    "string",
@@ -6815,13 +6815,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.us_bank_account.financial_connections.permissions":                   "array",
 		"payment_method_options.us_bank_account.financial_connections.prefetch":                      "array",
 		"payment_method_options.us_bank_account.verification_method":                                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "list", "/v2/billing/collection_settings", http.MethodGet, map[string]string{
 		"limit":       "integer",
 		"lookup_keys": "array",
 		"page":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "retrieve", "/v2/billing/collection_settings/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingCollectionSettingsCmd.Cmd, "update", "/v2/billing/collection_settings/{id}", http.MethodPost, map[string]string{
 		"collection_method":                               "string",
 		"display_name":                                    "string",
@@ -6845,24 +6845,24 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"payment_method_options.us_bank_account.financial_connections.permissions":                   "array",
 		"payment_method_options.us_bank_account.financial_connections.prefetch":                      "array",
 		"payment_method_options.us_bank_account.verification_method":                                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingMeterEventAdjustmentsCmd.Cmd, "create", "/v2/billing/meter_event_adjustments", http.MethodPost, map[string]string{
 		"cancel.identifier": "string",
 		"event_name":        "string",
 		"type":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingMeterEventSessionsCmd.Cmd, "create", "/v2/billing/meter_event_session", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingMeterEventsCmd.Cmd, "create", "/v2/billing/meter_events", http.MethodPost, map[string]string{
 		"event_name": "string",
 		"identifier": "string",
 		"timestamp":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "create", "/v2/billing/profiles", http.MethodPost, map[string]string{
 		"customer":               "string",
 		"default_payment_method": "string",
 		"display_name":           "string",
 		"lookup_key":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "list", "/v2/billing/profiles", http.MethodGet, map[string]string{
 		"customer":               "string",
 		"default_payment_method": "string",
@@ -6870,13 +6870,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"lookup_keys":            "array",
 		"page":                   "string",
 		"status":                 "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "retrieve", "/v2/billing/profiles/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "retrieve", "/v2/billing/profiles/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rBillingProfilesCmd.Cmd, "update", "/v2/billing/profiles/{id}", http.MethodPost, map[string]string{
 		"default_payment_method": "string",
 		"display_name":           "string",
 		"lookup_key":             "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountLinksCmd.Cmd, "create", "/v2/core/account_links", http.MethodPost, map[string]string{
 		"account": "string",
 		"use_case.account_onboarding.collection_options.fields":              "string",
@@ -6890,7 +6890,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"use_case.account_update.refresh_url":                                "string",
 		"use_case.account_update.return_url":                                 "string",
 		"use_case.type":                                                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "create", "/v2/core/accounts/{account_id}/person_tokens", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.shown_and_accepted": "boolean",
 		"address.city":                                      "string",
@@ -6948,8 +6948,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/person_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreAccountPersonTokensCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/person_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "create", "/v2/core/accounts/{account_id}/persons", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.date":       "string",
 		"additional_terms_of_service.account.ip":         "string",
@@ -7010,13 +7010,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "delete", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "delete", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "list", "/v2/core/accounts/{account_id}/persons", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "retrieve", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountPersonsCmd.Cmd, "update", "/v2/core/accounts/{account_id}/persons/{id}", http.MethodPost, map[string]string{
 		"additional_terms_of_service.account.date":       "string",
 		"additional_terms_of_service.account.ip":         "string",
@@ -7077,7 +7077,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"script_names.kanji.given_name":                     "string",
 		"script_names.kanji.surname":                        "string",
 		"surname":                                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "create", "/v2/core/account_tokens", http.MethodPost, map[string]string{
 		"contact_email": "string",
 		"contact_phone": "string",
@@ -7200,11 +7200,11 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.given_name":                                "string",
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "retrieve", "/v2/core/account_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "retrieve", "/v2/core/account_tokens/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "close", "/v2/core/accounts/{id}/close", http.MethodPost, map[string]string{
 		"applied_configurations": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "create", "/v2/core/accounts", http.MethodPost, map[string]string{
 		"account_token": "string",
 		"configuration.customer.automatic_indirect_tax.exempt":                              "string",
@@ -7453,16 +7453,16 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
 		"include":                                                                          "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "list", "/v2/core/accounts", http.MethodGet, map[string]string{
 		"applied_configurations": "array",
 		"closed":                 "boolean",
 		"limit":                  "integer",
 		"page":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "retrieve", "/v2/core/accounts/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreAccountsCmd.Cmd, "update", "/v2/core/accounts/{id}", http.MethodPost, map[string]string{
 		"account_token":                                                                     "string",
 		"configuration.customer.applied":                                                    "boolean",
@@ -7721,7 +7721,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"identity.individual.script_names.kanji.surname":                                   "string",
 		"identity.individual.surname":                                                      "string",
 		"include":                                                                          "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "create", "/v2/core/event_destinations", http.MethodPost, map[string]string{
 		"amazon_eventbridge.aws_account_id": "string",
 		"amazon_eventbridge.aws_region":     "string",
@@ -7734,35 +7734,35 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"snapshot_api_version":              "string",
 		"type":                              "string",
 		"webhook_endpoint.url":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "delete", "/v2/core/event_destinations/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "disable", "/v2/core/event_destinations/{id}/disable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "enable", "/v2/core/event_destinations/{id}/enable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "delete", "/v2/core/event_destinations/{id}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "disable", "/v2/core/event_destinations/{id}/disable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "enable", "/v2/core/event_destinations/{id}/enable", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "list", "/v2/core/event_destinations", http.MethodGet, map[string]string{
 		"include": "array",
 		"limit":   "integer",
 		"page":    "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "ping", "/v2/core/event_destinations/{id}/ping", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "retrieve", "/v2/core/event_destinations/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, "update", "/v2/core/event_destinations/{id}", http.MethodPost, map[string]string{
 		"description":          "string",
 		"enabled_events":       "array",
 		"include":              "array",
 		"name":                 "string",
 		"webhook_endpoint.url": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "list", "/v2/core/events", http.MethodGet, map[string]string{
 		"limit":     "integer",
 		"object_id": "string",
 		"page":      "string",
 		"types":     "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "acknowledge_confirmation_of_payee", "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "archive", "/v2/core/vault/gb_bank_accounts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreEventsCmd.Cmd, "retrieve", "/v2/core/events/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "acknowledge_confirmation_of_payee", "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "archive", "/v2/core/vault/gb_bank_accounts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "create", "/v2/core/vault/gb_bank_accounts", http.MethodPost, map[string]string{
 		"account_number":                      "string",
 		"bank_account_type":                   "string",
@@ -7770,38 +7770,38 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"confirmation_of_payee.initiate":      "boolean",
 		"confirmation_of_payee.name":          "string",
 		"sort_code":                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "initiate_confirmation_of_payee", "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee", http.MethodPost, map[string]string{
 		"business_type": "string",
 		"name":          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "list", "/v2/core/vault/gb_bank_accounts", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/gb_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "archive", "/v2/core/vault/us_bank_accounts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsGbBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/gb_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "archive", "/v2/core/vault/us_bank_accounts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "confirm_microdeposits", "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits", http.MethodPost, map[string]string{
 		"amounts":         "array",
 		"descriptor_code": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "create", "/v2/core/vault/us_bank_accounts", http.MethodPost, map[string]string{
 		"account_number":         "string",
 		"bank_account_type":      "string",
 		"fedwire_routing_number": "string",
 		"routing_number":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "list", "/v2/core/vault/us_bank_accounts", http.MethodGet, map[string]string{
 		"limit":               "integer",
 		"page":                "string",
 		"verification_status": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/us_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "send_microdeposits", "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "retrieve", "/v2/core/vault/us_bank_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "send_microdeposits", "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rCoreVaultsUsBankAccountsCmd.Cmd, "update", "/v2/core/vault/us_bank_accounts/{id}", http.MethodPost, map[string]string{
 		"fedwire_routing_number": "string",
 		"routing_number":         "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, "list", "/v2/money_management/adjustments", http.MethodGet, map[string]string{
 		"adjusted_flow": "string",
 		"created":       "string",
@@ -7811,39 +7811,39 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"created_lte":   "string",
 		"limit":         "integer",
 		"page":          "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, "retrieve", "/v2/money_management/adjustments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, "retrieve", "/v2/money_management/adjustments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "close", "/v2/money_management/financial_accounts/{id}/close", http.MethodPost, map[string]string{
 		"forwarding_settings.payment_method": "string",
 		"forwarding_settings.payout_method":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "create", "/v2/money_management/financial_accounts", http.MethodPost, map[string]string{
 		"display_name":             "string",
 		"storage.holds_currencies": "array",
 		"type":                     "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "list", "/v2/money_management/financial_accounts", http.MethodGet, map[string]string{
 		"limit":  "integer",
 		"page":   "string",
 		"status": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "retrieve", "/v2/money_management/financial_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "retrieve", "/v2/money_management/financial_accounts/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAccountsCmd.Cmd, "update", "/v2/money_management/financial_accounts/{id}", http.MethodPost, map[string]string{
 		"display_name": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "create", "/v2/money_management/financial_addresses", http.MethodPost, map[string]string{
 		"financial_account": "string",
 		"type":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "list", "/v2/money_management/financial_addresses", http.MethodGet, map[string]string{
 		"financial_account": "string",
 		"include":           "array",
 		"limit":             "integer",
 		"page":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementFinancialAddresssCmd.Cmd, "retrieve", "/v2/money_management/financial_addresses/{id}", http.MethodGet, map[string]string{
 		"include": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "create", "/v2/money_management/inbound_transfers", http.MethodPost, map[string]string{
 		"amount.currency":      "string",
 		"amount.value":         "integer",
@@ -7852,7 +7852,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"from.payment_method":  "string",
 		"to.currency":          "string",
 		"to.financial_account": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "list", "/v2/money_management/inbound_transfers", http.MethodGet, map[string]string{
 		"created":     "string",
 		"created_gt":  "string",
@@ -7861,8 +7861,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"created_lte": "string",
 		"limit":       "integer",
 		"page":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "retrieve", "/v2/money_management/inbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementInboundTransfersCmd.Cmd, "retrieve", "/v2/money_management/inbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "create", "/v2/money_management/outbound_payment_quotes", http.MethodPost, map[string]string{
 		"amount.currency":               "string",
 		"amount.value":                  "integer",
@@ -7872,9 +7872,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"to.currency":                   "string",
 		"to.payout_method":              "string",
 		"to.recipient":                  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "retrieve", "/v2/money_management/outbound_payment_quotes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "cancel", "/v2/money_management/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundPaymentQuotesCmd.Cmd, "retrieve", "/v2/money_management/outbound_payment_quotes/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "cancel", "/v2/money_management/outbound_payments/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "create", "/v2/money_management/outbound_payments", http.MethodPost, map[string]string{
 		"amount.currency":                "string",
 		"amount.value":                   "integer",
@@ -7886,7 +7886,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"to.currency":                    "string",
 		"to.payout_method":               "string",
 		"to.recipient":                   "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "list", "/v2/money_management/outbound_payments", http.MethodGet, map[string]string{
 		"created":     "string",
 		"created_gt":  "string",
@@ -7897,9 +7897,9 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"page":        "string",
 		"recipient":   "string",
 		"status":      "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "retrieve", "/v2/money_management/outbound_payments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "cancel", "/v2/money_management/outbound_setup_intents/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundPaymentsCmd.Cmd, "retrieve", "/v2/money_management/outbound_payments/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "cancel", "/v2/money_management/outbound_setup_intents/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "create", "/v2/money_management/outbound_setup_intents", http.MethodPost, map[string]string{
 		"payout_method": "string",
 		"payout_method_data.bank_account.account_number":    "string",
@@ -7913,12 +7913,12 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"payout_method_data.card.number":                    "string",
 		"payout_method_data.type":                           "string",
 		"usage_intent":                                      "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "list", "/v2/money_management/outbound_setup_intents", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "retrieve", "/v2/money_management/outbound_setup_intents/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "retrieve", "/v2/money_management/outbound_setup_intents/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundSetupIntentsCmd.Cmd, "update", "/v2/money_management/outbound_setup_intents/{id}", http.MethodPost, map[string]string{
 		"payout_method": "string",
 		"payout_method_data.bank_account.account_number":    "string",
@@ -7931,8 +7931,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"payout_method_data.card.exp_year":                  "string",
 		"payout_method_data.card.number":                    "string",
 		"payout_method_data.type":                           "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "cancel", "/v2/money_management/outbound_transfers/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "cancel", "/v2/money_management/outbound_transfers/{id}/cancel", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "create", "/v2/money_management/outbound_transfers", http.MethodPost, map[string]string{
 		"amount.currency":               "string",
 		"amount.value":                  "integer",
@@ -7942,7 +7942,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"from.financial_account":        "string",
 		"to.currency":                   "string",
 		"to.payout_method":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "list", "/v2/money_management/outbound_transfers", http.MethodGet, map[string]string{
 		"created":     "string",
 		"created_gt":  "string",
@@ -7952,18 +7952,18 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"limit":       "integer",
 		"page":        "string",
 		"status":      "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "retrieve", "/v2/money_management/outbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "archive", "/v2/money_management/payout_methods/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementOutboundTransfersCmd.Cmd, "retrieve", "/v2/money_management/outbound_transfers/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "archive", "/v2/money_management/payout_methods/{id}/archive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "list", "/v2/money_management/payout_methods", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "retrieve", "/v2/money_management/payout_methods/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "unarchive", "/v2/money_management/payout_methods/{id}/unarchive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "retrieve", "/v2/money_management/payout_methods/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementPayoutMethodsCmd.Cmd, "unarchive", "/v2/money_management/payout_methods/{id}/unarchive", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementPayoutMethodsBankAccountSpecsCmd.Cmd, "retrieve", "/v2/money_management/payout_methods_bank_account_spec", http.MethodGet, map[string]string{
 		"countries": "array",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementReceivedCreditsCmd.Cmd, "list", "/v2/money_management/received_credits", http.MethodGet, map[string]string{
 		"created":     "string",
 		"created_gt":  "string",
@@ -7972,13 +7972,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"created_lte": "string",
 		"limit":       "integer",
 		"page":        "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementReceivedCreditsCmd.Cmd, "retrieve", "/v2/money_management/received_credits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementReceivedCreditsCmd.Cmd, "retrieve", "/v2/money_management/received_credits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementReceivedDebitsCmd.Cmd, "list", "/v2/money_management/received_debits", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementReceivedDebitsCmd.Cmd, "retrieve", "/v2/money_management/received_debits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementReceivedDebitsCmd.Cmd, "retrieve", "/v2/money_management/received_debits/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementTransactionEntrysCmd.Cmd, "list", "/v2/money_management/transaction_entries", http.MethodGet, map[string]string{
 		"created":     "string",
 		"created_gt":  "string",
@@ -7988,8 +7988,8 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"limit":       "integer",
 		"page":        "string",
 		"transaction": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementTransactionEntrysCmd.Cmd, "retrieve", "/v2/money_management/transaction_entries/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementTransactionEntrysCmd.Cmd, "retrieve", "/v2/money_management/transaction_entries/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "list", "/v2/money_management/transactions", http.MethodGet, map[string]string{
 		"created":           "string",
 		"created_gt":        "string",
@@ -8000,13 +8000,13 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"flow":              "string",
 		"limit":             "integer",
 		"page":              "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "retrieve", "/v2/money_management/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "retrieve", "/v2/money_management/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 	resource.NewOperationCmd(rTestHelpersFinancialAddressCreditSimulationsCmd.Cmd, "credit", "/v2/test_helpers/financial_addresses/{id}/credit", http.MethodPost, map[string]string{
 		"amount.currency":      "string",
 		"amount.value":         "integer",
 		"network":              "string",
 		"statement_descriptor": "string",
-	}, map[string][]spec.StripeEnumValue{}, &Config, true)
-	resource.NewOperationCmd(rTestHelpersFinancialAddressGeneratedMicrodepositssCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true)
+	}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
+	resource.NewOperationCmd(rTestHelpersFinancialAddressGeneratedMicrodepositssCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, true, "")
 }
