@@ -348,10 +348,10 @@ func extractFilenameFromPath(path string, extension string) string {
 	// Look for an ID-like part (starts with common Stripe prefixes)
 	for _, part := range parts {
 		if strings.HasPrefix(part, "qt_") ||
-		   strings.HasPrefix(part, "in_") ||
-		   strings.HasPrefix(part, "pi_") ||
-		   strings.HasPrefix(part, "ch_") ||
-		   strings.HasPrefix(part, "file_") {
+			strings.HasPrefix(part, "in_") ||
+			strings.HasPrefix(part, "pi_") ||
+			strings.HasPrefix(part, "ch_") ||
+			strings.HasPrefix(part, "file_") {
 			return part + "." + extension
 		}
 	}
