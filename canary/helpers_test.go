@@ -3,6 +3,7 @@
 package canary
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stripe/stripe-cli/canary/testutil"
@@ -24,6 +25,33 @@ func requireAPIKey(t *testing.T) {
 	if !testutil.HasAPIKey() {
 		t.Skip("Skipping API test: STRIPE_API_KEY not set")
 	}
+}
+
+// sanitize removes sensitive data from output before logging.
+// Always use this when logging command output in tests.
+func sanitize(s string) string {
+	return testutil.SanitizeOutput(s)
+}
+
+// logSanitized logs a message with sanitized output.
+func logSanitized(t *testing.T, format string, args ...interface{}) {
+	t.Helper()
+	msg := fmt.Sprintf(format, args...)
+	t.Log(sanitize(msg))
+}
+
+// fatalf logs a fatal error with sanitized output.
+func fatalf(t *testing.T, format string, args ...interface{}) {
+	t.Helper()
+	msg := fmt.Sprintf(format, args...)
+	t.Fatal(sanitize(msg))
+}
+
+// errorf logs an error with sanitized output.
+func errorf(t *testing.T, format string, args ...interface{}) {
+	t.Helper()
+	msg := fmt.Sprintf(format, args...)
+	t.Error(sanitize(msg))
 }
 
 // min returns the smaller of two integers.

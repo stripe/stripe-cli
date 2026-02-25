@@ -51,17 +51,18 @@ func TestAPIListenPrintSecret(t *testing.T) {
 
 	result, err := runner.Run("listen", "--print-secret")
 	if err != nil {
-		t.Fatalf("Failed to run 'stripe listen --print-secret': %v", err)
+		fatalf(t, "Failed to run 'stripe listen --print-secret': %v", err)
 	}
 
 	if result.ExitCode != 0 {
-		t.Errorf("Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
 	}
 
 	// Should output a webhook signing secret (whsec_...)
 	combinedOutput := result.Stdout + result.Stderr
 	if !strings.Contains(combinedOutput, "whsec_") {
-		t.Errorf("Expected output to contain webhook secret 'whsec_', got: %s", combinedOutput)
+		// Don't log the actual output - it might contain sensitive data
+		t.Errorf("Expected output to contain webhook secret prefix 'whsec_'")
 	}
 }
 
@@ -78,17 +79,18 @@ func TestAPIListenWithEvents(t *testing.T) {
 
 	result, err := runner.Run("listen", "--events", "customer.created,customer.updated", "--print-secret")
 	if err != nil {
-		t.Fatalf("Failed to run 'stripe listen --events ... --print-secret': %v", err)
+		fatalf(t, "Failed to run 'stripe listen --events ... --print-secret': %v", err)
 	}
 
 	if result.ExitCode != 0 {
-		t.Errorf("Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
 	}
 
 	// Should still output a webhook signing secret
 	combinedOutput := result.Stdout + result.Stderr
 	if !strings.Contains(combinedOutput, "whsec_") {
-		t.Errorf("Expected output to contain webhook secret 'whsec_', got: %s", combinedOutput)
+		// Don't log the actual output - it might contain sensitive data
+		t.Errorf("Expected output to contain webhook secret prefix 'whsec_'")
 	}
 }
 
@@ -119,7 +121,7 @@ func TestAPIListenForwardTo(t *testing.T) {
 
 	listen, err := runner.RunBackground("listen", "--forward-to", server.URL)
 	if err != nil {
-		t.Fatalf("Failed to start listen: %v", err)
+		fatalf(t, "Failed to start listen: %v", err)
 	}
 	defer listen.Stop()
 
@@ -127,17 +129,17 @@ func TestAPIListenForwardTo(t *testing.T) {
 	err = listen.WaitForOutput("Ready!", 30*time.Second)
 	if err != nil {
 		stdout, stderr := listen.GetOutput()
-		t.Fatalf("Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+		fatalf(t, "Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
 	}
 
 	// Trigger an event
 	triggerRunner := runner.WithTimeout(60 * time.Second)
 	result, err := triggerRunner.Run("trigger", "customer.created")
 	if err != nil {
-		t.Fatalf("Failed to run trigger: %v", err)
+		fatalf(t, "Failed to run trigger: %v", err)
 	}
 	if result.ExitCode != 0 {
-		t.Fatalf("Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+		fatalf(t, "Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
 	}
 
 	// Wait for webhook to arrive
@@ -149,7 +151,7 @@ func TestAPIListenForwardTo(t *testing.T) {
 
 	if receivedReq == nil {
 		stdout, stderr := listen.GetOutput()
-		t.Fatalf("Webhook not received. Listen stdout: %s\nListen stderr: %s", stdout, stderr)
+		fatalf(t, "Webhook not received. Listen stdout: %s\nListen stderr: %s", stdout, stderr)
 	}
 
 	// Validate HTTP method
@@ -200,7 +202,7 @@ func TestAPIListenOutputFormat(t *testing.T) {
 
 	listen, err := runner.RunBackground("listen", "--format", "JSON")
 	if err != nil {
-		t.Fatalf("Failed to start listen: %v", err)
+		fatalf(t, "Failed to start listen: %v", err)
 	}
 	defer listen.Stop()
 
@@ -208,17 +210,17 @@ func TestAPIListenOutputFormat(t *testing.T) {
 	err = listen.WaitForOutput("Ready!", 30*time.Second)
 	if err != nil {
 		stdout, stderr := listen.GetOutput()
-		t.Fatalf("Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+		fatalf(t, "Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
 	}
 
 	// Trigger an event
 	triggerRunner := runner.WithTimeout(60 * time.Second)
 	result, err := triggerRunner.Run("trigger", "customer.created")
 	if err != nil {
-		t.Fatalf("Failed to run trigger: %v", err)
+		fatalf(t, "Failed to run trigger: %v", err)
 	}
 	if result.ExitCode != 0 {
-		t.Fatalf("Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+		fatalf(t, "Trigger failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
 	}
 
 	// Wait for event to be logged
@@ -230,7 +232,7 @@ func TestAPIListenOutputFormat(t *testing.T) {
 
 	// Verify JSON event appears in output
 	if !strings.Contains(combinedOutput, "customer.created") {
-		t.Errorf("Expected output to contain 'customer.created' event, got:\n%s", combinedOutput)
+		errorf(t, "Expected output to contain 'customer.created' event, got:\n%s", combinedOutput)
 	}
 
 	// Try to find and parse a JSON object in the output (after "Ready!")
@@ -239,7 +241,7 @@ func TestAPIListenOutputFormat(t *testing.T) {
 		afterReady := combinedOutput[readyIdx:]
 		// Look for JSON-like content
 		if strings.Contains(afterReady, `"type"`) || strings.Contains(afterReady, "customer.created") {
-			t.Logf("Successfully found event data in output after Ready")
+			t.Log("Successfully found event data in output after Ready")
 		}
 	}
 }

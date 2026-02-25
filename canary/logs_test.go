@@ -55,16 +55,16 @@ func TestAPILogsTailStartup(t *testing.T) {
 	if !strings.Contains(combinedOutput, "Ready") && !strings.Contains(combinedOutput, "ready") {
 		// If it failed to authenticate, that's also a valid test result
 		if strings.Contains(combinedOutput, "Authorization failed") {
-			t.Errorf("logs tail failed to authenticate: %s", combinedOutput)
+			errorf(t, "logs tail failed to authenticate: %s", combinedOutput)
 			return
 		}
 		// Timeout is expected for a streaming command
 		if err != nil && strings.Contains(err.Error(), "timed out") {
 			// This is actually success - the command started and ran until timeout
-			t.Logf("logs tail ran until timeout (expected): %s", combinedOutput)
+			logSanitized(t, "logs tail ran until timeout (expected): %s", combinedOutput)
 			return
 		}
-		t.Errorf("Expected logs tail to show startup message, got: %s (err: %v)", combinedOutput, err)
+		errorf(t, "Expected logs tail to show startup message, got: %s (err: %v)", combinedOutput, err)
 	}
 }
 
@@ -85,7 +85,7 @@ func TestAPILogsTailWithFilters(t *testing.T) {
 
 	// Same logic as above - we expect timeout for streaming command
 	if strings.Contains(combinedOutput, "Authorization failed") {
-		t.Errorf("logs tail failed to authenticate: %s", combinedOutput)
+		errorf(t, "logs tail failed to authenticate: %s", combinedOutput)
 		return
 	}
 
@@ -97,7 +97,7 @@ func TestAPILogsTailWithFilters(t *testing.T) {
 
 	// Check for startup message
 	if !strings.Contains(combinedOutput, "Ready") && !strings.Contains(combinedOutput, "ready") && !strings.Contains(combinedOutput, "Getting") {
-		t.Logf("logs tail output: %s", combinedOutput)
+		logSanitized(t, "logs tail output: %s", combinedOutput)
 	}
 }
 
@@ -112,7 +112,7 @@ func TestAPILogsTailCapture(t *testing.T) {
 
 	logsTail, err := runner.RunBackground("logs", "tail", "--format", "JSON")
 	if err != nil {
-		t.Fatalf("Failed to start logs tail: %v", err)
+		fatalf(t, "Failed to start logs tail: %v", err)
 	}
 	defer logsTail.Stop()
 
@@ -120,17 +120,17 @@ func TestAPILogsTailCapture(t *testing.T) {
 	err = logsTail.WaitForOutput("Ready!", 30*time.Second)
 	if err != nil {
 		stdout, stderr := logsTail.GetOutput()
-		t.Fatalf("Logs tail failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
+		fatalf(t, "Logs tail failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
 	}
 
 	// Make an API request that should be captured
 	apiRunner := runner.WithTimeout(30 * time.Second)
 	result, err := apiRunner.Run("customers", "list", "--limit", "1")
 	if err != nil {
-		t.Fatalf("Failed to run customers list: %v", err)
+		fatalf(t, "Failed to run customers list: %v", err)
 	}
 	if result.ExitCode != 0 {
-		t.Fatalf("Customers list failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+		fatalf(t, "Customers list failed with exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
 	}
 
 	// Wait for log entry to stream
@@ -143,7 +143,7 @@ func TestAPILogsTailCapture(t *testing.T) {
 	// Verify the API request was captured
 	// The log should contain information about the GET /v1/customers request
 	if !strings.Contains(combinedOutput, "customers") && !strings.Contains(combinedOutput, "GET") {
-		t.Logf("Logs tail output (may not capture all requests immediately):\n%s", combinedOutput)
+		logSanitized(t, "Logs tail output (may not capture all requests immediately):\n%s", combinedOutput)
 		// This is not necessarily a failure - logs streaming may have latency
 		// or may not capture requests from the same CLI session
 	}
@@ -157,11 +157,11 @@ func TestAPILogsTailCapture(t *testing.T) {
 			strings.Contains(afterReady, "GET") ||
 			strings.Contains(afterReady, "POST") ||
 			strings.Contains(afterReady, "/v1/") {
-			t.Logf("Successfully captured API request in logs tail")
+			t.Log("Successfully captured API request in logs tail")
 		} else {
 			// Log what we got for debugging, but don't fail
 			// Logs tail captures requests from other CLI instances, not necessarily our own
-			t.Logf("No API request captured yet. This may be expected if no other requests are being made. Output after Ready: %s", afterReady[:min(len(afterReady), 500)])
+			logSanitized(t, "No API request captured yet. This may be expected if no other requests are being made. Output after Ready: %s", afterReady[:min(len(afterReady), 500)])
 		}
 	}
 }

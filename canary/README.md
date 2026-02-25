@@ -105,20 +105,64 @@ Tests that require a valid Stripe test API key:
 
 ## CI Integration
 
-Canary tests run automatically in GitHub Actions on every push and PR. The workflow:
+Canary tests run automatically in GitHub Actions:
 
-1. Builds the binary for the target OS
-2. Runs offline tests (always)
-3. Runs API tests (if `STRIPE_TEST_API_KEY` secret is configured)
+- **Push to master**: Runs directly via `canary-test.yml`
+- **Release (tag `v*`)**: Runs as a gate before release builds — all three OS builds (`build-mac`, `build-linux`, `build-windows`) depend on canary tests passing
+- **Manual dispatch**: Available via the GitHub Actions UI for ad-hoc use
+
+The workflow builds the binary for each target OS, runs offline tests (always), and runs API tests when secrets are available.
 
 See `.github/workflows/canary-test.yml` for details.
 
+### Manual Trigger for Reviewers
+
+Reviewers can manually trigger canary tests via the GitHub Actions UI:
+
+1. Go to **Actions** > **Canary Tests**
+2. Click **Run workflow**
+3. Select the branch to test
+4. Check "Run API tests" to include API tests
+
+This is useful when reviewing PRs from external contributors where you want to verify the code works correctly with real API calls.
+
+## Security Model
+
+These tests are designed to run safely in CI, including on PRs from external contributors.
+
+### Output Sanitization
+
+All test output is sanitized to prevent accidental exposure of secrets:
+
+- API keys (`sk_test_*`, `sk_live_*`, `rk_*`)
+- Webhook signing secrets (`whsec_*`)
+- Access tokens and bearer tokens
+
+The `testutil.SanitizeOutput()` function redacts these patterns before logging. All test helper functions (`fatalf`, `errorf`, `logSanitized`) use sanitization automatically.
+
+### CI Secret Handling
+
+- **Offline tests**: Always run (no secrets needed)
+- **API tests**: Only run when secrets are available:
+  - Push to master
+  - Release builds (called via `workflow_call`)
+  - Manual workflow_dispatch trigger
+
+Canary tests do not run on PRs. Unit tests provide coverage for PR validation.
+
 ## Adding New Tests
 
-1. Add test functions to `canary/runner_test.go`
+1. Add test functions to the appropriate file:
+   - `basic_test.go` - Version, help, completion tests
+   - `api_test.go` - API resource tests
+   - `listen_test.go` - Webhook listener tests
+   - `logs_test.go` - Log streaming tests
+   - `config_test.go` - Configuration tests
+   - `login_test.go` - Authentication tests
 2. Use `TestOffline` prefix for tests without API requirements
 3. Use `TestAPI` prefix and call `requireAPIKey(t)` for API tests
 4. Use isolated config directories via `testutil.CreateTempConfigDir()`
+5. **Always use sanitized logging**: Use `fatalf()`, `errorf()`, and `logSanitized()` instead of `t.Fatalf()`, `t.Errorf()`, and `t.Logf()`
 
 Example:
 
@@ -128,11 +172,11 @@ func TestOfflineNewFeature(t *testing.T) {
 
     result, err := runner.Run("new-command", "--flag")
     if err != nil {
-        t.Fatalf("Failed to run command: %v", err)
+        fatalf(t, "Failed to run command: %v", err)
     }
 
     if result.ExitCode != 0 {
-        t.Errorf("Expected exit code 0, got %d", result.ExitCode)
+        errorf(t, "Expected exit code 0, got %d", result.ExitCode)
     }
 }
 
@@ -145,7 +189,8 @@ func TestAPINewFeature(t *testing.T) {
     })
 
     result, err := runner.Run("api-command")
-    // ...
+    // Use sanitized logging for output that may contain secrets
+    logSanitized(t, "Result: %s", result.Stdout)
 }
 ```
 
