@@ -13,7 +13,7 @@ const (
 	devAPIBaseURLRegexp = `http(s)?:\/\/[A-Za-z0-9\-]+.dev.stripe.me`
 
 	// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
-	DefaultFilesAPIBaseURL = "https://files.stripe.com"
+	DefaultFilesAPIBaseURL = "https://files.stripe.com/"
 
 	// DefaultDashboardBaseURL is the default base URL for dashboard requests
 	DefaultDashboardBaseURL   = "https://dashboard.stripe.com"

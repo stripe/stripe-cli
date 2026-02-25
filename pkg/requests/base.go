@@ -298,8 +298,20 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			return []byte{}, err
 		}
 
-		result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
-		fmt.Println(result)
+		// Check if the response is a PDF file
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(contentType, "application/pdf") {
+			// Extract a filename from the path (e.g., /v1/quotes/qt_123/pdf -> qt_123.pdf)
+			filename := extractFilenameFromPath(path, "pdf")
+			err := os.WriteFile(filename, body, 0644)
+			if err != nil {
+				return []byte{}, fmt.Errorf("failed to save PDF file: %w", err)
+			}
+			fmt.Printf("PDF saved to: %s\n", filename)
+		} else {
+			result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
+			fmt.Println(result)
+		}
 	}
 
 	return body, nil
@@ -326,6 +338,33 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 		ErrorCode:  errorBody.Content.Code,
 		Body:       string(body),
 	}
+}
+
+// extractFilenameFromPath extracts a meaningful filename from an API path
+// For example: /v1/quotes/qt_123/pdf -> qt_123.pdf
+func extractFilenameFromPath(path string, extension string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+
+	// Look for an ID-like part (starts with common Stripe prefixes)
+	for _, part := range parts {
+		if strings.HasPrefix(part, "qt_") ||
+		   strings.HasPrefix(part, "in_") ||
+		   strings.HasPrefix(part, "pi_") ||
+		   strings.HasPrefix(part, "ch_") ||
+		   strings.HasPrefix(part, "file_") {
+			return part + "." + extension
+		}
+	}
+
+	// Fallback: use the last meaningful part before the extension
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] != extension && parts[i] != "" {
+			return parts[i] + "." + extension
+		}
+	}
+
+	// Final fallback
+	return "download." + extension
 }
 
 // Confirm calls the confirmCommand() function, triggering the confirmation process

@@ -169,3 +169,19 @@ func TestConstructParamFromDot(t *testing.T) {
 	param := constructParamFromDot("shipping.address.line1")
 	require.Equal(t, "shipping[address][line1]", param)
 }
+
+func TestNewOperationCmd_WithServerURL(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	serverURL := "https://files.stripe.com/"
+	oc := NewOperationCmd(parentCmd, "pdf", "/v1/quotes/{quote}/pdf", http.MethodGet, map[string]string{}, map[string][]spec.StripeEnumValue{}, &config.Config{}, false, serverURL)
+
+	require.Equal(t, "pdf", oc.Name)
+	require.Equal(t, "/v1/quotes/{quote}/pdf", oc.Path)
+	require.Equal(t, serverURL, oc.APIBaseURL)
+
+	// Verify the flag default value is also set
+	flag := oc.Cmd.Flags().Lookup("api-base")
+	require.NotNil(t, flag)
+	require.Equal(t, serverURL, flag.DefValue)
+}
