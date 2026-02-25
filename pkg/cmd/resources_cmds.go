@@ -4928,6 +4928,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"country_options.kr.type":                             "string",
 		"country_options.kz.type":                             "string",
 		"country_options.la.type":                             "string",
+		"country_options.lk.type":                             "string",
 		"country_options.lt.standard.place_of_supply_scheme":  "string",
 		"country_options.lt.type":                             "string",
 		"country_options.lu.standard.place_of_supply_scheme":  "string",
@@ -5049,6 +5050,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"reboot_window.end_hour":       "integer",
 		"reboot_window.start_hour":     "integer",
 		"stripe_s700.splashscreen":     "string",
+		"stripe_s710.splashscreen":     "string",
 		"verifone_p400.splashscreen":   "string",
 	}, map[string][]spec.StripeEnumValue{}, &Config, false)
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "delete", "/v1/terminal/configurations/{configuration}", http.MethodDelete, map[string]string{}, map[string][]spec.StripeEnumValue{}, &Config, false)
@@ -7078,6 +7080,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]spec.StripeEnumValue{}, &Config, true)
 	resource.NewOperationCmd(rCoreAccountTokensCmd.Cmd, "create", "/v2/core/account_tokens", http.MethodPost, map[string]string{
 		"contact_email": "string",
+		"contact_phone": "string",
 		"display_name":  "string",
 		"identity.attestations.directorship_declaration.attested":                          "boolean",
 		"identity.attestations.ownership_declaration.attested":                             "boolean",
@@ -7282,6 +7285,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.merchant.script_statement_descriptor.kana.prefix":                    "string",
 		"configuration.merchant.script_statement_descriptor.kanji.descriptor":               "string",
 		"configuration.merchant.script_statement_descriptor.kanji.prefix":                   "string",
+		"configuration.merchant.smart_disputes.auto_respond.preference":                     "string",
 		"configuration.merchant.statement_descriptor.descriptor":                            "string",
 		"configuration.merchant.statement_descriptor.prefix":                                "string",
 		"configuration.merchant.support.address.city":                                       "string",
@@ -7309,6 +7313,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested":      "boolean",
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": "boolean",
 		"contact_email":                                                                    "string",
+		"contact_phone":                                                                    "string",
 		"dashboard":                                                                        "string",
 		"defaults.currency":                                                                "string",
 		"defaults.locales":                                                                 "array",
@@ -7542,6 +7547,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.merchant.script_statement_descriptor.kana.prefix":                    "string",
 		"configuration.merchant.script_statement_descriptor.kanji.descriptor":               "string",
 		"configuration.merchant.script_statement_descriptor.kanji.prefix":                   "string",
+		"configuration.merchant.smart_disputes.auto_respond.preference":                     "string",
 		"configuration.merchant.statement_descriptor.descriptor":                            "string",
 		"configuration.merchant.statement_descriptor.prefix":                                "string",
 		"configuration.merchant.support.address.city":                                       "string",
@@ -7572,6 +7578,7 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested":      "boolean",
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": "boolean",
 		"contact_email":                                                                    "string",
+		"contact_phone":                                                                    "string",
 		"dashboard":                                                                        "string",
 		"defaults.currency":                                                                "string",
 		"defaults.locales":                                                                 "array",
