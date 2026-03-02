@@ -15,6 +15,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // Context Tests
@@ -232,7 +233,7 @@ func TestDetectAIAgent_WithClaudeCode(t *testing.T) {
 		}
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "claude_code", result)
 }
 
@@ -241,7 +242,7 @@ func TestDetectAIAgent_NoAgentDetected(t *testing.T) {
 	getEnv := func(key string) string {
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "", result)
 }
 
@@ -269,7 +270,7 @@ func TestAIAgentDetection_AllAgents(t *testing.T) {
 				}
 				return ""
 			}
-			result := stripe.DetectAIAgent(getEnv)
+			result := useragent.DetectAIAgent(getEnv)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -283,6 +284,6 @@ func TestAIAgentDetection_Priority(t *testing.T) {
 		}
 		return ""
 	}
-	result := stripe.DetectAIAgent(getEnv)
+	result := useragent.DetectAIAgent(getEnv)
 	require.Equal(t, "antigravity", result)
 }
