@@ -241,4 +241,3 @@ func TelemetryOptedOut(optoutVar string) bool {
 
 	return optoutVar == "1" || optoutVar == "true"
 }
-
