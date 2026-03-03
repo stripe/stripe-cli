@@ -103,7 +103,7 @@ func (c *Config) InitConfig() {
 	case "error":
 		log.SetLevel(log.ErrorLevel)
 	default:
-		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, warn, error.", c.LogLevel)
+		log.Fatalf("Unrecognized log level value: %s. Expected one of debug, info, trace, warn, error.", c.LogLevel)
 	}
 
 	if c.ProfilesFile != "" {

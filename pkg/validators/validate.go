@@ -83,7 +83,7 @@ func APIKeyNotRestricted(input string) error {
 		return errors.New("you are using a legacy-style API key which is unsupported by the CLI. Please generate a new test mode API key")
 	}
 
-	if keyParts[0] != "sk" || keyParts[0] == "rk" {
+	if keyParts[0] != "sk" {
 		return errors.New("this CLI command only supports using a secret key. Please re-run using the --api-key flag override with your secret API key")
 	}
 

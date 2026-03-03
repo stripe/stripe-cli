@@ -10,20 +10,33 @@ import (
 )
 
 type versionCmd struct {
-	cmd *cobra.Command
+	cmd   *cobra.Command
+	short bool
 }
 
 func newVersionCmd() *versionCmd {
-	return &versionCmd{
-		cmd: &cobra.Command{
-			Use:   "version",
-			Args:  validators.NoArgs,
-			Short: "Get the version of the Stripe CLI",
-			Run: func(cmd *cobra.Command, args []string) {
-				fmt.Print(version.Template)
+	vc := &versionCmd{}
 
+	vc.cmd = &cobra.Command{
+		Use:   "version",
+		Args:  validators.NoArgs,
+		Short: "Get the version of the Stripe CLI",
+		Long: `Get the version of the Stripe CLI along with build information.
+
+By default, displays version, Go version, and OS/architecture.
+Use --short to display only the version number.`,
+		Example: `stripe version
+  stripe version --short`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Print(version.GetVersionInfo(vc.short))
+
+			if !vc.short {
 				version.CheckLatestVersion()
-			},
+			}
 		},
 	}
+
+	vc.cmd.Flags().BoolVarP(&vc.short, "short", "s", false, "Print only the version number")
+
+	return vc
 }
