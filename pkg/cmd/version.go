@@ -28,7 +28,11 @@ Use --short to display only the version number.`,
 		Example: `stripe version
   stripe version --short`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print(version.GetVersionInfo(vc.short))
+			info := version.GetVersionInfo(vc.short)
+			fmt.Print(info)
+			if vc.short {
+				fmt.Println()
+			}
 
 			if !vc.short {
 				version.CheckLatestVersion()
