@@ -25,13 +25,11 @@ var Template = fmt.Sprintf("stripe version %s\n", Version)
 // GetVersionInfo returns detailed version information including Go version and OS/Arch
 func GetVersionInfo(short bool) string {
 	if short {
-		return Version
+		return Version + "\n"
 	}
 
-	return fmt.Sprintf(`stripe version %s
-Go version: %s
-OS/Arch:    %s/%s
-`, Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("stripe version %s\nGo version: %s\nOS/Arch:    %s/%s\n",
+		Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 }
 
 // CheckLatestVersion makes a request to the GitHub API to pull the latest
