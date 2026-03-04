@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/spf13/afero"
+
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 )
@@ -243,6 +244,11 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 		relativePath := parts[1]
 
 		targetPath := filepath.Join(destPath, relativePath)
+
+		// Prevent Zip Slip: ensure the resolved path stays within destPath
+		if !strings.HasPrefix(targetPath+string(os.PathSeparator), filepath.Clean(destPath)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path in archive: %s", header.Name)
+		}
 
 		switch header.Typeflag {
 		case tar.TypeDir:
