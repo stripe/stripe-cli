@@ -374,3 +374,26 @@ func deepSearch(m map[string]interface{}, path []string) map[string]interface{} 
 
 	return m
 }
+st
+			// => create it and continue from there
+			m3 := make(map[string]interface{})
+			m[k] = m3
+			m = m3
+
+			continue
+		}
+
+		m3, ok := m2.(map[string]interface{})
+		if !ok {
+			// intermediate key is a value
+			// => replace with a new map
+			m3 = make(map[string]interface{})
+			m[k] = m3
+		}
+
+		// continue search from here
+		m = m3
+	}
+
+	return m
+}

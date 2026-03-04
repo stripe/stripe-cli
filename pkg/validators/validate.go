@@ -178,3 +178,12 @@ func OneDollar(number string) error {
 
 	return fmt.Errorf("Provided amount %v to charge is not at least 100", number)
 }
+ to charge should be an integer (eg. 100)", number)
+	}
+
+	if num >= 100 {
+		return nil
+	}
+
+	return fmt.Errorf("Provided amount %v to charge is not at least 100", number)
+}
