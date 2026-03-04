@@ -50,6 +50,24 @@ type NodeRuntimeConfig struct {
 //
 // 4. Update the checksums in this file and document the verification date
 var nodeRuntimeConfigs = map[string]NodeRuntimeConfig{
+	"18": {
+		Version: "18.20.8",
+		// Checksums verified from https://nodejs.org/dist/v18.20.8/SHASUMS256.txt
+		// Verified on 2026-03-04
+		Checksums: map[string]map[string]string{
+			"darwin": {
+				"amd64": "ed2554677188f4afc0d050ecd8bd56effb2572d6518f8da6d40321ede6698509", // node-v18.20.8-darwin-x64.tar.gz
+				"arm64": "bae4965d29d29bd32f96364eefbe3bca576a03e917ddbb70b9330d75f2cacd76", // node-v18.20.8-darwin-arm64.tar.gz
+			},
+			"linux": {
+				"amd64": "27a9f3f14d5e99ad05a07ed3524ba3ee92f8ff8b6db5ff80b00f9feb5ec8097a", // node-v18.20.8-linux-x64.tar.gz
+				"arm64": "2e3dfc51154e6fea9fc86a90c4ea8f3ecb8b60acaf7367c4b76691da192571c1", // node-v18.20.8-linux-arm64.tar.gz
+			},
+			"windows": {
+				"amd64": "1a1e40260a6facba83636e4cd0ba01eb5bd1386896824b36645afba44857384a", // node-v18.20.8-win-x64.zip
+			},
+		},
+	},
 	"20": {
 		Version: "20.18.1",
 		// Checksums verified from https://nodejs.org/dist/v20.18.1/SHASUMS256.txt

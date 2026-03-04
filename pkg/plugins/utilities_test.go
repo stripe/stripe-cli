@@ -210,12 +210,12 @@ func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
 	require.Nil(t, err)
 }
 func TestIsValidNodeLTSVersion(t *testing.T) {
-	validVersions := []string{"20", "22", "24", "26"}
+	validVersions := []string{"18", "20", "22", "24", "26"}
 	for _, version := range validVersions {
 		require.True(t, isValidNodeLTSVersion(version), "Expected %s to be valid LTS version", version)
 	}
 
-	invalidVersions := []string{"10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "21", "23", "25"}
+	invalidVersions := []string{"10", "11", "12", "13", "14", "15", "16", "17", "19", "21", "23", "25"}
 	for _, version := range invalidVersions {
 		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid LTS version", version)
 	}
@@ -234,11 +234,11 @@ func TestValidateRuntimeVersionsValid(t *testing.T) {
 				Releases: []Release{
 					{
 						Version: "1.0.0",
-						Runtime: map[string]string{"node": "20"},
+						Runtime: map[string]string{"node": "18"},
 					},
 					{
 						Version: "1.1.0",
-						Runtime: map[string]string{"node": "22"},
+						Runtime: map[string]string{"node": "20"},
 					},
 					{
 						Version: "2.0.0",
