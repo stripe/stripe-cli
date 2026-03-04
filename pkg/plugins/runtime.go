@@ -27,54 +27,80 @@ type NodeRuntimeConfig struct {
 
 // Hardcoded Node.js LTS runtime configurations
 // Using Node.js 20.x LTS (Iron) as the default runtime
-// Note: Checksums are currently placeholders and need to be replaced with actual SHA256 checksums
-// from https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt
+//
+// Checksums are verified from official Node.js distribution over HTTPS.
+// For maximum security, checksums can also be verified against GPG signatures.
+//
+// To update checksums for a new Node.js version:
+//
+//  1. Download checksums:
+//     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
+//
+//  2. (Optional) Verify GPG signature:
+//     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt.asc"
+//     curl -fsLo "nodejs-keyring.kbx" "https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx"
+//     gpgv --keyring="nodejs-keyring.kbx" --output SHASUMS256.txt < SHASUMS256.txt.asc
+//
+//  3. Extract checksums for each platform:
+//     grep "darwin-x64.tar.gz" SHASUMS256.txt      # macOS Intel
+//     grep "darwin-arm64.tar.gz" SHASUMS256.txt    # macOS Apple Silicon
+//     grep "linux-x64.tar.gz" SHASUMS256.txt       # Linux Intel
+//     grep "linux-arm64.tar.gz" SHASUMS256.txt     # Linux ARM
+//     grep "win-x64.zip" SHASUMS256.txt            # Windows
+//
+// 4. Update the checksums in this file and document the verification date
 var nodeRuntimeConfigs = map[string]NodeRuntimeConfig{
 	"20": {
 		Version: "20.18.1",
+		// Checksums verified from https://nodejs.org/dist/v20.18.1/SHASUMS256.txt
+		// Verified on 2026-02-11
 		Checksums: map[string]map[string]string{
 			"darwin": {
-				"amd64": "eb02d803fd0a2f0e1f423e33e87a32ead04a3fb314e2e805b8c30cc713a8e3f4",
-				"arm64": "e0065c61f340e85106a99c4b54746c5cee09d59b08c5712f67f99afaa8e34c8a",
+				"amd64": "c5497dd17c8875b53712edaf99052f961013cedc203964583fc0cfc0aaf93581", // node-v20.18.1-darwin-x64.tar.gz
+				"arm64": "9e92ce1032455a9cc419fe71e908b27ae477799371b45a0844eedb02279922a4", // node-v20.18.1-darwin-arm64.tar.gz
 			},
 			"linux": {
-				"amd64": "3b95fb95c0441670e88262dc79a16033e3ad2e2dae3a3b6bc1a9e3c0d1dfed7a",
-				"arm64": "c24e1e7c77784c037c98c0b73e6dc081c0576c3e6eca2d61e9d6d00b5dfee77a",
+				"amd64": "259e5a8bf2e15ecece65bd2a47153262eda71c0b2c9700d5e703ce4951572784", // node-v20.18.1-linux-x64.tar.gz
+				"arm64": "73cd297378572e0bc9dfc187c5ec8cca8d43aee6a596c10ebea1ed5f9ec682b6", // node-v20.18.1-linux-arm64.tar.gz
 			},
 			"windows": {
-				"amd64": "a04c5b6ffbe557d1e4e25e8da29d86f1dfd0ae2c9d72ee5bdd7e6b63b12e0b8a",
+				"amd64": "56e5aacdeee7168871721b75819ccacf2367de8761b78eaceacdecd41e04ca03", // node-v20.18.1-win-x64.zip
 			},
 		},
 	},
 	"22": {
 		Version: "22.13.0",
+		// Checksums verified from https://nodejs.org/dist/v22.13.0/SHASUMS256.txt
+		// Verified on 2026-03-04
 		Checksums: map[string]map[string]string{
 			"darwin": {
-				"amd64": "cd4b101bf5edeef5fe85bf4bca12b6d5da79e4f3efb0bc0c6b3c28b9a1b7ee2f",
-				"arm64": "6f15c8a8f4f23cb5a7a8c8b67c91da6e9f1f3e2f8e8c8a7f6f5f4f3f2f1f0e0",
+				"amd64": "cfaaf5edde585a15547f858f5b3b62a292cf5929a23707b6f1e36c29a32487be", // node-v22.13.0-darwin-x64.tar.gz
+				"arm64": "bc1e374e7393e2f4b20e5bbc157d02e9b1fb2c634b2f992136b38fb8ca2023b7", // node-v22.13.0-darwin-arm64.tar.gz
 			},
 			"linux": {
-				"amd64": "c3c7ebae9dad0df8e91e2e1b8e6fb8e1c9a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3",
-				"arm64": "d4d8f9eafbecfe1f3e4e5f6f7f8f9f0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5f6",
+				"amd64": "9a33e89093a0d946c54781dcb3ccab4ccf7538a7135286528ca41ca055e9b38f", // node-v22.13.0-linux-x64.tar.gz
+				"arm64": "e0cc088cb4fb2e945d3d5c416c601e1101a15f73e0f024c9529b964d9f6dce5b", // node-v22.13.0-linux-arm64.tar.gz
 			},
 			"windows": {
-				"amd64": "e5e9fafbfcfdfe0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5f6f7f8f9f0f1f2f3f4",
+				"amd64": "b0feb09ebf41328628e7383f7a092fb7342ce1e05c867a90cf8f1379205a8429", // node-v22.13.0-win-x64.zip
 			},
 		},
 	},
 	"24": {
 		Version: "24.0.0",
+		// Checksums verified from https://nodejs.org/dist/v24.0.0/SHASUMS256.txt
+		// Verified on 2026-03-04
 		Checksums: map[string]map[string]string{
 			"darwin": {
-				"amd64": "f6fafbfcfdfe0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5f6f7f8f9f0f1f2f3f4f5",
-				"arm64": "a0a1a2a3a4a5a6a7a8a9b0b1b2b3b4b5c0c1c2c3c4c5c6c7c8c9d0d1d2d3d4d5",
+				"amd64": "f716b3ce14a7e37a6cbf97c9de10d444d7da07ef833cd8da81dd944d111e6a4a", // node-v24.0.0-darwin-x64.tar.gz
+				"arm64": "194e2f3dd3ec8c2adcaa713ed40f44c5ca38467880e160974ceac1659be60121", // node-v24.0.0-darwin-arm64.tar.gz
 			},
 			"linux": {
-				"amd64": "b1b2b3b4b5b6b7b8b9c0c1c2c3c4c5c6c7c8c9d0d1d2d3d4d5d6d7d8d9e0e1e2",
-				"arm64": "c2c3c4c5c6c7c8c9d0d1d2d3d4d5d6d7d8d9e0e1e2e3e4e5e6e7e8e9f0f1f2f3",
+				"amd64": "b760ed6de40c35a25eb011b3cf5943d35d7a76f0c8c331d5a801e10925826cb3", // node-v24.0.0-linux-x64.tar.gz
+				"arm64": "4104136ddd3d2f167d799f1b21bac72ccf500d80c24be849195f831df6371b83", // node-v24.0.0-linux-arm64.tar.gz
 			},
 			"windows": {
-				"amd64": "d3d4d5d6d7d8d9e0e1e2e3e4e5e6e7e8e9f0f1f2f3f4f5f6f7f8f9a0a1a2a3a4",
+				"amd64": "3d0fff80c87bb9a8d7f49f2f27832aa34a1477d137af46f5b14df5498be81304", // node-v24.0.0-win-x64.zip
 			},
 		},
 	},

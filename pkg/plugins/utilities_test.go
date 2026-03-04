@@ -210,17 +210,17 @@ func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
 	require.Nil(t, err)
 }
 func TestIsValidNodeLTSVersion(t *testing.T) {
-	validVersions := []string{"12", "14", "16", "18", "20", "22", "24", "26"}
+	validVersions := []string{"20", "22", "24", "26"}
 	for _, version := range validVersions {
 		require.True(t, isValidNodeLTSVersion(version), "Expected %s to be valid LTS version", version)
 	}
 
-	invalidVersions := []string{"10", "11", "13", "15", "17", "19", "21", "23", "25"}
+	invalidVersions := []string{"10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "21", "23", "25"}
 	for _, version := range invalidVersions {
 		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid LTS version", version)
 	}
 
-	invalidFormats := []string{"", "abc", "18.0", "v18", "18.0.0", "node18"}
+	invalidFormats := []string{"", "abc", "20.0", "v20", "20.0.0", "node20"}
 	for _, version := range invalidFormats {
 		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid format", version)
 	}
@@ -234,15 +234,15 @@ func TestValidateRuntimeVersionsValid(t *testing.T) {
 				Releases: []Release{
 					{
 						Version: "1.0.0",
-						Runtime: map[string]string{"node": "18"},
-					},
-					{
-						Version: "1.1.0",
 						Runtime: map[string]string{"node": "20"},
 					},
 					{
-						Version: "2.0.0",
+						Version: "1.1.0",
 						Runtime: map[string]string{"node": "22"},
+					},
+					{
+						Version: "2.0.0",
+						Runtime: map[string]string{"node": "24"},
 					},
 				},
 			},

@@ -176,7 +176,7 @@ func validateRuntimeVersions(pluginList *PluginList) error {
 					if runtime == "node" {
 						if !isValidNodeLTSVersion(version) {
 							return fmt.Errorf(
-								"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+								"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (20, 22, 24, etc.)",
 								version,
 								plugin.Shortname,
 								release.Version,
@@ -191,7 +191,7 @@ func validateRuntimeVersions(pluginList *PluginList) error {
 }
 
 // isValidNodeLTSVersion checks if a Node.js version string is a valid LTS major version
-// Valid LTS versions are even-numbered major versions starting from 12
+// Valid LTS versions are even-numbered major versions starting from 20
 func isValidNodeLTSVersion(version string) bool {
 	// Empty string is invalid
 	if version == "" {
@@ -206,18 +206,15 @@ func isValidNodeLTSVersion(version string) bool {
 	}
 
 	// Verify the parsed integer matches the original string (no extra characters)
-	// This ensures "18.0" or "v18" etc. are rejected
+	// This ensures "20.0" or "v20" etc. are rejected
 	if fmt.Sprintf("%d", majorVersion) != version {
 		return false
 	}
 
-	// Node.js LTS versions are even-numbered and start from 12
-	// Current and future LTS versions: 12, 14, 16, 18, 20, 22, 24, 26, etc.
-	if majorVersion < 12 {
+	if majorVersion < 20 {
 		return false
 	}
 
-	// Check if it's an even number (LTS versions)
 	return majorVersion%2 == 0
 }
 
