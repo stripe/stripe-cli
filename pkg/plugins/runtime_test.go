@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -38,10 +40,15 @@ func TestIsRuntimeInstalled(t *testing.T) {
 	// Runtime should not be installed initially
 	require.False(t, IsRuntimeInstalled(config, fs, "20"))
 
-	// Create the runtime directory structure
+	// Create the runtime directory structure at the platform-correct path
 	runtimePath := GetNodeRuntimePath(config, "20")
-	nodeBinary := runtimePath + "/bin/node"
-	fs.MkdirAll(runtimePath+"/bin", 0755)
+	var nodeBinary string
+	if runtime.GOOS == "windows" {
+		nodeBinary = filepath.Join(runtimePath, "node.exe")
+	} else {
+		nodeBinary = filepath.Join(runtimePath, "bin", "node")
+		fs.MkdirAll(filepath.Join(runtimePath, "bin"), 0755)
+	}
 	afero.WriteFile(fs, nodeBinary, []byte("fake node binary"), 0755)
 
 	// Now runtime should be detected as installed
@@ -157,6 +164,13 @@ func TestGetReleaseForVersion(t *testing.T) {
 				OS:      "linux",
 				Version: "1.0.0",
 				Sum:     "ghi789",
+				Runtime: map[string]string{"node": "20"},
+			},
+			{
+				Arch:    "amd64",
+				OS:      "windows",
+				Version: "1.0.0",
+				Sum:     "jkl012",
 				Runtime: map[string]string{"node": "20"},
 			},
 		},
