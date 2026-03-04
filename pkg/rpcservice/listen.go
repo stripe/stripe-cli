@@ -61,7 +61,7 @@ func (srv *RPCService) Listen(req *rpc.ListenRequest, stream rpc.StripeCLI_Liste
 
 	p, err := createProxy(ctx, &proxy.Config{
 		Client: &stripe.Client{
-			APIKey:  key,
+			Auth:    &stripe.APIKeyAuth{APIKey: key},
 			BaseURL: apiBase,
 		},
 		DeviceName:            deviceName,

@@ -153,7 +153,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	})
 
 	client := &stripe.Client{
-		APIKey:  key,
+		Auth:    &stripe.APIKeyAuth{APIKey: key},
 		BaseURL: apiBase,
 	}
 

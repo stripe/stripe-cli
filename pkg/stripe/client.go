@@ -32,9 +32,9 @@ type Client struct {
 	// client.
 	BaseURL *url.URL
 
-	// API key used to authenticate requests sent by this client. If left
-	// empty, the `Authorization` header will be omitted.
-	APIKey string
+	// Auth strategy used to authenticate requests sent by this client. If nil,
+	// the `Authorization` header will be omitted.
+	Auth AuthStrategy
 
 	// When this is enabled, request and response headers will be printed to
 	// stdout.
@@ -86,8 +86,10 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
-	if c.APIKey != "" {
-		req.Header.Set("Authorization", "Bearer "+c.APIKey)
+	if c.Auth != nil {
+		if err := c.Auth.SetAuthHeader(req); err != nil {
+			return nil, err
+		}
 	}
 
 	if configure != nil {
@@ -111,7 +113,10 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 
 	// RequestID of the API Request
 	requestID := resp.Header.Get("Request-Id")
-	livemode := strings.Contains(c.APIKey, "live")
+	var livemode bool
+	if c.Auth != nil {
+		livemode = c.Auth.IsLiveMode()
+	}
 	go sendTelemetryEvent(ctx, requestID, livemode)
 	return resp, nil
 }

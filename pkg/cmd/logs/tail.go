@@ -188,7 +188,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	tailer := logTailing.New(&logTailing.Config{
 		Client: &stripe.Client{
-			APIKey:  key,
+			Auth:    &stripe.APIKeyAuth{APIKey: key},
 			BaseURL: apiBase,
 		},
 		DeviceName: deviceName,

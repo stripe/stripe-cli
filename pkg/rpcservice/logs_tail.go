@@ -47,7 +47,7 @@ func (srv *RPCService) LogsTail(req *rpc.LogsTailRequest, stream rpc.StripeCLI_L
 
 	tailer := createTailer(&logtailing.Config{
 		Client: &stripe.Client{
-			APIKey:  key,
+			Auth:    &stripe.APIKeyAuth{APIKey: key},
 			BaseURL: apiBase,
 		},
 		DeviceName: deviceName,

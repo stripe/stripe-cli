@@ -33,7 +33,7 @@ func GetUserAccount(ctx context.Context, baseURL string, apiKey string) (*Accoun
 
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
+		Auth:    &stripe.APIKeyAuth{APIKey: apiKey},
 	}
 
 	resp, err := client.PerformRequest(ctx, "GET", "/v1/account", "", nil)
