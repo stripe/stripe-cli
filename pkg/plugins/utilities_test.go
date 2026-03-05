@@ -197,3 +197,15 @@ func TestIsPluginCommand(t *testing.T) {
 	require.True(t, IsPluginCommand(pluginCmd))
 	require.False(t, IsPluginCommand(notPluginCmd))
 }
+
+func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	testServers := setUpServers(t, nil, nil)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+}

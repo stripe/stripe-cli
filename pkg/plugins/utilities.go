@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -100,10 +101,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 
 // RefreshPluginManifest refreshes the plugin manifest
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
-	apiKey, err := config.GetProfile().GetAPIKey(false)
-	if err != nil {
-		return err
-	}
+	apiKey, _ := config.GetProfile().GetAPIKey(false)
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
 	if err != nil {
@@ -227,6 +225,9 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	resp, err := client.Do(req)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "no such host") {
+			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+		}
 		return nil, err
 	}
 
