@@ -166,9 +166,9 @@ func TestAPIProductsCreate(t *testing.T) {
 	// Archive the product to clean up (products can't be deleted, only archived)
 	archiveResult, err := runner.Run("products", "update", product.ID, "--active=false")
 	if err != nil {
-		logSanitized(t, "Warning: Failed to archive product %s: %v", product.ID, err)
+		logSanitizedf(t, "Warning: Failed to archive product %s: %v", product.ID, err)
 	} else if archiveResult.ExitCode != 0 {
-		logSanitized(t, "Warning: Archive returned non-zero exit code: %d. Stderr: %s", archiveResult.ExitCode, archiveResult.Stderr)
+		logSanitizedf(t, "Warning: Archive returned non-zero exit code: %d. Stderr: %s", archiveResult.ExitCode, archiveResult.Stderr)
 	}
 }
 

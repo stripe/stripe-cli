@@ -61,7 +61,7 @@ func TestAPILogsTailStartup(t *testing.T) {
 		// Timeout is expected for a streaming command
 		if err != nil && strings.Contains(err.Error(), "timed out") {
 			// This is actually success - the command started and ran until timeout
-			logSanitized(t, "logs tail ran until timeout (expected): %s", combinedOutput)
+			logSanitizedf(t, "logs tail ran until timeout (expected): %s", combinedOutput)
 			return
 		}
 		errorf(t, "Expected logs tail to show startup message, got: %s (err: %v)", combinedOutput, err)
@@ -97,7 +97,7 @@ func TestAPILogsTailWithFilters(t *testing.T) {
 
 	// Check for startup message
 	if !strings.Contains(combinedOutput, "Ready") && !strings.Contains(combinedOutput, "ready") && !strings.Contains(combinedOutput, "Getting") {
-		logSanitized(t, "logs tail output: %s", combinedOutput)
+		logSanitizedf(t, "logs tail output: %s", combinedOutput)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestAPILogsTailCapture(t *testing.T) {
 	// Verify the API request was captured
 	// The log should contain information about the GET /v1/customers request
 	if !strings.Contains(combinedOutput, "customers") && !strings.Contains(combinedOutput, "GET") {
-		logSanitized(t, "Logs tail output (may not capture all requests immediately):\n%s", combinedOutput)
+		logSanitizedf(t, "Logs tail output (may not capture all requests immediately):\n%s", combinedOutput)
 		// This is not necessarily a failure - logs streaming may have latency
 		// or may not capture requests from the same CLI session
 	}
@@ -161,7 +161,7 @@ func TestAPILogsTailCapture(t *testing.T) {
 		} else {
 			// Log what we got for debugging, but don't fail
 			// Logs tail captures requests from other CLI instances, not necessarily our own
-			logSanitized(t, "No API request captured yet. This may be expected if no other requests are being made. Output after Ready: %s", afterReady[:min(len(afterReady), 500)])
+			logSanitizedf(t, "No API request captured yet. This may be expected if no other requests are being made. Output after Ready: %s", afterReady[:min(len(afterReady), 500)])
 		}
 	}
 }

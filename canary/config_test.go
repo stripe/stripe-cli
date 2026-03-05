@@ -34,7 +34,7 @@ func TestOfflineConfig(t *testing.T) {
 	if result.ExitCode != 0 {
 		// Some versions may return non-zero for empty config, check stderr
 		if !strings.Contains(result.Stderr, "config") && !strings.Contains(result.Stderr, "profile") {
-			logSanitized(t, "Warning: 'stripe config --list' returned exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
+			logSanitizedf(t, "Warning: 'stripe config --list' returned exit code %d. Stderr: %s", result.ExitCode, result.Stderr)
 		}
 	}
 }
@@ -111,7 +111,7 @@ func TestAPIConfigListShowsKey(t *testing.T) {
 	// The key should be listed (possibly masked)
 	if !strings.Contains(listResult.Stdout, "test_mode_api_key") &&
 		!strings.Contains(listResult.Stdout, "sk_test") {
-		logSanitized(t, "Config list output: %s", listResult.Stdout)
+		logSanitizedf(t, "Config list output: %s", listResult.Stdout)
 	}
 }
 

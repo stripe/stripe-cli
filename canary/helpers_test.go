@@ -33,8 +33,8 @@ func sanitize(s string) string {
 	return testutil.SanitizeOutput(s)
 }
 
-// logSanitized logs a message with sanitized output.
-func logSanitized(t *testing.T, format string, args ...interface{}) {
+// logSanitizedf logs a message with sanitized output.
+func logSanitizedf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
 	msg := fmt.Sprintf(format, args...)
 	t.Log(sanitize(msg))

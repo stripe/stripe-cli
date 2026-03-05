@@ -65,7 +65,7 @@ func TestOfflineVersionFormat(t *testing.T) {
 	versionPattern := regexp.MustCompile(`\d+\.\d+\.\d+`)
 	if !versionPattern.MatchString(result.Stdout) {
 		// May be a dev build without version, just warn
-		logSanitized(t, "Warning: Version output doesn't contain semver pattern: %s", result.Stdout)
+		logSanitizedf(t, "Warning: Version output doesn't contain semver pattern: %s", result.Stdout)
 	}
 }
 

@@ -138,7 +138,7 @@ All test output is sanitized to prevent accidental exposure of secrets:
 - Webhook signing secrets (`whsec_*`)
 - Access tokens and bearer tokens
 
-The `testutil.SanitizeOutput()` function redacts these patterns before logging. All test helper functions (`fatalf`, `errorf`, `logSanitized`) use sanitization automatically.
+The `testutil.SanitizeOutput()` function redacts these patterns before logging. All test helper functions (`fatalf`, `errorf`, `logSanitizedf`) use sanitization automatically.
 
 ### CI Secret Handling
 
@@ -162,7 +162,7 @@ Canary tests do not run on PRs. Unit tests provide coverage for PR validation.
 2. Use `TestOffline` prefix for tests without API requirements
 3. Use `TestAPI` prefix and call `requireAPIKey(t)` for API tests
 4. Use isolated config directories via `testutil.CreateTempConfigDir()`
-5. **Always use sanitized logging**: Use `fatalf()`, `errorf()`, and `logSanitized()` instead of `t.Fatalf()`, `t.Errorf()`, and `t.Logf()`
+5. **Always use sanitized logging**: Use `fatalf()`, `errorf()`, and `logSanitizedf()` instead of `t.Fatalf()`, `t.Errorf()`, and `t.Logf()`
 
 Example:
 
@@ -190,7 +190,7 @@ func TestAPINewFeature(t *testing.T) {
 
     result, err := runner.Run("api-command")
     // Use sanitized logging for output that may contain secrets
-    logSanitized(t, "Result: %s", result.Stdout)
+    logSanitizedf(t, "Result: %s", result.Stdout)
 }
 ```
 
