@@ -52,8 +52,7 @@ fmt:
 
 # Run all the linters
 lint: bin/golangci-lint
-	# TODO: fix disabled linter issues
-	./bin/golangci-lint run ./...
+	./bin/golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 ./...
 .PHONY: lint
 
 bin/golangci-lint:
