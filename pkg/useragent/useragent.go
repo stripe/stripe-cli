@@ -37,7 +37,7 @@ func DetectAIAgent(getEnv func(string) string) string {
 	if getEnv("CLINE_ACTIVE") != "" {
 		return "cline"
 	}
-	if getEnv("CODEX_SANDBOX") != "" {
+	if getEnv("CODEX_SANDBOX") != "" || getEnv("CODEX_THREAD_ID") != "" || getEnv("CODEX_SANDBOX_NETWORK_DISABLED") != "" || getEnv("CODEX_CI") != "" {
 		return "codex_cli"
 	}
 	if getEnv("CURSOR_AGENT") != "" {
