@@ -66,13 +66,23 @@ jobs:
           STRIPE_CLI_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
           STRIPE_CLI_TELEMETRY_OPTOUT: "1"
 
+      - name: Check API key availability
+        id: check-key
+        run: |
+          if [ -n "$API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+        env:
+          API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+
       - name: Run API canary tests
         # Run API tests when the secret is available AND:
         # 1. On push to master (always run)
         # 2. On manual workflow_dispatch when run_api_tests is not disabled
         # 3. When called from another workflow with run_api_tests enabled
         if: |
-          secrets.STRIPE_TEST_API_KEY != '' &&
+          steps.check-key.outputs.has_key == 'true' &&
           (github.event_name == 'push' ||
            (github.event_name == 'workflow_dispatch' && inputs.run_api_tests != 'false') ||
            (github.event_name == 'workflow_call' && inputs.run_api_tests))
