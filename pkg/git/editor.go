@@ -1,3 +1,4 @@
+// Package git provides Git integration for the Stripe CLI.
 package git
 
 import (

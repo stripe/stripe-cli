@@ -374,18 +374,18 @@ func TestParseJSONDataFlag(t *testing.T) {
 	})
 	t.Run("empty data", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{""})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 
 		_, err = parseJSONDataFlag([]string{"  "})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("multiple data arguments", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{`{}`, `{}`})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("key-value data", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{"x=y"})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("invalid JSON", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{`{"key": }`})

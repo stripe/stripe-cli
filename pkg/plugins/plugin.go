@@ -1,3 +1,4 @@
+// Package plugins provides the plugin system for extending the CLI.
 package plugins
 
 import (
@@ -137,12 +138,12 @@ func (p *Plugin) getChecksum(version string) ([]byte, error) {
 	}
 
 	if expectedSum == "" {
-		return nil, fmt.Errorf("Could not locate a valid checksum for %s version %s", p.Shortname, version)
+		return nil, fmt.Errorf("could not locate a valid checksum for %s version %s", p.Shortname, version)
 	}
 
 	decoded, err := hex.DecodeString(expectedSum)
 	if err != nil {
-		return nil, fmt.Errorf("Could not decode checksum for %s version %s", p.Shortname, version)
+		return nil, fmt.Errorf("could not decode checksum for %s version %s", p.Shortname, version)
 	}
 
 	return decoded, nil

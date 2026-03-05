@@ -1,3 +1,4 @@
+// Package spec provides OpenAPI specification parsing.
 package spec
 
 import (
@@ -78,7 +79,7 @@ type StripeEvent struct {
 
 type StripeError struct {
 	Code           string `json:"code"`
-	HttpStatusCode int    `json:"httpStatusCode"`
+	HTTPStatusCode int    `json:"httpStatusCode"`
 }
 
 // StripeEnumValue represents a single value in a Stripe enum

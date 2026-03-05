@@ -1,3 +1,4 @@
+// Package parsers provides query and fixture data parsing utilities.
 package parsers
 
 import (
@@ -288,9 +289,10 @@ func findSimilarQueryNames(queryRespMap map[string]gjson.Result, name string) ([
 func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (string, error) {
 	value := queryString
 
-	if queryString == "${time-now-RFC3339}" {
+	switch queryString {
+	case "${time-now-RFC3339}":
 		return time.Now().Format(time.RFC3339), nil
-	} else if queryString == "${generate-uuid}" {
+	case "${generate-uuid}":
 		return uuid.NewString(), nil
 	}
 

@@ -1,3 +1,4 @@
+// Package open provides utilities for opening URLs in a browser.
 package open
 
 import (

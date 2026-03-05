@@ -1,3 +1,4 @@
+// Package keys handles API key retrieval and configuration during login.
 package keys
 
 import (
