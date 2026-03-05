@@ -24,6 +24,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -101,7 +102,14 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 
 // RefreshPluginManifest refreshes the plugin manifest
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
-	apiKey, _ := config.GetProfile().GetAPIKey(false)
+	apiKey, err := config.GetProfile().GetAPIKey(false)
+
+	if err != nil {
+		if err != validators.ErrAPIKeyNotConfigured {
+			return err
+		}
+		// If the API key is not configured, that's fine, continue with the fallback plugin data
+	}
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
 	if err != nil {
