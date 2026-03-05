@@ -1,3 +1,4 @@
+// Package plugin provides plugin management commands.
 package plugin
 
 import (
@@ -107,9 +108,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err == nil {
-		fmt.Println(color.Green("✔ installation complete."))
-	}
+	fmt.Println(color.Green("✔ installation complete."))
 
 	return nil
 }

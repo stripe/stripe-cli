@@ -1,3 +1,4 @@
+// Package version manages CLI version checking and display.
 package version
 
 import (

@@ -24,7 +24,7 @@ func AddEventsSubCmds(rootCmd *cobra.Command, cfg *config.Config) error {
 	}
 
 	if !found {
-		return errors.New("Could not find events command")
+		return errors.New("could not find events command")
 	}
 
 	return nil

@@ -98,7 +98,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		}
 	}
 
-	return plugin, fmt.Errorf("Could not find a plugin named %s", pluginName)
+	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
 }
 
 // RefreshPluginManifest refreshes the plugin manifest
@@ -245,10 +245,10 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return nil, fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+		return nil, fmt.Errorf("received an invalid plugin manifest: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return nil, fmt.Errorf("Received an empty plugin manifest")
+		return nil, fmt.Errorf("received an empty plugin manifest")
 	}
 	if err := validateRuntimeVersions(&manifestBody); err != nil {
 		return nil, err

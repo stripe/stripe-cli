@@ -1,3 +1,4 @@
+// Package logs provides the logs tail command.
 package logs
 
 import (
@@ -21,7 +22,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
-	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -38,7 +38,7 @@ type TailCmd struct {
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
-	LogFilters *logTailing.LogFilters
+	LogFilters *logtailing.LogFilters
 	noWSS      bool
 }
 
@@ -46,7 +46,7 @@ type TailCmd struct {
 func NewTailCmd(config *config.Config) *TailCmd {
 	tailCmd := &TailCmd{
 		cfg:        config,
-		LogFilters: &logTailing.LogFilters{},
+		LogFilters: &logtailing.LogFilters{},
 	}
 
 	tailCmd.Cmd = &cobra.Command{
@@ -186,7 +186,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	logtailingOutCh := make(chan websocket.IElement)
 
-	tailer := logTailing.New(&logTailing.Config{
+	tailer := logtailing.New(&logtailing.Config{
 		Client: &stripe.Client{
 			APIKey:  key,
 			BaseURL: apiBase,

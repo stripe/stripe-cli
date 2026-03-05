@@ -20,7 +20,8 @@ func executeCommand(root *cobra.Command, args ...string) (output string, err err
 
 func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, output string, err error) {
 	buf := new(bytes.Buffer)
-	root.SetOutput(buf)
+	root.SetOut(buf)
+	root.SetErr(buf)
 	root.SetArgs(args)
 
 	c, err = root.ExecuteC()

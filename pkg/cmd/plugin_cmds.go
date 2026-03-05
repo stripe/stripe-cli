@@ -87,7 +87,7 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {
-			return errors.New("Install failed due to API key not configured. Please run `stripe login` or specify the `--api-key`")
+			return errors.New("install failed due to API key not configured, please run `stripe login` or specify the `--api-key`")
 		}
 
 		log.WithFields(log.Fields{

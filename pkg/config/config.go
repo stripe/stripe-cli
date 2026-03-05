@@ -1,3 +1,4 @@
+// Package config manages CLI configuration and profiles.
 package config
 
 import (
