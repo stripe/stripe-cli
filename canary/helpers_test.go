@@ -10,9 +10,10 @@ import (
 )
 
 // getRunner returns a test runner, skipping the test if STRIPE_CLI_BINARY is not set.
-func getRunner(t *testing.T) *testutil.Runner {
+// Options are passed through to testutil.NewRunner.
+func getRunner(t *testing.T, opts ...testutil.RunnerOption) *testutil.Runner {
 	t.Helper()
-	runner, err := testutil.NewRunner()
+	runner, err := testutil.NewRunner(opts...)
 	if err != nil {
 		t.Skipf("Skipping canary test: %v", err)
 	}

@@ -34,12 +34,10 @@ func TestOfflineLogsTailHelp(t *testing.T) {
 }
 
 func TestAPILogsTailStartup(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// logs tail is a streaming command, so we use a short timeout
 	// The goal is to verify it starts up and connects successfully
@@ -69,12 +67,10 @@ func TestAPILogsTailStartup(t *testing.T) {
 }
 
 func TestAPILogsTailWithFilters(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Test that logs tail with filters starts correctly
 	runner = runner.WithTimeout(10 * time.Second)
@@ -102,13 +98,12 @@ func TestAPILogsTailWithFilters(t *testing.T) {
 }
 
 func TestAPILogsTailCapture(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
 
 	// Start logs tail with JSON format in background
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	logsTail, err := runner.RunBackground("logs", "tail", "--format", "JSON")
 	if err != nil {

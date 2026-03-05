@@ -45,9 +45,36 @@ type Result struct {
 	ExitCode int
 }
 
+// RunnerOption is a functional option for configuring a Runner at construction time.
+type RunnerOption func(*Runner)
+
+// WithConfigDir returns a RunnerOption that sets the config directory.
+func WithConfigDir(dir string) RunnerOption {
+	return func(r *Runner) {
+		r.ConfigDir = dir
+	}
+}
+
+// WithEnv returns a RunnerOption that merges additional environment variables.
+func WithEnv(env map[string]string) RunnerOption {
+	return func(r *Runner) {
+		for k, v := range env {
+			r.Env[k] = v
+		}
+	}
+}
+
+// WithTimeout returns a RunnerOption that sets the command execution timeout.
+func WithTimeout(timeout time.Duration) RunnerOption {
+	return func(r *Runner) {
+		r.Timeout = timeout
+	}
+}
+
 // NewRunner creates a new Runner with the binary path from STRIPE_CLI_BINARY env var.
+// Options are applied after initializing defaults.
 // Returns an error if the env var is not set or the binary doesn't exist.
-func NewRunner() (*Runner, error) {
+func NewRunner(opts ...RunnerOption) (*Runner, error) {
 	binaryPath := os.Getenv("STRIPE_CLI_BINARY")
 	if binaryPath == "" {
 		return nil, fmt.Errorf("STRIPE_CLI_BINARY environment variable not set")
@@ -58,11 +85,17 @@ func NewRunner() (*Runner, error) {
 		return nil, fmt.Errorf("binary not found at %s", binaryPath)
 	}
 
-	return &Runner{
+	r := &Runner{
 		BinaryPath: binaryPath,
 		Timeout:    DefaultTimeout,
 		Env:        make(map[string]string),
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(r)
+	}
+
+	return r, nil
 }
 
 // WithConfigDir creates a copy of the runner with an isolated config directory.

@@ -39,12 +39,10 @@ func TestOfflineListenHelp(t *testing.T) {
 }
 
 func TestAPIListenPrintSecret(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Use --print-secret which connects, gets the webhook signing secret, and exits
 	runner = runner.WithTimeout(30 * time.Second)
@@ -67,12 +65,10 @@ func TestAPIListenPrintSecret(t *testing.T) {
 }
 
 func TestAPIListenWithEvents(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Test that listen with event filtering and --print-secret works
 	runner = runner.WithTimeout(30 * time.Second)
@@ -95,7 +91,6 @@ func TestAPIListenWithEvents(t *testing.T) {
 }
 
 func TestAPIListenForwardTo(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
 
 	// Set up webhook receiver
@@ -115,9 +110,9 @@ func TestAPIListenForwardTo(t *testing.T) {
 	defer server.Close()
 
 	// Start listen in background
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	listen, err := runner.RunBackground("listen", "--forward-to", server.URL)
 	if err != nil {
@@ -192,13 +187,12 @@ func TestAPIListenForwardTo(t *testing.T) {
 }
 
 func TestAPIListenOutputFormat(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
 
 	// Start listen with JSON format in background
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	listen, err := runner.RunBackground("listen", "--format", "JSON")
 	if err != nil {

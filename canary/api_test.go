@@ -14,12 +14,10 @@ import (
 // =============================================================================
 
 func TestAPIGetBalance(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	result, err := runner.Run("get", "/v1/balance")
 	if err != nil {
@@ -37,12 +35,10 @@ func TestAPIGetBalance(t *testing.T) {
 }
 
 func TestAPIOutputJSON(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	result, err := runner.Run("get", "/v1/balance")
 	if err != nil {
@@ -61,12 +57,10 @@ func TestAPIOutputJSON(t *testing.T) {
 }
 
 func TestAPICreateDeleteCustomer(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Create a customer
 	createResult, err := runner.Run("post", "/v1/customers", "-d", "name=CanaryTestCustomer", "-d", "metadata[test]=canary")
@@ -111,12 +105,10 @@ func TestAPICreateDeleteCustomer(t *testing.T) {
 }
 
 func TestAPICustomersList(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	result, err := runner.Run("customers", "list", "--limit", "1")
 	if err != nil {
@@ -134,12 +126,10 @@ func TestAPICustomersList(t *testing.T) {
 }
 
 func TestAPIProductsCreate(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Create a product using the resource command
 	result, err := runner.Run("products", "create", "--name", "Canary Test Product")
@@ -173,12 +163,10 @@ func TestAPIProductsCreate(t *testing.T) {
 }
 
 func TestAPIEventsListWithLimit(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	result, err := runner.Run("events", "list", "--limit", "2")
 	if err != nil {
@@ -196,12 +184,10 @@ func TestAPIEventsListWithLimit(t *testing.T) {
 }
 
 func TestAPITrigger(t *testing.T) {
-	runner := getRunner(t)
 	requireAPIKey(t)
-
-	runner = runner.WithEnv(map[string]string{
+	runner := getRunner(t, testutil.WithEnv(map[string]string{
 		"STRIPE_API_KEY": testutil.GetAPIKey(),
-	})
+	}))
 
 	// Use a longer timeout for trigger as it creates resources
 	runner = runner.WithTimeout(60 * time.Second)

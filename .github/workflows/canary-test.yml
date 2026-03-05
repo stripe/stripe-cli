@@ -12,7 +12,7 @@ on:
         type: boolean
     secrets:
       STRIPE_TEST_API_KEY:
-        required: false
+        required: true
   workflow_dispatch:
     inputs:
       run_api_tests:
@@ -67,15 +67,15 @@ jobs:
           STRIPE_CLI_TELEMETRY_OPTOUT: "1"
 
       - name: Run API canary tests
-        # Run API tests when:
-        # 1. On push to master (secrets available)
-        # 2. On manual workflow_dispatch with run_api_tests=true
-        # 3. When called from another workflow (e.g. release)
+        # Run API tests when the secret is available AND:
+        # 1. On push to master (always run)
+        # 2. On manual workflow_dispatch when run_api_tests is not disabled
+        # 3. When called from another workflow with run_api_tests enabled
         if: |
           secrets.STRIPE_TEST_API_KEY != '' &&
           (github.event_name == 'push' ||
-           github.event_name == 'workflow_dispatch' ||
-           github.event_name == 'workflow_call')
+           (github.event_name == 'workflow_dispatch' && inputs.run_api_tests != 'false') ||
+           (github.event_name == 'workflow_call' && inputs.run_api_tests))
         run: go test -v -timeout 15m ./canary/... -run "TestAPI"
         shell: bash
         env:
