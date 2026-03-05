@@ -41,6 +41,7 @@ jobs:
       uses: golangci/golangci-lint-action@v9
       with:
         version: v2.10.1
+        args: --max-issues-per-linter=0 --max-same-issues=0
     - name: Run Tests
       run: make ci
       shell: bash
