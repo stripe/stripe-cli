@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v2/core/accounts",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "2024-09-30.acacia"
+      },
+      "params": {
+        "display_name": "Test Account (created by Stripe CLI)",
+        "identity": {
+          "country": "US",
+          "entity_type": "individual"
+        },
+        "configuration": {
+          "customer": {
+            "applied": true
+          }
+        }
+      }
+    }
+  ]
+}

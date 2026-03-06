@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "report_run",
+      "path": "/v2/reporting/report_runs",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "2024-09-30.acacia"
+      },
+      "params": {
+        "report_type": "balance.summary.1",
+        "parameters": {
+          "interval_start": 1641045832,
+          "interval_end": 1646143432
+        }
+      }
+    }
+  ]
+}
