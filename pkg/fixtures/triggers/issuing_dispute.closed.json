@@ -1,0 +1,78 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "cardholder",
+      "path": "/v1/issuing/cardholders",
+      "method": "post",
+      "params": {
+        "name": "My Cardholder",
+        "type": "individual",
+        "individual": {
+          "first_name": "My",
+          "last_name": "Cardholder",
+          "card_issuing": {
+            "user_terms_acceptance": {
+              "date": 1470266163,
+              "ip": "91.121.146.224"
+            }
+          }
+        },
+        "billing": {
+          "address": {
+            "line1": "1234 Main Street",
+            "city": "San Francisco",
+            "state": "CA",
+            "postal_code": "94111",
+            "country": "US"
+          }
+        }
+      }
+    },
+    {
+      "name": "card",
+      "path": "/v1/issuing/cards",
+      "method": "post",
+      "params": {
+        "currency": "usd",
+        "type": "virtual",
+        "cardholder": "${cardholder:id}",
+        "status": "active"
+      }
+    },
+    {
+      "name": "transaction",
+      "path": "/v1/test_helpers/issuing/transactions",
+      "method": "post",
+      "params": {
+        "card": "${card:id}",
+        "amount": 100,
+        "currency": "usd"
+      }
+    },
+    {
+      "name": "dispute",
+      "path": "/v1/issuing/disputes",
+      "method": "post",
+      "params": {
+        "transaction": "${transaction:id}",
+        "evidence": {
+          "reason": "fraudulent"
+        },
+        "metadata": {
+          "description": "(created by Stripe CLI)"
+        }
+      }
+    },
+    {
+      "name": "close_dispute",
+      "path": "/v1/issuing/disputes/${dispute:id}",
+      "method": "post",
+      "params": {
+        "status": "withdrawn"
+      }
+    }
+  ]
+}
