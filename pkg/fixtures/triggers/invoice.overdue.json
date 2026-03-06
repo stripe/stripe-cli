@@ -1,0 +1,61 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "test_clock",
+      "path": "/v1/test_helpers/test_clocks",
+      "method": "post",
+      "params": {
+        "frozen_time": 1577836800,
+        "name": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)",
+        "test_clock": "${test_clock:id}"
+      }
+    },
+    {
+      "name": "invoiceitem",
+      "path": "/v1/invoiceitems",
+      "method": "post",
+      "params": {
+        "amount": 2000,
+        "currency": "usd",
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "invoice",
+      "path": "/v1/invoices",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)",
+        "pending_invoice_items_behavior": "include",
+        "collection_method": "send_invoice",
+        "days_until_due": 7
+      }
+    },
+    {
+      "name": "invoice_finalize",
+      "path": "/v1/invoices/${invoice:id}/finalize",
+      "method": "post"
+    },
+    {
+      "name": "advance_test_clock",
+      "path": "/v1/test_helpers/test_clocks/${test_clock:id}/advance",
+      "method": "post",
+      "params": {
+        "frozen_time": 1578614400
+      }
+    }
+  ]
+}
