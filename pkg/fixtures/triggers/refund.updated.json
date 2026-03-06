@@ -23,7 +23,7 @@
       }
     },
     {
-      "name": "updated_refund",
+      "name": "refund_updated",
       "path": "/v1/refunds/${refund:id}",
       "method": "post",
       "params": {
