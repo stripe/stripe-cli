@@ -1,0 +1,14 @@
+{
+  "_meta": { "template_version": 0 },
+  "fixtures": [
+    {
+      "name": "test_clock",
+      "path": "/v1/test_helpers/test_clocks",
+      "method": "post",
+      "params": {
+        "frozen_time": 1577836800,
+        "name": "(created by Stripe CLI)"
+      }
+    }
+  ]
+}
