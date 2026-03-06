@@ -1,0 +1,28 @@
+{
+  "_meta": { "template_version": 0 },
+  "fixtures": [
+    {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "amount": 100,
+        "currency": "usd",
+        "payment_method_types": ["card"],
+        "payment_method": "pm_card_visa",
+        "confirm": true,
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "charge_updated",
+      "path": "/v1/charges/${payment_intent:latest_charge}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "updated_by": "stripe_cli"
+        }
+      }
+    }
+  ]
+}
