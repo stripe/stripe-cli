@@ -1,0 +1,109 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "credit_grant",
+      "path": "/v1/billing/credit_grants",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "amount": {
+          "monetary": {
+            "value": 1000,
+            "currency": "usd"
+          }
+        },
+        "applicability_config": {
+          "scope": {
+            "price_type": "metered"
+          }
+        },
+        "category": "promotional",
+        "name": "Promotional Credit (created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "billing_meter",
+      "path": "/v1/billing/meters",
+      "method": "post",
+      "params": {
+        "display_name": "Stripe CLI Billing Meter",
+        "event_name": "stripe_cli_credit_transaction_event",
+        "default_aggregation": {
+          "formula": "sum"
+        }
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "currency": "usd",
+        "billing_scheme": "per_unit",
+        "recurring": {
+          "interval": "month",
+          "usage_type": "metered",
+          "meter": "${billing_meter:id}"
+        }
+      }
+    },
+    {
+      "name": "subscription",
+      "path": "/v1/subscriptions",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "items": [
+          {
+            "price": "${price:id}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "billing_meter_event_session",
+      "path": "/v2/billing/meter_event_session",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "2024-09-30.acacia"
+      },
+      "params": {}
+    },
+    {
+      "name": "create_billing_meter_event_stream",
+      "path": "/v2/billing/meter_event_stream",
+      "method": "post",
+      "api_base": "https://meter-events.stripe.com",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "2024-09-30.acacia",
+        "Authorization": "Bearer ${billing_meter_event_session:authentication_token}"
+      },
+      "params": {
+        "events": [
+          {
+            "event_name": "stripe_cli_credit_transaction_event",
+            "timestamp": "${time-now-RFC3339}",
+            "identifier": "${generate-uuid}",
+            "payload": {
+              "stripe_customer_id": "${customer:id}",
+              "value": "10"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

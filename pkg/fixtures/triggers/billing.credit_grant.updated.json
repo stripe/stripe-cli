@@ -1,0 +1,44 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "credit_grant",
+      "path": "/v1/billing/credit_grants",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "amount": {
+          "monetary": {
+            "value": 1000,
+            "currency": "usd"
+          }
+        },
+        "applicability_config": {
+          "scope": {
+            "price_type": "metered"
+          }
+        },
+        "category": "promotional",
+        "name": "Promotional Credit (created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "credit_grant_updated",
+      "path": "/v1/billing/credit_grants/${credit_grant:id}",
+      "method": "post",
+      "params": {
+        "name": "Promotional Credit (updated by Stripe CLI)"
+      }
+    }
+  ]
+}
