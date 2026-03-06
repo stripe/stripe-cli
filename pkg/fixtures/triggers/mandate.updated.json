@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "payment_method",
+      "path": "/v1/payment_methods",
+      "method": "post",
+      "params": {
+        "type": "us_bank_account",
+        "us_bank_account": {
+          "account_holder_type": "individual",
+          "routing_number": "110000000",
+          "account_number": "000123456789"
+        }
+      }
+    },
+    {
+      "name": "payment_method_attached",
+      "path": "/v1/payment_methods/${payment_method:id}/attach",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}"
+      }
+    },
+    {
+      "name": "setup_intent",
+      "path": "/v1/setup_intents",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "payment_method": "${payment_method:id}",
+        "payment_method_types": ["us_bank_account"],
+        "confirm": true,
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "mandate",
+      "path": "/v1/mandates/${setup_intent:mandate}",
+      "method": "post",
+      "params": {
+        "metadata": {
+          "updated_by": "stripe_cli"
+        }
+      }
+    }
+  ]
+}

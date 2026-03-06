@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "template_version": 0,
+    "note": "File upload requires multipart/form-data which may not be fully supported by the fixture engine. This fixture uses a minimal approach - if it fails, file.created events should be triggered via actual file uploads using the Stripe API directly."
+  },
+  "fixtures": [
+    {
+      "name": "file",
+      "path": "/v1/files",
+      "method": "post",
+      "params": {
+        "purpose": "dispute_evidence",
+        "file": "data:text/plain;base64,VGhpcyBpcyBhIHRlc3QgZmlsZSBjcmVhdGVkIGJ5IFN0cmlwZSBDTEku"
+      }
+    }
+  ]
+}
