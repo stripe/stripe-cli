@@ -1,0 +1,50 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v1/accounts",
+      "method": "post",
+      "params": {
+        "type": "express",
+        "country": "US",
+        "capabilities": {
+          "card_payments": { "requested": true },
+          "transfers": { "requested": true }
+        }
+      }
+    },
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "charge",
+      "path": "/v1/charges",
+      "method": "post",
+      "params": {
+        "amount": 1000,
+        "currency": "usd",
+        "source": "tok_visa",
+        "customer": "${customer:id}",
+        "description": "(created by Stripe CLI)",
+        "destination": {
+          "account": "${account:id}"
+        },
+        "application_fee_amount": 100
+      }
+    },
+    {
+      "name": "fee_refund",
+      "path": "/v1/application_fees/${charge:application_fee}/refunds",
+      "method": "post",
+      "params": {}
+    }
+  ]
+}
