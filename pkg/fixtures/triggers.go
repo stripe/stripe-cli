@@ -77,6 +77,7 @@ var Events = map[string]string{
 	"invoice.voided":                            "triggers/invoice.voided.json",
 	"invoice.sent":                              "triggers/invoice.sent.json",
 	"invoice.marked_uncollectible":              "triggers/invoice.marked_uncollectible.json",
+	"invoice_payment.paid":                      "triggers/invoice.paid.json",
 	"invoiceitem.created":                       "triggers/invoiceitem.created.json",
 	"invoiceitem.deleted":                       "triggers/invoiceitem.deleted.json",
 	"issuing_authorization.request":             "triggers/issuing_authorization.request.json",
