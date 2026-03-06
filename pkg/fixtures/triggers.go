@@ -127,6 +127,8 @@ var Events = map[string]string{
 	"test_helpers.test_clock.created":           "triggers/test_helpers.test_clock.created.json",
 	"test_helpers.test_clock.deleted":           "triggers/test_helpers.test_clock.deleted.json",
 	"test_helpers.test_clock.ready":             "triggers/test_helpers.test_clock.ready.json",
+	"topup.created":                             "triggers/topup.created.json",
+	"topup.succeeded":                           "triggers/topup.created.json",
 	"transfer.created":                          "triggers/transfer.created.json",
 	"transfer.reversed":                         "triggers/transfer.reversed.json",
 	"transfer.updated":                          "triggers/transfer.updated.json",
