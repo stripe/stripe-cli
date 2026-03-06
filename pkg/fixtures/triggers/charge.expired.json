@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "payment_intent",
+      "path": "/v1/payment_intents",
+      "method": "post",
+      "params": {
+        "amount": 2000,
+        "currency": "usd",
+        "payment_method_types": ["card"],
+        "payment_method": "pm_card_visa",
+        "capture_method": "manual",
+        "confirm": true,
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "charge_list",
+      "path": "/v1/charges",
+      "method": "get",
+      "params": {
+        "payment_intent": "${payment_intent:id}"
+      }
+    },
+    {
+      "name": "expire_charge",
+      "path": "/v1/test_helpers/charges/${charge_list:data.0.id}/expire",
+      "method": "post"
+    }
+  ]
+}
