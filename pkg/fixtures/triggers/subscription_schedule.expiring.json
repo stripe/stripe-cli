@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "test_clock",
+      "path": "/v1/test_helpers/test_clocks",
+      "method": "post",
+      "params": {
+        "frozen_time": 1577836800,
+        "name": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)",
+        "test_clock": "${test_clock:id}"
+      }
+    },
+    {
+      "name": "product",
+      "path": "/v1/products",
+      "method": "post",
+      "params": {
+          "name": "myproduct",
+          "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "price",
+      "path": "/v1/prices",
+      "method": "post",
+      "params": {
+        "product": "${product:id}",
+        "unit_amount": "1500",
+        "currency": "usd",
+        "recurring[interval]": "month"
+      }
+    },
+    {
+      "name": "subscription_schedule",
+      "path": "/v1/subscription_schedules",
+      "method": "post",
+      "params": {
+        "customer": "${customer:id}",
+        "start_date": 1577836800,
+        "end_behavior": "cancel",
+        "phases": {
+          "0": {
+            "items": [
+              {
+                "price": "${price:id}",
+                "quantity": 1
+              }
+            ],
+            "end_date": 1580256000
+          }
+        }
+      }
+    },
+    {
+      "name": "advance_test_clock",
+      "path": "/v1/test_helpers/test_clocks/${test_clock:id}/advance",
+      "method": "post",
+      "params": {
+        "frozen_time": 1579478400
+      }
+    }
+  ]
+}
