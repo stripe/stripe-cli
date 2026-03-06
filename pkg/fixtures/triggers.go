@@ -123,6 +123,8 @@ var Events = map[string]string{
 	"quote.canceled":                            "triggers/quote.canceled.json",
 	"quote.finalized":                           "triggers/quote.finalized.json",
 	"quote.accepted":                            "triggers/quote.accepted.json",
+	"refund.created":                            "triggers/refund.created.json",
+	"refund.updated":                            "triggers/refund.updated.json",
 	"tax_rate.created":                          "triggers/tax_rate.created.json",
 	"tax_rate.updated":                          "triggers/tax_rate.updated.json",
 	"transfer.created":                          "triggers/transfer.created.json",
