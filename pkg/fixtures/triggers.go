@@ -17,6 +17,9 @@ var triggers embed.FS
 // Events is a mapping of pre-built trigger events and the corresponding json file
 var Events = map[string]string{
 	"account.application.deauthorized":          "triggers/account.application.deauthorized.json",
+	"account.external_account.created":          "triggers/account.external_account.created.json",
+	"account.external_account.deleted":          "triggers/account.external_account.deleted.json",
+	"account.external_account.updated":          "triggers/account.external_account.updated.json",
 	"account.updated":                           "triggers/account.updated.json",
 	"balance.available":                         "triggers/balance.available.json",
 	"billing.meter.created":                     "triggers/billing.meter.created.json",
@@ -26,6 +29,7 @@ var Events = map[string]string{
 	"billing_portal.configuration.created":      "triggers/billing_portal.configuration.created.json",
 	"billing_portal.configuration.updated":      "triggers/billing_portal.configuration.updated.json",
 	"billing_portal.session.created":            "triggers/billing_portal.session.created.json",
+	"capability.updated":                        "triggers/capability.updated.json",
 	"cash_balance.funds_available":              "triggers/cash_balance.funds_available.json",
 	"charge.captured":                           "triggers/charge.captured.json",
 	"charge.dispute.closed":                     "triggers/charge.dispute.closed.json",
@@ -105,6 +109,9 @@ var Events = map[string]string{
 	"payout.created":                            "triggers/payout.created.json",
 	"payout.paid":                               "triggers/payout.paid.json",
 	"payout.updated":                            "triggers/payout.updated.json",
+	"person.created":                            "triggers/person.created.json",
+	"person.deleted":                            "triggers/person.deleted.json",
+	"person.updated":                            "triggers/person.updated.json",
 	"plan.created":                              "triggers/plan.created.json",
 	"plan.deleted":                              "triggers/plan.deleted.json",
 	"plan.updated":                              "triggers/plan.updated.json",

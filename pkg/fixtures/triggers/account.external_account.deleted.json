@@ -1,0 +1,39 @@
+{
+  "_meta": { "template_version": 0 },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v1/accounts",
+      "method": "post",
+      "params": {
+        "type": "custom",
+        "country": "US",
+        "capabilities": {
+          "transfers": { "requested": true }
+        }
+      }
+    },
+    {
+      "name": "external_account",
+      "path": "/v1/accounts/${account:id}/external_accounts",
+      "method": "post",
+      "params": {
+        "external_account": "btok_us"
+      }
+    },
+    {
+      "name": "external_account_2",
+      "path": "/v1/accounts/${account:id}/external_accounts",
+      "method": "post",
+      "params": {
+        "external_account": "btok_us",
+        "default_for_currency": true
+      }
+    },
+    {
+      "name": "external_account_deleted",
+      "path": "/v1/accounts/${account:id}/external_accounts/${external_account:id}",
+      "method": "delete"
+    }
+  ]
+}
