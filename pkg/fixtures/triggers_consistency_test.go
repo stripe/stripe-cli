@@ -86,8 +86,8 @@ func TestNoMissingFixtureFiles(t *testing.T) {
 	assert.Empty(t, missingFiles, "Events map references non-existent fixture files: %v", missingFiles)
 }
 
-// TestFixtureFilesAreValidJSON ensures all fixture files contain valid JSON
-// that can be parsed. This catches syntax errors early.
+// TestFixtureFilesAreValidJSON validates all fixture files against the FixtureData schema.
+// This catches JSON syntax errors, structural issues, and missing required fields.
 func TestFixtureFilesAreValidJSON(t *testing.T) {
 	entries, err := triggers.ReadDir("triggers")
 	require.NoError(t, err, "Failed to read triggers directory")
@@ -102,16 +102,20 @@ func TestFixtureFilesAreValidJSON(t *testing.T) {
 			content, err := triggers.ReadFile(fixturePath)
 			require.NoError(t, err, "Failed to read %s", fixturePath)
 
-			// Basic JSON validation - try to parse it
-			var result map[string]interface{}
-			err = json.Unmarshal(content, &result)
-			require.NoError(t, err, "Fixture file %s contains invalid JSON", fixturePath)
+			// Validate against the FixtureData struct schema
+			var fixtureData FixtureData
+			err = json.Unmarshal(content, &fixtureData)
+			require.NoError(t, err, "Fixture file %s does not match FixtureData schema", fixturePath)
 
-			// Check for _meta field
-			require.Contains(t, result, "_meta", "Fixture file %s missing _meta field", fixturePath)
+			// Validate the fixtures array is not empty
+			require.NotEmpty(t, fixtureData.Requests, "Fixture file %s has empty fixtures array", fixturePath)
 
-			// Check for fixtures array
-			require.Contains(t, result, "fixtures", "Fixture file %s missing fixtures array", fixturePath)
+			// Validate each request has required fields
+			for i, req := range fixtureData.Requests {
+				assert.NotEmpty(t, req.Name, "Fixture %s request %d missing 'name' field", fixturePath, i)
+				assert.NotEmpty(t, req.Path, "Fixture %s request %d missing 'path' field", fixturePath, i)
+				assert.NotEmpty(t, req.Method, "Fixture %s request %d missing 'method' field", fixturePath, i)
+			}
 		})
 	}
 }
