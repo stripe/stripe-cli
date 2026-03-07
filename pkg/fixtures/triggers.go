@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/spf13/afero"
 
@@ -190,6 +191,7 @@ var Events = map[string]string{
 	"test_helpers.test_clock.advancing":                    "triggers/test_helpers.test_clock.advancing.json",
 	"test_helpers.test_clock.created":                      "triggers/test_helpers.test_clock.created.json",
 	"test_helpers.test_clock.deleted":                      "triggers/test_helpers.test_clock.deleted.json",
+	"test_helpers.test_clock.internal_failure":             "triggers/test_helpers.test_clock.internal_failure.json",
 	"test_helpers.test_clock.ready":                        "triggers/test_helpers.test_clock.ready.json",
 	"topup.canceled":                                       "triggers/topup.canceled.json",
 	"topup.created":                                        "triggers/topup.created.json",
@@ -293,7 +295,16 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 		} else {
 			exists, _ := afero.Exists(fs, event)
 			if !exists {
-				return nil, fmt.Errorf("%s", fmt.Sprintf("The event `%s` is not supported by Stripe CLI. To trigger unsupported events, use the Stripe API or Dashboard to perform actions that lead to the event you want to trigger (for example, create a Customer to generate a `customer.created` event). You can also create a custom fixture: https://docs.stripe.com/cli/fixtures", event))
+				// Check if this might be a partial match due to missing quotes around bracket events
+				var suggestion string
+				for validEvent := range Events {
+					// If the requested event is a prefix of a valid bracket event, suggest quoting
+					if strings.HasPrefix(validEvent, event) && strings.Contains(validEvent, "[") {
+						suggestion = fmt.Sprintf("\n\nDid you mean `%s`?\nNote: Event names with brackets must be quoted:\n  stripe trigger \"%s\"", validEvent, validEvent)
+						break
+					}
+				}
+				return nil, fmt.Errorf("%s", fmt.Sprintf("The event `%s` is not supported by Stripe CLI. To trigger unsupported events, use the Stripe API or Dashboard to perform actions that lead to the event you want to trigger (for example, create a Customer to generate a `customer.created` event). You can also create a custom fixture: https://docs.stripe.com/cli/fixtures%s", event, suggestion))
 			}
 
 			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, event, skip, override, add, remove, edit)
