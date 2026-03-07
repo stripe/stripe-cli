@@ -24,9 +24,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/stripe/stripe-cli/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/stripe/stripe-cli/rpc"
 )
 
 // TestUnsupportedEventErrorMessage verifies the error message for unsupported events
