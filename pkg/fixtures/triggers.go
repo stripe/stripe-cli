@@ -105,7 +105,7 @@ var Events = map[string]string{
 	"invoice.sent":                                         "triggers/invoice.sent.json",
 	"invoice.updated":                                      "triggers/invoice.updated.json",
 	"invoice.voided":                                       "triggers/invoice.voided.json",
-	"invoice_payment.paid":                                 "triggers/invoice.paid.json", // Alias: fires alongside invoice.paid
+	"invoice_payment.paid":                                 "triggers/invoice_payment.paid.json",
 	"invoiceitem.created":                                  "triggers/invoiceitem.created.json",
 	"invoiceitem.deleted":                                  "triggers/invoiceitem.deleted.json",
 	"issuing_authorization.created":                        "triggers/issuing_authorization.created.json",
@@ -198,7 +198,7 @@ var Events = map[string]string{
 	"topup.created":                                        "triggers/topup.created.json",
 	"topup.failed":                                         "triggers/topup.failed.json",
 	"topup.reversed":                                       "triggers/topup.reversed.json",
-	"topup.succeeded":                                      "triggers/topup.created.json", // Test mode topups auto-succeed
+	"topup.succeeded":                                      "triggers/topup.succeeded.json",
 	"transfer.created":                                     "triggers/transfer.created.json",
 	"transfer.reversed":                                    "triggers/transfer.reversed.json",
 	"transfer.updated":                                     "triggers/transfer.updated.json",
