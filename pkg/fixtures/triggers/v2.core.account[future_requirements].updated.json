@@ -1,0 +1,29 @@
+{
+  "_meta": {
+    "template_version": 0,
+    "note": "The v2.core.account[future_requirements].updated event is typically triggered by Stripe's internal systems when future account requirements are evaluated. This fixture creates an account but may not reliably trigger the future_requirements.updated event in test mode, as future requirements are often system-initiated based on projected account needs."
+  },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v2/core/accounts",
+      "method": "post",
+      "headers": {
+        "Content-Type": "application/json",
+        "Stripe-Version": "2024-09-30.acacia"
+      },
+      "params": {
+        "display_name": "Test Account (created by Stripe CLI)",
+        "identity": {
+          "country": "US",
+          "entity_type": "individual"
+        },
+        "configuration": {
+          "customer": {
+            "applied": true
+          }
+        }
+      }
+    }
+  ]
+}
