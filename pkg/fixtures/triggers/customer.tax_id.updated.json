@@ -1,0 +1,25 @@
+{
+  "_meta": {
+    "template_version": 0,
+    "note": "The customer.tax_id.updated event is typically triggered by Stripe's internal systems when a tax ID's verification status changes. This fixture creates a tax ID but cannot reliably trigger the updated event in test mode, as tax ID updates are system-initiated based on verification processes. There is no update endpoint for tax IDs in the Stripe API."
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "tax_id",
+      "path": "/v1/customers/${customer:id}/tax_ids",
+      "method": "post",
+      "params": {
+        "type": "us_ein",
+        "value": "000000000"
+      }
+    }
+  ]
+}
