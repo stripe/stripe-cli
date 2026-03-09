@@ -1,0 +1,33 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "account",
+      "path": "/v1/accounts",
+      "method": "post",
+      "params": {
+        "type": "custom",
+        "country": "US",
+        "capabilities": {
+          "card_payments": {
+            "requested": true
+          },
+          "transfers": {
+            "requested": true
+          }
+        }
+      }
+    },
+    {
+      "name": "person",
+      "path": "/v1/accounts/${account:id}/persons",
+      "method": "post",
+      "params": {
+        "first_name": "Jenny",
+        "last_name": "Rosen"
+      }
+    }
+  ]
+}
