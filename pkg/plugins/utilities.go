@@ -171,22 +171,39 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 func validateRuntimeVersions(pluginList *PluginList) error {
 	for _, plugin := range pluginList.Plugins {
 		for _, release := range plugin.Releases {
-			if release.Runtime != nil {
-				for runtime, version := range release.Runtime {
-					if runtime == "node" {
-						if !isValidNodeLTSVersion(version) {
-							return fmt.Errorf(
-								"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
-								version,
-								plugin.Shortname,
-								release.Version,
-							)
-						}
-					}
-				}
+			if err := validateReleaseRuntimes(plugin.Shortname, release); err != nil {
+				return err
 			}
 		}
 	}
+	return nil
+}
+
+// validateReleaseRuntimes validates the runtime specifications for a single release
+func validateReleaseRuntimes(pluginName string, release Release) error {
+	// Skip releases without runtime requirements
+	if release.Runtime == nil {
+		return nil
+	}
+
+	// Validate each runtime specification
+	for runtime, version := range release.Runtime {
+		// Only validate Node.js versions (skip other runtimes)
+		if runtime != "node" {
+			continue
+		}
+
+		// Check if the Node.js version is valid
+		if !isValidNodeLTSVersion(version) {
+			return fmt.Errorf(
+				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				version,
+				pluginName,
+				release.Version,
+			)
+		}
+	}
+
 	return nil
 }
 

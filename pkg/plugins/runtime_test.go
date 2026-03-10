@@ -1,6 +1,10 @@
 package plugins
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"compress/gzip"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -120,10 +124,17 @@ func TestBuildNodeDownloadURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.os+"-"+tt.arch, func(t *testing.T) {
-			url := buildNodeDownloadURL(tt.version, tt.os, tt.arch)
+			url, err := buildNodeDownloadURL(tt.version, tt.os, tt.arch)
+			require.NoError(t, err)
 			require.Equal(t, tt.expected, url)
 		})
 	}
+}
+
+func TestBuildNodeDownloadURLUnsupportedOS(t *testing.T) {
+	_, err := buildNodeDownloadURL("20.18.1", "freebsd", "amd64")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported operating system")
 }
 
 func TestVerifyChecksum(t *testing.T) {
@@ -139,6 +150,140 @@ func TestVerifyChecksum(t *testing.T) {
 	err = verifyChecksum(data, "invalid_checksum")
 	require.NotNil(t, err)
 	require.Contains(t, err.Error(), "checksum mismatch")
+}
+
+func TestExtractTarGzZipSlipProtection(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	destPath := "/tmp/test-extract"
+
+	// Create a malicious tar.gz archive with path traversal attempts
+	var buf bytes.Buffer
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	// Test case 1: Path with ".." trying to escape
+	maliciousContent := []byte("malicious content")
+	err := tw.WriteHeader(&tar.Header{
+		Name:     "node-v20.0.0-darwin-arm64/../../../etc/passwd",
+		Mode:     0644,
+		Size:     int64(len(maliciousContent)),
+		Typeflag: tar.TypeReg,
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(maliciousContent)
+	require.NoError(t, err)
+
+	tw.Close()
+	gzw.Close()
+
+	// Attempt to extract should fail due to path traversal
+	err = extractTarGz(fs, buf.Bytes(), destPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal file path")
+
+	// Verify the malicious file was not created outside destPath
+	exists, _ := afero.Exists(fs, "/etc/passwd")
+	require.False(t, exists)
+}
+
+func TestExtractTarGzValidArchive(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	destPath := "/tmp/test-extract"
+
+	// Create a valid tar.gz archive
+	var buf bytes.Buffer
+	gzw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gzw)
+
+	// Add a valid file
+	validContent := []byte("valid content")
+	err := tw.WriteHeader(&tar.Header{
+		Name:     "node-v20.0.0-darwin-arm64/bin/node",
+		Mode:     0755,
+		Size:     int64(len(validContent)),
+		Typeflag: tar.TypeReg,
+	})
+	require.NoError(t, err)
+	_, err = tw.Write(validContent)
+	require.NoError(t, err)
+
+	tw.Close()
+	gzw.Close()
+
+	// Extraction should succeed
+	err = extractTarGz(fs, buf.Bytes(), destPath)
+	require.NoError(t, err)
+
+	// Verify the file was created in the correct location
+	exists, _ := afero.Exists(fs, filepath.Join(destPath, "bin", "node"))
+	require.True(t, exists)
+
+	// Verify the content
+	content, err := afero.ReadFile(fs, filepath.Join(destPath, "bin", "node"))
+	require.NoError(t, err)
+	require.Equal(t, validContent, content)
+}
+
+func TestExtractZipZipSlipProtection(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	destPath := "/tmp/test-extract"
+
+	// Create a malicious zip archive with path traversal attempts
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	// Test case: Path with ".." trying to escape
+	maliciousContent := []byte("malicious content")
+	fw, err := zw.Create("node-v20.0.0-win-x64/../../../windows/system32/evil.dll")
+	require.NoError(t, err)
+	_, err = fw.Write(maliciousContent)
+	require.NoError(t, err)
+
+	zw.Close()
+
+	// Attempt to extract should fail due to path traversal
+	err = extractZip(fs, buf.Bytes(), destPath)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "illegal file path")
+
+	// Verify the malicious file was not created outside destPath
+	exists, _ := afero.Exists(fs, "/windows/system32/evil.dll")
+	require.False(t, exists)
+}
+
+func TestExtractZipValidArchive(t *testing.T) {
+	fs := afero.NewMemMapFs()
+	destPath := "/tmp/test-extract"
+
+	// Create a valid zip archive
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	// Add a directory
+	_, err := zw.Create("node-v20.0.0-win-x64/bin/")
+	require.NoError(t, err)
+
+	// Add a valid file
+	validContent := []byte("valid windows node.exe content")
+	fw, err := zw.Create("node-v20.0.0-win-x64/node.exe")
+	require.NoError(t, err)
+	_, err = fw.Write(validContent)
+	require.NoError(t, err)
+
+	zw.Close()
+
+	// Extraction should succeed
+	err = extractZip(fs, buf.Bytes(), destPath)
+	require.NoError(t, err)
+
+	// Verify the file was created in the correct location
+	exists, _ := afero.Exists(fs, filepath.Join(destPath, "node.exe"))
+	require.True(t, exists)
+
+	// Verify the content
+	content, err := afero.ReadFile(fs, filepath.Join(destPath, "node.exe"))
+	require.NoError(t, err)
+	require.Equal(t, validContent, content)
 }
 
 func TestGetReleaseForVersion(t *testing.T) {

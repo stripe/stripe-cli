@@ -2,6 +2,8 @@ package plugins
 
 import (
 	"archive/tar"
+	"archive/zip"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
@@ -13,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -31,8 +34,13 @@ type NodeRuntimeConfig struct {
 // Checksums are verified from official Node.js distribution over HTTPS.
 // For maximum security, checksums can also be verified against GPG signatures.
 //
-// To update checksums for a new Node.js version:
+// To update checksums for a new Node.js version, run:
 //
+//     make update-node-checksums VERSION=X.Y.Z
+//
+// This will download and verify the checksums, then output the Go code to add below.
+//
+// Manual alternative:
 //  1. Download checksums:
 //     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
 //
@@ -179,6 +187,11 @@ func InstallNodeRuntime(ctx context.Context, cfg config.IConfig, fs afero.Fs, ma
 
 	// Check if runtime is already installed
 	if IsRuntimeInstalled(cfg, fs, majorVersion) {
+		log.WithFields(log.Fields{
+			"version":      runtimeConfig.Version,
+			"major":        majorVersion,
+			"runtime_path": GetNodeRuntimePath(cfg, majorVersion),
+		}).Debug("Node.js runtime is already installed, skipping download")
 		return nil
 	}
 
@@ -190,13 +203,25 @@ func InstallNodeRuntime(ctx context.Context, cfg config.IConfig, fs afero.Fs, ma
 		return fmt.Errorf("Node.js %s is not available for %s/%s", majorVersion, opsys, arch)
 	}
 
+	log.WithFields(log.Fields{
+		"version":      runtimeConfig.Version,
+		"major":        majorVersion,
+		"os":           opsys,
+		"arch":         arch,
+		"runtime_path": GetNodeRuntimePath(cfg, majorVersion),
+	}).Debug("Installing Node.js runtime")
+
 	spinner := ansi.StartNewSpinner(
 		ansi.Faint(fmt.Sprintf("downloading Node.js v%s runtime...", runtimeConfig.Version)),
 		os.Stdout,
 	)
 
 	// Construct download URL
-	downloadURL := buildNodeDownloadURL(runtimeConfig.Version, opsys, arch)
+	downloadURL, err := buildNodeDownloadURL(runtimeConfig.Version, opsys, arch)
+	if err != nil {
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("failed to build download URL: %s", err)), os.Stdout)
+		return err
+	}
 
 	// Download the runtime
 	body, err := FetchRemoteResource(downloadURL)
@@ -223,7 +248,7 @@ func InstallNodeRuntime(ctx context.Context, cfg config.IConfig, fs afero.Fs, ma
 }
 
 // buildNodeDownloadURL constructs the download URL for Node.js binaries
-func buildNodeDownloadURL(version, opsys, arch string) string {
+func buildNodeDownloadURL(version, opsys, arch string) (string, error) {
 	baseURL := "https://nodejs.org/dist"
 
 	// Map Go arch names to Node.js arch names
@@ -240,9 +265,11 @@ func buildNodeDownloadURL(version, opsys, arch string) string {
 		filename = fmt.Sprintf("node-v%s-linux-%s.tar.gz", version, nodeArch)
 	case "windows":
 		filename = fmt.Sprintf("node-v%s-win-%s.zip", version, nodeArch)
+	default:
+		return "", fmt.Errorf("unsupported operating system: %s", opsys)
 	}
 
-	return fmt.Sprintf("%s/v%s/%s", baseURL, version, filename)
+	return fmt.Sprintf("%s/v%s/%s", baseURL, version, filename), nil
 }
 
 // verifyChecksum verifies the SHA256 checksum of downloaded data
@@ -269,7 +296,7 @@ func extractRuntime(fs afero.Fs, data []byte, destPath string, opsys string) err
 	case "darwin", "linux":
 		return extractTarGz(fs, data, destPath)
 	case "windows":
-		return fmt.Errorf("Windows runtime extraction not yet implemented")
+		return extractZip(fs, data, destPath)
 	default:
 		return fmt.Errorf("unsupported operating system: %s", opsys)
 	}
@@ -301,11 +328,22 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 		}
 		relativePath := parts[1]
 
-		targetPath := filepath.Join(destPath, relativePath)
+		// Prevent Zip Slip: sanitize and validate the path
+		// Clean the relative path to remove any ".." or other path traversal attempts
+		cleanRelativePath := filepath.Clean(relativePath)
 
-		// Prevent Zip Slip: ensure the resolved path stays within destPath
-		if !strings.HasPrefix(targetPath+string(os.PathSeparator), filepath.Clean(destPath)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path in archive: %s", header.Name)
+		// Reject paths that try to escape (start with "..")
+		if strings.HasPrefix(cleanRelativePath, "..") {
+			return fmt.Errorf("illegal file path in archive (path traversal attempt): %s", header.Name)
+		}
+
+		targetPath := filepath.Join(destPath, cleanRelativePath)
+
+		// Double-check: ensure the resolved absolute path stays within destPath
+		cleanDestPath := filepath.Clean(destPath) + string(os.PathSeparator)
+		cleanTargetPath := filepath.Clean(targetPath) + string(os.PathSeparator)
+		if !strings.HasPrefix(cleanTargetPath, cleanDestPath) {
+			return fmt.Errorf("illegal file path in archive (escapes destination): %s", header.Name)
 		}
 
 		switch header.Typeflag {
@@ -335,6 +373,79 @@ func extractTarGz(fs afero.Fs, data []byte, destPath string) error {
 			// For afero compatibility, we'll skip symlinks for now
 			// In production, you might want to handle these properly
 		}
+	}
+
+	return nil
+}
+
+// extractZip extracts a .zip archive (for Windows)
+func extractZip(fs afero.Fs, data []byte, destPath string) error {
+	// Create a reader from the byte slice
+	reader := bytes.NewReader(data)
+	zipReader, err := zip.NewReader(reader, int64(len(data)))
+	if err != nil {
+		return fmt.Errorf("failed to create zip reader: %w", err)
+	}
+
+	for _, file := range zipReader.File {
+		// Skip the top-level directory in the archive (e.g., "node-v20.18.1-win-x64/")
+		parts := strings.SplitN(file.Name, "/", 2)
+		if len(parts) < 2 {
+			continue
+		}
+		relativePath := parts[1]
+
+		// Prevent Zip Slip: sanitize and validate the path
+		// Clean the relative path to remove any ".." or other path traversal attempts
+		cleanRelativePath := filepath.Clean(relativePath)
+
+		// Reject paths that try to escape (start with "..")
+		if strings.HasPrefix(cleanRelativePath, "..") {
+			return fmt.Errorf("illegal file path in archive (path traversal attempt): %s", file.Name)
+		}
+
+		targetPath := filepath.Join(destPath, cleanRelativePath)
+
+		// Double-check: ensure the resolved absolute path stays within destPath
+		cleanDestPath := filepath.Clean(destPath) + string(os.PathSeparator)
+		cleanTargetPath := filepath.Clean(targetPath) + string(os.PathSeparator)
+		if !strings.HasPrefix(cleanTargetPath, cleanDestPath) {
+			return fmt.Errorf("illegal file path in archive (escapes destination): %s", file.Name)
+		}
+
+		// Check if it's a directory
+		if file.FileInfo().IsDir() {
+			if err := fs.MkdirAll(targetPath, file.Mode()); err != nil {
+				return fmt.Errorf("failed to create directory: %w", err)
+			}
+			continue
+		}
+
+		// Create parent directories
+		if err := fs.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			return fmt.Errorf("failed to create parent directory: %w", err)
+		}
+
+		// Extract file
+		srcFile, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open file in archive: %w", err)
+		}
+
+		outFile, err := fs.OpenFile(targetPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, file.Mode())
+		if err != nil {
+			srcFile.Close()
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+
+		if _, err := io.Copy(outFile, srcFile); err != nil {
+			outFile.Close()
+			srcFile.Close()
+			return fmt.Errorf("failed to write file: %w", err)
+		}
+
+		outFile.Close()
+		srcFile.Close()
 	}
 
 	return nil
