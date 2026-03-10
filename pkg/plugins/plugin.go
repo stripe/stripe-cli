@@ -376,7 +376,30 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
-	cmd := exec.Command(pluginBinaryPath)
+	// Check if this plugin requires a runtime
+	var cmd *exec.Cmd
+	var usesRuntime bool
+	release := p.getReleaseForVersion(version)
+	if release != nil {
+		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			// Plugin requires Node.js runtime - execute via node
+			nodePath := GetNodeBinaryPath(config, nodeVersion)
+			if nodePath == "" {
+				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
+			}
+			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
+			cmd = exec.Command(nodePath, pluginBinaryPath)
+			usesRuntime = true
+		} else {
+			// No runtime required - execute binary directly
+			cmd = exec.Command(pluginBinaryPath)
+			usesRuntime = false
+		}
+	} else {
+		// Couldn't find release info, assume it's a standalone binary
+		cmd = exec.Command(pluginBinaryPath)
+		usesRuntime = false
+	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")
@@ -400,14 +423,18 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		},
 	}
 
-	sum, err := p.getChecksum(version)
-	if err != nil {
-		return err
-	}
+	// Only validate checksum for standalone binaries, not when using a runtime
+	// When using a runtime, cmd.Path points to the node binary, not the plugin
+	if !usesRuntime {
+		sum, err := p.getChecksum(version)
+		if err != nil {
+			return err
+		}
 
-	clientConfig.SecureConfig = &hcplugin.SecureConfig{
-		Checksum: sum,
-		Hash:     sha256.New(),
+		clientConfig.SecureConfig = &hcplugin.SecureConfig{
+			Checksum: sum,
+			Hash:     sha256.New(),
+		}
 	}
 
 	// start by launching the plugin process / binary
