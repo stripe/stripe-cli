@@ -36,11 +36,12 @@ type NodeRuntimeConfig struct {
 //
 // To update checksums for a new Node.js version, run:
 //
-//     make update-node-checksums VERSION=X.Y.Z
+// make update-node-checksums VERSION=X.Y.Z
 //
 // This will download and verify the checksums, then output the Go code to add below.
 //
 // Manual alternative:
+//
 //  1. Download checksums:
 //     curl -fsO "https://nodejs.org/dist/vX.Y.Z/SHASUMS256.txt"
 //
