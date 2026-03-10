@@ -164,12 +164,7 @@ func (p *Plugin) LookUpLatestVersion() string {
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
 
-	apiKey, err := cfg.GetProfile().GetAPIKey(false)
-
-	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': missing API key", p.Shortname)), os.Stdout)
-		return err
-	}
+	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
 
