@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestLookUpLatestVersion(t *testing.T) {
@@ -25,6 +27,31 @@ func TestInstall(t *testing.T) {
 	config.InitConfig()
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 	testServers := setUpServers(t, manifestContent, nil)
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	require.Nil(t, err)
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.Nil(t, err)
+	require.True(t, fileExists)
+
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
+func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+
+	originalPluginBaseURL := requests.DefaultPluginData.PluginBaseURL
+	requests.DefaultPluginData.PluginBaseURL = testServers.ArtifactoryServer.URL
+	defer func() {
+		requests.DefaultPluginData.PluginBaseURL = originalPluginBaseURL
+	}()
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
