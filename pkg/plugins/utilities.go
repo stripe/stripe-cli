@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -101,8 +103,12 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 // RefreshPluginManifest refreshes the plugin manifest
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	apiKey, err := config.GetProfile().GetAPIKey(false)
+
 	if err != nil {
-		return err
+		if err != validators.ErrAPIKeyNotConfigured {
+			return err
+		}
+		// If the API key is not configured, that's fine, continue with the fallback plugin data
 	}
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
@@ -227,6 +233,9 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	resp, err := client.Do(req)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "no such host") {
+			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+		}
 		return nil, err
 	}
 
