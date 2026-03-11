@@ -19,8 +19,10 @@ githooks-init:
 .PHONY: githooks-init
 
 # Run all the tests
+# On macOS, CGO_ENABLED=0 works around a Go 1.26.0 linker crash with -race (https://github.com/golang/go/issues/77593)
+TEST_CGO_ENABLED := $(if $(filter Darwin,$(shell uname -s)),0,)
 test:
-	go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
+	$(if $(TEST_CGO_ENABLED),CGO_ENABLED=$(TEST_CGO_ENABLED)) go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
 .PHONY: test
 
 # Run all the tests and opens the coverage report

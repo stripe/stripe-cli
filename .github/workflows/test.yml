@@ -45,6 +45,3 @@ jobs:
     - name: Run Tests
       run: make ci
       shell: bash
-      env:
-        # Work around Go 1.26.0 linker crash on darwin/arm64 with -race (https://github.com/golang/go/issues/77593)
-        CGO_ENABLED: ${{ runner.os == 'macOS' && '0' || '1' }}
