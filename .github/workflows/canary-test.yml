@@ -1,7 +1,7 @@
 name: Canary Tests
 
 on:
-  pull_request:        # temporary - remove before merge
+  pull_request:
     branches: [master]
   push:
     branches: [master]
