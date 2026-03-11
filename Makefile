@@ -19,9 +19,8 @@ githooks-init:
 .PHONY: githooks-init
 
 # Run all the tests
-# CGO_ENABLED=0 works around a Go 1.26.0 linker crash on darwin/arm64 with -race (https://github.com/golang/go/issues/77593)
 test:
-	CGO_ENABLED=0 go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
+	go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
 .PHONY: test
 
 # Run all the tests and opens the coverage report
