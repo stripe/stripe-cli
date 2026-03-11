@@ -2,6 +2,9 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -9,6 +12,8 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestGetPluginList(t *testing.T) {
@@ -209,6 +214,7 @@ func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.Nil(t, err)
 }
+
 func TestIsValidNodeLTSVersion(t *testing.T) {
 	validVersions := []string{"18", "20", "22", "24", "26"}
 	for _, version := range validVersions {
@@ -353,4 +359,43 @@ func TestValidatePluginManifestWithValidRuntime(t *testing.T) {
 	require.NotNil(t, pluginList)
 	require.Equal(t, 1, len(pluginList.Plugins))
 	require.Equal(t, "24", pluginList.Plugins[0].Releases[0].Runtime["node"])
+}
+
+func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); {
+		case url == "/plugins.toml":
+			res.Write(manifestContent)
+		case url == "/plugins-nonexistent.toml":
+			res.WriteHeader(http.StatusNotFound)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer func() { artifactoryServer.Close() }()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case "/v1/stripecli/get-plugin-url":
+			pd := requests.PluginData{
+				PluginBaseURL:       artifactoryServer.URL,
+				AdditionalManifests: []string{"plugins-nonexistent.toml"},
+			}
+			body, err := json.Marshal(pd)
+			if err != nil {
+				t.Error(err)
+			}
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	err := RefreshPluginManifest(context.Background(), config, fs, stripeServer.URL)
+	require.Nil(t, err)
 }

@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -148,6 +149,11 @@ func fetchAndMergeManifests(pluginData requests.PluginData) (*PluginList, error)
 	for _, filename := range pluginData.AdditionalManifests {
 		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
 		if err != nil {
+			var remoteResourceNotFoundError *remoteResourceNotFoundError
+			if errors.As(err, &remoteResourceNotFoundError) {
+				log.Debugf("Additional plugin manifest not found, silently skipping: url=%s", remoteResourceNotFoundError.URL)
+				continue
+			}
 			return nil, err
 		}
 		additionalPluginLists = append(additionalPluginLists, additionalPluginList)
@@ -282,6 +288,14 @@ func findPluginIndex(list *PluginList, p Plugin) int {
 	return -1
 }
 
+type remoteResourceNotFoundError struct {
+	URL string
+}
+
+func (e *remoteResourceNotFoundError) Error() string {
+	return fmt.Sprintf("remote resource not found: url=%s", e.URL)
+}
+
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
@@ -311,7 +325,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("remote resource not found: url=%s", url)
+		return nil, &remoteResourceNotFoundError{URL: url}
 	}
 
 	defer resp.Body.Close()
