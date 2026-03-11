@@ -76,7 +76,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
 	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
-	expected := "Invalid data argument: fry"
+	expected := "invalid data argument: fry"
 
 	data, err := rb.BuildDataForRequest(params)
 	require.Equal(t, "", data)

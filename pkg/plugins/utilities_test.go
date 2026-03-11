@@ -185,7 +185,7 @@ func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Received an empty plugin manifest")
+	require.ErrorContains(t, err, "received an empty plugin manifest")
 	// We expect the /plugins.toml file in the test fs has NOT been updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
