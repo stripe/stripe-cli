@@ -167,6 +167,74 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 	return validatePluginManifest(body)
 }
 
+// validateRuntimeVersions validates that Runtime specifications only contain valid LTS Node.js versions
+func validateRuntimeVersions(pluginList *PluginList) error {
+	for _, plugin := range pluginList.Plugins {
+		for _, release := range plugin.Releases {
+			if err := validateReleaseRuntimes(plugin.Shortname, release); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// validateReleaseRuntimes validates the runtime specifications for a single release
+func validateReleaseRuntimes(pluginName string, release Release) error {
+	// Skip releases without runtime requirements
+	if release.Runtime == nil {
+		return nil
+	}
+
+	// Validate each runtime specification
+	for runtime, version := range release.Runtime {
+		// Only validate Node.js versions (skip other runtimes)
+		if runtime != "node" {
+			continue
+		}
+
+		// Check if the Node.js version is valid
+		if !isValidNodeLTSVersion(version) {
+			return fmt.Errorf(
+				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				version,
+				pluginName,
+				release.Version,
+			)
+		}
+	}
+
+	return nil
+}
+
+// isValidNodeLTSVersion checks if a Node.js version string is a valid LTS major version
+// Valid LTS versions are even-numbered major versions starting from 18
+func isValidNodeLTSVersion(version string) bool {
+	// Empty string is invalid
+	if version == "" {
+		return false
+	}
+
+	// Parse the version as an integer - must be a valid integer string
+	var majorVersion int
+	n, err := fmt.Sscanf(version, "%d", &majorVersion)
+	if err != nil || n != 1 {
+		return false
+	}
+
+	// Verify the parsed integer matches the original string (no extra characters)
+	// This ensures "20.0" or "v20" etc. are rejected
+	if fmt.Sprintf("%d", majorVersion) != version {
+		return false
+	}
+
+	if majorVersion < 18 {
+		return false
+	}
+
+	return majorVersion%2 == 0
+}
+
 func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
@@ -175,6 +243,9 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	}
 	if len(manifestBody.Plugins) == 0 {
 		return nil, fmt.Errorf("Received an empty plugin manifest")
+	}
+	if err := validateRuntimeVersions(&manifestBody); err != nil {
+		return nil, err
 	}
 	return &manifestBody, nil
 }

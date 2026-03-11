@@ -50,10 +50,11 @@ type PluginList struct {
 
 // Release is the type that holds release data for a specific build of a plugin
 type Release struct {
-	Arch    string `toml:"Arch"`
-	OS      string `toml:"OS"`
-	Version string `toml:"Version"`
-	Sum     string `toml:"Sum"`
+	Arch    string            `toml:"Arch"`
+	OS      string            `toml:"OS"`
+	Version string            `toml:"Version"`
+	Sum     string            `toml:"Sum"`
+	Runtime map[string]string `toml:"Runtime,omitempty"`
 }
 
 // getPluginInterface computes the correct metadata needed for starting the hcplugin client
@@ -160,6 +161,20 @@ func (p *Plugin) LookUpLatestVersion() string {
 	return version
 }
 
+// getReleaseForVersion finds the release object for a specific version on the current platform
+func (p *Plugin) getReleaseForVersion(version string) *Release {
+	opsystem := runtime.GOOS
+	arch := runtime.GOARCH
+
+	for _, release := range p.Releases {
+		if release.Version == version && release.OS == opsystem && release.Arch == arch {
+			return &release
+		}
+	}
+
+	return nil
+}
+
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
@@ -176,6 +191,18 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 		}).Debugf("install error: %s", err)
 
 		return errors.New("you don't seem to have access to this plugin")
+	}
+
+	// Check if this plugin requires a runtime and install it if needed
+	release := p.getReleaseForVersion(version)
+	if release != nil {
+		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			ansi.StopSpinner(spinner, "", os.Stdout)
+			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
+				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
+			}
+			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+		}
 	}
 
 	pluginDownloadURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", pluginData.PluginBaseURL, p.Shortname, version, runtime.GOOS, runtime.GOARCH, p.Binary)
@@ -204,11 +231,6 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 
 	// sync list of installed plugins to file
 	cfg.WriteConfigField("installed_plugins", installedList)
-
-	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s', %s", p.Shortname, err)), os.Stdout)
-		return err
-	}
 
 	// Once the plugin is successfully downloaded, clean up other versions
 	p.cleanUpPluginPath(cfg, fs, version)
@@ -354,7 +376,30 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 	pluginBinaryPath := filepath.Join(pluginDir, p.Binary)
 	pluginBinaryPath += GetBinaryExtension()
 
-	cmd := exec.Command(pluginBinaryPath)
+	// Check if this plugin requires a runtime
+	var cmd *exec.Cmd
+	var usesRuntime bool
+	release := p.getReleaseForVersion(version)
+	if release != nil {
+		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
+			// Plugin requires Node.js runtime - execute via node
+			nodePath := GetNodeBinaryPath(config, nodeVersion)
+			if nodePath == "" {
+				return fmt.Errorf("required Node.js runtime v%s is not installed", nodeVersion)
+			}
+			logger.Debugf("Executing plugin via Node.js runtime: %s %s", nodePath, pluginBinaryPath)
+			cmd = exec.Command(nodePath, pluginBinaryPath)
+			usesRuntime = true
+		} else {
+			// No runtime required - execute binary directly
+			cmd = exec.Command(pluginBinaryPath)
+			usesRuntime = false
+		}
+	} else {
+		// Couldn't find release info, assume it's a standalone binary
+		cmd = exec.Command(pluginBinaryPath)
+		usesRuntime = false
+	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")
@@ -378,14 +423,18 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		},
 	}
 
-	sum, err := p.getChecksum(version)
-	if err != nil {
-		return err
-	}
+	// Only validate checksum for standalone binaries, not when using a runtime
+	// When using a runtime, cmd.Path points to the node binary, not the plugin
+	if !usesRuntime {
+		sum, err := p.getChecksum(version)
+		if err != nil {
+			return err
+		}
 
-	clientConfig.SecureConfig = &hcplugin.SecureConfig{
-		Checksum: sum,
-		Hash:     sha256.New(),
+		clientConfig.SecureConfig = &hcplugin.SecureConfig{
+			Checksum: sum,
+			Hash:     sha256.New(),
+		}
 	}
 
 	// start by launching the plugin process / binary

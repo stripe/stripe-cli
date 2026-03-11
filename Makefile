@@ -129,6 +129,17 @@ clean:
 	rm -rf dist/
 .PHONY: clean
 
+# Update Node.js checksums for a specific version
+# Usage: make update-node-checksums VERSION=20.18.1
+update-node-checksums:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make update-node-checksums VERSION=20.18.1"; \
+		exit 1; \
+	fi
+	@./scripts/update-node-checksums.sh $(VERSION)
+.PHONY: update-node-checksums
+
 # Handle all protobuf generation.
 protoc:
 	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
