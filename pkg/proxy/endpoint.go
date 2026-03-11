@@ -48,6 +48,7 @@ func (f EndpointResponseHandlerFunc) ProcessResponse(evtCtx eventContext, forwar
 // FailedToPostError describes a failure to send a POST request to an endpoint
 type FailedToPostError struct {
 	Err error
+	URL string
 }
 
 func (f FailedToPostError) Error() string {
@@ -123,7 +124,7 @@ func (c *EndpointClient) Post(evtCtx eventContext) error {
 	resp, err := c.cfg.HTTPClient.Do(req)
 	if err != nil {
 		c.cfg.OutCh <- websocket.ErrorElement{
-			Error: FailedToPostError{Err: err},
+			Error: FailedToPostError{Err: err, URL: c.URL},
 		}
 		return err
 	}
@@ -158,7 +159,7 @@ func (c *EndpointClient) PostV2(evtCtx eventContext) error {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		c.cfg.OutCh <- websocket.ErrorElement{
-			Error: FailedToPostError{Err: err},
+			Error: FailedToPostError{Err: err, URL: c.URL},
 		}
 		return err
 	}
