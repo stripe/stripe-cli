@@ -209,7 +209,7 @@ func validateReleaseRuntimes(pluginName string, release Release) error {
 		// Check if the Node.js version is valid
 		if !isValidNodeLTSVersion(version) {
 			return fmt.Errorf(
-				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				"invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
 				version,
 				pluginName,
 				release.Version,
