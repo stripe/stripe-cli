@@ -334,7 +334,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no such host") {
-			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+			return nil, fmt.Errorf("failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
 		}
 		return nil, err
 	}
