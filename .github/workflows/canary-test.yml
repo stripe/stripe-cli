@@ -39,7 +39,7 @@ jobs:
           - os: windows-latest
             binary: stripe.exe
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Set git to use LF

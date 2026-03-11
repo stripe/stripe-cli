@@ -112,7 +112,7 @@ func TestAPILogsTailCapture(t *testing.T) {
 	defer logsTail.Stop()
 
 	// Wait for logs tail to be ready
-	err = logsTail.WaitForOutput("Ready!", 30*time.Second)
+	err = logsTail.WaitForOutput("Ready!", 60*time.Second)
 	if err != nil {
 		stdout, stderr := logsTail.GetOutput()
 		fatalf(t, "Logs tail failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)

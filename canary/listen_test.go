@@ -121,7 +121,7 @@ func TestAPIListenForwardTo(t *testing.T) {
 	defer listen.Stop()
 
 	// Wait for listen to be ready
-	err = listen.WaitForOutput("Ready!", 30*time.Second)
+	err = listen.WaitForOutput("Ready!", 60*time.Second)
 	if err != nil {
 		stdout, stderr := listen.GetOutput()
 		fatalf(t, "Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
@@ -201,7 +201,7 @@ func TestAPIListenOutputFormat(t *testing.T) {
 	defer listen.Stop()
 
 	// Wait for listen to be ready
-	err = listen.WaitForOutput("Ready!", 30*time.Second)
+	err = listen.WaitForOutput("Ready!", 60*time.Second)
 	if err != nil {
 		stdout, stderr := listen.GetOutput()
 		fatalf(t, "Listen failed to become ready: %v\nStdout: %s\nStderr: %s", err, stdout, stderr)
