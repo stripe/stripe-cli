@@ -1,7 +1,7 @@
 # Stripe CLI
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/stripe/stripe-cli)
-[![Build Status](https://github.com/stripe/stripe-cli/actions/workflows/release.yml/badge.svg)
+![Build Status](https://github.com/stripe/stripe-cli/actions/workflows/release.yml/badge.svg)
 
 The Stripe CLI helps you build, test, and manage your Stripe integration right from the terminal.
 
