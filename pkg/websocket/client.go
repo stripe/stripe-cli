@@ -37,9 +37,6 @@ type Config struct {
 
 	PongWait time.Duration
 
-	// Interval at which the websocket client should reset the connection
-	ReconnectInterval time.Duration
-
 	// Duration to wait before closing connection
 	CloseDelayPeriod time.Duration
 
@@ -172,20 +169,6 @@ func (c *Client) Run(ctx context.Context) {
 			}).Debug("Disconnected from Stripe")
 			c.Close(ws.CloseGoingAway, "Server closed the connection")
 			c.wg.Wait()
-		case <-time.After(c.cfg.ReconnectInterval):
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
-			}).Debug("Resetting the connection")
-			c.Close(ws.CloseNormalClosure, "Resetting the connection")
-
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
-			}).Debug("Waiting on client wg")
-			c.wg.Wait()
-
-			c.cfg.Log.WithFields(log.Fields{
-				"prefix": "websocket.Client.Run",
-			}).Debug("Client wg is done")
 		}
 	}
 }
@@ -581,10 +564,6 @@ func NewClient(url string, webSocketID string, websocketAuthorizedFeature string
 		cfg.PingPeriod = (cfg.PongWait * 2) / 10
 	}
 
-	if cfg.ReconnectInterval == 0 {
-		cfg.ReconnectInterval = defaultReconnectInterval
-	}
-
 	if cfg.CloseDelayPeriod == 0 {
 		cfg.CloseDelayPeriod = defaultCloseDelayPeriod
 	}
@@ -616,8 +595,6 @@ const (
 	defaultConnectAttemptWait = 10 * time.Second
 
 	defaultPongWait = 10 * time.Second
-
-	defaultReconnectInterval = 60 * time.Second
 
 	defaultCloseDelayPeriod = 1 * time.Second
 
