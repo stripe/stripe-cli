@@ -173,10 +173,9 @@ func (p *Proxy) Run(ctx context.Context) error {
 			session.WebSocketID,
 			session.WebSocketAuthorizedFeature,
 			&websocket.Config{
-				Log:               p.cfg.Log,
-				NoWSS:             p.cfg.NoWSS,
-				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
-				EventHandler:      p.webhookEventProcessor,
+				Log:          p.cfg.Log,
+				NoWSS:        p.cfg.NoWSS,
+				EventHandler: p.webhookEventProcessor,
 			},
 		)
 

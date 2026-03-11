@@ -134,10 +134,9 @@ func (t *Tailer) Run(ctx context.Context) error {
 			session.WebSocketID,
 			session.WebSocketAuthorizedFeature,
 			&websocket.Config{
-				EventHandler:      websocket.EventHandlerFunc(t.processRequestLogEvent),
-				Log:               t.cfg.Log,
-				NoWSS:             t.cfg.NoWSS,
-				ReconnectInterval: time.Duration(session.ReconnectDelay) * time.Second,
+				EventHandler: websocket.EventHandlerFunc(t.processRequestLogEvent),
+				Log:          t.cfg.Log,
+				NoWSS:        t.cfg.NoWSS,
 			},
 		)
 
