@@ -30,6 +30,11 @@ import (
 // Config is the cli configuration for the user
 var Config config.Config
 
+var (
+	dotenv  bool
+	envFile string
+)
+
 var fs = afero.NewOsFs()
 
 // rootCmd represents the base command when called without any subcommands
@@ -170,8 +175,10 @@ func bindEnv(key, envKey string) {
 }
 
 func init() {
-	cobra.OnInitialize(Config.InitConfig, ReBindKeys)
+	cobra.OnInitialize(loadDotenvFromFlags, Config.InitConfig, ReBindKeys)
 
+	rootCmd.PersistentFlags().BoolVar(&dotenv, "dotenv", false, "explicitly load environment variables from a .env file (auto-loaded by default with secure permissions)")
+	rootCmd.PersistentFlags().StringVar(&envFile, "env-file", "", "path to a custom .env file (overrides auto-loading)")
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	rootCmd.PersistentFlags().StringVar(&Config.Color, "color", "", "turn on/off color output (on, off, auto)")
 	rootCmd.PersistentFlags().StringVar(&Config.ProfilesFile, "config", "", "config file (default is $HOME/.config/stripe/config.toml)")
