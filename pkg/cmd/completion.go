@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/spf13/cobra"
-
 	"runtime"
 
+	"github.com/spf13/cobra"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -24,15 +22,17 @@ func newCompletionCmd() *completionCmd {
 
 	cc.cmd = &cobra.Command{
 		Use:   "completion",
-		Short: "Generate bash and zsh completion scripts",
+		Short: "Generate bash, zsh, and fish completion scripts",
 		Args:  validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return selectShell(cc.shell, cc.writeToStdout)
 		},
 	}
 
-	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "The shell to generate completion commands for. Supports \"bash\" or \"zsh\"")
-	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
+	cc.cmd.Flags().StringVar(&cc.shell, "shell", "",
+		"The shell to generate completion commands for. Supports \"bash\", \"zsh\", or \"fish\"")
+	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false,
+		"Print completion script to stdout rather than creating a new file.")
 
 	return cc
 }
@@ -84,6 +84,15 @@ Set up Stripe autocompletion:
 
 4. Either restart your terminal, or run the following command in your current session to enable immediately:
     source ~/.stripe/stripe-completion.bash`
+
+	fishCompletionInstructions = `
+1. Move the completion script to your Fish completions directory:
+    mkdir -p ~/.config/fish/completions
+    mv stripe-completion.fish ~/.config/fish/completions/
+
+2. If you already have Fish running, reload your current shell or open a new one. Fish automatically loads any completion scripts found in ~/.config/fish/completions/ at startup.
+
+3. (Optional) Verify by typing 'stripe ' then pressing TAB to see completion suggestions.`
 )
 
 func selectShell(shell string, writeToStdout bool) error {
@@ -97,8 +106,10 @@ func selectShell(shell string, writeToStdout bool) error {
 		return genZsh(writeToStdout)
 	case selected == "bash":
 		return genBash(writeToStdout)
+	case selected == "fish":
+		return genFish(writeToStdout)
 	default:
-		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for either bash or zsh")
+		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for either bash, zsh, or fish")
 	}
 }
 
@@ -136,6 +147,21 @@ func genBash(writeToStdout bool) error {
 	return err
 }
 
+func genFish(writeToStdout bool) error {
+	if writeToStdout {
+		return rootCmd.GenFishCompletion(os.Stdout, true)
+	}
+
+	fmt.Println("Detected `fish`, generating fish completion file: stripe-completion.fish")
+
+	err := rootCmd.GenFishCompletionFile("stripe-completion.fish", true)
+	if err == nil {
+		fmt.Printf("%s%s\n", instructionsHeader, fishCompletionInstructions)
+	}
+
+	return err
+}
+
 func detectShell() string {
 	shell := os.Getenv("SHELL")
 
@@ -144,6 +170,8 @@ func detectShell() string {
 		return "zsh"
 	case strings.Contains(shell, "bash"):
 		return "bash"
+	case strings.Contains(shell, "fish"):
+		return "fish"
 	default:
 		return ""
 	}
