@@ -170,3 +170,41 @@ func TestStripMapFlag(t *testing.T) {
 	assert.Equal(t, []string{}, stripMapFlag([]string{"--map"}))
 	assert.Equal(t, []string{"a", "b"}, stripMapFlag([]string{"a", "b"}))
 }
+
+func TestMapPluginWithSubcommands(t *testing.T) {
+	root := newTestCommand("stripe", "CLI root")
+
+	// Simulate a plugin with manifest-declared subcommands
+	pluginCmd := newTestCommand("apps", "Manage Stripe apps")
+	pluginCmd.Annotations = map[string]string{"scope": "plugin"}
+	createCmd := newTestCommand("create", "Create a new app")
+	logsCmd := newTestCommand("logs", "View app logs")
+	tailCmd := newTestCommand("tail", "Tail logs in real-time")
+	logsCmd.AddCommand(tailCmd)
+	pluginCmd.AddCommand(createCmd, logsCmd)
+	root.AddCommand(pluginCmd)
+
+	var buf bytes.Buffer
+	printCommandMap(&buf, root)
+	output := buf.String()
+
+	assert.Contains(t, output, "└── apps")
+	assert.Contains(t, output, "create")
+	assert.Contains(t, output, "logs")
+	assert.Contains(t, output, "tail")
+	assert.Contains(t, output, "Tail logs in real-time")
+}
+
+func TestMapPluginWithoutSubcommands(t *testing.T) {
+	root := newTestCommand("stripe", "CLI root")
+	pluginCmd := newTestCommand("myplugin", "A simple plugin")
+	pluginCmd.Annotations = map[string]string{"scope": "plugin"}
+	root.AddCommand(pluginCmd)
+
+	var buf bytes.Buffer
+	printCommandMap(&buf, root)
+	output := buf.String()
+
+	assert.Contains(t, output, "myplugin")
+	assert.Contains(t, output, "A simple plugin")
+}
