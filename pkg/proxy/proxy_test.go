@@ -285,6 +285,6 @@ func TestRun_NoRetryOnAuthorizationClientError_TooManyRequests(t *testing.T) {
 	require.NoError(t, err)
 
 	err = p.Run(context.Background())
-	require.ErrorContains(t, err, "You have too many `stripe listen` sessions open. Please close some and try again.")
+	require.ErrorContains(t, err, "you have too many `stripe listen` sessions open, please close some and try again")
 	require.Equal(t, 1, nAttempts)
 }

@@ -1,3 +1,4 @@
+// Package samples provides CLI commands for managing Stripe samples.
 package samples
 
 import (

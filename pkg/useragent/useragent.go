@@ -1,3 +1,4 @@
+// Package useragent builds User-Agent strings for Stripe API requests.
 package useragent
 
 import (

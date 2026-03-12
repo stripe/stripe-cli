@@ -1,3 +1,4 @@
+// Package logout handles clearing stored Stripe credentials.
 package logout
 
 import (

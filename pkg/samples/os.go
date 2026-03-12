@@ -48,7 +48,7 @@ func (s *SampleManager) MakeFolder(name string) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", fmt.Errorf("Path already exists, aborting: %s", appFolder)
+		return "", fmt.Errorf("path already exists, aborting: %s", appFolder)
 	}
 
 	return appFolder, nil
