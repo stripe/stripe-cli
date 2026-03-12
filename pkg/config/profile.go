@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/99designs/keyring"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -141,6 +142,21 @@ func (p *Profile) GetAccountID() (string, error) {
 // GetAPIKey will return the existing key for the given profile
 func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	envKey := os.Getenv("STRIPE_API_KEY")
+
+	// Check if there is a .env file with the STRIPE_API_KEY
+	currPath, _ := os.Getwd()
+	envFile := filepath.Join(currPath, ".env")
+	var fs = afero.NewOsFs()
+	envFileExists, _ := afero.Exists(fs, envFile)
+	if envFileExists {
+		viper.SetConfigFile(envFile)
+		if err := viper.ReadInConfig(); err == nil {
+			if envApiKey := viper.GetString("STRIPE_API_KEY"); envApiKey != "" {
+				envKey = envApiKey
+			}
+		}
+	}
+
 	if envKey != "" {
 		err := validators.APIKey(envKey)
 		if err != nil {
