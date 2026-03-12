@@ -53,10 +53,29 @@ func printCommandTree(w io.Writer, cmd *cobra.Command, prefix string, isLast boo
 	}
 }
 
-// hasMapFlag returns true if "--map" appears in the argument list.
+// isMapFlag returns true if the argument is any form of the --map flag
+// (i.e. "--map", "--map=true", "--map=false").
+func isMapFlag(arg string) bool {
+	return arg == "--map" || strings.HasPrefix(arg, "--map=")
+}
+
+// isMapEnabled returns true if the argument enables --map. The forms
+// "--map" and "--map=true" enable it; "--map=false" does not.
+func isMapEnabled(arg string) bool {
+	if arg == "--map" {
+		return true
+	}
+	if strings.HasPrefix(arg, "--map=") {
+		return arg[len("--map="):] != "false"
+	}
+	return false
+}
+
+// hasMapFlag returns true if a --map flag that enables the feature
+// appears in the argument list.
 func hasMapFlag(args []string) bool {
 	for _, a := range args {
-		if a == "--map" {
+		if isMapEnabled(a) {
 			return true
 		}
 		if a == "--" {
@@ -66,12 +85,12 @@ func hasMapFlag(args []string) bool {
 	return false
 }
 
-// stripMapFlag returns a copy of args with all "--map" entries removed,
+// stripMapFlag returns a copy of args with all --map flag forms removed,
 // so that rootCmd.Find can resolve the target command without the flag.
 func stripMapFlag(args []string) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
-		if a != "--map" {
+		if !isMapFlag(a) {
 			out = append(out, a)
 		}
 	}

@@ -162,6 +162,14 @@ func TestHasMapFlag(t *testing.T) {
 	assert.False(t, hasMapFlag([]string{}))
 	// "--map" after "--" should be ignored (positional arg, not flag)
 	assert.False(t, hasMapFlag([]string{"--", "--map"}))
+	// --map=value forms
+	assert.True(t, hasMapFlag([]string{"--map=true"}))
+	assert.False(t, hasMapFlag([]string{"--map=false"}))
+	// flags containing "map" as substring should not match
+	assert.False(t, hasMapFlag([]string{"--mapfile"}))
+	assert.False(t, hasMapFlag([]string{"--roadmap"}))
+	// --map mixed with other flags
+	assert.True(t, hasMapFlag([]string{"-v", "--map", "-h"}))
 }
 
 func TestStripMapFlag(t *testing.T) {
@@ -169,6 +177,65 @@ func TestStripMapFlag(t *testing.T) {
 	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map", "issuing"}))
 	assert.Equal(t, []string{}, stripMapFlag([]string{"--map"}))
 	assert.Equal(t, []string{"a", "b"}, stripMapFlag([]string{"a", "b"}))
+	// --map=value forms are stripped
+	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"issuing", "--map=true"}))
+	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map=false", "issuing"}))
+	// flags containing "map" as substring are NOT stripped
+	assert.Equal(t, []string{"--mapfile"}, stripMapFlag([]string{"--mapfile"}))
+}
+
+func TestMapDeprecatedCommandsExcluded(t *testing.T) {
+	root := newTestCommand("stripe", "CLI root")
+	active := newTestCommand("active", "An active command")
+	deprecated := newTestCommand("old", "A deprecated command")
+	deprecated.Deprecated = "use 'active' instead"
+	root.AddCommand(active, deprecated)
+
+	var buf bytes.Buffer
+	printCommandMap(&buf, root)
+	output := buf.String()
+
+	assert.Contains(t, output, "active")
+	assert.NotContains(t, output, "old")
+}
+
+func TestMapDeeplyNestedTree(t *testing.T) {
+	root := newTestCommand("stripe", "CLI root")
+	l1 := newTestCommand("billing", "Billing commands")
+	l2a := newTestCommand("meters", "Meter commands")
+	l2b := newTestCommand("alerts", "Alert commands")
+	l3 := newTestCommand("events", "Meter events")
+	l4 := newTestCommand("list", "List events")
+	l3.AddCommand(l4)
+	l2a.AddCommand(l3)
+	l1.AddCommand(l2a, l2b)
+	root.AddCommand(l1)
+
+	var buf bytes.Buffer
+	printCommandMap(&buf, root)
+	output := buf.String()
+
+	// Verify 3+ level prefix accumulation (cobra sorts alphabetically)
+	assert.Contains(t, output, "└── billing")
+	assert.Contains(t, output, "    ├── alerts")
+	assert.Contains(t, output, "    └── meters")
+	assert.Contains(t, output, "        └── events")
+	assert.Contains(t, output, "            └── list")
+}
+
+func TestMapCommandWithEmptyDescription(t *testing.T) {
+	root := newTestCommand("stripe", "CLI root")
+	noDesc := newTestCommand("nodesc", "")
+	withDesc := newTestCommand("withdesc", "Has a description")
+	root.AddCommand(noDesc, withDesc)
+
+	var buf bytes.Buffer
+	printCommandMap(&buf, root)
+	output := buf.String()
+
+	// Command without description should not have trailing spaces
+	assert.Contains(t, output, "├── nodesc\n")
+	assert.Contains(t, output, "└── withdesc  Has a description")
 }
 
 func TestMapPluginWithSubcommands(t *testing.T) {
