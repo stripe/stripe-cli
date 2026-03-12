@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Fetch app installation token
-        uses: tibdex/github-app-token@v1.5.2
+        uses: tibdex/github-app-token@v2
         id: gh-api-token
         with:
           app_id: ${{ secrets.GH_APP_STRIPE_OPENAPI_APP_ID }}
@@ -53,7 +53,7 @@ jobs:
 
       - name: Set up Go
         if: steps.changes.outputs.has_changes == 'true'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: 1.26.0
 
@@ -63,7 +63,7 @@ jobs:
 
       - name: Create pull request
         if: steps.changes.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "OpenAPI Update for ${{ inputs.version }}"
           body: |
