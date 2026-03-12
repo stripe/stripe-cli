@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Install Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go-version }}
     # Windows throws false positives with linting because of CRLF / goimports incompat
@@ -20,7 +20,7 @@ jobs:
         git config --global core.autocrlf false
         git config --global core.eol lf
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Run Setup
       run: make setup
     - name: install diffutils
