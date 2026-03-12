@@ -62,6 +62,9 @@ func TestNewOperationCmd_NumberType(t *testing.T) {
 }
 
 func TestRunOperationCmd(t *testing.T) {
+	// Ensure the test is hermetic: Profile.GetAPIKey() prefers STRIPE_API_KEY.
+	t.Setenv("STRIPE_API_KEY", "")
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := io.ReadAll(r.Body)
@@ -112,6 +115,9 @@ func TestRunOperationCmd(t *testing.T) {
 }
 
 func TestRunOperationCmd_ExtraParams(t *testing.T) {
+	// Ensure the test is hermetic: Profile.GetAPIKey() prefers STRIPE_API_KEY.
+	t.Setenv("STRIPE_API_KEY", "")
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := io.ReadAll(r.Body)
@@ -152,6 +158,9 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 }
 
 func TestRunOperationCmd_NoAPIKey(t *testing.T) {
+	// Ensure a developer's STRIPE_API_KEY doesn't accidentally satisfy this test.
+	t.Setenv("STRIPE_API_KEY", "")
+
 	viper.Reset()
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}

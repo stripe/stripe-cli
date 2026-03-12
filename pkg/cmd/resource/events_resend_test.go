@@ -16,6 +16,11 @@ import (
 )
 
 func TestRunEventsResendCmd(t *testing.T) {
+	// Ensure the test is hermetic: Profile.GetAPIKey() prefers STRIPE_API_KEY.
+	// If it is set in the developer environment, it can cause this test to send
+	// an unexpected Authorization header.
+	t.Setenv("STRIPE_API_KEY", "")
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := io.ReadAll(r.Body)
@@ -47,6 +52,9 @@ func TestRunEventsResendCmd(t *testing.T) {
 }
 
 func TestRunEventsResendCmd_WithWebhookEndpoint(t *testing.T) {
+	// Ensure the test is hermetic: Profile.GetAPIKey() prefers STRIPE_API_KEY.
+	t.Setenv("STRIPE_API_KEY", "")
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		body, err := io.ReadAll(r.Body)
