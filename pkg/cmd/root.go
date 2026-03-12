@@ -131,6 +131,27 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
+			// Check if this is an apps command by looking at os.Args
+			args := resource.ExtractAppsArgs(os.Args)
+			if len(args) > 0 {
+				// Try the plugin as a fallback for unknown apps subcommands
+				log.WithFields(log.Fields{
+					"prefix": "cmd.Execute",
+					"args":   args,
+				}).Debug("Unknown apps subcommand, trying plugin fallback")
+
+				pluginErr := resource.TryAppsPlugin(&Config, args)
+				if pluginErr == nil {
+					// Plugin succeeded, exit normally
+					return
+				}
+				// Plugin not found or lookup failed, fall through to show suggestion
+				// Note: if plugin was found but execution failed, TryAppsPlugin exits directly
+				log.WithFields(log.Fields{
+					"prefix": "cmd.Execute",
+					"error":  pluginErr,
+				}).Debug("Plugin not available, showing suggestion")
+			}
 			showSuggestion()
 
 		default:
@@ -230,6 +251,10 @@ func init() {
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
+			// Skip the apps plugin as it's integrated with the resource command
+			if plugin.Shortname == "apps" {
+				continue
+			}
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
