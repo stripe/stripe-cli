@@ -238,10 +238,16 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 				color := ansi.Color(os.Stdout)
 				localTime := time.Now().Format(timeLayout)
 
-				errStr := fmt.Sprintf("%s            [%s] Failed to POST: %v\n",
+				postErr := ee.Error.(proxy.FailedToPostError)
+				errMsg := fmt.Sprintf("Failed to POST: %v", postErr)
+				if strings.Contains(postErr.Error(), "connection refused") {
+					errMsg = fmt.Sprintf("Failed to POST: Connection to %s was refused. Is your local server running?", postErr.URL)
+				}
+
+				errStr := fmt.Sprintf("%s            [%s] %s\n",
 					color.Faint(localTime),
 					color.Red("ERROR"),
-					ee.Error,
+					errMsg,
 				)
 				fmt.Println(errStr)
 
