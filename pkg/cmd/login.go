@@ -38,6 +38,16 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// If the user provides an API key via the global --api-key flag, prefer a
+	// non-browser login flow. This is especially important for headless/Docker.
+	if Config.Profile.APIKey != "" {
+		if lc.interactive {
+			return login.InteractiveLogin(cmd.Context(), &Config)
+		}
+
+		return login.LoginWithAPIKey(cmd.Context(), stripe.DefaultAPIBaseURL, &Config, Config.Profile.APIKey)
+	}
+
 	if lc.interactive {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}

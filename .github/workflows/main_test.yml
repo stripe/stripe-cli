@@ -1,0 +1,49 @@
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+name: Test
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        go-version: [1.24.1]
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go-version }}
+    # Windows throws false positives with linting because of CRLF / goimports incompat
+    - name: Set git to use LF
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Run Setup
+      run: make setup
+    - name: install diffutils
+      if: runner.os == 'macOS'
+      run: brew install diffutils
+    - name: Install protoc
+      uses: arduino/setup-protoc@v3
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Install protoc deps
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+        go install github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc@v1.5.1
+      shell: bash
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.64.2
+        args: --timeout=3m
+    - name: Run Tests
+      run: make ci
+      shell: bash

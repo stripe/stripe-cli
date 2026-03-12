@@ -22,9 +22,17 @@ import (
 
 // InteractiveLogin lets the user set configuration on the command line
 func InteractiveLogin(ctx context.Context, config *config.Config) error {
-	apiKey, err := getConfigureAPIKey(os.Stdin)
-	if err != nil {
-		return err
+	apiKey := strings.TrimSpace(config.Profile.APIKey)
+	if apiKey == "" {
+		var err error
+		apiKey, err = getConfigureAPIKey(os.Stdin)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err := validators.APIKey(apiKey); err != nil {
+			return err
+		}
 	}
 
 	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
