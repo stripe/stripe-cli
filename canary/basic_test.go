@@ -1,6 +1,7 @@
 package canary
 
 import (
+	"encoding/json"
 	"os"
 	"regexp"
 	"strings"
@@ -304,5 +305,286 @@ func TestOfflineTriggerHelp(t *testing.T) {
 	// Should show trigger-specific help
 	if !strings.Contains(result.Stdout, "trigger") {
 		errorf(t, "Expected output to contain 'trigger', got: %s", result.Stdout)
+	}
+}
+
+// =============================================================================
+// Map Tests
+// =============================================================================
+
+func TestOfflineMapRoot(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Should contain the root command and core subcommands
+	if !strings.Contains(result.Stdout, "stripe") {
+		errorf(t, "Expected output to contain 'stripe', got: %s", result.Stdout)
+	}
+
+	// Should contain key commands in tree format with box-drawing characters
+	expectedCommands := []string{"listen", "trigger", "login", "logs"}
+	for _, cmd := range expectedCommands {
+		if !strings.Contains(result.Stdout, cmd) {
+			errorf(t, "Expected map output to contain '%s', got: %s", cmd, result.Stdout)
+		}
+	}
+
+	// Should use box-drawing characters
+	if !strings.Contains(result.Stdout, "├──") && !strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Expected tree output with box-drawing characters, got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapSubcommand(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map", "logs")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map logs': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Root line should show the scoped command path
+	if !strings.Contains(result.Stdout, "stripe logs") {
+		errorf(t, "Expected scoped tree header 'stripe logs', got: %s", result.Stdout)
+	}
+
+	// Should contain the tail subcommand
+	if !strings.Contains(result.Stdout, "tail") {
+		errorf(t, "Expected map output to contain 'tail', got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapFlagAfterCommand(t *testing.T) {
+	runner := getRunner(t)
+
+	// --map after the command name should also work
+	result, err := runner.Run("logs", "--map")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe logs --map': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	if !strings.Contains(result.Stdout, "stripe logs") {
+		errorf(t, "Expected scoped tree header 'stripe logs', got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapUnknownCommand(t *testing.T) {
+	runner := getRunner(t)
+
+	// --map with unknown command should warn and show root tree
+	result, err := runner.Run("--map", "nonexistent-xyz")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map nonexistent-xyz': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Should show root tree as fallback
+	if !strings.Contains(result.Stdout, "stripe") {
+		errorf(t, "Expected root tree fallback, got: %s", result.Stdout)
+	}
+
+	// Should show warning on stderr
+	if !strings.Contains(result.Stderr, "Unknown command") {
+		errorf(t, "Expected 'Unknown command' warning on stderr, got: %s", result.Stderr)
+	}
+}
+
+func TestOfflineMapEqualsTrue(t *testing.T) {
+	runner := getRunner(t)
+
+	// --map=true is backward-compatible alias for bare --map (tree mode)
+	result, err := runner.Run("--map=true")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=true': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	if !strings.Contains(result.Stdout, "stripe") {
+		errorf(t, "Expected tree output, got: %s", result.Stdout)
+	}
+
+	if !strings.Contains(result.Stdout, "├──") && !strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Expected tree with box-drawing characters, got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapEqualsFalseIgnored(t *testing.T) {
+	runner := getRunner(t)
+
+	// --map=false should NOT trigger map output; should behave like normal invocation
+	result, err := runner.Run("--map=false")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=false': %v", err)
+	}
+
+	// Should behave like `stripe` with no args (help/usage), not a tree
+	if strings.Contains(result.Stdout, "├──") || strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Expected --map=false to NOT produce tree output, got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapCompact(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map=compact")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=compact': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Should contain tree structure
+	if !strings.Contains(result.Stdout, "stripe") {
+		errorf(t, "Expected compact tree output, got: %s", result.Stdout)
+	}
+
+	if !strings.Contains(result.Stdout, "├──") && !strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Expected tree with box-drawing characters, got: %s", result.Stdout)
+	}
+
+	// Compact mode should have shorter lines than tree mode (no descriptions).
+	// Verify a known command name appears without its description on the same line.
+	// We check that "listen" appears but its description doesn't follow it.
+	lines := strings.Split(result.Stdout, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "listen") {
+			// In tree mode, the line would contain "listen  Listen for..." — in compact, just "listen"
+			if strings.Contains(line, "Listen for") {
+				errorf(t, "Compact mode should not include descriptions, but found: %s", line)
+			}
+			break
+		}
+	}
+}
+
+func TestOfflineMapCompactSubcommand(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("issuing", "--map=compact")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe issuing --map=compact': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	if !strings.Contains(result.Stdout, "stripe issuing") {
+		errorf(t, "Expected scoped compact tree, got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapPaths(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map=paths")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=paths': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Should be a flat list of paths, no tree characters
+	if strings.Contains(result.Stdout, "├──") || strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Paths mode should not contain tree characters, got: %s", result.Stdout)
+	}
+
+	// Each line should start with "stripe"
+	lines := strings.Split(strings.TrimSpace(result.Stdout), "\n")
+	if len(lines) == 0 {
+		fatalf(t, "Expected at least one path line, got none")
+	}
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "stripe ") {
+			errorf(t, "Expected each path to start with 'stripe ', got: %s", line)
+		}
+	}
+
+	// Should contain at least some known commands
+	if !strings.Contains(result.Stdout, "stripe listen") {
+		errorf(t, "Expected 'stripe listen' in paths output, got: %s", result.Stdout)
+	}
+}
+
+func TestOfflineMapJSON(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map=json")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=json': %v", err)
+	}
+
+	if result.ExitCode != 0 {
+		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
+	}
+
+	// Should be valid JSON
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(result.Stdout), &parsed); err != nil {
+		errorf(t, "Expected valid JSON output, got parse error: %v\nOutput: %s", err, result.Stdout)
+	}
+
+	// Root should have "name" field
+	name, ok := parsed["name"]
+	if !ok {
+		errorf(t, "Expected JSON to have 'name' field, got: %s", result.Stdout)
+	}
+	if name != "stripe" {
+		errorf(t, "Expected root name 'stripe', got: %v", name)
+	}
+
+	// Root should have "commands" array
+	commands, ok := parsed["commands"]
+	if !ok {
+		errorf(t, "Expected JSON to have 'commands' field, got: %s", result.Stdout)
+	}
+	cmdArr, ok := commands.([]interface{})
+	if !ok || len(cmdArr) == 0 {
+		errorf(t, "Expected non-empty commands array, got: %v", commands)
+	}
+}
+
+func TestOfflineMapInvalidMode(t *testing.T) {
+	runner := getRunner(t)
+
+	result, err := runner.Run("--map=invalid")
+	if err != nil {
+		fatalf(t, "Failed to run 'stripe --map=invalid': %v", err)
+	}
+
+	// Should print error to stderr about unknown mode
+	if !strings.Contains(result.Stderr, "Unknown --map mode") {
+		errorf(t, "Expected 'Unknown --map mode' on stderr, got: %s", result.Stderr)
+	}
+
+	// Should NOT produce tree output (falls through to normal CLI behavior)
+	if strings.Contains(result.Stdout, "├──") || strings.Contains(result.Stdout, "└──") {
+		errorf(t, "Expected no tree output for invalid mode, got: %s", result.Stdout)
 	}
 }
