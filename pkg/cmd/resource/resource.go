@@ -131,12 +131,6 @@ func PostProcessResourceCommands(rootCmd *cobra.Command, cfg *config.Config) err
 		return err
 	}
 
-	// Configure apps command to handle both resource commands and plugin fallback
-	err = HandleAppsResourceAndPlugin(rootCmd, cfg)
-	if err != nil {
-		return err
-	}
-
 	HideAliasedCommands(rootCmd)
 
 	return nil
