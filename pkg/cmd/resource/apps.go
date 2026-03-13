@@ -216,4 +216,3 @@ func ExtractAppsArgs(osArgs []string) []string {
 func TryAppsPlugin(cfg *config.Config, args []string) error {
 	return TryPlugin(cfg, "apps", args)
 }
-

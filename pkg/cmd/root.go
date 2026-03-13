@@ -133,7 +133,6 @@ func Execute(ctx context.Context) {
 		case strings.Contains(errString, "unknown command"):
 			// Check if this is a resource/plugin conflict command by looking at os.Args
 			// Try each known conflict to see if we should delegate to a plugin
-			handled := false
 			conflictingCommands := []string{"apps"} // Add more as needed
 
 			for _, cmdName := range conflictingCommands {
@@ -141,9 +140,9 @@ func Execute(ctx context.Context) {
 				if len(args) > 0 {
 					// Try the plugin as a fallback for unknown subcommands
 					log.WithFields(log.Fields{
-						"prefix": "cmd.Execute",
+						"prefix":  "cmd.Execute",
 						"command": cmdName,
-						"args":   args,
+						"args":    args,
 					}).Debug("Unknown subcommand, trying plugin fallback")
 
 					pluginErr := resource.TryPlugin(&Config, cmdName, args)
@@ -154,22 +153,16 @@ func Execute(ctx context.Context) {
 					// Plugin not found or lookup failed
 					// Note: if plugin was found but execution failed, TryPlugin exits directly
 					log.WithFields(log.Fields{
-						"prefix": "cmd.Execute",
+						"prefix":  "cmd.Execute",
 						"command": cmdName,
-						"error":  pluginErr,
+						"error":   pluginErr,
 					}).Debug("Plugin not available")
-					handled = true
 					break
 				}
 			}
 
-			if !handled {
-				// Not a resource/plugin conflict, show normal suggestion
-				showSuggestion()
-			} else {
-				// Was a conflict but plugin not available, show suggestion
-				showSuggestion()
-			}
+			// Either not a conflict or plugin not available - show suggestion
+			showSuggestion()
 
 		default:
 			fmt.Println(err)
