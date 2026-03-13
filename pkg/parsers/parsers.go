@@ -78,7 +78,7 @@ func ParsePath(httpPath string, queryRespMap map[string]gjson.Result) (string, e
 			newPath = append(newPath, value)
 		}
 
-		if len(pathParts)%2 == 0 {
+		if pathParts[len(pathParts)-1] != "" {
 			newPath = append(newPath, pathParts[len(pathParts)-1])
 		}
 
