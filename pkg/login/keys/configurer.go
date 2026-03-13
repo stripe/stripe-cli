@@ -33,11 +33,19 @@ func (c *RAKConfigurer) SaveLoginDetails(response *PollAPIKeyResponse) error {
 		return validateErr
 	}
 
+	// First, back up the current profile before "default" is overwritten
+	c.cfg.CopyProfile(c.cfg.Profile.ProfileName, c.cfg.Profile.GetDisplayName())
+
 	c.cfg.Profile.LiveModeAPIKey = response.LiveModeAPIKey
 	c.cfg.Profile.LiveModePublishableKey = response.LiveModePublishableKey
 	c.cfg.Profile.TestModeAPIKey = response.TestModeAPIKey
 	c.cfg.Profile.TestModePublishableKey = response.TestModePublishableKey
-	c.cfg.Profile.DisplayName = response.AccountDisplayName
+	// TODO: AccountDisplayName appears to be empty for test mode accounts; is there a better default?
+	if response.AccountDisplayName != "" {
+		c.cfg.Profile.DisplayName = response.AccountDisplayName
+	} else {
+		c.cfg.Profile.DisplayName = response.AccountID
+	}
 	c.cfg.Profile.AccountID = response.AccountID
 
 	profileErr := c.cfg.Profile.CreateProfile()
