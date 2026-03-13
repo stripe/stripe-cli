@@ -58,7 +58,32 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 		ptc.runPluginCmd(c, args)
 	})
 
+	// Add subcommand stubs from manifest metadata so they appear in --map and help
+	addPluginSubcommandStubs(ptc.cmd, plugin.Commands, ptc)
+
 	return ptc
+}
+
+// addPluginSubcommandStubs recursively creates cobra.Command stubs from
+// manifest CommandInfo metadata. These stubs exist for --map display and
+// shell completion; actual execution is always delegated to the plugin binary.
+func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandInfo, ptc *pluginTemplateCmd) {
+	for _, ci := range commands {
+		sub := &cobra.Command{
+			Use:   ci.Name,
+			Short: ci.Desc,
+			RunE: func(cmd *cobra.Command, args []string) error {
+				pluginArgs := subsliceAfter(os.Args, ptc.cmd.Name())
+				return ptc.runPluginCmd(ptc.cmd, pluginArgs)
+			},
+			Annotations: map[string]string{"scope": "plugin"},
+			FParseErrWhitelist: cobra.FParseErrWhitelist{
+				UnknownFlags: true,
+			},
+		}
+		parent.AddCommand(sub)
+		addPluginSubcommandStubs(sub, ci.Commands, ptc)
+	}
 }
 
 // runPluginCmd hands off to the plugin itself to take over
