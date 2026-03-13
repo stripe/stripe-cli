@@ -21,6 +21,8 @@ import (
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
+	cliversion "github.com/stripe/stripe-cli/pkg/version"
 
 	hclog "github.com/hashicorp/go-hclog"
 	hcplugin "github.com/hashicorp/go-plugin"
@@ -399,6 +401,17 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		// Couldn't find release info, assume it's a standalone binary
 		cmd = exec.Command(pluginBinaryPath)
 		usesRuntime = false
+	}
+
+	// Set environment variables for plugins to access CLI metadata
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("STRIPE_CLI_USER_AGENT=%s", useragent.GetEncodedUserAgent()),
+		fmt.Sprintf("STRIPE_CLI_VERSION=%s", cliversion.Version),
+	)
+
+	// Set account ID if available
+	if accountID, err := config.GetProfile().GetAccountID(); err == nil && accountID != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("STRIPE_ACCOUNT_ID=%s", accountID))
 	}
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
