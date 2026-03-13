@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -38,6 +39,11 @@ type WebhookEventProcessorConfig struct {
 
 	// LoggedInAccountID is the currently logged-in account ID
 	LoggedInAccountID string
+
+	// MaxForwardConcurrency limits the number of concurrent webhook forwards.
+	// Set to 0 to use the default (100). Higher values allow more concurrent
+	// forwards but use more memory.
+	MaxForwardConcurrency int
 }
 
 // WebhookEventProcessor encapsulates logic around processing and forwarding
@@ -50,6 +56,12 @@ type WebhookEventProcessor struct {
 	thinEvents      map[string]bool
 	endpointClients []*EndpointClient
 	sendMessage     func(*websocket.OutgoingMessage)
+
+	// Semaphore for limiting concurrent webhook forwards
+	forwardSem   chan struct{}
+	forwardWg    sync.WaitGroup
+	shutdownOnce sync.Once
+	shutdownChan chan struct{} // Closed to signal shutdown has begun
 }
 
 // NewWebhookEventProcessor constructs a WebhookEventProcessor from the provided
@@ -61,6 +73,16 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 		sendMessage: sendMessage,
 		thinEvents:  convertToMap(cfg.ThinEvents),
 	}
+
+	// Determine concurrency limit (default to 100 if not specified)
+	maxConcurrency := cfg.MaxForwardConcurrency
+	if maxConcurrency == 0 {
+		maxConcurrency = 100
+	}
+
+	// Initialize semaphore for concurrent forwarding
+	p.forwardSem = make(chan struct{}, maxConcurrency)
+	p.shutdownChan = make(chan struct{})
 
 	for _, route := range routes {
 		// append to endpointClients
@@ -88,6 +110,52 @@ func NewWebhookEventProcessor(sendMessage func(*websocket.OutgoingMessage), rout
 	}
 
 	return p
+}
+
+// Shutdown gracefully stops the webhook event processor, waiting for all
+// in-flight forwards to complete.
+func (p *WebhookEventProcessor) Shutdown() {
+	p.shutdownOnce.Do(func() {
+		// Signal shutdown has begun - prevents new forwards from starting
+		close(p.shutdownChan)
+		// Wait for all in-flight forwards to complete
+		// Note: forwardSem is intentionally NOT closed to avoid panics.
+		// The shutdownChan check in forwardToEndpoint prevents new acquisitions.
+		p.forwardWg.Wait()
+	})
+}
+
+// forwardToEndpoint forwards an event to an endpoint with concurrency control.
+// It acquires a semaphore slot before spawning the goroutine and releases it
+// when the forward completes.
+func (p *WebhookEventProcessor) forwardToEndpoint(endpoint *EndpointClient, evtCtx eventContext, postFunc func(eventContext) error) {
+	// Check for shutdown first, then try to acquire a semaphore slot
+	select {
+	case <-p.shutdownChan:
+		// Shutdown has begun, skip this forward
+		return
+	case p.forwardSem <- struct{}{}:
+		// Successfully acquired, spawn goroutine
+		p.forwardWg.Add(1)
+		go func() {
+			defer p.forwardWg.Done()
+			defer func() { <-p.forwardSem }() // Release semaphore
+
+			if err := postFunc(evtCtx); err != nil {
+				// Log the error but don't propagate it (fire-and-forget pattern)
+				p.cfg.Log.WithFields(log.Fields{
+					"prefix":  "proxy.WebhookEventProcessor.forwardToEndpoint",
+					"endpoint": endpoint.URL,
+				}).Debug("Failed to forward event")
+			}
+		}()
+	default:
+		// Semaphore is full, log and skip this forward
+		p.cfg.Log.WithFields(log.Fields{
+			"prefix":  "proxy.WebhookEventProcessor.forwardToEndpoint",
+			"endpoint": endpoint.URL,
+		}).Warn("Max concurrent forwards reached, skipping endpoint")
+	}
 }
 
 // ProcessEvent processes webhook events, notifying listeners via the configured
@@ -166,8 +234,7 @@ func (p *WebhookEventProcessor) processEvent(webhookEvent *websocket.WebhookEven
 
 		for _, endpoint := range p.endpointClients {
 			if endpoint.SupportsEventType(evt.IsConnect(), evt.Type) && !endpoint.isEventDestination {
-				// TODO: handle errors returned by endpointClients
-				go endpoint.Post(evtCtx)
+				p.forwardToEndpoint(endpoint, evtCtx, endpoint.Post)
 			}
 		}
 	}
@@ -211,7 +278,7 @@ func (p *WebhookEventProcessor) processV2Event(v2Event *websocket.StripeV2Event)
 
 	for _, endpoint := range p.endpointClients {
 		if endpoint.isEventDestination && endpoint.SupportsContext(evt.Context) {
-			go endpoint.PostV2(evtCtx)
+			p.forwardToEndpoint(endpoint, evtCtx, endpoint.PostV2)
 		}
 	}
 }
