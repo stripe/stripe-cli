@@ -1,0 +1,25 @@
+{
+  "_meta": { "template_version": 0 },
+  "fixtures": [
+    {
+      "name": "meter",
+      "path": "/v1/billing/meters",
+      "method": "post",
+      "params": {
+        "display_name": "Stripe CLI Meter",
+        "event_name": "stripe_cli_fixture_meter_update_event",
+        "default_aggregation": {
+          "formula": "sum"
+        }
+      }
+    },
+    {
+      "name": "meter_updated",
+      "path": "/v1/billing/meters/${meter:id}",
+      "method": "post",
+      "params": {
+        "display_name": "Stripe CLI Meter (updated)"
+      }
+    }
+  ]
+}
