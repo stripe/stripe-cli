@@ -55,6 +55,8 @@ var Events = map[string]string{
 	"customer.subscription.updated":                        "triggers/customer.subscription.updated.json",
 	"customer.subscription.paused":                         "triggers/customer.subscription.paused.json",
 	"customer.subscription.trial_will_end":                 "triggers/customer.subscription.trial_will_end.json",
+	"customer.tax_id.created":                              "triggers/customer.tax_id.created.json",
+	"customer.tax_id.deleted":                              "triggers/customer.tax_id.deleted.json",
 	"identity.verification_session.canceled":               "triggers/identity.verification_session.canceled.json",
 	"identity.verification_session.created":                "triggers/identity.verification_session.created.json",
 	"identity.verification_session.redacted":               "triggers/identity.verification_session.redacted.json",
