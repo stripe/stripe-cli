@@ -73,6 +73,9 @@ func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugi
 		2: {
 			"main": &CLIPluginGRPC{},
 		},
+		3: {
+			"main": &CLIPluginV3{},
+		},
 	}
 
 	return handshakeConfig, pluginSetMap
@@ -471,6 +474,18 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 			},
 		}
 		if err = d.RunCommand(additionalInfo, args); err != nil {
+			return err
+		}
+	case DispatcherV3:
+		logger.Debug("negotiated gRPC with plugin process (v3)")
+		additionalInfo := &proto.AdditionalInfo{
+			IsTerminal: &proto.IsTerminal{
+				Stdin:  term.IsTerminal(int(os.Stdin.Fd())),
+				Stdout: term.IsTerminal(int(os.Stdout.Fd())),
+				Stderr: term.IsTerminal(int(os.Stderr.Fd())),
+			},
+		}
+		if err = d.RunCommand(additionalInfo, args, &coreCLIHelper{}); err != nil {
 			return err
 		}
 	default:
