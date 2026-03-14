@@ -9,7 +9,15 @@ permissions:
   contents: write
 
 jobs:
+  canary-tests:
+    uses: ./.github/workflows/canary-test.yml
+    with:
+      run_api_tests: true
+    secrets:
+      STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+
   build-mac:
+    needs: [canary-tests]
     runs-on: macos-latest
     steps:
       - name: Code checkout
@@ -31,6 +39,7 @@ jobs:
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
   build-linux:
+    needs: [canary-tests]
     runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
@@ -65,6 +74,7 @@ jobs:
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
+    needs: [canary-tests]
     runs-on: windows-latest
     steps:
       - name: Code checkout
