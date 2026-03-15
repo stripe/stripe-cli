@@ -177,3 +177,154 @@ func detectShell() string {
 		return ""
 	}
 }
+
+// sentinelBegin and sentinelEnd mark the completion configuration block
+// in shell config files (~/.zshrc, ~/.bashrc, ~/.bash_profile). This allows
+// safe idempotent install/uninstall without corrupting the user's existing config.
+const (
+	sentinelBegin = "# begin stripe-completion — managed by stripe cli, do not edit"
+	sentinelEnd   = "# end stripe-completion"
+)
+
+// addSentinelBlock adds or replaces a sentinel-delimited block in the given
+// config file. If the file does not exist, it is created with mode 0644.
+// Existing file permissions are preserved. The operation is idempotent:
+// calling it twice with the same line produces the same result as calling
+// it once. If the file contains orphaned or reversed markers, a new block
+// is appended rather than attempting to repair the malformed state.
+func addSentinelBlock(configPath, line string) error {
+	block := fmt.Sprintf("%s\n%s\n%s", sentinelBegin, line, sentinelEnd)
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Create new file with just the sentinel block
+			return os.WriteFile(configPath, []byte(block+"\n"), 0644)
+		}
+		return err
+	}
+
+	// Preserve existing file permissions
+	perm := os.FileMode(0644)
+	if info, statErr := os.Stat(configPath); statErr == nil {
+		perm = info.Mode().Perm()
+	}
+
+	content := string(data)
+
+	// Replace existing block if both markers are present in the correct order.
+	// Orphaned or reversed markers are left untouched — we append instead.
+	beginIdx := strings.Index(content, sentinelBegin)
+	endIdx := strings.Index(content, sentinelEnd)
+	if beginIdx >= 0 && endIdx >= 0 && endIdx > beginIdx {
+		endIdx += len(sentinelEnd)
+		// Include trailing newline if present
+		if endIdx < len(content) && content[endIdx] == '\n' {
+			endIdx++
+		}
+		content = content[:beginIdx] + block + "\n" + content[endIdx:]
+		return os.WriteFile(configPath, []byte(content), perm)
+	}
+
+	// Append sentinel block
+	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
+		content += "\n"
+	}
+	content += block + "\n"
+
+	return os.WriteFile(configPath, []byte(content), perm)
+}
+
+// removeSentinelBlock removes the sentinel-delimited block from the given
+// config file. If the file does not exist, this is a no-op. If the markers
+// are orphaned or reversed, the file is left unchanged. Existing file
+// permissions are preserved.
+func removeSentinelBlock(configPath string) error {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	content := string(data)
+
+	beginIdx := strings.Index(content, sentinelBegin)
+	endIdx := strings.Index(content, sentinelEnd)
+	if beginIdx < 0 || endIdx < 0 || endIdx <= beginIdx {
+		// No valid sentinel block found, nothing to do
+		return nil
+	}
+
+	// Preserve existing file permissions
+	perm := os.FileMode(0644)
+	if info, statErr := os.Stat(configPath); statErr == nil {
+		perm = info.Mode().Perm()
+	}
+
+	endIdx += len(sentinelEnd)
+	// Include trailing newline if present
+	if endIdx < len(content) && content[endIdx] == '\n' {
+		endIdx++
+	}
+
+	content = content[:beginIdx] + content[endIdx:]
+
+	return os.WriteFile(configPath, []byte(content), perm)
+}
+
+// manualRemnant represents a line in a shell config file that references the
+// completion script but is outside our sentinel-managed block.
+type manualRemnant struct {
+	lineNumber int    // 1-based, for display in user-facing warnings
+	lineText   string // trimmed content of the matching line
+}
+
+// findManualRemnants scans a shell config file for lines referencing the
+// completion script filename that are outside our sentinel block. This detects
+// manually-added source/load lines that the user may need to clean up.
+//
+// Lines inside the sentinel block, blank lines, and comment lines (starting
+// with #) are excluded from the scan. Returns nil if the file cannot be read
+// or no matches are found.
+func findManualRemnants(configPath, scriptFilename string) []manualRemnant {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil
+	}
+
+	var remnants []manualRemnant
+	inSentinelBlock := false
+
+	for i, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		if trimmed == sentinelBegin {
+			inSentinelBlock = true
+			continue
+		}
+		if trimmed == sentinelEnd {
+			inSentinelBlock = false
+			continue
+		}
+
+		if inSentinelBlock {
+			continue
+		}
+
+		// Skip blank lines and comments
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+
+		if strings.Contains(trimmed, scriptFilename) {
+			remnants = append(remnants, manualRemnant{
+				lineNumber: i + 1,
+				lineText:   trimmed,
+			})
+		}
+	}
+
+	return remnants
+}
