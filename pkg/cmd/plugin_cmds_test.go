@@ -52,6 +52,11 @@ func TestFlagsArePassedAsArgs(t *testing.T) {
 	require.Equal(t, "testarg --log-level=info", strings.Join(pluginCmd.ParsedArgs, " "))
 }
 
+func TestNewPluginTemplateCmdSetsValidArgsFunction(t *testing.T) {
+	pluginCmd := createPluginCmd()
+	assert.NotNil(t, pluginCmd.cmd.ValidArgsFunction, "ValidArgsFunction should be set on plugin commands for shell completion")
+}
+
 func TestSubsliceAfter(t *testing.T) {
 	tests := []struct {
 		name     string
