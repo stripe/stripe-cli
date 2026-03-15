@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -11,11 +13,21 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
+// sentinelBegin and sentinelEnd mark the completion configuration block
+// in shell config files (~/.zshrc, ~/.bashrc, ~/.bash_profile). This allows
+// safe idempotent install/uninstall without corrupting the user's existing config.
+const (
+	sentinelBegin = "# begin stripe-completion"
+	sentinelEnd   = "# end stripe-completion"
+)
+
 type completionCmd struct {
 	cmd *cobra.Command
 
 	shell         string
 	writeToStdout bool
+	install       bool
+	uninstall     bool
 }
 
 func newCompletionCmd() *completionCmd {
@@ -26,12 +38,30 @@ func newCompletionCmd() *completionCmd {
 		Short: "Generate bash, zsh, and fish completion scripts",
 		Args:  validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return selectShell(cc.shell, cc.writeToStdout)
+			shell := cc.shell
+			if shell == "" {
+				shell = detectShell()
+			}
+
+			if cc.install || cc.uninstall {
+				if shell == "" {
+					return fmt.Errorf("could not automatically detect your shell. Please run the command with the `--shell` flag for bash, zsh, or fish")
+				}
+				if cc.install {
+					return installCompletion(shell, os.UserHomeDir)
+				}
+				return uninstallCompletion(shell, os.UserHomeDir)
+			}
+
+			return selectShell(shell, cc.writeToStdout)
 		},
 	}
 
 	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "The shell to generate completion commands for. Supports \"bash\", \"zsh\", or \"fish\"")
 	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
+	cc.cmd.Flags().BoolVar(&cc.install, "install", false, "Install completion script to ~/.stripe and configure your shell profile automatically")
+	cc.cmd.Flags().BoolVar(&cc.uninstall, "uninstall", false, "Remove installed completion script and configuration from your shell profile")
+	cc.cmd.MarkFlagsMutuallyExclusive("install", "uninstall")
 
 	return cc
 }
@@ -178,13 +208,175 @@ func detectShell() string {
 	}
 }
 
-// sentinelBegin and sentinelEnd mark the completion configuration block
-// in shell config files (~/.zshrc, ~/.bashrc, ~/.bash_profile). This allows
-// safe idempotent install/uninstall without corrupting the user's existing config.
-const (
-	sentinelBegin = "# begin stripe-completion — managed by stripe cli, do not edit"
-	sentinelEnd   = "# end stripe-completion"
-)
+// ---------------------------------------------------------------------------
+// Auto-install/uninstall support
+// ---------------------------------------------------------------------------
+
+// getCompletionScriptDir returns the directory where completion scripts are stored.
+func getCompletionScriptDir(homeDir string) string {
+	return filepath.Join(homeDir, ".stripe")
+}
+
+// getShellConfigFile returns the path to the shell's configuration file.
+// For fish, returns "" because fish auto-loads completions from a directory
+// (~/.config/fish/completions/) and does not require a config file entry.
+func getShellConfigFile(shell, homeDir string) string {
+	switch shell {
+	case "bash":
+		if runtime.GOOS == "darwin" {
+			return filepath.Join(homeDir, ".bash_profile")
+		}
+		return filepath.Join(homeDir, ".bashrc")
+	case "zsh":
+		return filepath.Join(homeDir, ".zshrc")
+	default:
+		return ""
+	}
+}
+
+// getFishCompletionsDir returns the directory where fish completions are stored.
+func getFishCompletionsDir(homeDir string) string {
+	return filepath.Join(homeDir, ".config", "fish", "completions")
+}
+
+// completionScriptFilename returns the filename for the completion script.
+// Fish uses "stripe.fish" (matching the command name) rather than
+// "stripe-completion.fish" because fish auto-loads completions from
+// ~/.config/fish/completions/ based on command name.
+func completionScriptFilename(shell string) string {
+	switch shell {
+	case "bash":
+		return "stripe-completion.bash"
+	case "zsh":
+		return "stripe-completion.zsh"
+	case "fish":
+		return "stripe.fish"
+	default:
+		return ""
+	}
+}
+
+// generateCompletionScript writes the completion script for the given shell into buf.
+func generateCompletionScript(shell string, buf *bytes.Buffer) error {
+	switch shell {
+	case "bash":
+		return rootCmd.GenBashCompletionV2(buf, true)
+	case "zsh":
+		return rootCmd.GenZshCompletion(buf)
+	case "fish":
+		return rootCmd.GenFishCompletion(buf, true)
+	default:
+		return fmt.Errorf("unsupported shell: %s", shell)
+	}
+}
+
+// sourceLine returns the shell-specific line that loads the completion script.
+func sourceLine(shell, scriptPath string) string {
+	switch shell {
+	case "bash", "zsh":
+		return fmt.Sprintf("source %s", scriptPath)
+	default:
+		return ""
+	}
+}
+
+// homeDirFunc is a function type that returns the user's home directory.
+// Enables dependency injection during testing (see completion_test.go).
+type homeDirFunc func() (string, error)
+
+func installCompletion(shell string, getHomeDir homeDirFunc) error {
+	homeDir, err := getHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not determine home directory: %w", err)
+	}
+
+	// Determine script destination
+	var scriptDir string
+	if shell == "fish" {
+		scriptDir = getFishCompletionsDir(homeDir)
+	} else {
+		scriptDir = getCompletionScriptDir(homeDir)
+	}
+
+	// Create directory
+	if err := os.MkdirAll(scriptDir, 0755); err != nil {
+		return fmt.Errorf("could not create directory %s: %w", scriptDir, err)
+	}
+
+	// Generate completion script
+	var buf bytes.Buffer
+	if err := generateCompletionScript(shell, &buf); err != nil {
+		return fmt.Errorf("could not generate %s completion script: %w", shell, err)
+	}
+
+	// Write script file
+	scriptPath := filepath.Join(scriptDir, completionScriptFilename(shell))
+	if err := os.WriteFile(scriptPath, buf.Bytes(), 0644); err != nil {
+		return fmt.Errorf("could not write completion script to %s: %w", scriptPath, err)
+	}
+
+	// For bash/zsh, add source line to shell config
+	if shell != "fish" {
+		configPath := getShellConfigFile(shell, homeDir)
+		line := sourceLine(shell, scriptPath)
+		if err := addSentinelBlock(configPath, line); err != nil {
+			return fmt.Errorf("could not update %s: %w", configPath, err)
+		}
+		fmt.Printf("Completion installed for %s.\nScript written to: %s\nShell config updated: %s\nRestart your shell or run: %s\n", shell, scriptPath, configPath, line)
+
+		// Warn about manually-added lines outside our sentinel block
+		remnants := findManualRemnants(configPath, completionScriptFilename(shell))
+		warnManualRemnants(configPath, remnants)
+	} else {
+		fmt.Printf("Completion installed for fish.\nScript written to: %s\nRestart your shell or open a new terminal session.\n", scriptPath)
+	}
+
+	return nil
+}
+
+func uninstallCompletion(shell string, getHomeDir homeDirFunc) error {
+	homeDir, err := getHomeDir()
+	if err != nil {
+		return fmt.Errorf("could not determine home directory: %w", err)
+	}
+
+	// Determine script location
+	var scriptPath string
+	if shell == "fish" {
+		scriptPath = filepath.Join(getFishCompletionsDir(homeDir), completionScriptFilename(shell))
+	} else {
+		scriptPath = filepath.Join(getCompletionScriptDir(homeDir), completionScriptFilename(shell))
+	}
+
+	// Remove script file (ignore if doesn't exist)
+	if err := os.Remove(scriptPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("could not remove completion script %s: %w", scriptPath, err)
+	}
+
+	// For bash/zsh, remove sentinel block from shell config
+	if shell != "fish" {
+		configPath := getShellConfigFile(shell, homeDir)
+		if err := removeSentinelBlock(configPath); err != nil {
+			return fmt.Errorf("could not update %s: %w", configPath, err)
+		}
+
+		fmt.Printf("Completion uninstalled for %s.\n", shell)
+
+		// Warn about manually-added lines that survive uninstall
+		remnants := findManualRemnants(configPath, completionScriptFilename(shell))
+		if len(remnants) > 0 {
+			fmt.Printf("\nWarning: your shell config file %s still references the completion script outside the managed block:\n", configPath)
+			for _, r := range remnants {
+				fmt.Printf("  line %d: %s\n", r.lineNumber, r.lineText)
+			}
+			fmt.Printf("Remove %s manually to fully disable shell completion.\n", pluralize(len(remnants), "this line", "these lines"))
+		}
+	} else {
+		fmt.Printf("Completion uninstalled for %s.\n", shell)
+	}
+
+	return nil
+}
 
 // addSentinelBlock adds or replaces a sentinel-delimited block in the given
 // config file. If the file does not exist, it is created with mode 0644.
@@ -327,4 +519,25 @@ func findManualRemnants(configPath, scriptFilename string) []manualRemnant {
 	}
 
 	return remnants
+}
+
+// warnManualRemnants prints a warning about manually-added completion lines
+// found outside the sentinel block. Does nothing if remnants is empty.
+func warnManualRemnants(configPath string, remnants []manualRemnant) {
+	if len(remnants) == 0 {
+		return
+	}
+
+	fmt.Printf("\nWarning: found a manually-added completion reference outside the managed block in %s:\n", configPath)
+	for _, r := range remnants {
+		fmt.Printf("  line %d: %s\n", r.lineNumber, r.lineText)
+	}
+	fmt.Printf("You may want to remove %s manually to avoid loading completions twice.\n", pluralize(len(remnants), "this line", "these lines"))
+}
+
+func pluralize(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
