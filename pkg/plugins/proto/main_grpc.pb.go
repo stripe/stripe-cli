@@ -109,6 +109,7 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CoreCLIHelperClient interface {
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
+	SendAnalytics(ctx context.Context, in *SendAnalyticsRequest, opts ...grpc.CallOption) (*SendAnalyticsResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -128,11 +129,21 @@ func (c *coreCLIHelperClient) Echo(ctx context.Context, in *EchoRequest, opts ..
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) SendAnalytics(ctx context.Context, in *SendAnalyticsRequest, opts ...grpc.CallOption) (*SendAnalyticsResponse, error) {
+	out := new(SendAnalyticsResponse)
+	err := c.cc.Invoke(ctx, "/proto.CoreCLIHelper/SendAnalytics", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility
 type CoreCLIHelperServer interface {
 	Echo(context.Context, *EchoRequest) (*EchoResponse, error)
+	SendAnalytics(context.Context, *SendAnalyticsRequest) (*SendAnalyticsResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -142,6 +153,9 @@ type UnimplementedCoreCLIHelperServer struct {
 
 func (UnimplementedCoreCLIHelperServer) Echo(context.Context, *EchoRequest) (*EchoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Echo not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) SendAnalytics(context.Context, *SendAnalyticsRequest) (*SendAnalyticsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendAnalytics not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 
@@ -174,6 +188,24 @@ func _CoreCLIHelper_Echo_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_SendAnalytics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendAnalyticsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).SendAnalytics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.CoreCLIHelper/SendAnalytics",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).SendAnalytics(ctx, req.(*SendAnalyticsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -184,6 +216,10 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Echo",
 			Handler:    _CoreCLIHelper_Echo_Handler,
+		},
+		{
+			MethodName: "SendAnalytics",
+			Handler:    _CoreCLIHelper_SendAnalytics_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
