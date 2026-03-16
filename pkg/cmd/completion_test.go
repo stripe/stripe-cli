@@ -117,7 +117,7 @@ func TestGenFishCreatesFile(t *testing.T) {
 		}
 	})
 
-	err = genFish(false)
+	err = genFish(false, false)
 	require.NoError(t, err)
 
 	content, err := os.ReadFile("stripe.fish")

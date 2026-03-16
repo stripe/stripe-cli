@@ -96,17 +96,19 @@ be available.`
 
 func selectShell(shell string, writeToStdout bool) error {
 	selected := shell
+	autoDetected := false
 	if selected == "" {
 		selected = detectShell()
+		autoDetected = selected != ""
 	}
 
-	switch selected {
-	case "zsh":
-		return genZsh(writeToStdout)
-	case "bash":
-		return genBash(writeToStdout)
-	case "fish":
-		return genFish(writeToStdout)
+	switch {
+	case selected == "zsh":
+		return genZsh(writeToStdout, autoDetected)
+	case selected == "bash":
+		return genBash(writeToStdout, autoDetected)
+	case selected == "fish":
+		return genFish(writeToStdout, autoDetected)
 	default:
 		if shell != "" {
 			return fmt.Errorf("Unsupported shell %q. Supported shells are: bash, zsh, fish", shell)
@@ -115,12 +117,16 @@ func selectShell(shell string, writeToStdout bool) error {
 	}
 }
 
-func genZsh(writeToStdout bool) error {
+func genZsh(writeToStdout bool, autoDetected bool) error {
 	if writeToStdout {
 		return rootCmd.GenZshCompletion(os.Stdout)
 	}
 
-	fmt.Println("Detected `zsh`, generating zsh completion file: stripe-completion.zsh")
+	if autoDetected {
+		fmt.Println("Detected `zsh`, generating zsh completion file: stripe-completion.zsh")
+	} else {
+		fmt.Println("Generating zsh completion file: stripe-completion.zsh")
+	}
 
 	err := rootCmd.GenZshCompletionFile("stripe-completion.zsh")
 	if err == nil {
@@ -130,12 +136,16 @@ func genZsh(writeToStdout bool) error {
 	return err
 }
 
-func genBash(writeToStdout bool) error {
+func genBash(writeToStdout bool, autoDetected bool) error {
 	if writeToStdout {
 		return rootCmd.GenBashCompletion(os.Stdout)
 	}
 
-	fmt.Println("Detected `bash`, generating bash completion file: stripe-completion.bash")
+	if autoDetected {
+		fmt.Println("Detected `bash`, generating bash completion file: stripe-completion.bash")
+	} else {
+		fmt.Println("Generating bash completion file: stripe-completion.bash")
+	}
 
 	err := rootCmd.GenBashCompletionFile("stripe-completion.bash")
 	if err == nil {
@@ -150,13 +160,17 @@ func genBash(writeToStdout bool) error {
 	return err
 }
 
-func genFish(writeToStdout bool) error {
+func genFish(writeToStdout bool, autoDetected bool) error {
 	if writeToStdout {
 		// true enables completion descriptions (fish displays them inline during tab-complete)
 		return rootCmd.GenFishCompletion(os.Stdout, true)
 	}
 
-	fmt.Println("Detected `fish`, generating fish completion file: stripe.fish")
+	if autoDetected {
+		fmt.Println("Detected `fish`, generating fish completion file: stripe.fish")
+	} else {
+		fmt.Println("Generating fish completion file: stripe.fish")
+	}
 
 	// true enables completion descriptions (fish displays them inline during tab-complete)
 	err := rootCmd.GenFishCompletionFile("stripe.fish", true)
