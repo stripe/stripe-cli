@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // GetBinaryExtension returns the appropriate file extension for plugin binary
@@ -101,8 +104,12 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 // RefreshPluginManifest refreshes the plugin manifest
 func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.Fs, baseURL string) error {
 	apiKey, err := config.GetProfile().GetAPIKey(false)
+
 	if err != nil {
-		return err
+		if err != validators.ErrAPIKeyNotConfigured {
+			return err
+		}
+		// If the API key is not configured, that's fine, continue with the fallback plugin data
 	}
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, config.GetProfile())
@@ -142,6 +149,11 @@ func fetchAndMergeManifests(pluginData requests.PluginData) (*PluginList, error)
 	for _, filename := range pluginData.AdditionalManifests {
 		additionalPluginList, err := fetchPluginList(pluginData.PluginBaseURL, filename)
 		if err != nil {
+			var remoteResourceNotFoundError *remoteResourceNotFoundError
+			if errors.As(err, &remoteResourceNotFoundError) {
+				log.Debugf("Additional plugin manifest not found, silently skipping: url=%s", remoteResourceNotFoundError.URL)
+				continue
+			}
 			return nil, err
 		}
 		additionalPluginLists = append(additionalPluginLists, additionalPluginList)
@@ -161,6 +173,74 @@ func fetchPluginList(baseURL, manifestFilename string) (*PluginList, error) {
 	return validatePluginManifest(body)
 }
 
+// validateRuntimeVersions validates that Runtime specifications only contain valid LTS Node.js versions
+func validateRuntimeVersions(pluginList *PluginList) error {
+	for _, plugin := range pluginList.Plugins {
+		for _, release := range plugin.Releases {
+			if err := validateReleaseRuntimes(plugin.Shortname, release); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// validateReleaseRuntimes validates the runtime specifications for a single release
+func validateReleaseRuntimes(pluginName string, release Release) error {
+	// Skip releases without runtime requirements
+	if release.Runtime == nil {
+		return nil
+	}
+
+	// Validate each runtime specification
+	for runtime, version := range release.Runtime {
+		// Only validate Node.js versions (skip other runtimes)
+		if runtime != "node" {
+			continue
+		}
+
+		// Check if the Node.js version is valid
+		if !isValidNodeLTSVersion(version) {
+			return fmt.Errorf(
+				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				version,
+				pluginName,
+				release.Version,
+			)
+		}
+	}
+
+	return nil
+}
+
+// isValidNodeLTSVersion checks if a Node.js version string is a valid LTS major version
+// Valid LTS versions are even-numbered major versions starting from 18
+func isValidNodeLTSVersion(version string) bool {
+	// Empty string is invalid
+	if version == "" {
+		return false
+	}
+
+	// Parse the version as an integer - must be a valid integer string
+	var majorVersion int
+	n, err := fmt.Sscanf(version, "%d", &majorVersion)
+	if err != nil || n != 1 {
+		return false
+	}
+
+	// Verify the parsed integer matches the original string (no extra characters)
+	// This ensures "20.0" or "v20" etc. are rejected
+	if fmt.Sprintf("%d", majorVersion) != version {
+		return false
+	}
+
+	if majorVersion < 18 {
+		return false
+	}
+
+	return majorVersion%2 == 0
+}
+
 func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
@@ -169,6 +249,9 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	}
 	if len(manifestBody.Plugins) == 0 {
 		return nil, fmt.Errorf("Received an empty plugin manifest")
+	}
+	if err := validateRuntimeVersions(&manifestBody); err != nil {
+		return nil, err
 	}
 	return &manifestBody, nil
 }
@@ -205,6 +288,14 @@ func findPluginIndex(list *PluginList, p Plugin) int {
 	return -1
 }
 
+type remoteResourceNotFoundError struct {
+	URL string
+}
+
+func (e *remoteResourceNotFoundError) Error() string {
+	return fmt.Sprintf("remote resource not found: url=%s", e.URL)
+}
+
 // FetchRemoteResource returns the remote resource body
 func FetchRemoteResource(url string) ([]byte, error) {
 	t := &requests.TracedTransport{}
@@ -227,11 +318,14 @@ func FetchRemoteResource(url string) ([]byte, error) {
 	resp, err := client.Do(req)
 
 	if err != nil {
+		if strings.Contains(err.Error(), "no such host") {
+			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+		}
 		return nil, err
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("remote resource not found: url=%s", url)
+		return nil, &remoteResourceNotFoundError{URL: url}
 	}
 
 	defer resp.Body.Close()
