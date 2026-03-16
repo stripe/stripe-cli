@@ -11,6 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/ansi"
 )
 
 // ---------------------------------------------------------------------------
@@ -172,298 +174,155 @@ func TestGenShellCreatesFile(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Sentinel block tests (from sentinel-block-management branch, preserved)
+// computeAddSentinel (pure function — no I/O)
 // ---------------------------------------------------------------------------
 
-func TestAddSentinelBlockToNewFile(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-
-	err := addSentinelBlock(configPath, "source /home/user/.stripe/stripe-completion.zsh")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(data)
-	assert.Contains(t, content, sentinelBegin)
-	assert.Contains(t, content, "source /home/user/.stripe/stripe-completion.zsh")
-	assert.Contains(t, content, sentinelEnd)
+func TestComputeAddSentinelToEmptyContent(t *testing.T) {
+	result := computeAddSentinel("", "source /home/user/.stripe/stripe-completion.zsh")
+	assert.Contains(t, result, sentinelBegin)
+	assert.Contains(t, result, "source /home/user/.stripe/stripe-completion.zsh")
+	assert.Contains(t, result, sentinelEnd)
 }
 
-func TestAddSentinelBlockPreservesExistingContent(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-
+func TestComputeAddSentinelPreservesExistingContent(t *testing.T) {
 	existing := "export PATH=/usr/local/bin:$PATH\nalias ll='ls -la'\n"
-	require.NoError(t, os.WriteFile(configPath, []byte(existing), 0644))
-
-	err := addSentinelBlock(configPath, "source /home/user/.stripe/stripe-completion.zsh")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(data)
-	assert.True(t, strings.HasPrefix(content, existing), "existing content should be preserved at the start")
-	assert.Contains(t, content, sentinelBegin)
-	assert.Contains(t, content, sentinelEnd)
+	result := computeAddSentinel(existing, "source /home/user/.stripe/stripe-completion.zsh")
+	assert.True(t, strings.HasPrefix(result, existing), "existing content should be preserved at the start")
+	assert.Contains(t, result, sentinelBegin)
+	assert.Contains(t, result, sentinelEnd)
 }
 
-func TestAddSentinelBlockReplaceExisting(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-
-	initial := fmt.Sprintf("before\n%s\nold source line\n%s\nafter\n", sentinelBegin, sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(initial), 0644))
-
-	err := addSentinelBlock(configPath, "new source line")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	content := string(data)
-	assert.Contains(t, content, "before\n")
-	assert.Contains(t, content, "new source line")
-	assert.NotContains(t, content, "old source line")
-	assert.Contains(t, content, "after\n")
-	assert.Equal(t, 1, strings.Count(content, sentinelBegin))
-	assert.Equal(t, 1, strings.Count(content, sentinelEnd))
+func TestComputeAddSentinelReplacesExisting(t *testing.T) {
+	content := fmt.Sprintf("before\n%s\nold source line\n%s\nafter\n", sentinelBegin, sentinelEnd)
+	result := computeAddSentinel(content, "new source line")
+	assert.Contains(t, result, "before\n")
+	assert.Contains(t, result, "new source line")
+	assert.NotContains(t, result, "old source line")
+	assert.Contains(t, result, "after\n")
+	assert.Equal(t, 1, strings.Count(result, sentinelBegin))
+	assert.Equal(t, 1, strings.Count(result, sentinelEnd))
 }
 
-func TestAddSentinelBlockAppendsNewlineIfMissing(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	require.NoError(t, os.WriteFile(configPath, []byte("no trailing newline"), 0644))
-
-	err := addSentinelBlock(configPath, "source line")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(data), "no trailing newline\n"+sentinelBegin)
+func TestComputeAddSentinelAppendsNewlineIfMissing(t *testing.T) {
+	result := computeAddSentinel("no trailing newline", "source line")
+	assert.Contains(t, result, "no trailing newline\n"+sentinelBegin)
 }
 
-func TestAddSentinelBlockOrphanedBeginOnly(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeAddSentinelOrphanedBeginOnly(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\norphaned source line\nafter\n", sentinelBegin)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := addSentinelBlock(configPath, "new source line")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	result := string(data)
+	result := computeAddSentinel(content, "new source line")
 	assert.Contains(t, result, "new source line")
 	assert.Contains(t, result, sentinelEnd)
 }
 
-func TestAddSentinelBlockOrphanedEndOnly(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeAddSentinelOrphanedEndOnly(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\nafter\n", sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := addSentinelBlock(configPath, "new source line")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	result := string(data)
+	result := computeAddSentinel(content, "new source line")
 	assert.Contains(t, result, "new source line")
 	assert.Equal(t, 1, strings.Count(result, sentinelBegin))
 }
 
-func TestAddSentinelBlockReversedMarkers(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeAddSentinelReversedMarkers(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\norphaned\n%s\nafter\n", sentinelEnd, sentinelBegin)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := addSentinelBlock(configPath, "new source line")
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Contains(t, string(data), "new source line")
+	result := computeAddSentinel(content, "new source line")
+	assert.Contains(t, result, "new source line")
 }
 
-func TestRemoveSentinelBlockPreservesOtherContent(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeAddSentinelIdempotent(t *testing.T) {
+	line := "source /home/user/.stripe/stripe-completion.zsh"
+	once := computeAddSentinel("", line)
+	twice := computeAddSentinel(once, line)
+	assert.Equal(t, once, twice, "applying computeAddSentinel twice should produce the same result")
+}
+
+// ---------------------------------------------------------------------------
+// computeRemoveSentinel (pure function — no I/O)
+// ---------------------------------------------------------------------------
+
+func TestComputeRemoveSentinelOnlyBlock(t *testing.T) {
+	content := fmt.Sprintf("%s\nsource line\n%s\n", sentinelBegin, sentinelEnd)
+	result, found := computeRemoveSentinel(content)
+	require.True(t, found)
+	assert.Equal(t, "", result, "removing the only content should yield empty string")
+}
+
+func TestComputeRemoveSentinelPreservesOtherContent(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\nsource line\n%s\nafter\n", sentinelBegin, sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	result := string(data)
+	result, found := computeRemoveSentinel(content)
+	require.True(t, found)
 	assert.Contains(t, result, "before\n")
 	assert.Contains(t, result, "after\n")
 	assert.NotContains(t, result, sentinelBegin)
 	assert.NotContains(t, result, "source line")
 }
 
-func TestRemoveSentinelBlockNoBlockPresent(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	original := "export FOO=bar\n"
-	require.NoError(t, os.WriteFile(configPath, []byte(original), 0644))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, original, string(data))
+func TestComputeRemoveSentinelNoBlockPresent(t *testing.T) {
+	_, found := computeRemoveSentinel("export FOO=bar\n")
+	assert.False(t, found)
 }
 
-func TestRemoveSentinelBlockFileMissing(t *testing.T) {
-	err := removeSentinelBlock(filepath.Join(t.TempDir(), "nonexistent"))
-	assert.NoError(t, err)
+func TestComputeRemoveSentinelEmptyContent(t *testing.T) {
+	_, found := computeRemoveSentinel("")
+	assert.False(t, found)
 }
 
-func TestRemoveSentinelBlockOrphanedBeginOnly(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeRemoveSentinelOrphanedBeginOnly(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\norphaned\nafter\n", sentinelBegin)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, content, string(data))
+	_, found := computeRemoveSentinel(content)
+	assert.False(t, found)
 }
 
-func TestRemoveSentinelBlockOrphanedEndOnly(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
+func TestComputeRemoveSentinelOrphanedEndOnly(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\nafter\n", sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, content, string(data))
+	_, found := computeRemoveSentinel(content)
+	assert.False(t, found)
 }
 
-func TestRemoveSentinelBlockReversedMarkers(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-
-	// End marker appears before begin — should be a no-op
+func TestComputeRemoveSentinelReversedMarkers(t *testing.T) {
 	content := fmt.Sprintf("before\n%s\norphaned\n%s\nafter\n", sentinelEnd, sentinelBegin)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	data, err := os.ReadFile(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, content, string(data), "reversed markers should be left untouched")
+	_, found := computeRemoveSentinel(content)
+	assert.False(t, found, "reversed markers should not be treated as a valid block")
 }
 
-func TestAddSentinelBlockReadPermissionDenied(t *testing.T) {
+// ---------------------------------------------------------------------------
+// readConfigFile
+// ---------------------------------------------------------------------------
+
+func TestReadConfigFileMissing(t *testing.T) {
+	content, perm, err := readConfigFile(filepath.Join(t.TempDir(), "nonexistent"))
+	require.NoError(t, err)
+	assert.Equal(t, "", content)
+	assert.Equal(t, os.FileMode(0644), perm)
+}
+
+func TestReadConfigFilePreservesPermissions(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Getuid() == 0 {
 		t.Skip("Cannot test Unix file permissions on Windows or as root")
 	}
 
 	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	require.NoError(t, os.WriteFile(configPath, []byte("content"), 0644))
-	require.NoError(t, os.Chmod(configPath, 0000))
-	t.Cleanup(func() { os.Chmod(configPath, 0644) })
+	path := filepath.Join(dir, ".zshrc")
+	require.NoError(t, os.WriteFile(path, []byte("content\n"), 0600))
 
-	err := addSentinelBlock(configPath, "source line")
+	content, perm, err := readConfigFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, "content\n", content)
+	assert.Equal(t, os.FileMode(0600), perm)
+}
+
+func TestReadConfigFilePermissionDenied(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Getuid() == 0 {
+		t.Skip("Cannot test Unix file permissions on Windows or as root")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".zshrc")
+	require.NoError(t, os.WriteFile(path, []byte("content"), 0644))
+	require.NoError(t, os.Chmod(path, 0000))
+	t.Cleanup(func() { os.Chmod(path, 0644) })
+
+	_, _, err := readConfigFile(path)
 	assert.Error(t, err)
-}
-
-func TestAddSentinelBlockWritePermissionDenied(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Getuid() == 0 {
-		t.Skip("Cannot test Unix file permissions on Windows or as root")
-	}
-
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	require.NoError(t, os.WriteFile(configPath, []byte("existing\n"), 0644))
-	require.NoError(t, os.Chmod(configPath, 0444))
-	t.Cleanup(func() { os.Chmod(configPath, 0644) })
-
-	err := addSentinelBlock(configPath, "source line")
-	assert.Error(t, err)
-}
-
-func TestRemoveSentinelBlockReadPermissionDenied(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Getuid() == 0 {
-		t.Skip("Cannot test Unix file permissions on Windows or as root")
-	}
-
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	content := fmt.Sprintf("%s\nline\n%s\n", sentinelBegin, sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-	require.NoError(t, os.Chmod(configPath, 0000))
-	t.Cleanup(func() { os.Chmod(configPath, 0644) })
-
-	err := removeSentinelBlock(configPath)
-	assert.Error(t, err)
-}
-
-func TestRemoveSentinelBlockWritePermissionDenied(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Getuid() == 0 {
-		t.Skip("Cannot test Unix file permissions on Windows or as root")
-	}
-
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	content := fmt.Sprintf("%s\nline\n%s\n", sentinelBegin, sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0644))
-	require.NoError(t, os.Chmod(configPath, 0444))
-	t.Cleanup(func() { os.Chmod(configPath, 0644) })
-
-	err := removeSentinelBlock(configPath)
-	assert.Error(t, err)
-}
-
-func TestAddSentinelBlockPreservesFilePermissions(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Getuid() == 0 {
-		t.Skip("Cannot test Unix file permissions on Windows or as root")
-	}
-
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	require.NoError(t, os.WriteFile(configPath, []byte("existing\n"), 0600))
-
-	err := addSentinelBlock(configPath, "source line")
-	require.NoError(t, err)
-
-	info, err := os.Stat(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0600), info.Mode().Perm(), "file permissions should be preserved")
-}
-
-func TestRemoveSentinelBlockPreservesFilePermissions(t *testing.T) {
-	if runtime.GOOS == "windows" || os.Getuid() == 0 {
-		t.Skip("Cannot test Unix file permissions on Windows or as root")
-	}
-
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, ".zshrc")
-	content := fmt.Sprintf("before\n%s\nline\n%s\nafter\n", sentinelBegin, sentinelEnd)
-	require.NoError(t, os.WriteFile(configPath, []byte(content), 0600))
-
-	err := removeSentinelBlock(configPath)
-	require.NoError(t, err)
-
-	info, err := os.Stat(configPath)
-	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0600), info.Mode().Perm(), "file permissions should be preserved")
 }
 
 // ---------------------------------------------------------------------------
@@ -588,21 +447,43 @@ func failingHomeDir() homeDirFunc {
 	return func() (string, error) { return "", fmt.Errorf("no home directory") }
 }
 
-// alwaysConfirm overrides confirmFunc to always return true (auto-accept).
-// Returns a cleanup function that restores the original.
-func alwaysConfirm(t *testing.T) {
+// disableColors suppresses ANSI color output during tests.
+func disableColors(t *testing.T) {
 	t.Helper()
-	original := confirmFunc
-	confirmFunc = func(_ string) bool { return true }
-	t.Cleanup(func() { confirmFunc = original })
+	ansi.DisableColors = true
+	t.Cleanup(func() { ansi.DisableColors = false })
 }
 
-// neverConfirm overrides confirmFunc to always return false (auto-decline).
+// alwaysConfirm overrides installConfirmFn and uninstallConfirmFn to always
+// return true (auto-accept). Restores originals on cleanup.
+func alwaysConfirm(t *testing.T) {
+	t.Helper()
+	disableColors(t)
+	origInstall := installConfirmFn
+	origUninstall := uninstallConfirmFn
+	accept := func(_ string) bool { return true }
+	installConfirmFn = accept
+	uninstallConfirmFn = accept
+	t.Cleanup(func() {
+		installConfirmFn = origInstall
+		uninstallConfirmFn = origUninstall
+	})
+}
+
+// neverConfirm overrides installConfirmFn and uninstallConfirmFn to always
+// return false (auto-decline).
 func neverConfirm(t *testing.T) {
 	t.Helper()
-	original := confirmFunc
-	confirmFunc = func(_ string) bool { return false }
-	t.Cleanup(func() { confirmFunc = original })
+	disableColors(t)
+	origInstall := installConfirmFn
+	origUninstall := uninstallConfirmFn
+	decline := func(_ string) bool { return false }
+	installConfirmFn = decline
+	uninstallConfirmFn = decline
+	t.Cleanup(func() {
+		installConfirmFn = origInstall
+		uninstallConfirmFn = origUninstall
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -657,7 +538,7 @@ func TestInstallCompletionZsh(t *testing.T) {
 	require.NoError(t, err)
 	content := string(configData)
 	assert.Contains(t, content, sentinelBegin)
-	assert.Contains(t, content, "source "+scriptPath)
+	assert.Contains(t, content, fmt.Sprintf("source \"%s\"", scriptPath))
 	assert.Contains(t, content, sentinelEnd)
 }
 
@@ -681,7 +562,7 @@ func TestInstallCompletionBash(t *testing.T) {
 	configData, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 	assert.Contains(t, string(configData), sentinelBegin)
-	assert.Contains(t, string(configData), "source "+scriptPath)
+	assert.Contains(t, string(configData), fmt.Sprintf("source \"%s\"", scriptPath))
 }
 
 func TestInstallCompletionFish(t *testing.T) {
@@ -735,6 +616,16 @@ func TestInstallCompletionWritePermissionDenied(t *testing.T) {
 	err := installCompletion("zsh", fakeHomeDir(home))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "could not write completion script")
+}
+
+func TestInstallUnsupportedShell(t *testing.T) {
+	cc := newCompletionCmd()
+	cc.cmd.SetArgs([]string{"--install", "--shell", "powershell"})
+
+	err := cc.cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported shell")
+	assert.Contains(t, err.Error(), "powershell")
 }
 
 func TestInstallMutuallyExclusiveFlags(t *testing.T) {

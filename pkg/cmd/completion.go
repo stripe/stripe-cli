@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -37,7 +39,19 @@ func newCompletionCmd() *completionCmd {
 	cc.cmd = &cobra.Command{
 		Use:   "completion",
 		Short: "Generate bash, zsh, and fish completion scripts",
-		Args:  validators.NoArgs,
+		Long:  "Generate shell completion scripts. Use --install to automatically configure your shell profile, or run without flags to generate a script file manually.",
+		Example: `  # Auto-install completions (detects your shell)
+  stripe completion --install
+
+  # Install for a specific shell
+  stripe completion --install --shell zsh
+
+  # Remove installed completions
+  stripe completion --uninstall
+
+  # Generate completion script to stdout
+  stripe completion --shell bash --write-to-stdout`,
+		Args: validators.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			shell := cc.shell
 			if shell == "" {
@@ -47,6 +61,9 @@ func newCompletionCmd() *completionCmd {
 			if cc.install || cc.uninstall {
 				if shell == "" {
 					return fmt.Errorf("could not automatically detect your shell. Please run the command with the `--shell` flag for bash, zsh, or fish")
+				}
+				if shell != "bash" && shell != "zsh" && shell != "fish" {
+					return fmt.Errorf("unsupported shell %q. Supported shells: bash, zsh, fish", shell)
 				}
 				if cc.install {
 					return installCompletion(shell, os.UserHomeDir)
@@ -293,7 +310,7 @@ func generateCompletionScript(shell string, buf *bytes.Buffer) error {
 func sourceLine(shell, scriptPath string) string {
 	switch shell {
 	case "bash", "zsh":
-		return fmt.Sprintf("source %s", scriptPath)
+		return fmt.Sprintf("source \"%s\"", scriptPath)
 	default:
 		return ""
 	}
@@ -334,21 +351,34 @@ func installCompletion(shell string, getHomeDir homeDirFunc) error {
 		return fmt.Errorf("could not write completion script to %s: %w", scriptPath, err)
 	}
 
-	// For bash/zsh, add source line to shell config (with user confirmation)
+	// For bash/zsh, add source line to shell config (with diff preview + confirmation)
 	if shell != "fish" {
 		configPath := getShellConfigFile(shell, homeDir)
 		line := sourceLine(shell, scriptPath)
 
-		if !confirmFunc(fmt.Sprintf("This will add shell completion configuration to %s. Proceed?", configPath)) {
-			// Script file was already written, but user declined config modification
-			fmt.Printf("Aborted. Completion script was written to %s but your shell config was not modified.\nTo activate manually, add this line to %s:\n  %s\n", scriptPath, configPath, line)
-			return nil
+		oldContent, perm, err := readConfigFile(configPath)
+		if err != nil {
+			return fmt.Errorf("could not read %s: %w", configPath, err)
 		}
 
-		if err := addSentinelBlock(configPath, line); err != nil {
-			return fmt.Errorf("could not update %s: %w", configPath, err)
+		newContent := computeAddSentinel(oldContent, line)
+
+		if newContent != oldContent {
+			ansi.RenderDiff(os.Stdout, configPath, oldContent, newContent)
+
+			if !confirm(installConfirmFn, "Apply changes?") {
+				fmt.Printf("Aborted. Completion script was written to %s but your shell config was not modified.\nTo activate manually, add this line to %s:\n  %s\n", scriptPath, configPath, line)
+				return nil
+			}
+
+			if err := os.WriteFile(configPath, []byte(newContent), perm); err != nil {
+				return fmt.Errorf("could not update %s: %w", configPath, err)
+			}
+
+			fmt.Printf("Completion installed for %s.\nScript written to: %s\nShell config updated: %s\nRestart your shell or run: %s\n", shell, scriptPath, configPath, line)
+		} else {
+			fmt.Printf("Completion already configured in %s.\nScript updated: %s\n", configPath, scriptPath)
 		}
-		fmt.Printf("Completion installed for %s.\nScript written to: %s\nShell config updated: %s\nRestart your shell or run: %s\n", shell, scriptPath, configPath, line)
 
 		// Warn about manually-added lines outside our sentinel block
 		remnants := findManualRemnants(configPath, completionScriptFilename(shell))
@@ -379,17 +409,28 @@ func uninstallCompletion(shell string, getHomeDir homeDirFunc) error {
 		return fmt.Errorf("could not remove completion script %s: %w", scriptPath, err)
 	}
 
-	// For bash/zsh, remove sentinel block from shell config (with user confirmation)
+	// For bash/zsh, remove sentinel block from shell config (with diff preview + confirmation)
 	if shell != "fish" {
 		configPath := getShellConfigFile(shell, homeDir)
 
-		if !confirmFunc(fmt.Sprintf("This will remove shell completion configuration from %s. Proceed?", configPath)) {
-			fmt.Printf("Aborted. Completion script was removed but your shell config was not modified.\nTo clean up manually, remove the block between \"%s\" and \"%s\" in %s.\n", sentinelBegin, sentinelEnd, configPath)
-			return nil
+		oldContent, perm, err := readConfigFile(configPath)
+		if err != nil {
+			return fmt.Errorf("could not read %s: %w", configPath, err)
 		}
 
-		if err := removeSentinelBlock(configPath); err != nil {
-			return fmt.Errorf("could not update %s: %w", configPath, err)
+		newContent, found := computeRemoveSentinel(oldContent)
+
+		if found {
+			ansi.RenderDiff(os.Stdout, configPath, oldContent, newContent)
+
+			if !confirm(uninstallConfirmFn, "Apply changes?") {
+				fmt.Printf("Aborted. Completion script was removed but your shell config was not modified.\nTo clean up manually, remove the block between \"%s\" and \"%s\" in %s.\n", sentinelBegin, sentinelEnd, configPath)
+				return nil
+			}
+
+			if err := os.WriteFile(configPath, []byte(newContent), perm); err != nil {
+				return fmt.Errorf("could not update %s: %w", configPath, err)
+			}
 		}
 
 		fmt.Printf("Completion uninstalled for %s.\n", shell)
@@ -410,92 +451,72 @@ func uninstallCompletion(shell string, getHomeDir homeDirFunc) error {
 	return nil
 }
 
-// addSentinelBlock adds or replaces a sentinel-delimited block in the given
-// config file. If the file does not exist, it is created with mode 0644.
-// Existing file permissions are preserved. The operation is idempotent:
-// calling it twice with the same line produces the same result as calling
-// it once. If the file contains orphaned or reversed markers, a new block
-// is appended rather than attempting to repair the malformed state.
-func addSentinelBlock(configPath, line string) error {
-	block := fmt.Sprintf("%s\n%s\n%s", sentinelBegin, line, sentinelEnd)
-
-	data, err := os.ReadFile(configPath)
+// readConfigFile reads a shell config file and returns its content and
+// permissions. If the file does not exist, returns ("", 0644, nil).
+// Uses Open+Fstat to read content and permissions atomically from the
+// same file descriptor.
+func readConfigFile(path string) (string, os.FileMode, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Create new file with just the sentinel block
-			return os.WriteFile(configPath, []byte(block+"\n"), 0644)
+			return "", 0644, nil
 		}
-		return err
+		return "", 0, err
+	}
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		return "", 0, err
 	}
 
-	// Preserve existing file permissions
-	perm := os.FileMode(0644)
-	if info, statErr := os.Stat(configPath); statErr == nil {
-		perm = info.Mode().Perm()
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return "", 0, err
 	}
 
-	content := string(data)
+	return string(data), info.Mode().Perm(), nil
+}
 
-	// Replace existing block if both markers are present in the correct order.
-	// Orphaned or reversed markers are left untouched — we append instead.
+// computeAddSentinel returns the content with a sentinel block added or
+// replaced. Pure function — no I/O. If the file contains orphaned or reversed
+// markers, a new block is appended rather than attempting to repair.
+func computeAddSentinel(content, line string) string {
+	block := fmt.Sprintf("%s\n%s\n%s", sentinelBegin, line, sentinelEnd)
+
 	beginIdx := strings.Index(content, sentinelBegin)
 	endIdx := strings.Index(content, sentinelEnd)
 	if beginIdx >= 0 && endIdx >= 0 && endIdx > beginIdx {
 		endIdx += len(sentinelEnd)
-		// Include trailing newline if present
 		if endIdx < len(content) && content[endIdx] == '\n' {
 			endIdx++
 		}
-		content = content[:beginIdx] + block + "\n" + content[endIdx:]
-		return os.WriteFile(configPath, []byte(content), perm)
+		return content[:beginIdx] + block + "\n" + content[endIdx:]
 	}
 
-	// Append sentinel block
 	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	content += block + "\n"
 
-	return os.WriteFile(configPath, []byte(content), perm)
+	return content + block + "\n"
 }
 
-// removeSentinelBlock removes the sentinel-delimited block from the given
-// config file. If the file does not exist, this is a no-op. If the markers
-// are orphaned or reversed, the file is left unchanged. Existing file
-// permissions are preserved.
-func removeSentinelBlock(configPath string) error {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-
-	content := string(data)
-
+// computeRemoveSentinel returns the content with the sentinel block removed.
+// Pure function — no I/O. Returns (result, true) if a block was found and
+// removed, or ("", false) if no valid block exists.
+func computeRemoveSentinel(content string) (string, bool) {
 	beginIdx := strings.Index(content, sentinelBegin)
 	endIdx := strings.Index(content, sentinelEnd)
 	if beginIdx < 0 || endIdx < 0 || endIdx <= beginIdx {
-		// No valid sentinel block found, nothing to do
-		return nil
-	}
-
-	// Preserve existing file permissions
-	perm := os.FileMode(0644)
-	if info, statErr := os.Stat(configPath); statErr == nil {
-		perm = info.Mode().Perm()
+		return "", false
 	}
 
 	endIdx += len(sentinelEnd)
-	// Include trailing newline if present
 	if endIdx < len(content) && content[endIdx] == '\n' {
 		endIdx++
 	}
 
-	content = content[:beginIdx] + content[endIdx:]
-
-	return os.WriteFile(configPath, []byte(content), perm)
+	return content[:beginIdx] + content[endIdx:], true
 }
 
 // manualRemnant represents a line in a shell config file that references the
@@ -567,12 +588,23 @@ func warnManualRemnants(configPath string, remnants []manualRemnant) {
 	fmt.Printf("You may want to remove %s manually to avoid loading completions twice.\n", pluralize(len(remnants), "this line", "these lines"))
 }
 
-// confirmFunc is the function used to prompt the user for confirmation.
+// installConfirmFn and uninstallConfirmFn override the confirm prompt used
+// during install/uninstall. nil means use the default stdin prompt.
 // Override in tests to avoid blocking on stdin.
-var confirmFunc = defaultConfirm
+var (
+	installConfirmFn   func(string) bool
+	uninstallConfirmFn func(string) bool
+)
 
-// defaultConfirm asks the user a yes/no question via stdin and returns true
-// if they answer y or yes. Defaults to no on empty input or read failure.
+// confirm calls fn if non-nil, otherwise falls back to defaultConfirm.
+func confirm(fn func(string) bool, question string) bool {
+	if fn != nil {
+		return fn(question)
+	}
+	return defaultConfirm(question)
+}
+
+// defaultConfirm asks a yes/no question on stdout/stdin.
 func defaultConfirm(question string) bool {
 	fmt.Printf("%s [y/N] ", question)
 
