@@ -33,8 +33,7 @@ func newCompletionCmd() *completionCmd {
 	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "Shell to generate completions for: bash, zsh, or fish (auto-detected if omitted)")
 	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
 
-	//nolint:errcheck // RegisterFlagCompletionFunc only fails if the flag doesn't exist
-	cc.cmd.RegisterFlagCompletionFunc("shell", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	_ = cc.cmd.RegisterFlagCompletionFunc("shell", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"bash", "zsh", "fish"}, cobra.ShellCompDirectiveNoFileComp
 	})
 
