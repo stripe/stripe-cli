@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -108,6 +108,9 @@ func selectShell(shell string, writeToStdout bool) error {
 	case "fish":
 		return genFish(writeToStdout)
 	default:
+		if shell != "" {
+			return fmt.Errorf("Unsupported shell %q. Supported shells are: bash, zsh, fish", shell)
+		}
 		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for bash, zsh, or fish")
 	}
 }
@@ -165,14 +168,14 @@ func genFish(writeToStdout bool) error {
 }
 
 func detectShell() string {
-	shell := os.Getenv("SHELL")
+	shell := filepath.Base(os.Getenv("SHELL"))
 
-	switch {
-	case strings.Contains(shell, "zsh"):
+	switch shell {
+	case "zsh":
 		return "zsh"
-	case strings.Contains(shell, "bash"):
+	case "bash":
 		return "bash"
-	case strings.Contains(shell, "fish"):
+	case "fish":
 		return "fish"
 	default:
 		return ""

@@ -35,14 +35,19 @@ func TestDetectShell(t *testing.T) {
 			expected: "fish",
 		},
 		{
-			name:     "bash takes precedence when path also contains fish",
+			name:     "detects bash even when path contains fish",
 			envValue: "/home/fishing/bin/bash",
 			expected: "bash",
 		},
 		{
-			name:     "zsh takes precedence when path also contains fish",
+			name:     "detects zsh even when path contains fish",
 			envValue: "/home/shellfish/bin/zsh",
 			expected: "zsh",
+		},
+		{
+			name:     "does not false-positive on fish in directory name",
+			envValue: "/home/shellfish/bin/csh",
+			expected: "",
 		},
 		{
 			name:     "returns empty string for unknown shell",
@@ -66,30 +71,19 @@ func TestDetectShell(t *testing.T) {
 }
 
 func TestSelectShellErrors(t *testing.T) {
-	tests := []struct {
-		name  string
-		shell string
-	}{
-		{
-			name:  "unknown shell name produces error",
-			shell: "powershell",
-		},
-		{
-			name:  "empty shell with no SHELL env produces error",
-			shell: "",
-		},
-	}
+	t.Run("explicit unsupported shell produces unsupported error", func(t *testing.T) {
+		err := selectShell("powershell", true)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Unsupported shell")
+		assert.Contains(t, err.Error(), "powershell")
+	})
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.shell == "" {
-				t.Setenv("SHELL", "")
-			}
-			err := selectShell(tt.shell, true)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "--shell")
-		})
-	}
+	t.Run("empty shell with no SHELL env produces auto-detect error", func(t *testing.T) {
+		t.Setenv("SHELL", "")
+		err := selectShell("", true)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "--shell")
+	})
 }
 
 func TestSelectShellWriteToStdout(t *testing.T) {
