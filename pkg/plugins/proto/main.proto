@@ -10,6 +10,7 @@ service Main {
 message RunCommandRequest {
   AdditionalInfo additional_info = 1;
   repeated string args = 2;
+  uint32 core_cli_helper_id = 3;
 }
 
 message RunCommandResponse {
@@ -23,4 +24,16 @@ message IsTerminal {
   bool stdin = 1;
   bool stdout = 2;
   bool stderr = 3;
+}
+
+service CoreCLIHelper {
+  rpc Echo(EchoRequest) returns (EchoResponse);
+}
+
+message EchoRequest {
+  string input = 1;
+}
+
+message EchoResponse {
+  string output = 1;
 }
