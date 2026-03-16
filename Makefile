@@ -28,6 +28,22 @@ cover: test
 	go tool cover -html=coverage.txt
 .PHONY: cover
 
+# Build a production-like binary for canary tests
+build-canary:
+	go generate ./...
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o stripe ./cmd/stripe
+.PHONY: build-canary
+
+# Run canary tests (end-to-end tests against the compiled binary)
+canary: build-canary
+	STRIPE_CLI_BINARY=$(PWD)/stripe go test -v -timeout 15m ./canary/...
+.PHONY: canary
+
+# Run offline canary tests only (no API key required)
+canary-offline: build-canary
+	STRIPE_CLI_BINARY=$(PWD)/stripe go test -v -timeout 10m ./canary/... -run "TestOffline"
+.PHONY: canary-offline
+
 # gofmt and goimports all go files
 fmt:
 	go install golang.org/x/tools/cmd/goimports@v0.5
@@ -112,6 +128,17 @@ clean:
 	rm -f coverage.txt
 	rm -rf dist/
 .PHONY: clean
+
+# Update Node.js checksums for a specific version
+# Usage: make update-node-checksums VERSION=20.18.1
+update-node-checksums:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required"; \
+		echo "Usage: make update-node-checksums VERSION=20.18.1"; \
+		exit 1; \
+	fi
+	@./scripts/update-node-checksums.sh $(VERSION)
+.PHONY: update-node-checksums
 
 # Handle all protobuf generation.
 protoc:
