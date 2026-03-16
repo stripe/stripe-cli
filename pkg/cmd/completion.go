@@ -30,8 +30,13 @@ func newCompletionCmd() *completionCmd {
 		},
 	}
 
-	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "The shell to generate completion commands for. Supports \"bash\", \"zsh\", or \"fish\"")
+	cc.cmd.Flags().StringVar(&cc.shell, "shell", "", "Shell to generate completions for: bash, zsh, or fish (auto-detected if omitted)")
 	cc.cmd.Flags().BoolVar(&cc.writeToStdout, "write-to-stdout", false, "Print completion script to stdout rather than creating a new file.")
+
+	//nolint:errcheck // RegisterFlagCompletionFunc only fails if the flag doesn't exist
+	cc.cmd.RegisterFlagCompletionFunc("shell", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"bash", "zsh", "fish"}, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	return cc
 }
@@ -102,12 +107,12 @@ func selectShell(shell string, writeToStdout bool) error {
 		autoDetected = selected != ""
 	}
 
-	switch {
-	case selected == "zsh":
+	switch selected {
+	case "zsh":
 		return genZsh(writeToStdout, autoDetected)
-	case selected == "bash":
+	case "bash":
 		return genBash(writeToStdout, autoDetected)
-	case selected == "fish":
+	case "fish":
 		return genFish(writeToStdout, autoDetected)
 	default:
 		if shell != "" {
@@ -185,12 +190,8 @@ func detectShell() string {
 	shell := filepath.Base(os.Getenv("SHELL"))
 
 	switch shell {
-	case "zsh":
-		return "zsh"
-	case "bash":
-		return "bash"
-	case "fish":
-		return "fish"
+	case "zsh", "bash", "fish":
+		return shell
 	default:
 		return ""
 	}

@@ -105,7 +105,10 @@ func TestSelectShellAutoDetectsFish(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGenFishCreatesFile(t *testing.T) {
+// runInTempDir executes fn in a temporary directory, restoring the original
+// working directory on cleanup.
+func runInTempDir(t *testing.T, fn func()) {
+	t.Helper()
 	originalWd, err := os.Getwd()
 	require.NoError(t, err)
 
@@ -117,11 +120,47 @@ func TestGenFishCreatesFile(t *testing.T) {
 		}
 	})
 
-	err = genFish(false, false)
-	require.NoError(t, err)
+	fn()
+}
 
-	content, err := os.ReadFile("stripe.fish")
-	require.NoError(t, err)
-	assert.NotEmpty(t, content)
-	assert.Contains(t, string(content), "fish completion for stripe")
+func TestGenShellCreatesFile(t *testing.T) {
+	tests := []struct {
+		name         string
+		genFunc      func(bool, bool) error
+		filename     string
+		contentMatch string
+	}{
+		{
+			name:         "bash",
+			genFunc:      genBash,
+			filename:     "stripe-completion.bash",
+			contentMatch: "bash completion",
+		},
+		{
+			name:         "zsh",
+			genFunc:      genZsh,
+			filename:     "stripe-completion.zsh",
+			contentMatch: "zsh completion",
+		},
+		{
+			name:         "fish",
+			genFunc:      genFish,
+			filename:     "stripe.fish",
+			contentMatch: "fish completion for stripe",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runInTempDir(t, func() {
+				err := tt.genFunc(false, false)
+				require.NoError(t, err)
+
+				content, err := os.ReadFile(tt.filename)
+				require.NoError(t, err)
+				assert.NotEmpty(t, content)
+				assert.Contains(t, string(content), tt.contentMatch)
+			})
+		})
+	}
 }
