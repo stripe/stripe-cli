@@ -57,7 +57,7 @@ nfpms:
     license: Apache 2.0
     formats:
       - deb
-    depends:
+    dependencies:
       - libsecret-1-0
       - gnome-keyring
       - libsecret-tools
