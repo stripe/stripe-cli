@@ -419,10 +419,10 @@ func TestAddPluginToListSortsBySemver(t *testing.T) {
 		Shortname:        "test-plugin",
 		MagicCookieValue: "TEST-COOKIE-123",
 		Releases: []Release{
-			{Version: "1.10.0", OS: "darwin", Arch: "amd64"},  // String comparison would put this before 1.2.0
-			{Version: "1.9.0", OS: "darwin", Arch: "amd64"},   // Should come after 1.2.0 but before 1.10.0
+			{Version: "1.10.0", OS: "darwin", Arch: "amd64"}, // String comparison would put this before 1.2.0
+			{Version: "1.9.0", OS: "darwin", Arch: "amd64"},  // Should come after 1.2.0 but before 1.10.0
 			{Version: "2.0.0", OS: "darwin", Arch: "amd64"},
-			{Version: "1.0.1", OS: "darwin", Arch: "amd64"},   // Should come after 1.0.0 but before 1.2.0
+			{Version: "1.0.1", OS: "darwin", Arch: "amd64"}, // Should come after 1.0.0 but before 1.2.0
 		},
 	}
 
