@@ -11,7 +11,8 @@ import (
 
 // Login is the main entrypoint for logging in to the CLI.
 func Login(ctx context.Context, baseURL string, config *config.Config) error {
-	links, err := GetLinks(ctx, baseURL, config.Profile.DeviceName)
+	deviceName, _ := config.Profile.GetDeviceName()
+	links, err := GetLinks(ctx, baseURL, deviceName)
 	if err != nil {
 		return err
 	}

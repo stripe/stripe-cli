@@ -116,7 +116,7 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
-			fmt.Printf("You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
+			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=\"%[1]s\"` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
@@ -134,7 +134,7 @@ func Execute(ctx context.Context) {
 			showSuggestion()
 
 		default:
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 		}
 
 		os.Exit(1)

@@ -144,7 +144,7 @@ func (p *Profile) GetAPIKey(livemode bool) (string, error) {
 	if envKey != "" {
 		err := validators.APIKey(envKey)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("the STRIPE_API_KEY environment variable is set but invalid: %w", err)
 		}
 
 		return envKey, nil

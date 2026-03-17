@@ -187,7 +187,7 @@ func (p *Proxy) Run(ctx context.Context) error {
 			displayedAPIVersion := ""
 			if p.cfg.UseLatestAPIVersion && session.LatestVersion != "" {
 				displayedAPIVersion = "You are using Stripe API Version [" + session.LatestVersion + "]. "
-			} else if !p.cfg.UseLatestAPIVersion && session.DefaultVersion != "" {
+			} else if session.DefaultVersion != "" {
 				displayedAPIVersion = "You are using Stripe API Version [" + session.DefaultVersion + "]. "
 			}
 
