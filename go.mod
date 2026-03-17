@@ -46,6 +46,7 @@ require (
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.6.3
+	github.com/hashicorp/go-version v1.8.0
 	github.com/joho/godotenv v1.5.1
 )
 
@@ -63,7 +64,6 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
-	github.com/hashicorp/go-version v1.8.0 // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/otiai10/mint v1.6.3 // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
