@@ -399,3 +399,45 @@ func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
 	err := RefreshPluginManifest(context.Background(), config, fs, stripeServer.URL)
 	require.Nil(t, err)
 }
+
+func TestAddPluginToListSortsBySemver(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname:        "test-plugin",
+				MagicCookieValue: "TEST-COOKIE-123",
+				Releases: []Release{
+					{Version: "1.0.0", OS: "darwin", Arch: "amd64"},
+					{Version: "1.2.0", OS: "darwin", Arch: "amd64"},
+				},
+			},
+		},
+	}
+
+	// Add a plugin with versions that would be sorted incorrectly by string comparison
+	newPlugin := Plugin{
+		Shortname:        "test-plugin",
+		MagicCookieValue: "TEST-COOKIE-123",
+		Releases: []Release{
+			{Version: "1.10.0", OS: "darwin", Arch: "amd64"},  // String comparison would put this before 1.2.0
+			{Version: "1.9.0", OS: "darwin", Arch: "amd64"},   // Should come after 1.2.0 but before 1.10.0
+			{Version: "2.0.0", OS: "darwin", Arch: "amd64"},
+			{Version: "1.0.1", OS: "darwin", Arch: "amd64"},   // Should come after 1.0.0 but before 1.2.0
+		},
+	}
+
+	addPluginToList(pluginList, newPlugin)
+
+	// Verify the plugin was merged (not added as a new one)
+	require.Equal(t, 1, len(pluginList.Plugins))
+
+	// Verify all releases are present
+	require.Equal(t, 6, len(pluginList.Plugins[0].Releases))
+
+	// Verify they are sorted by semver (not by string comparison)
+	expectedOrder := []string{"1.0.0", "1.0.1", "1.2.0", "1.9.0", "1.10.0", "2.0.0"}
+	for i, release := range pluginList.Plugins[0].Releases {
+		require.Equal(t, expectedOrder[i], release.Version,
+			"Expected release %d to be version %s, but got %s", i, expectedOrder[i], release.Version)
+	}
+}
