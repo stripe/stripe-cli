@@ -46,6 +46,7 @@ require (
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-plugin v1.6.3
+	github.com/hashicorp/go-version v1.8.0
 	github.com/joho/godotenv v1.5.1
 )
 

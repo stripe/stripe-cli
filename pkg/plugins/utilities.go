@@ -19,6 +19,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	hcplugin "github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/go-version"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -274,7 +275,15 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 
 		// Other code assumes the releases are sorted with latest version last.
 		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
+			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
+
+			// If either version fails to parse, fall back to string comparison
+			if errI != nil || errJ != nil {
+				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+			}
+
+			return vi.LessThan(vj)
 		})
 	}
 }
