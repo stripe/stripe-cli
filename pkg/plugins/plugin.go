@@ -485,7 +485,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 				Stderr: term.IsTerminal(int(os.Stderr.Fd())),
 			},
 		}
-		if err = d.RunCommand(additionalInfo, args, &coreCLIHelper{}); err != nil {
+		if err = d.RunCommand(additionalInfo, args, NewCoreCLIHelper(ctx)); err != nil {
 			return err
 		}
 	default:
