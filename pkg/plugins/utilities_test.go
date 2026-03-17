@@ -16,6 +16,17 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
+// CustomTestConfig is a test config that allows overriding the config folder path
+type CustomTestConfig struct {
+	TestConfig
+	customConfigPath string
+}
+
+// GetConfigFolder overrides the TestConfig method to return a custom path
+func (c *CustomTestConfig) GetConfigFolder(xdgPath string) string {
+	return c.customConfigPath
+}
+
 func TestGetPluginList(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
@@ -440,4 +451,40 @@ func TestAddPluginToListSortsBySemver(t *testing.T) {
 		require.Equal(t, expectedOrder[i], release.Version,
 			"Expected release %d to be version %s, but got %s", i, expectedOrder[i], release.Version)
 	}
+}
+
+func TestRefreshPluginManifestCreatesConfigDirectory(t *testing.T) {
+	// Create a test config that uses a non-root directory
+	testConfigPath := "/test-config-dir"
+	customConfig := &CustomTestConfig{
+		customConfigPath: testConfigPath,
+	}
+	customConfig.InitConfig()
+
+	// Create a fresh filesystem without the config directory
+	fs := afero.NewMemMapFs()
+
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer func() { testServers.CloseAll() }()
+
+	// Verify the config directory doesn't exist yet
+	exists, err := afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.False(t, exists)
+
+	// Refresh the manifest which should create the config directory
+	err = RefreshPluginManifest(context.Background(), customConfig, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// Verify the config directory now exists
+	exists, err = afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.True(t, exists)
+
+	// Verify the plugins.toml file was created
+	pluginManifestPath := testConfigPath + "/plugins.toml"
+	exists, err = afero.Exists(fs, pluginManifestPath)
+	require.Nil(t, err)
+	require.True(t, exists)
 }
