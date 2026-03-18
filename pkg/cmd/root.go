@@ -131,37 +131,6 @@ func Execute(ctx context.Context) {
 			}
 
 		case strings.Contains(errString, "unknown command"):
-			// Check if this is a resource/plugin conflict command by looking at os.Args
-			// Try each known conflict to see if we should delegate to a plugin
-			conflictingCommands := []string{"apps"} // Add more as needed
-
-			for _, cmdName := range conflictingCommands {
-				args := resource.ExtractCommandArgs(os.Args, cmdName)
-				if len(args) > 0 {
-					// Try the plugin as a fallback for unknown subcommands
-					log.WithFields(log.Fields{
-						"prefix":  "cmd.Execute",
-						"command": cmdName,
-						"args":    args,
-					}).Debug("Unknown subcommand, trying plugin fallback")
-
-					pluginErr := resource.TryPlugin(&Config, cmdName, args)
-					if pluginErr == nil {
-						// Plugin succeeded, exit normally
-						return
-					}
-					// Plugin not found or lookup failed
-					// Note: if plugin was found but execution failed, TryPlugin exits directly
-					log.WithFields(log.Fields{
-						"prefix":  "cmd.Execute",
-						"command": cmdName,
-						"error":   pluginErr,
-					}).Debug("Plugin not available")
-					break
-				}
-			}
-
-			// Either not a conflict or plugin not available - show suggestion
 			showSuggestion()
 
 		default:
@@ -261,38 +230,9 @@ func init() {
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
-			// Check if this plugin conflicts with a resource command
-			// If so, integrate it rather than registering as a separate command
-			if isResourcePluginConflict(plugin.Shortname) {
-				err = resource.HandleResourcePluginConflict(rootCmd, &Config, plugin.Shortname)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"prefix": "cmd.init",
-						"plugin": plugin.Shortname,
-						"error":  err,
-					}).Debug("Failed to set up resource/plugin integration")
-				}
-				continue
-			}
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
-}
-
-// isResourcePluginConflict returns true if the plugin name conflicts with
-// an existing resource command and should be integrated rather than added separately
-func isResourcePluginConflict(pluginName string) bool {
-	conflictingPlugins := []string{
-		"apps", // apps plugin conflicts with apps resource namespace
-		// Add more conflicting plugins here as needed
-	}
-
-	for _, name := range conflictingPlugins {
-		if pluginName == name {
-			return true
-		}
-	}
-	return false
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
