@@ -20,7 +20,7 @@ type CLIPluginV3 struct {
 	Impl DispatcherV3
 }
 
-// GRPCServerV3 creates the GRPC server.
+// GRPCServer creates the GRPC server.
 func (p *CLIPluginV3) GRPCServer(broker *hcplugin.GRPCBroker, s *grpc.Server) error {
 	proto.RegisterMainServer(s, &GRPCServerV3{
 		Impl:   p.Impl,
@@ -29,7 +29,7 @@ func (p *CLIPluginV3) GRPCServer(broker *hcplugin.GRPCBroker, s *grpc.Server) er
 	return nil
 }
 
-// GRPCClientV3 creates the GRPC client.
+// GRPCClient creates the GRPC client.
 func (p *CLIPluginV3) GRPCClient(ctx context.Context, broker *hcplugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
 	return &GRPCClientV3{
 		client: proto.NewMainClient(c),
