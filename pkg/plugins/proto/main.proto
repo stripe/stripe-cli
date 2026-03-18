@@ -29,6 +29,10 @@ message IsTerminal {
 service CoreCLIHelper {
   rpc Echo(EchoRequest) returns (EchoResponse);
   rpc SendAnalytics(SendAnalyticsRequest) returns (SendAnalyticsResponse);
+  rpc KeychainGetPassword(KeychainGetPasswordRequest) returns (KeychainGetPasswordResponse);
+  rpc KeychainSetPassword(KeychainSetPasswordRequest) returns (KeychainSetPasswordResponse);
+  rpc KeychainDeletePassword(KeychainDeletePasswordRequest) returns (KeychainDeletePasswordResponse);
+  rpc KeychainFindCredentials(KeychainFindCredentialsRequest) returns (KeychainFindCredentialsResponse);
 }
 
 message EchoRequest {
@@ -45,4 +49,36 @@ message SendAnalyticsRequest {
 }
 
 message SendAnalyticsResponse {
+}
+
+message KeychainGetPasswordRequest {
+  string key = 1;
+}
+
+message KeychainGetPasswordResponse {
+  string value = 1;
+  bool found = 2;
+}
+
+message KeychainSetPasswordRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message KeychainSetPasswordResponse {
+}
+
+message KeychainDeletePasswordRequest {
+  string key = 1;
+}
+
+message KeychainDeletePasswordResponse {
+  bool deleted = 1;
+}
+
+message KeychainFindCredentialsRequest {
+}
+
+message KeychainFindCredentialsResponse {
+  repeated string keys = 1;
 }
