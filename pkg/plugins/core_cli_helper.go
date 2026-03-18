@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/99designs/keyring"
+
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins/proto"
 	"github.com/stripe/stripe-cli/pkg/stripe"
