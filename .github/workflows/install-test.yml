@@ -14,7 +14,7 @@ jobs:
   homebrew:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
@@ -25,7 +25,7 @@ jobs:
   apt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
@@ -47,7 +47,7 @@ jobs:
           enabled=1
           gpgcheck=0" | sudo tee /etc/yum.repos.d/stripe.repo
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh
@@ -58,7 +58,7 @@ jobs:
   scoop:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           scripts/install-test.sh
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             scripts/install-test.sh

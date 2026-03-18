@@ -39,7 +39,7 @@ import (
 func TestUnsupportedEventErrorMessage(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "Failed to dial bufnet")
 	defer conn.Close()
 
@@ -78,7 +78,7 @@ func TestUnsupportedEventErrorMessage(t *testing.T) {
 func TestEmptyEventErrorMessage(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "Failed to dial bufnet")
 	defer conn.Close()
 
@@ -103,7 +103,7 @@ func TestEmptyEventErrorMessage(t *testing.T) {
 func TestInvalidEventNameVariations(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err, "Failed to dial bufnet")
 	defer conn.Close()
 

@@ -99,7 +99,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		}
 	}
 
-	return plugin, fmt.Errorf("Could not find a plugin named %s", pluginName)
+	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
 }
 
 // RefreshPluginManifest refreshes the plugin manifest
@@ -209,7 +209,7 @@ func validateReleaseRuntimes(pluginName string, release Release) error {
 		// Check if the Node.js version is valid
 		if !isValidNodeLTSVersion(version) {
 			return fmt.Errorf(
-				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				"invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
 				version,
 				pluginName,
 				release.Version,
@@ -252,10 +252,10 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return nil, fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+		return nil, fmt.Errorf("received an invalid plugin manifest: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return nil, fmt.Errorf("Received an empty plugin manifest")
+		return nil, fmt.Errorf("received an empty plugin manifest")
 	}
 	if err := validateRuntimeVersions(&manifestBody); err != nil {
 		return nil, err
@@ -334,7 +334,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no such host") {
-			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+			return nil, fmt.Errorf("failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
 		}
 		return nil, err
 	}

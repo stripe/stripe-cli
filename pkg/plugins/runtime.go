@@ -201,7 +201,7 @@ func InstallNodeRuntime(ctx context.Context, cfg config.IConfig, fs afero.Fs, ma
 
 	checksum, ok := runtimeConfig.Checksums[opsys][arch]
 	if !ok {
-		return fmt.Errorf("Node.js %s is not available for %s/%s", majorVersion, opsys, arch)
+		return fmt.Errorf("node.js %s is not available for %s/%s", majorVersion, opsys, arch)
 	}
 
 	log.WithFields(log.Fields{

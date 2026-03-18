@@ -196,7 +196,7 @@ func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Received an empty plugin manifest")
+	require.ErrorContains(t, err, "received an empty plugin manifest")
 	// We expect the /plugins.toml file in the test fs has NOT been updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
@@ -287,7 +287,7 @@ func TestValidateRuntimeVersionsInvalidNonLTS(t *testing.T) {
 
 	err := validateRuntimeVersions(pluginList)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '19'")
+	require.ErrorContains(t, err, "invalid Node.js version '19'")
 	require.ErrorContains(t, err, "test-plugin")
 	require.ErrorContains(t, err, "Only LTS major versions are allowed")
 }
@@ -309,7 +309,7 @@ func TestValidateRuntimeVersionsInvalidOldVersion(t *testing.T) {
 
 	err := validateRuntimeVersions(pluginList)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '10'")
+	require.ErrorContains(t, err, "invalid Node.js version '10'")
 }
 
 func TestValidateRuntimeVersionsNoRuntime(t *testing.T) {
@@ -347,7 +347,7 @@ func TestValidatePluginManifestWithInvalidRuntime(t *testing.T) {
 
 	_, err := validatePluginManifest([]byte(invalidManifest))
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '17'")
+	require.ErrorContains(t, err, "invalid Node.js version '17'")
 }
 
 func TestValidatePluginManifestWithValidRuntime(t *testing.T) {
@@ -379,10 +379,10 @@ func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		switch url := req.URL.String(); {
-		case url == "/plugins.toml":
+		switch req.URL.String() {
+		case "/plugins.toml":
 			res.Write(manifestContent)
-		case url == "/plugins-nonexistent.toml":
+		case "/plugins-nonexistent.toml":
 			res.WriteHeader(http.StatusNotFound)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
