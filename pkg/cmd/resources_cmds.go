@@ -22,26 +22,29 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 }
 
 func addV1ResourcesCmds(rootCmd *cobra.Command) {
-	// Namespace commands
-	_ = resource.NewNamespaceCmd(rootCmd, "")
-	nsAppsCmd := resource.NewNamespaceCmd(rootCmd, "apps")
-	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
-	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
-	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
-	nsClimateCmd := resource.NewNamespaceCmd(rootCmd, "climate")
-	nsEntitlementsCmd := resource.NewNamespaceCmd(rootCmd, "entitlements")
-	nsFinancialConnectionsCmd := resource.NewNamespaceCmd(rootCmd, "financial_connections")
-	nsForwardingCmd := resource.NewNamespaceCmd(rootCmd, "forwarding")
-	nsIdentityCmd := resource.NewNamespaceCmd(rootCmd, "identity")
-	nsIssuingCmd := resource.NewNamespaceCmd(rootCmd, "issuing")
-	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
-	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
-	nsTaxCmd := resource.NewNamespaceCmd(rootCmd, "tax")
-	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
-	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
-	nsTreasuryCmd := resource.NewNamespaceCmd(rootCmd, "treasury")
+	addV1NsResourcesCmds(rootCmd)
+	addV1NsAppsResourcesCmds(rootCmd)
+	addV1NsBillingResourcesCmds(rootCmd)
+	addV1NsBillingPortalResourcesCmds(rootCmd)
+	addV1NsCheckoutResourcesCmds(rootCmd)
+	addV1NsClimateResourcesCmds(rootCmd)
+	addV1NsEntitlementsResourcesCmds(rootCmd)
+	addV1NsFinancialConnectionsResourcesCmds(rootCmd)
+	addV1NsForwardingResourcesCmds(rootCmd)
+	addV1NsIdentityResourcesCmds(rootCmd)
+	addV1NsIssuingResourcesCmds(rootCmd)
+	addV1NsRadarResourcesCmds(rootCmd)
+	addV1NsReportingResourcesCmds(rootCmd)
+	addV1NsTaxResourcesCmds(rootCmd)
+	addV1NsTerminalResourcesCmds(rootCmd)
+	addV1NsTestHelpersResourcesCmds(rootCmd)
+	addV1NsTreasuryResourcesCmds(rootCmd)
 
-	// Resource commands
+}
+
+func addV1NsResourcesCmds(rootCmd *cobra.Command) {
+	_ = resource.NewNamespaceCmd(rootCmd, "")
+
 	rAccountLinksCmd := resource.NewResourceCmd(rootCmd, "account_links")
 	rAccountSessionsCmd := resource.NewResourceCmd(rootCmd, "account_sessions")
 	rAccountsCmd := resource.NewResourceCmd(rootCmd, "accounts")
@@ -118,92 +121,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	rTransferReversalsCmd := resource.NewResourceCmd(rootCmd, "transfer_reversals")
 	rTransfersCmd := resource.NewResourceCmd(rootCmd, "transfers")
 	rWebhookEndpointsCmd := resource.NewResourceCmd(rootCmd, "webhook_endpoints")
-	rAppsSecretsCmd := resource.NewResourceCmd(nsAppsCmd.Cmd, "secrets")
-	rBillingAlertsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "alerts")
-	rBillingCreditBalanceSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_summaries")
-	rBillingCreditBalanceTransactionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_transactions")
-	rBillingCreditGrantsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_grants")
-	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
-	rBillingMeterEventSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_summaries")
-	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
-	rBillingMetersCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meters")
-	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
-	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
-	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
-	rClimateOrdersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "orders")
-	rClimateProductsCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "products")
-	rClimateSuppliersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "suppliers")
-	rEntitlementsActiveEntitlementsCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "active_entitlements")
-	rEntitlementsFeaturesCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "features")
-	rFinancialConnectionsAccountsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "accounts")
-	rFinancialConnectionsSessionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "sessions")
-	rFinancialConnectionsTransactionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "transactions")
-	rForwardingRequestsCmd := resource.NewResourceCmd(nsForwardingCmd.Cmd, "requests")
-	rIdentityVerificationReportsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_reports")
-	rIdentityVerificationSessionsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_sessions")
-	rIssuingAuthorizationsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "authorizations")
-	rIssuingAuthorizationsTestHelpersCmd := resource.NewResourceCmd(rIssuingAuthorizationsCmd.Cmd, "test_helpers")
-	rIssuingCardholdersCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "cardholders")
-	rIssuingCardsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "cards")
-	rIssuingCardsTestHelpersCmd := resource.NewResourceCmd(rIssuingCardsCmd.Cmd, "test_helpers")
-	rIssuingDisputesCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "disputes")
-	rIssuingPersonalizationDesignsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "personalization_designs")
-	rIssuingPersonalizationDesignsTestHelpersCmd := resource.NewResourceCmd(rIssuingPersonalizationDesignsCmd.Cmd, "test_helpers")
-	rIssuingPhysicalBundlesCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "physical_bundles")
-	rIssuingTokensCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "tokens")
-	rIssuingTransactionsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "transactions")
-	rIssuingTransactionsTestHelpersCmd := resource.NewResourceCmd(rIssuingTransactionsCmd.Cmd, "test_helpers")
-	rRadarEarlyFraudWarningsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "early_fraud_warnings")
-	rRadarPaymentEvaluationsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "payment_evaluations")
-	rRadarValueListItemsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_list_items")
-	rRadarValueListsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_lists")
-	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
-	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
-	rTaxAssociationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "associations")
-	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
-	rTaxRegistrationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "registrations")
-	rTaxSettingsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "settings")
-	rTaxTransactionsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "transactions")
-	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
-	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
-	rTerminalLocationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "locations")
-	rTerminalOnboardingLinksCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "onboarding_links")
-	rTerminalReadersCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "readers")
-	rTerminalReadersTestHelpersCmd := resource.NewResourceCmd(rTerminalReadersCmd.Cmd, "test_helpers")
-	rTestHelpersConfirmationTokensCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "confirmation_tokens")
-	rTestHelpersCustomersCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "customers")
-	rTestHelpersIssuingCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "issuing")
-	rTestHelpersIssuingAuthorizationsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "authorizations")
-	rTestHelpersIssuingCardsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "cards")
-	rTestHelpersIssuingPersonalizationDesignsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "personalization_designs")
-	rTestHelpersIssuingTransactionsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "transactions")
-	rTestHelpersRefundsCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "refunds")
-	rTestHelpersTerminalCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "terminal")
-	rTestHelpersTerminalReadersCmd := resource.NewResourceCmd(rTestHelpersTerminalCmd.Cmd, "readers")
-	rTestHelpersTestClocksCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "test_clocks")
-	rTestHelpersTreasuryCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "treasury")
-	rTestHelpersTreasuryInboundTransfersCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "inbound_transfers")
-	rTestHelpersTreasuryOutboundPaymentsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "outbound_payments")
-	rTestHelpersTreasuryOutboundTransfersCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "outbound_transfers")
-	rTestHelpersTreasuryReceivedCreditsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "received_credits")
-	rTestHelpersTreasuryReceivedDebitsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "received_debits")
-	rTreasuryCreditReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "credit_reversals")
-	rTreasuryDebitReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "debit_reversals")
-	rTreasuryFinancialAccountsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "financial_accounts")
-	rTreasuryInboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "inbound_transfers")
-	rTreasuryInboundTransfersTestHelpersCmd := resource.NewResourceCmd(rTreasuryInboundTransfersCmd.Cmd, "test_helpers")
-	rTreasuryOutboundPaymentsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_payments")
-	rTreasuryOutboundPaymentsTestHelpersCmd := resource.NewResourceCmd(rTreasuryOutboundPaymentsCmd.Cmd, "test_helpers")
-	rTreasuryOutboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_transfers")
-	rTreasuryOutboundTransfersTestHelpersCmd := resource.NewResourceCmd(rTreasuryOutboundTransfersCmd.Cmd, "test_helpers")
-	rTreasuryReceivedCreditsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_credits")
-	rTreasuryReceivedCreditsTestHelpersCmd := resource.NewResourceCmd(rTreasuryReceivedCreditsCmd.Cmd, "test_helpers")
-	rTreasuryReceivedDebitsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_debits")
-	rTreasuryReceivedDebitsTestHelpersCmd := resource.NewResourceCmd(rTreasuryReceivedDebitsCmd.Cmd, "test_helpers")
-	rTreasuryTransactionEntrysCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transaction_entrys")
-	rTreasuryTransactionsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transactions")
 
-	// Operation commands
 	resource.NewOperationCmd(rAccountLinksCmd.Cmd, "create", "/v1/account_links", http.MethodPost, map[string]string{
 		"account":                                "string",
 		"collect":                                "string",
@@ -3890,6 +3808,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"enabled_events": "array",
 		"url":            "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsAppsResourcesCmds(rootCmd *cobra.Command) {
+	nsAppsCmd := resource.NewNamespaceCmd(rootCmd, "apps")
+
+	rAppsSecretsCmd := resource.NewResourceCmd(nsAppsCmd.Cmd, "secrets")
+
 	resource.NewOperationCmd(rAppsSecretsCmd.Cmd, "create", "/v1/apps/secrets", http.MethodPost, map[string]string{
 		"expires_at": "integer",
 		"name":       "string",
@@ -3910,6 +3835,20 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"limit":          "integer",
 		"starting_after": "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsBillingResourcesCmds(rootCmd *cobra.Command) {
+	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
+
+	rBillingAlertsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "alerts")
+	rBillingCreditBalanceSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_summaries")
+	rBillingCreditBalanceTransactionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_balance_transactions")
+	rBillingCreditGrantsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "credit_grants")
+	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
+	rBillingMeterEventSummariesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_summaries")
+	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
+	rBillingMetersCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meters")
+
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "activate", "/v1/billing/alerts/{id}/activate", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "archive", "/v1/billing/alerts/{id}/archive", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rBillingAlertsCmd.Cmd, "create", "/v1/billing/alerts", http.MethodPost, map[string]string{
@@ -4021,6 +3960,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rBillingMetersCmd.Cmd, "update", "/v1/billing/meters/{id}", http.MethodPost, map[string]string{
 		"display_name": "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsBillingPortalResourcesCmds(rootCmd *cobra.Command) {
+	nsBillingPortalCmd := resource.NewNamespaceCmd(rootCmd, "billing_portal")
+
+	rBillingPortalConfigurationsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "configurations")
+	rBillingPortalSessionsCmd := resource.NewResourceCmd(nsBillingPortalCmd.Cmd, "sessions")
+
 	resource.NewOperationCmd(rBillingPortalConfigurationsCmd.Cmd, "create", "/v1/billing_portal/configurations", http.MethodPost, map[string]string{
 		"business_profile.headline":                                   "string",
 		"business_profile.privacy_policy_url":                         "string",
@@ -4095,6 +4042,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]string{
 		"locale": {"auto", "bg", "cs", "da", "de", "el", "en", "en-AU", "en-CA", "en-GB", "en-IE", "en-IN", "en-NZ", "en-SG", "es", "es-419", "et", "fi", "fil", "fr", "fr-CA", "hr", "hu", "id", "it", "ja", "ko", "lt", "lv", "ms", "mt", "nb", "nl", "pl", "pt", "pt-BR", "ro", "ru", "sk", "sl", "sv", "th", "tr", "vi", "zh", "zh-HK", "zh-TW"},
 	}, &Config, false, "")
+}
+
+func addV1NsCheckoutResourcesCmds(rootCmd *cobra.Command) {
+	nsCheckoutCmd := resource.NewNamespaceCmd(rootCmd, "checkout")
+
+	rCheckoutSessionsCmd := resource.NewResourceCmd(nsCheckoutCmd.Cmd, "sessions")
+
 	resource.NewOperationCmd(rCheckoutSessionsCmd.Cmd, "create", "/v1/checkout/sessions", http.MethodPost, map[string]string{
 		"adaptive_pricing.enabled":                                   "boolean",
 		"after_expiration.recovery.allow_promotion_codes":            "boolean",
@@ -4345,6 +4299,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"collected_information.shipping_details.address.state":       "string",
 		"collected_information.shipping_details.name":                "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsClimateResourcesCmds(rootCmd *cobra.Command) {
+	nsClimateCmd := resource.NewNamespaceCmd(rootCmd, "climate")
+
+	rClimateOrdersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "orders")
+	rClimateProductsCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "products")
+	rClimateSuppliersCmd := resource.NewResourceCmd(nsClimateCmd.Cmd, "suppliers")
+
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "cancel", "/v1/climate/orders/{order}/cancel", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateOrdersCmd.Cmd, "create", "/v1/climate/orders", http.MethodPost, map[string]string{
 		"amount":                  "integer",
@@ -4372,6 +4335,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rClimateSuppliersCmd.Cmd, "retrieve", "/v1/climate/suppliers/{supplier}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsEntitlementsResourcesCmds(rootCmd *cobra.Command) {
+	nsEntitlementsCmd := resource.NewNamespaceCmd(rootCmd, "entitlements")
+
+	rEntitlementsActiveEntitlementsCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "active_entitlements")
+	rEntitlementsFeaturesCmd := resource.NewResourceCmd(nsEntitlementsCmd.Cmd, "features")
+
 	resource.NewOperationCmd(rEntitlementsActiveEntitlementsCmd.Cmd, "list", "/v1/entitlements/active_entitlements", http.MethodGet, map[string]string{
 		"customer":       "string",
 		"ending_before":  "string",
@@ -4395,6 +4366,15 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"active": "boolean",
 		"name":   "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsFinancialConnectionsResourcesCmds(rootCmd *cobra.Command) {
+	nsFinancialConnectionsCmd := resource.NewNamespaceCmd(rootCmd, "financial_connections")
+
+	rFinancialConnectionsAccountsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "accounts")
+	rFinancialConnectionsSessionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "sessions")
+	rFinancialConnectionsTransactionsCmd := resource.NewResourceCmd(nsFinancialConnectionsCmd.Cmd, "transactions")
+
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "disconnect", "/v1/financial_connections/accounts/{account}/disconnect", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsAccountsCmd.Cmd, "list", "/v1/financial_connections/accounts", http.MethodGet, map[string]string{
 		"ending_before":  "string",
@@ -4438,6 +4418,13 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transacted_at":  "integer",
 	}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rFinancialConnectionsTransactionsCmd.Cmd, "retrieve", "/v1/financial_connections/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsForwardingResourcesCmds(rootCmd *cobra.Command) {
+	nsForwardingCmd := resource.NewNamespaceCmd(rootCmd, "forwarding")
+
+	rForwardingRequestsCmd := resource.NewResourceCmd(nsForwardingCmd.Cmd, "requests")
+
 	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "create", "/v1/forwarding/requests", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"replacements":   "array",
@@ -4450,6 +4437,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rForwardingRequestsCmd.Cmd, "retrieve", "/v1/forwarding/requests/{id}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsIdentityResourcesCmds(rootCmd *cobra.Command) {
+	nsIdentityCmd := resource.NewNamespaceCmd(rootCmd, "identity")
+
+	rIdentityVerificationReportsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_reports")
+	rIdentityVerificationSessionsCmd := resource.NewResourceCmd(nsIdentityCmd.Cmd, "verification_sessions")
+
 	resource.NewOperationCmd(rIdentityVerificationReportsCmd.Cmd, "list", "/v1/identity/verification_reports", http.MethodGet, map[string]string{
 		"client_reference_id":  "string",
 		"created":              "integer",
@@ -4498,6 +4493,24 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]string{
 		"type": {"document", "id_number"},
 	}, &Config, false, "")
+}
+
+func addV1NsIssuingResourcesCmds(rootCmd *cobra.Command) {
+	nsIssuingCmd := resource.NewNamespaceCmd(rootCmd, "issuing")
+
+	rIssuingAuthorizationsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "authorizations")
+	rIssuingAuthorizationsTestHelpersCmd := resource.NewResourceCmd(rIssuingAuthorizationsCmd.Cmd, "test_helpers")
+	rIssuingCardholdersCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "cardholders")
+	rIssuingCardsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "cards")
+	rIssuingCardsTestHelpersCmd := resource.NewResourceCmd(rIssuingCardsCmd.Cmd, "test_helpers")
+	rIssuingDisputesCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "disputes")
+	rIssuingPersonalizationDesignsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "personalization_designs")
+	rIssuingPersonalizationDesignsTestHelpersCmd := resource.NewResourceCmd(rIssuingPersonalizationDesignsCmd.Cmd, "test_helpers")
+	rIssuingPhysicalBundlesCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "physical_bundles")
+	rIssuingTokensCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "tokens")
+	rIssuingTransactionsCmd := resource.NewResourceCmd(nsIssuingCmd.Cmd, "transactions")
+	rIssuingTransactionsTestHelpersCmd := resource.NewResourceCmd(rIssuingTransactionsCmd.Cmd, "test_helpers")
+
 	resource.NewOperationCmd(rIssuingAuthorizationsCmd.Cmd, "list", "/v1/issuing/authorizations", http.MethodGet, map[string]string{
 		"card":           "string",
 		"cardholder":     "string",
@@ -4960,6 +4973,16 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rIssuingTransactionsTestHelpersCmd.Cmd, "refund", "/v1/test_helpers/issuing/transactions/{transaction}/refund", http.MethodPost, map[string]string{
 		"refund_amount": "integer",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsRadarResourcesCmds(rootCmd *cobra.Command) {
+	nsRadarCmd := resource.NewNamespaceCmd(rootCmd, "radar")
+
+	rRadarEarlyFraudWarningsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "early_fraud_warnings")
+	rRadarPaymentEvaluationsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "payment_evaluations")
+	rRadarValueListItemsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_list_items")
+	rRadarValueListsCmd := resource.NewResourceCmd(nsRadarCmd.Cmd, "value_lists")
+
 	resource.NewOperationCmd(rRadarEarlyFraudWarningsCmd.Cmd, "list", "/v1/radar/early_fraud_warnings", http.MethodGet, map[string]string{
 		"charge":         "string",
 		"created":        "integer",
@@ -5037,6 +5060,14 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"alias": "string",
 		"name":  "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsReportingResourcesCmds(rootCmd *cobra.Command) {
+	nsReportingCmd := resource.NewNamespaceCmd(rootCmd, "reporting")
+
+	rReportingReportRunsCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_runs")
+	rReportingReportTypesCmd := resource.NewResourceCmd(nsReportingCmd.Cmd, "report_types")
+
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "create", "/v1/reporting/report_runs", http.MethodPost, map[string]string{
 		"parameters.columns":            "array",
 		"parameters.connected_account":  "string",
@@ -5057,6 +5088,17 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	resource.NewOperationCmd(rReportingReportRunsCmd.Cmd, "retrieve", "/v1/reporting/report_runs/{report_run}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "list", "/v1/reporting/report_types", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rReportingReportTypesCmd.Cmd, "retrieve", "/v1/reporting/report_types/{report_type}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsTaxResourcesCmds(rootCmd *cobra.Command) {
+	nsTaxCmd := resource.NewNamespaceCmd(rootCmd, "tax")
+
+	rTaxAssociationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "associations")
+	rTaxCalculationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "calculations")
+	rTaxRegistrationsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "registrations")
+	rTaxSettingsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "settings")
+	rTaxTransactionsCmd := resource.NewResourceCmd(nsTaxCmd.Cmd, "transactions")
+
 	resource.NewOperationCmd(rTaxAssociationsCmd.Cmd, "find", "/v1/tax/associations/find", http.MethodGet, map[string]string{
 		"payment_intent": "string",
 	}, map[string][]string{}, &Config, false, "")
@@ -5302,6 +5344,18 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"starting_after": "string",
 	}, map[string][]string{}, &Config, false, "")
 	resource.NewOperationCmd(rTaxTransactionsCmd.Cmd, "retrieve", "/v1/tax/transactions/{transaction}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsTerminalResourcesCmds(rootCmd *cobra.Command) {
+	nsTerminalCmd := resource.NewNamespaceCmd(rootCmd, "terminal")
+
+	rTerminalConfigurationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "configurations")
+	rTerminalConnectionTokensCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "connection_tokens")
+	rTerminalLocationsCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "locations")
+	rTerminalOnboardingLinksCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "onboarding_links")
+	rTerminalReadersCmd := resource.NewResourceCmd(nsTerminalCmd.Cmd, "readers")
+	rTerminalReadersTestHelpersCmd := resource.NewResourceCmd(rTerminalReadersCmd.Cmd, "test_helpers")
+
 	resource.NewOperationCmd(rTerminalConfigurationsCmd.Cmd, "create", "/v1/terminal/configurations", http.MethodPost, map[string]string{
 		"bbpos_wisepad3.splashscreen":  "string",
 		"bbpos_wisepos_e.splashscreen": "string",
@@ -5479,6 +5533,29 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"skip_non_required_inputs": {"all", "none"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rTerminalReadersTestHelpersCmd.Cmd, "timeout_input_collection", "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, false, "")
+}
+
+func addV1NsTestHelpersResourcesCmds(rootCmd *cobra.Command) {
+	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
+
+	rTestHelpersConfirmationTokensCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "confirmation_tokens")
+	rTestHelpersCustomersCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "customers")
+	rTestHelpersIssuingCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "issuing")
+	rTestHelpersIssuingAuthorizationsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "authorizations")
+	rTestHelpersIssuingCardsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "cards")
+	rTestHelpersIssuingPersonalizationDesignsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "personalization_designs")
+	rTestHelpersIssuingTransactionsCmd := resource.NewResourceCmd(rTestHelpersIssuingCmd.Cmd, "transactions")
+	rTestHelpersRefundsCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "refunds")
+	rTestHelpersTerminalCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "terminal")
+	rTestHelpersTerminalReadersCmd := resource.NewResourceCmd(rTestHelpersTerminalCmd.Cmd, "readers")
+	rTestHelpersTestClocksCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "test_clocks")
+	rTestHelpersTreasuryCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "treasury")
+	rTestHelpersTreasuryInboundTransfersCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "inbound_transfers")
+	rTestHelpersTreasuryOutboundPaymentsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "outbound_payments")
+	rTestHelpersTreasuryOutboundTransfersCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "outbound_transfers")
+	rTestHelpersTreasuryReceivedCreditsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "received_credits")
+	rTestHelpersTreasuryReceivedDebitsCmd := resource.NewResourceCmd(rTestHelpersTreasuryCmd.Cmd, "received_debits")
+
 	resource.NewOperationCmd(rTestHelpersConfirmationTokensCmd.Cmd, "create", "/v1/test_helpers/confirmation_tokens", http.MethodPost, map[string]string{
 		"payment_method": "string",
 		"payment_method_data.acss_debit.account_number":                     "string",
@@ -5832,6 +5909,27 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	}, map[string][]string{
 		"network": {"ach"},
 	}, &Config, false, "")
+}
+
+func addV1NsTreasuryResourcesCmds(rootCmd *cobra.Command) {
+	nsTreasuryCmd := resource.NewNamespaceCmd(rootCmd, "treasury")
+
+	rTreasuryCreditReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "credit_reversals")
+	rTreasuryDebitReversalsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "debit_reversals")
+	rTreasuryFinancialAccountsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "financial_accounts")
+	rTreasuryInboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "inbound_transfers")
+	rTreasuryInboundTransfersTestHelpersCmd := resource.NewResourceCmd(rTreasuryInboundTransfersCmd.Cmd, "test_helpers")
+	rTreasuryOutboundPaymentsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_payments")
+	rTreasuryOutboundPaymentsTestHelpersCmd := resource.NewResourceCmd(rTreasuryOutboundPaymentsCmd.Cmd, "test_helpers")
+	rTreasuryOutboundTransfersCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "outbound_transfers")
+	rTreasuryOutboundTransfersTestHelpersCmd := resource.NewResourceCmd(rTreasuryOutboundTransfersCmd.Cmd, "test_helpers")
+	rTreasuryReceivedCreditsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_credits")
+	rTreasuryReceivedCreditsTestHelpersCmd := resource.NewResourceCmd(rTreasuryReceivedCreditsCmd.Cmd, "test_helpers")
+	rTreasuryReceivedDebitsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "received_debits")
+	rTreasuryReceivedDebitsTestHelpersCmd := resource.NewResourceCmd(rTreasuryReceivedDebitsCmd.Cmd, "test_helpers")
+	rTreasuryTransactionEntrysCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transaction_entrys")
+	rTreasuryTransactionsCmd := resource.NewResourceCmd(nsTreasuryCmd.Cmd, "transactions")
+
 	resource.NewOperationCmd(rTreasuryCreditReversalsCmd.Cmd, "create", "/v1/treasury/credit_reversals", http.MethodPost, map[string]string{
 		"received_credit": "string",
 	}, map[string][]string{}, &Config, false, "")
@@ -6099,24 +6197,18 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 }
 
 func addV2ResourcesCmds(rootCmd *cobra.Command) {
-	// Namespace commands
-	_ = resource.NewNamespaceCmd(rootCmd, "")
-	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
-	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
+	addV2NsBillingResourcesCmds(rootCmd)
+	addV2NsCoreResourcesCmds(rootCmd)
 
-	// Resource commands
+}
+
+func addV2NsBillingResourcesCmds(rootCmd *cobra.Command) {
+	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
+
 	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
 	rBillingMeterEventSessionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_sessions")
 	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
-	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
-	rCoreAccountPersonTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_person_tokens")
-	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
-	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
-	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
-	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
-	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
 
-	// Operation commands
 	resource.NewOperationCmd(rBillingMeterEventAdjustmentsCmd.Cmd, "create", "/v2/billing/meter_event_adjustments", http.MethodPost, map[string]string{
 		"cancel.identifier": "string",
 		"event_name":        "string",
@@ -6130,6 +6222,19 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 		"identifier": "string",
 		"timestamp":  "string",
 	}, map[string][]string{}, &Config, false, "")
+}
+
+func addV2NsCoreResourcesCmds(rootCmd *cobra.Command) {
+	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
+
+	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
+	rCoreAccountPersonTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_person_tokens")
+	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
+	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
+	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
+	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
+	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
+
 	resource.NewOperationCmd(rCoreAccountLinksCmd.Cmd, "create", "/v2/core/account_links", http.MethodPost, map[string]string{
 		"account": "string",
 		"use_case.account_onboarding.collection_options.fields":              "string",
@@ -6997,55 +7102,22 @@ func addV2ResourcesCmds(rootCmd *cobra.Command) {
 }
 
 func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
-	// Namespace commands
-	_ = resource.NewNamespaceCmd(rootCmd, "")
-	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
-	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
-	nsMoneyManagementCmd := resource.NewNamespaceCmd(rootCmd, "money_management")
-	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
+	addV2PreviewNsResourcesCmds(rootCmd)
+	addV2PreviewNsBillingResourcesCmds(rootCmd)
+	addV2PreviewNsCoreResourcesCmds(rootCmd)
+	addV2PreviewNsMoneyManagementResourcesCmds(rootCmd)
+	addV2PreviewNsTestHelpersResourcesCmds(rootCmd)
 
-	// Resource commands
+}
+
+func addV2PreviewNsResourcesCmds(rootCmd *cobra.Command) {
+	_ = resource.NewNamespaceCmd(rootCmd, "")
+
 	rFinancialAddressCreditSimulationsCmd := resource.NewResourceCmd(rootCmd, "financial_address_credit_simulations")
 	rFinancialAddressCreditSimulationsTestHelpersCmd := resource.NewResourceCmd(rFinancialAddressCreditSimulationsCmd.Cmd, "test_helpers")
 	rFinancialAddressGeneratedMicrodepositssCmd := resource.NewResourceCmd(rootCmd, "financial_address_generated_microdepositss")
 	rFinancialAddressGeneratedMicrodepositssTestHelpersCmd := resource.NewResourceCmd(rFinancialAddressGeneratedMicrodepositssCmd.Cmd, "test_helpers")
-	rBillingBillSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_setting_versions")
-	rBillingBillSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_settings")
-	rBillingCadencesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "cadences")
-	rBillingCollectionSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_setting_versions")
-	rBillingCollectionSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_settings")
-	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
-	rBillingMeterEventSessionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_sessions")
-	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
-	rBillingProfilesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "profiles")
-	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
-	rCoreAccountPersonTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_person_tokens")
-	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
-	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
-	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
-	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
-	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
-	rCoreVaultsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "vaults")
-	rCoreVaultsGbBankAccountsCmd := resource.NewResourceCmd(rCoreVaultsCmd.Cmd, "gb_bank_accounts")
-	rCoreVaultsUsBankAccountsCmd := resource.NewResourceCmd(rCoreVaultsCmd.Cmd, "us_bank_accounts")
-	rMoneyManagementAdjustmentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "adjustments")
-	rMoneyManagementFinancialAccountsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "financial_accounts")
-	rMoneyManagementFinancialAddresssCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "financial_addresss")
-	rMoneyManagementInboundTransfersCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "inbound_transfers")
-	rMoneyManagementOutboundPaymentQuotesCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_payment_quotes")
-	rMoneyManagementOutboundPaymentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_payments")
-	rMoneyManagementOutboundSetupIntentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_setup_intents")
-	rMoneyManagementOutboundTransfersCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_transfers")
-	rMoneyManagementPayoutMethodsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "payout_methods")
-	rMoneyManagementPayoutMethodsBankAccountSpecsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "payout_methods_bank_account_specs")
-	rMoneyManagementReceivedCreditsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "received_credits")
-	rMoneyManagementReceivedDebitsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "received_debits")
-	rMoneyManagementTransactionEntrysCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transaction_entrys")
-	rMoneyManagementTransactionsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transactions")
-	rTestHelpersFinancialAddressCreditSimulationsCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_credit_simulations")
-	rTestHelpersFinancialAddressGeneratedMicrodepositssCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_generated_microdepositss")
 
-	// Operation commands
 	resource.NewOperationCmd(rFinancialAddressCreditSimulationsTestHelpersCmd.Cmd, "credit", "/v2/test_helpers/financial_addresses/{id}/credit", http.MethodPost, map[string]string{
 		"amount.currency":      "string",
 		"amount.value":         "integer",
@@ -7055,6 +7127,21 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"network": {"ach", "fps", "rtp", "wire"},
 	}, &Config, true, "")
 	resource.NewOperationCmd(rFinancialAddressGeneratedMicrodepositssTestHelpersCmd.Cmd, "generate_microdeposits", "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits", http.MethodPost, map[string]string{}, map[string][]string{}, &Config, true, "")
+}
+
+func addV2PreviewNsBillingResourcesCmds(rootCmd *cobra.Command) {
+	nsBillingCmd := resource.NewNamespaceCmd(rootCmd, "billing")
+
+	rBillingBillSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_setting_versions")
+	rBillingBillSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "bill_settings")
+	rBillingCadencesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "cadences")
+	rBillingCollectionSettingVersionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_setting_versions")
+	rBillingCollectionSettingsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "collection_settings")
+	rBillingMeterEventAdjustmentsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_adjustments")
+	rBillingMeterEventSessionsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_event_sessions")
+	rBillingMeterEventsCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "meter_events")
+	rBillingProfilesCmd := resource.NewResourceCmd(nsBillingCmd.Cmd, "profiles")
+
 	resource.NewOperationCmd(rBillingBillSettingVersionsCmd.Cmd, "list", "/v2/billing/bill_settings/{bill_setting_id}/versions", http.MethodGet, map[string]string{
 		"limit": "integer",
 		"page":  "string",
@@ -7217,6 +7304,22 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"display_name":           "string",
 		"lookup_key":             "string",
 	}, map[string][]string{}, &Config, true, "")
+}
+
+func addV2PreviewNsCoreResourcesCmds(rootCmd *cobra.Command) {
+	nsCoreCmd := resource.NewNamespaceCmd(rootCmd, "core")
+
+	rCoreAccountLinksCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_links")
+	rCoreAccountPersonTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_person_tokens")
+	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
+	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
+	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
+	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
+	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
+	rCoreVaultsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "vaults")
+	rCoreVaultsGbBankAccountsCmd := resource.NewResourceCmd(rCoreVaultsCmd.Cmd, "gb_bank_accounts")
+	rCoreVaultsUsBankAccountsCmd := resource.NewResourceCmd(rCoreVaultsCmd.Cmd, "us_bank_accounts")
+
 	resource.NewOperationCmd(rCoreAccountLinksCmd.Cmd, "create", "/v2/core/account_links", http.MethodPost, map[string]string{
 		"account": "string",
 		"use_case.account_onboarding.collection_options.fields":              "string",
@@ -8164,6 +8267,26 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"fedwire_routing_number": "string",
 		"routing_number":         "string",
 	}, map[string][]string{}, &Config, true, "")
+}
+
+func addV2PreviewNsMoneyManagementResourcesCmds(rootCmd *cobra.Command) {
+	nsMoneyManagementCmd := resource.NewNamespaceCmd(rootCmd, "money_management")
+
+	rMoneyManagementAdjustmentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "adjustments")
+	rMoneyManagementFinancialAccountsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "financial_accounts")
+	rMoneyManagementFinancialAddresssCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "financial_addresss")
+	rMoneyManagementInboundTransfersCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "inbound_transfers")
+	rMoneyManagementOutboundPaymentQuotesCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_payment_quotes")
+	rMoneyManagementOutboundPaymentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_payments")
+	rMoneyManagementOutboundSetupIntentsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_setup_intents")
+	rMoneyManagementOutboundTransfersCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "outbound_transfers")
+	rMoneyManagementPayoutMethodsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "payout_methods")
+	rMoneyManagementPayoutMethodsBankAccountSpecsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "payout_methods_bank_account_specs")
+	rMoneyManagementReceivedCreditsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "received_credits")
+	rMoneyManagementReceivedDebitsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "received_debits")
+	rMoneyManagementTransactionEntrysCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transaction_entrys")
+	rMoneyManagementTransactionsCmd := resource.NewResourceCmd(nsMoneyManagementCmd.Cmd, "transactions")
+
 	resource.NewOperationCmd(rMoneyManagementAdjustmentsCmd.Cmd, "list", "/v2/money_management/adjustments", http.MethodGet, map[string]string{
 		"adjusted_flow": "string",
 		"created":       "string",
@@ -8372,6 +8495,14 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 		"page":              "string",
 	}, map[string][]string{}, &Config, true, "")
 	resource.NewOperationCmd(rMoneyManagementTransactionsCmd.Cmd, "retrieve", "/v2/money_management/transactions/{id}", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, true, "")
+}
+
+func addV2PreviewNsTestHelpersResourcesCmds(rootCmd *cobra.Command) {
+	nsTestHelpersCmd := resource.NewNamespaceCmd(rootCmd, "test_helpers")
+
+	rTestHelpersFinancialAddressCreditSimulationsCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_credit_simulations")
+	rTestHelpersFinancialAddressGeneratedMicrodepositssCmd := resource.NewResourceCmd(nsTestHelpersCmd.Cmd, "financial_address_generated_microdepositss")
+
 	resource.NewOperationCmd(rTestHelpersFinancialAddressCreditSimulationsCmd.Cmd, "credit", "/v2/test_helpers/financial_addresses/{id}/credit", http.MethodPost, map[string]string{
 		"amount.currency":      "string",
 		"amount.value":         "integer",
