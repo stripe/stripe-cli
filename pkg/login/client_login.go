@@ -79,7 +79,9 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 			}
 
 			if res.IsAboutToSaveCreds {
-				s.Stop()
+				if s != nil {
+					s.Stop()
+				}
 				continue
 			}
 
