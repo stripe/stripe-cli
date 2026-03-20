@@ -141,17 +141,18 @@ type Schema struct {
 	// for anything right now.
 	AdditionalProperties interface{} `json:"additionalProperties,omitempty"`
 
-	AnyOf      []*Schema          `json:"anyOf,omitempty"`
-	OneOf      []*Schema          `json:"oneOf,omitempty"`
-	Enum       []interface{}      `json:"enum,omitempty"`
-	Format     string             `json:"format,omitempty"`
-	Items      *Schema            `json:"items,omitempty"`
-	MaxLength  int                `json:"maxLength,omitempty"`
-	Nullable   bool               `json:"nullable,omitempty"`
-	Pattern    string             `json:"pattern,omitempty"`
-	Properties map[string]*Schema `json:"properties,omitempty"`
-	Required   []string           `json:"required,omitempty"`
-	Type       string             `json:"type,omitempty"`
+	AnyOf       []*Schema          `json:"anyOf,omitempty"`
+	OneOf       []*Schema          `json:"oneOf,omitempty"`
+	Description string             `json:"description,omitempty"`
+	Enum        []interface{}      `json:"enum,omitempty"`
+	Format      string             `json:"format,omitempty"`
+	Items       *Schema            `json:"items,omitempty"`
+	MaxLength   int                `json:"maxLength,omitempty"`
+	Nullable    bool               `json:"nullable,omitempty"`
+	Pattern     string             `json:"pattern,omitempty"`
+	Properties  map[string]*Schema `json:"properties,omitempty"`
+	Required    []string           `json:"required,omitempty"`
+	Type        string             `json:"type,omitempty"`
 
 	// Ref is populated if this JSON Schema is actually a JSON reference, and
 	// it defines the location of the actual schema definition.
@@ -225,6 +226,7 @@ type MediaType struct {
 type Operation struct {
 	Deprecated  *bool                   `json:"deprecated"`
 	Description string                  `json:"description"`
+	Summary     string                  `json:"summary"`
 	OperationID string                  `json:"operation_id"`
 	Parameters  []*Parameter            `json:"parameters"`
 	RequestBody *RequestBody            `json:"requestBody"`

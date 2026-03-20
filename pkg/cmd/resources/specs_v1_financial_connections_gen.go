@@ -1,0 +1,207 @@
+// This file is generated; DO NOT EDIT.
+
+package resources
+
+import "github.com/stripe/stripe-cli/pkg/cmd/resource"
+
+var V1FinancialConnectionsTransactionsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/financial_connections/transactions",
+	Method:  "GET",
+	Summary: "List Transactions",
+	Params: map[string]*resource.ParamSpec{
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"transacted_at": {
+			Type:        "integer",
+			Description: "A filter on the list based on the object `transacted_at` field. The value can be a string with an integer Unix timestamp, or it can be a dictionary with the following options:",
+		},
+		"account": {
+			Type:        "string",
+			Description: "The ID of the Financial Connections Account whose transactions will be retrieved.",
+			Required:    true,
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+	},
+}
+
+var V1FinancialConnectionsTransactionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/financial_connections/transactions/{transaction}",
+	Method:  "GET",
+	Summary: "Retrieve a Transaction",
+}
+
+var V1FinancialConnectionsSessionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/financial_connections/sessions/{session}",
+	Method:  "GET",
+	Summary: "Retrieve a Session",
+}
+
+var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/financial_connections/sessions",
+	Method:  "POST",
+	Summary: "Create a Session",
+	Params: map[string]*resource.ParamSpec{
+		"account_holder.customer": {
+			Type:        "string",
+			Description: "The ID of the Stripe customer whose accounts you will retrieve. Only available when `type` is `customer`.",
+		},
+		"filters.account_subcategories": {
+			Type:        "array",
+			Description: "Restricts the Session to subcategories of accounts that can be linked. Valid subcategories are: `checking`, `savings`, `mortgage`, `line_of_credit`, `credit_card`.",
+		},
+		"permissions": {
+			Type:        "array",
+			Description: "List of data features that you would like to request access to.\n\nPossible values are `balances`, `transactions`, `ownership`, and `payment_method`.",
+			Required:    true,
+		},
+		"account_holder.account": {
+			Type:        "string",
+			Description: "The ID of the Stripe account whose accounts you will retrieve. Only available when `type` is `account`.",
+		},
+		"account_holder.customer_account": {
+			Type:        "string",
+			Description: "The ID of Account representing a customer whose accounts you will retrieve. Only available when `type` is `customer`.",
+		},
+		"account_holder.type": {
+			Type:        "string",
+			Description: "Type of account holder to collect accounts for.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "account"},
+				{Value: "customer"},
+			},
+		},
+		"filters.countries": {
+			Type:        "array",
+			Description: "List of countries from which to collect accounts.",
+		},
+		"prefetch": {
+			Type:        "array",
+			Description: "List of data features that you would like to retrieve upon account creation.",
+		},
+		"return_url": {
+			Type:        "string",
+			Description: "For webview integrations only. Upon completing OAuth login in the native browser, the user will be redirected to this URL to return to your app.",
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
+	Name:    "refresh",
+	Path:    "/v1/financial_connections/accounts/{account}/refresh",
+	Method:  "POST",
+	Summary: "Refresh Account data",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features that you would like to refresh.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
+	Name:    "subscribe",
+	Path:    "/v1/financial_connections/accounts/{account}/subscribe",
+	Method:  "POST",
+	Summary: "Subscribe to data refreshes for an Account",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features to which you would like to subscribe.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
+	Name:    "unsubscribe",
+	Path:    "/v1/financial_connections/accounts/{account}/unsubscribe",
+	Method:  "POST",
+	Summary: "Unsubscribe from data refreshes for an Account",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features from which you would like to unsubscribe.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/financial_connections/accounts",
+	Method:  "GET",
+	Summary: "List Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"session": {
+			Type:        "string",
+			Description: "If present, only return accounts that were collected as part of the given session.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/financial_connections/accounts/{account}",
+	Method:  "GET",
+	Summary: "Retrieve an Account",
+}
+
+var V1FinancialConnectionsAccountsListOwners = resource.OperationSpec{
+	Name:    "list_owners",
+	Path:    "/v1/financial_connections/accounts/{account}/owners",
+	Method:  "GET",
+	Summary: "List Account Owners",
+	Params: map[string]*resource.ParamSpec{
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"ownership": {
+			Type:        "string",
+			Description: "The ID of the ownership object to fetch owners from.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsDisconnect = resource.OperationSpec{
+	Name:    "disconnect",
+	Path:    "/v1/financial_connections/accounts/{account}/disconnect",
+	Method:  "POST",
+	Summary: "Disconnect an Account",
+}

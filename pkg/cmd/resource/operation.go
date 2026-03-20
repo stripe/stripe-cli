@@ -143,22 +143,21 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 }
 
 // NewOperationCmd returns a new OperationCmd.
-func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, enumFlags map[string][]string, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
-	urlParams := extractURLParams(path)
-	httpVerb = strings.ToUpper(httpVerb)
+func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *config.Config) *OperationCmd {
+	method := strings.ToUpper(opSpec.Method)
+	urlParams := extractURLParams(opSpec.Path)
 
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
-			Method:           httpVerb,
+			Method:           method,
 			Profile:          &cfg.Profile,
-			IsPreviewCommand: isPreview,
+			IsPreviewCommand: opSpec.IsPreview,
 		},
-		Name:             name,
-		HTTPVerb:         httpVerb,
-		Path:             path,
+		Name:             opSpec.Name,
+		HTTPVerb:         method,
+		Path:             opSpec.Path,
 		URLParams:        urlParams,
-		IsPreviewCommand: isPreview,
+		IsPreviewCommand: opSpec.IsPreview,
 
 		arrayFlags:   make(map[string]*[]string),
 		stringFlags:  make(map[string]*string),
@@ -166,34 +165,52 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 		boolFlags:    make(map[string]*bool),
 	}
 	cmd := &cobra.Command{
-		Use:         name,
+		Use:         opSpec.Name,
 		Annotations: make(map[string]string),
 		RunE:        operationCmd.runOperationCmd,
 		Args:        validators.ExactArgs(len(urlParams)),
 	}
 
-	for prop, propType := range propFlags {
+	for prop, paramSpec := range opSpec.Params {
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 
-		switch propType {
+		// Create flag description
+		var description string
+		if len(paramSpec.Enum) > 0 {
+			enumValues := []string{}
+			for _, ev := range paramSpec.Enum {
+				if ev.Description != "" {
+					enumValues = append(enumValues, fmt.Sprintf("%s (%s)", ev.Value, ev.Description))
+				} else {
+					enumValues = append(enumValues, ev.Value)
+				}
+			}
+			description = fmt.Sprintf("Possible values: %s", strings.Join(enumValues, ", "))
+		}
+
+		switch paramSpec.Type {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, description)
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, description)
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, description)
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
-		cmd.Flags().SetAnnotation(flagName, "apitype", []string{propType})
-		if enums, hasEnum := enumFlags[prop]; hasEnum && len(enums) > 0 {
-			cmd.Flags().SetAnnotation(flagName, "enum", enums)
+		cmd.Flags().SetAnnotation(flagName, "apitype", []string{paramSpec.Type})
+		if len(paramSpec.Enum) > 0 {
+			enumVals := make([]string, 0, len(paramSpec.Enum))
+			for _, ev := range paramSpec.Enum {
+				enumVals = append(enumVals, ev.Value)
+			}
+			cmd.Flags().SetAnnotation(flagName, "enum", enumVals)
 		}
 	}
 
@@ -204,17 +221,17 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 
 	// Set the operation-specific server URL after InitFlags if provided
 	// We need to set both the value and the default value of the flag
-	if serverURL != "" {
-		operationCmd.APIBaseURL = serverURL
+	if opSpec.ServerURL != "" {
+		operationCmd.APIBaseURL = opSpec.ServerURL
 		// Also update the flag's default value so it doesn't get reset during parsing
 		if flag := cmd.Flags().Lookup("api-base"); flag != nil {
-			flag.DefValue = serverURL
-			flag.Value.Set(serverURL)
+			flag.DefValue = opSpec.ServerURL
+			flag.Value.Set(opSpec.ServerURL)
 		}
 	}
 
 	parentCmd.AddCommand(cmd)
-	parentCmd.Annotations[name] = "operation"
+	parentCmd.Annotations[opSpec.Name] = "operation"
 
 	return operationCmd
 }

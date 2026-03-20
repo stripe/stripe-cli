@@ -1,0 +1,363 @@
+// This file is generated; DO NOT EDIT.
+
+package resources
+
+import "github.com/stripe/stripe-cli/pkg/cmd/resource"
+
+var V1RadarValueListItemsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/radar/value_list_items",
+	Method:  "GET",
+	Summary: "List all value list items",
+	Params: map[string]*resource.ParamSpec{
+		"value": {
+			Type:        "string",
+			Description: "Return items belonging to the parent list whose value matches the specified value (using an \"is like\" match).",
+		},
+		"value_list": {
+			Type:        "string",
+			Description: "Identifier for the parent value list this item belongs to.",
+			Required:    true,
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return items that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1RadarValueListItemsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/radar/value_list_items/{item}",
+	Method:  "GET",
+	Summary: "Retrieve a value list item",
+}
+
+var V1RadarValueListItemsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/radar/value_list_items",
+	Method:  "POST",
+	Summary: "Create a value list item",
+	Params: map[string]*resource.ParamSpec{
+		"value_list": {
+			Type:        "string",
+			Description: "The identifier of the value list which the created item will be added to.",
+			Required:    true,
+		},
+		"value": {
+			Type:        "string",
+			Description: "The value of the item (whose type must match the type of the parent value list).",
+			Required:    true,
+		},
+	},
+}
+
+var V1RadarValueListItemsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/radar/value_list_items/{item}",
+	Method:  "DELETE",
+	Summary: "Delete a value list item",
+}
+
+var V1RadarValueListsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "DELETE",
+	Summary: "Delete a value list",
+}
+
+var V1RadarValueListsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/radar/value_lists",
+	Method:  "GET",
+	Summary: "List all value lists",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The alias used to reference the value list when writing rules.",
+		},
+		"contains": {
+			Type:        "string",
+			Description: "A value contained within a value list - returns all value lists containing this value.",
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return value lists that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1RadarValueListsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "GET",
+	Summary: "Retrieve a value list",
+}
+
+var V1RadarValueListsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/radar/value_lists",
+	Method:  "POST",
+	Summary: "Create a value list",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The name of the value list for use in rules.",
+			Required:    true,
+		},
+		"item_type": {
+			Type:        "string",
+			Description: "Type of the items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, `case_sensitive_string`, `customer_id`, `sepa_debit_fingerprint`, or `us_bank_account_fingerprint`. Use `string` if the item type is unknown or mixed.",
+			Enum: []resource.EnumSpec{
+				{Value: "card_bin"},
+				{Value: "card_fingerprint"},
+				{Value: "case_sensitive_string"},
+				{Value: "country"},
+				{Value: "customer_id"},
+				{Value: "email"},
+				{Value: "ip_address"},
+				{Value: "sepa_debit_fingerprint"},
+				{Value: "string"},
+				{Value: "us_bank_account_fingerprint"},
+			},
+		},
+		"name": {
+			Type:        "string",
+			Description: "The human-readable name of the value list.",
+			Required:    true,
+		},
+	},
+}
+
+var V1RadarValueListsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "POST",
+	Summary: "Update a value list",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The name of the value list for use in rules.",
+		},
+		"name": {
+			Type:        "string",
+			Description: "The human-readable name of the value list.",
+		},
+	},
+}
+
+var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/radar/payment_evaluations",
+	Method:  "POST",
+	Summary: "Create a Payment Evaluation",
+	Params: map[string]*resource.ParamSpec{
+		"payment_details.shipping_details.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"payment_details.shipping_details.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"payment_details.money_movement_details.card.customer_presence": {
+			Type:        "string",
+			Description: "Describes the presence of the customer during the payment.",
+			Enum: []resource.EnumSpec{
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_details.payment_method_details.billing_details.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"payment_details.shipping_details.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"payment_details.shipping_details.phone": {
+			Type:        "string",
+			Description: "Shipping phone number.",
+		},
+		"payment_details.payment_method_details.billing_details.email": {
+			Type:        "string",
+			Description: "Email address.",
+		},
+		"customer_details.email": {
+			Type:        "string",
+			Description: "The customer's email address.",
+		},
+		"customer_details.name": {
+			Type:        "string",
+			Description: "The customer's full name or business name.",
+		},
+		"customer_details.phone": {
+			Type:        "string",
+			Description: "The customer's phone number.",
+		},
+		"payment_details.statement_descriptor": {
+			Type:        "string",
+			Description: "Payment statement descriptor.",
+		},
+		"payment_details.amount": {
+			Type:        "integer",
+			Description: "The intended amount to collect with this payment. A positive integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (for example, 100 cents to charge 1.00 USD or 100 to charge 100 Yen, a zero-decimal currency).",
+			Required:    true,
+		},
+		"payment_details.currency": {
+			Type:        "string",
+			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+			Format:      "currency",
+		},
+		"payment_details.description": {
+			Type:        "string",
+			Description: "An arbitrary string attached to the object. Often useful for displaying to users.",
+		},
+		"payment_details.payment_method_details.billing_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"payment_details.shipping_details.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"payment_details.payment_method_details.billing_details.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"payment_details.payment_method_details.payment_method": {
+			Type:        "string",
+			Description: "ID of the payment method used in this payment evaluation.",
+			Required:    true,
+		},
+		"payment_details.shipping_details.name": {
+			Type:        "string",
+			Description: "Shipping name.",
+		},
+		"payment_details.shipping_details.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+		},
+		"client_device_metadata_details.radar_session": {
+			Type:        "string",
+			Description: "ID for the Radar Session to associate with the payment evaluation. A [Radar Session](https://docs.stripe.com/radar/radar-session) is a snapshot of the browser metadata and device details that help Radar make more accurate predictions on your payments.",
+			Required:    true,
+		},
+		"customer_details.customer_account": {
+			Type:        "string",
+			Description: "The ID of the Account representing the customer associated with the payment evaluation.",
+		},
+		"payment_details.payment_method_details.billing_details.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"payment_details.payment_method_details.billing_details.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"payment_details.payment_method_details.billing_details.name": {
+			Type:        "string",
+			Description: "Full name.",
+		},
+		"payment_details.payment_method_details.billing_details.phone": {
+			Type:        "string",
+			Description: "Billing phone number (including extension).",
+		},
+		"customer_details.customer": {
+			Type:        "string",
+			Description: "The ID of the customer associated with the payment evaluation.",
+		},
+		"payment_details.money_movement_details.card.payment_type": {
+			Type:        "string",
+			Description: "Describes the type of payment.",
+			Enum: []resource.EnumSpec{
+				{Value: "one_off"},
+				{Value: "recurring"},
+				{Value: "setup_one_off"},
+				{Value: "setup_recurring"},
+			},
+		},
+		"payment_details.money_movement_details.money_movement_type": {
+			Type:        "string",
+			Description: "Describes the type of money movement. Currently only `card` is supported.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "card"},
+			},
+		},
+		"payment_details.payment_method_details.billing_details.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+		},
+		"payment_details.shipping_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+	},
+}
+
+var V1RadarEarlyFraudWarningsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/radar/early_fraud_warnings",
+	Method:  "GET",
+	Summary: "List all early fraud warnings",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"payment_intent": {
+			Type:        "string",
+			Description: "Only return early fraud warnings for charges that were created by the PaymentIntent specified by this PaymentIntent ID.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"charge": {
+			Type:        "string",
+			Description: "Only return early fraud warnings for the charge specified by this charge ID.",
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return early fraud warnings that were created during the given date interval.",
+		},
+	},
+}
+
+var V1RadarEarlyFraudWarningsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/radar/early_fraud_warnings/{early_fraud_warning}",
+	Method:  "GET",
+	Summary: "Retrieve an early fraud warning",
+}

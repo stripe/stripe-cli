@@ -1,0 +1,61 @@
+// This file is generated; DO NOT EDIT.
+
+package resources
+
+import "github.com/stripe/stripe-cli/pkg/cmd/resource"
+
+var V1ForwardingRequestsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/forwarding/requests",
+	Method:  "POST",
+	Summary: "Create a ForwardingRequest",
+	Params: map[string]*resource.ParamSpec{
+		"request.body": {
+			Type:        "string",
+			Description: "The body payload to send to the destination endpoint.",
+		},
+		"url": {
+			Type:        "string",
+			Description: "The destination URL for the forwarded request. Must be supported by the config.",
+			Required:    true,
+		},
+		"payment_method": {
+			Type:        "string",
+			Description: "The PaymentMethod to insert into the forwarded request. Forwarding previously consumed PaymentMethods is allowed.",
+			Required:    true,
+		},
+		"replacements": {
+			Type:        "array",
+			Description: "The field kinds to be replaced in the forwarded request.",
+			Required:    true,
+		},
+	},
+}
+
+var V1ForwardingRequestsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/forwarding/requests",
+	Method:  "GET",
+	Summary: "List all ForwardingRequests",
+	Params: map[string]*resource.ParamSpec{
+		"starting_after": {
+			Type:        "string",
+			Description: "A pagination cursor to fetch the next page of the list. The value must be a ForwardingRequest ID.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A pagination cursor to fetch the previous page of the list. The value must be a ForwardingRequest ID.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+	},
+}
+
+var V1ForwardingRequestsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/forwarding/requests/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a ForwardingRequest",
+}
