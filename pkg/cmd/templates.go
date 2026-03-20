@@ -51,7 +51,7 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 	// to do actual wrapping.
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 		if _, ok := flag.Annotations["request"]; ok {
-			sb.WriteString(fmt.Sprintf("      --%s\n", flag.Name))
+			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
 		}
 	})
 

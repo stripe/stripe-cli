@@ -18,6 +18,6 @@ func TestUnmarshalRequestLogEvent(t *testing.T) {
 	require.Nil(t, msg.WebhookEvent)
 
 	require.Equal(t, "foo", msg.RequestLogEvent.EventPayload)
-	require.Equal(t, "resp_123", msg.RequestLogEvent.RequestLogID)
+	require.Equal(t, "resp_123", msg.RequestLogID)
 	require.Equal(t, "request_log_event", msg.RequestLogEvent.Type)
 }

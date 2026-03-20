@@ -57,6 +57,11 @@ nfpms:
     license: Apache 2.0
     formats:
       - deb
+    dependencies:
+      - libsecret-1-0
+      - gnome-keyring
+      - libsecret-tools
+      - dbus-x11
   - id: rpm
     package_name: stripe
     vendor: Stripe

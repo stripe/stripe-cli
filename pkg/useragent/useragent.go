@@ -1,7 +1,10 @@
+// Package useragent builds User-Agent strings for Stripe API requests.
 package useragent
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"runtime"
 
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -21,6 +24,33 @@ func GetEncodedStripeUserAgent() string {
 // the `User-Agent` HTTP header.
 func GetEncodedUserAgent() string {
 	return encodedUserAgent
+}
+
+// DetectAIAgent detects if the CLI was invoked by a coding agent, based on well-known env vars.
+// It accepts an environment getter function to allow testing without modifying the actual environment.
+func DetectAIAgent(getEnv func(string) string) string {
+	if getEnv("ANTIGRAVITY_CLI_ALIAS") != "" {
+		return "antigravity"
+	}
+	if getEnv("CLAUDECODE") != "" {
+		return "claude_code"
+	}
+	if getEnv("CLINE_ACTIVE") != "" {
+		return "cline"
+	}
+	if getEnv("CODEX_SANDBOX") != "" || getEnv("CODEX_THREAD_ID") != "" || getEnv("CODEX_SANDBOX_NETWORK_DISABLED") != "" || getEnv("CODEX_CI") != "" {
+		return "codex_cli"
+	}
+	if getEnv("CURSOR_AGENT") != "" {
+		return "cursor"
+	}
+	if getEnv("GEMINI_CLI") != "" {
+		return "gemini_cli"
+	}
+	if getEnv("OPENCODE") != "" {
+		return "open_code"
+	}
+	return ""
 }
 
 //
@@ -55,6 +85,9 @@ func init() {
 
 func initUserAgent() {
 	encodedUserAgent = "Stripe/v1 stripe-cli/" + version.Version
+	if agent := DetectAIAgent(os.Getenv); agent != "" {
+		encodedUserAgent += fmt.Sprintf(" AIAgent/%s", agent)
+	}
 
 	stripeUserAgent := &stripeClientUserAgent{
 		Name:      "stripe-cli",

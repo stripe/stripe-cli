@@ -32,7 +32,7 @@ func NewEventsResendCmd(parentCmd *cobra.Command, cfg *config.Config) *EventsRes
 		opCmd: NewOperationCmd(parentCmd, "resend", "/v1/events/{event}/retry", http.MethodPost, map[string]string{
 			"account":          "string",
 			"webhook_endpoint": "string",
-		}, map[string][]spec.StripeEnumValue{}, cfg, false),
+		}, map[string][]spec.StripeEnumValue{}, cfg, false, ""),
 	}
 
 	eventsResendCmd.opCmd.Cmd.RunE = eventsResendCmd.runEventsResendCmd

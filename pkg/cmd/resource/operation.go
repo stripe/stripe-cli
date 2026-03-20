@@ -130,9 +130,10 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 
 // NewOperationCmd returns a new OperationCmd.
 func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool) *OperationCmd {
+	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
+
 	operationCmd := &OperationCmd{
 		Base: &requests.Base{
 			Method:           httpVerb,
@@ -195,6 +196,17 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 	cmd.DisableFlagsInUseLine = true
 	operationCmd.Cmd = cmd
 	operationCmd.InitFlags()
+
+	// Set the operation-specific server URL after InitFlags if provided
+	// We need to set both the value and the default value of the flag
+	if serverURL != "" {
+		operationCmd.APIBaseURL = serverURL
+		// Also update the flag's default value so it doesn't get reset during parsing
+		if flag := cmd.Flags().Lookup("api-base"); flag != nil {
+			flag.DefValue = serverURL
+			flag.Value.Set(serverURL)
+		}
+	}
 
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[name] = "operation"

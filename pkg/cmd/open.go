@@ -177,7 +177,7 @@ func (oc *openCmd) runOpenCmd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("Unsupported open command, given: %s", args[0])
+		return fmt.Errorf("unsupported open command, given: %s", args[0])
 	}
 
 	return nil

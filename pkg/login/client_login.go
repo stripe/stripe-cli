@@ -1,3 +1,4 @@
+// Package login implements Stripe authentication flows.
 package login
 
 import (
