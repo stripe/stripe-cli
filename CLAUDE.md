@@ -14,6 +14,10 @@ go build ./...          # Quick compilation check
 go vet ./...            # Static analysis
 ```
 
+When building temporary binaries with Go tooling directly (e.g. `go build -o ...`, `go test -c -o ...`),
+place them in `bin/` rather than `/tmp` — `bin/` is gitignored and within the project's trusted directory.
+macOS security may block execution of binaries built outside the project tree.
+
 ## Project Structure
 
 - `cmd/stripe/main.go` - Entry point
