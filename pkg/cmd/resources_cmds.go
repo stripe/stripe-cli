@@ -39,7 +39,6 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 	addV1NsTerminalResourcesCmds(rootCmd)
 	addV1NsTestHelpersResourcesCmds(rootCmd)
 	addV1NsTreasuryResourcesCmds(rootCmd)
-
 }
 
 func addV1NsResourcesCmds(rootCmd *cobra.Command) {
@@ -6199,7 +6198,6 @@ func addV1NsTreasuryResourcesCmds(rootCmd *cobra.Command) {
 func addV2ResourcesCmds(rootCmd *cobra.Command) {
 	addV2NsBillingResourcesCmds(rootCmd)
 	addV2NsCoreResourcesCmds(rootCmd)
-
 }
 
 func addV2NsBillingResourcesCmds(rootCmd *cobra.Command) {
@@ -7107,7 +7105,6 @@ func addV2PreviewResourcesCmds(rootCmd *cobra.Command) {
 	addV2PreviewNsCoreResourcesCmds(rootCmd)
 	addV2PreviewNsMoneyManagementResourcesCmds(rootCmd)
 	addV2PreviewNsTestHelpersResourcesCmds(rootCmd)
-
 }
 
 func addV2PreviewNsResourcesCmds(rootCmd *cobra.Command) {

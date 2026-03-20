@@ -27,8 +27,9 @@ func addAllResourcesCmds(rootCmd *cobra.Command) {
 
 {{ range $apiNamespace, $vData := .ApiNamespaces }}
 func add{{ $apiNamespace | ToCamel }}ResourcesCmds(rootCmd *cobra.Command) {
-	{{ range $nsName, $nsData := $vData.Namespaces }}{{ if $nsData.Resources }}add{{ $apiNamespace | ToCamel }}Ns{{ $nsName | ToCamel }}ResourcesCmds(rootCmd)
-	{{ end }}{{ end }}
+{{- range $nsName, $nsData := $vData.Namespaces }}{{ if $nsData.Resources }}
+	add{{ $apiNamespace | ToCamel }}Ns{{ $nsName | ToCamel }}ResourcesCmds(rootCmd)
+{{- end }}{{ end }}
 }
 
 {{ range $nsName, $nsData := $vData.Namespaces }}{{ if $nsData.Resources }}
