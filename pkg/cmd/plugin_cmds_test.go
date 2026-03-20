@@ -111,6 +111,28 @@ func TestAddPluginSubcommandStubsEmpty(t *testing.T) {
 	assert.Equal(t, 0, len(ptc.cmd.Commands()))
 }
 
+func TestAddPluginSubcommandStubsSkipsEmptyName(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "badplugin",
+		Shortdesc:        "A plugin with bad manifest data",
+		Binary:           "stripe-cli-bad",
+		MagicCookieValue: "magic",
+		Commands: []plugins.CommandInfo{
+			{Name: "valid", Desc: "A valid command"},
+			{Name: "", Desc: "Entry with empty name"},
+			{Name: "also-valid", Desc: "Another valid command"},
+		},
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	// Only the two valid entries should become subcommands
+	cmds := ptc.cmd.Commands()
+	assert.Equal(t, 2, len(cmds))
+	assert.Equal(t, "also-valid", cmds[0].Name())
+	assert.Equal(t, "valid", cmds[1].Name())
+}
+
 func TestSubsliceAfter(t *testing.T) {
 	tests := []struct {
 		name     string

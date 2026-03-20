@@ -69,6 +69,9 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 // shell completion; actual execution is always delegated to the plugin binary.
 func addPluginSubcommandStubs(parent *cobra.Command, commands []plugins.CommandInfo, ptc *pluginTemplateCmd) {
 	for _, ci := range commands {
+		if ci.Name == "" {
+			continue
+		}
 		sub := &cobra.Command{
 			Use:   ci.Name,
 			Short: ci.Desc,
