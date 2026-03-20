@@ -10,6 +10,7 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -475,6 +476,16 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return nil
 }
 
+func fileKeyringPassphrasePrompt(prompt string) (string, error) {
+	fmt.Fprintf(os.Stdout, "%s: ", prompt)
+	b, err := term.ReadPassword(int(os.Stdin.Fd()))
+	if err != nil {
+		return "", err
+	}
+	fmt.Println()
+	return string(b), nil
+}
+
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -488,6 +499,8 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	ring, err := keyring.Open(keyring.Config{
 		KeychainTrustApplication: true,
 		ServiceName:              KeyManagementService,
+		FileDir:                  getConfigFolder(os.Getenv("XDG_CONFIG_HOME")),
+		FilePasswordFunc:         fileKeyringPassphrasePrompt,
 	})
 	if err != nil {
 		return nil, err
