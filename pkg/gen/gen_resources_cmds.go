@@ -472,7 +472,7 @@ func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op s
 func enumToStripeEnumValues(values []interface{}) []spec.StripeEnumValue {
 	result := make([]spec.StripeEnumValue, 0, len(values))
 	for _, v := range values {
-		if s, ok := v.(string); ok {
+		if s, ok := v.(string); ok && s != "" {
 			result = append(result, spec.StripeEnumValue{Value: s})
 		}
 	}

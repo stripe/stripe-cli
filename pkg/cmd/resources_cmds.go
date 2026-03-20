@@ -828,7 +828,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_year":  "string",
 		"name":      "string",
 	}, map[string][]string{
-		"account_holder_type": {"", "company", "individual"},
+		"account_holder_type": {"company", "individual"},
 		"account_type":        {"checking", "futsu", "savings", "toza"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rBankAccountsCmd.Cmd, "verify", "/v1/customers/{customer}/sources/{id}/verify", http.MethodPost, map[string]string{
@@ -856,7 +856,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_year":  "string",
 		"name":      "string",
 	}, map[string][]string{
-		"account_holder_type": {"", "company", "individual"},
+		"account_holder_type": {"company", "individual"},
 		"account_type":        {"checking", "futsu", "savings", "toza"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rCashBalancesCmd.Cmd, "retrieve", "/v1/customers/{customer}/cash_balance", http.MethodGet, map[string]string{}, map[string][]string{}, &Config, false, "")
@@ -1163,7 +1163,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"test_clock":                              "string",
 		"validate":                                "boolean",
 	}, map[string][]string{
-		"tax_exempt": {"", "exempt", "none", "reverse"},
+		"tax_exempt": {"exempt", "none", "reverse"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersCmd.Cmd, "create_funding_instructions", "/v1/customers/{customer}/funding_instructions", http.MethodPost, map[string]string{
 		"bank_transfer.eu_bank_transfer.country": "string",
@@ -1222,7 +1222,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"tax_exempt":                              "string",
 		"validate":                                "boolean",
 	}, map[string][]string{
-		"tax_exempt": {"", "exempt", "none", "reverse"},
+		"tax_exempt": {"exempt", "none", "reverse"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rCustomersTestHelpersCmd.Cmd, "fund_cash_balance", "/v1/test_helpers/customers/{customer}/fund_cash_balance", http.MethodPost, map[string]string{
 		"amount":    "integer",
@@ -1322,7 +1322,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"exp_year":  "string",
 		"name":      "string",
 	}, map[string][]string{
-		"account_holder_type": {"", "company", "individual"},
+		"account_holder_type": {"company", "individual"},
 		"account_type":        {"checking", "futsu", "savings", "toza"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rFeeRefundsCmd.Cmd, "create", "/v1/application_fees/{id}/refunds", http.MethodPost, map[string]string{
@@ -1751,7 +1751,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"use_stripe_sdk":                                                    "boolean",
 	}, map[string][]string{
 		"capture_method":     {"automatic", "automatic_async", "manual"},
-		"setup_future_usage": {"", "off_session", "on_session"},
+		"setup_future_usage": {"off_session", "on_session"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "create", "/v1/payment_intents", http.MethodPost, map[string]string{
 		"amount":                         "integer",
@@ -1933,7 +1933,7 @@ func addV1ResourcesCmds(rootCmd *cobra.Command) {
 		"transfer_group":                                                    "string",
 	}, map[string][]string{
 		"capture_method":     {"automatic", "automatic_async", "manual"},
-		"setup_future_usage": {"", "off_session", "on_session"},
+		"setup_future_usage": {"off_session", "on_session"},
 	}, &Config, false, "")
 	resource.NewOperationCmd(rPaymentIntentsCmd.Cmd, "verify_microdeposits", "/v1/payment_intents/{intent}/verify_microdeposits", http.MethodPost, map[string]string{
 		"amounts":         "array",
