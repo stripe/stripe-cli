@@ -38,15 +38,6 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a ForwardingRequest",
 	Params: map[string]*resource.ParamSpec{
-		"request.body": {
-			Type:        "string",
-			Description: "The body payload to send to the destination endpoint.",
-		},
-		"url": {
-			Type:        "string",
-			Description: "The destination URL for the forwarded request. Must be supported by the config.",
-			Required:    true,
-		},
 		"payment_method": {
 			Type:        "string",
 			Description: "The PaymentMethod to insert into the forwarded request. Forwarding previously consumed PaymentMethods is allowed.",
@@ -55,6 +46,15 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 		"replacements": {
 			Type:        "array",
 			Description: "The field kinds to be replaced in the forwarded request.",
+			Required:    true,
+		},
+		"request.body": {
+			Type:        "string",
+			Description: "The body payload to send to the destination endpoint.",
+		},
+		"url": {
+			Type:        "string",
+			Description: "The destination URL for the forwarded request. Must be supported by the config.",
 			Required:    true,
 		},
 	},

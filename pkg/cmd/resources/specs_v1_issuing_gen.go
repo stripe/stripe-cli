@@ -4,51 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1IssuingPhysicalBundlesList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/issuing/physical_bundles",
-	Method:  "GET",
-	Summary: "List all physical bundles",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Only return physical bundles with the given status.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "inactive"},
-				{Value: "review"},
-			},
-		},
-		"type": {
-			Type:        "string",
-			Description: "Only return physical bundles with the given type.",
-			Enum: []resource.EnumSpec{
-				{Value: "custom"},
-				{Value: "standard"},
-			},
-		},
-	},
-}
-
-var V1IssuingPhysicalBundlesRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/issuing/physical_bundles/{physical_bundle}",
-	Method:  "GET",
-	Summary: "Retrieve a physical bundle",
-}
-
 var V1IssuingPersonalizationDesignsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/issuing/personalization_designs",
@@ -97,47 +52,47 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a personalization design",
 	Params: map[string]*resource.ParamSpec{
-		"transfer_lookup_key": {
-			Type:        "boolean",
-			Description: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design.",
-		},
-		"carrier_text.header_title": {
+		"card_logo": {
 			Type:        "string",
-			Description: "The header title text of the carrier letter.",
+			Description: "The file for the card logo, for use with physical bundles that support card logos. Must have a `purpose` value of `issuing_logo`.",
+		},
+		"carrier_text.footer_body": {
+			Type:        "string",
+			Description: "The footer body text of the carrier letter.",
 		},
 		"carrier_text.footer_title": {
 			Type:        "string",
 			Description: "The footer title text of the carrier letter.",
 		},
+		"carrier_text.header_body": {
+			Type:        "string",
+			Description: "The header body text of the carrier letter.",
+		},
+		"carrier_text.header_title": {
+			Type:        "string",
+			Description: "The header title text of the carrier letter.",
+		},
 		"lookup_key": {
 			Type:        "string",
 			Description: "A lookup key used to retrieve personalization designs dynamically from a static string. This may be up to 200 characters.",
 		},
-		"preferences.is_default": {
-			Type:        "boolean",
-			Description: "Whether we use this personalization design to create cards when one isn't specified. A connected account uses the Connect platform's default design if no personalization design is set as the default design.",
-			Required:    true,
-		},
-		"card_logo": {
+		"name": {
 			Type:        "string",
-			Description: "The file for the card logo, for use with physical bundles that support card logos. Must have a `purpose` value of `issuing_logo`.",
+			Description: "Friendly display name.",
 		},
 		"physical_bundle": {
 			Type:        "string",
 			Description: "The physical bundle object belonging to this personalization design.",
 			Required:    true,
 		},
-		"carrier_text.footer_body": {
-			Type:        "string",
-			Description: "The footer body text of the carrier letter.",
+		"preferences.is_default": {
+			Type:        "boolean",
+			Description: "Whether we use this personalization design to create cards when one isn't specified. A connected account uses the Connect platform's default design if no personalization design is set as the default design.",
+			Required:    true,
 		},
-		"carrier_text.header_body": {
-			Type:        "string",
-			Description: "The header body text of the carrier letter.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "Friendly display name.",
+		"transfer_lookup_key": {
+			Type:        "boolean",
+			Description: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design.",
 		},
 	},
 }
@@ -148,30 +103,30 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Update a personalization design",
 	Params: map[string]*resource.ParamSpec{
-		"physical_bundle": {
-			Type:        "string",
-			Description: "The physical bundle object belonging to this personalization design.",
-		},
-		"transfer_lookup_key": {
-			Type:        "boolean",
-			Description: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design.",
-		},
 		"card_logo": {
 			Type:        "string",
 			Description: "The file for the card logo, for use with physical bundles that support card logos. Must have a `purpose` value of `issuing_logo`.",
 		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve personalization designs dynamically from a static string. This may be up to 200 characters.",
+		},
 		"name": {
 			Type:        "string",
 			Description: "Friendly display name. Providing an empty string will set the field to null.",
+		},
+		"physical_bundle": {
+			Type:        "string",
+			Description: "The physical bundle object belonging to this personalization design.",
 		},
 		"preferences.is_default": {
 			Type:        "boolean",
 			Description: "Whether we use this personalization design to create cards when one isn't specified. A connected account uses the Connect platform's default design if no personalization design is set as the default design.",
 			Required:    true,
 		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve personalization designs dynamically from a static string. This may be up to 200 characters.",
+		"transfer_lookup_key": {
+			Type:        "boolean",
+			Description: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design.",
 		},
 	},
 }
@@ -207,11 +162,506 @@ var V1IssuingPersonalizationDesignsTestHelpersReject = resource.OperationSpec{
 	},
 }
 
-var V1IssuingAuthorizationsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/issuing/authorizations/{authorization}",
+var V1IssuingDisputesList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/issuing/disputes",
+	Method:  "GET",
+	Summary: "List all disputes",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:        "integer",
+			Description: "Only return Issuing disputes that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Select Issuing disputes with the given status.",
+			Enum: []resource.EnumSpec{
+				{Value: "expired"},
+				{Value: "lost"},
+				{Value: "submitted"},
+				{Value: "unsubmitted"},
+				{Value: "won"},
+			},
+		},
+		"transaction": {
+			Type:        "string",
+			Description: "Select the Issuing dispute for the given transaction.",
+		},
+	},
+}
+
+var V1IssuingDisputesRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/issuing/disputes/{dispute}",
+	Method:  "GET",
+	Summary: "Retrieve a dispute",
+}
+
+var V1IssuingDisputesCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/issuing/disputes",
 	Method:  "POST",
-	Summary: "Update an authorization",
+	Summary: "Create a dispute",
+	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal). If not set, defaults to the full transaction amount.",
+		},
+		"evidence.reason": {
+			Type:        "string",
+			Description: "The reason for filing the dispute. The evidence should be submitted in the field of the same name.",
+			Enum: []resource.EnumSpec{
+				{Value: "canceled"},
+				{Value: "duplicate"},
+				{Value: "fraudulent"},
+				{Value: "merchandise_not_as_described"},
+				{Value: "no_valid_authorization"},
+				{Value: "not_received"},
+				{Value: "other"},
+				{Value: "service_not_as_described"},
+			},
+		},
+		"transaction": {
+			Type:        "string",
+			Description: "The ID of the issuing transaction to create a dispute for. For transaction on Treasury FinancialAccounts, use `treasury.received_debit`.",
+		},
+		"treasury.received_debit": {
+			Type:        "string",
+			Description: "The ID of the ReceivedDebit to initiate an Issuings dispute for.",
+			Required:    true,
+		},
+	},
+}
+
+var V1IssuingDisputesUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/issuing/disputes/{dispute}",
+	Method:  "POST",
+	Summary: "Update a dispute",
+	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+		},
+		"evidence.reason": {
+			Type:        "string",
+			Description: "The reason for filing the dispute. The evidence should be submitted in the field of the same name.",
+			Enum: []resource.EnumSpec{
+				{Value: "canceled"},
+				{Value: "duplicate"},
+				{Value: "fraudulent"},
+				{Value: "merchandise_not_as_described"},
+				{Value: "no_valid_authorization"},
+				{Value: "not_received"},
+				{Value: "other"},
+				{Value: "service_not_as_described"},
+			},
+		},
+	},
+}
+
+var V1IssuingDisputesSubmit = resource.OperationSpec{
+	Name:    "submit",
+	Path:    "/v1/issuing/disputes/{dispute}/submit",
+	Method:  "POST",
+	Summary: "Submit a dispute",
+}
+
+var V1IssuingCardsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/issuing/cards",
+	Method:  "GET",
+	Summary: "List all cards",
+	Params: map[string]*resource.ParamSpec{
+		"cardholder": {
+			Type:        "string",
+			Description: "Only return cards belonging to the Cardholder with the provided ID.",
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return cards that were issued during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"exp_month": {
+			Type:        "integer",
+			Description: "Only return cards that have the given expiration month.",
+		},
+		"exp_year": {
+			Type:        "integer",
+			Description: "Only return cards that have the given expiration year.",
+		},
+		"last4": {
+			Type:        "string",
+			Description: "Only return cards that have the given last four digits.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"personalization_design": {
+			Type: "string",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Only return cards that have the given status. One of `active`, `inactive`, or `canceled`.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "canceled"},
+				{Value: "inactive"},
+			},
+		},
+		"type": {
+			Type:        "string",
+			Description: "Only return cards that have the given type. One of `virtual` or `physical`.",
+			Enum: []resource.EnumSpec{
+				{Value: "physical"},
+				{Value: "virtual"},
+			},
+		},
+	},
+}
+
+var V1IssuingCardsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/issuing/cards/{card}",
+	Method:  "GET",
+	Summary: "Retrieve a card",
+}
+
+var V1IssuingCardsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/issuing/cards",
+	Method:  "POST",
+	Summary: "Create a card",
+	Params: map[string]*resource.ParamSpec{
+		"cardholder": {
+			Type:        "string",
+			Description: "The [Cardholder](https://docs.stripe.com/api#issuing_cardholder_object) object with which the card will be associated.",
+		},
+		"currency": {
+			Type:        "string",
+			Description: "The currency for the card.",
+			Required:    true,
+		},
+		"exp_month": {
+			Type:        "integer",
+			Description: "The desired expiration month (1-12) for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates).",
+		},
+		"exp_year": {
+			Type:        "integer",
+			Description: "The desired 4-digit expiration year for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates).",
+		},
+		"financial_account": {
+			Type:        "string",
+			Description: "The new financial account ID the card will be associated with. This field allows a card to be reassigned to a different financial account.",
+		},
+		"personalization_design": {
+			Type:        "string",
+			Description: "The personalization design object belonging to this card.",
+		},
+		"pin.encrypted_number": {
+			Type:        "string",
+			Description: "The card's desired new PIN, encrypted under Stripe's public key.",
+		},
+		"replacement_for": {
+			Type:        "string",
+			Description: "The card this is meant to be a replacement for (if any).",
+		},
+		"replacement_reason": {
+			Type:        "string",
+			Description: "If `replacement_for` is specified, this should indicate why that card is being replaced.",
+			Enum: []resource.EnumSpec{
+				{Value: "damaged"},
+				{Value: "expired"},
+				{Value: "lost"},
+				{Value: "stolen"},
+			},
+		},
+		"second_line": {
+			Type:        "string",
+			Description: "The second line to print on the card. Max length: 24 characters.",
+		},
+		"shipping.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+			Required:    true,
+		},
+		"shipping.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"shipping.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+			Required:    true,
+		},
+		"shipping.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"shipping.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+			Required:    true,
+		},
+		"shipping.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"shipping.address_validation.mode": {
+			Type:        "string",
+			Description: "The address validation capabilities to use.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "disabled"},
+				{Value: "normalization_only"},
+				{Value: "validation_and_normalization"},
+			},
+		},
+		"shipping.customs.eori_number": {
+			Type:        "string",
+			Description: "The Economic Operators Registration and Identification (EORI) number to use for Customs. Required for bulk shipments to Europe.",
+		},
+		"shipping.name": {
+			Type:        "string",
+			Description: "The name printed on the shipping label when shipping the card.",
+			Required:    true,
+		},
+		"shipping.phone_number": {
+			Type:        "string",
+			Description: "Phone number of the recipient of the shipment.",
+		},
+		"shipping.require_signature": {
+			Type:        "boolean",
+			Description: "Whether a signature is required for card delivery.",
+		},
+		"shipping.service": {
+			Type:        "string",
+			Description: "Shipment service.",
+			Enum: []resource.EnumSpec{
+				{Value: "express"},
+				{Value: "priority"},
+				{Value: "standard"},
+			},
+		},
+		"shipping.type": {
+			Type:        "string",
+			Description: "Packaging options.",
+			Enum: []resource.EnumSpec{
+				{Value: "bulk"},
+				{Value: "individual"},
+			},
+		},
+		"spending_controls.allowed_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
+		},
+		"spending_controls.allowed_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.blocked_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
+		},
+		"spending_controls.blocked_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Whether authorizations can be approved on this card. May be blocked from activating cards depending on past-due Cardholder requirements. Defaults to `inactive`.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "inactive"},
+			},
+		},
+		"type": {
+			Type:        "string",
+			Description: "The type of card to issue. Possible values are `physical` or `virtual`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "physical"},
+				{Value: "virtual"},
+			},
+		},
+	},
+}
+
+var V1IssuingCardsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/issuing/cards/{card}",
+	Method:  "POST",
+	Summary: "Update a card",
+	Params: map[string]*resource.ParamSpec{
+		"cancellation_reason": {
+			Type:        "string",
+			Description: "Reason why the `status` of this card is `canceled`.",
+			Enum: []resource.EnumSpec{
+				{Value: "lost"},
+				{Value: "stolen"},
+			},
+		},
+		"personalization_design": {
+			Type: "string",
+		},
+		"pin.encrypted_number": {
+			Type:        "string",
+			Description: "The card's desired new PIN, encrypted under Stripe's public key.",
+		},
+		"shipping.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+			Required:    true,
+		},
+		"shipping.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"shipping.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+			Required:    true,
+		},
+		"shipping.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"shipping.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+			Required:    true,
+		},
+		"shipping.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"shipping.address_validation.mode": {
+			Type:        "string",
+			Description: "The address validation capabilities to use.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "disabled"},
+				{Value: "normalization_only"},
+				{Value: "validation_and_normalization"},
+			},
+		},
+		"shipping.customs.eori_number": {
+			Type:        "string",
+			Description: "The Economic Operators Registration and Identification (EORI) number to use for Customs. Required for bulk shipments to Europe.",
+		},
+		"shipping.name": {
+			Type:        "string",
+			Description: "The name printed on the shipping label when shipping the card.",
+			Required:    true,
+		},
+		"shipping.phone_number": {
+			Type:        "string",
+			Description: "Phone number of the recipient of the shipment.",
+		},
+		"shipping.require_signature": {
+			Type:        "boolean",
+			Description: "Whether a signature is required for card delivery.",
+		},
+		"shipping.service": {
+			Type:        "string",
+			Description: "Shipment service.",
+			Enum: []resource.EnumSpec{
+				{Value: "express"},
+				{Value: "priority"},
+				{Value: "standard"},
+			},
+		},
+		"shipping.type": {
+			Type:        "string",
+			Description: "Packaging options.",
+			Enum: []resource.EnumSpec{
+				{Value: "bulk"},
+				{Value: "individual"},
+			},
+		},
+		"spending_controls.allowed_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
+		},
+		"spending_controls.allowed_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.blocked_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
+		},
+		"spending_controls.blocked_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Dictates whether authorizations can be approved on this card. May be blocked from activating cards depending on past-due Cardholder requirements. Defaults to `inactive`. If this card is being canceled because it was lost or stolen, this information should be provided as `cancellation_reason`.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "canceled"},
+				{Value: "inactive"},
+			},
+		},
+	},
+}
+
+var V1IssuingCardsTestHelpersDeliverCard = resource.OperationSpec{
+	Name:    "deliver_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
+	Method:  "POST",
+	Summary: "Deliver a testmode card",
+}
+
+var V1IssuingCardsTestHelpersFailCard = resource.OperationSpec{
+	Name:    "fail_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
+	Method:  "POST",
+	Summary: "Fail a testmode card",
+}
+
+var V1IssuingCardsTestHelpersReturnCard = resource.OperationSpec{
+	Name:    "return_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/return",
+	Method:  "POST",
+	Summary: "Return a testmode card",
+}
+
+var V1IssuingCardsTestHelpersShipCard = resource.OperationSpec{
+	Name:    "ship_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
+	Method:  "POST",
+	Summary: "Ship a testmode card",
+}
+
+var V1IssuingCardsTestHelpersSubmitCard = resource.OperationSpec{
+	Name:    "submit_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
+	Method:  "POST",
+	Summary: "Submit a testmode card",
 }
 
 var V1IssuingAuthorizationsList = resource.OperationSpec{
@@ -264,51 +714,43 @@ var V1IssuingAuthorizationsRetrieve = resource.OperationSpec{
 	Summary: "Retrieve an authorization",
 }
 
+var V1IssuingAuthorizationsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/issuing/authorizations/{authorization}",
+	Method:  "POST",
+	Summary: "Update an authorization",
+}
+
 var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 	Name:    "finalize_amount",
 	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
 	Method:  "POST",
 	Summary: "Finalize a test-mode authorization's amount",
 	Params: map[string]*resource.ParamSpec{
-		"fleet.cardholder_prompt_data.driver_id": {
-			Type:        "string",
-			Description: "Driver ID.",
-		},
-		"fleet.cardholder_prompt_data.user_id": {
-			Type:        "string",
-			Description: "User ID.",
-		},
-		"fuel.industry_product_code": {
-			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
-		},
 		"final_amount": {
 			Type:        "integer",
 			Description: "The final authorization amount that will be captured by the merchant. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
 			Required:    true,
 		},
-		"fleet.reported_breakdown.tax.national_amount_decimal": {
+		"fleet.cardholder_prompt_data.driver_id": {
 			Type:        "string",
-			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"fleet.service_type": {
-			Type:        "string",
-			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
-			Enum: []resource.EnumSpec{
-				{Value: "full_service"},
-				{Value: "non_fuel_transaction"},
-				{Value: "self_service"},
-			},
+			Description: "Driver ID.",
 		},
 		"fleet.cardholder_prompt_data.odometer": {
 			Type:        "integer",
 			Description: "Odometer reading.",
 		},
-		"fuel.quantity_decimal": {
+		"fleet.cardholder_prompt_data.unspecified_id": {
 			Type:        "string",
-			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
+			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
 		},
 		"fleet.purchase_type": {
 			Type:        "string",
@@ -334,13 +776,28 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
 		},
-		"fleet.cardholder_prompt_data.unspecified_id": {
+		"fleet.reported_breakdown.tax.national_amount_decimal": {
 			Type:        "string",
-			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
 		},
-		"fleet.cardholder_prompt_data.vehicle_number": {
+		"fleet.service_type": {
 			Type:        "string",
-			Description: "Vehicle number.",
+			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Enum: []resource.EnumSpec{
+				{Value: "full_service"},
+				{Value: "non_fuel_transaction"},
+				{Value: "self_service"},
+			},
+		},
+		"fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
+		"fuel.quantity_decimal": {
+			Type:        "string",
+			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
 		},
 		"fuel.type": {
 			Type:        "string",
@@ -426,6 +883,18 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a test-mode authorization",
 	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "The total amount to attempt to authorize. This amount is in the provided currency, or defaults to the card's currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+		},
+		"amount_details.atm_fee": {
+			Type:        "integer",
+			Description: "The ATM withdrawal fee.",
+		},
+		"amount_details.cashback_amount": {
+			Type:        "integer",
+			Description: "The amount of cash requested by the cardholder.",
+		},
 		"authorization_method": {
 			Type:        "string",
 			Description: "How the card details were provided. Defaults to online.",
@@ -437,89 +906,135 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 				{Value: "swipe"},
 			},
 		},
-		"risk_assessment.card_testing_risk.invalid_credentials_decline_rate_past_hour": {
-			Type:        "integer",
-			Description: "The % of declines due to incorrect verification data (like CVV or expiry) in the past hour, taking place at the same merchant. Higher rates correspond to a greater probability of bad actors attempting to utilize valid card credentials at merchants with verification requirements. Takes on values between 0 and 100.",
-		},
-		"verification_data.cvc_check": {
-			Type:        "string",
-			Description: "Whether the cardholder provided a CVC and if it matched Stripe’s record.",
-			Enum: []resource.EnumSpec{
-				{Value: "match"},
-				{Value: "mismatch"},
-				{Value: "not_provided"},
-			},
-		},
-		"fleet.cardholder_prompt_data.odometer": {
-			Type:        "integer",
-			Description: "Odometer reading.",
-		},
-		"fleet.cardholder_prompt_data.user_id": {
-			Type:        "string",
-			Description: "User ID.",
-		},
-		"amount_details.atm_fee": {
-			Type:        "integer",
-			Description: "The ATM withdrawal fee.",
-		},
-		"verification_data.authentication_exemption.claimed_by": {
-			Type:        "string",
-			Description: "The entity that requested the exemption, either the acquiring merchant or the Issuing user.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "acquirer"},
-				{Value: "issuer"},
-			},
-		},
-		"merchant_currency": {
-			Type:        "string",
-			Description: "The currency of the authorization. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Format:      "currency",
-		},
-		"wallet": {
-			Type:        "string",
-			Description: "The digital wallet used for this transaction. One of `apple_pay`, `google_pay`, or `samsung_pay`. Will populate as `null` when no digital wallet was utilized.",
-			Enum: []resource.EnumSpec{
-				{Value: "apple_pay"},
-				{Value: "google_pay"},
-				{Value: "samsung_pay"},
-			},
-		},
 		"card": {
 			Type:        "string",
 			Description: "Card associated with this authorization.",
 			Required:    true,
 		},
+		"currency": {
+			Type:        "string",
+			Description: "The currency of the authorization. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Format:      "currency",
+		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type:        "string",
 			Description: "Driver ID.",
+		},
+		"fleet.cardholder_prompt_data.odometer": {
+			Type:        "integer",
+			Description: "Odometer reading.",
+		},
+		"fleet.cardholder_prompt_data.unspecified_id": {
+			Type:        "string",
+			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
+		},
+		"fleet.purchase_type": {
+			Type:        "string",
+			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fuel_and_non_fuel_purchase"},
+				{Value: "fuel_purchase"},
+				{Value: "non_fuel_purchase"},
+			},
+		},
+		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
+			Format:      "decimal",
 		},
 		"fleet.reported_breakdown.tax.local_amount_decimal": {
 			Type:        "string",
 			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
 		},
+		"fleet.reported_breakdown.tax.national_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
+		"fleet.service_type": {
+			Type:        "string",
+			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Enum: []resource.EnumSpec{
+				{Value: "full_service"},
+				{Value: "non_fuel_transaction"},
+				{Value: "self_service"},
+			},
+		},
+		"fraud_disputability_likelihood": {
+			Type:        "string",
+			Description: "Probability that this transaction can be disputed in the event of fraud. Assessed by comparing the characteristics of the authorization to card network rules.",
+			Enum: []resource.EnumSpec{
+				{Value: "neutral"},
+				{Value: "unknown"},
+				{Value: "very_likely"},
+				{Value: "very_unlikely"},
+			},
+		},
+		"fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
+		"fuel.quantity_decimal": {
+			Type:        "string",
+			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+		"fuel.type": {
+			Type:        "string",
+			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "diesel"},
+				{Value: "other"},
+				{Value: "unleaded_plus"},
+				{Value: "unleaded_regular"},
+				{Value: "unleaded_super"},
+			},
+		},
+		"fuel.unit": {
+			Type:        "string",
+			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "charging_minute"},
+				{Value: "imperial_gallon"},
+				{Value: "kilogram"},
+				{Value: "kilowatt_hour"},
+				{Value: "liter"},
+				{Value: "other"},
+				{Value: "pound"},
+				{Value: "us_gallon"},
+			},
+		},
 		"fuel.unit_cost_decimal": {
 			Type:        "string",
 			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
 			Format:      "decimal",
 		},
+		"is_amount_controllable": {
+			Type:        "boolean",
+			Description: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization.",
+		},
 		"merchant_amount": {
 			Type:        "integer",
 			Description: "The total amount to attempt to authorize. This amount is in the provided merchant currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
 		},
-		"risk_assessment.merchant_dispute_risk.risk_level": {
+		"merchant_currency": {
 			Type:        "string",
-			Description: "The likelihood that authorizations from this merchant will result in a dispute based on their history on Stripe Issuing.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "elevated"},
-				{Value: "highest"},
-				{Value: "low"},
-				{Value: "normal"},
-				{Value: "not_assessed"},
-				{Value: "unknown"},
-			},
+			Description: "The currency of the authorization. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Format:      "currency",
 		},
 		"merchant_data.category": {
 			Type:        "string",
@@ -825,91 +1340,45 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "City where the seller is located",
 		},
-		"merchant_data.name": {
-			Type:        "string",
-			Description: "Name of the seller",
-		},
-		"merchant_data.state": {
-			Type:        "string",
-			Description: "State where the seller is located",
-		},
 		"merchant_data.country": {
 			Type:        "string",
 			Description: "Country where the seller is located",
 		},
-		"merchant_data.terminal_id": {
+		"merchant_data.name": {
 			Type:        "string",
-			Description: "An ID assigned by the seller to the location of the sale.",
+			Description: "Name of the seller",
 		},
-		"network_data.acquiring_institution_id": {
+		"merchant_data.network_id": {
 			Type:        "string",
-			Description: "Identifier assigned to the acquirer by the card network.",
-		},
-		"risk_assessment.fraud_risk.score": {
-			Type:        "number",
-			Description: "Stripe’s numerical model score assessing the likelihood of fraudulent activity. A higher score means a higher likelihood of fraudulent activity, and anything above 25 is considered high risk.",
-		},
-		"risk_assessment.merchant_dispute_risk.dispute_rate": {
-			Type:        "integer",
-			Description: "The dispute rate observed across all Stripe Issuing authorizations for this merchant. For example, a value of 50 means 50% of authorizations from this merchant on Stripe Issuing have resulted in a dispute. Higher values mean a higher likelihood the authorization is disputed. Takes on values between 0 and 100.",
-		},
-		"verification_data.authentication_exemption.type": {
-			Type:        "string",
-			Description: "The specific exemption claimed for this authorization.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "low_value_transaction"},
-				{Value: "transaction_risk_analysis"},
-				{Value: "unknown"},
-			},
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "The total amount to attempt to authorize. This amount is in the provided currency, or defaults to the card's currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-		},
-		"fleet.cardholder_prompt_data.vehicle_number": {
-			Type:        "string",
-			Description: "Vehicle number.",
-		},
-		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"fuel.industry_product_code": {
-			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
-		},
-		"currency": {
-			Type:        "string",
-			Description: "The currency of the authorization. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Format:      "currency",
-		},
-		"is_amount_controllable": {
-			Type:        "boolean",
-			Description: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization.",
-		},
-		"verification_data.expiry_check": {
-			Type:        "string",
-			Description: "Whether the cardholder provided an expiry date and if it matched Stripe’s record.",
-			Enum: []resource.EnumSpec{
-				{Value: "match"},
-				{Value: "mismatch"},
-				{Value: "not_provided"},
-			},
-		},
-		"fuel.quantity_decimal": {
-			Type:        "string",
-			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
+			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
 		},
 		"merchant_data.postal_code": {
 			Type:        "string",
 			Description: "Postal code where the seller is located",
 		},
+		"merchant_data.state": {
+			Type:        "string",
+			Description: "State where the seller is located",
+		},
+		"merchant_data.terminal_id": {
+			Type:        "string",
+			Description: "An ID assigned by the seller to the location of the sale.",
+		},
+		"merchant_data.url": {
+			Type:        "string",
+			Description: "URL provided by the merchant on a 3DS request",
+		},
+		"network_data.acquiring_institution_id": {
+			Type:        "string",
+			Description: "Identifier assigned to the acquirer by the card network.",
+		},
 		"risk_assessment.card_testing_risk.invalid_account_number_decline_rate_past_hour": {
 			Type:        "integer",
 			Description: "The % of declines due to a card number not existing in the past hour, taking place at the same merchant. Higher rates correspond to a greater probability of card testing activity, meaning bad actors may be attempting different card number combinations to guess a correct one. Takes on values between 0 and 100.",
+		},
+		"risk_assessment.card_testing_risk.invalid_credentials_decline_rate_past_hour": {
+			Type:        "integer",
+			Description: "The % of declines due to incorrect verification data (like CVV or expiry) in the past hour, taking place at the same merchant. Higher rates correspond to a greater probability of bad actors attempting to utilize valid card credentials at merchants with verification requirements. Takes on values between 0 and 100.",
 		},
 		"risk_assessment.card_testing_risk.risk_level": {
 			Type:        "string",
@@ -924,19 +1393,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 				{Value: "unknown"},
 			},
 		},
-		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"merchant_data.url": {
-			Type:        "string",
-			Description: "URL provided by the merchant on a 3DS request",
-		},
-		"amount_details.cashback_amount": {
-			Type:        "integer",
-			Description: "The amount of cash requested by the cardholder.",
-		},
 		"risk_assessment.fraud_risk.level": {
 			Type:        "string",
 			Description: "Stripe’s assessment of the likelihood of fraud on an authorization.",
@@ -950,6 +1406,36 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 				{Value: "unknown"},
 			},
 		},
+		"risk_assessment.fraud_risk.score": {
+			Type:        "number",
+			Description: "Stripe’s numerical model score assessing the likelihood of fraudulent activity. A higher score means a higher likelihood of fraudulent activity, and anything above 25 is considered high risk.",
+		},
+		"risk_assessment.merchant_dispute_risk.dispute_rate": {
+			Type:        "integer",
+			Description: "The dispute rate observed across all Stripe Issuing authorizations for this merchant. For example, a value of 50 means 50% of authorizations from this merchant on Stripe Issuing have resulted in a dispute. Higher values mean a higher likelihood the authorization is disputed. Takes on values between 0 and 100.",
+		},
+		"risk_assessment.merchant_dispute_risk.risk_level": {
+			Type:        "string",
+			Description: "The likelihood that authorizations from this merchant will result in a dispute based on their history on Stripe Issuing.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "elevated"},
+				{Value: "highest"},
+				{Value: "low"},
+				{Value: "normal"},
+				{Value: "not_assessed"},
+				{Value: "unknown"},
+			},
+		},
+		"verification_data.address_line1_check": {
+			Type:        "string",
+			Description: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`.",
+			Enum: []resource.EnumSpec{
+				{Value: "match"},
+				{Value: "mismatch"},
+				{Value: "not_provided"},
+			},
+		},
 		"verification_data.address_postal_code_check": {
 			Type:        "string",
 			Description: "Whether the cardholder provided a postal code and if it matched the cardholder’s `billing.address.postal_code`.",
@@ -959,37 +1445,42 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 				{Value: "not_provided"},
 			},
 		},
-		"fleet.reported_breakdown.tax.national_amount_decimal": {
+		"verification_data.authentication_exemption.claimed_by": {
 			Type:        "string",
-			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"fleet.service_type": {
-			Type:        "string",
-			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Description: "The entity that requested the exemption, either the acquiring merchant or the Issuing user.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "full_service"},
-				{Value: "non_fuel_transaction"},
-				{Value: "self_service"},
+				{Value: "acquirer"},
+				{Value: "issuer"},
 			},
 		},
-		"fuel.unit": {
+		"verification_data.authentication_exemption.type": {
 			Type:        "string",
-			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			Description: "The specific exemption claimed for this authorization.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "charging_minute"},
-				{Value: "imperial_gallon"},
-				{Value: "kilogram"},
-				{Value: "kilowatt_hour"},
-				{Value: "liter"},
-				{Value: "other"},
-				{Value: "pound"},
-				{Value: "us_gallon"},
+				{Value: "low_value_transaction"},
+				{Value: "transaction_risk_analysis"},
+				{Value: "unknown"},
 			},
 		},
-		"merchant_data.network_id": {
+		"verification_data.cvc_check": {
 			Type:        "string",
-			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
+			Description: "Whether the cardholder provided a CVC and if it matched Stripe’s record.",
+			Enum: []resource.EnumSpec{
+				{Value: "match"},
+				{Value: "mismatch"},
+				{Value: "not_provided"},
+			},
+		},
+		"verification_data.expiry_check": {
+			Type:        "string",
+			Description: "Whether the cardholder provided an expiry date and if it matched Stripe’s record.",
+			Enum: []resource.EnumSpec{
+				{Value: "match"},
+				{Value: "mismatch"},
+				{Value: "not_provided"},
+			},
 		},
 		"verification_data.three_d_secure.result": {
 			Type:        "string",
@@ -1002,47 +1493,13 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 				{Value: "required"},
 			},
 		},
-		"verification_data.address_line1_check": {
+		"wallet": {
 			Type:        "string",
-			Description: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`.",
+			Description: "The digital wallet used for this transaction. One of `apple_pay`, `google_pay`, or `samsung_pay`. Will populate as `null` when no digital wallet was utilized.",
 			Enum: []resource.EnumSpec{
-				{Value: "match"},
-				{Value: "mismatch"},
-				{Value: "not_provided"},
-			},
-		},
-		"fleet.cardholder_prompt_data.unspecified_id": {
-			Type:        "string",
-			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
-		},
-		"fleet.purchase_type": {
-			Type:        "string",
-			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
-			Enum: []resource.EnumSpec{
-				{Value: "fuel_and_non_fuel_purchase"},
-				{Value: "fuel_purchase"},
-				{Value: "non_fuel_purchase"},
-			},
-		},
-		"fuel.type": {
-			Type:        "string",
-			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "diesel"},
-				{Value: "other"},
-				{Value: "unleaded_plus"},
-				{Value: "unleaded_regular"},
-				{Value: "unleaded_super"},
-			},
-		},
-		"fraud_disputability_likelihood": {
-			Type:        "string",
-			Description: "Probability that this transaction can be disputed in the event of fraud. Assessed by comparing the characteristics of the authorization to card network rules.",
-			Enum: []resource.EnumSpec{
-				{Value: "neutral"},
-				{Value: "unknown"},
-				{Value: "very_likely"},
-				{Value: "very_unlikely"},
+				{Value: "apple_pay"},
+				{Value: "google_pay"},
+				{Value: "samsung_pay"},
 			},
 		},
 	},
@@ -1054,6 +1511,63 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Capture a test-mode authorization",
 	Params: map[string]*resource.ParamSpec{
+		"capture_amount": {
+			Type:        "integer",
+			Description: "The amount to capture from the authorization. If not provided, the full amount of the authorization will be captured. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+		},
+		"close_authorization": {
+			Type:        "boolean",
+			Description: "Whether to close the authorization after capture. Defaults to true. Set to false to enable multi-capture flows.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
+			Type:        "string",
+			Description: "Driver ID.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.odometer": {
+			Type:        "integer",
+			Description: "Odometer reading.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
+			Type:        "string",
+			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
+		},
+		"purchase_details.fleet.purchase_type": {
+			Type:        "string",
+			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fuel_and_non_fuel_purchase"},
+				{Value: "fuel_purchase"},
+				{Value: "non_fuel_purchase"},
+			},
+		},
+		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
 		"purchase_details.fleet.service_type": {
 			Type:        "string",
 			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
@@ -1063,9 +1577,42 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 				{Value: "self_service"},
 			},
 		},
+		"purchase_details.flight.departure_at": {
+			Type:        "integer",
+			Description: "The time that the flight departed.",
+			Format:      "unix-time",
+		},
+		"purchase_details.flight.passenger_name": {
+			Type:        "string",
+			Description: "The name of the passenger.",
+		},
+		"purchase_details.flight.refundable": {
+			Type:        "boolean",
+			Description: "Whether the ticket is refundable.",
+		},
 		"purchase_details.flight.travel_agency": {
 			Type:        "string",
 			Description: "The travel agency that issued the ticket.",
+		},
+		"purchase_details.fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
+		"purchase_details.fuel.quantity_decimal": {
+			Type:        "string",
+			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+		"purchase_details.fuel.type": {
+			Type:        "string",
+			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "diesel"},
+				{Value: "other"},
+				{Value: "unleaded_plus"},
+				{Value: "unleaded_regular"},
+				{Value: "unleaded_super"},
+			},
 		},
 		"purchase_details.fuel.unit": {
 			Type:        "string",
@@ -1091,69 +1638,6 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 			Description: "The time of checking into the lodging.",
 			Format:      "unix-time",
 		},
-		"purchase_details.fleet.cardholder_prompt_data.odometer": {
-			Type:        "integer",
-			Description: "Odometer reading.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.user_id": {
-			Type:        "string",
-			Description: "User ID.",
-		},
-		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"purchase_details.flight.passenger_name": {
-			Type:        "string",
-			Description: "The name of the passenger.",
-		},
-		"purchase_details.fuel.type": {
-			Type:        "string",
-			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "diesel"},
-				{Value: "other"},
-				{Value: "unleaded_plus"},
-				{Value: "unleaded_regular"},
-				{Value: "unleaded_super"},
-			},
-		},
-		"capture_amount": {
-			Type:        "integer",
-			Description: "The amount to capture from the authorization. If not provided, the full amount of the authorization will be captured. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-		},
-		"close_authorization": {
-			Type:        "boolean",
-			Description: "Whether to close the authorization after capture. Defaults to true. Set to false to enable multi-capture flows.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
-			Type:        "string",
-			Description: "Driver ID.",
-		},
-		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"purchase_details.flight.departure_at": {
-			Type:        "integer",
-			Description: "The time that the flight departed.",
-			Format:      "unix-time",
-		},
-		"purchase_details.flight.refundable": {
-			Type:        "boolean",
-			Description: "Whether the ticket is refundable.",
-		},
-		"purchase_details.fuel.industry_product_code": {
-			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
-		},
 		"purchase_details.lodging.nights": {
 			Type:        "integer",
 			Description: "The number of nights stayed at the lodging.",
@@ -1161,33 +1645,6 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 		"purchase_details.reference": {
 			Type:        "string",
 			Description: "A merchant-specific order number.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
-			Type:        "string",
-			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
-		},
-		"purchase_details.fuel.quantity_decimal": {
-			Type:        "string",
-			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
-			Type:        "string",
-			Description: "Vehicle number.",
-		},
-		"purchase_details.fleet.purchase_type": {
-			Type:        "string",
-			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
-			Enum: []resource.EnumSpec{
-				{Value: "fuel_and_non_fuel_purchase"},
-				{Value: "fuel_purchase"},
-				{Value: "non_fuel_purchase"},
-			},
-		},
-		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
-			Format:      "decimal",
 		},
 	},
 }
@@ -1197,894 +1654,6 @@ var V1IssuingAuthorizationsTestHelpersExpire = resource.OperationSpec{
 	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
 	Method:  "POST",
 	Summary: "Expire a test-mode authorization",
-}
-
-var V1IssuingCardholdersUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/issuing/cardholders/{cardholder}",
-	Method:  "POST",
-	Summary: "Update a cardholder",
-	Params: map[string]*resource.ParamSpec{
-		"spending_controls.spending_limits_currency": {
-			Type:        "string",
-			Description: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency.",
-		},
-		"billing.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-			Required:    true,
-		},
-		"preferred_locales": {
-			Type:        "array",
-			Description: "The cardholder’s preferred locales (languages), ordered by preference. Locales can be `de`, `en`, `es`, `fr`, or `it`.\n This changes the language of the [3D Secure flow](https://docs.stripe.com/issuing/3d-secure) and one-time password messages sent to the cardholder.",
-		},
-		"billing.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-			Required:    true,
-		},
-		"billing.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"billing.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-		},
-		"billing.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"individual.card_issuing.user_terms_acceptance.date": {
-			Type:        "integer",
-			Description: "The Unix timestamp marking when the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
-			Format:      "unix-time",
-		},
-		"individual.dob.year": {
-			Type:        "integer",
-			Description: "The four-digit year of birth.",
-			Required:    true,
-		},
-		"individual.first_name": {
-			Type:        "string",
-			Description: "The first name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
-		},
-		"individual.verification.document.back": {
-			Type:        "string",
-			Description: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
-		},
-		"spending_controls.blocked_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"spending_controls.allowed_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
-		},
-		"billing.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-			Required:    true,
-		},
-		"company.tax_id": {
-			Type:        "string",
-			Description: "The entity's business ID number.",
-		},
-		"individual.card_issuing.user_terms_acceptance.ip": {
-			Type:        "string",
-			Description: "The IP address from which the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
-		},
-		"individual.card_issuing.user_terms_acceptance.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the cardholder accepted the Authorized User Terms.",
-		},
-		"individual.dob.day": {
-			Type:        "integer",
-			Description: "The day of birth, between 1 and 31.",
-			Required:    true,
-		},
-		"individual.last_name": {
-			Type:        "string",
-			Description: "The last name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
-		},
-		"individual.verification.document.front": {
-			Type:        "string",
-			Description: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
-		},
-		"phone_number": {
-			Type:        "string",
-			Description: "The cardholder's phone number. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://docs.stripe.com/issuing/3d-secure) for more details.",
-		},
-		"spending_controls.allowed_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Specifies whether to permit authorizations on this cardholder's cards.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "inactive"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "The cardholder's email address.",
-		},
-		"individual.dob.month": {
-			Type:        "integer",
-			Description: "The month of birth, between 1 and 12.",
-			Required:    true,
-		},
-		"spending_controls.blocked_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
-		},
-	},
-}
-
-var V1IssuingCardholdersList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/issuing/cardholders",
-	Method:  "GET",
-	Summary: "List all cardholders",
-	Params: map[string]*resource.ParamSpec{
-		"type": {
-			Type:        "string",
-			Description: "Only return cardholders that have the given type. One of `individual` or `company`.",
-			Enum: []resource.EnumSpec{
-				{Value: "company"},
-				{Value: "individual"},
-			},
-		},
-		"created": {
-			Type:        "integer",
-			Description: "Only return cardholders that were created during the given date interval.",
-		},
-		"email": {
-			Type:        "string",
-			Description: "Only return cardholders that have the given email address.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"phone_number": {
-			Type:        "string",
-			Description: "Only return cardholders that have the given phone number.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Only return cardholders that have the given status. One of `active`, `inactive`, or `blocked`.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "blocked"},
-				{Value: "inactive"},
-			},
-		},
-	},
-}
-
-var V1IssuingCardholdersRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/issuing/cardholders/{cardholder}",
-	Method:  "GET",
-	Summary: "Retrieve a cardholder",
-}
-
-var V1IssuingCardholdersCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/issuing/cardholders",
-	Method:  "POST",
-	Summary: "Create a cardholder",
-	Params: map[string]*resource.ParamSpec{
-		"individual.first_name": {
-			Type:        "string",
-			Description: "The first name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
-		},
-		"phone_number": {
-			Type:        "string",
-			Description: "The cardholder's phone number. This will be transformed to [E.164](https://en.wikipedia.org/wiki/E.164) if it is not provided in that format already. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://docs.stripe.com/issuing/3d-secure#when-is-3d-secure-applied) for more details.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Specifies whether to permit authorizations on this cardholder's cards. Defaults to `active`.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "inactive"},
-			},
-		},
-		"spending_controls.allowed_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
-		},
-		"spending_controls.blocked_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
-		},
-		"billing.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-			Required:    true,
-		},
-		"billing.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"billing.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-			Required:    true,
-		},
-		"billing.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-			Required:    true,
-		},
-		"individual.dob.day": {
-			Type:        "integer",
-			Description: "The day of birth, between 1 and 31.",
-			Required:    true,
-		},
-		"spending_controls.allowed_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"company.tax_id": {
-			Type:        "string",
-			Description: "The entity's business ID number.",
-		},
-		"individual.verification.document.back": {
-			Type:        "string",
-			Description: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
-		},
-		"individual.card_issuing.user_terms_acceptance.date": {
-			Type:        "integer",
-			Description: "The Unix timestamp marking when the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
-			Format:      "unix-time",
-		},
-		"individual.card_issuing.user_terms_acceptance.ip": {
-			Type:        "string",
-			Description: "The IP address from which the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
-		},
-		"individual.dob.year": {
-			Type:        "integer",
-			Description: "The four-digit year of birth.",
-			Required:    true,
-		},
-		"individual.last_name": {
-			Type:        "string",
-			Description: "The last name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "The cardholder's name. This will be printed on cards issued to them. The maximum length of this field is 24 characters. This field cannot contain any special characters or numbers.",
-			Required:    true,
-		},
-		"email": {
-			Type:        "string",
-			Description: "The cardholder's email address.",
-		},
-		"billing.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-		},
-		"individual.verification.document.front": {
-			Type:        "string",
-			Description: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
-		},
-		"individual.card_issuing.user_terms_acceptance.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the cardholder accepted the Authorized User Terms.",
-		},
-		"individual.dob.month": {
-			Type:        "integer",
-			Description: "The month of birth, between 1 and 12.",
-			Required:    true,
-		},
-		"type": {
-			Type:        "string",
-			Description: "One of `individual` or `company`. See [Choose a cardholder type](https://docs.stripe.com/issuing/other/choose-cardholder) for more details.",
-			Enum: []resource.EnumSpec{
-				{Value: "company"},
-				{Value: "individual"},
-			},
-		},
-		"preferred_locales": {
-			Type:        "array",
-			Description: "The cardholder’s preferred locales (languages), ordered by preference. Locales can be `de`, `en`, `es`, `fr`, or `it`.\n This changes the language of the [3D Secure flow](https://docs.stripe.com/issuing/3d-secure) and one-time password messages sent to the cardholder.",
-		},
-		"spending_controls.blocked_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"spending_controls.spending_limits_currency": {
-			Type:        "string",
-			Description: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency.",
-		},
-		"billing.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-	},
-}
-
-var V1IssuingCardsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/issuing/cards",
-	Method:  "GET",
-	Summary: "List all cards",
-	Params: map[string]*resource.ParamSpec{
-		"type": {
-			Type:        "string",
-			Description: "Only return cards that have the given type. One of `virtual` or `physical`.",
-			Enum: []resource.EnumSpec{
-				{Value: "physical"},
-				{Value: "virtual"},
-			},
-		},
-		"cardholder": {
-			Type:        "string",
-			Description: "Only return cards belonging to the Cardholder with the provided ID.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"exp_month": {
-			Type:        "integer",
-			Description: "Only return cards that have the given expiration month.",
-		},
-		"exp_year": {
-			Type:        "integer",
-			Description: "Only return cards that have the given expiration year.",
-		},
-		"last4": {
-			Type:        "string",
-			Description: "Only return cards that have the given last four digits.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"created": {
-			Type:        "integer",
-			Description: "Only return cards that were issued during the given date interval.",
-		},
-		"personalization_design": {
-			Type: "string",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Only return cards that have the given status. One of `active`, `inactive`, or `canceled`.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "canceled"},
-				{Value: "inactive"},
-			},
-		},
-	},
-}
-
-var V1IssuingCardsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/issuing/cards/{card}",
-	Method:  "GET",
-	Summary: "Retrieve a card",
-}
-
-var V1IssuingCardsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/issuing/cards",
-	Method:  "POST",
-	Summary: "Create a card",
-	Params: map[string]*resource.ParamSpec{
-		"exp_year": {
-			Type:        "integer",
-			Description: "The desired 4-digit expiration year for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates).",
-		},
-		"shipping.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"shipping.customs.eori_number": {
-			Type:        "string",
-			Description: "The Economic Operators Registration and Identification (EORI) number to use for Customs. Required for bulk shipments to Europe.",
-		},
-		"shipping.service": {
-			Type:        "string",
-			Description: "Shipment service.",
-			Enum: []resource.EnumSpec{
-				{Value: "express"},
-				{Value: "priority"},
-				{Value: "standard"},
-			},
-		},
-		"spending_controls.allowed_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
-		},
-		"exp_month": {
-			Type:        "integer",
-			Description: "The desired expiration month (1-12) for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates).",
-		},
-		"second_line": {
-			Type:        "string",
-			Description: "The second line to print on the card. Max length: 24 characters.",
-		},
-		"shipping.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-			Required:    true,
-		},
-		"spending_controls.allowed_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"currency": {
-			Type:        "string",
-			Description: "The currency for the card.",
-			Required:    true,
-		},
-		"personalization_design": {
-			Type:        "string",
-			Description: "The personalization design object belonging to this card.",
-		},
-		"shipping.type": {
-			Type:        "string",
-			Description: "Packaging options.",
-			Enum: []resource.EnumSpec{
-				{Value: "bulk"},
-				{Value: "individual"},
-			},
-		},
-		"spending_controls.blocked_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
-		},
-		"spending_controls.blocked_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"replacement_reason": {
-			Type:        "string",
-			Description: "If `replacement_for` is specified, this should indicate why that card is being replaced.",
-			Enum: []resource.EnumSpec{
-				{Value: "damaged"},
-				{Value: "expired"},
-				{Value: "lost"},
-				{Value: "stolen"},
-			},
-		},
-		"status": {
-			Type:        "string",
-			Description: "Whether authorizations can be approved on this card. May be blocked from activating cards depending on past-due Cardholder requirements. Defaults to `inactive`.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "inactive"},
-			},
-		},
-		"shipping.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"financial_account": {
-			Type:        "string",
-			Description: "The new financial account ID the card will be associated with. This field allows a card to be reassigned to a different financial account.",
-		},
-		"cardholder": {
-			Type:        "string",
-			Description: "The [Cardholder](https://docs.stripe.com/api#issuing_cardholder_object) object with which the card will be associated.",
-		},
-		"type": {
-			Type:        "string",
-			Description: "The type of card to issue. Possible values are `physical` or `virtual`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "physical"},
-				{Value: "virtual"},
-			},
-		},
-		"shipping.name": {
-			Type:        "string",
-			Description: "The name printed on the shipping label when shipping the card.",
-			Required:    true,
-		},
-		"shipping.require_signature": {
-			Type:        "boolean",
-			Description: "Whether a signature is required for card delivery.",
-		},
-		"shipping.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-			Required:    true,
-		},
-		"shipping.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-		},
-		"pin.encrypted_number": {
-			Type:        "string",
-			Description: "The card's desired new PIN, encrypted under Stripe's public key.",
-		},
-		"replacement_for": {
-			Type:        "string",
-			Description: "The card this is meant to be a replacement for (if any).",
-		},
-		"shipping.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-			Required:    true,
-		},
-		"shipping.address_validation.mode": {
-			Type:        "string",
-			Description: "The address validation capabilities to use.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "disabled"},
-				{Value: "normalization_only"},
-				{Value: "validation_and_normalization"},
-			},
-		},
-		"shipping.phone_number": {
-			Type:        "string",
-			Description: "Phone number of the recipient of the shipment.",
-		},
-	},
-}
-
-var V1IssuingCardsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/issuing/cards/{card}",
-	Method:  "POST",
-	Summary: "Update a card",
-	Params: map[string]*resource.ParamSpec{
-		"shipping.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-		},
-		"shipping.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"shipping.customs.eori_number": {
-			Type:        "string",
-			Description: "The Economic Operators Registration and Identification (EORI) number to use for Customs. Required for bulk shipments to Europe.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Dictates whether authorizations can be approved on this card. May be blocked from activating cards depending on past-due Cardholder requirements. Defaults to `inactive`. If this card is being canceled because it was lost or stolen, this information should be provided as `cancellation_reason`.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "canceled"},
-				{Value: "inactive"},
-			},
-		},
-		"shipping.phone_number": {
-			Type:        "string",
-			Description: "Phone number of the recipient of the shipment.",
-		},
-		"spending_controls.blocked_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"cancellation_reason": {
-			Type:        "string",
-			Description: "Reason why the `status` of this card is `canceled`.",
-			Enum: []resource.EnumSpec{
-				{Value: "lost"},
-				{Value: "stolen"},
-			},
-		},
-		"pin.encrypted_number": {
-			Type:        "string",
-			Description: "The card's desired new PIN, encrypted under Stripe's public key.",
-		},
-		"shipping.address_validation.mode": {
-			Type:        "string",
-			Description: "The address validation capabilities to use.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "disabled"},
-				{Value: "normalization_only"},
-				{Value: "validation_and_normalization"},
-			},
-		},
-		"shipping.require_signature": {
-			Type:        "boolean",
-			Description: "Whether a signature is required for card delivery.",
-		},
-		"shipping.service": {
-			Type:        "string",
-			Description: "Shipment service.",
-			Enum: []resource.EnumSpec{
-				{Value: "express"},
-				{Value: "priority"},
-				{Value: "standard"},
-			},
-		},
-		"spending_controls.allowed_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
-		},
-		"spending_controls.blocked_categories": {
-			Type:        "array",
-			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
-		},
-		"shipping.type": {
-			Type:        "string",
-			Description: "Packaging options.",
-			Enum: []resource.EnumSpec{
-				{Value: "bulk"},
-				{Value: "individual"},
-			},
-		},
-		"shipping.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-			Required:    true,
-		},
-		"shipping.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"shipping.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-			Required:    true,
-		},
-		"shipping.name": {
-			Type:        "string",
-			Description: "The name printed on the shipping label when shipping the card.",
-			Required:    true,
-		},
-		"spending_controls.allowed_merchant_countries": {
-			Type:        "array",
-			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
-		},
-		"personalization_design": {
-			Type: "string",
-		},
-		"shipping.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-			Required:    true,
-		},
-	},
-}
-
-var V1IssuingCardsTestHelpersSubmitCard = resource.OperationSpec{
-	Name:    "submit_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
-	Method:  "POST",
-	Summary: "Submit a testmode card",
-}
-
-var V1IssuingCardsTestHelpersDeliverCard = resource.OperationSpec{
-	Name:    "deliver_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
-	Method:  "POST",
-	Summary: "Deliver a testmode card",
-}
-
-var V1IssuingCardsTestHelpersFailCard = resource.OperationSpec{
-	Name:    "fail_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
-	Method:  "POST",
-	Summary: "Fail a testmode card",
-}
-
-var V1IssuingCardsTestHelpersReturnCard = resource.OperationSpec{
-	Name:    "return_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/return",
-	Method:  "POST",
-	Summary: "Return a testmode card",
-}
-
-var V1IssuingCardsTestHelpersShipCard = resource.OperationSpec{
-	Name:    "ship_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
-	Method:  "POST",
-	Summary: "Ship a testmode card",
-}
-
-var V1IssuingTokensUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/issuing/tokens/{token}",
-	Method:  "POST",
-	Summary: "Update a token status",
-	Params: map[string]*resource.ParamSpec{
-		"status": {
-			Type:        "string",
-			Description: "Specifies which status the token should be updated to.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "deleted"},
-				{Value: "suspended"},
-			},
-		},
-	},
-}
-
-var V1IssuingTokensList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/issuing/tokens",
-	Method:  "GET",
-	Summary: "List all issuing tokens for card",
-	Params: map[string]*resource.ParamSpec{
-		"card": {
-			Type:        "string",
-			Description: "The Issuing card identifier to list tokens for.",
-			Required:    true,
-		},
-		"created": {
-			Type:        "integer",
-			Description: "Only return Issuing tokens that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Select Issuing tokens with the given status.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "deleted"},
-				{Value: "requested"},
-				{Value: "suspended"},
-			},
-		},
-	},
-}
-
-var V1IssuingTokensRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/issuing/tokens/{token}",
-	Method:  "GET",
-	Summary: "Retrieve an issuing token",
-}
-
-var V1IssuingDisputesUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/issuing/disputes/{dispute}",
-	Method:  "POST",
-	Summary: "Update a dispute",
-	Params: map[string]*resource.ParamSpec{
-		"evidence.reason": {
-			Type:        "string",
-			Description: "The reason for filing the dispute. The evidence should be submitted in the field of the same name.",
-			Enum: []resource.EnumSpec{
-				{Value: "canceled"},
-				{Value: "duplicate"},
-				{Value: "fraudulent"},
-				{Value: "merchandise_not_as_described"},
-				{Value: "no_valid_authorization"},
-				{Value: "not_received"},
-				{Value: "other"},
-				{Value: "service_not_as_described"},
-			},
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-		},
-	},
-}
-
-var V1IssuingDisputesSubmit = resource.OperationSpec{
-	Name:    "submit",
-	Path:    "/v1/issuing/disputes/{dispute}/submit",
-	Method:  "POST",
-	Summary: "Submit a dispute",
-}
-
-var V1IssuingDisputesList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/issuing/disputes",
-	Method:  "GET",
-	Summary: "List all disputes",
-	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:        "integer",
-			Description: "Only return Issuing disputes that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Select Issuing disputes with the given status.",
-			Enum: []resource.EnumSpec{
-				{Value: "expired"},
-				{Value: "lost"},
-				{Value: "submitted"},
-				{Value: "unsubmitted"},
-				{Value: "won"},
-			},
-		},
-		"transaction": {
-			Type:        "string",
-			Description: "Select the Issuing dispute for the given transaction.",
-		},
-	},
-}
-
-var V1IssuingDisputesRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/issuing/disputes/{dispute}",
-	Method:  "GET",
-	Summary: "Retrieve a dispute",
-}
-
-var V1IssuingDisputesCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/issuing/disputes",
-	Method:  "POST",
-	Summary: "Create a dispute",
-	Params: map[string]*resource.ParamSpec{
-		"treasury.received_debit": {
-			Type:        "string",
-			Description: "The ID of the ReceivedDebit to initiate an Issuings dispute for.",
-			Required:    true,
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal). If not set, defaults to the full transaction amount.",
-		},
-		"evidence.reason": {
-			Type:        "string",
-			Description: "The reason for filing the dispute. The evidence should be submitted in the field of the same name.",
-			Enum: []resource.EnumSpec{
-				{Value: "canceled"},
-				{Value: "duplicate"},
-				{Value: "fraudulent"},
-				{Value: "merchandise_not_as_described"},
-				{Value: "no_valid_authorization"},
-				{Value: "not_received"},
-				{Value: "other"},
-				{Value: "service_not_as_described"},
-			},
-		},
-		"transaction": {
-			Type:        "string",
-			Description: "The ID of the issuing transaction to create a dispute for. For transaction on Treasury FinancialAccounts, use `treasury.received_debit`.",
-		},
-	},
 }
 
 var V1IssuingTransactionsList = resource.OperationSpec{
@@ -2161,37 +1730,20 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a test-mode force capture",
 	Params: map[string]*resource.ParamSpec{
-		"merchant_data.url": {
-			Type:        "string",
-			Description: "URL provided by the merchant on a 3DS request",
-		},
-		"merchant_data.network_id": {
-			Type:        "string",
-			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
-		},
-		"merchant_data.terminal_id": {
-			Type:        "string",
-			Description: "An ID assigned by the seller to the location of the sale.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
-			Type:        "string",
-			Description: "Driver ID.",
-		},
-		"purchase_details.fuel.type": {
-			Type:        "string",
-			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "diesel"},
-				{Value: "other"},
-				{Value: "unleaded_plus"},
-				{Value: "unleaded_regular"},
-				{Value: "unleaded_super"},
-			},
-		},
-		"purchase_details.lodging.check_in_at": {
+		"amount": {
 			Type:        "integer",
-			Description: "The time of checking into the lodging.",
-			Format:      "unix-time",
+			Description: "The total amount to attempt to capture. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Required:    true,
+		},
+		"card": {
+			Type:        "string",
+			Description: "Card associated with this transaction.",
+			Required:    true,
+		},
+		"currency": {
+			Type:        "string",
+			Description: "The currency of the capture. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Format:      "currency",
 		},
 		"merchant_data.category": {
 			Type:        "string",
@@ -2493,97 +2045,57 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 				{Value: "wrecking_and_salvage_yards"},
 			},
 		},
-		"purchase_details.fleet.cardholder_prompt_data.user_id": {
+		"merchant_data.city": {
 			Type:        "string",
-			Description: "User ID.",
-		},
-		"card": {
-			Type:        "string",
-			Description: "Card associated with this transaction.",
-			Required:    true,
-		},
-		"merchant_data.postal_code": {
-			Type:        "string",
-			Description: "Postal code where the seller is located",
-		},
-		"purchase_details.fleet.service_type": {
-			Type:        "string",
-			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
-			Enum: []resource.EnumSpec{
-				{Value: "full_service"},
-				{Value: "non_fuel_transaction"},
-				{Value: "self_service"},
-			},
-		},
-		"purchase_details.flight.travel_agency": {
-			Type:        "string",
-			Description: "The travel agency that issued the ticket.",
+			Description: "City where the seller is located",
 		},
 		"merchant_data.country": {
 			Type:        "string",
 			Description: "Country where the seller is located",
 		},
-		"purchase_details.fleet.cardholder_prompt_data.odometer": {
-			Type:        "integer",
-			Description: "Odometer reading.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
-			Type:        "string",
-			Description: "Vehicle number.",
-		},
-		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"purchase_details.flight.passenger_name": {
-			Type:        "string",
-			Description: "The name of the passenger.",
-		},
-		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
-			Format:      "decimal",
-		},
 		"merchant_data.name": {
 			Type:        "string",
 			Description: "Name of the seller",
 		},
-		"purchase_details.flight.refundable": {
-			Type:        "boolean",
-			Description: "Whether the ticket is refundable.",
-		},
-		"purchase_details.fuel.unit_cost_decimal": {
+		"merchant_data.network_id": {
 			Type:        "string",
-			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
+			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
 		},
-		"purchase_details.lodging.nights": {
-			Type:        "integer",
-			Description: "The number of nights stayed at the lodging.",
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "The total amount to attempt to capture. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-			Required:    true,
-		},
-		"purchase_details.fuel.unit": {
+		"merchant_data.postal_code": {
 			Type:        "string",
-			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "charging_minute"},
-				{Value: "imperial_gallon"},
-				{Value: "kilogram"},
-				{Value: "kilowatt_hour"},
-				{Value: "liter"},
-				{Value: "other"},
-				{Value: "pound"},
-				{Value: "us_gallon"},
-			},
+			Description: "Postal code where the seller is located",
+		},
+		"merchant_data.state": {
+			Type:        "string",
+			Description: "State where the seller is located",
+		},
+		"merchant_data.terminal_id": {
+			Type:        "string",
+			Description: "An ID assigned by the seller to the location of the sale.",
+		},
+		"merchant_data.url": {
+			Type:        "string",
+			Description: "URL provided by the merchant on a 3DS request",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
+			Type:        "string",
+			Description: "Driver ID.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.odometer": {
+			Type:        "integer",
+			Description: "Odometer reading.",
 		},
 		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
 			Type:        "string",
 			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
 		},
 		"purchase_details.fleet.purchase_type": {
 			Type:        "string",
@@ -2599,41 +2111,98 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
 			Format:      "decimal",
 		},
-		"purchase_details.flight.departure_at": {
-			Type:        "integer",
-			Description: "The time that the flight departed.",
-			Format:      "unix-time",
-		},
-		"purchase_details.fuel.industry_product_code": {
+		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
 			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
-		},
-		"purchase_details.reference": {
-			Type:        "string",
-			Description: "A merchant-specific order number.",
-		},
-		"currency": {
-			Type:        "string",
-			Description: "The currency of the capture. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Format:      "currency",
-		},
-		"merchant_data.city": {
-			Type:        "string",
-			Description: "City where the seller is located",
-		},
-		"merchant_data.state": {
-			Type:        "string",
-			Description: "State where the seller is located",
+			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
+			Format:      "decimal",
 		},
 		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
 			Type:        "string",
 			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
 		},
+		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.service_type": {
+			Type:        "string",
+			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Enum: []resource.EnumSpec{
+				{Value: "full_service"},
+				{Value: "non_fuel_transaction"},
+				{Value: "self_service"},
+			},
+		},
+		"purchase_details.flight.departure_at": {
+			Type:        "integer",
+			Description: "The time that the flight departed.",
+			Format:      "unix-time",
+		},
+		"purchase_details.flight.passenger_name": {
+			Type:        "string",
+			Description: "The name of the passenger.",
+		},
+		"purchase_details.flight.refundable": {
+			Type:        "boolean",
+			Description: "Whether the ticket is refundable.",
+		},
+		"purchase_details.flight.travel_agency": {
+			Type:        "string",
+			Description: "The travel agency that issued the ticket.",
+		},
+		"purchase_details.fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
 		"purchase_details.fuel.quantity_decimal": {
 			Type:        "string",
 			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
 			Format:      "decimal",
+		},
+		"purchase_details.fuel.type": {
+			Type:        "string",
+			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "diesel"},
+				{Value: "other"},
+				{Value: "unleaded_plus"},
+				{Value: "unleaded_regular"},
+				{Value: "unleaded_super"},
+			},
+		},
+		"purchase_details.fuel.unit": {
+			Type:        "string",
+			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "charging_minute"},
+				{Value: "imperial_gallon"},
+				{Value: "kilogram"},
+				{Value: "kilowatt_hour"},
+				{Value: "liter"},
+				{Value: "other"},
+				{Value: "pound"},
+				{Value: "us_gallon"},
+			},
+		},
+		"purchase_details.fuel.unit_cost_decimal": {
+			Type:        "string",
+			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+		"purchase_details.lodging.check_in_at": {
+			Type:        "integer",
+			Description: "The time of checking into the lodging.",
+			Format:      "unix-time",
+		},
+		"purchase_details.lodging.nights": {
+			Type:        "integer",
+			Description: "The number of nights stayed at the lodging.",
+		},
+		"purchase_details.reference": {
+			Type:        "string",
+			Description: "A merchant-specific order number.",
 		},
 	},
 }
@@ -2644,6 +2213,21 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 	Method:  "POST",
 	Summary: "Create a test-mode unlinked refund",
 	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "The total amount to attempt to refund. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Required:    true,
+		},
+		"card": {
+			Type:        "string",
+			Description: "Card associated with this unlinked refund transaction.",
+			Required:    true,
+		},
+		"currency": {
+			Type:        "string",
+			Description: "The currency of the unlinked refund. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Format:      "currency",
+		},
 		"merchant_data.category": {
 			Type:        "string",
 			Description: "A categorization of the seller's type of business. See our [merchant categories guide](https://docs.stripe.com/issuing/merchant-categories) for a list of possible values.",
@@ -2944,18 +2528,132 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 				{Value: "wrecking_and_salvage_yards"},
 			},
 		},
+		"merchant_data.city": {
+			Type:        "string",
+			Description: "City where the seller is located",
+		},
+		"merchant_data.country": {
+			Type:        "string",
+			Description: "Country where the seller is located",
+		},
+		"merchant_data.name": {
+			Type:        "string",
+			Description: "Name of the seller",
+		},
+		"merchant_data.network_id": {
+			Type:        "string",
+			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
+		},
 		"merchant_data.postal_code": {
 			Type:        "string",
 			Description: "Postal code where the seller is located",
+		},
+		"merchant_data.state": {
+			Type:        "string",
+			Description: "State where the seller is located",
+		},
+		"merchant_data.terminal_id": {
+			Type:        "string",
+			Description: "An ID assigned by the seller to the location of the sale.",
+		},
+		"merchant_data.url": {
+			Type:        "string",
+			Description: "URL provided by the merchant on a 3DS request",
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type:        "string",
 			Description: "Driver ID.",
 		},
+		"purchase_details.fleet.cardholder_prompt_data.odometer": {
+			Type:        "integer",
+			Description: "Odometer reading.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
+			Type:        "string",
+			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
+		},
+		"purchase_details.fleet.purchase_type": {
+			Type:        "string",
+			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fuel_and_non_fuel_purchase"},
+				{Value: "fuel_purchase"},
+				{Value: "non_fuel_purchase"},
+			},
+		},
+		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
 		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
 			Type:        "string",
 			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
+		},
+		"purchase_details.fleet.service_type": {
+			Type:        "string",
+			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Enum: []resource.EnumSpec{
+				{Value: "full_service"},
+				{Value: "non_fuel_transaction"},
+				{Value: "self_service"},
+			},
+		},
+		"purchase_details.flight.departure_at": {
+			Type:        "integer",
+			Description: "The time that the flight departed.",
+			Format:      "unix-time",
+		},
+		"purchase_details.flight.passenger_name": {
+			Type:        "string",
+			Description: "The name of the passenger.",
+		},
+		"purchase_details.flight.refundable": {
+			Type:        "boolean",
+			Description: "Whether the ticket is refundable.",
+		},
+		"purchase_details.flight.travel_agency": {
+			Type:        "string",
+			Description: "The travel agency that issued the ticket.",
+		},
+		"purchase_details.fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
+		"purchase_details.fuel.quantity_decimal": {
+			Type:        "string",
+			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+		"purchase_details.fuel.type": {
+			Type:        "string",
+			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "diesel"},
+				{Value: "other"},
+				{Value: "unleaded_plus"},
+				{Value: "unleaded_regular"},
+				{Value: "unleaded_super"},
+			},
 		},
 		"purchase_details.fuel.unit": {
 			Type:        "string",
@@ -2971,18 +2669,15 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 				{Value: "us_gallon"},
 			},
 		},
-		"currency": {
+		"purchase_details.fuel.unit_cost_decimal": {
 			Type:        "string",
-			Description: "The currency of the unlinked refund. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Format:      "currency",
+			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
 		},
-		"merchant_data.country": {
-			Type:        "string",
-			Description: "Country where the seller is located",
-		},
-		"merchant_data.terminal_id": {
-			Type:        "string",
-			Description: "An ID assigned by the seller to the location of the sale.",
+		"purchase_details.lodging.check_in_at": {
+			Type:        "integer",
+			Description: "The time of checking into the lodging.",
+			Format:      "unix-time",
 		},
 		"purchase_details.lodging.nights": {
 			Type:        "integer",
@@ -2992,131 +2687,436 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 			Type:        "string",
 			Description: "A merchant-specific order number.",
 		},
-		"purchase_details.flight.departure_at": {
-			Type:        "integer",
-			Description: "The time that the flight departed.",
-			Format:      "unix-time",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
+	},
+}
+
+var V1IssuingTokensUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/issuing/tokens/{token}",
+	Method:  "POST",
+	Summary: "Update a token status",
+	Params: map[string]*resource.ParamSpec{
+		"status": {
 			Type:        "string",
-			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
-		},
-		"purchase_details.flight.passenger_name": {
-			Type:        "string",
-			Description: "The name of the passenger.",
-		},
-		"purchase_details.fuel.type": {
-			Type:        "string",
-			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Description: "Specifies which status the token should be updated to.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "diesel"},
-				{Value: "other"},
-				{Value: "unleaded_plus"},
-				{Value: "unleaded_regular"},
-				{Value: "unleaded_super"},
+				{Value: "active"},
+				{Value: "deleted"},
+				{Value: "suspended"},
 			},
 		},
+	},
+}
+
+var V1IssuingTokensList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/issuing/tokens",
+	Method:  "GET",
+	Summary: "List all issuing tokens for card",
+	Params: map[string]*resource.ParamSpec{
 		"card": {
 			Type:        "string",
-			Description: "Card associated with this unlinked refund transaction.",
+			Description: "The Issuing card identifier to list tokens for.",
 			Required:    true,
 		},
-		"merchant_data.network_id": {
-			Type:        "string",
-			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
-		},
-		"purchase_details.fuel.quantity_decimal": {
-			Type:        "string",
-			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
-		},
-		"purchase_details.lodging.check_in_at": {
+		"created": {
 			Type:        "integer",
-			Description: "The time of checking into the lodging.",
+			Description: "Only return Issuing tokens that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Select Issuing tokens with the given status.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "deleted"},
+				{Value: "requested"},
+				{Value: "suspended"},
+			},
+		},
+	},
+}
+
+var V1IssuingTokensRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/issuing/tokens/{token}",
+	Method:  "GET",
+	Summary: "Retrieve an issuing token",
+}
+
+var V1IssuingPhysicalBundlesList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/issuing/physical_bundles",
+	Method:  "GET",
+	Summary: "List all physical bundles",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Only return physical bundles with the given status.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "inactive"},
+				{Value: "review"},
+			},
+		},
+		"type": {
+			Type:        "string",
+			Description: "Only return physical bundles with the given type.",
+			Enum: []resource.EnumSpec{
+				{Value: "custom"},
+				{Value: "standard"},
+			},
+		},
+	},
+}
+
+var V1IssuingPhysicalBundlesRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/issuing/physical_bundles/{physical_bundle}",
+	Method:  "GET",
+	Summary: "Retrieve a physical bundle",
+}
+
+var V1IssuingCardholdersUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/issuing/cardholders/{cardholder}",
+	Method:  "POST",
+	Summary: "Update a cardholder",
+	Params: map[string]*resource.ParamSpec{
+		"billing.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+			Required:    true,
+		},
+		"billing.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"billing.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+			Required:    true,
+		},
+		"billing.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"billing.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+			Required:    true,
+		},
+		"billing.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"company.tax_id": {
+			Type:        "string",
+			Description: "The entity's business ID number.",
+		},
+		"email": {
+			Type:        "string",
+			Description: "The cardholder's email address.",
+		},
+		"individual.card_issuing.user_terms_acceptance.date": {
+			Type:        "integer",
+			Description: "The Unix timestamp marking when the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
 			Format:      "unix-time",
 		},
-		"purchase_details.fleet.cardholder_prompt_data.odometer": {
+		"individual.card_issuing.user_terms_acceptance.ip": {
+			Type:        "string",
+			Description: "The IP address from which the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
+		},
+		"individual.card_issuing.user_terms_acceptance.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the cardholder accepted the Authorized User Terms.",
+		},
+		"individual.dob.day": {
 			Type:        "integer",
-			Description: "Odometer reading.",
-		},
-		"purchase_details.fleet.service_type": {
-			Type:        "string",
-			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
-			Enum: []resource.EnumSpec{
-				{Value: "full_service"},
-				{Value: "non_fuel_transaction"},
-				{Value: "self_service"},
-			},
-		},
-		"merchant_data.url": {
-			Type:        "string",
-			Description: "URL provided by the merchant on a 3DS request",
-		},
-		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"purchase_details.flight.refundable": {
-			Type:        "boolean",
-			Description: "Whether the ticket is refundable.",
-		},
-		"purchase_details.flight.travel_agency": {
-			Type:        "string",
-			Description: "The travel agency that issued the ticket.",
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "The total amount to attempt to refund. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Description: "The day of birth, between 1 and 31.",
 			Required:    true,
 		},
-		"merchant_data.state": {
-			Type:        "string",
-			Description: "State where the seller is located",
+		"individual.dob.month": {
+			Type:        "integer",
+			Description: "The month of birth, between 1 and 12.",
+			Required:    true,
 		},
-		"merchant_data.city": {
-			Type:        "string",
-			Description: "City where the seller is located",
+		"individual.dob.year": {
+			Type:        "integer",
+			Description: "The four-digit year of birth.",
+			Required:    true,
 		},
-		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
+		"individual.first_name": {
 			Type:        "string",
-			Description: "Vehicle number.",
+			Description: "The first name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
 		},
-		"purchase_details.fleet.purchase_type": {
+		"individual.last_name": {
 			Type:        "string",
-			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
+			Description: "The last name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
+		},
+		"individual.verification.document.back": {
+			Type:        "string",
+			Description: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+		},
+		"individual.verification.document.front": {
+			Type:        "string",
+			Description: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+		},
+		"phone_number": {
+			Type:        "string",
+			Description: "The cardholder's phone number. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://docs.stripe.com/issuing/3d-secure) for more details.",
+		},
+		"preferred_locales": {
+			Type:        "array",
+			Description: "The cardholder’s preferred locales (languages), ordered by preference. Locales can be `de`, `en`, `es`, `fr`, or `it`.\n This changes the language of the [3D Secure flow](https://docs.stripe.com/issuing/3d-secure) and one-time password messages sent to the cardholder.",
+		},
+		"spending_controls.allowed_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
+		},
+		"spending_controls.allowed_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.blocked_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
+		},
+		"spending_controls.blocked_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.spending_limits_currency": {
+			Type:        "string",
+			Description: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Specifies whether to permit authorizations on this cardholder's cards.",
 			Enum: []resource.EnumSpec{
-				{Value: "fuel_and_non_fuel_purchase"},
-				{Value: "fuel_purchase"},
-				{Value: "non_fuel_purchase"},
+				{Value: "active"},
+				{Value: "inactive"},
 			},
 		},
-		"purchase_details.fuel.unit_cost_decimal": {
-			Type:        "string",
-			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
+	},
+}
+
+var V1IssuingCardholdersList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/issuing/cardholders",
+	Method:  "GET",
+	Summary: "List all cardholders",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:        "integer",
+			Description: "Only return cardholders that were created during the given date interval.",
 		},
-		"merchant_data.name": {
+		"email": {
 			Type:        "string",
-			Description: "Name of the seller",
+			Description: "Only return cardholders that have the given email address.",
 		},
-		"purchase_details.fleet.cardholder_prompt_data.user_id": {
+		"ending_before": {
 			Type:        "string",
-			Description: "User ID.",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
 		},
-		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
 		},
-		"purchase_details.fuel.industry_product_code": {
+		"phone_number": {
 			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+			Description: "Only return cardholders that have the given phone number.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Only return cardholders that have the given status. One of `active`, `inactive`, or `blocked`.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "blocked"},
+				{Value: "inactive"},
+			},
+		},
+		"type": {
+			Type:        "string",
+			Description: "Only return cardholders that have the given type. One of `individual` or `company`.",
+			Enum: []resource.EnumSpec{
+				{Value: "company"},
+				{Value: "individual"},
+			},
+		},
+	},
+}
+
+var V1IssuingCardholdersRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/issuing/cardholders/{cardholder}",
+	Method:  "GET",
+	Summary: "Retrieve a cardholder",
+}
+
+var V1IssuingCardholdersCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/issuing/cardholders",
+	Method:  "POST",
+	Summary: "Create a cardholder",
+	Params: map[string]*resource.ParamSpec{
+		"billing.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+			Required:    true,
+		},
+		"billing.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"billing.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+			Required:    true,
+		},
+		"billing.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"billing.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+			Required:    true,
+		},
+		"billing.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"company.tax_id": {
+			Type:        "string",
+			Description: "The entity's business ID number.",
+		},
+		"email": {
+			Type:        "string",
+			Description: "The cardholder's email address.",
+		},
+		"individual.card_issuing.user_terms_acceptance.date": {
+			Type:        "integer",
+			Description: "The Unix timestamp marking when the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
+			Format:      "unix-time",
+		},
+		"individual.card_issuing.user_terms_acceptance.ip": {
+			Type:        "string",
+			Description: "The IP address from which the cardholder accepted the Authorized User Terms. Required for Celtic Spend Card users.",
+		},
+		"individual.card_issuing.user_terms_acceptance.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the cardholder accepted the Authorized User Terms.",
+		},
+		"individual.dob.day": {
+			Type:        "integer",
+			Description: "The day of birth, between 1 and 31.",
+			Required:    true,
+		},
+		"individual.dob.month": {
+			Type:        "integer",
+			Description: "The month of birth, between 1 and 12.",
+			Required:    true,
+		},
+		"individual.dob.year": {
+			Type:        "integer",
+			Description: "The four-digit year of birth.",
+			Required:    true,
+		},
+		"individual.first_name": {
+			Type:        "string",
+			Description: "The first name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
+		},
+		"individual.last_name": {
+			Type:        "string",
+			Description: "The last name of this cardholder. Required before activating Cards. This field cannot contain any numbers, special characters (except periods, commas, hyphens, spaces and apostrophes) or non-latin letters.",
+		},
+		"individual.verification.document.back": {
+			Type:        "string",
+			Description: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+		},
+		"individual.verification.document.front": {
+			Type:        "string",
+			Description: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+		},
+		"name": {
+			Type:        "string",
+			Description: "The cardholder's name. This will be printed on cards issued to them. The maximum length of this field is 24 characters. This field cannot contain any special characters or numbers.",
+			Required:    true,
+		},
+		"phone_number": {
+			Type:        "string",
+			Description: "The cardholder's phone number. This will be transformed to [E.164](https://en.wikipedia.org/wiki/E.164) if it is not provided in that format already. This is required for all cardholders who will be creating EU cards. See the [3D Secure documentation](https://docs.stripe.com/issuing/3d-secure#when-is-3d-secure-applied) for more details.",
+		},
+		"preferred_locales": {
+			Type:        "array",
+			Description: "The cardholder’s preferred locales (languages), ordered by preference. Locales can be `de`, `en`, `es`, `fr`, or `it`.\n This changes the language of the [3D Secure flow](https://docs.stripe.com/issuing/3d-secure) and one-time password messages sent to the cardholder.",
+		},
+		"spending_controls.allowed_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to allow. All other categories will be blocked. Cannot be set with `blocked_categories`.",
+		},
+		"spending_controls.allowed_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be allowed. Authorizations from merchants in all other countries will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `blocked_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.blocked_categories": {
+			Type:        "array",
+			Description: "Array of strings containing [categories](https://docs.stripe.com/api#issuing_authorization_object-merchant_data-category) of authorizations to decline. All other categories will be allowed. Cannot be set with `allowed_categories`.",
+		},
+		"spending_controls.blocked_merchant_countries": {
+			Type:        "array",
+			Description: "Array of strings containing representing countries from which authorizations will be declined. Country codes should be ISO 3166 alpha-2 country codes (e.g. `US`). Cannot be set with `allowed_merchant_countries`. Provide an empty value to unset this control.",
+		},
+		"spending_controls.spending_limits_currency": {
+			Type:        "string",
+			Description: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "Specifies whether to permit authorizations on this cardholder's cards. Defaults to `active`.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "inactive"},
+			},
+		},
+		"type": {
+			Type:        "string",
+			Description: "One of `individual` or `company`. See [Choose a cardholder type](https://docs.stripe.com/issuing/other/choose-cardholder) for more details.",
+			Enum: []resource.EnumSpec{
+				{Value: "company"},
+				{Value: "individual"},
+			},
 		},
 	},
 }

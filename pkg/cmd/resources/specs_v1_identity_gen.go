@@ -4,6 +4,54 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
+var V1IdentityVerificationReportsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/identity/verification_reports",
+	Method:  "GET",
+	Summary: "List VerificationReports",
+	Params: map[string]*resource.ParamSpec{
+		"client_reference_id": {
+			Type:        "string",
+			Description: "A string to reference this user. This can be a customer ID, a session ID, or similar, and can be used to reconcile this verification with your internal systems.",
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return VerificationReports that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"type": {
+			Type:        "string",
+			Description: "Only return VerificationReports of this type",
+			Enum: []resource.EnumSpec{
+				{Value: "document"},
+				{Value: "id_number"},
+			},
+		},
+		"verification_session": {
+			Type:        "string",
+			Description: "Only return VerificationReports created by this VerificationSession ID. It is allowed to provide a VerificationIntent ID.",
+		},
+	},
+}
+
+var V1IdentityVerificationReportsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/identity/verification_reports/{report}",
+	Method:  "GET",
+	Summary: "Retrieve a VerificationReport",
+}
+
 var V1IdentityVerificationSessionsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
 	Path:    "/v1/identity/verification_sessions/{session}",
@@ -17,6 +65,10 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a VerificationSession",
 	Params: map[string]*resource.ParamSpec{
+		"client_reference_id": {
+			Type:        "string",
+			Description: "A string to reference this user. This can be a customer ID, a session ID, or similar, and can be used to reconcile this verification with your internal systems.",
+		},
 		"provided_details.email": {
 			Type:        "string",
 			Description: "Email of user being verified",
@@ -24,6 +76,14 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 		"provided_details.phone": {
 			Type:        "string",
 			Description: "Phone number of user being verified",
+		},
+		"related_customer": {
+			Type:        "string",
+			Description: "Customer ID",
+		},
+		"related_customer_account": {
+			Type:        "string",
+			Description: "The ID of the Account representing a customer.",
 		},
 		"related_person.account": {
 			Type:        "string",
@@ -47,21 +107,9 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 				{Value: "id_number"},
 			},
 		},
-		"client_reference_id": {
-			Type:        "string",
-			Description: "A string to reference this user. This can be a customer ID, a session ID, or similar, and can be used to reconcile this verification with your internal systems.",
-		},
 		"verification_flow": {
 			Type:        "string",
 			Description: "The ID of a verification flow from the Dashboard. See https://docs.stripe.com/identity/verification-flows.",
-		},
-		"related_customer": {
-			Type:        "string",
-			Description: "Customer ID",
-		},
-		"related_customer_account": {
-			Type:        "string",
-			Description: "The ID of the Account representing a customer.",
 		},
 	},
 }
@@ -150,52 +198,4 @@ var V1IdentityVerificationSessionsList = resource.OperationSpec{
 			},
 		},
 	},
-}
-
-var V1IdentityVerificationReportsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/identity/verification_reports",
-	Method:  "GET",
-	Summary: "List VerificationReports",
-	Params: map[string]*resource.ParamSpec{
-		"client_reference_id": {
-			Type:        "string",
-			Description: "A string to reference this user. This can be a customer ID, a session ID, or similar, and can be used to reconcile this verification with your internal systems.",
-		},
-		"created": {
-			Type:        "integer",
-			Description: "Only return VerificationReports that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"type": {
-			Type:        "string",
-			Description: "Only return VerificationReports of this type",
-			Enum: []resource.EnumSpec{
-				{Value: "document"},
-				{Value: "id_number"},
-			},
-		},
-		"verification_session": {
-			Type:        "string",
-			Description: "Only return VerificationReports created by this VerificationSession ID. It is allowed to provide a VerificationIntent ID.",
-		},
-	},
-}
-
-var V1IdentityVerificationReportsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/identity/verification_reports/{report}",
-	Method:  "GET",
-	Summary: "Retrieve a VerificationReport",
 }

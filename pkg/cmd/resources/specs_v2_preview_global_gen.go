@@ -4,6 +4,14 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
+var V2PreviewFinancialAddressGeneratedMicrodepositssTestHelpersGenerateMicrodeposits = resource.OperationSpec{
+	Name:      "generate_microdeposits",
+	Path:      "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Generate Microdeposits for a Financial Address",
+}
+
 var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.OperationSpec{
 	Name:      "credit",
 	Path:      "/v2/test_helpers/financial_addresses/{id}/credit",
@@ -11,14 +19,14 @@ var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.Opera
 	IsPreview: true,
 	Summary:   "Credit a Financial Address",
 	Params: map[string]*resource.ParamSpec{
-		"amount.value": {
-			Type:        "integer",
-			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
-			Required:    true,
-		},
 		"amount.currency": {
 			Type:        "string",
 			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+		},
+		"amount.value": {
+			Type:        "integer",
+			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
 			Required:    true,
 		},
 		"network": {
@@ -37,12 +45,4 @@ var V2PreviewFinancialAddressCreditSimulationsTestHelpersCredit = resource.Opera
 			Description: "String explaining funds flow. Use this field to populate the statement descriptor of the ReceivedCredit created as an eventual result of this simulation.",
 		},
 	},
-}
-
-var V2PreviewFinancialAddressGeneratedMicrodepositssTestHelpersGenerateMicrodeposits = resource.OperationSpec{
-	Name:      "generate_microdeposits",
-	Path:      "/v2/test_helpers/financial_addresses/{id}/generate_microdeposits",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Generate Microdeposits for a Financial Address",
 }

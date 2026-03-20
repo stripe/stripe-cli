@@ -4,6 +4,20 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
+var V1ReportingReportTypesList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/reporting/report_types",
+	Method:  "GET",
+	Summary: "List all Report Types",
+}
+
+var V1ReportingReportTypesRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/reporting/report_types/{report_type}",
+	Method:  "GET",
+	Summary: "Retrieve a Report Type",
+}
+
 var V1ReportingReportRunsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/reporting/report_runs",
@@ -42,6 +56,76 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a Report Run",
 	Params: map[string]*resource.ParamSpec{
+		"parameters.columns": {
+			Type:        "array",
+			Description: "The set of report columns to include in the report output. If omitted, the Report Type is run with its default column set.",
+		},
+		"parameters.connected_account": {
+			Type:        "string",
+			Description: "Connected account ID to filter for in the report run.",
+		},
+		"parameters.currency": {
+			Type:        "string",
+			Description: "Currency of objects to be included in the report run.",
+			Format:      "currency",
+		},
+		"parameters.interval_end": {
+			Type:        "integer",
+			Description: "Ending timestamp of data to be included in the report run (exclusive).",
+			Format:      "unix-time",
+		},
+		"parameters.interval_start": {
+			Type:        "integer",
+			Description: "Starting timestamp of data to be included in the report run.",
+			Format:      "unix-time",
+		},
+		"parameters.payout": {
+			Type:        "string",
+			Description: "Payout ID by which to filter the report run.",
+		},
+		"parameters.reporting_category": {
+			Type:        "string",
+			Description: "Category of balance transactions to be included in the report run.",
+			Enum: []resource.EnumSpec{
+				{Value: "advance"},
+				{Value: "advance_funding"},
+				{Value: "anticipation_repayment"},
+				{Value: "charge"},
+				{Value: "charge_failure"},
+				{Value: "climate_order_purchase"},
+				{Value: "climate_order_refund"},
+				{Value: "connect_collection_transfer"},
+				{Value: "connect_reserved_funds"},
+				{Value: "contribution"},
+				{Value: "dispute"},
+				{Value: "dispute_reversal"},
+				{Value: "fee"},
+				{Value: "financing_paydown"},
+				{Value: "financing_paydown_reversal"},
+				{Value: "financing_payout"},
+				{Value: "financing_payout_reversal"},
+				{Value: "issuing_authorization_hold"},
+				{Value: "issuing_authorization_release"},
+				{Value: "issuing_dispute"},
+				{Value: "issuing_transaction"},
+				{Value: "network_cost"},
+				{Value: "other_adjustment"},
+				{Value: "partial_capture_reversal"},
+				{Value: "payout"},
+				{Value: "payout_reversal"},
+				{Value: "platform_earning"},
+				{Value: "platform_earning_refund"},
+				{Value: "refund"},
+				{Value: "refund_failure"},
+				{Value: "risk_reserved_funds"},
+				{Value: "tax"},
+				{Value: "topup"},
+				{Value: "topup_reversal"},
+				{Value: "transfer"},
+				{Value: "transfer_reversal"},
+				{Value: "unreconciled_customer_funds"},
+			},
+		},
 		"parameters.timezone": {
 			Type:        "string",
 			Description: "Defaults to `Etc/UTC`. The output timezone for all timestamps in the report. A list of possible time zone values is maintained at the [IANA Time Zone Database](http://www.iana.org/time-zones). Has no effect on `interval_start` or `interval_end`.",
@@ -647,94 +731,10 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 				{Value: "Zulu"},
 			},
 		},
-		"parameters.columns": {
-			Type:        "array",
-			Description: "The set of report columns to include in the report output. If omitted, the Report Type is run with its default column set.",
-		},
 		"report_type": {
 			Type:        "string",
 			Description: "The ID of the [report type](https://docs.stripe.com/reporting/statements/api#report-types) to run, such as `\"balance.summary.1\"`.",
 			Required:    true,
 		},
-		"parameters.connected_account": {
-			Type:        "string",
-			Description: "Connected account ID to filter for in the report run.",
-		},
-		"parameters.interval_end": {
-			Type:        "integer",
-			Description: "Ending timestamp of data to be included in the report run (exclusive).",
-			Format:      "unix-time",
-		},
-		"parameters.currency": {
-			Type:        "string",
-			Description: "Currency of objects to be included in the report run.",
-			Format:      "currency",
-		},
-		"parameters.interval_start": {
-			Type:        "integer",
-			Description: "Starting timestamp of data to be included in the report run.",
-			Format:      "unix-time",
-		},
-		"parameters.payout": {
-			Type:        "string",
-			Description: "Payout ID by which to filter the report run.",
-		},
-		"parameters.reporting_category": {
-			Type:        "string",
-			Description: "Category of balance transactions to be included in the report run.",
-			Enum: []resource.EnumSpec{
-				{Value: "advance"},
-				{Value: "advance_funding"},
-				{Value: "anticipation_repayment"},
-				{Value: "charge"},
-				{Value: "charge_failure"},
-				{Value: "climate_order_purchase"},
-				{Value: "climate_order_refund"},
-				{Value: "connect_collection_transfer"},
-				{Value: "connect_reserved_funds"},
-				{Value: "contribution"},
-				{Value: "dispute"},
-				{Value: "dispute_reversal"},
-				{Value: "fee"},
-				{Value: "financing_paydown"},
-				{Value: "financing_paydown_reversal"},
-				{Value: "financing_payout"},
-				{Value: "financing_payout_reversal"},
-				{Value: "issuing_authorization_hold"},
-				{Value: "issuing_authorization_release"},
-				{Value: "issuing_dispute"},
-				{Value: "issuing_transaction"},
-				{Value: "network_cost"},
-				{Value: "other_adjustment"},
-				{Value: "partial_capture_reversal"},
-				{Value: "payout"},
-				{Value: "payout_reversal"},
-				{Value: "platform_earning"},
-				{Value: "platform_earning_refund"},
-				{Value: "refund"},
-				{Value: "refund_failure"},
-				{Value: "risk_reserved_funds"},
-				{Value: "tax"},
-				{Value: "topup"},
-				{Value: "topup_reversal"},
-				{Value: "transfer"},
-				{Value: "transfer_reversal"},
-				{Value: "unreconciled_customer_funds"},
-			},
-		},
 	},
-}
-
-var V1ReportingReportTypesList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/reporting/report_types",
-	Method:  "GET",
-	Summary: "List all Report Types",
-}
-
-var V1ReportingReportTypesRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/reporting/report_types/{report_type}",
-	Method:  "GET",
-	Summary: "Retrieve a Report Type",
 }

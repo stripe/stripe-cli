@@ -4,59 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1TaxSettingsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/tax/settings",
-	Method:  "POST",
-	Summary: "Update settings",
-	Params: map[string]*resource.ParamSpec{
-		"head_office.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-		},
-		"head_office.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"defaults.tax_behavior": {
-			Type:        "string",
-			Description: "Specifies the default [tax behavior](https://stripe.com/docs/tax/products-prices-tax-categories-tax-behavior#tax-behavior) to be used when the item's price has unspecified tax behavior. One of inclusive, exclusive, or inferred_by_currency. Once specified, it cannot be changed back to null.",
-			Enum: []resource.EnumSpec{
-				{Value: "exclusive"},
-				{Value: "inclusive"},
-				{Value: "inferred_by_currency"},
-			},
-		},
-		"defaults.tax_code": {
-			Type:        "string",
-			Description: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID.",
-		},
-		"head_office.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"head_office.address.state": {
-			Type:        "string",
-			Description: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
-		},
-		"head_office.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"head_office.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-	},
-}
-
-var V1TaxSettingsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/tax/settings",
-	Method:  "GET",
-	Summary: "Retrieve settings",
-}
-
 var V1TaxAssociationsFind = resource.OperationSpec{
 	Name:    "find",
 	Path:    "/v1/tax/associations/find",
@@ -105,19 +52,40 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a Tax Calculation",
 	Params: map[string]*resource.ParamSpec{
-		"ship_from_details.address.country": {
+		"currency": {
+			Type:        "string",
+			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+			Format:      "currency",
+		},
+		"customer": {
+			Type:        "string",
+			Description: "The ID of an existing customer to use for this calculation. If provided, the customer's address and tax IDs are copied to `customer_details`.",
+		},
+		"customer_details.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"customer_details.address.country": {
 			Type:        "string",
 			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
 			Required:    true,
 		},
-		"customer_details.taxability_override": {
+		"customer_details.address.line1": {
 			Type:        "string",
-			Description: "Overrides the tax calculation result to allow you to not collect tax from your customer. Use this if you've manually checked your customer's tax exemptions. Prefer providing the customer's `tax_ids` where possible, which automatically determines whether `reverse_charge` applies.",
-			Enum: []resource.EnumSpec{
-				{Value: "customer_exempt"},
-				{Value: "none"},
-				{Value: "reverse_charge"},
-			},
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+		},
+		"customer_details.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"customer_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"customer_details.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region. We recommend sending [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code value when possible.",
 		},
 		"customer_details.address_source": {
 			Type:        "string",
@@ -131,26 +99,43 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "The customer's IP address (IPv4 or IPv6).",
 		},
+		"customer_details.taxability_override": {
+			Type:        "string",
+			Description: "Overrides the tax calculation result to allow you to not collect tax from your customer. Use this if you've manually checked your customer's tax exemptions. Prefer providing the customer's `tax_ids` where possible, which automatically determines whether `reverse_charge` applies.",
+			Enum: []resource.EnumSpec{
+				{Value: "customer_exempt"},
+				{Value: "none"},
+				{Value: "reverse_charge"},
+			},
+		},
 		"ship_from_details.address.city": {
 			Type:        "string",
 			Description: "City, district, suburb, town, or village.",
 		},
-		"customer_details.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"customer_details.address.country": {
+		"ship_from_details.address.country": {
 			Type:        "string",
 			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
 			Required:    true,
+		},
+		"ship_from_details.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
 		},
 		"ship_from_details.address.line2": {
 			Type:        "string",
 			Description: "Address line 2, such as the apartment, suite, unit, or building.",
 		},
+		"ship_from_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
 		"ship_from_details.address.state": {
 			Type:        "string",
 			Description: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
+		},
+		"shipping_cost.amount": {
+			Type:        "integer",
+			Description: "A positive integer in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) representing the shipping charge. If `tax_behavior=inclusive`, then this amount includes taxes. Otherwise, taxes are calculated on top of this amount.",
 		},
 		"shipping_cost.shipping_rate": {
 			Type:        "string",
@@ -164,79 +149,13 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 				{Value: "inclusive"},
 			},
 		},
-		"currency": {
-			Type:        "string",
-			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Required:    true,
-			Format:      "currency",
-		},
-		"customer": {
-			Type:        "string",
-			Description: "The ID of an existing customer to use for this calculation. If provided, the customer's address and tax IDs are copied to `customer_details`.",
-		},
-		"customer_details.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region. We recommend sending [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code value when possible.",
-		},
-		"customer_details.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"ship_from_details.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-		},
-		"ship_from_details.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
 		"shipping_cost.tax_code": {
 			Type:        "string",
 			Description: "The [tax code](https://docs.stripe.com/tax/tax-categories) used to calculate tax on shipping. If not provided, the default shipping tax code from your [Tax Settings](https://dashboard.stripe.com/settings/tax) is used.",
 		},
-		"shipping_cost.amount": {
-			Type:        "integer",
-			Description: "A positive integer in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) representing the shipping charge. If `tax_behavior=inclusive`, then this amount includes taxes. Otherwise, taxes are calculated on top of this amount.",
-		},
 		"tax_date": {
 			Type:        "integer",
 			Description: "Timestamp of date at which the tax rules and rates in effect applies for the calculation. Measured in seconds since the Unix epoch. Can be up to 48 hours in the past, and up to 48 hours in the future.",
-		},
-		"customer_details.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"customer_details.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-		},
-	},
-}
-
-var V1TaxTransactionsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/tax/transactions/{transaction}",
-	Method:  "GET",
-	Summary: "Retrieve a transaction",
-}
-
-var V1TaxTransactionsListLineItems = resource.OperationSpec{
-	Name:    "list_line_items",
-	Path:    "/v1/tax/transactions/{transaction}/line_items",
-	Method:  "GET",
-	Summary: "Retrieve a transaction's line items",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
 		},
 	},
 }
@@ -271,6 +190,10 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a reversal transaction",
 	Params: map[string]*resource.ParamSpec{
+		"flat_amount": {
+			Type:        "integer",
+			Description: "A flat amount to reverse across the entire transaction, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative. This value represents the total amount to refund from the transaction, including taxes.",
+		},
 		"mode": {
 			Type:        "string",
 			Description: "If `partial`, the provided line item or shipping cost amounts are reversed. If `full`, the original transaction is fully reversed.",
@@ -300,29 +223,22 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 			Description: "The amount of tax to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative.",
 			Required:    true,
 		},
-		"flat_amount": {
-			Type:        "integer",
-			Description: "A flat amount to reverse across the entire transaction, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative. This value represents the total amount to refund from the transaction, including taxes.",
-		},
 	},
 }
 
-var V1TaxRegistrationsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/tax/registrations",
+var V1TaxTransactionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/tax/transactions/{transaction}",
 	Method:  "GET",
-	Summary: "List registrations",
+	Summary: "Retrieve a transaction",
+}
+
+var V1TaxTransactionsListLineItems = resource.OperationSpec{
+	Name:    "list_line_items",
+	Path:    "/v1/tax/transactions/{transaction}/line_items",
+	Method:  "GET",
+	Summary: "Retrieve a transaction's line items",
 	Params: map[string]*resource.ParamSpec{
-		"status": {
-			Type:        "string",
-			Description: "The status of the Tax Registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "all"},
-				{Value: "expired"},
-				{Value: "scheduled"},
-			},
-		},
 		"ending_before": {
 			Type:        "string",
 			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
@@ -338,6 +254,59 @@ var V1TaxRegistrationsList = resource.OperationSpec{
 	},
 }
 
+var V1TaxSettingsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/tax/settings",
+	Method:  "POST",
+	Summary: "Update settings",
+	Params: map[string]*resource.ParamSpec{
+		"defaults.tax_behavior": {
+			Type:        "string",
+			Description: "Specifies the default [tax behavior](https://stripe.com/docs/tax/products-prices-tax-categories-tax-behavior#tax-behavior) to be used when the item's price has unspecified tax behavior. One of inclusive, exclusive, or inferred_by_currency. Once specified, it cannot be changed back to null.",
+			Enum: []resource.EnumSpec{
+				{Value: "exclusive"},
+				{Value: "inclusive"},
+				{Value: "inferred_by_currency"},
+			},
+		},
+		"defaults.tax_code": {
+			Type:        "string",
+			Description: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID.",
+		},
+		"head_office.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"head_office.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"head_office.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+		},
+		"head_office.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"head_office.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"head_office.address.state": {
+			Type:        "string",
+			Description: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
+		},
+	},
+}
+
+var V1TaxSettingsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/tax/settings",
+	Method:  "GET",
+	Summary: "Retrieve settings",
+}
+
 var V1TaxRegistrationsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
 	Path:    "/v1/tax/registrations/{id}",
@@ -351,15 +320,17 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a registration",
 	Params: map[string]*resource.ParamSpec{
-		"country_options.cl.type": {
+		"active_from": {
 			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
+			Description: "Time at which the Tax Registration becomes active. It can be either `now` to indicate the current time, or a future timestamp measured in seconds since the Unix epoch.",
 			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
 		},
-		"country_options.bh.standard.place_of_supply_scheme": {
+		"country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"country_options.ae.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -367,23 +338,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.co.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.bj.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.no.type": {
+		"country_options.ae.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -391,20 +346,15 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.ca.province_standard.province": {
+		"country_options.al.standard.place_of_supply_scheme": {
 			Type:        "string",
-			Description: "Two-letter CA province code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-			Required:    true,
-		},
-		"country_options.ec.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
+			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
+				{Value: "inbound_goods"},
+				{Value: "standard"},
 			},
 		},
-		"country_options.bb.type": {
+		"country_options.al.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -412,7 +362,41 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.gr.type": {
+		"country_options.am.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ao.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ao.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.at.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.at.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in an EU country.",
 			Required:    true,
@@ -423,15 +407,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.zm.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.et.standard.place_of_supply_scheme": {
+		"country_options.au.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -439,11 +415,11 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.zw.standard.place_of_supply_scheme": {
+		"country_options.au.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -455,7 +431,264 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.nl.standard.place_of_supply_scheme": {
+		"country_options.aw.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.az.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ba.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ba.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.bb.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bb.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.bd.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bd.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.be.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.be.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bf.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bf.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.bg.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bg.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bh.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bh.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.bj.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.bs.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.bs.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.by.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ca.province_standard.province": {
+			Type:        "string",
+			Description: "Two-letter CA province code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+			Required:    true,
+		},
+		"country_options.ca.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in Canada.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "province_standard"},
+				{Value: "simplified"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.cd.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.cd.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.ch.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ch.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.cl.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.cm.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.co.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.cr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.cv.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.cy.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -476,7 +709,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.se.standard.place_of_supply_scheme": {
+		"country_options.cz.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -486,23 +719,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.tz.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cd.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lt.type": {
+		"country_options.cz.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in an EU country.",
 			Required:    true,
@@ -513,23 +730,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.in.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.nz.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.hu.standard.place_of_supply_scheme": {
+		"country_options.de.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -539,57 +740,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.it.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ph.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ng.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.pe.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.au.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.za.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.hr.type": {
+		"country_options.de.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in an EU country.",
 			Required:    true,
@@ -600,35 +751,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.kh.type": {
+		"country_options.dk.standard.place_of_supply_scheme": {
 			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
+			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.bb.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.al.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.bd.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
+				{Value: "small_seller"},
 				{Value: "standard"},
 			},
 		},
@@ -643,7 +772,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.tr.type": {
+		"country_options.ec.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -651,242 +780,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.am.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cv.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cz.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lv.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ua.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ge.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cm.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.sg.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.us.local_lease_tax.jurisdiction": {
-			Type:        "string",
-			Description: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction. Supported FIPS codes are: `14000` (Chicago).",
-			Required:    true,
-		},
-		"country_options.us.state": {
-			Type:        "string",
-			Description: "Two-letter US state code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-			Required:    true,
-		},
-		"country_options.ba.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.md.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"expires_at": {
-			Type:        "integer",
-			Description: "If set, the Tax Registration stops being active at this time. If not set, the Tax Registration will be active indefinitely. Timestamp measured in seconds since the Unix epoch.",
-			Format:      "unix-time",
-		},
-		"country_options.bh.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.is.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lk.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ke.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ma.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.za.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.by.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ch.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.nz.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.at.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.kg.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.bs.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.al.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.bg.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.no.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.vn.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cz.standard.place_of_supply_scheme": {
+		"country_options.ee.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -896,7 +790,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.mt.type": {
+		"country_options.ee.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in an EU country.",
 			Required:    true,
@@ -907,117 +801,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"active_from": {
-			Type:        "string",
-			Description: "Time at which the Tax Registration becomes active. It can be either `now` to indicate the current time, or a future timestamp measured in seconds since the Unix epoch.",
-			Required:    true,
-		},
-		"country_options.sr.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.mr.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.om.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.pt.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.rs.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.ro.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.be.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.bd.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.ae.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.be.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.gb.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.bf.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.sa.type": {
+		"country_options.eg.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -1025,23 +809,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.ug.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.gb.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.pl.standard.place_of_supply_scheme": {
+		"country_options.es.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -1062,23 +830,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.uy.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.my.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.bs.standard.place_of_supply_scheme": {
+		"country_options.et.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -1086,33 +838,11 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.ae.standard.place_of_supply_scheme": {
+		"country_options.et.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.se.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
+			Description: "Type of registration to be created in `country`.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ro.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
 				{Value: "standard"},
 			},
 		},
@@ -1126,54 +856,16 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.mk.type": {
+		"country_options.fi.type": {
 			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
+			Description: "Type of registration to be created in an EU country.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
 				{Value: "standard"},
 			},
-		},
-		"country_options.ca.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in Canada.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "province_standard"},
-				{Value: "simplified"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.mt.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.is.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.kr.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.us.local_amusement_tax.jurisdiction": {
-			Type:        "string",
-			Description: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction. Supported FIPS codes are: `02154` (Arlington Heights), `05248` (Bensenville), `06613` (Bloomington), `10906` (Campton Hills), `14000` (Chicago), `21696` (East Dundee), `24582` (Evanston), `45421` (Lynwood), `48892` (Midlothian), `64343` (River Grove), `64421` (Riverside), `65806` (Roselle), and `68081` (Schiller Park).",
-			Required:    true,
 		},
 		"country_options.fr.standard.place_of_supply_scheme": {
 			Type:        "string",
@@ -1183,6 +875,41 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
 				{Value: "standard"},
+			},
+		},
+		"country_options.fr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.gb.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.gb.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.ge.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
 			},
 		},
 		"country_options.gn.standard.place_of_supply_scheme": {
@@ -1201,7 +928,107 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.mk.standard.place_of_supply_scheme": {
+		"country_options.gr.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.gr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.hr.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.hr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.hu.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.hu.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.id.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ie.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ie.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.in.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.is.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -1209,12 +1036,41 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.uz.type": {
+		"country_options.is.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.it.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.it.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.jp.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
 			},
 		},
 		"country_options.jp.type": {
@@ -1225,11 +1081,241 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.ao.standard.place_of_supply_scheme": {
+		"country_options.ke.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.kg.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.kh.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.kr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.kz.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.la.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.lk.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.lt.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lt.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lu.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lu.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lv.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.lv.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ma.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.md.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.me.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.me.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.mk.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.mk.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.mr.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.mr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.mt.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.mt.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.mx.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.my.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ng.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.nl.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
 				{Value: "standard"},
 			},
 		},
@@ -1244,7 +1330,79 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.cy.standard.place_of_supply_scheme": {
+		"country_options.no.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.no.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.np.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.nz.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.nz.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.om.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.om.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.pe.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ph.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.pl.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -1254,7 +1412,76 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.th.type": {
+		"country_options.pl.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.pt.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.pt.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ro.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.ro.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.rs.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.rs.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.ru.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -1262,7 +1489,52 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.lt.standard.place_of_supply_scheme": {
+		"country_options.sa.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.se.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an EU standard registration.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "small_seller"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.se.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in an EU country.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ioss"},
+				{Value: "oss_non_union"},
+				{Value: "oss_union"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.sg.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.sg.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.si.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an EU standard registration.",
 			Required:    true,
@@ -1293,53 +1565,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.ao.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"country_options.mx.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.dk.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.sr.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.au.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
 		"country_options.sk.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in an EU country.",
@@ -1351,27 +1576,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.de.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ie.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.np.type": {
+		"country_options.sn.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -1379,7 +1584,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.jp.standard.place_of_supply_scheme": {
+		"country_options.sr.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -1387,31 +1592,84 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.si.standard.place_of_supply_scheme": {
+		"country_options.sr.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
+			Description: "Type of registration to be created in `country`.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
 				{Value: "standard"},
 			},
 		},
-		"country_options.mr.standard.place_of_supply_scheme": {
+		"country_options.th.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
+				{Value: "simplified"},
 			},
 		},
-		"country_options.rs.standard.place_of_supply_scheme": {
+		"country_options.tj.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
+				{Value: "simplified"},
 			},
+		},
+		"country_options.tr.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.tw.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.tz.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ua.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.ug.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.us.local_amusement_tax.jurisdiction": {
+			Type:        "string",
+			Description: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction. Supported FIPS codes are: `02154` (Arlington Heights), `05248` (Bensenville), `06613` (Bloomington), `10906` (Campton Hills), `14000` (Chicago), `21696` (East Dundee), `24582` (Evanston), `45421` (Lynwood), `48892` (Midlothian), `64343` (River Grove), `64421` (Riverside), `65806` (Roselle), and `68081` (Schiller Park).",
+			Required:    true,
+		},
+		"country_options.us.local_lease_tax.jurisdiction": {
+			Type:        "string",
+			Description: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction. Supported FIPS codes are: `14000` (Chicago).",
+			Required:    true,
+		},
+		"country_options.us.state": {
+			Type:        "string",
+			Description: "Two-letter US state code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+			Required:    true,
 		},
 		"country_options.us.type": {
 			Type:        "string",
@@ -1425,36 +1683,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "state_sales_tax"},
 			},
 		},
-		"country_options.ee.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lv.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.eg.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.bf.standard.place_of_supply_scheme": {
+		"country_options.uy.standard.place_of_supply_scheme": {
 			Type:        "string",
 			Description: "Place of supply scheme used in an standard registration.",
 			Enum: []resource.EnumSpec{
@@ -1462,28 +1691,15 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.ee.standard.place_of_supply_scheme": {
+		"country_options.uy.type": {
 			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
+			Description: "Type of registration to be created in `country`.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
 				{Value: "standard"},
 			},
 		},
-		"country_options.pl.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.tj.type": {
+		"country_options.uz.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
@@ -1491,84 +1707,43 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "simplified"},
 			},
 		},
-		"country_options.at.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.fr.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ie.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.fi.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.bg.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.es.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lu.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ba.type": {
+		"country_options.vn.type": {
 			Type:        "string",
 			Description: "Type of registration to be created in `country`.",
 			Required:    true,
 			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.za.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
+				{Value: "standard"},
+			},
+		},
+		"country_options.za.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "standard"},
+			},
+		},
+		"country_options.zm.type": {
+			Type:        "string",
+			Description: "Type of registration to be created in `country`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "simplified"},
+			},
+		},
+		"country_options.zw.standard.place_of_supply_scheme": {
+			Type:        "string",
+			Description: "Place of supply scheme used in an standard registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "inbound_goods"},
 				{Value: "standard"},
 			},
 		},
@@ -1580,216 +1755,10 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 				{Value: "standard"},
 			},
 		},
-		"country_options.id.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.it.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.om.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.hr.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.sn.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cr.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.pt.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.la.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.de.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.uy.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.me.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.et.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.kz.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.sg.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.tw.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.cd.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.gr.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an EU standard registration.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "small_seller"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.lu.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.me.standard.place_of_supply_scheme": {
-			Type:        "string",
-			Description: "Place of supply scheme used in an standard registration.",
-			Enum: []resource.EnumSpec{
-				{Value: "inbound_goods"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.hu.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in an EU country.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ioss"},
-				{Value: "oss_non_union"},
-				{Value: "oss_union"},
-				{Value: "standard"},
-			},
-		},
-		"country_options.ru.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.ch.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
-		},
-		"country_options.az.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "simplified"},
-			},
-		},
-		"country_options.aw.type": {
-			Type:        "string",
-			Description: "Type of registration to be created in `country`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "standard"},
-			},
+		"expires_at": {
+			Type:        "integer",
+			Description: "If set, the Tax Registration stops being active at this time. If not set, the Tax Registration will be active indefinitely. Timestamp measured in seconds since the Unix epoch.",
+			Format:      "unix-time",
 		},
 	},
 }
@@ -1807,6 +1776,37 @@ var V1TaxRegistrationsUpdate = resource.OperationSpec{
 		"expires_at": {
 			Type:        "string",
 			Description: "If set, the registration stops being active at this time. If not set, the registration will be active indefinitely. It can be either `now` to indicate the current time, or a timestamp measured in seconds since the Unix epoch.",
+		},
+	},
+}
+
+var V1TaxRegistrationsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/tax/registrations",
+	Method:  "GET",
+	Summary: "List registrations",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "The status of the Tax Registration.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "all"},
+				{Value: "expired"},
+				{Value: "scheduled"},
+			},
 		},
 	},
 }

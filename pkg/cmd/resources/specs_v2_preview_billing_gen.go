@@ -4,48 +4,20 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/meter_events",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a Meter Event with synchronous validation",
-	Params: map[string]*resource.ParamSpec{
-		"event_name": {
-			Type:        "string",
-			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
-			Required:    true,
-		},
-		"identifier": {
-			Type:        "string",
-			Description: "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period.",
-		},
-		"timestamp": {
-			Type:        "string",
-			Description: "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
-			Format:      "date-time",
-		},
-	},
-}
-
-var V2PreviewBillingCollectionSettingVersionsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Collection Setting Version",
-}
-
-var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
+var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
 	Name:      "list",
-	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions",
+	Path:      "/v2/billing/collection_settings",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "List Collection Setting Versions",
+	Summary:   "List Collection Settings",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:        "integer",
 			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
+		},
+		"lookup_keys": {
+			Type:        "array",
+			Description: "Only return the settings with these lookup_keys, if any exist.\nYou can specify up to 10 lookup_keys.",
 		},
 		"page": {
 			Type:        "string",
@@ -54,12 +26,314 @@ var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingMeterEventSessionsCreate = resource.OperationSpec{
+var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 	Name:      "create",
-	Path:      "/v2/billing/meter_event_session",
+	Path:      "/v2/billing/collection_settings",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Create a Meter Event Stream Authentication Session",
+	Summary:   "Create a Collection Setting",
+	Params: map[string]*resource.ParamSpec{
+		"collection_method": {
+			Type:        "string",
+			Description: "Either automatic, or send_invoice. When charging automatically, Stripe will attempt to pay this\nbill at the end of the period using the payment method attached to the payer profile. When sending an invoice,\nStripe will email your payer profile an invoice with payment instructions.\nDefaults to automatic.",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "send_invoice"},
+			},
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "An optional customer-facing display name for the CollectionSetting object.\nMaximum length of 250 characters.",
+		},
+		"email_delivery.payment_due.enabled": {
+			Type:        "boolean",
+			Description: "If true an email for the invoice would be generated and sent out.",
+			Required:    true,
+		},
+		"email_delivery.payment_due.include_payment_link": {
+			Type:        "boolean",
+			Description: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice.",
+			Required:    true,
+		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
+		},
+		"payment_method_configuration": {
+			Type:        "string",
+			Description: "The ID of the PaymentMethodConfiguration object, which controls which payment methods are displayed to your customers.",
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:        "string",
+			Description: "Transaction type of the mandate.",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type:        "string",
+			Description: "Verification method.",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type:        "string",
+			Description: "Preferred language of the Bancontact authorization page that the customer is redirected to.",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type:        "integer",
+			Description: "Amount to be charged for future payments.",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type:        "string",
+			Description: "The AmountType for the mandate. One of `fixed` or `maximum`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type:        "string",
+			Description: "A description of the mandate that is meant to be displayed to the customer.",
+		},
+		"payment_method_options.card.network": {
+			Type:        "string",
+			Description: "Selected network to process the payment on. Depends on the available networks of the card.",
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type:        "string",
+			Description: "An advanced option 3D Secure. We strongly recommend that you rely on our SCA Engine to automatically prompt your customers\nfor authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication).\nHowever, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option.\nRead our guide on [manually requesting 3D Secure](https://docs.stripe.com/payments/3d-secure/authentication-flow#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:        "string",
+			Description: "The desired country code of the bank account information.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "BE"},
+				{Value: "DE"},
+				{Value: "ES"},
+				{Value: "FR"},
+				{Value: "IE"},
+				{Value: "NL"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type:        "string",
+			Description: "The bank transfer type that can be used for funding.",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type:        "string",
+			Description: "The funding method type to be used when there are not enough funds in the customer balance. Currently the only supported value is `bank_transfer`.",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:        "array",
+			Description: "The account subcategories to use to filter for selectable accounts.",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:        "array",
+			Description: "The list of permissions to request. If this parameter is passed, the `payment_method` permission must be included.",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:        "array",
+			Description: "List of data features that you would like to retrieve upon account creation.",
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type:        "string",
+			Description: "Verification method.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+	},
+}
+
+var V2PreviewBillingCollectionSettingsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/collection_settings/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Collection Setting",
+}
+
+var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/billing/collection_settings/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a Collection Setting",
+	Params: map[string]*resource.ParamSpec{
+		"collection_method": {
+			Type:        "string",
+			Description: "Either automatic, or send_invoice. When charging automatically, Stripe will attempt to pay this\nbill at the end of the period using the payment method attached to the payer profile. When sending an invoice,\nStripe will email your payer profile an invoice with payment instructions.",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "send_invoice"},
+			},
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "An optional customer-facing display name for the CollectionSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
+		},
+		"email_delivery.payment_due.enabled": {
+			Type:        "boolean",
+			Description: "If true an email for the invoice would be generated and sent out.",
+			Required:    true,
+		},
+		"email_delivery.payment_due.include_payment_link": {
+			Type:        "boolean",
+			Description: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice.",
+			Required:    true,
+		},
+		"live_version": {
+			Type:        "string",
+			Description: "Optionally change the live version of the CollectionSetting. Billing Cadences and other objects that refer to this\nCollectionSetting will use this version when no overrides are set. Providing `live_version = \"latest\"` will set the\nCollectionSetting's `live_version` to its latest version.",
+		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
+		},
+		"payment_method_configuration": {
+			Type:        "string",
+			Description: "The ID of the PaymentMethodConfiguration object, which controls which payment methods are displayed to your customers.",
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:        "string",
+			Description: "Transaction type of the mandate.",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type:        "string",
+			Description: "Verification method.",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type:        "string",
+			Description: "Preferred language of the Bancontact authorization page that the customer is redirected to.",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type:        "integer",
+			Description: "Amount to be charged for future payments.",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type:        "string",
+			Description: "The AmountType for the mandate. One of `fixed` or `maximum`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type:        "string",
+			Description: "A description of the mandate that is meant to be displayed to the customer.",
+		},
+		"payment_method_options.card.network": {
+			Type:        "string",
+			Description: "Selected network to process the payment on. Depends on the available networks of the card.",
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type:        "string",
+			Description: "An advanced option 3D Secure. We strongly recommend that you rely on our SCA Engine to automatically prompt your customers\nfor authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication).\nHowever, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option.\nRead our guide on [manually requesting 3D Secure](https://docs.stripe.com/payments/3d-secure/authentication-flow#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:        "string",
+			Description: "The desired country code of the bank account information.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "BE"},
+				{Value: "DE"},
+				{Value: "ES"},
+				{Value: "FR"},
+				{Value: "IE"},
+				{Value: "NL"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type:        "string",
+			Description: "The bank transfer type that can be used for funding.",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type:        "string",
+			Description: "The funding method type to be used when there are not enough funds in the customer balance. Currently the only supported value is `bank_transfer`.",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:        "array",
+			Description: "The account subcategories to use to filter for selectable accounts.",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:        "array",
+			Description: "The list of permissions to request. If this parameter is passed, the `payment_method` permission must be included.",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:        "array",
+			Description: "List of data features that you would like to retrieve upon account creation.",
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type:        "string",
+			Description: "Verification method.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+	},
 }
 
 var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
@@ -90,14 +364,6 @@ var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingBillSettingVersionsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Bill Setting Version",
-}
-
 var V2PreviewBillingBillSettingVersionsList = resource.OperationSpec{
 	Name:      "list",
 	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions",
@@ -116,12 +382,20 @@ var V2PreviewBillingBillSettingVersionsList = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/collection_settings",
+var V2PreviewBillingBillSettingVersionsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "List Collection Settings",
+	Summary:   "Retrieve a Bill Setting Version",
+}
+
+var V2PreviewBillingBillSettingsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/billing/bill_settings",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Bill Settings",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:        "integer",
@@ -138,312 +412,130 @@ var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
+var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 	Name:      "create",
-	Path:      "/v2/billing/collection_settings",
+	Path:      "/v2/billing/bill_settings",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Create a Collection Setting",
+	Summary:   "Create a Bill Setting",
 	Params: map[string]*resource.ParamSpec{
-		"payment_method_options.acss_debit.verification_method": {
+		"calculation.tax.type": {
 			Type:        "string",
-			Description: "Verification method.",
+			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
+			Required:    true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
-				{Value: "instant"},
-				{Value: "microdeposits"},
+				{Value: "manual"},
 			},
 		},
 		"display_name": {
 			Type:        "string",
 			Description: "An optional customer-facing display name for the CollectionSetting object.\nMaximum length of 250 characters.",
 		},
-		"email_delivery.payment_due.include_payment_link": {
-			Type:        "boolean",
-			Description: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice.",
+		"invoice.time_until_due.interval": {
+			Type:        "string",
+			Description: "The interval unit for the time until due.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"invoice.time_until_due.interval_count": {
+			Type:        "integer",
+			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
 			Required:    true,
 		},
-		"payment_method_options.card.mandate_options.amount_type": {
+		"invoice_rendering_template": {
 			Type:        "string",
-			Description: "The AmountType for the mandate. One of `fixed` or `maximum`.",
-			Enum: []resource.EnumSpec{
-				{Value: "fixed"},
-				{Value: "maximum"},
-			},
-		},
-		"payment_method_options.card.request_three_d_secure": {
-			Type:        "string",
-			Description: "An advanced option 3D Secure. We strongly recommend that you rely on our SCA Engine to automatically prompt your customers\nfor authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication).\nHowever, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option.\nRead our guide on [manually requesting 3D Secure](https://docs.stripe.com/payments/3d-secure/authentication-flow#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
-			Enum: []resource.EnumSpec{
-				{Value: "any"},
-				{Value: "automatic"},
-				{Value: "challenge"},
-			},
-		},
-		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
-			Type:        "array",
-			Description: "The account subcategories to use to filter for selectable accounts.",
-		},
-		"payment_method_options.us_bank_account.financial_connections.permissions": {
-			Type:        "array",
-			Description: "The list of permissions to request. If this parameter is passed, the `payment_method` permission must be included.",
-		},
-		"payment_method_options.us_bank_account.financial_connections.prefetch": {
-			Type:        "array",
-			Description: "List of data features that you would like to retrieve upon account creation.",
-		},
-		"collection_method": {
-			Type:        "string",
-			Description: "Either automatic, or send_invoice. When charging automatically, Stripe will attempt to pay this\nbill at the end of the period using the payment method attached to the payer profile. When sending an invoice,\nStripe will email your payer profile an invoice with payment instructions.\nDefaults to automatic.",
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "send_invoice"},
-			},
-		},
-		"email_delivery.payment_due.enabled": {
-			Type:        "boolean",
-			Description: "If true an email for the invoice would be generated and sent out.",
-			Required:    true,
+			Description: "The ID of the invoice rendering template to be used when generating invoices.",
 		},
 		"lookup_key": {
 			Type:        "string",
 			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
-		},
-		"payment_method_options.card.mandate_options.description": {
-			Type:        "string",
-			Description: "A description of the mandate that is meant to be displayed to the customer.",
-		},
-		"payment_method_options.bancontact.preferred_language": {
-			Type:        "string",
-			Description: "Preferred language of the Bancontact authorization page that the customer is redirected to.",
-			Enum: []resource.EnumSpec{
-				{Value: "de"},
-				{Value: "en"},
-				{Value: "fr"},
-				{Value: "nl"},
-			},
-		},
-		"payment_method_configuration": {
-			Type:        "string",
-			Description: "The ID of the PaymentMethodConfiguration object, which controls which payment methods are displayed to your customers.",
-		},
-		"payment_method_options.card.mandate_options.amount": {
-			Type:        "integer",
-			Description: "Amount to be charged for future payments.",
-		},
-		"payment_method_options.card.network": {
-			Type:        "string",
-			Description: "Selected network to process the payment on. Depends on the available networks of the card.",
-		},
-		"payment_method_options.customer_balance.bank_transfer.type": {
-			Type:        "string",
-			Description: "The bank transfer type that can be used for funding.",
-			Enum: []resource.EnumSpec{
-				{Value: "eu_bank_transfer"},
-				{Value: "gb_bank_transfer"},
-				{Value: "jp_bank_transfer"},
-				{Value: "mx_bank_transfer"},
-				{Value: "us_bank_transfer"},
-			},
-		},
-		"payment_method_options.us_bank_account.verification_method": {
-			Type:        "string",
-			Description: "Verification method.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "instant"},
-				{Value: "microdeposits"},
-			},
-		},
-		"payment_method_options.acss_debit.mandate_options.transaction_type": {
-			Type:        "string",
-			Description: "Transaction type of the mandate.",
-			Enum: []resource.EnumSpec{
-				{Value: "business"},
-				{Value: "personal"},
-			},
-		},
-		"payment_method_options.customer_balance.funding_type": {
-			Type:        "string",
-			Description: "The funding method type to be used when there are not enough funds in the customer balance. Currently the only supported value is `bank_transfer`.",
-			Enum: []resource.EnumSpec{
-				{Value: "bank_transfer"},
-			},
-		},
-		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
-			Type:        "string",
-			Description: "The desired country code of the bank account information.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "BE"},
-				{Value: "DE"},
-				{Value: "ES"},
-				{Value: "FR"},
-				{Value: "IE"},
-				{Value: "NL"},
-			},
 		},
 	},
 }
 
-var V2PreviewBillingCollectionSettingsRetrieve = resource.OperationSpec{
+var V2PreviewBillingBillSettingsRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
-	Path:      "/v2/billing/collection_settings/{id}",
+	Path:      "/v2/billing/bill_settings/{id}",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "Retrieve a Collection Setting",
+	Summary:   "Retrieve a Bill Setting",
 }
 
-var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
+var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 	Name:      "update",
-	Path:      "/v2/billing/collection_settings/{id}",
+	Path:      "/v2/billing/bill_settings/{id}",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Update a Collection Setting",
+	Summary:   "Update a Bill Setting",
 	Params: map[string]*resource.ParamSpec{
-		"payment_method_options.card.mandate_options.amount_type": {
+		"calculation.tax.type": {
 			Type:        "string",
-			Description: "The AmountType for the mandate. One of `fixed` or `maximum`.",
-			Enum: []resource.EnumSpec{
-				{Value: "fixed"},
-				{Value: "maximum"},
-			},
-		},
-		"payment_method_options.us_bank_account.financial_connections.prefetch": {
-			Type:        "array",
-			Description: "List of data features that you would like to retrieve upon account creation.",
-		},
-		"payment_method_options.card.mandate_options.description": {
-			Type:        "string",
-			Description: "A description of the mandate that is meant to be displayed to the customer.",
-		},
-		"payment_method_options.customer_balance.funding_type": {
-			Type:        "string",
-			Description: "The funding method type to be used when there are not enough funds in the customer balance. Currently the only supported value is `bank_transfer`.",
-			Enum: []resource.EnumSpec{
-				{Value: "bank_transfer"},
-			},
-		},
-		"payment_method_options.us_bank_account.verification_method": {
-			Type:        "string",
-			Description: "Verification method.",
+			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
 			Required:    true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
-				{Value: "instant"},
-				{Value: "microdeposits"},
+				{Value: "manual"},
 			},
-		},
-		"collection_method": {
-			Type:        "string",
-			Description: "Either automatic, or send_invoice. When charging automatically, Stripe will attempt to pay this\nbill at the end of the period using the payment method attached to the payer profile. When sending an invoice,\nStripe will email your payer profile an invoice with payment instructions.",
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "send_invoice"},
-			},
-		},
-		"payment_method_configuration": {
-			Type:        "string",
-			Description: "The ID of the PaymentMethodConfiguration object, which controls which payment methods are displayed to your customers.",
-		},
-		"payment_method_options.acss_debit.mandate_options.transaction_type": {
-			Type:        "string",
-			Description: "Transaction type of the mandate.",
-			Enum: []resource.EnumSpec{
-				{Value: "business"},
-				{Value: "personal"},
-			},
-		},
-		"payment_method_options.acss_debit.verification_method": {
-			Type:        "string",
-			Description: "Verification method.",
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "instant"},
-				{Value: "microdeposits"},
-			},
-		},
-		"payment_method_options.bancontact.preferred_language": {
-			Type:        "string",
-			Description: "Preferred language of the Bancontact authorization page that the customer is redirected to.",
-			Enum: []resource.EnumSpec{
-				{Value: "de"},
-				{Value: "en"},
-				{Value: "fr"},
-				{Value: "nl"},
-			},
-		},
-		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
-			Type:        "string",
-			Description: "The desired country code of the bank account information.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "BE"},
-				{Value: "DE"},
-				{Value: "ES"},
-				{Value: "FR"},
-				{Value: "IE"},
-				{Value: "NL"},
-			},
-		},
-		"payment_method_options.us_bank_account.financial_connections.permissions": {
-			Type:        "array",
-			Description: "The list of permissions to request. If this parameter is passed, the `payment_method` permission must be included.",
 		},
 		"display_name": {
 			Type:        "string",
-			Description: "An optional customer-facing display name for the CollectionSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
+			Description: "An optional customer-facing display name for the BillSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
 		},
-		"email_delivery.payment_due.enabled": {
-			Type:        "boolean",
-			Description: "If true an email for the invoice would be generated and sent out.",
+		"invoice.time_until_due.interval": {
+			Type:        "string",
+			Description: "The interval unit for the time until due.",
 			Required:    true,
-		},
-		"payment_method_options.card.network": {
-			Type:        "string",
-			Description: "Selected network to process the payment on. Depends on the available networks of the card.",
-		},
-		"payment_method_options.card.request_three_d_secure": {
-			Type:        "string",
-			Description: "An advanced option 3D Secure. We strongly recommend that you rely on our SCA Engine to automatically prompt your customers\nfor authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication).\nHowever, if you wish to request 3D Secure based on logic from your own fraud engine, provide this option.\nRead our guide on [manually requesting 3D Secure](https://docs.stripe.com/payments/3d-secure/authentication-flow#manual-three-ds) for more information on how this configuration interacts with Radar and our SCA Engine.",
 			Enum: []resource.EnumSpec{
-				{Value: "any"},
-				{Value: "automatic"},
-				{Value: "challenge"},
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
 			},
 		},
-		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
-			Type:        "array",
-			Description: "The account subcategories to use to filter for selectable accounts.",
-		},
-		"email_delivery.payment_due.include_payment_link": {
-			Type:        "boolean",
-			Description: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice.",
+		"invoice.time_until_due.interval_count": {
+			Type:        "integer",
+			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
 			Required:    true,
+		},
+		"invoice_rendering_template": {
+			Type:        "string",
+			Description: "The ID of the invoice rendering template to be used when generating invoices.",
 		},
 		"live_version": {
 			Type:        "string",
-			Description: "Optionally change the live version of the CollectionSetting. Billing Cadences and other objects that refer to this\nCollectionSetting will use this version when no overrides are set. Providing `live_version = \"latest\"` will set the\nCollectionSetting's `live_version` to its latest version.",
-		},
-		"payment_method_options.customer_balance.bank_transfer.type": {
-			Type:        "string",
-			Description: "The bank transfer type that can be used for funding.",
-			Enum: []resource.EnumSpec{
-				{Value: "eu_bank_transfer"},
-				{Value: "gb_bank_transfer"},
-				{Value: "jp_bank_transfer"},
-				{Value: "mx_bank_transfer"},
-				{Value: "us_bank_transfer"},
-			},
+			Description: "Optionally change the live version of the BillSetting. Providing `live_version = \"latest\"` will set the\nBillSetting' `live_version` to its latest version.",
 		},
 		"lookup_key": {
 			Type:        "string",
 			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
 		},
-		"payment_method_options.card.mandate_options.amount": {
-			Type:        "integer",
-			Description: "Amount to be charged for future payments.",
+	},
+}
+
+var V2PreviewBillingMeterEventSessionsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/billing/meter_event_session",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a Meter Event Stream Authentication Session",
+}
+
+var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/billing/cadences/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a Billing Cadence",
+	Params: map[string]*resource.ParamSpec{
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
 		},
 	},
 }
@@ -463,10 +555,6 @@ var V2PreviewBillingCadencesList = resource.OperationSpec{
 	IsPreview: true,
 	Summary:   "List billing cadences",
 	Params: map[string]*resource.ParamSpec{
-		"test_clock": {
-			Type:        "string",
-			Description: "If provided, only cadences that specifically reference the provided test clock ID (via the\ncustomer's test clock) will be returned.\nMutually exclusive with `payer`.",
-		},
 		"include": {
 			Type:        "array",
 			Description: "Additional resource to include in the response.",
@@ -483,6 +571,10 @@ var V2PreviewBillingCadencesList = resource.OperationSpec{
 			Type:        "string",
 			Description: "Opaque page token.",
 		},
+		"test_clock": {
+			Type:        "string",
+			Description: "If provided, only cadences that specifically reference the provided test clock ID (via the\ncustomer's test clock) will be returned.\nMutually exclusive with `payer`.",
+		},
 	},
 }
 
@@ -493,6 +585,44 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 	IsPreview: true,
 	Summary:   "Create a Billing Cadence",
 	Params: map[string]*resource.ParamSpec{
+		"billing_cycle.day.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.day.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.day.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.interval_count": {
+			Type:        "integer",
+			Description: "The number of intervals (specified in the interval attribute) between\ncadence billings. For example, type=month and interval_count=3 bills every\n3 months. If this is not provided, it will default to 1.",
+		},
+		"billing_cycle.month.day_of_month": {
+			Type:        "integer",
+			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
+			Required:    true,
+		},
+		"billing_cycle.month.month_of_year": {
+			Type:        "integer",
+			Description: "The month to anchor the billing on for a type=\"month\" billing cycle from\n1-12. If not provided, this will default to the month the cadence was created.\nThis setting can only be used for monthly billing cycles with `interval_count` of 2, 3, 4 or 6.\nAll occurrences will be calculated from month provided.",
+		},
+		"billing_cycle.month.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.month.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
 		"billing_cycle.month.time.second": {
 			Type:        "integer",
 			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
@@ -509,67 +639,6 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 				{Value: "year"},
 			},
 		},
-		"billing_cycle.week.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.day.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.week.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.year.month_of_year": {
-			Type:        "integer",
-			Description: "The month to bill on from 1-12. If not provided, this will default to the\nmonth the cadence was created.",
-		},
-		"payer.billing_profile": {
-			Type:        "string",
-			Description: "The ID of the Billing Profile object which determines how a bill will be paid.",
-			Required:    true,
-		},
-		"billing_cycle.day.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
-		"billing_cycle.month.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.year.day_of_month": {
-			Type:        "integer",
-			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
-		},
-		"billing_cycle.year.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
-		},
-		"billing_cycle.month.day_of_month": {
-			Type:        "integer",
-			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
-			Required:    true,
-		},
-		"billing_cycle.month.month_of_year": {
-			Type:        "integer",
-			Description: "The month to anchor the billing on for a type=\"month\" billing cycle from\n1-12. If not provided, this will default to the month the cadence was created.\nThis setting can only be used for monthly billing cycles with `interval_count` of 2, 3, 4 or 6.\nAll occurrences will be calculated from month provided.",
-		},
-		"billing_cycle.month.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
 		"billing_cycle.week.day_of_week": {
 			Type:        "integer",
 			Description: "The day of the week to bill the type=week billing cycle on.\nNumbered from 1-7 for Monday to Sunday respectively, based on the ISO-8601\nweek day numbering. If not provided, this will default to the day the\ncadence was created.",
@@ -580,9 +649,32 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
 			Required:    true,
 		},
+		"billing_cycle.week.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.week.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.year.day_of_month": {
+			Type:        "integer",
+			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
+		},
+		"billing_cycle.year.month_of_year": {
+			Type:        "integer",
+			Description: "The month to bill on from 1-12. If not provided, this will default to the\nmonth the cadence was created.",
+		},
 		"billing_cycle.year.time.hour": {
 			Type:        "integer",
 			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.year.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
 			Required:    true,
 		},
 		"billing_cycle.year.time.second": {
@@ -590,14 +682,14 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
 			Required:    true,
 		},
-		"billing_cycle.day.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
 		},
-		"billing_cycle.interval_count": {
-			Type:        "integer",
-			Description: "The number of intervals (specified in the interval attribute) between\ncadence billings. For example, type=month and interval_count=3 bills every\n3 months. If this is not provided, it will default to 1.",
+		"payer.billing_profile": {
+			Type:        "string",
+			Description: "The ID of the Billing Profile object which determines how a bill will be paid.",
+			Required:    true,
 		},
 	},
 }
@@ -616,16 +708,29 @@ var V2PreviewBillingCadencesRetrieve = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/cadences/{id}",
+var V2PreviewBillingProfilesCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/billing/profiles",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Update a Billing Cadence",
+	Summary:   "Create a Billing Profile",
 	Params: map[string]*resource.ParamSpec{
+		"customer": {
+			Type:        "string",
+			Description: "The ID of the customer object.",
+			Required:    true,
+		},
+		"default_payment_method": {
+			Type:        "string",
+			Description: "The ID of the payment method object.",
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "A customer-facing name for the billing profile.\nMaximum length of 250 characters.",
+		},
 		"lookup_key": {
 			Type:        "string",
-			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
+			Description: "An internal key you can use to search for a particular billing profile. It must be unique among billing profiles for a given customer.\nMaximum length of 200 characters.",
 		},
 	},
 }
@@ -667,6 +772,14 @@ var V2PreviewBillingProfilesList = resource.OperationSpec{
 	IsPreview: true,
 	Summary:   "List Billing Profiles",
 	Params: map[string]*resource.ParamSpec{
+		"customer": {
+			Type:        "string",
+			Description: "Filter billing profiles by a customer. Mutually exclusive\nwith `lookup_keys` and `default_payment_method`.",
+		},
+		"default_payment_method": {
+			Type:        "string",
+			Description: "Filter billing profiles by a default payment method. Mutually exclusive\nwith `customer` and `lookup_keys`.",
+		},
 		"limit": {
 			Type:        "integer",
 			Description: "Optionally set the maximum number of results per page. Defaults to 10.",
@@ -688,58 +801,19 @@ var V2PreviewBillingProfilesList = resource.OperationSpec{
 				{Value: "inactive"},
 			},
 		},
-		"customer": {
-			Type:        "string",
-			Description: "Filter billing profiles by a customer. Mutually exclusive\nwith `lookup_keys` and `default_payment_method`.",
-		},
-		"default_payment_method": {
-			Type:        "string",
-			Description: "Filter billing profiles by a default payment method. Mutually exclusive\nwith `customer` and `lookup_keys`.",
-		},
 	},
 }
 
-var V2PreviewBillingProfilesCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/profiles",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a Billing Profile",
-	Params: map[string]*resource.ParamSpec{
-		"customer": {
-			Type:        "string",
-			Description: "The ID of the customer object.",
-			Required:    true,
-		},
-		"default_payment_method": {
-			Type:        "string",
-			Description: "The ID of the payment method object.",
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "A customer-facing name for the billing profile.\nMaximum length of 250 characters.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "An internal key you can use to search for a particular billing profile. It must be unique among billing profiles for a given customer.\nMaximum length of 200 characters.",
-		},
-	},
-}
-
-var V2PreviewBillingBillSettingsList = resource.OperationSpec{
+var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
 	Name:      "list",
-	Path:      "/v2/billing/bill_settings",
+	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "List Bill Settings",
+	Summary:   "List Collection Setting Versions",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:        "integer",
 			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
-		},
-		"lookup_keys": {
-			Type:        "array",
-			Description: "Only return the settings with these lookup_keys, if any exist.\nYou can specify up to 10 lookup_keys.",
 		},
 		"page": {
 			Type:        "string",
@@ -748,108 +822,34 @@ var V2PreviewBillingBillSettingsList = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/bill_settings",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a Bill Setting",
-	Params: map[string]*resource.ParamSpec{
-		"display_name": {
-			Type:        "string",
-			Description: "An optional customer-facing display name for the CollectionSetting object.\nMaximum length of 250 characters.",
-		},
-		"invoice.time_until_due.interval": {
-			Type:        "string",
-			Description: "The interval unit for the time until due.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"invoice.time_until_due.interval_count": {
-			Type:        "integer",
-			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
-			Required:    true,
-		},
-		"invoice_rendering_template": {
-			Type:        "string",
-			Description: "The ID of the invoice rendering template to be used when generating invoices.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
-		},
-		"calculation.tax.type": {
-			Type:        "string",
-			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "manual"},
-			},
-		},
-	},
-}
-
-var V2PreviewBillingBillSettingsRetrieve = resource.OperationSpec{
+var V2PreviewBillingCollectionSettingVersionsRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
-	Path:      "/v2/billing/bill_settings/{id}",
+	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "Retrieve a Bill Setting",
+	Summary:   "Retrieve a Collection Setting Version",
 }
 
-var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/bill_settings/{id}",
+var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/billing/meter_events",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Update a Bill Setting",
+	Summary:   "Create a Meter Event with synchronous validation",
 	Params: map[string]*resource.ParamSpec{
-		"live_version": {
+		"event_name": {
 			Type:        "string",
-			Description: "Optionally change the live version of the BillSetting. Providing `live_version = \"latest\"` will set the\nBillSetting' `live_version` to its latest version.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
-		},
-		"calculation.tax.type": {
-			Type:        "string",
-			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "manual"},
-			},
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "An optional customer-facing display name for the BillSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
-		},
-		"invoice.time_until_due.interval": {
-			Type:        "string",
-			Description: "The interval unit for the time until due.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"invoice.time_until_due.interval_count": {
-			Type:        "integer",
-			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
+			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
 			Required:    true,
 		},
-		"invoice_rendering_template": {
+		"identifier": {
 			Type:        "string",
-			Description: "The ID of the invoice rendering template to be used when generating invoices.",
+			Description: "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period.",
+		},
+		"timestamp": {
+			Type:        "string",
+			Description: "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
+			Format:      "date-time",
 		},
 	},
 }

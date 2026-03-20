@@ -4,36 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/terminal/onboarding_links",
-	Method:  "POST",
-	Summary: "Create an Onboarding Link",
-	Params: map[string]*resource.ParamSpec{
-		"link_options.apple_terms_and_conditions.allow_relinking": {
-			Type:        "boolean",
-			Description: "Whether the link should also support users relinking their Apple account.",
-		},
-		"link_options.apple_terms_and_conditions.merchant_display_name": {
-			Type:        "string",
-			Description: "The business name of the merchant accepting Apple's Terms and Conditions.",
-			Required:    true,
-		},
-		"link_type": {
-			Type:        "string",
-			Description: "The type of link being generated.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "apple_terms_and_conditions"},
-			},
-		},
-		"on_behalf_of": {
-			Type:        "string",
-			Description: "Stripe account ID to generate the link for.",
-		},
-	},
-}
-
 var V1TerminalLocationsDelete = resource.OperationSpec{
 	Name:    "delete",
 	Path:    "/v1/terminal/locations/{location}",
@@ -75,49 +45,9 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a Location",
 	Params: map[string]*resource.ParamSpec{
-		"configuration_overrides": {
-			Type:        "string",
-			Description: "The ID of a configuration that will be used to customize all readers in this location.",
-		},
-		"address_kanji.line1": {
-			Type:        "string",
-			Description: "Block or building number.",
-		},
-		"address_kanji.state": {
-			Type:        "string",
-			Description: "Prefecture.",
-		},
-		"address_kanji.town": {
-			Type:        "string",
-			Description: "Town or cho-me.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for the location.",
-		},
 		"address.city": {
 			Type:        "string",
 			Description: "City, district, suburb, town, or village.",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"address_kana.state": {
-			Type:        "string",
-			Description: "Prefecture.",
-		},
-		"address_kana.town": {
-			Type:        "string",
-			Description: "Town or cho-me.",
-		},
-		"address_kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address_kana.line1": {
-			Type:        "string",
-			Description: "Block or building number.",
 		},
 		"address.country": {
 			Type:        "string",
@@ -128,29 +58,9 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "Address line 1, such as the street, PO Box, or company name.",
 		},
-		"display_name_kanji": {
+		"address.line2": {
 			Type:        "string",
-			Description: "The Kanji variation of the name for the location (Japan only). Maximum length is 1000 characters.",
-		},
-		"address_kana.city": {
-			Type:        "string",
-			Description: "City or ward.",
-		},
-		"address_kana.line2": {
-			Type:        "string",
-			Description: "Building details.",
-		},
-		"address_kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "A name for the location. Maximum length is 1000 characters.",
-		},
-		"display_name_kana": {
-			Type:        "string",
-			Description: "The Kana variation of the name for the location (Japan only). Maximum length is 1000 characters.",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
 		},
 		"address.postal_code": {
 			Type:        "string",
@@ -160,9 +70,45 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
 		},
+		"address_kana.city": {
+			Type:        "string",
+			Description: "City or ward.",
+		},
+		"address_kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address_kana.line1": {
+			Type:        "string",
+			Description: "Block or building number.",
+		},
+		"address_kana.line2": {
+			Type:        "string",
+			Description: "Building details.",
+		},
 		"address_kana.postal_code": {
 			Type:        "string",
 			Description: "Postal code.",
+		},
+		"address_kana.state": {
+			Type:        "string",
+			Description: "Prefecture.",
+		},
+		"address_kana.town": {
+			Type:        "string",
+			Description: "Town or cho-me.",
+		},
+		"address_kanji.city": {
+			Type:        "string",
+			Description: "City or ward.",
+		},
+		"address_kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address_kanji.line1": {
+			Type:        "string",
+			Description: "Block or building number.",
 		},
 		"address_kanji.line2": {
 			Type:        "string",
@@ -172,9 +118,33 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "Postal code.",
 		},
-		"address_kanji.city": {
+		"address_kanji.state": {
 			Type:        "string",
-			Description: "City or ward.",
+			Description: "Prefecture.",
+		},
+		"address_kanji.town": {
+			Type:        "string",
+			Description: "Town or cho-me.",
+		},
+		"configuration_overrides": {
+			Type:        "string",
+			Description: "The ID of a configuration that will be used to customize all readers in this location.",
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "A name for the location. Maximum length is 1000 characters.",
+		},
+		"display_name_kana": {
+			Type:        "string",
+			Description: "The Kana variation of the name for the location (Japan only). Maximum length is 1000 characters.",
+		},
+		"display_name_kanji": {
+			Type:        "string",
+			Description: "The Kanji variation of the name for the location (Japan only). Maximum length is 1000 characters.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for the location.",
 		},
 	},
 }
@@ -185,25 +155,17 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Update a Location",
 	Params: map[string]*resource.ParamSpec{
-		"phone": {
+		"address.city": {
 			Type:        "string",
-			Description: "The phone number for the location.",
+			Description: "City, district, suburb, town, or village.",
 		},
-		"address_kana.country": {
+		"address.country": {
 			Type:        "string",
 			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
 		},
-		"address_kana.city": {
+		"address.line1": {
 			Type:        "string",
-			Description: "City or ward.",
-		},
-		"address_kanji.postal_code": {
-			Type:        "string",
-			Description: "Postal code.",
-		},
-		"address_kanji.city": {
-			Type:        "string",
-			Description: "City or ward.",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
 		},
 		"address.line2": {
 			Type:        "string",
@@ -213,65 +175,25 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 			Type:        "string",
 			Description: "ZIP or postal code.",
 		},
-		"address_kana.line1": {
-			Type:        "string",
-			Description: "Block or building number.",
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "A name for the location.",
-		},
-		"display_name_kana": {
-			Type:        "string",
-			Description: "The Kana variation of the name for the location (Japan only).",
-		},
-		"address_kanji.line2": {
-			Type:        "string",
-			Description: "Building details.",
-		},
-		"address_kanji.town": {
-			Type:        "string",
-			Description: "Town or cho-me.",
-		},
-		"configuration_overrides": {
-			Type:        "string",
-			Description: "The ID of a configuration that will be used to customize all readers in this location.",
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-		},
 		"address.state": {
 			Type:        "string",
 			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
 		},
-		"address_kana.line2": {
+		"address_kana.city": {
 			Type:        "string",
-			Description: "Building details.",
+			Description: "City or ward.",
 		},
-		"address_kana.town": {
+		"address_kana.country": {
 			Type:        "string",
-			Description: "Town or cho-me.",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
 		},
-		"address_kanji.line1": {
+		"address_kana.line1": {
 			Type:        "string",
 			Description: "Block or building number.",
 		},
-		"address_kanji.state": {
+		"address_kana.line2": {
 			Type:        "string",
-			Description: "Prefecture.",
-		},
-		"address_kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Description: "Building details.",
 		},
 		"address_kana.postal_code": {
 			Type:        "string",
@@ -281,160 +203,151 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 			Type:        "string",
 			Description: "Prefecture.",
 		},
+		"address_kana.town": {
+			Type:        "string",
+			Description: "Town or cho-me.",
+		},
+		"address_kanji.city": {
+			Type:        "string",
+			Description: "City or ward.",
+		},
+		"address_kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address_kanji.line1": {
+			Type:        "string",
+			Description: "Block or building number.",
+		},
+		"address_kanji.line2": {
+			Type:        "string",
+			Description: "Building details.",
+		},
+		"address_kanji.postal_code": {
+			Type:        "string",
+			Description: "Postal code.",
+		},
+		"address_kanji.state": {
+			Type:        "string",
+			Description: "Prefecture.",
+		},
+		"address_kanji.town": {
+			Type:        "string",
+			Description: "Town or cho-me.",
+		},
+		"configuration_overrides": {
+			Type:        "string",
+			Description: "The ID of a configuration that will be used to customize all readers in this location.",
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "A name for the location.",
+		},
+		"display_name_kana": {
+			Type:        "string",
+			Description: "The Kana variation of the name for the location (Japan only).",
+		},
 		"display_name_kanji": {
 			Type:        "string",
 			Description: "The Kanji variation of the name for the location (Japan only).",
 		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for the location.",
+		},
 	},
 }
 
-var V1TerminalConfigurationsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/terminal/configurations/{configuration}",
-	Method:  "GET",
-	Summary: "Retrieve a Configuration",
-}
-
-var V1TerminalConfigurationsCreate = resource.OperationSpec{
+var V1TerminalConnectionTokensCreate = resource.OperationSpec{
 	Name:    "create",
-	Path:    "/v1/terminal/configurations",
+	Path:    "/v1/terminal/connection_tokens",
 	Method:  "POST",
-	Summary: "Create a Configuration",
+	Summary: "Create a Connection Token",
 	Params: map[string]*resource.ParamSpec{
-		"reboot_window.end_hour": {
-			Type:        "integer",
-			Description: "Integer between 0 to 23 that represents the end hour of the reboot time window. The value must be different than the start_hour.",
-			Required:    true,
-		},
-		"reboot_window.start_hour": {
-			Type:        "integer",
-			Description: "Integer between 0 to 23 that represents the start hour of the reboot time window.",
-			Required:    true,
-		},
-		"stripe_s710.splashscreen": {
+		"location": {
 			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"bbpos_wisepad3.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"bbpos_wisepos_e.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image to display on the reader",
-		},
-		"stripe_s700.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"verifone_p400.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "Name of the configuration",
+			Description: "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://docs.stripe.com/terminal/fleet/locations-and-zones?dashboard-or-api=api#connection-tokens).",
 		},
 	},
 }
 
-var V1TerminalConfigurationsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/terminal/configurations/{configuration}",
+var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/terminal/onboarding_links",
 	Method:  "POST",
-	Summary: "Update a Configuration",
+	Summary: "Create an Onboarding Link",
 	Params: map[string]*resource.ParamSpec{
-		"name": {
-			Type:        "string",
-			Description: "Name of the configuration",
-		},
-	},
-}
-
-var V1TerminalConfigurationsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/terminal/configurations/{configuration}",
-	Method:  "DELETE",
-	Summary: "Delete a Configuration",
-}
-
-var V1TerminalConfigurationsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/terminal/configurations",
-	Method:  "GET",
-	Summary: "List all Configurations",
-	Params: map[string]*resource.ParamSpec{
-		"is_account_default": {
+		"link_options.apple_terms_and_conditions.allow_relinking": {
 			Type:        "boolean",
-			Description: "if present, only return the account default or non-default configurations.",
+			Description: "Whether the link should also support users relinking their Apple account.",
 		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
+		"link_options.apple_terms_and_conditions.merchant_display_name": {
 			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+			Description: "The business name of the merchant accepting Apple's Terms and Conditions.",
+			Required:    true,
 		},
-		"ending_before": {
+		"link_type": {
 			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+			Description: "The type of link being generated.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "apple_terms_and_conditions"},
+			},
+		},
+		"on_behalf_of": {
+			Type:        "string",
+			Description: "Stripe account ID to generate the link for.",
 		},
 	},
 }
 
-var V1TerminalReadersList = resource.OperationSpec{
-	Name:    "list",
+var V1TerminalReadersDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/terminal/readers/{reader}",
+	Method:  "DELETE",
+	Summary: "Delete a Reader",
+}
+
+var V1TerminalReadersCreate = resource.OperationSpec{
+	Name:    "create",
 	Path:    "/v1/terminal/readers",
-	Method:  "GET",
-	Summary: "List all Readers",
+	Method:  "POST",
+	Summary: "Create a Reader",
 	Params: map[string]*resource.ParamSpec{
-		"starting_after": {
+		"label": {
 			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "A status filter to filter readers to only offline or online readers",
-			Enum: []resource.EnumSpec{
-				{Value: "offline"},
-				{Value: "online"},
-			},
-		},
-		"device_type": {
-			Type:        "string",
-			Description: "Filters readers by device type",
-			Enum: []resource.EnumSpec{
-				{Value: "bbpos_chipper2x"},
-				{Value: "bbpos_wisepad3"},
-				{Value: "bbpos_wisepos_e"},
-				{Value: "mobile_phone_reader"},
-				{Value: "simulated_stripe_s700"},
-				{Value: "simulated_stripe_s710"},
-				{Value: "simulated_wisepos_e"},
-				{Value: "stripe_m2"},
-				{Value: "stripe_s700"},
-				{Value: "stripe_s710"},
-				{Value: "verifone_P400"},
-			},
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+			Description: "Custom label given to the reader for easier identification. If no label is specified, the registration code will be used.",
 		},
 		"location": {
 			Type:        "string",
-			Description: "A location ID to filter the response list to only readers at the specific location",
+			Description: "The location to assign the reader to.",
 		},
-		"serial_number": {
+		"registration_code": {
 			Type:        "string",
-			Description: "Filters readers by serial number",
+			Description: "A code generated by the reader used for registering to an account.",
+			Required:    true,
 		},
 	},
+}
+
+var V1TerminalReadersUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/terminal/readers/{reader}",
+	Method:  "POST",
+	Summary: "Update a Reader",
+	Params: map[string]*resource.ParamSpec{
+		"label": {
+			Type:        "string",
+			Description: "The new label of the reader.",
+		},
+	},
+}
+
+var V1TerminalReadersCancelAction = resource.OperationSpec{
+	Name:    "cancel_action",
+	Path:    "/v1/terminal/readers/{reader}/cancel_action",
+	Method:  "POST",
+	Summary: "Cancel the current reader action",
 }
 
 var V1TerminalReadersCollectInputs = resource.OperationSpec{
@@ -442,59 +355,6 @@ var V1TerminalReadersCollectInputs = resource.OperationSpec{
 	Path:    "/v1/terminal/readers/{reader}/collect_inputs",
 	Method:  "POST",
 	Summary: "Collect inputs using a Reader",
-}
-
-var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
-	Name:    "collect_payment_method",
-	Path:    "/v1/terminal/readers/{reader}/collect_payment_method",
-	Method:  "POST",
-	Summary: "Hand off a PaymentIntent to a Reader and collect card details",
-	Params: map[string]*resource.ParamSpec{
-		"payment_intent": {
-			Type:        "string",
-			Description: "The ID of the PaymentIntent to collect a payment method for.",
-			Required:    true,
-		},
-		"collect_config.allow_redisplay": {
-			Type:        "string",
-			Description: "This field indicates whether this payment method can be shown again to its customer in a checkout flow. Stripe products such as Checkout and Elements use this field to determine whether a payment method can be shown as a saved payment method in a checkout flow.",
-			Enum: []resource.EnumSpec{
-				{Value: "always"},
-				{Value: "limited"},
-				{Value: "unspecified"},
-			},
-		},
-		"collect_config.enable_customer_cancellation": {
-			Type:        "boolean",
-			Description: "Enables cancel button on transaction screens.",
-		},
-		"collect_config.skip_tipping": {
-			Type:        "boolean",
-			Description: "Override showing a tipping selection screen on this transaction.",
-		},
-		"collect_config.tipping.amount_eligible": {
-			Type:        "integer",
-			Description: "Amount used to calculate tip suggestions on tipping selection screen for this transaction. Must be a positive integer in the smallest currency unit (e.g., 100 cents to represent $1.00 or 100 to represent ¥100, a zero-decimal currency).",
-		},
-	},
-}
-
-var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
-	Name:    "confirm_payment_intent",
-	Path:    "/v1/terminal/readers/{reader}/confirm_payment_intent",
-	Method:  "POST",
-	Summary: "Confirm a PaymentIntent on the Reader",
-	Params: map[string]*resource.ParamSpec{
-		"confirm_config.return_url": {
-			Type:        "string",
-			Description: "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.",
-		},
-		"payment_intent": {
-			Type:        "string",
-			Description: "The ID of the PaymentIntent to confirm.",
-			Required:    true,
-		},
-	},
 }
 
 var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
@@ -570,10 +430,6 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Refund a Charge or a PaymentIntent in-person",
 	Params: map[string]*resource.ParamSpec{
-		"reverse_transfer": {
-			Type:        "boolean",
-			Description: "Boolean indicating whether the transfer should be reversed when refunding this charge. The transfer will be reversed proportionally to the amount being refunded (either the entire or partial amount). A transfer can be reversed only by the application that created the charge.",
-		},
 		"amount": {
 			Type:        "integer",
 			Description: "A positive integer in __cents__ representing how much of this charge to refund.",
@@ -594,6 +450,64 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 			Type:        "boolean",
 			Description: "Enables cancel button on transaction screens.",
 		},
+		"reverse_transfer": {
+			Type:        "boolean",
+			Description: "Boolean indicating whether the transfer should be reversed when refunding this charge. The transfer will be reversed proportionally to the amount being refunded (either the entire or partial amount). A transfer can be reversed only by the application that created the charge.",
+		},
+	},
+}
+
+var V1TerminalReadersList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/terminal/readers",
+	Method:  "GET",
+	Summary: "List all Readers",
+	Params: map[string]*resource.ParamSpec{
+		"device_type": {
+			Type:        "string",
+			Description: "Filters readers by device type",
+			Enum: []resource.EnumSpec{
+				{Value: "bbpos_chipper2x"},
+				{Value: "bbpos_wisepad3"},
+				{Value: "bbpos_wisepos_e"},
+				{Value: "mobile_phone_reader"},
+				{Value: "simulated_stripe_s700"},
+				{Value: "simulated_stripe_s710"},
+				{Value: "simulated_wisepos_e"},
+				{Value: "stripe_m2"},
+				{Value: "stripe_s700"},
+				{Value: "stripe_s710"},
+				{Value: "verifone_P400"},
+			},
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"location": {
+			Type:        "string",
+			Description: "A location ID to filter the response list to only readers at the specific location",
+		},
+		"serial_number": {
+			Type:        "string",
+			Description: "Filters readers by serial number",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "A status filter to filter readers to only offline or online readers",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 	},
 }
 
@@ -604,46 +518,57 @@ var V1TerminalReadersRetrieve = resource.OperationSpec{
 	Summary: "Retrieve a Reader",
 }
 
-var V1TerminalReadersCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/terminal/readers",
+var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
+	Name:    "collect_payment_method",
+	Path:    "/v1/terminal/readers/{reader}/collect_payment_method",
 	Method:  "POST",
-	Summary: "Create a Reader",
+	Summary: "Hand off a PaymentIntent to a Reader and collect card details",
 	Params: map[string]*resource.ParamSpec{
-		"label": {
+		"collect_config.allow_redisplay": {
 			Type:        "string",
-			Description: "Custom label given to the reader for easier identification. If no label is specified, the registration code will be used.",
+			Description: "This field indicates whether this payment method can be shown again to its customer in a checkout flow. Stripe products such as Checkout and Elements use this field to determine whether a payment method can be shown as a saved payment method in a checkout flow.",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "limited"},
+				{Value: "unspecified"},
+			},
 		},
-		"location": {
-			Type:        "string",
-			Description: "The location to assign the reader to.",
+		"collect_config.enable_customer_cancellation": {
+			Type:        "boolean",
+			Description: "Enables cancel button on transaction screens.",
 		},
-		"registration_code": {
+		"collect_config.skip_tipping": {
+			Type:        "boolean",
+			Description: "Override showing a tipping selection screen on this transaction.",
+		},
+		"collect_config.tipping.amount_eligible": {
+			Type:        "integer",
+			Description: "Amount used to calculate tip suggestions on tipping selection screen for this transaction. Must be a positive integer in the smallest currency unit (e.g., 100 cents to represent $1.00 or 100 to represent ¥100, a zero-decimal currency).",
+		},
+		"payment_intent": {
 			Type:        "string",
-			Description: "A code generated by the reader used for registering to an account.",
+			Description: "The ID of the PaymentIntent to collect a payment method for.",
 			Required:    true,
 		},
 	},
 }
 
-var V1TerminalReadersUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/terminal/readers/{reader}",
+var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
+	Name:    "confirm_payment_intent",
+	Path:    "/v1/terminal/readers/{reader}/confirm_payment_intent",
 	Method:  "POST",
-	Summary: "Update a Reader",
+	Summary: "Confirm a PaymentIntent on the Reader",
 	Params: map[string]*resource.ParamSpec{
-		"label": {
+		"confirm_config.return_url": {
 			Type:        "string",
-			Description: "The new label of the reader.",
+			Description: "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.",
+		},
+		"payment_intent": {
+			Type:        "string",
+			Description: "The ID of the PaymentIntent to confirm.",
+			Required:    true,
 		},
 	},
-}
-
-var V1TerminalReadersCancelAction = resource.OperationSpec{
-	Name:    "cancel_action",
-	Path:    "/v1/terminal/readers/{reader}/cancel_action",
-	Method:  "POST",
-	Summary: "Cancel the current reader action",
 }
 
 var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
@@ -678,19 +603,25 @@ var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
 	},
 }
 
-var V1TerminalReadersDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/terminal/readers/{reader}",
-	Method:  "DELETE",
-	Summary: "Delete a Reader",
-}
-
 var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 	Name:    "present_payment_method",
 	Path:    "/v1/test_helpers/terminal/readers/{reader}/present_payment_method",
 	Method:  "POST",
 	Summary: "Simulate presenting a payment method",
 	Params: map[string]*resource.ParamSpec{
+		"amount_tip": {
+			Type:        "integer",
+			Description: "Simulated on-reader tip amount.",
+		},
+		"card.cvc": {
+			Type:        "string",
+			Description: "Card security code.",
+		},
+		"card.exp_month": {
+			Type:        "integer",
+			Description: "Two-digit number representing the card's expiration month.",
+			Required:    true,
+		},
 		"card.exp_year": {
 			Type:        "integer",
 			Description: "Two- or four-digit number representing the card's expiration year.",
@@ -700,10 +631,6 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 			Type:        "string",
 			Description: "The card number, as a string without any separators.",
 			Required:    true,
-		},
-		"card.cvc": {
-			Type:        "string",
-			Description: "Card security code.",
 		},
 		"card_present.number": {
 			Type:        "string",
@@ -721,15 +648,6 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 				{Value: "card_present"},
 				{Value: "interac_present"},
 			},
-		},
-		"amount_tip": {
-			Type:        "integer",
-			Description: "Simulated on-reader tip amount.",
-		},
-		"card.exp_month": {
-			Type:        "integer",
-			Description: "Two-digit number representing the card's expiration month.",
-			Required:    true,
 		},
 	},
 }
@@ -758,15 +676,97 @@ var V1TerminalReadersTestHelpersTimeoutInputCollection = resource.OperationSpec{
 	Summary: "Simulate an input collection timeout",
 }
 
-var V1TerminalConnectionTokensCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/terminal/connection_tokens",
+var V1TerminalConfigurationsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/terminal/configurations/{configuration}",
 	Method:  "POST",
-	Summary: "Create a Connection Token",
+	Summary: "Update a Configuration",
 	Params: map[string]*resource.ParamSpec{
-		"location": {
+		"name": {
 			Type:        "string",
-			Description: "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://docs.stripe.com/terminal/fleet/locations-and-zones?dashboard-or-api=api#connection-tokens).",
+			Description: "Name of the configuration",
+		},
+	},
+}
+
+var V1TerminalConfigurationsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/terminal/configurations/{configuration}",
+	Method:  "DELETE",
+	Summary: "Delete a Configuration",
+}
+
+var V1TerminalConfigurationsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/terminal/configurations",
+	Method:  "GET",
+	Summary: "List all Configurations",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"is_account_default": {
+			Type:        "boolean",
+			Description: "if present, only return the account default or non-default configurations.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1TerminalConfigurationsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/terminal/configurations/{configuration}",
+	Method:  "GET",
+	Summary: "Retrieve a Configuration",
+}
+
+var V1TerminalConfigurationsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/terminal/configurations",
+	Method:  "POST",
+	Summary: "Create a Configuration",
+	Params: map[string]*resource.ParamSpec{
+		"bbpos_wisepad3.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"bbpos_wisepos_e.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image to display on the reader",
+		},
+		"name": {
+			Type:        "string",
+			Description: "Name of the configuration",
+		},
+		"reboot_window.end_hour": {
+			Type:        "integer",
+			Description: "Integer between 0 to 23 that represents the end hour of the reboot time window. The value must be different than the start_hour.",
+			Required:    true,
+		},
+		"reboot_window.start_hour": {
+			Type:        "integer",
+			Description: "Integer between 0 to 23 that represents the start hour of the reboot time window.",
+			Required:    true,
+		},
+		"stripe_s700.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"stripe_s710.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"verifone_p400.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
 		},
 	},
 }

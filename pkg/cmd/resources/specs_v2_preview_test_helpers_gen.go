@@ -19,10 +19,6 @@ var V2PreviewTestHelpersFinancialAddressCreditSimulationsCredit = resource.Opera
 	IsPreview: true,
 	Summary:   "Credit a Financial Address",
 	Params: map[string]*resource.ParamSpec{
-		"statement_descriptor": {
-			Type:        "string",
-			Description: "String explaining funds flow. Use this field to populate the statement descriptor of the ReceivedCredit created as an eventual result of this simulation.",
-		},
 		"amount.currency": {
 			Type:        "string",
 			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
@@ -43,6 +39,10 @@ var V2PreviewTestHelpersFinancialAddressCreditSimulationsCredit = resource.Opera
 				{Value: "rtp"},
 				{Value: "wire"},
 			},
+		},
+		"statement_descriptor": {
+			Type:        "string",
+			Description: "String explaining funds flow. Use this field to populate the statement descriptor of the ReceivedCredit created as an eventual result of this simulation.",
 		},
 	},
 }

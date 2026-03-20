@@ -4,11 +4,11 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1ClimateSuppliersList = resource.OperationSpec{
+var V1ClimateOrdersList = resource.OperationSpec{
 	Name:    "list",
-	Path:    "/v1/climate/suppliers",
+	Path:    "/v1/climate/orders",
 	Method:  "GET",
-	Summary: "List suppliers",
+	Summary: "List orders",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:        "string",
@@ -25,11 +25,57 @@ var V1ClimateSuppliersList = resource.OperationSpec{
 	},
 }
 
-var V1ClimateSuppliersRetrieve = resource.OperationSpec{
+var V1ClimateOrdersRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/climate/suppliers/{supplier}",
+	Path:    "/v1/climate/orders/{order}",
 	Method:  "GET",
-	Summary: "Retrieve a supplier",
+	Summary: "Retrieve an order",
+}
+
+var V1ClimateOrdersCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/climate/orders",
+	Method:  "POST",
+	Summary: "Create an order",
+	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "Requested amount of carbon removal units. Either this or `metric_tons` must be specified.",
+		},
+		"beneficiary.public_name": {
+			Type:        "string",
+			Description: "Publicly displayable name for the end beneficiary of carbon removal.",
+			Required:    true,
+		},
+		"currency": {
+			Type:        "string",
+			Description: "Request currency for the order as a three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a supported [settlement currency for your account](https://stripe.com/docs/currencies). If omitted, the account's default currency will be used.",
+		},
+		"metric_tons": {
+			Type:        "string",
+			Description: "Requested number of tons for the order. Either this or `amount` must be specified.",
+			Format:      "decimal",
+		},
+		"product": {
+			Type:        "string",
+			Description: "Unique identifier of the Climate product.",
+			Required:    true,
+		},
+	},
+}
+
+var V1ClimateOrdersUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/climate/orders/{order}",
+	Method:  "POST",
+	Summary: "Update an order",
+}
+
+var V1ClimateOrdersCancel = resource.OperationSpec{
+	Name:    "cancel",
+	Path:    "/v1/climate/orders/{order}/cancel",
+	Method:  "POST",
+	Summary: "Cancel an order",
 }
 
 var V1ClimateProductsList = resource.OperationSpec{
@@ -60,57 +106,11 @@ var V1ClimateProductsRetrieve = resource.OperationSpec{
 	Summary: "Retrieve a product",
 }
 
-var V1ClimateOrdersCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/climate/orders",
-	Method:  "POST",
-	Summary: "Create an order",
-	Params: map[string]*resource.ParamSpec{
-		"metric_tons": {
-			Type:        "string",
-			Description: "Requested number of tons for the order. Either this or `amount` must be specified.",
-			Format:      "decimal",
-		},
-		"product": {
-			Type:        "string",
-			Description: "Unique identifier of the Climate product.",
-			Required:    true,
-		},
-		"amount": {
-			Type:        "integer",
-			Description: "Requested amount of carbon removal units. Either this or `metric_tons` must be specified.",
-		},
-		"beneficiary.public_name": {
-			Type:        "string",
-			Description: "Publicly displayable name for the end beneficiary of carbon removal.",
-			Required:    true,
-		},
-		"currency": {
-			Type:        "string",
-			Description: "Request currency for the order as a three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a supported [settlement currency for your account](https://stripe.com/docs/currencies). If omitted, the account's default currency will be used.",
-		},
-	},
-}
-
-var V1ClimateOrdersUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/climate/orders/{order}",
-	Method:  "POST",
-	Summary: "Update an order",
-}
-
-var V1ClimateOrdersCancel = resource.OperationSpec{
-	Name:    "cancel",
-	Path:    "/v1/climate/orders/{order}/cancel",
-	Method:  "POST",
-	Summary: "Cancel an order",
-}
-
-var V1ClimateOrdersList = resource.OperationSpec{
+var V1ClimateSuppliersList = resource.OperationSpec{
 	Name:    "list",
-	Path:    "/v1/climate/orders",
+	Path:    "/v1/climate/suppliers",
 	Method:  "GET",
-	Summary: "List orders",
+	Summary: "List suppliers",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:        "string",
@@ -127,9 +127,9 @@ var V1ClimateOrdersList = resource.OperationSpec{
 	},
 }
 
-var V1ClimateOrdersRetrieve = resource.OperationSpec{
+var V1ClimateSuppliersRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/climate/orders/{order}",
+	Path:    "/v1/climate/suppliers/{supplier}",
 	Method:  "GET",
-	Summary: "Retrieve an order",
+	Summary: "Retrieve a supplier",
 }

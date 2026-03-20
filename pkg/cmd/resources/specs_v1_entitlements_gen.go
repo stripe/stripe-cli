@@ -43,10 +43,6 @@ var V1EntitlementsFeaturesList = resource.OperationSpec{
 	Method:  "GET",
 	Summary: "List all features",
 	Params: map[string]*resource.ParamSpec{
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
 		"archived": {
 			Type:        "boolean",
 			Description: "If set, filter results to only include features with the given archive status.",
@@ -62,6 +58,10 @@ var V1EntitlementsFeaturesList = resource.OperationSpec{
 		"lookup_key": {
 			Type:        "string",
 			Description: "If set, filter results to only include features with the given lookup_key.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
 		},
 	},
 }
@@ -79,14 +79,14 @@ var V1EntitlementsFeaturesCreate = resource.OperationSpec{
 	Method:  "POST",
 	Summary: "Create a feature",
 	Params: map[string]*resource.ParamSpec{
-		"name": {
-			Type:        "string",
-			Description: "The feature's name, for your own purpose, not meant to be displayable to the customer.",
-			Required:    true,
-		},
 		"lookup_key": {
 			Type:        "string",
 			Description: "A unique key you provide as your own system identifier. This may be up to 80 characters.",
+			Required:    true,
+		},
+		"name": {
+			Type:        "string",
+			Description: "The feature's name, for your own purpose, not meant to be displayable to the customer.",
 			Required:    true,
 		},
 	},
