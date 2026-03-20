@@ -176,19 +176,7 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 
-		// Create flag description
-		var description string
-		if len(paramSpec.Enum) > 0 {
-			enumValues := []string{}
-			for _, ev := range paramSpec.Enum {
-				if ev.Description != "" {
-					enumValues = append(enumValues, fmt.Sprintf("%s (%s)", ev.Value, ev.Description))
-				} else {
-					enumValues = append(enumValues, ev.Value)
-				}
-			}
-			description = fmt.Sprintf("Possible values: %s", strings.Join(enumValues, ", "))
-		}
+		description := paramSpec.Description
 
 		switch paramSpec.Type {
 		case "array":
