@@ -428,6 +428,8 @@ func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op s
 					// Save enum values if they exist
 					if len(schema.XStripeEnum) > 0 {
 						enumValues[propName] = schema.XStripeEnum
+					} else if len(schema.Enum) > 0 {
+						enumValues[propName] = enumToStripeEnumValues(schema.Enum)
 					}
 				}
 			}
@@ -452,10 +454,29 @@ func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op s
 			}
 
 			properties[param.Name] = *scalarType
+
+			// Save enum values if they exist
+			if len(schema.XStripeEnum) > 0 {
+				enumValues[param.Name] = schema.XStripeEnum
+			} else if len(schema.Enum) > 0 {
+				enumValues[param.Name] = enumToStripeEnumValues(schema.Enum)
+			}
 		}
 	}
 
 	return properties, enumValues
+}
+
+// enumToStripeEnumValues converts a plain JSON Schema enum array ([]interface{})
+// to []spec.StripeEnumValue, using each value as-is with an empty description.
+func enumToStripeEnumValues(values []interface{}) []spec.StripeEnumValue {
+	result := make([]spec.StripeEnumValue, 0, len(values))
+	for _, v := range values {
+		if s, ok := v.(string); ok {
+			result = append(result, spec.StripeEnumValue{Value: s})
+		}
+	}
+	return result
 }
 
 // getMediaType returns the content type for request bodies based on API namespace.
