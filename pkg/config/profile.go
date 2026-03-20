@@ -499,6 +499,7 @@ func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	ring, err := keyring.Open(keyring.Config{
 		KeychainTrustApplication: true,
 		ServiceName:              KeyManagementService,
+		FileDir:                  "~/.stripe/keys",
 	})
 	if err != nil {
 		return nil, err
