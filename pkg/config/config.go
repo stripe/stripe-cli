@@ -59,7 +59,12 @@ func (c *Config) GetProfile() *Profile {
 // GetConfigFolder retrieves the folder where the profiles file is stored
 // It searches for the xdg environment path first and will secondarily
 // place it in the home directory
+
 func (c *Config) GetConfigFolder(xdgPath string) string {
+	return getConfigFolder(xdgPath)
+}
+
+func getConfigFolder(xdgPath string) string {
 	configPath := xdgPath
 
 	if configPath == "" {
@@ -167,9 +172,18 @@ func (c *Config) InitConfig() {
 	}
 
 	// initialize key ring
-	KeyRing, _ = keyring.Open(keyring.Config{
-		ServiceName: KeyManagementService,
+	KeyRing, err = keyring.Open(keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+		FileDir:                  getConfigFolder(os.Getenv("XDG_CONFIG_HOME")),
+		FilePasswordFunc:         fileKeyringPassphrasePrompt,
 	})
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": "config.Config.InitConfig",
+			"error":  err,
+		}).Warn("Failed to initialize keyring")
+	}
 
 	// redact livemode values for existing configs
 	c.Profile.redactAllLivemodeValues()
