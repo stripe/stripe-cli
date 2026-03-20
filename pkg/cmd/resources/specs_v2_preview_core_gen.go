@@ -4,6 +4,972 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
+var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/account_links",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create an Account Link",
+	Params: map[string]*resource.ParamSpec{
+		"account": {
+			Type:        "string",
+			Description: "The ID of the Account to create link for.",
+			Required:    true,
+		},
+		"use_case.account_onboarding.collection_options.fields": {
+			Type:        "string",
+			Description: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
+			Enum: []resource.EnumSpec{
+				{Value: "currently_due"},
+				{Value: "eventually_due"},
+			},
+		},
+		"use_case.account_onboarding.collection_options.future_requirements": {
+			Type:        "string",
+			Description: "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+			Enum: []resource.EnumSpec{
+				{Value: "include"},
+				{Value: "omit"},
+			},
+		},
+		"use_case.account_onboarding.configurations": {
+			Type:        "array",
+			Description: "Open Enum. A v2/core/account can be configured to enable certain functionality. The configuration param targets the v2/core/account_link to collect information for the specified v2/core/account configuration/s.",
+			Required:    true,
+		},
+		"use_case.account_onboarding.refresh_url": {
+			Type:        "string",
+			Description: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid. The URL you specify should attempt to generate a new AccountLink with the same parameters used to create the original AccountLink, then redirect the user to the new AccountLink’s URL so they can continue the flow. If a new AccountLink cannot be generated or the redirect fails you should display a useful error to the user. Please make sure to implement authentication before redirecting the user in case this URL is leaked to a third party.",
+			Required:    true,
+		},
+		"use_case.account_onboarding.return_url": {
+			Type:        "string",
+			Description: "The URL that the user will be redirected to upon completing the linked flow.",
+		},
+		"use_case.account_update.collection_options.fields": {
+			Type:        "string",
+			Description: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). The default value is `currently_due`.",
+			Enum: []resource.EnumSpec{
+				{Value: "currently_due"},
+				{Value: "eventually_due"},
+			},
+		},
+		"use_case.account_update.collection_options.future_requirements": {
+			Type:        "string",
+			Description: "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
+			Enum: []resource.EnumSpec{
+				{Value: "include"},
+				{Value: "omit"},
+			},
+		},
+		"use_case.account_update.configurations": {
+			Type:        "array",
+			Description: "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
+			Required:    true,
+		},
+		"use_case.account_update.refresh_url": {
+			Type:        "string",
+			Description: "The URL the user will be redirected to if the Account Link is expired, has been used, or is otherwise invalid. The URL you specify should attempt to generate a new Account Link with the same parameters used to create the original Account Link, then redirect the user to the new Account Link URL so they can continue the flow. Make sure to authenticate the user before redirecting to the new Account Link, in case the URL leaks to a third party. If a new Account Link can't be generated, or if the redirect fails, you should display a useful error to the user.",
+			Required:    true,
+		},
+		"use_case.account_update.return_url": {
+			Type:        "string",
+			Description: "The URL that the user will be redirected to upon completing the linked flow.",
+		},
+		"use_case.type": {
+			Type:        "string",
+			Description: "Open Enum. The type of Account Link the user is requesting.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "account_onboarding"},
+				{Value: "account_update"},
+			},
+		},
+	},
+}
+
+var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/accounts/{account_id}/person_tokens",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a Person Token",
+	Params: map[string]*resource.ParamSpec{
+		"additional_terms_of_service.account.shown_and_accepted": {
+			Type:        "boolean",
+			Description: "The boolean value indicating if the terms of service have been accepted.",
+		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of the birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
+var V2PreviewCoreAccountPersonTokensRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/accounts/{account_id}/person_tokens/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Person Token",
+}
+
+var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/accounts/{account_id}/persons",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a person",
+	Params: map[string]*resource.ParamSpec{
+		"additional_terms_of_service.account.date": {
+			Type:        "string",
+			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+			Required:    true,
+			Format:      "date-time",
+		},
+		"additional_terms_of_service.account.ip": {
+			Type:        "string",
+			Description: "The IP address from which the Account's representative accepted the terms of service.",
+			Required:    true,
+		},
+		"additional_terms_of_service.account.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
+		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+			Required:    true,
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+			Required:    true,
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"person_token": {
+			Type:        "string",
+			Description: "The person token generated by the person token api.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
+var V2PreviewCoreAccountPersonsDelete = resource.OperationSpec{
+	Name:      "delete",
+	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:    "DELETE",
+	IsPreview: true,
+	Summary:   "Delete a Person",
+}
+
+var V2PreviewCoreAccountPersonsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/accounts/{account_id}/persons",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Persons",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "The upper limit on the number of accounts returned by the List Account request.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
+		},
+	},
+}
+
+var V2PreviewCoreAccountPersonsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Person",
+}
+
+var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a person",
+	Params: map[string]*resource.ParamSpec{
+		"additional_terms_of_service.account.date": {
+			Type:        "string",
+			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+			Format:      "date-time",
+		},
+		"additional_terms_of_service.account.ip": {
+			Type:        "string",
+			Description: "The IP address from which the Account's representative accepted the terms of service.",
+		},
+		"additional_terms_of_service.account.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
+		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of the birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"person_token": {
+			Type:        "string",
+			Description: "The person token generated by the person token api.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
 var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 	Name:      "create",
 	Path:      "/v2/core/account_tokens",
@@ -636,339 +1602,16 @@ var V2PreviewCoreAccountTokensRetrieve = resource.OperationSpec{
 	Summary:   "Retrieve an Account Token",
 }
 
-var V2PreviewCoreEventsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/events/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve an Event",
-}
-
-var V2PreviewCoreEventsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/events",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Events",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "The page size.",
-		},
-		"object_id": {
-			Type:        "string",
-			Description: "Primary object ID used to retrieve related events.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The requested page.",
-		},
-		"types": {
-			Type:        "array",
-			Description: "An array of up to 20 strings containing specific event names.",
-		},
-	},
-}
-
-var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/accounts/{account_id}/person_tokens",
+var V2PreviewCoreAccountsClose = resource.OperationSpec{
+	Name:      "close",
+	Path:      "/v2/core/accounts/{id}/close",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Create a Person Token",
-	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.shown_and_accepted": {
-			Type:        "boolean",
-			Description: "The boolean value indicating if the terms of service have been accepted.",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of the birth.",
-			Required:    true,
-		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
-		},
-	},
-}
-
-var V2PreviewCoreAccountPersonTokensRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/accounts/{account_id}/person_tokens/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Person Token",
-}
-
-var V2PreviewCoreAccountsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/accounts",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Accounts",
+	Summary:   "Close an Account",
 	Params: map[string]*resource.ParamSpec{
 		"applied_configurations": {
 			Type:        "array",
-			Description: "Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.",
-		},
-		"closed": {
-			Type:        "boolean",
-			Description: "Filter by whether the account is closed. If omitted, returns only Accounts that are not closed.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "The upper limit on the number of accounts returned by the List Account request.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
+			Description: "Configurations on the Account to be closed. All configurations on the Account must be passed in for this request to succeed.",
 		},
 	},
 }
@@ -2216,6 +2859,32 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 	},
 }
 
+var V2PreviewCoreAccountsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/accounts",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"applied_configurations": {
+			Type:        "array",
+			Description: "Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.",
+		},
+		"closed": {
+			Type:        "boolean",
+			Description: "Filter by whether the account is closed. If omitted, returns only Accounts that are not closed.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "The upper limit on the number of accounts returned by the List Account request.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
+		},
+	},
+}
+
 var V2PreviewCoreAccountsRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
 	Path:      "/v2/core/accounts/{id}",
@@ -3446,1030 +4115,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 	},
 }
 
-var V2PreviewCoreAccountsClose = resource.OperationSpec{
-	Name:      "close",
-	Path:      "/v2/core/accounts/{id}/close",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Close an Account",
-	Params: map[string]*resource.ParamSpec{
-		"applied_configurations": {
-			Type:        "array",
-			Description: "Configurations on the Account to be closed. All configurations on the Account must be passed in for this request to succeed.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsUsBankAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/vault/us_bank_accounts",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a US Bank Account",
-	Params: map[string]*resource.ParamSpec{
-		"account_number": {
-			Type:        "string",
-			Description: "The account number of the bank account.",
-			Required:    true,
-		},
-		"bank_account_type": {
-			Type:        "string",
-			Description: "Closed Enum. The type of the bank account (checking or savings).",
-			Enum: []resource.EnumSpec{
-				{Value: "checking"},
-				{Value: "savings"},
-			},
-		},
-		"fedwire_routing_number": {
-			Type:        "string",
-			Description: "The fedwire routing number of the bank account. Note that certain banks have the same ACH and wire routing number.",
-		},
-		"routing_number": {
-			Type:        "string",
-			Description: "The ACH routing number of the bank account. Note that certain banks have the same ACH and wire routing number.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsUsBankAccountsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a US Bank Account",
-}
-
-var V2PreviewCoreVaultsUsBankAccountsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update a US Bank Account",
-	Params: map[string]*resource.ParamSpec{
-		"fedwire_routing_number": {
-			Type:        "string",
-			Description: "The bank account's Fedwire routing number can be provided for update if it was empty previously.",
-		},
-		"routing_number": {
-			Type:        "string",
-			Description: "The bank account's ACH routing number can be provided for update if it was empty previously.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsUsBankAccountsArchive = resource.OperationSpec{
-	Name:      "archive",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}/archive",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Archive a US Bank Account",
-}
-
-var V2PreviewCoreVaultsUsBankAccountsConfirmMicrodeposits = resource.OperationSpec{
-	Name:      "confirm_microdeposits",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Confirm Microdeposits for verification",
-	Params: map[string]*resource.ParamSpec{
-		"amounts": {
-			Type:        "array",
-			Description: "Two amounts received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account.",
-		},
-		"descriptor_code": {
-			Type:        "string",
-			Description: "Descriptor code received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsUsBankAccountsSendMicrodeposits = resource.OperationSpec{
-	Name:      "send_microdeposits",
-	Path:      "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Send Microdeposits for verification",
-}
-
-var V2PreviewCoreVaultsUsBankAccountsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/vault/us_bank_accounts",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List US Bank Accounts",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 10.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The pagination token.",
-		},
-		"verification_status": {
-			Type:        "string",
-			Description: "Optionally filter by verification status. Mutually exclusive with `unverified`, `verified`, `awaiting_verification`, and `verification_failed`.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsGbBankAccountsAcknowledgeConfirmationOfPayee = resource.OperationSpec{
-	Name:      "acknowledge_confirmation_of_payee",
-	Path:      "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Acknowledge Confirmation of Payee (CoP)",
-}
-
-var V2PreviewCoreVaultsGbBankAccountsArchive = resource.OperationSpec{
-	Name:      "archive",
-	Path:      "/v2/core/vault/gb_bank_accounts/{id}/archive",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Archive a GB Bank Account",
-}
-
-var V2PreviewCoreVaultsGbBankAccountsInitiateConfirmationOfPayee = resource.OperationSpec{
-	Name:      "initiate_confirmation_of_payee",
-	Path:      "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Initiate Confirmation of Payee (CoP)",
-	Params: map[string]*resource.ParamSpec{
-		"business_type": {
-			Type:        "string",
-			Description: "The business type to be checked against. Legal entity information will be used if unspecified.",
-			Enum: []resource.EnumSpec{
-				{Value: "business"},
-				{Value: "personal"},
-			},
-		},
-		"name": {
-			Type:        "string",
-			Description: "The name of the user to be checked against. Legal entity information will be used if unspecified.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsGbBankAccountsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/vault/gb_bank_accounts",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List GB Bank Accounts",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 10.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The pagination token.",
-		},
-	},
-}
-
-var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/vault/gb_bank_accounts",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a GB Bank Account",
-	Params: map[string]*resource.ParamSpec{
-		"account_number": {
-			Type:        "string",
-			Description: "The Account Number of the bank account.",
-			Required:    true,
-		},
-		"bank_account_type": {
-			Type:        "string",
-			Description: "Closed Enum. The type of the bank account (checking or savings).",
-			Enum: []resource.EnumSpec{
-				{Value: "checking"},
-				{Value: "savings"},
-			},
-		},
-		"confirmation_of_payee.business_type": {
-			Type:        "string",
-			Description: "The business type to be checked against. Legal entity information will be used if unspecified.\nClosed enum.",
-			Enum: []resource.EnumSpec{
-				{Value: "business"},
-				{Value: "personal"},
-			},
-		},
-		"confirmation_of_payee.initiate": {
-			Type:        "boolean",
-			Description: "User specifies whether Confirmation of Payee is automatically initiated when creating the bank account.",
-			Required:    true,
-		},
-		"confirmation_of_payee.name": {
-			Type:        "string",
-			Description: "The name to be checked against. Legal entity information will be used if unspecified.",
-		},
-		"sort_code": {
-			Type:        "string",
-			Description: "The Sort Code of the bank account.",
-			Required:    true,
-		},
-	},
-}
-
-var V2PreviewCoreVaultsGbBankAccountsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/vault/gb_bank_accounts/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a GB Bank Account",
-}
-
-var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/account_links",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create an Account Link",
-	Params: map[string]*resource.ParamSpec{
-		"account": {
-			Type:        "string",
-			Description: "The ID of the Account to create link for.",
-			Required:    true,
-		},
-		"use_case.account_onboarding.collection_options.fields": {
-			Type:        "string",
-			Description: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). If you don’t specify collection_options, the default value is currently_due.",
-			Enum: []resource.EnumSpec{
-				{Value: "currently_due"},
-				{Value: "eventually_due"},
-			},
-		},
-		"use_case.account_onboarding.collection_options.future_requirements": {
-			Type:        "string",
-			Description: "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
-			Enum: []resource.EnumSpec{
-				{Value: "include"},
-				{Value: "omit"},
-			},
-		},
-		"use_case.account_onboarding.configurations": {
-			Type:        "array",
-			Description: "Open Enum. A v2/core/account can be configured to enable certain functionality. The configuration param targets the v2/core/account_link to collect information for the specified v2/core/account configuration/s.",
-			Required:    true,
-		},
-		"use_case.account_onboarding.refresh_url": {
-			Type:        "string",
-			Description: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid. The URL you specify should attempt to generate a new AccountLink with the same parameters used to create the original AccountLink, then redirect the user to the new AccountLink’s URL so they can continue the flow. If a new AccountLink cannot be generated or the redirect fails you should display a useful error to the user. Please make sure to implement authentication before redirecting the user in case this URL is leaked to a third party.",
-			Required:    true,
-		},
-		"use_case.account_onboarding.return_url": {
-			Type:        "string",
-			Description: "The URL that the user will be redirected to upon completing the linked flow.",
-		},
-		"use_case.account_update.collection_options.fields": {
-			Type:        "string",
-			Description: "Specifies whether the platform collects only currently_due requirements (`currently_due`) or both currently_due and eventually_due requirements (`eventually_due`). The default value is `currently_due`.",
-			Enum: []resource.EnumSpec{
-				{Value: "currently_due"},
-				{Value: "eventually_due"},
-			},
-		},
-		"use_case.account_update.collection_options.future_requirements": {
-			Type:        "string",
-			Description: "Specifies whether the platform collects future_requirements in addition to requirements in Connect Onboarding. The default value is `omit`.",
-			Enum: []resource.EnumSpec{
-				{Value: "include"},
-				{Value: "omit"},
-			},
-		},
-		"use_case.account_update.configurations": {
-			Type:        "array",
-			Description: "Open Enum. A v2/account can be configured to enable certain functionality. The configuration param targets the v2/account_link to collect information for the specified v2/account configuration/s.",
-			Required:    true,
-		},
-		"use_case.account_update.refresh_url": {
-			Type:        "string",
-			Description: "The URL the user will be redirected to if the Account Link is expired, has been used, or is otherwise invalid. The URL you specify should attempt to generate a new Account Link with the same parameters used to create the original Account Link, then redirect the user to the new Account Link URL so they can continue the flow. Make sure to authenticate the user before redirecting to the new Account Link, in case the URL leaks to a third party. If a new Account Link can't be generated, or if the redirect fails, you should display a useful error to the user.",
-			Required:    true,
-		},
-		"use_case.account_update.return_url": {
-			Type:        "string",
-			Description: "The URL that the user will be redirected to upon completing the linked flow.",
-		},
-		"use_case.type": {
-			Type:        "string",
-			Description: "Open Enum. The type of Account Link the user is requesting.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "account_onboarding"},
-				{Value: "account_update"},
-			},
-		},
-	},
-}
-
-var V2PreviewCoreAccountPersonsDelete = resource.OperationSpec{
-	Name:      "delete",
-	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:    "DELETE",
-	IsPreview: true,
-	Summary:   "Delete a Person",
-}
-
-var V2PreviewCoreAccountPersonsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Person",
-}
-
-var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update a person",
-	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.date": {
-			Type:        "string",
-			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
-			Format:      "date-time",
-		},
-		"additional_terms_of_service.account.ip": {
-			Type:        "string",
-			Description: "The IP address from which the Account's representative accepted the terms of service.",
-		},
-		"additional_terms_of_service.account.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of the birth.",
-			Required:    true,
-		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"person_token": {
-			Type:        "string",
-			Description: "The person token generated by the person token api.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
-		},
-	},
-}
-
-var V2PreviewCoreAccountPersonsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/accounts/{account_id}/persons",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Persons",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "The upper limit on the number of accounts returned by the List Account request.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
-		},
-	},
-}
-
-var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/core/accounts/{account_id}/persons",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a person",
-	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.date": {
-			Type:        "string",
-			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
-			Required:    true,
-			Format:      "date-time",
-		},
-		"additional_terms_of_service.account.ip": {
-			Type:        "string",
-			Description: "The IP address from which the Account's representative accepted the terms of service.",
-			Required:    true,
-		},
-		"additional_terms_of_service.account.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of birth.",
-			Required:    true,
-		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-			Required:    true,
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-			Required:    true,
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"person_token": {
-			Type:        "string",
-			Description: "The person token generated by the person token api.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
-		},
-	},
-}
-
-var V2PreviewCoreEventDestinationsDelete = resource.OperationSpec{
-	Name:      "delete",
-	Path:      "/v2/core/event_destinations/{id}",
-	Method:    "DELETE",
-	IsPreview: true,
-	Summary:   "Delete an Event Destination",
-}
-
-var V2PreviewCoreEventDestinationsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/core/event_destinations/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve an Event Destination",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response.",
-		},
-	},
-}
-
-var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/core/event_destinations/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update an Event Destination",
-	Params: map[string]*resource.ParamSpec{
-		"description": {
-			Type:        "string",
-			Description: "An optional description of what the event destination is used for.",
-		},
-		"enabled_events": {
-			Type:        "array",
-			Description: "The list of events to enable for this endpoint.",
-		},
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "Event destination name.",
-		},
-		"webhook_endpoint.url": {
-			Type:        "string",
-			Description: "The URL of the webhook endpoint.",
-			Required:    true,
-		},
-	},
-}
-
-var V2PreviewCoreEventDestinationsDisable = resource.OperationSpec{
-	Name:      "disable",
-	Path:      "/v2/core/event_destinations/{id}/disable",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Disable an Event Destination",
-}
-
-var V2PreviewCoreEventDestinationsEnable = resource.OperationSpec{
-	Name:      "enable",
-	Path:      "/v2/core/event_destinations/{id}/enable",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Enable an Event Destination",
-}
-
-var V2PreviewCoreEventDestinationsPing = resource.OperationSpec{
-	Name:      "ping",
-	Path:      "/v2/core/event_destinations/{id}/ping",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Ping an Event Destination",
-}
-
-var V2PreviewCoreEventDestinationsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/core/event_destinations",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Event Destinations",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "The page size.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The requested page.",
-		},
-	},
-}
-
 var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 	Name:      "create",
 	Path:      "/v2/core/event_destinations",
@@ -4535,6 +4180,361 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 			Type:        "string",
 			Description: "The URL of the webhook endpoint.",
 			Required:    true,
+		},
+	},
+}
+
+var V2PreviewCoreEventDestinationsDelete = resource.OperationSpec{
+	Name:      "delete",
+	Path:      "/v2/core/event_destinations/{id}",
+	Method:    "DELETE",
+	IsPreview: true,
+	Summary:   "Delete an Event Destination",
+}
+
+var V2PreviewCoreEventDestinationsDisable = resource.OperationSpec{
+	Name:      "disable",
+	Path:      "/v2/core/event_destinations/{id}/disable",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Disable an Event Destination",
+}
+
+var V2PreviewCoreEventDestinationsEnable = resource.OperationSpec{
+	Name:      "enable",
+	Path:      "/v2/core/event_destinations/{id}/enable",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Enable an Event Destination",
+}
+
+var V2PreviewCoreEventDestinationsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/event_destinations",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Event Destinations",
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:        "array",
+			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "The page size.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The requested page.",
+		},
+	},
+}
+
+var V2PreviewCoreEventDestinationsPing = resource.OperationSpec{
+	Name:      "ping",
+	Path:      "/v2/core/event_destinations/{id}/ping",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Ping an Event Destination",
+}
+
+var V2PreviewCoreEventDestinationsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/event_destinations/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve an Event Destination",
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:        "array",
+			Description: "Additional fields to include in the response.",
+		},
+	},
+}
+
+var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/core/event_destinations/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update an Event Destination",
+	Params: map[string]*resource.ParamSpec{
+		"description": {
+			Type:        "string",
+			Description: "An optional description of what the event destination is used for.",
+		},
+		"enabled_events": {
+			Type:        "array",
+			Description: "The list of events to enable for this endpoint.",
+		},
+		"include": {
+			Type:        "array",
+			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
+		},
+		"name": {
+			Type:        "string",
+			Description: "Event destination name.",
+		},
+		"webhook_endpoint.url": {
+			Type:        "string",
+			Description: "The URL of the webhook endpoint.",
+			Required:    true,
+		},
+	},
+}
+
+var V2PreviewCoreEventsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/events",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Events",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "The page size.",
+		},
+		"object_id": {
+			Type:        "string",
+			Description: "Primary object ID used to retrieve related events.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The requested page.",
+		},
+		"types": {
+			Type:        "array",
+			Description: "An array of up to 20 strings containing specific event names.",
+		},
+	},
+}
+
+var V2PreviewCoreEventsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/events/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve an Event",
+}
+
+var V2PreviewCoreVaultsGbBankAccountsAcknowledgeConfirmationOfPayee = resource.OperationSpec{
+	Name:      "acknowledge_confirmation_of_payee",
+	Path:      "/v2/core/vault/gb_bank_accounts/{id}/acknowledge_confirmation_of_payee",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Acknowledge Confirmation of Payee (CoP)",
+}
+
+var V2PreviewCoreVaultsGbBankAccountsArchive = resource.OperationSpec{
+	Name:      "archive",
+	Path:      "/v2/core/vault/gb_bank_accounts/{id}/archive",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Archive a GB Bank Account",
+}
+
+var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/vault/gb_bank_accounts",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a GB Bank Account",
+	Params: map[string]*resource.ParamSpec{
+		"account_number": {
+			Type:        "string",
+			Description: "The Account Number of the bank account.",
+			Required:    true,
+		},
+		"bank_account_type": {
+			Type:        "string",
+			Description: "Closed Enum. The type of the bank account (checking or savings).",
+			Enum: []resource.EnumSpec{
+				{Value: "checking"},
+				{Value: "savings"},
+			},
+		},
+		"confirmation_of_payee.business_type": {
+			Type:        "string",
+			Description: "The business type to be checked against. Legal entity information will be used if unspecified.\nClosed enum.",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"confirmation_of_payee.initiate": {
+			Type:        "boolean",
+			Description: "User specifies whether Confirmation of Payee is automatically initiated when creating the bank account.",
+			Required:    true,
+		},
+		"confirmation_of_payee.name": {
+			Type:        "string",
+			Description: "The name to be checked against. Legal entity information will be used if unspecified.",
+		},
+		"sort_code": {
+			Type:        "string",
+			Description: "The Sort Code of the bank account.",
+			Required:    true,
+		},
+	},
+}
+
+var V2PreviewCoreVaultsGbBankAccountsInitiateConfirmationOfPayee = resource.OperationSpec{
+	Name:      "initiate_confirmation_of_payee",
+	Path:      "/v2/core/vault/gb_bank_accounts/{id}/initiate_confirmation_of_payee",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Initiate Confirmation of Payee (CoP)",
+	Params: map[string]*resource.ParamSpec{
+		"business_type": {
+			Type:        "string",
+			Description: "The business type to be checked against. Legal entity information will be used if unspecified.",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"name": {
+			Type:        "string",
+			Description: "The name of the user to be checked against. Legal entity information will be used if unspecified.",
+		},
+	},
+}
+
+var V2PreviewCoreVaultsGbBankAccountsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/vault/gb_bank_accounts",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List GB Bank Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 10.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The pagination token.",
+		},
+	},
+}
+
+var V2PreviewCoreVaultsGbBankAccountsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/vault/gb_bank_accounts/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a GB Bank Account",
+}
+
+var V2PreviewCoreVaultsUsBankAccountsArchive = resource.OperationSpec{
+	Name:      "archive",
+	Path:      "/v2/core/vault/us_bank_accounts/{id}/archive",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Archive a US Bank Account",
+}
+
+var V2PreviewCoreVaultsUsBankAccountsConfirmMicrodeposits = resource.OperationSpec{
+	Name:      "confirm_microdeposits",
+	Path:      "/v2/core/vault/us_bank_accounts/{id}/confirm_microdeposits",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Confirm Microdeposits for verification",
+	Params: map[string]*resource.ParamSpec{
+		"amounts": {
+			Type:        "array",
+			Description: "Two amounts received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account.",
+		},
+		"descriptor_code": {
+			Type:        "string",
+			Description: "Descriptor code received through Send Microdeposits must match the input to Confirm Microdeposits to verify US Bank Account.",
+		},
+	},
+}
+
+var V2PreviewCoreVaultsUsBankAccountsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/core/vault/us_bank_accounts",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a US Bank Account",
+	Params: map[string]*resource.ParamSpec{
+		"account_number": {
+			Type:        "string",
+			Description: "The account number of the bank account.",
+			Required:    true,
+		},
+		"bank_account_type": {
+			Type:        "string",
+			Description: "Closed Enum. The type of the bank account (checking or savings).",
+			Enum: []resource.EnumSpec{
+				{Value: "checking"},
+				{Value: "savings"},
+			},
+		},
+		"fedwire_routing_number": {
+			Type:        "string",
+			Description: "The fedwire routing number of the bank account. Note that certain banks have the same ACH and wire routing number.",
+		},
+		"routing_number": {
+			Type:        "string",
+			Description: "The ACH routing number of the bank account. Note that certain banks have the same ACH and wire routing number.",
+		},
+	},
+}
+
+var V2PreviewCoreVaultsUsBankAccountsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/core/vault/us_bank_accounts",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List US Bank Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 10.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The pagination token.",
+		},
+		"verification_status": {
+			Type:        "string",
+			Description: "Optionally filter by verification status. Mutually exclusive with `unverified`, `verified`, `awaiting_verification`, and `verification_failed`.",
+		},
+	},
+}
+
+var V2PreviewCoreVaultsUsBankAccountsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/core/vault/us_bank_accounts/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a US Bank Account",
+}
+
+var V2PreviewCoreVaultsUsBankAccountsSendMicrodeposits = resource.OperationSpec{
+	Name:      "send_microdeposits",
+	Path:      "/v2/core/vault/us_bank_accounts/{id}/send_microdeposits",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Send Microdeposits for verification",
+}
+
+var V2PreviewCoreVaultsUsBankAccountsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/core/vault/us_bank_accounts/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a US Bank Account",
+	Params: map[string]*resource.ParamSpec{
+		"fedwire_routing_number": {
+			Type:        "string",
+			Description: "The bank account's Fedwire routing number can be provided for update if it was empty previously.",
+		},
+		"routing_number": {
+			Type:        "string",
+			Description: "The bank account's ACH routing number can be provided for update if it was empty previously.",
 		},
 	},
 }

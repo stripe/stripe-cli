@@ -4,32 +4,11 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1ClimateOrdersList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/climate/orders",
-	Method:  "GET",
-	Summary: "List orders",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1ClimateOrdersRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/climate/orders/{order}",
-	Method:  "GET",
-	Summary: "Retrieve an order",
+var V1ClimateOrdersCancel = resource.OperationSpec{
+	Name:    "cancel",
+	Path:    "/v1/climate/orders/{order}/cancel",
+	Method:  "POST",
+	Summary: "Cancel an order",
 }
 
 var V1ClimateOrdersCreate = resource.OperationSpec{
@@ -64,18 +43,39 @@ var V1ClimateOrdersCreate = resource.OperationSpec{
 	},
 }
 
+var V1ClimateOrdersList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/climate/orders",
+	Method:  "GET",
+	Summary: "List orders",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1ClimateOrdersRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/climate/orders/{order}",
+	Method:  "GET",
+	Summary: "Retrieve an order",
+}
+
 var V1ClimateOrdersUpdate = resource.OperationSpec{
 	Name:    "update",
 	Path:    "/v1/climate/orders/{order}",
 	Method:  "POST",
 	Summary: "Update an order",
-}
-
-var V1ClimateOrdersCancel = resource.OperationSpec{
-	Name:    "cancel",
-	Path:    "/v1/climate/orders/{order}/cancel",
-	Method:  "POST",
-	Summary: "Cancel an order",
 }
 
 var V1ClimateProductsList = resource.OperationSpec{

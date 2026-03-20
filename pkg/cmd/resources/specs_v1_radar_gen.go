@@ -4,105 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1RadarValueListsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/radar/value_lists/{value_list}",
-	Method:  "POST",
-	Summary: "Update a value list",
-	Params: map[string]*resource.ParamSpec{
-		"alias": {
-			Type:        "string",
-			Description: "The name of the value list for use in rules.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "The human-readable name of the value list.",
-		},
-	},
-}
-
-var V1RadarValueListsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/radar/value_lists/{value_list}",
-	Method:  "DELETE",
-	Summary: "Delete a value list",
-}
-
-var V1RadarValueListsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/radar/value_lists",
-	Method:  "GET",
-	Summary: "List all value lists",
-	Params: map[string]*resource.ParamSpec{
-		"alias": {
-			Type:        "string",
-			Description: "The alias used to reference the value list when writing rules.",
-		},
-		"contains": {
-			Type:        "string",
-			Description: "A value contained within a value list - returns all value lists containing this value.",
-		},
-		"created": {
-			Type:        "integer",
-			Description: "Only return value lists that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1RadarValueListsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/radar/value_lists/{value_list}",
-	Method:  "GET",
-	Summary: "Retrieve a value list",
-}
-
-var V1RadarValueListsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/radar/value_lists",
-	Method:  "POST",
-	Summary: "Create a value list",
-	Params: map[string]*resource.ParamSpec{
-		"alias": {
-			Type:        "string",
-			Description: "The name of the value list for use in rules.",
-			Required:    true,
-		},
-		"item_type": {
-			Type:        "string",
-			Description: "Type of the items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, `case_sensitive_string`, `customer_id`, `sepa_debit_fingerprint`, or `us_bank_account_fingerprint`. Use `string` if the item type is unknown or mixed.",
-			Enum: []resource.EnumSpec{
-				{Value: "card_bin"},
-				{Value: "card_fingerprint"},
-				{Value: "case_sensitive_string"},
-				{Value: "country"},
-				{Value: "customer_id"},
-				{Value: "email"},
-				{Value: "ip_address"},
-				{Value: "sepa_debit_fingerprint"},
-				{Value: "string"},
-				{Value: "us_bank_account_fingerprint"},
-			},
-		},
-		"name": {
-			Type:        "string",
-			Description: "The human-readable name of the value list.",
-			Required:    true,
-		},
-	},
-}
-
 var V1RadarEarlyFraudWarningsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/radar/early_fraud_warnings",
@@ -141,73 +42,6 @@ var V1RadarEarlyFraudWarningsRetrieve = resource.OperationSpec{
 	Path:    "/v1/radar/early_fraud_warnings/{early_fraud_warning}",
 	Method:  "GET",
 	Summary: "Retrieve an early fraud warning",
-}
-
-var V1RadarValueListItemsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/radar/value_list_items/{item}",
-	Method:  "DELETE",
-	Summary: "Delete a value list item",
-}
-
-var V1RadarValueListItemsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/radar/value_list_items",
-	Method:  "GET",
-	Summary: "List all value list items",
-	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:        "integer",
-			Description: "Only return items that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"value": {
-			Type:        "string",
-			Description: "Return items belonging to the parent list whose value matches the specified value (using an \"is like\" match).",
-		},
-		"value_list": {
-			Type:        "string",
-			Description: "Identifier for the parent value list this item belongs to.",
-			Required:    true,
-		},
-	},
-}
-
-var V1RadarValueListItemsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/radar/value_list_items/{item}",
-	Method:  "GET",
-	Summary: "Retrieve a value list item",
-}
-
-var V1RadarValueListItemsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/radar/value_list_items",
-	Method:  "POST",
-	Summary: "Create a value list item",
-	Params: map[string]*resource.ParamSpec{
-		"value": {
-			Type:        "string",
-			Description: "The value of the item (whose type must match the type of the parent value list).",
-			Required:    true,
-		},
-		"value_list": {
-			Type:        "string",
-			Description: "The identifier of the value list which the created item will be added to.",
-			Required:    true,
-		},
-	},
 }
 
 var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
@@ -358,6 +192,172 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 		"payment_details.statement_descriptor": {
 			Type:        "string",
 			Description: "Payment statement descriptor.",
+		},
+	},
+}
+
+var V1RadarValueListItemsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/radar/value_list_items",
+	Method:  "POST",
+	Summary: "Create a value list item",
+	Params: map[string]*resource.ParamSpec{
+		"value": {
+			Type:        "string",
+			Description: "The value of the item (whose type must match the type of the parent value list).",
+			Required:    true,
+		},
+		"value_list": {
+			Type:        "string",
+			Description: "The identifier of the value list which the created item will be added to.",
+			Required:    true,
+		},
+	},
+}
+
+var V1RadarValueListItemsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/radar/value_list_items/{item}",
+	Method:  "DELETE",
+	Summary: "Delete a value list item",
+}
+
+var V1RadarValueListItemsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/radar/value_list_items",
+	Method:  "GET",
+	Summary: "List all value list items",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:        "integer",
+			Description: "Only return items that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"value": {
+			Type:        "string",
+			Description: "Return items belonging to the parent list whose value matches the specified value (using an \"is like\" match).",
+		},
+		"value_list": {
+			Type:        "string",
+			Description: "Identifier for the parent value list this item belongs to.",
+			Required:    true,
+		},
+	},
+}
+
+var V1RadarValueListItemsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/radar/value_list_items/{item}",
+	Method:  "GET",
+	Summary: "Retrieve a value list item",
+}
+
+var V1RadarValueListsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/radar/value_lists",
+	Method:  "POST",
+	Summary: "Create a value list",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The name of the value list for use in rules.",
+			Required:    true,
+		},
+		"item_type": {
+			Type:        "string",
+			Description: "Type of the items in the value list. One of `card_fingerprint`, `card_bin`, `email`, `ip_address`, `country`, `string`, `case_sensitive_string`, `customer_id`, `sepa_debit_fingerprint`, or `us_bank_account_fingerprint`. Use `string` if the item type is unknown or mixed.",
+			Enum: []resource.EnumSpec{
+				{Value: "card_bin"},
+				{Value: "card_fingerprint"},
+				{Value: "case_sensitive_string"},
+				{Value: "country"},
+				{Value: "customer_id"},
+				{Value: "email"},
+				{Value: "ip_address"},
+				{Value: "sepa_debit_fingerprint"},
+				{Value: "string"},
+				{Value: "us_bank_account_fingerprint"},
+			},
+		},
+		"name": {
+			Type:        "string",
+			Description: "The human-readable name of the value list.",
+			Required:    true,
+		},
+	},
+}
+
+var V1RadarValueListsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "DELETE",
+	Summary: "Delete a value list",
+}
+
+var V1RadarValueListsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/radar/value_lists",
+	Method:  "GET",
+	Summary: "List all value lists",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The alias used to reference the value list when writing rules.",
+		},
+		"contains": {
+			Type:        "string",
+			Description: "A value contained within a value list - returns all value lists containing this value.",
+		},
+		"created": {
+			Type:        "integer",
+			Description: "Only return value lists that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1RadarValueListsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "GET",
+	Summary: "Retrieve a value list",
+}
+
+var V1RadarValueListsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/radar/value_lists/{value_list}",
+	Method:  "POST",
+	Summary: "Update a value list",
+	Params: map[string]*resource.ParamSpec{
+		"alias": {
+			Type:        "string",
+			Description: "The name of the value list for use in rules.",
+		},
+		"name": {
+			Type:        "string",
+			Description: "The human-readable name of the value list.",
 		},
 	},
 }

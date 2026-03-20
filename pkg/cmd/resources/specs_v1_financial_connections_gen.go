@@ -4,11 +4,111 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1FinancialConnectionsSessionsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/financial_connections/sessions/{session}",
+var V1FinancialConnectionsAccountsDisconnect = resource.OperationSpec{
+	Name:    "disconnect",
+	Path:    "/v1/financial_connections/accounts/{account}/disconnect",
+	Method:  "POST",
+	Summary: "Disconnect an Account",
+}
+
+var V1FinancialConnectionsAccountsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/financial_connections/accounts",
 	Method:  "GET",
-	Summary: "Retrieve a Session",
+	Summary: "List Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"session": {
+			Type:        "string",
+			Description: "If present, only return accounts that were collected as part of the given session.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsListOwners = resource.OperationSpec{
+	Name:    "list_owners",
+	Path:    "/v1/financial_connections/accounts/{account}/owners",
+	Method:  "GET",
+	Summary: "List Account Owners",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"ownership": {
+			Type:        "string",
+			Description: "The ID of the ownership object to fetch owners from.",
+			Required:    true,
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
+	Name:    "refresh",
+	Path:    "/v1/financial_connections/accounts/{account}/refresh",
+	Method:  "POST",
+	Summary: "Refresh Account data",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features that you would like to refresh.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/financial_connections/accounts/{account}",
+	Method:  "GET",
+	Summary: "Retrieve an Account",
+}
+
+var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
+	Name:    "subscribe",
+	Path:    "/v1/financial_connections/accounts/{account}/subscribe",
+	Method:  "POST",
+	Summary: "Subscribe to data refreshes for an Account",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features to which you would like to subscribe.",
+			Required:    true,
+		},
+	},
+}
+
+var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
+	Name:    "unsubscribe",
+	Path:    "/v1/financial_connections/accounts/{account}/unsubscribe",
+	Method:  "POST",
+	Summary: "Unsubscribe from data refreshes for an Account",
+	Params: map[string]*resource.ParamSpec{
+		"features": {
+			Type:        "array",
+			Description: "The list of account features from which you would like to unsubscribe.",
+			Required:    true,
+		},
+	},
 }
 
 var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
@@ -62,6 +162,13 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 	},
 }
 
+var V1FinancialConnectionsSessionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/financial_connections/sessions/{session}",
+	Method:  "GET",
+	Summary: "Retrieve a Session",
+}
+
 var V1FinancialConnectionsTransactionsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/financial_connections/transactions",
@@ -97,111 +204,4 @@ var V1FinancialConnectionsTransactionsRetrieve = resource.OperationSpec{
 	Path:    "/v1/financial_connections/transactions/{transaction}",
 	Method:  "GET",
 	Summary: "Retrieve a Transaction",
-}
-
-var V1FinancialConnectionsAccountsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/financial_connections/accounts/{account}",
-	Method:  "GET",
-	Summary: "Retrieve an Account",
-}
-
-var V1FinancialConnectionsAccountsListOwners = resource.OperationSpec{
-	Name:    "list_owners",
-	Path:    "/v1/financial_connections/accounts/{account}/owners",
-	Method:  "GET",
-	Summary: "List Account Owners",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"ownership": {
-			Type:        "string",
-			Description: "The ID of the ownership object to fetch owners from.",
-			Required:    true,
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1FinancialConnectionsAccountsDisconnect = resource.OperationSpec{
-	Name:    "disconnect",
-	Path:    "/v1/financial_connections/accounts/{account}/disconnect",
-	Method:  "POST",
-	Summary: "Disconnect an Account",
-}
-
-var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
-	Name:    "refresh",
-	Path:    "/v1/financial_connections/accounts/{account}/refresh",
-	Method:  "POST",
-	Summary: "Refresh Account data",
-	Params: map[string]*resource.ParamSpec{
-		"features": {
-			Type:        "array",
-			Description: "The list of account features that you would like to refresh.",
-			Required:    true,
-		},
-	},
-}
-
-var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
-	Name:    "subscribe",
-	Path:    "/v1/financial_connections/accounts/{account}/subscribe",
-	Method:  "POST",
-	Summary: "Subscribe to data refreshes for an Account",
-	Params: map[string]*resource.ParamSpec{
-		"features": {
-			Type:        "array",
-			Description: "The list of account features to which you would like to subscribe.",
-			Required:    true,
-		},
-	},
-}
-
-var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
-	Name:    "unsubscribe",
-	Path:    "/v1/financial_connections/accounts/{account}/unsubscribe",
-	Method:  "POST",
-	Summary: "Unsubscribe from data refreshes for an Account",
-	Params: map[string]*resource.ParamSpec{
-		"features": {
-			Type:        "array",
-			Description: "The list of account features from which you would like to unsubscribe.",
-			Required:    true,
-		},
-	},
-}
-
-var V1FinancialConnectionsAccountsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/financial_connections/accounts",
-	Method:  "GET",
-	Summary: "List Accounts",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"session": {
-			Type:        "string",
-			Description: "If present, only return accounts that were collected as part of the given session.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
 }

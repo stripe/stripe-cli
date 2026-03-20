@@ -443,205 +443,15 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 	},
 }
 
-var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
+var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
+	Name:    "fund_cash_balance",
+	Path:    "/v1/test_helpers/customers/{customer}/fund_cash_balance",
 	Method:  "POST",
-	Summary: "Test mode: Update an OutboundTransfer",
-	Params: map[string]*resource.ParamSpec{
-		"tracking_details.ach.trace_id": {
-			Type:        "string",
-			Description: "ACH trace ID for funds sent over the `ach` network.",
-			Required:    true,
-		},
-		"tracking_details.type": {
-			Type:        "string",
-			Description: "The US bank account network used to send funds.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ach"},
-				{Value: "us_domestic_wire"},
-			},
-		},
-		"tracking_details.us_domestic_wire.chips": {
-			Type:        "string",
-			Description: "CHIPS System Sequence Number (SSN) for funds sent over the `us_domestic_wire` network.",
-		},
-		"tracking_details.us_domestic_wire.imad": {
-			Type:        "string",
-			Description: "IMAD for funds sent over the `us_domestic_wire` network.",
-		},
-		"tracking_details.us_domestic_wire.omad": {
-			Type:        "string",
-			Description: "OMAD for funds sent over the `us_domestic_wire` network.",
-		},
-	},
-}
-
-var V1TestHelpersTreasuryOutboundTransfersFail = resource.OperationSpec{
-	Name:    "fail",
-	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
-	Method:  "POST",
-	Summary: "Test mode: Fail an OutboundTransfer",
-}
-
-var V1TestHelpersTreasuryOutboundTransfersPost = resource.OperationSpec{
-	Name:    "post",
-	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
-	Method:  "POST",
-	Summary: "Test mode: Post an OutboundTransfer",
-}
-
-var V1TestHelpersTreasuryOutboundTransfersReturnOutboundTransfer = resource.OperationSpec{
-	Name:    "return_outbound_transfer",
-	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
-	Method:  "POST",
-	Summary: "Test mode: Return an OutboundTransfer",
-	Params: map[string]*resource.ParamSpec{
-		"returned_details.code": {
-			Type:        "string",
-			Description: "Reason for the return.",
-			Enum: []resource.EnumSpec{
-				{Value: "account_closed"},
-				{Value: "account_frozen"},
-				{Value: "bank_account_restricted"},
-				{Value: "bank_ownership_changed"},
-				{Value: "declined"},
-				{Value: "incorrect_account_holder_name"},
-				{Value: "invalid_account_number"},
-				{Value: "invalid_currency"},
-				{Value: "no_account"},
-				{Value: "other"},
-			},
-		},
-	},
-}
-
-var V1TestHelpersTreasuryInboundTransfersFail = resource.OperationSpec{
-	Name:    "fail",
-	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
-	Method:  "POST",
-	Summary: "Test mode: Fail an InboundTransfer",
-	Params: map[string]*resource.ParamSpec{
-		"failure_details.code": {
-			Type:        "string",
-			Description: "Reason for the failure.",
-			Enum: []resource.EnumSpec{
-				{Value: "account_closed"},
-				{Value: "account_frozen"},
-				{Value: "bank_account_restricted"},
-				{Value: "bank_ownership_changed"},
-				{Value: "debit_not_authorized"},
-				{Value: "incorrect_account_holder_address"},
-				{Value: "incorrect_account_holder_name"},
-				{Value: "incorrect_account_holder_tax_id"},
-				{Value: "insufficient_funds"},
-				{Value: "invalid_account_number"},
-				{Value: "invalid_currency"},
-				{Value: "no_account"},
-				{Value: "other"},
-			},
-		},
-	},
-}
-
-var V1TestHelpersTreasuryInboundTransfersReturnInboundTransfer = resource.OperationSpec{
-	Name:    "return_inbound_transfer",
-	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
-	Method:  "POST",
-	Summary: "Test mode: Return an InboundTransfer",
-}
-
-var V1TestHelpersTreasuryInboundTransfersSucceed = resource.OperationSpec{
-	Name:    "succeed",
-	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
-	Method:  "POST",
-	Summary: "Test mode: Succeed an InboundTransfer",
-}
-
-var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}",
-	Method:  "POST",
-	Summary: "Test mode: Update an OutboundPayment",
-	Params: map[string]*resource.ParamSpec{
-		"tracking_details.ach.trace_id": {
-			Type:        "string",
-			Description: "ACH trace ID for funds sent over the `ach` network.",
-			Required:    true,
-		},
-		"tracking_details.type": {
-			Type:        "string",
-			Description: "The US bank account network used to send funds.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ach"},
-				{Value: "us_domestic_wire"},
-			},
-		},
-		"tracking_details.us_domestic_wire.chips": {
-			Type:        "string",
-			Description: "CHIPS System Sequence Number (SSN) for funds sent over the `us_domestic_wire` network.",
-		},
-		"tracking_details.us_domestic_wire.imad": {
-			Type:        "string",
-			Description: "IMAD for funds sent over the `us_domestic_wire` network.",
-		},
-		"tracking_details.us_domestic_wire.omad": {
-			Type:        "string",
-			Description: "OMAD for funds sent over the `us_domestic_wire` network.",
-		},
-	},
-}
-
-var V1TestHelpersTreasuryOutboundPaymentsFail = resource.OperationSpec{
-	Name:    "fail",
-	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
-	Method:  "POST",
-	Summary: "Test mode: Fail an OutboundPayment",
-}
-
-var V1TestHelpersTreasuryOutboundPaymentsPost = resource.OperationSpec{
-	Name:    "post",
-	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/post",
-	Method:  "POST",
-	Summary: "Test mode: Post an OutboundPayment",
-}
-
-var V1TestHelpersTreasuryOutboundPaymentsReturnOutboundPayment = resource.OperationSpec{
-	Name:    "return_outbound_payment",
-	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/return",
-	Method:  "POST",
-	Summary: "Test mode: Return an OutboundPayment",
-	Params: map[string]*resource.ParamSpec{
-		"returned_details.code": {
-			Type:        "string",
-			Description: "The return code to be set on the OutboundPayment object.",
-			Enum: []resource.EnumSpec{
-				{Value: "account_closed"},
-				{Value: "account_frozen"},
-				{Value: "bank_account_restricted"},
-				{Value: "bank_ownership_changed"},
-				{Value: "declined"},
-				{Value: "incorrect_account_holder_name"},
-				{Value: "invalid_account_number"},
-				{Value: "invalid_currency"},
-				{Value: "no_account"},
-				{Value: "other"},
-			},
-		},
-	},
-}
-
-var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/test_helpers/treasury/received_debits",
-	Method:  "POST",
-	Summary: "Test mode: Create a ReceivedDebit",
+	Summary: "Fund a test mode cash balance",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:        "integer",
-			Description: "Amount (in cents) to be transferred.",
+			Description: "Amount to be used for this test cash balance transaction. A positive integer representing how much to fund in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to fund $1.00 or 100 to fund ¥100, a zero-decimal currency).",
 			Required:    true,
 		},
 		"currency": {
@@ -650,209 +460,48 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 			Required:    true,
 			Format:      "currency",
 		},
-		"description": {
+		"reference": {
 			Type:        "string",
-			Description: "An arbitrary string attached to the object. Often useful for displaying to users.",
-		},
-		"financial_account": {
-			Type:        "string",
-			Description: "The FinancialAccount to pull funds from.",
-			Required:    true,
-		},
-		"initiating_payment_method_details.type": {
-			Type:        "string",
-			Description: "The source type.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "us_bank_account"},
-			},
-		},
-		"initiating_payment_method_details.us_bank_account.account_holder_name": {
-			Type:        "string",
-			Description: "The bank account holder's name.",
-		},
-		"initiating_payment_method_details.us_bank_account.account_number": {
-			Type:        "string",
-			Description: "The bank account number.",
-		},
-		"initiating_payment_method_details.us_bank_account.routing_number": {
-			Type:        "string",
-			Description: "The bank account's routing number.",
-		},
-		"network": {
-			Type:        "string",
-			Description: "Specifies the network rails to be used. If not set, will default to the PaymentMethod's preferred network. See the [docs](https://docs.stripe.com/treasury/money-movement/timelines) to learn more about money movement timelines for each network type.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ach"},
-			},
+			Description: "A description of the test funding. This simulates free-text references supplied by customers when making bank transfers to their cash balance. You can use this to test how Stripe's [reconciliation algorithm](https://docs.stripe.com/payments/customer-balance/reconciliation) applies to different user inputs.",
 		},
 	},
 }
 
-var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/test_helpers/treasury/received_credits",
+var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
+	Name:    "capture",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
 	Method:  "POST",
-	Summary: "Test mode: Create a ReceivedCredit",
+	Summary: "Capture a test-mode authorization",
 	Params: map[string]*resource.ParamSpec{
-		"amount": {
+		"capture_amount": {
 			Type:        "integer",
-			Description: "Amount (in cents) to be transferred.",
-			Required:    true,
+			Description: "The amount to capture from the authorization. If not provided, the full amount of the authorization will be captured. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
 		},
-		"currency": {
-			Type:        "string",
-			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Required:    true,
-			Format:      "currency",
+		"close_authorization": {
+			Type:        "boolean",
+			Description: "Whether to close the authorization after capture. Defaults to true. Set to false to enable multi-capture flows.",
 		},
-		"description": {
-			Type:        "string",
-			Description: "An arbitrary string attached to the object. Often useful for displaying to users.",
-		},
-		"financial_account": {
-			Type:        "string",
-			Description: "The FinancialAccount to send funds to.",
-			Required:    true,
-		},
-		"initiating_payment_method_details.type": {
-			Type:        "string",
-			Description: "The source type.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "us_bank_account"},
-			},
-		},
-		"initiating_payment_method_details.us_bank_account.account_holder_name": {
-			Type:        "string",
-			Description: "The bank account holder's name.",
-		},
-		"initiating_payment_method_details.us_bank_account.account_number": {
-			Type:        "string",
-			Description: "The bank account number.",
-		},
-		"initiating_payment_method_details.us_bank_account.routing_number": {
-			Type:        "string",
-			Description: "The bank account's routing number.",
-		},
-		"network": {
-			Type:        "string",
-			Description: "Specifies the network rails to be used. If not set, will default to the PaymentMethod's preferred network. See the [docs](https://docs.stripe.com/treasury/money-movement/timelines) to learn more about money movement timelines for each network type.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "ach"},
-				{Value: "us_domestic_wire"},
-			},
-		},
-	},
-}
-
-var V1TestHelpersIssuingPersonalizationDesignsActivate = resource.OperationSpec{
-	Name:    "activate",
-	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
-	Method:  "POST",
-	Summary: "Activate a testmode personalization design",
-}
-
-var V1TestHelpersIssuingPersonalizationDesignsDeactivate = resource.OperationSpec{
-	Name:    "deactivate",
-	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
-	Method:  "POST",
-	Summary: "Deactivate a testmode personalization design",
-}
-
-var V1TestHelpersIssuingPersonalizationDesignsReject = resource.OperationSpec{
-	Name:    "reject",
-	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
-	Method:  "POST",
-	Summary: "Reject a testmode personalization design",
-	Params: map[string]*resource.ParamSpec{
-		"rejection_reasons.card_logo": {
-			Type:        "array",
-			Description: "The reason(s) the card logo was rejected.",
-		},
-		"rejection_reasons.carrier_text": {
-			Type:        "array",
-			Description: "The reason(s) the carrier text was rejected.",
-		},
-	},
-}
-
-var V1TestHelpersIssuingCardsDeliverCard = resource.OperationSpec{
-	Name:    "deliver_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
-	Method:  "POST",
-	Summary: "Deliver a testmode card",
-}
-
-var V1TestHelpersIssuingCardsFailCard = resource.OperationSpec{
-	Name:    "fail_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
-	Method:  "POST",
-	Summary: "Fail a testmode card",
-}
-
-var V1TestHelpersIssuingCardsReturnCard = resource.OperationSpec{
-	Name:    "return_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/return",
-	Method:  "POST",
-	Summary: "Return a testmode card",
-}
-
-var V1TestHelpersIssuingCardsShipCard = resource.OperationSpec{
-	Name:    "ship_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
-	Method:  "POST",
-	Summary: "Ship a testmode card",
-}
-
-var V1TestHelpersIssuingCardsSubmitCard = resource.OperationSpec{
-	Name:    "submit_card",
-	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
-	Method:  "POST",
-	Summary: "Submit a testmode card",
-}
-
-var V1TestHelpersIssuingAuthorizationsExpire = resource.OperationSpec{
-	Name:    "expire",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
-	Method:  "POST",
-	Summary: "Expire a test-mode authorization",
-}
-
-var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
-	Name:    "finalize_amount",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
-	Method:  "POST",
-	Summary: "Finalize a test-mode authorization's amount",
-	Params: map[string]*resource.ParamSpec{
-		"final_amount": {
-			Type:        "integer",
-			Description: "The final authorization amount that will be captured by the merchant. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-			Required:    true,
-		},
-		"fleet.cardholder_prompt_data.driver_id": {
+		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type:        "string",
 			Description: "Driver ID.",
 		},
-		"fleet.cardholder_prompt_data.odometer": {
+		"purchase_details.fleet.cardholder_prompt_data.odometer": {
 			Type:        "integer",
 			Description: "Odometer reading.",
 		},
-		"fleet.cardholder_prompt_data.unspecified_id": {
+		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
 			Type:        "string",
 			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
 		},
-		"fleet.cardholder_prompt_data.user_id": {
+		"purchase_details.fleet.cardholder_prompt_data.user_id": {
 			Type:        "string",
 			Description: "User ID.",
 		},
-		"fleet.cardholder_prompt_data.vehicle_number": {
+		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
 			Type:        "string",
 			Description: "Vehicle number.",
 		},
-		"fleet.purchase_type": {
+		"purchase_details.fleet.purchase_type": {
 			Type:        "string",
 			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
 			Enum: []resource.EnumSpec{
@@ -861,27 +510,27 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 				{Value: "non_fuel_purchase"},
 			},
 		},
-		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
+		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
 			Type:        "string",
 			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
 			Format:      "decimal",
 		},
-		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
+		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
 			Type:        "string",
 			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
 			Format:      "decimal",
 		},
-		"fleet.reported_breakdown.tax.local_amount_decimal": {
+		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
 			Type:        "string",
 			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
 		},
-		"fleet.reported_breakdown.tax.national_amount_decimal": {
+		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
 			Type:        "string",
 			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
 			Format:      "decimal",
 		},
-		"fleet.service_type": {
+		"purchase_details.fleet.service_type": {
 			Type:        "string",
 			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
 			Enum: []resource.EnumSpec{
@@ -890,16 +539,33 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 				{Value: "self_service"},
 			},
 		},
-		"fuel.industry_product_code": {
+		"purchase_details.flight.departure_at": {
+			Type:        "integer",
+			Description: "The time that the flight departed.",
+			Format:      "unix-time",
+		},
+		"purchase_details.flight.passenger_name": {
+			Type:        "string",
+			Description: "The name of the passenger.",
+		},
+		"purchase_details.flight.refundable": {
+			Type:        "boolean",
+			Description: "Whether the ticket is refundable.",
+		},
+		"purchase_details.flight.travel_agency": {
+			Type:        "string",
+			Description: "The travel agency that issued the ticket.",
+		},
+		"purchase_details.fuel.industry_product_code": {
 			Type:        "string",
 			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
 		},
-		"fuel.quantity_decimal": {
+		"purchase_details.fuel.quantity_decimal": {
 			Type:        "string",
 			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
 			Format:      "decimal",
 		},
-		"fuel.type": {
+		"purchase_details.fuel.type": {
 			Type:        "string",
 			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
 			Enum: []resource.EnumSpec{
@@ -910,7 +576,7 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 				{Value: "unleaded_super"},
 			},
 		},
-		"fuel.unit": {
+		"purchase_details.fuel.unit": {
 			Type:        "string",
 			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
 			Enum: []resource.EnumSpec{
@@ -924,55 +590,23 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 				{Value: "us_gallon"},
 			},
 		},
-		"fuel.unit_cost_decimal": {
+		"purchase_details.fuel.unit_cost_decimal": {
 			Type:        "string",
 			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
 			Format:      "decimal",
 		},
-	},
-}
-
-var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
-	Name:    "respond",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
-	Method:  "POST",
-	Summary: "Respond to fraud challenge",
-	Params: map[string]*resource.ParamSpec{
-		"confirmed": {
-			Type:        "boolean",
-			Description: "Whether to simulate the user confirming that the transaction was legitimate (true) or telling Stripe that it was fraudulent (false).",
-			Required:    true,
-		},
-	},
-}
-
-var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
-	Name:    "increment",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
-	Method:  "POST",
-	Summary: "Increment a test-mode authorization",
-	Params: map[string]*resource.ParamSpec{
-		"increment_amount": {
+		"purchase_details.lodging.check_in_at": {
 			Type:        "integer",
-			Description: "The amount to increment the authorization by. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-			Required:    true,
+			Description: "The time of checking into the lodging.",
+			Format:      "unix-time",
 		},
-		"is_amount_controllable": {
-			Type:        "boolean",
-			Description: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization.",
-		},
-	},
-}
-
-var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
-	Name:    "reverse",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
-	Method:  "POST",
-	Summary: "Reverse a test-mode authorization",
-	Params: map[string]*resource.ParamSpec{
-		"reverse_amount": {
+		"purchase_details.lodging.nights": {
 			Type:        "integer",
-			Description: "The amount to reverse from the authorization. If not provided, the full amount of the authorization will be reversed. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Description: "The number of nights stayed at the lodging.",
+		},
+		"purchase_details.reference": {
+			Type:        "string",
+			Description: "A merchant-specific order number.",
 		},
 	},
 }
@@ -1605,19 +1239,587 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 	},
 }
 
-var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
-	Name:    "capture",
-	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/capture",
+var V1TestHelpersIssuingAuthorizationsExpire = resource.OperationSpec{
+	Name:    "expire",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/expire",
 	Method:  "POST",
-	Summary: "Capture a test-mode authorization",
+	Summary: "Expire a test-mode authorization",
+}
+
+var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
+	Name:    "finalize_amount",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/finalize_amount",
+	Method:  "POST",
+	Summary: "Finalize a test-mode authorization's amount",
 	Params: map[string]*resource.ParamSpec{
-		"capture_amount": {
+		"final_amount": {
 			Type:        "integer",
-			Description: "The amount to capture from the authorization. If not provided, the full amount of the authorization will be captured. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Description: "The final authorization amount that will be captured by the merchant. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Required:    true,
 		},
-		"close_authorization": {
+		"fleet.cardholder_prompt_data.driver_id": {
+			Type:        "string",
+			Description: "Driver ID.",
+		},
+		"fleet.cardholder_prompt_data.odometer": {
+			Type:        "integer",
+			Description: "Odometer reading.",
+		},
+		"fleet.cardholder_prompt_data.unspecified_id": {
+			Type:        "string",
+			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
+		},
+		"fleet.cardholder_prompt_data.user_id": {
+			Type:        "string",
+			Description: "User ID.",
+		},
+		"fleet.cardholder_prompt_data.vehicle_number": {
+			Type:        "string",
+			Description: "Vehicle number.",
+		},
+		"fleet.purchase_type": {
+			Type:        "string",
+			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
+			Enum: []resource.EnumSpec{
+				{Value: "fuel_and_non_fuel_purchase"},
+				{Value: "fuel_purchase"},
+				{Value: "non_fuel_purchase"},
+			},
+		},
+		"fleet.reported_breakdown.fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
+			Type:        "string",
+			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
+			Format:      "decimal",
+		},
+		"fleet.reported_breakdown.tax.local_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
+		"fleet.reported_breakdown.tax.national_amount_decimal": {
+			Type:        "string",
+			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
+			Format:      "decimal",
+		},
+		"fleet.service_type": {
+			Type:        "string",
+			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
+			Enum: []resource.EnumSpec{
+				{Value: "full_service"},
+				{Value: "non_fuel_transaction"},
+				{Value: "self_service"},
+			},
+		},
+		"fuel.industry_product_code": {
+			Type:        "string",
+			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
+		},
+		"fuel.quantity_decimal": {
+			Type:        "string",
+			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+		"fuel.type": {
+			Type:        "string",
+			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "diesel"},
+				{Value: "other"},
+				{Value: "unleaded_plus"},
+				{Value: "unleaded_regular"},
+				{Value: "unleaded_super"},
+			},
+		},
+		"fuel.unit": {
+			Type:        "string",
+			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			Enum: []resource.EnumSpec{
+				{Value: "charging_minute"},
+				{Value: "imperial_gallon"},
+				{Value: "kilogram"},
+				{Value: "kilowatt_hour"},
+				{Value: "liter"},
+				{Value: "other"},
+				{Value: "pound"},
+				{Value: "us_gallon"},
+			},
+		},
+		"fuel.unit_cost_decimal": {
+			Type:        "string",
+			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
+			Format:      "decimal",
+		},
+	},
+}
+
+var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
+	Name:    "increment",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/increment",
+	Method:  "POST",
+	Summary: "Increment a test-mode authorization",
+	Params: map[string]*resource.ParamSpec{
+		"increment_amount": {
+			Type:        "integer",
+			Description: "The amount to increment the authorization by. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Required:    true,
+		},
+		"is_amount_controllable": {
 			Type:        "boolean",
-			Description: "Whether to close the authorization after capture. Defaults to true. Set to false to enable multi-capture flows.",
+			Description: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization.",
+		},
+	},
+}
+
+var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
+	Name:    "respond",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/fraud_challenges/respond",
+	Method:  "POST",
+	Summary: "Respond to fraud challenge",
+	Params: map[string]*resource.ParamSpec{
+		"confirmed": {
+			Type:        "boolean",
+			Description: "Whether to simulate the user confirming that the transaction was legitimate (true) or telling Stripe that it was fraudulent (false).",
+			Required:    true,
+		},
+	},
+}
+
+var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
+	Name:    "reverse",
+	Path:    "/v1/test_helpers/issuing/authorizations/{authorization}/reverse",
+	Method:  "POST",
+	Summary: "Reverse a test-mode authorization",
+	Params: map[string]*resource.ParamSpec{
+		"reverse_amount": {
+			Type:        "integer",
+			Description: "The amount to reverse from the authorization. If not provided, the full amount of the authorization will be reversed. This amount is in the authorization currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+		},
+	},
+}
+
+var V1TestHelpersIssuingCardsDeliverCard = resource.OperationSpec{
+	Name:    "deliver_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/deliver",
+	Method:  "POST",
+	Summary: "Deliver a testmode card",
+}
+
+var V1TestHelpersIssuingCardsFailCard = resource.OperationSpec{
+	Name:    "fail_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/fail",
+	Method:  "POST",
+	Summary: "Fail a testmode card",
+}
+
+var V1TestHelpersIssuingCardsReturnCard = resource.OperationSpec{
+	Name:    "return_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/return",
+	Method:  "POST",
+	Summary: "Return a testmode card",
+}
+
+var V1TestHelpersIssuingCardsShipCard = resource.OperationSpec{
+	Name:    "ship_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/ship",
+	Method:  "POST",
+	Summary: "Ship a testmode card",
+}
+
+var V1TestHelpersIssuingCardsSubmitCard = resource.OperationSpec{
+	Name:    "submit_card",
+	Path:    "/v1/test_helpers/issuing/cards/{card}/shipping/submit",
+	Method:  "POST",
+	Summary: "Submit a testmode card",
+}
+
+var V1TestHelpersIssuingPersonalizationDesignsActivate = resource.OperationSpec{
+	Name:    "activate",
+	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/activate",
+	Method:  "POST",
+	Summary: "Activate a testmode personalization design",
+}
+
+var V1TestHelpersIssuingPersonalizationDesignsDeactivate = resource.OperationSpec{
+	Name:    "deactivate",
+	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/deactivate",
+	Method:  "POST",
+	Summary: "Deactivate a testmode personalization design",
+}
+
+var V1TestHelpersIssuingPersonalizationDesignsReject = resource.OperationSpec{
+	Name:    "reject",
+	Path:    "/v1/test_helpers/issuing/personalization_designs/{personalization_design}/reject",
+	Method:  "POST",
+	Summary: "Reject a testmode personalization design",
+	Params: map[string]*resource.ParamSpec{
+		"rejection_reasons.card_logo": {
+			Type:        "array",
+			Description: "The reason(s) the card logo was rejected.",
+		},
+		"rejection_reasons.carrier_text": {
+			Type:        "array",
+			Description: "The reason(s) the carrier text was rejected.",
+		},
+	},
+}
+
+var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
+	Name:    "create_force_capture",
+	Path:    "/v1/test_helpers/issuing/transactions/create_force_capture",
+	Method:  "POST",
+	Summary: "Create a test-mode force capture",
+	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "The total amount to attempt to capture. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
+			Required:    true,
+		},
+		"card": {
+			Type:        "string",
+			Description: "Card associated with this transaction.",
+			Required:    true,
+		},
+		"currency": {
+			Type:        "string",
+			Description: "The currency of the capture. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Format:      "currency",
+		},
+		"merchant_data.category": {
+			Type:        "string",
+			Description: "A categorization of the seller's type of business. See our [merchant categories guide](https://docs.stripe.com/issuing/merchant-categories) for a list of possible values.",
+			Enum: []resource.EnumSpec{
+				{Value: "ac_refrigeration_repair"},
+				{Value: "accounting_bookkeeping_services"},
+				{Value: "advertising_services"},
+				{Value: "agricultural_cooperative"},
+				{Value: "airlines_air_carriers"},
+				{Value: "airports_flying_fields"},
+				{Value: "ambulance_services"},
+				{Value: "amusement_parks_carnivals"},
+				{Value: "antique_reproductions"},
+				{Value: "antique_shops"},
+				{Value: "aquariums"},
+				{Value: "architectural_surveying_services"},
+				{Value: "art_dealers_and_galleries"},
+				{Value: "artists_supply_and_craft_shops"},
+				{Value: "auto_and_home_supply_stores"},
+				{Value: "auto_body_repair_shops"},
+				{Value: "auto_paint_shops"},
+				{Value: "auto_service_shops"},
+				{Value: "automated_cash_disburse"},
+				{Value: "automated_fuel_dispensers"},
+				{Value: "automobile_associations"},
+				{Value: "automotive_parts_and_accessories_stores"},
+				{Value: "automotive_tire_stores"},
+				{Value: "bail_and_bond_payments"},
+				{Value: "bakeries"},
+				{Value: "bands_orchestras"},
+				{Value: "barber_and_beauty_shops"},
+				{Value: "betting_casino_gambling"},
+				{Value: "bicycle_shops"},
+				{Value: "billiard_pool_establishments"},
+				{Value: "boat_dealers"},
+				{Value: "boat_rentals_and_leases"},
+				{Value: "book_stores"},
+				{Value: "books_periodicals_and_newspapers"},
+				{Value: "bowling_alleys"},
+				{Value: "bus_lines"},
+				{Value: "business_secretarial_schools"},
+				{Value: "buying_shopping_services"},
+				{Value: "cable_satellite_and_other_pay_television_and_radio"},
+				{Value: "camera_and_photographic_supply_stores"},
+				{Value: "candy_nut_and_confectionery_stores"},
+				{Value: "car_and_truck_dealers_new_used"},
+				{Value: "car_and_truck_dealers_used_only"},
+				{Value: "car_rental_agencies"},
+				{Value: "car_washes"},
+				{Value: "carpentry_services"},
+				{Value: "carpet_upholstery_cleaning"},
+				{Value: "caterers"},
+				{Value: "charitable_and_social_service_organizations_fundraising"},
+				{Value: "chemicals_and_allied_products"},
+				{Value: "child_care_services"},
+				{Value: "childrens_and_infants_wear_stores"},
+				{Value: "chiropodists_podiatrists"},
+				{Value: "chiropractors"},
+				{Value: "cigar_stores_and_stands"},
+				{Value: "civic_social_fraternal_associations"},
+				{Value: "cleaning_and_maintenance"},
+				{Value: "clothing_rental"},
+				{Value: "colleges_universities"},
+				{Value: "commercial_equipment"},
+				{Value: "commercial_footwear"},
+				{Value: "commercial_photography_art_and_graphics"},
+				{Value: "commuter_transport_and_ferries"},
+				{Value: "computer_network_services"},
+				{Value: "computer_programming"},
+				{Value: "computer_repair"},
+				{Value: "computer_software_stores"},
+				{Value: "computers_peripherals_and_software"},
+				{Value: "concrete_work_services"},
+				{Value: "construction_materials"},
+				{Value: "consulting_public_relations"},
+				{Value: "correspondence_schools"},
+				{Value: "cosmetic_stores"},
+				{Value: "counseling_services"},
+				{Value: "country_clubs"},
+				{Value: "courier_services"},
+				{Value: "court_costs"},
+				{Value: "credit_reporting_agencies"},
+				{Value: "cruise_lines"},
+				{Value: "dairy_products_stores"},
+				{Value: "dance_hall_studios_schools"},
+				{Value: "dating_escort_services"},
+				{Value: "dentists_orthodontists"},
+				{Value: "department_stores"},
+				{Value: "detective_agencies"},
+				{Value: "digital_goods_applications"},
+				{Value: "digital_goods_games"},
+				{Value: "digital_goods_large_volume"},
+				{Value: "digital_goods_media"},
+				{Value: "direct_marketing_catalog_merchant"},
+				{Value: "direct_marketing_combination_catalog_and_retail_merchant"},
+				{Value: "direct_marketing_inbound_telemarketing"},
+				{Value: "direct_marketing_insurance_services"},
+				{Value: "direct_marketing_other"},
+				{Value: "direct_marketing_outbound_telemarketing"},
+				{Value: "direct_marketing_subscription"},
+				{Value: "direct_marketing_travel"},
+				{Value: "discount_stores"},
+				{Value: "doctors"},
+				{Value: "door_to_door_sales"},
+				{Value: "drapery_window_covering_and_upholstery_stores"},
+				{Value: "drinking_places"},
+				{Value: "drug_stores_and_pharmacies"},
+				{Value: "drugs_drug_proprietaries_and_druggist_sundries"},
+				{Value: "dry_cleaners"},
+				{Value: "durable_goods"},
+				{Value: "duty_free_stores"},
+				{Value: "eating_places_restaurants"},
+				{Value: "educational_services"},
+				{Value: "electric_razor_stores"},
+				{Value: "electric_vehicle_charging"},
+				{Value: "electrical_parts_and_equipment"},
+				{Value: "electrical_services"},
+				{Value: "electronics_repair_shops"},
+				{Value: "electronics_stores"},
+				{Value: "elementary_secondary_schools"},
+				{Value: "emergency_services_gcas_visa_use_only"},
+				{Value: "employment_temp_agencies"},
+				{Value: "equipment_rental"},
+				{Value: "exterminating_services"},
+				{Value: "family_clothing_stores"},
+				{Value: "fast_food_restaurants"},
+				{Value: "financial_institutions"},
+				{Value: "fines_government_administrative_entities"},
+				{Value: "fireplace_fireplace_screens_and_accessories_stores"},
+				{Value: "floor_covering_stores"},
+				{Value: "florists"},
+				{Value: "florists_supplies_nursery_stock_and_flowers"},
+				{Value: "freezer_and_locker_meat_provisioners"},
+				{Value: "fuel_dealers_non_automotive"},
+				{Value: "funeral_services_crematories"},
+				{Value: "furniture_home_furnishings_and_equipment_stores_except_appliances"},
+				{Value: "furniture_repair_refinishing"},
+				{Value: "furriers_and_fur_shops"},
+				{Value: "general_services"},
+				{Value: "gift_card_novelty_and_souvenir_shops"},
+				{Value: "glass_paint_and_wallpaper_stores"},
+				{Value: "glassware_crystal_stores"},
+				{Value: "golf_courses_public"},
+				{Value: "government_licensed_horse_dog_racing_us_region_only"},
+				{Value: "government_licensed_online_casions_online_gambling_us_region_only"},
+				{Value: "government_owned_lotteries_non_us_region"},
+				{Value: "government_owned_lotteries_us_region_only"},
+				{Value: "government_services"},
+				{Value: "grocery_stores_supermarkets"},
+				{Value: "hardware_equipment_and_supplies"},
+				{Value: "hardware_stores"},
+				{Value: "health_and_beauty_spas"},
+				{Value: "hearing_aids_sales_and_supplies"},
+				{Value: "heating_plumbing_a_c"},
+				{Value: "hobby_toy_and_game_shops"},
+				{Value: "home_supply_warehouse_stores"},
+				{Value: "hospitals"},
+				{Value: "hotels_motels_and_resorts"},
+				{Value: "household_appliance_stores"},
+				{Value: "industrial_supplies"},
+				{Value: "information_retrieval_services"},
+				{Value: "insurance_default"},
+				{Value: "insurance_underwriting_premiums"},
+				{Value: "intra_company_purchases"},
+				{Value: "jewelry_stores_watches_clocks_and_silverware_stores"},
+				{Value: "landscaping_services"},
+				{Value: "laundries"},
+				{Value: "laundry_cleaning_services"},
+				{Value: "legal_services_attorneys"},
+				{Value: "luggage_and_leather_goods_stores"},
+				{Value: "lumber_building_materials_stores"},
+				{Value: "manual_cash_disburse"},
+				{Value: "marinas_service_and_supplies"},
+				{Value: "marketplaces"},
+				{Value: "masonry_stonework_and_plaster"},
+				{Value: "massage_parlors"},
+				{Value: "medical_and_dental_labs"},
+				{Value: "medical_dental_ophthalmic_and_hospital_equipment_and_supplies"},
+				{Value: "medical_services"},
+				{Value: "membership_organizations"},
+				{Value: "mens_and_boys_clothing_and_accessories_stores"},
+				{Value: "mens_womens_clothing_stores"},
+				{Value: "metal_service_centers"},
+				{Value: "miscellaneous_apparel_and_accessory_shops"},
+				{Value: "miscellaneous_auto_dealers"},
+				{Value: "miscellaneous_business_services"},
+				{Value: "miscellaneous_food_stores"},
+				{Value: "miscellaneous_general_merchandise"},
+				{Value: "miscellaneous_general_services"},
+				{Value: "miscellaneous_home_furnishing_specialty_stores"},
+				{Value: "miscellaneous_publishing_and_printing"},
+				{Value: "miscellaneous_recreation_services"},
+				{Value: "miscellaneous_repair_shops"},
+				{Value: "miscellaneous_specialty_retail"},
+				{Value: "mobile_home_dealers"},
+				{Value: "motion_picture_theaters"},
+				{Value: "motor_freight_carriers_and_trucking"},
+				{Value: "motor_homes_dealers"},
+				{Value: "motor_vehicle_supplies_and_new_parts"},
+				{Value: "motorcycle_shops_and_dealers"},
+				{Value: "motorcycle_shops_dealers"},
+				{Value: "music_stores_musical_instruments_pianos_and_sheet_music"},
+				{Value: "news_dealers_and_newsstands"},
+				{Value: "non_fi_money_orders"},
+				{Value: "non_fi_stored_value_card_purchase_load"},
+				{Value: "nondurable_goods"},
+				{Value: "nurseries_lawn_and_garden_supply_stores"},
+				{Value: "nursing_personal_care"},
+				{Value: "office_and_commercial_furniture"},
+				{Value: "opticians_eyeglasses"},
+				{Value: "optometrists_ophthalmologist"},
+				{Value: "orthopedic_goods_prosthetic_devices"},
+				{Value: "osteopaths"},
+				{Value: "package_stores_beer_wine_and_liquor"},
+				{Value: "paints_varnishes_and_supplies"},
+				{Value: "parking_lots_garages"},
+				{Value: "passenger_railways"},
+				{Value: "pawn_shops"},
+				{Value: "pet_shops_pet_food_and_supplies"},
+				{Value: "petroleum_and_petroleum_products"},
+				{Value: "photo_developing"},
+				{Value: "photographic_photocopy_microfilm_equipment_and_supplies"},
+				{Value: "photographic_studios"},
+				{Value: "picture_video_production"},
+				{Value: "piece_goods_notions_and_other_dry_goods"},
+				{Value: "plumbing_heating_equipment_and_supplies"},
+				{Value: "political_organizations"},
+				{Value: "postal_services_government_only"},
+				{Value: "precious_stones_and_metals_watches_and_jewelry"},
+				{Value: "professional_services"},
+				{Value: "public_warehousing_and_storage"},
+				{Value: "quick_copy_repro_and_blueprint"},
+				{Value: "railroads"},
+				{Value: "real_estate_agents_and_managers_rentals"},
+				{Value: "record_stores"},
+				{Value: "recreational_vehicle_rentals"},
+				{Value: "religious_goods_stores"},
+				{Value: "religious_organizations"},
+				{Value: "roofing_siding_sheet_metal"},
+				{Value: "secretarial_support_services"},
+				{Value: "security_brokers_dealers"},
+				{Value: "service_stations"},
+				{Value: "sewing_needlework_fabric_and_piece_goods_stores"},
+				{Value: "shoe_repair_hat_cleaning"},
+				{Value: "shoe_stores"},
+				{Value: "small_appliance_repair"},
+				{Value: "snowmobile_dealers"},
+				{Value: "special_trade_services"},
+				{Value: "specialty_cleaning"},
+				{Value: "sporting_goods_stores"},
+				{Value: "sporting_recreation_camps"},
+				{Value: "sports_and_riding_apparel_stores"},
+				{Value: "sports_clubs_fields"},
+				{Value: "stamp_and_coin_stores"},
+				{Value: "stationary_office_supplies_printing_and_writing_paper"},
+				{Value: "stationery_stores_office_and_school_supply_stores"},
+				{Value: "swimming_pools_sales"},
+				{Value: "t_ui_travel_germany"},
+				{Value: "tailors_alterations"},
+				{Value: "tax_payments_government_agencies"},
+				{Value: "tax_preparation_services"},
+				{Value: "taxicabs_limousines"},
+				{Value: "telecommunication_equipment_and_telephone_sales"},
+				{Value: "telecommunication_services"},
+				{Value: "telegraph_services"},
+				{Value: "tent_and_awning_shops"},
+				{Value: "testing_laboratories"},
+				{Value: "theatrical_ticket_agencies"},
+				{Value: "timeshares"},
+				{Value: "tire_retreading_and_repair"},
+				{Value: "tolls_bridge_fees"},
+				{Value: "tourist_attractions_and_exhibits"},
+				{Value: "towing_services"},
+				{Value: "trailer_parks_campgrounds"},
+				{Value: "transportation_services"},
+				{Value: "travel_agencies_tour_operators"},
+				{Value: "truck_stop_iteration"},
+				{Value: "truck_utility_trailer_rentals"},
+				{Value: "typesetting_plate_making_and_related_services"},
+				{Value: "typewriter_stores"},
+				{Value: "u_s_federal_government_agencies_or_departments"},
+				{Value: "uniforms_commercial_clothing"},
+				{Value: "used_merchandise_and_secondhand_stores"},
+				{Value: "utilities"},
+				{Value: "variety_stores"},
+				{Value: "veterinary_services"},
+				{Value: "video_amusement_game_supplies"},
+				{Value: "video_game_arcades"},
+				{Value: "video_tape_rental_stores"},
+				{Value: "vocational_trade_schools"},
+				{Value: "watch_jewelry_repair"},
+				{Value: "welding_repair"},
+				{Value: "wholesale_clubs"},
+				{Value: "wig_and_toupee_stores"},
+				{Value: "wires_money_orders"},
+				{Value: "womens_accessory_and_specialty_shops"},
+				{Value: "womens_ready_to_wear_stores"},
+				{Value: "wrecking_and_salvage_yards"},
+			},
+		},
+		"merchant_data.city": {
+			Type:        "string",
+			Description: "City where the seller is located",
+		},
+		"merchant_data.country": {
+			Type:        "string",
+			Description: "Country where the seller is located",
+		},
+		"merchant_data.name": {
+			Type:        "string",
+			Description: "Name of the seller",
+		},
+		"merchant_data.network_id": {
+			Type:        "string",
+			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
+		},
+		"merchant_data.postal_code": {
+			Type:        "string",
+			Description: "Postal code where the seller is located",
+		},
+		"merchant_data.state": {
+			Type:        "string",
+			Description: "State where the seller is located",
+		},
+		"merchant_data.terminal_id": {
+			Type:        "string",
+			Description: "An ID assigned by the seller to the location of the sale.",
+		},
+		"merchant_data.url": {
+			Type:        "string",
+			Description: "URL provided by the merchant on a 3DS request",
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type:        "string",
@@ -2245,501 +2447,11 @@ var V1TestHelpersIssuingTransactionsRefund = resource.OperationSpec{
 	},
 }
 
-var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
-	Name:    "create_force_capture",
-	Path:    "/v1/test_helpers/issuing/transactions/create_force_capture",
-	Method:  "POST",
-	Summary: "Create a test-mode force capture",
-	Params: map[string]*resource.ParamSpec{
-		"amount": {
-			Type:        "integer",
-			Description: "The total amount to attempt to capture. This amount is in the provided currency, or defaults to the cards currency, and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal).",
-			Required:    true,
-		},
-		"card": {
-			Type:        "string",
-			Description: "Card associated with this transaction.",
-			Required:    true,
-		},
-		"currency": {
-			Type:        "string",
-			Description: "The currency of the capture. If not provided, defaults to the currency of the card. Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Format:      "currency",
-		},
-		"merchant_data.category": {
-			Type:        "string",
-			Description: "A categorization of the seller's type of business. See our [merchant categories guide](https://docs.stripe.com/issuing/merchant-categories) for a list of possible values.",
-			Enum: []resource.EnumSpec{
-				{Value: "ac_refrigeration_repair"},
-				{Value: "accounting_bookkeeping_services"},
-				{Value: "advertising_services"},
-				{Value: "agricultural_cooperative"},
-				{Value: "airlines_air_carriers"},
-				{Value: "airports_flying_fields"},
-				{Value: "ambulance_services"},
-				{Value: "amusement_parks_carnivals"},
-				{Value: "antique_reproductions"},
-				{Value: "antique_shops"},
-				{Value: "aquariums"},
-				{Value: "architectural_surveying_services"},
-				{Value: "art_dealers_and_galleries"},
-				{Value: "artists_supply_and_craft_shops"},
-				{Value: "auto_and_home_supply_stores"},
-				{Value: "auto_body_repair_shops"},
-				{Value: "auto_paint_shops"},
-				{Value: "auto_service_shops"},
-				{Value: "automated_cash_disburse"},
-				{Value: "automated_fuel_dispensers"},
-				{Value: "automobile_associations"},
-				{Value: "automotive_parts_and_accessories_stores"},
-				{Value: "automotive_tire_stores"},
-				{Value: "bail_and_bond_payments"},
-				{Value: "bakeries"},
-				{Value: "bands_orchestras"},
-				{Value: "barber_and_beauty_shops"},
-				{Value: "betting_casino_gambling"},
-				{Value: "bicycle_shops"},
-				{Value: "billiard_pool_establishments"},
-				{Value: "boat_dealers"},
-				{Value: "boat_rentals_and_leases"},
-				{Value: "book_stores"},
-				{Value: "books_periodicals_and_newspapers"},
-				{Value: "bowling_alleys"},
-				{Value: "bus_lines"},
-				{Value: "business_secretarial_schools"},
-				{Value: "buying_shopping_services"},
-				{Value: "cable_satellite_and_other_pay_television_and_radio"},
-				{Value: "camera_and_photographic_supply_stores"},
-				{Value: "candy_nut_and_confectionery_stores"},
-				{Value: "car_and_truck_dealers_new_used"},
-				{Value: "car_and_truck_dealers_used_only"},
-				{Value: "car_rental_agencies"},
-				{Value: "car_washes"},
-				{Value: "carpentry_services"},
-				{Value: "carpet_upholstery_cleaning"},
-				{Value: "caterers"},
-				{Value: "charitable_and_social_service_organizations_fundraising"},
-				{Value: "chemicals_and_allied_products"},
-				{Value: "child_care_services"},
-				{Value: "childrens_and_infants_wear_stores"},
-				{Value: "chiropodists_podiatrists"},
-				{Value: "chiropractors"},
-				{Value: "cigar_stores_and_stands"},
-				{Value: "civic_social_fraternal_associations"},
-				{Value: "cleaning_and_maintenance"},
-				{Value: "clothing_rental"},
-				{Value: "colleges_universities"},
-				{Value: "commercial_equipment"},
-				{Value: "commercial_footwear"},
-				{Value: "commercial_photography_art_and_graphics"},
-				{Value: "commuter_transport_and_ferries"},
-				{Value: "computer_network_services"},
-				{Value: "computer_programming"},
-				{Value: "computer_repair"},
-				{Value: "computer_software_stores"},
-				{Value: "computers_peripherals_and_software"},
-				{Value: "concrete_work_services"},
-				{Value: "construction_materials"},
-				{Value: "consulting_public_relations"},
-				{Value: "correspondence_schools"},
-				{Value: "cosmetic_stores"},
-				{Value: "counseling_services"},
-				{Value: "country_clubs"},
-				{Value: "courier_services"},
-				{Value: "court_costs"},
-				{Value: "credit_reporting_agencies"},
-				{Value: "cruise_lines"},
-				{Value: "dairy_products_stores"},
-				{Value: "dance_hall_studios_schools"},
-				{Value: "dating_escort_services"},
-				{Value: "dentists_orthodontists"},
-				{Value: "department_stores"},
-				{Value: "detective_agencies"},
-				{Value: "digital_goods_applications"},
-				{Value: "digital_goods_games"},
-				{Value: "digital_goods_large_volume"},
-				{Value: "digital_goods_media"},
-				{Value: "direct_marketing_catalog_merchant"},
-				{Value: "direct_marketing_combination_catalog_and_retail_merchant"},
-				{Value: "direct_marketing_inbound_telemarketing"},
-				{Value: "direct_marketing_insurance_services"},
-				{Value: "direct_marketing_other"},
-				{Value: "direct_marketing_outbound_telemarketing"},
-				{Value: "direct_marketing_subscription"},
-				{Value: "direct_marketing_travel"},
-				{Value: "discount_stores"},
-				{Value: "doctors"},
-				{Value: "door_to_door_sales"},
-				{Value: "drapery_window_covering_and_upholstery_stores"},
-				{Value: "drinking_places"},
-				{Value: "drug_stores_and_pharmacies"},
-				{Value: "drugs_drug_proprietaries_and_druggist_sundries"},
-				{Value: "dry_cleaners"},
-				{Value: "durable_goods"},
-				{Value: "duty_free_stores"},
-				{Value: "eating_places_restaurants"},
-				{Value: "educational_services"},
-				{Value: "electric_razor_stores"},
-				{Value: "electric_vehicle_charging"},
-				{Value: "electrical_parts_and_equipment"},
-				{Value: "electrical_services"},
-				{Value: "electronics_repair_shops"},
-				{Value: "electronics_stores"},
-				{Value: "elementary_secondary_schools"},
-				{Value: "emergency_services_gcas_visa_use_only"},
-				{Value: "employment_temp_agencies"},
-				{Value: "equipment_rental"},
-				{Value: "exterminating_services"},
-				{Value: "family_clothing_stores"},
-				{Value: "fast_food_restaurants"},
-				{Value: "financial_institutions"},
-				{Value: "fines_government_administrative_entities"},
-				{Value: "fireplace_fireplace_screens_and_accessories_stores"},
-				{Value: "floor_covering_stores"},
-				{Value: "florists"},
-				{Value: "florists_supplies_nursery_stock_and_flowers"},
-				{Value: "freezer_and_locker_meat_provisioners"},
-				{Value: "fuel_dealers_non_automotive"},
-				{Value: "funeral_services_crematories"},
-				{Value: "furniture_home_furnishings_and_equipment_stores_except_appliances"},
-				{Value: "furniture_repair_refinishing"},
-				{Value: "furriers_and_fur_shops"},
-				{Value: "general_services"},
-				{Value: "gift_card_novelty_and_souvenir_shops"},
-				{Value: "glass_paint_and_wallpaper_stores"},
-				{Value: "glassware_crystal_stores"},
-				{Value: "golf_courses_public"},
-				{Value: "government_licensed_horse_dog_racing_us_region_only"},
-				{Value: "government_licensed_online_casions_online_gambling_us_region_only"},
-				{Value: "government_owned_lotteries_non_us_region"},
-				{Value: "government_owned_lotteries_us_region_only"},
-				{Value: "government_services"},
-				{Value: "grocery_stores_supermarkets"},
-				{Value: "hardware_equipment_and_supplies"},
-				{Value: "hardware_stores"},
-				{Value: "health_and_beauty_spas"},
-				{Value: "hearing_aids_sales_and_supplies"},
-				{Value: "heating_plumbing_a_c"},
-				{Value: "hobby_toy_and_game_shops"},
-				{Value: "home_supply_warehouse_stores"},
-				{Value: "hospitals"},
-				{Value: "hotels_motels_and_resorts"},
-				{Value: "household_appliance_stores"},
-				{Value: "industrial_supplies"},
-				{Value: "information_retrieval_services"},
-				{Value: "insurance_default"},
-				{Value: "insurance_underwriting_premiums"},
-				{Value: "intra_company_purchases"},
-				{Value: "jewelry_stores_watches_clocks_and_silverware_stores"},
-				{Value: "landscaping_services"},
-				{Value: "laundries"},
-				{Value: "laundry_cleaning_services"},
-				{Value: "legal_services_attorneys"},
-				{Value: "luggage_and_leather_goods_stores"},
-				{Value: "lumber_building_materials_stores"},
-				{Value: "manual_cash_disburse"},
-				{Value: "marinas_service_and_supplies"},
-				{Value: "marketplaces"},
-				{Value: "masonry_stonework_and_plaster"},
-				{Value: "massage_parlors"},
-				{Value: "medical_and_dental_labs"},
-				{Value: "medical_dental_ophthalmic_and_hospital_equipment_and_supplies"},
-				{Value: "medical_services"},
-				{Value: "membership_organizations"},
-				{Value: "mens_and_boys_clothing_and_accessories_stores"},
-				{Value: "mens_womens_clothing_stores"},
-				{Value: "metal_service_centers"},
-				{Value: "miscellaneous_apparel_and_accessory_shops"},
-				{Value: "miscellaneous_auto_dealers"},
-				{Value: "miscellaneous_business_services"},
-				{Value: "miscellaneous_food_stores"},
-				{Value: "miscellaneous_general_merchandise"},
-				{Value: "miscellaneous_general_services"},
-				{Value: "miscellaneous_home_furnishing_specialty_stores"},
-				{Value: "miscellaneous_publishing_and_printing"},
-				{Value: "miscellaneous_recreation_services"},
-				{Value: "miscellaneous_repair_shops"},
-				{Value: "miscellaneous_specialty_retail"},
-				{Value: "mobile_home_dealers"},
-				{Value: "motion_picture_theaters"},
-				{Value: "motor_freight_carriers_and_trucking"},
-				{Value: "motor_homes_dealers"},
-				{Value: "motor_vehicle_supplies_and_new_parts"},
-				{Value: "motorcycle_shops_and_dealers"},
-				{Value: "motorcycle_shops_dealers"},
-				{Value: "music_stores_musical_instruments_pianos_and_sheet_music"},
-				{Value: "news_dealers_and_newsstands"},
-				{Value: "non_fi_money_orders"},
-				{Value: "non_fi_stored_value_card_purchase_load"},
-				{Value: "nondurable_goods"},
-				{Value: "nurseries_lawn_and_garden_supply_stores"},
-				{Value: "nursing_personal_care"},
-				{Value: "office_and_commercial_furniture"},
-				{Value: "opticians_eyeglasses"},
-				{Value: "optometrists_ophthalmologist"},
-				{Value: "orthopedic_goods_prosthetic_devices"},
-				{Value: "osteopaths"},
-				{Value: "package_stores_beer_wine_and_liquor"},
-				{Value: "paints_varnishes_and_supplies"},
-				{Value: "parking_lots_garages"},
-				{Value: "passenger_railways"},
-				{Value: "pawn_shops"},
-				{Value: "pet_shops_pet_food_and_supplies"},
-				{Value: "petroleum_and_petroleum_products"},
-				{Value: "photo_developing"},
-				{Value: "photographic_photocopy_microfilm_equipment_and_supplies"},
-				{Value: "photographic_studios"},
-				{Value: "picture_video_production"},
-				{Value: "piece_goods_notions_and_other_dry_goods"},
-				{Value: "plumbing_heating_equipment_and_supplies"},
-				{Value: "political_organizations"},
-				{Value: "postal_services_government_only"},
-				{Value: "precious_stones_and_metals_watches_and_jewelry"},
-				{Value: "professional_services"},
-				{Value: "public_warehousing_and_storage"},
-				{Value: "quick_copy_repro_and_blueprint"},
-				{Value: "railroads"},
-				{Value: "real_estate_agents_and_managers_rentals"},
-				{Value: "record_stores"},
-				{Value: "recreational_vehicle_rentals"},
-				{Value: "religious_goods_stores"},
-				{Value: "religious_organizations"},
-				{Value: "roofing_siding_sheet_metal"},
-				{Value: "secretarial_support_services"},
-				{Value: "security_brokers_dealers"},
-				{Value: "service_stations"},
-				{Value: "sewing_needlework_fabric_and_piece_goods_stores"},
-				{Value: "shoe_repair_hat_cleaning"},
-				{Value: "shoe_stores"},
-				{Value: "small_appliance_repair"},
-				{Value: "snowmobile_dealers"},
-				{Value: "special_trade_services"},
-				{Value: "specialty_cleaning"},
-				{Value: "sporting_goods_stores"},
-				{Value: "sporting_recreation_camps"},
-				{Value: "sports_and_riding_apparel_stores"},
-				{Value: "sports_clubs_fields"},
-				{Value: "stamp_and_coin_stores"},
-				{Value: "stationary_office_supplies_printing_and_writing_paper"},
-				{Value: "stationery_stores_office_and_school_supply_stores"},
-				{Value: "swimming_pools_sales"},
-				{Value: "t_ui_travel_germany"},
-				{Value: "tailors_alterations"},
-				{Value: "tax_payments_government_agencies"},
-				{Value: "tax_preparation_services"},
-				{Value: "taxicabs_limousines"},
-				{Value: "telecommunication_equipment_and_telephone_sales"},
-				{Value: "telecommunication_services"},
-				{Value: "telegraph_services"},
-				{Value: "tent_and_awning_shops"},
-				{Value: "testing_laboratories"},
-				{Value: "theatrical_ticket_agencies"},
-				{Value: "timeshares"},
-				{Value: "tire_retreading_and_repair"},
-				{Value: "tolls_bridge_fees"},
-				{Value: "tourist_attractions_and_exhibits"},
-				{Value: "towing_services"},
-				{Value: "trailer_parks_campgrounds"},
-				{Value: "transportation_services"},
-				{Value: "travel_agencies_tour_operators"},
-				{Value: "truck_stop_iteration"},
-				{Value: "truck_utility_trailer_rentals"},
-				{Value: "typesetting_plate_making_and_related_services"},
-				{Value: "typewriter_stores"},
-				{Value: "u_s_federal_government_agencies_or_departments"},
-				{Value: "uniforms_commercial_clothing"},
-				{Value: "used_merchandise_and_secondhand_stores"},
-				{Value: "utilities"},
-				{Value: "variety_stores"},
-				{Value: "veterinary_services"},
-				{Value: "video_amusement_game_supplies"},
-				{Value: "video_game_arcades"},
-				{Value: "video_tape_rental_stores"},
-				{Value: "vocational_trade_schools"},
-				{Value: "watch_jewelry_repair"},
-				{Value: "welding_repair"},
-				{Value: "wholesale_clubs"},
-				{Value: "wig_and_toupee_stores"},
-				{Value: "wires_money_orders"},
-				{Value: "womens_accessory_and_specialty_shops"},
-				{Value: "womens_ready_to_wear_stores"},
-				{Value: "wrecking_and_salvage_yards"},
-			},
-		},
-		"merchant_data.city": {
-			Type:        "string",
-			Description: "City where the seller is located",
-		},
-		"merchant_data.country": {
-			Type:        "string",
-			Description: "Country where the seller is located",
-		},
-		"merchant_data.name": {
-			Type:        "string",
-			Description: "Name of the seller",
-		},
-		"merchant_data.network_id": {
-			Type:        "string",
-			Description: "Identifier assigned to the seller by the card network. Different card networks may assign different network_id fields to the same merchant.",
-		},
-		"merchant_data.postal_code": {
-			Type:        "string",
-			Description: "Postal code where the seller is located",
-		},
-		"merchant_data.state": {
-			Type:        "string",
-			Description: "State where the seller is located",
-		},
-		"merchant_data.terminal_id": {
-			Type:        "string",
-			Description: "An ID assigned by the seller to the location of the sale.",
-		},
-		"merchant_data.url": {
-			Type:        "string",
-			Description: "URL provided by the merchant on a 3DS request",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
-			Type:        "string",
-			Description: "Driver ID.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.odometer": {
-			Type:        "integer",
-			Description: "Odometer reading.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.unspecified_id": {
-			Type:        "string",
-			Description: "An alphanumeric ID. This field is used when a vehicle ID, driver ID, or generic ID is entered by the cardholder, but the merchant or card network did not specify the prompt type.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.user_id": {
-			Type:        "string",
-			Description: "User ID.",
-		},
-		"purchase_details.fleet.cardholder_prompt_data.vehicle_number": {
-			Type:        "string",
-			Description: "Vehicle number.",
-		},
-		"purchase_details.fleet.purchase_type": {
-			Type:        "string",
-			Description: "The type of purchase. One of `fuel_purchase`, `non_fuel_purchase`, or `fuel_and_non_fuel_purchase`.",
-			Enum: []resource.EnumSpec{
-				{Value: "fuel_and_non_fuel_purchase"},
-				{Value: "fuel_purchase"},
-				{Value: "non_fuel_purchase"},
-			},
-		},
-		"purchase_details.fleet.reported_breakdown.fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross fuel amount that should equal Fuel Volume multipled by Fuel Unit Cost, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.reported_breakdown.non_fuel.gross_amount_decimal": {
-			Type:        "string",
-			Description: "Gross non-fuel amount that should equal the sum of the line items, inclusive of taxes.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.reported_breakdown.tax.local_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of state or provincial Sales Tax included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.reported_breakdown.tax.national_amount_decimal": {
-			Type:        "string",
-			Description: "Amount of national Sales Tax or VAT included in the transaction amount. Null if not reported by merchant or not subject to tax.",
-			Format:      "decimal",
-		},
-		"purchase_details.fleet.service_type": {
-			Type:        "string",
-			Description: "The type of fuel service. One of `non_fuel_transaction`, `full_service`, or `self_service`.",
-			Enum: []resource.EnumSpec{
-				{Value: "full_service"},
-				{Value: "non_fuel_transaction"},
-				{Value: "self_service"},
-			},
-		},
-		"purchase_details.flight.departure_at": {
-			Type:        "integer",
-			Description: "The time that the flight departed.",
-			Format:      "unix-time",
-		},
-		"purchase_details.flight.passenger_name": {
-			Type:        "string",
-			Description: "The name of the passenger.",
-		},
-		"purchase_details.flight.refundable": {
-			Type:        "boolean",
-			Description: "Whether the ticket is refundable.",
-		},
-		"purchase_details.flight.travel_agency": {
-			Type:        "string",
-			Description: "The travel agency that issued the ticket.",
-		},
-		"purchase_details.fuel.industry_product_code": {
-			Type:        "string",
-			Description: "[Conexxus Payment System Product Code](https://www.conexxus.org/conexxus-payment-system-product-codes) identifying the primary fuel product purchased.",
-		},
-		"purchase_details.fuel.quantity_decimal": {
-			Type:        "string",
-			Description: "The quantity of `unit`s of fuel that was dispensed, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
-		},
-		"purchase_details.fuel.type": {
-			Type:        "string",
-			Description: "The type of fuel that was purchased. One of `diesel`, `unleaded_plus`, `unleaded_regular`, `unleaded_super`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "diesel"},
-				{Value: "other"},
-				{Value: "unleaded_plus"},
-				{Value: "unleaded_regular"},
-				{Value: "unleaded_super"},
-			},
-		},
-		"purchase_details.fuel.unit": {
-			Type:        "string",
-			Description: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
-			Enum: []resource.EnumSpec{
-				{Value: "charging_minute"},
-				{Value: "imperial_gallon"},
-				{Value: "kilogram"},
-				{Value: "kilowatt_hour"},
-				{Value: "liter"},
-				{Value: "other"},
-				{Value: "pound"},
-				{Value: "us_gallon"},
-			},
-		},
-		"purchase_details.fuel.unit_cost_decimal": {
-			Type:        "string",
-			Description: "The cost in cents per each unit of fuel, represented as a decimal string with at most 12 decimal places.",
-			Format:      "decimal",
-		},
-		"purchase_details.lodging.check_in_at": {
-			Type:        "integer",
-			Description: "The time of checking into the lodging.",
-			Format:      "unix-time",
-		},
-		"purchase_details.lodging.nights": {
-			Type:        "integer",
-			Description: "The number of nights stayed at the lodging.",
-		},
-		"purchase_details.reference": {
-			Type:        "string",
-			Description: "A merchant-specific order number.",
-		},
-	},
-}
-
 var V1TestHelpersRefundsExpire = resource.OperationSpec{
 	Name:    "expire",
 	Path:    "/v1/test_helpers/refunds/{refund}/expire",
 	Method:  "POST",
 	Summary: "Expire a pending refund.",
-}
-
-var V1TestHelpersTerminalReadersTimeoutInputCollection = resource.OperationSpec{
-	Name:    "timeout_input_collection",
-	Path:    "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
-	Method:  "POST",
-	Summary: "Simulate an input collection timeout",
 }
 
 var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
@@ -2808,6 +2520,28 @@ var V1TestHelpersTerminalReadersSucceedInputCollection = resource.OperationSpec{
 	},
 }
 
+var V1TestHelpersTerminalReadersTimeoutInputCollection = resource.OperationSpec{
+	Name:    "timeout_input_collection",
+	Path:    "/v1/test_helpers/terminal/readers/{reader}/timeout_input_collection",
+	Method:  "POST",
+	Summary: "Simulate an input collection timeout",
+}
+
+var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
+	Name:    "advance",
+	Path:    "/v1/test_helpers/test_clocks/{test_clock}/advance",
+	Method:  "POST",
+	Summary: "Advance a test clock",
+	Params: map[string]*resource.ParamSpec{
+		"frozen_time": {
+			Type:        "integer",
+			Description: "The time to advance the test clock. Must be after the test clock's current frozen time. Cannot be more than two intervals in the future from the shortest subscription in this test clock. If there are no subscriptions in this test clock, it cannot be more than two years in the future.",
+			Required:    true,
+			Format:      "unix-time",
+		},
+	},
+}
+
 var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/test_helpers/test_clocks",
@@ -2823,21 +2557,6 @@ var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 		"name": {
 			Type:        "string",
 			Description: "The name for this test clock.",
-		},
-	},
-}
-
-var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
-	Name:    "advance",
-	Path:    "/v1/test_helpers/test_clocks/{test_clock}/advance",
-	Method:  "POST",
-	Summary: "Advance a test clock",
-	Params: map[string]*resource.ParamSpec{
-		"frozen_time": {
-			Type:        "integer",
-			Description: "The time to advance the test clock. Must be after the test clock's current frozen time. Cannot be more than two intervals in the future from the shortest subscription in this test clock. If there are no subscriptions in this test clock, it cannot be more than two years in the future.",
-			Required:    true,
-			Format:      "unix-time",
 		},
 	},
 }
@@ -2877,15 +2596,205 @@ var V1TestHelpersTestClocksRetrieve = resource.OperationSpec{
 	Summary: "Retrieve a test clock",
 }
 
-var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
-	Name:    "fund_cash_balance",
-	Path:    "/v1/test_helpers/customers/{customer}/fund_cash_balance",
+var V1TestHelpersTreasuryInboundTransfersFail = resource.OperationSpec{
+	Name:    "fail",
+	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/fail",
 	Method:  "POST",
-	Summary: "Fund a test mode cash balance",
+	Summary: "Test mode: Fail an InboundTransfer",
+	Params: map[string]*resource.ParamSpec{
+		"failure_details.code": {
+			Type:        "string",
+			Description: "Reason for the failure.",
+			Enum: []resource.EnumSpec{
+				{Value: "account_closed"},
+				{Value: "account_frozen"},
+				{Value: "bank_account_restricted"},
+				{Value: "bank_ownership_changed"},
+				{Value: "debit_not_authorized"},
+				{Value: "incorrect_account_holder_address"},
+				{Value: "incorrect_account_holder_name"},
+				{Value: "incorrect_account_holder_tax_id"},
+				{Value: "insufficient_funds"},
+				{Value: "invalid_account_number"},
+				{Value: "invalid_currency"},
+				{Value: "no_account"},
+				{Value: "other"},
+			},
+		},
+	},
+}
+
+var V1TestHelpersTreasuryInboundTransfersReturnInboundTransfer = resource.OperationSpec{
+	Name:    "return_inbound_transfer",
+	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/return",
+	Method:  "POST",
+	Summary: "Test mode: Return an InboundTransfer",
+}
+
+var V1TestHelpersTreasuryInboundTransfersSucceed = resource.OperationSpec{
+	Name:    "succeed",
+	Path:    "/v1/test_helpers/treasury/inbound_transfers/{id}/succeed",
+	Method:  "POST",
+	Summary: "Test mode: Succeed an InboundTransfer",
+}
+
+var V1TestHelpersTreasuryOutboundPaymentsFail = resource.OperationSpec{
+	Name:    "fail",
+	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/fail",
+	Method:  "POST",
+	Summary: "Test mode: Fail an OutboundPayment",
+}
+
+var V1TestHelpersTreasuryOutboundPaymentsPost = resource.OperationSpec{
+	Name:    "post",
+	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/post",
+	Method:  "POST",
+	Summary: "Test mode: Post an OutboundPayment",
+}
+
+var V1TestHelpersTreasuryOutboundPaymentsReturnOutboundPayment = resource.OperationSpec{
+	Name:    "return_outbound_payment",
+	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}/return",
+	Method:  "POST",
+	Summary: "Test mode: Return an OutboundPayment",
+	Params: map[string]*resource.ParamSpec{
+		"returned_details.code": {
+			Type:        "string",
+			Description: "The return code to be set on the OutboundPayment object.",
+			Enum: []resource.EnumSpec{
+				{Value: "account_closed"},
+				{Value: "account_frozen"},
+				{Value: "bank_account_restricted"},
+				{Value: "bank_ownership_changed"},
+				{Value: "declined"},
+				{Value: "incorrect_account_holder_name"},
+				{Value: "invalid_account_number"},
+				{Value: "invalid_currency"},
+				{Value: "no_account"},
+				{Value: "other"},
+			},
+		},
+	},
+}
+
+var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/test_helpers/treasury/outbound_payments/{id}",
+	Method:  "POST",
+	Summary: "Test mode: Update an OutboundPayment",
+	Params: map[string]*resource.ParamSpec{
+		"tracking_details.ach.trace_id": {
+			Type:        "string",
+			Description: "ACH trace ID for funds sent over the `ach` network.",
+			Required:    true,
+		},
+		"tracking_details.type": {
+			Type:        "string",
+			Description: "The US bank account network used to send funds.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
+			},
+		},
+		"tracking_details.us_domestic_wire.chips": {
+			Type:        "string",
+			Description: "CHIPS System Sequence Number (SSN) for funds sent over the `us_domestic_wire` network.",
+		},
+		"tracking_details.us_domestic_wire.imad": {
+			Type:        "string",
+			Description: "IMAD for funds sent over the `us_domestic_wire` network.",
+		},
+		"tracking_details.us_domestic_wire.omad": {
+			Type:        "string",
+			Description: "OMAD for funds sent over the `us_domestic_wire` network.",
+		},
+	},
+}
+
+var V1TestHelpersTreasuryOutboundTransfersFail = resource.OperationSpec{
+	Name:    "fail",
+	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/fail",
+	Method:  "POST",
+	Summary: "Test mode: Fail an OutboundTransfer",
+}
+
+var V1TestHelpersTreasuryOutboundTransfersPost = resource.OperationSpec{
+	Name:    "post",
+	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/post",
+	Method:  "POST",
+	Summary: "Test mode: Post an OutboundTransfer",
+}
+
+var V1TestHelpersTreasuryOutboundTransfersReturnOutboundTransfer = resource.OperationSpec{
+	Name:    "return_outbound_transfer",
+	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}/return",
+	Method:  "POST",
+	Summary: "Test mode: Return an OutboundTransfer",
+	Params: map[string]*resource.ParamSpec{
+		"returned_details.code": {
+			Type:        "string",
+			Description: "Reason for the return.",
+			Enum: []resource.EnumSpec{
+				{Value: "account_closed"},
+				{Value: "account_frozen"},
+				{Value: "bank_account_restricted"},
+				{Value: "bank_ownership_changed"},
+				{Value: "declined"},
+				{Value: "incorrect_account_holder_name"},
+				{Value: "invalid_account_number"},
+				{Value: "invalid_currency"},
+				{Value: "no_account"},
+				{Value: "other"},
+			},
+		},
+	},
+}
+
+var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/test_helpers/treasury/outbound_transfers/{outbound_transfer}",
+	Method:  "POST",
+	Summary: "Test mode: Update an OutboundTransfer",
+	Params: map[string]*resource.ParamSpec{
+		"tracking_details.ach.trace_id": {
+			Type:        "string",
+			Description: "ACH trace ID for funds sent over the `ach` network.",
+			Required:    true,
+		},
+		"tracking_details.type": {
+			Type:        "string",
+			Description: "The US bank account network used to send funds.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
+			},
+		},
+		"tracking_details.us_domestic_wire.chips": {
+			Type:        "string",
+			Description: "CHIPS System Sequence Number (SSN) for funds sent over the `us_domestic_wire` network.",
+		},
+		"tracking_details.us_domestic_wire.imad": {
+			Type:        "string",
+			Description: "IMAD for funds sent over the `us_domestic_wire` network.",
+		},
+		"tracking_details.us_domestic_wire.omad": {
+			Type:        "string",
+			Description: "OMAD for funds sent over the `us_domestic_wire` network.",
+		},
+	},
+}
+
+var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/test_helpers/treasury/received_credits",
+	Method:  "POST",
+	Summary: "Test mode: Create a ReceivedCredit",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
 			Type:        "integer",
-			Description: "Amount to be used for this test cash balance transaction. A positive integer representing how much to fund in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) (e.g., 100 cents to fund $1.00 or 100 to fund ¥100, a zero-decimal currency).",
+			Description: "Amount (in cents) to be transferred.",
 			Required:    true,
 		},
 		"currency": {
@@ -2894,9 +2803,100 @@ var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
 			Required:    true,
 			Format:      "currency",
 		},
-		"reference": {
+		"description": {
 			Type:        "string",
-			Description: "A description of the test funding. This simulates free-text references supplied by customers when making bank transfers to their cash balance. You can use this to test how Stripe's [reconciliation algorithm](https://docs.stripe.com/payments/customer-balance/reconciliation) applies to different user inputs.",
+			Description: "An arbitrary string attached to the object. Often useful for displaying to users.",
+		},
+		"financial_account": {
+			Type:        "string",
+			Description: "The FinancialAccount to send funds to.",
+			Required:    true,
+		},
+		"initiating_payment_method_details.type": {
+			Type:        "string",
+			Description: "The source type.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "us_bank_account"},
+			},
+		},
+		"initiating_payment_method_details.us_bank_account.account_holder_name": {
+			Type:        "string",
+			Description: "The bank account holder's name.",
+		},
+		"initiating_payment_method_details.us_bank_account.account_number": {
+			Type:        "string",
+			Description: "The bank account number.",
+		},
+		"initiating_payment_method_details.us_bank_account.routing_number": {
+			Type:        "string",
+			Description: "The bank account's routing number.",
+		},
+		"network": {
+			Type:        "string",
+			Description: "Specifies the network rails to be used. If not set, will default to the PaymentMethod's preferred network. See the [docs](https://docs.stripe.com/treasury/money-movement/timelines) to learn more about money movement timelines for each network type.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
+			},
+		},
+	},
+}
+
+var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/test_helpers/treasury/received_debits",
+	Method:  "POST",
+	Summary: "Test mode: Create a ReceivedDebit",
+	Params: map[string]*resource.ParamSpec{
+		"amount": {
+			Type:        "integer",
+			Description: "Amount (in cents) to be transferred.",
+			Required:    true,
+		},
+		"currency": {
+			Type:        "string",
+			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+			Format:      "currency",
+		},
+		"description": {
+			Type:        "string",
+			Description: "An arbitrary string attached to the object. Often useful for displaying to users.",
+		},
+		"financial_account": {
+			Type:        "string",
+			Description: "The FinancialAccount to pull funds from.",
+			Required:    true,
+		},
+		"initiating_payment_method_details.type": {
+			Type:        "string",
+			Description: "The source type.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "us_bank_account"},
+			},
+		},
+		"initiating_payment_method_details.us_bank_account.account_holder_name": {
+			Type:        "string",
+			Description: "The bank account holder's name.",
+		},
+		"initiating_payment_method_details.us_bank_account.account_number": {
+			Type:        "string",
+			Description: "The bank account number.",
+		},
+		"initiating_payment_method_details.us_bank_account.routing_number": {
+			Type:        "string",
+			Description: "The bank account's routing number.",
+		},
+		"network": {
+			Type:        "string",
+			Description: "Specifies the network rails to be used. If not set, will default to the PaymentMethod's preferred network. See the [docs](https://docs.stripe.com/treasury/money-movement/timelines) to learn more about money movement timelines for each network type.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+			},
 		},
 	},
 }

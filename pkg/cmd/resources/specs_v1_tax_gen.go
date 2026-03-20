@@ -18,34 +18,6 @@ var V1TaxAssociationsFind = resource.OperationSpec{
 	},
 }
 
-var V1TaxCalculationsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/tax/calculations/{calculation}",
-	Method:  "GET",
-	Summary: "Retrieve a Tax Calculation",
-}
-
-var V1TaxCalculationsListLineItems = resource.OperationSpec{
-	Name:    "list_line_items",
-	Path:    "/v1/tax/calculations/{calculation}/line_items",
-	Method:  "GET",
-	Summary: "Retrieve a calculation's line items",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
 var V1TaxCalculationsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/tax/calculations",
@@ -160,84 +132,11 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 	},
 }
 
-var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
-	Name:    "create_from_calculation",
-	Path:    "/v1/tax/transactions/create_from_calculation",
-	Method:  "POST",
-	Summary: "Create a transaction from a calculation",
-	Params: map[string]*resource.ParamSpec{
-		"calculation": {
-			Type:        "string",
-			Description: "Tax Calculation ID to be used as input when creating the transaction.",
-			Required:    true,
-		},
-		"posted_at": {
-			Type:        "integer",
-			Description: "The Unix timestamp representing when the tax liability is assumed or reduced, which determines the liability posting period and handling in tax liability reports. The timestamp must fall within the `tax_date` and the current time, unless the `tax_date` is scheduled in advance. Defaults to the current time.",
-			Format:      "unix-time",
-		},
-		"reference": {
-			Type:        "string",
-			Description: "A custom order or sale identifier, such as 'myOrder_123'. Must be unique across all transactions, including reversals.",
-			Required:    true,
-		},
-	},
-}
-
-var V1TaxTransactionsCreateReversal = resource.OperationSpec{
-	Name:    "create_reversal",
-	Path:    "/v1/tax/transactions/create_reversal",
-	Method:  "POST",
-	Summary: "Create a reversal transaction",
-	Params: map[string]*resource.ParamSpec{
-		"flat_amount": {
-			Type:        "integer",
-			Description: "A flat amount to reverse across the entire transaction, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative. This value represents the total amount to refund from the transaction, including taxes.",
-		},
-		"mode": {
-			Type:        "string",
-			Description: "If `partial`, the provided line item or shipping cost amounts are reversed. If `full`, the original transaction is fully reversed.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "full"},
-				{Value: "partial"},
-			},
-		},
-		"original_transaction": {
-			Type:        "string",
-			Description: "The ID of the Transaction to partially or fully reverse.",
-			Required:    true,
-		},
-		"reference": {
-			Type:        "string",
-			Description: "A custom identifier for this reversal, such as `myOrder_123-refund_1`, which must be unique across all transactions. The reference helps identify this reversal transaction in exported [tax reports](https://docs.stripe.com/tax/reports).",
-			Required:    true,
-		},
-		"shipping_cost.amount": {
-			Type:        "integer",
-			Description: "The amount to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative.",
-			Required:    true,
-		},
-		"shipping_cost.amount_tax": {
-			Type:        "integer",
-			Description: "The amount of tax to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative.",
-			Required:    true,
-		},
-	},
-}
-
-var V1TaxTransactionsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/tax/transactions/{transaction}",
-	Method:  "GET",
-	Summary: "Retrieve a transaction",
-}
-
-var V1TaxTransactionsListLineItems = resource.OperationSpec{
+var V1TaxCalculationsListLineItems = resource.OperationSpec{
 	Name:    "list_line_items",
-	Path:    "/v1/tax/transactions/{transaction}/line_items",
+	Path:    "/v1/tax/calculations/{calculation}/line_items",
 	Method:  "GET",
-	Summary: "Retrieve a transaction's line items",
+	Summary: "Retrieve a calculation's line items",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:        "string",
@@ -254,64 +153,11 @@ var V1TaxTransactionsListLineItems = resource.OperationSpec{
 	},
 }
 
-var V1TaxSettingsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/tax/settings",
-	Method:  "POST",
-	Summary: "Update settings",
-	Params: map[string]*resource.ParamSpec{
-		"defaults.tax_behavior": {
-			Type:        "string",
-			Description: "Specifies the default [tax behavior](https://stripe.com/docs/tax/products-prices-tax-categories-tax-behavior#tax-behavior) to be used when the item's price has unspecified tax behavior. One of inclusive, exclusive, or inferred_by_currency. Once specified, it cannot be changed back to null.",
-			Enum: []resource.EnumSpec{
-				{Value: "exclusive"},
-				{Value: "inclusive"},
-				{Value: "inferred_by_currency"},
-			},
-		},
-		"defaults.tax_code": {
-			Type:        "string",
-			Description: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID.",
-		},
-		"head_office.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"head_office.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"head_office.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-		},
-		"head_office.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"head_office.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"head_office.address.state": {
-			Type:        "string",
-			Description: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
-		},
-	},
-}
-
-var V1TaxSettingsRetrieve = resource.OperationSpec{
+var V1TaxCalculationsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/tax/settings",
+	Path:    "/v1/tax/calculations/{calculation}",
 	Method:  "GET",
-	Summary: "Retrieve settings",
-}
-
-var V1TaxRegistrationsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/tax/registrations/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a registration",
+	Summary: "Retrieve a Tax Calculation",
 }
 
 var V1TaxRegistrationsCreate = resource.OperationSpec{
@@ -1763,23 +1609,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 	},
 }
 
-var V1TaxRegistrationsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/tax/registrations/{id}",
-	Method:  "POST",
-	Summary: "Update a registration",
-	Params: map[string]*resource.ParamSpec{
-		"active_from": {
-			Type:        "string",
-			Description: "Time at which the registration becomes active. It can be either `now` to indicate the current time, or a timestamp measured in seconds since the Unix epoch.",
-		},
-		"expires_at": {
-			Type:        "string",
-			Description: "If set, the registration stops being active at this time. If not set, the registration will be active indefinitely. It can be either `now` to indicate the current time, or a timestamp measured in seconds since the Unix epoch.",
-		},
-	},
-}
-
 var V1TaxRegistrationsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/tax/registrations",
@@ -1809,4 +1638,175 @@ var V1TaxRegistrationsList = resource.OperationSpec{
 			},
 		},
 	},
+}
+
+var V1TaxRegistrationsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/tax/registrations/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a registration",
+}
+
+var V1TaxRegistrationsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/tax/registrations/{id}",
+	Method:  "POST",
+	Summary: "Update a registration",
+	Params: map[string]*resource.ParamSpec{
+		"active_from": {
+			Type:        "string",
+			Description: "Time at which the registration becomes active. It can be either `now` to indicate the current time, or a timestamp measured in seconds since the Unix epoch.",
+		},
+		"expires_at": {
+			Type:        "string",
+			Description: "If set, the registration stops being active at this time. If not set, the registration will be active indefinitely. It can be either `now` to indicate the current time, or a timestamp measured in seconds since the Unix epoch.",
+		},
+	},
+}
+
+var V1TaxSettingsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/tax/settings",
+	Method:  "GET",
+	Summary: "Retrieve settings",
+}
+
+var V1TaxSettingsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/tax/settings",
+	Method:  "POST",
+	Summary: "Update settings",
+	Params: map[string]*resource.ParamSpec{
+		"defaults.tax_behavior": {
+			Type:        "string",
+			Description: "Specifies the default [tax behavior](https://stripe.com/docs/tax/products-prices-tax-categories-tax-behavior#tax-behavior) to be used when the item's price has unspecified tax behavior. One of inclusive, exclusive, or inferred_by_currency. Once specified, it cannot be changed back to null.",
+			Enum: []resource.EnumSpec{
+				{Value: "exclusive"},
+				{Value: "inclusive"},
+				{Value: "inferred_by_currency"},
+			},
+		},
+		"defaults.tax_code": {
+			Type:        "string",
+			Description: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID.",
+		},
+		"head_office.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"head_office.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"head_office.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+		},
+		"head_office.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"head_office.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"head_office.address.state": {
+			Type:        "string",
+			Description: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
+		},
+	},
+}
+
+var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
+	Name:    "create_from_calculation",
+	Path:    "/v1/tax/transactions/create_from_calculation",
+	Method:  "POST",
+	Summary: "Create a transaction from a calculation",
+	Params: map[string]*resource.ParamSpec{
+		"calculation": {
+			Type:        "string",
+			Description: "Tax Calculation ID to be used as input when creating the transaction.",
+			Required:    true,
+		},
+		"posted_at": {
+			Type:        "integer",
+			Description: "The Unix timestamp representing when the tax liability is assumed or reduced, which determines the liability posting period and handling in tax liability reports. The timestamp must fall within the `tax_date` and the current time, unless the `tax_date` is scheduled in advance. Defaults to the current time.",
+			Format:      "unix-time",
+		},
+		"reference": {
+			Type:        "string",
+			Description: "A custom order or sale identifier, such as 'myOrder_123'. Must be unique across all transactions, including reversals.",
+			Required:    true,
+		},
+	},
+}
+
+var V1TaxTransactionsCreateReversal = resource.OperationSpec{
+	Name:    "create_reversal",
+	Path:    "/v1/tax/transactions/create_reversal",
+	Method:  "POST",
+	Summary: "Create a reversal transaction",
+	Params: map[string]*resource.ParamSpec{
+		"flat_amount": {
+			Type:        "integer",
+			Description: "A flat amount to reverse across the entire transaction, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative. This value represents the total amount to refund from the transaction, including taxes.",
+		},
+		"mode": {
+			Type:        "string",
+			Description: "If `partial`, the provided line item or shipping cost amounts are reversed. If `full`, the original transaction is fully reversed.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "full"},
+				{Value: "partial"},
+			},
+		},
+		"original_transaction": {
+			Type:        "string",
+			Description: "The ID of the Transaction to partially or fully reverse.",
+			Required:    true,
+		},
+		"reference": {
+			Type:        "string",
+			Description: "A custom identifier for this reversal, such as `myOrder_123-refund_1`, which must be unique across all transactions. The reference helps identify this reversal transaction in exported [tax reports](https://docs.stripe.com/tax/reports).",
+			Required:    true,
+		},
+		"shipping_cost.amount": {
+			Type:        "integer",
+			Description: "The amount to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative.",
+			Required:    true,
+		},
+		"shipping_cost.amount_tax": {
+			Type:        "integer",
+			Description: "The amount of tax to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal) in negative.",
+			Required:    true,
+		},
+	},
+}
+
+var V1TaxTransactionsListLineItems = resource.OperationSpec{
+	Name:    "list_line_items",
+	Path:    "/v1/tax/transactions/{transaction}/line_items",
+	Method:  "GET",
+	Summary: "Retrieve a transaction's line items",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1TaxTransactionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/tax/transactions/{transaction}",
+	Method:  "GET",
+	Summary: "Retrieve a transaction",
 }

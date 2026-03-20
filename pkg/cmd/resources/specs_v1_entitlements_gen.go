@@ -37,6 +37,25 @@ var V1EntitlementsActiveEntitlementsRetrieve = resource.OperationSpec{
 	Summary: "Retrieve an active entitlement",
 }
 
+var V1EntitlementsFeaturesCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/entitlements/features",
+	Method:  "POST",
+	Summary: "Create a feature",
+	Params: map[string]*resource.ParamSpec{
+		"lookup_key": {
+			Type:        "string",
+			Description: "A unique key you provide as your own system identifier. This may be up to 80 characters.",
+			Required:    true,
+		},
+		"name": {
+			Type:        "string",
+			Description: "The feature's name, for your own purpose, not meant to be displayable to the customer.",
+			Required:    true,
+		},
+	},
+}
+
 var V1EntitlementsFeaturesList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/entitlements/features",
@@ -71,25 +90,6 @@ var V1EntitlementsFeaturesRetrieve = resource.OperationSpec{
 	Path:    "/v1/entitlements/features/{id}",
 	Method:  "GET",
 	Summary: "Retrieve a feature",
-}
-
-var V1EntitlementsFeaturesCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/entitlements/features",
-	Method:  "POST",
-	Summary: "Create a feature",
-	Params: map[string]*resource.ParamSpec{
-		"lookup_key": {
-			Type:        "string",
-			Description: "A unique key you provide as your own system identifier. This may be up to 80 characters.",
-			Required:    true,
-		},
-		"name": {
-			Type:        "string",
-			Description: "The feature's name, for your own purpose, not meant to be displayable to the customer.",
-			Required:    true,
-		},
-	},
 }
 
 var V1EntitlementsFeaturesUpdate = resource.OperationSpec{

@@ -4,52 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1ReportingReportTypesList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/reporting/report_types",
-	Method:  "GET",
-	Summary: "List all Report Types",
-}
-
-var V1ReportingReportTypesRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/reporting/report_types/{report_type}",
-	Method:  "GET",
-	Summary: "Retrieve a Report Type",
-}
-
-var V1ReportingReportRunsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/reporting/report_runs",
-	Method:  "GET",
-	Summary: "List all Report Runs",
-	Params: map[string]*resource.ParamSpec{
-		"created": {
-			Type:        "integer",
-			Description: "Only return Report Runs that were created during the given date interval.",
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1ReportingReportRunsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/reporting/report_runs/{report_run}",
-	Method:  "GET",
-	Summary: "Retrieve a Report Run",
-}
-
 var V1ReportingReportRunsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/reporting/report_runs",
@@ -737,4 +691,50 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 			Required:    true,
 		},
 	},
+}
+
+var V1ReportingReportRunsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/reporting/report_runs",
+	Method:  "GET",
+	Summary: "List all Report Runs",
+	Params: map[string]*resource.ParamSpec{
+		"created": {
+			Type:        "integer",
+			Description: "Only return Report Runs that were created during the given date interval.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1ReportingReportRunsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/reporting/report_runs/{report_run}",
+	Method:  "GET",
+	Summary: "Retrieve a Report Run",
+}
+
+var V1ReportingReportTypesList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/reporting/report_types",
+	Method:  "GET",
+	Summary: "List all Report Types",
+}
+
+var V1ReportingReportTypesRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/reporting/report_types/{report_type}",
+	Method:  "GET",
+	Summary: "Retrieve a Report Type",
 }

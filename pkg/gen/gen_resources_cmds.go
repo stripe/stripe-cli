@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -619,6 +620,10 @@ func generateSpecFiles(data *TemplateData, outputDir string) error {
 	}
 
 	for key, entries := range groups {
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].VarName < entries[j].VarName
+		})
+
 		var result bytes.Buffer
 		if err := tmpl.Execute(&result, entries); err != nil {
 			return fmt.Errorf("spec file %s: %w", specFileName(key.apiNs, key.nsName), err)

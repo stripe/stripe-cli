@@ -4,34 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1ForwardingRequestsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/forwarding/requests",
-	Method:  "GET",
-	Summary: "List all ForwardingRequests",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A pagination cursor to fetch the previous page of the list. The value must be a ForwardingRequest ID.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A pagination cursor to fetch the next page of the list. The value must be a ForwardingRequest ID.",
-		},
-	},
-}
-
-var V1ForwardingRequestsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/forwarding/requests/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a ForwardingRequest",
-}
-
 var V1ForwardingRequestsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/forwarding/requests",
@@ -58,4 +30,32 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 			Required:    true,
 		},
 	},
+}
+
+var V1ForwardingRequestsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/forwarding/requests",
+	Method:  "GET",
+	Summary: "List all ForwardingRequests",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A pagination cursor to fetch the previous page of the list. The value must be a ForwardingRequest ID.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A pagination cursor to fetch the next page of the list. The value must be a ForwardingRequest ID.",
+		},
+	},
+}
+
+var V1ForwardingRequestsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/forwarding/requests/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a ForwardingRequest",
 }

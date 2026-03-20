@@ -87,20 +87,582 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 	},
 }
 
-var V2CoreAccountsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v2/core/accounts",
-	Method:  "GET",
-	Summary: "List Accounts",
+var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v2/core/accounts/{account_id}/person_tokens",
+	Method:  "POST",
+	Summary: "Create a Person Token",
 	Params: map[string]*resource.ParamSpec{
-		"applied_configurations": {
-			Type:        "array",
-			Description: "Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.",
-		},
-		"closed": {
+		"additional_terms_of_service.account.shown_and_accepted": {
 			Type:        "boolean",
-			Description: "Filter by whether the account is closed. If omitted, returns only Accounts that are not closed.",
+			Description: "The boolean value indicating if the terms of service have been accepted.",
 		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of the birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
+var V2CoreAccountPersonTokensRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v2/core/accounts/{account_id}/person_tokens/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a Person Token",
+}
+
+var V2CoreAccountPersonsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v2/core/accounts/{account_id}/persons",
+	Method:  "POST",
+	Summary: "Create a person",
+	Params: map[string]*resource.ParamSpec{
+		"additional_terms_of_service.account.date": {
+			Type:        "string",
+			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+			Required:    true,
+			Format:      "date-time",
+		},
+		"additional_terms_of_service.account.ip": {
+			Type:        "string",
+			Description: "The IP address from which the Account's representative accepted the terms of service.",
+			Required:    true,
+		},
+		"additional_terms_of_service.account.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
+		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+			Required:    true,
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+			Required:    true,
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"person_token": {
+			Type:        "string",
+			Description: "The person token generated by the person token api.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
+var V2CoreAccountPersonsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:  "DELETE",
+	Summary: "Delete a Person",
+}
+
+var V2CoreAccountPersonsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v2/core/accounts/{account_id}/persons",
+	Method:  "GET",
+	Summary: "List Persons",
+	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:        "integer",
 			Description: "The upper limit on the number of accounts returned by the List Account request.",
@@ -108,6 +670,933 @@ var V2CoreAccountsList = resource.OperationSpec{
 		"page": {
 			Type:        "string",
 			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
+		},
+	},
+}
+
+var V2CoreAccountPersonsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a Person",
+}
+
+var V2CoreAccountPersonsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
+	Method:  "POST",
+	Summary: "Update a person",
+	Params: map[string]*resource.ParamSpec{
+		"additional_terms_of_service.account.date": {
+			Type:        "string",
+			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
+			Format:      "date-time",
+		},
+		"additional_terms_of_service.account.ip": {
+			Type:        "string",
+			Description: "The IP address from which the Account's representative accepted the terms of service.",
+		},
+		"additional_terms_of_service.account.user_agent": {
+			Type:        "string",
+			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
+		},
+		"address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of the birth.",
+			Required:    true,
+		},
+		"date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"email": {
+			Type:        "string",
+			Description: "Email.",
+		},
+		"given_name": {
+			Type:        "string",
+			Description: "The person's first name.",
+		},
+		"legal_gender": {
+			Type:        "string",
+			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"nationalities": {
+			Type:        "array",
+			Description: "The nationalities (countries) this person is associated with.",
+		},
+		"person_token": {
+			Type:        "string",
+			Description: "The person token generated by the person token api.",
+		},
+		"phone": {
+			Type:        "string",
+			Description: "The phone number for this person.",
+		},
+		"political_exposure": {
+			Type:        "string",
+			Description: "The person's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"relationship.authorizer": {
+			Type:        "boolean",
+			Description: "Whether the individual is an authorizer of the Account's identity.",
+		},
+		"relationship.director": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a director of the associated legal entity.",
+		},
+		"relationship.executive": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an executive of the associated legal entity.",
+		},
+		"relationship.legal_guardian": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
+		},
+		"relationship.owner": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is an owner of the associated legal entity.",
+		},
+		"relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percentage of ownership the person has in the associated legal entity.",
+			Format:      "decimal",
+		},
+		"relationship.representative": {
+			Type:        "boolean",
+			Description: "Indicates whether the person is a representative of the associated legal entity.",
+		},
+		"relationship.title": {
+			Type:        "string",
+			Description: "The title or position the person holds in the associated legal entity.",
+		},
+		"script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"surname": {
+			Type:        "string",
+			Description: "The person's last name.",
+		},
+	},
+}
+
+var V2CoreAccountTokensCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v2/core/account_tokens",
+	Method:  "POST",
+	Summary: "Create an Account Token",
+	Params: map[string]*resource.ParamSpec{
+		"contact_email": {
+			Type:        "string",
+			Description: "The default contact email address for the Account. Required when configuring the account as a merchant or recipient.",
+		},
+		"contact_phone": {
+			Type:        "string",
+			Description: "The default contact phone for the Account.",
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "A descriptive name for the Account. This name will be surfaced in the Stripe Dashboard and on any invoices sent to the Account.",
+		},
+		"identity.attestations.directorship_declaration.attested": {
+			Type:        "boolean",
+			Description: "A boolean indicating if the directors information has been attested.",
+		},
+		"identity.attestations.ownership_declaration.attested": {
+			Type:        "boolean",
+			Description: "A boolean indicating if the beneficial owner information has been attested.",
+		},
+		"identity.attestations.persons_provided.directors": {
+			Type:        "boolean",
+			Description: "Whether the company’s directors have been provided. Set this Boolean to true after creating all the company’s directors with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
+		},
+		"identity.attestations.persons_provided.executives": {
+			Type:        "boolean",
+			Description: "Whether the company’s executives have been provided. Set this Boolean to true after creating all the company’s executives with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
+		},
+		"identity.attestations.persons_provided.owners": {
+			Type:        "boolean",
+			Description: "Whether the company’s owners have been provided. Set this Boolean to true after creating all the company’s owners with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
+		},
+		"identity.attestations.persons_provided.ownership_exemption_reason": {
+			Type:        "string",
+			Description: "Reason for why the company is exempt from providing ownership information.",
+			Enum: []resource.EnumSpec{
+				{Value: "qualified_entity_exceeds_ownership_threshold"},
+				{Value: "qualifies_as_financial_institution"},
+			},
+		},
+		"identity.attestations.representative_declaration.attested": {
+			Type:        "boolean",
+			Description: "A boolean indicating if the representative is authorized to act as the representative of their legal entity.",
+		},
+		"identity.attestations.terms_of_service.account.shown_and_accepted": {
+			Type:        "boolean",
+			Description: "The boolean value indicating if the terms of service have been accepted.",
+		},
+		"identity.business_details.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.business_details.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.business_details.address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.business_details.address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.business_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.business_details.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.business_details.address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.business_details.annual_revenue.amount.currency": {
+			Type:        "string",
+			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+		},
+		"identity.business_details.annual_revenue.amount.value": {
+			Type:        "integer",
+			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
+			Required:    true,
+		},
+		"identity.business_details.annual_revenue.fiscal_year_end": {
+			Type:        "string",
+			Description: "The close-out date of the preceding fiscal year in ISO 8601 format. E.g. 2023-12-31 for the 31st of December, 2023.",
+		},
+		"identity.business_details.documents.bank_account_ownership_verification.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.bank_account_ownership_verification.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.company_license.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.company_license.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.company_memorandum_of_association.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.company_memorandum_of_association.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.company_ministerial_decree.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.company_ministerial_decree.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.company_registration_verification.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.company_registration_verification.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.company_tax_id_verification.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.company_tax_id_verification.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.business_details.documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.business_details.documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"identity.business_details.documents.proof_of_address.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.proof_of_address.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.proof_of_registration.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.proof_of_registration.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.business_details.estimated_worker_count": {
+			Type:        "integer",
+			Description: "Estimated maximum number of workers currently engaged by the business (including employees, contractors, and vendors).",
+		},
+		"identity.business_details.monthly_estimated_revenue.amount.currency": {
+			Type:        "string",
+			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
+			Required:    true,
+		},
+		"identity.business_details.monthly_estimated_revenue.amount.value": {
+			Type:        "integer",
+			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
+			Required:    true,
+		},
+		"identity.business_details.phone": {
+			Type:        "string",
+			Description: "The phone number of the Business Entity.",
+		},
+		"identity.business_details.registered_name": {
+			Type:        "string",
+			Description: "The business legal name.",
+		},
+		"identity.business_details.registration_date.day": {
+			Type:        "integer",
+			Description: "The day of registration, between 1 and 31.",
+			Required:    true,
+		},
+		"identity.business_details.registration_date.month": {
+			Type:        "integer",
+			Description: "The month of registration, between 1 and 12.",
+			Required:    true,
+		},
+		"identity.business_details.registration_date.year": {
+			Type:        "integer",
+			Description: "The four-digit year of registration.",
+			Required:    true,
+		},
+		"identity.business_details.script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.business_details.script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.business_details.script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.business_details.script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.business_details.script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.business_details.script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.business_details.script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.business_details.script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.business_details.script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.business_details.script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.business_details.script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.business_details.script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.business_details.script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.business_details.script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.business_details.script_names.kana.registered_name": {
+			Type:        "string",
+			Description: "Registered name of the business.",
+		},
+		"identity.business_details.script_names.kanji.registered_name": {
+			Type:        "string",
+			Description: "Registered name of the business.",
+		},
+		"identity.business_details.structure": {
+			Type:        "string",
+			Description: "The category identifying the legal structure of the business.",
+			Enum: []resource.EnumSpec{
+				{Value: "cooperative"},
+				{Value: "free_zone_establishment"},
+				{Value: "free_zone_llc"},
+				{Value: "governmental_unit"},
+				{Value: "government_instrumentality"},
+				{Value: "incorporated_association"},
+				{Value: "incorporated_non_profit"},
+				{Value: "incorporated_partnership"},
+				{Value: "limited_liability_partnership"},
+				{Value: "llc"},
+				{Value: "multi_member_llc"},
+				{Value: "private_company"},
+				{Value: "private_corporation"},
+				{Value: "private_partnership"},
+				{Value: "public_company"},
+				{Value: "public_corporation"},
+				{Value: "public_listed_corporation"},
+				{Value: "public_partnership"},
+				{Value: "registered_charity"},
+				{Value: "single_member_llc"},
+				{Value: "sole_establishment"},
+				{Value: "sole_proprietorship"},
+				{Value: "tax_exempt_government_instrumentality"},
+				{Value: "trust"},
+				{Value: "unincorporated_association"},
+				{Value: "unincorporated_non_profit"},
+				{Value: "unincorporated_partnership"},
+			},
+		},
+		"identity.entity_type": {
+			Type:        "string",
+			Description: "The entity type.",
+			Enum: []resource.EnumSpec{
+				{Value: "company"},
+				{Value: "government_entity"},
+				{Value: "individual"},
+				{Value: "non_profit"},
+			},
+		},
+		"identity.individual.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.individual.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.individual.address.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.individual.address.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.individual.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.individual.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.individual.address.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.individual.date_of_birth.day": {
+			Type:        "integer",
+			Description: "The day of the birth.",
+			Required:    true,
+		},
+		"identity.individual.date_of_birth.month": {
+			Type:        "integer",
+			Description: "The month of birth.",
+			Required:    true,
+		},
+		"identity.individual.date_of_birth.year": {
+			Type:        "integer",
+			Description: "The year of birth.",
+			Required:    true,
+		},
+		"identity.individual.documents.company_authorization.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.individual.documents.company_authorization.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.individual.documents.passport.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.individual.documents.passport.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.individual.documents.primary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.individual.documents.primary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.individual.documents.primary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"identity.individual.documents.secondary_verification.front_back.back": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.individual.documents.secondary_verification.front_back.front": {
+			Type:        "string",
+			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
+		},
+		"identity.individual.documents.secondary_verification.type": {
+			Type:        "string",
+			Description: "The format of the verification document. Currently supports `front_back` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "front_back"},
+			},
+		},
+		"identity.individual.documents.visa.files": {
+			Type:        "array",
+			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			Required:    true,
+		},
+		"identity.individual.documents.visa.type": {
+			Type:        "string",
+			Description: "The format of the document. Currently supports `files` only.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "files"},
+			},
+		},
+		"identity.individual.email": {
+			Type:        "string",
+			Description: "The individual's email address.",
+		},
+		"identity.individual.given_name": {
+			Type:        "string",
+			Description: "The individual's first name.",
+		},
+		"identity.individual.legal_gender": {
+			Type:        "string",
+			Description: "The individual's gender (International regulations require either \"male\" or \"female\").",
+			Enum: []resource.EnumSpec{
+				{Value: "female"},
+				{Value: "male"},
+			},
+		},
+		"identity.individual.nationalities": {
+			Type:        "array",
+			Description: "The countries where the individual is a national. Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.individual.phone": {
+			Type:        "string",
+			Description: "The individual's phone number.",
+		},
+		"identity.individual.political_exposure": {
+			Type:        "string",
+			Description: "The individual's political exposure.",
+			Enum: []resource.EnumSpec{
+				{Value: "existing"},
+				{Value: "none"},
+			},
+		},
+		"identity.individual.relationship.director": {
+			Type:        "boolean",
+			Description: "Whether the person is a director of the account's identity. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
+		},
+		"identity.individual.relationship.executive": {
+			Type:        "boolean",
+			Description: "Whether the person has significant responsibility to control, manage, or direct the organization.",
+		},
+		"identity.individual.relationship.owner": {
+			Type:        "boolean",
+			Description: "Whether the person is an owner of the account’s identity.",
+		},
+		"identity.individual.relationship.percent_ownership": {
+			Type:        "string",
+			Description: "The percent owned by the person of the account's legal entity.",
+			Format:      "decimal",
+		},
+		"identity.individual.relationship.title": {
+			Type:        "string",
+			Description: "The person's title (e.g., CEO, Support Engineer).",
+		},
+		"identity.individual.script_addresses.kana.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.individual.script_addresses.kana.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.individual.script_addresses.kana.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.individual.script_addresses.kana.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.individual.script_addresses.kana.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.individual.script_addresses.kana.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.individual.script_addresses.kana.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.individual.script_addresses.kanji.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"identity.individual.script_addresses.kanji.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+		},
+		"identity.individual.script_addresses.kanji.line1": {
+			Type:        "string",
+			Description: "Address line 1 (e.g., street, PO Box, or company name).",
+		},
+		"identity.individual.script_addresses.kanji.line2": {
+			Type:        "string",
+			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
+		},
+		"identity.individual.script_addresses.kanji.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"identity.individual.script_addresses.kanji.state": {
+			Type:        "string",
+			Description: "State, county, province, or region.",
+		},
+		"identity.individual.script_addresses.kanji.town": {
+			Type:        "string",
+			Description: "Town or district.",
+		},
+		"identity.individual.script_names.kana.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"identity.individual.script_names.kana.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"identity.individual.script_names.kanji.given_name": {
+			Type:        "string",
+			Description: "The person's first or given name.",
+		},
+		"identity.individual.script_names.kanji.surname": {
+			Type:        "string",
+			Description: "The person's last or family name.",
+		},
+		"identity.individual.surname": {
+			Type:        "string",
+			Description: "The individual's last name.",
+		},
+	},
+}
+
+var V2CoreAccountTokensRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v2/core/account_tokens/{id}",
+	Method:  "GET",
+	Summary: "Retrieve an Account Token",
+}
+
+var V2CoreAccountsClose = resource.OperationSpec{
+	Name:    "close",
+	Path:    "/v2/core/accounts/{id}/close",
+	Method:  "POST",
+	Summary: "Close an Account",
+	Params: map[string]*resource.ParamSpec{
+		"applied_configurations": {
+			Type:        "array",
+			Description: "Configurations on the Account to be closed. All configurations on the Account must be passed in for this request to succeed.",
 		},
 	},
 }
@@ -1251,6 +2740,31 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"include": {
 			Type:        "array",
 			Description: "Additional fields to include in the response.",
+		},
+	},
+}
+
+var V2CoreAccountsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v2/core/accounts",
+	Method:  "GET",
+	Summary: "List Accounts",
+	Params: map[string]*resource.ParamSpec{
+		"applied_configurations": {
+			Type:        "array",
+			Description: "Filter only accounts that have all of the configurations specified. If omitted, returns all accounts regardless of which configurations they have.",
+		},
+		"closed": {
+			Type:        "boolean",
+			Description: "Filter by whether the account is closed. If omitted, returns only Accounts that are not closed.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "The upper limit on the number of accounts returned by the List Account request.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
 		},
 	},
 }
@@ -2404,711 +3918,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 	},
 }
 
-var V2CoreAccountsClose = resource.OperationSpec{
-	Name:    "close",
-	Path:    "/v2/core/accounts/{id}/close",
-	Method:  "POST",
-	Summary: "Close an Account",
-	Params: map[string]*resource.ParamSpec{
-		"applied_configurations": {
-			Type:        "array",
-			Description: "Configurations on the Account to be closed. All configurations on the Account must be passed in for this request to succeed.",
-		},
-	},
-}
-
-var V2CoreAccountPersonsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:  "DELETE",
-	Summary: "Delete a Person",
-}
-
-var V2CoreAccountPersonsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a Person",
-}
-
-var V2CoreAccountPersonsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v2/core/accounts/{account_id}/persons/{id}",
-	Method:  "POST",
-	Summary: "Update a person",
-	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.date": {
-			Type:        "string",
-			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
-			Format:      "date-time",
-		},
-		"additional_terms_of_service.account.ip": {
-			Type:        "string",
-			Description: "The IP address from which the Account's representative accepted the terms of service.",
-		},
-		"additional_terms_of_service.account.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of the birth.",
-			Required:    true,
-		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"person_token": {
-			Type:        "string",
-			Description: "The person token generated by the person token api.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
-		},
-	},
-}
-
-var V2CoreAccountPersonsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v2/core/accounts/{account_id}/persons",
-	Method:  "GET",
-	Summary: "List Persons",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "The upper limit on the number of accounts returned by the List Account request.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The page token to navigate to next or previous batch of accounts given by the list request.",
-		},
-	},
-}
-
-var V2CoreAccountPersonsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v2/core/accounts/{account_id}/persons",
-	Method:  "POST",
-	Summary: "Create a person",
-	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.date": {
-			Type:        "string",
-			Description: "The time when the Account's representative accepted the terms of service. Represented as a RFC 3339 date & time UTC value in millisecond precision, for example: 2022-09-18T13:22:18.123Z.",
-			Required:    true,
-			Format:      "date-time",
-		},
-		"additional_terms_of_service.account.ip": {
-			Type:        "string",
-			Description: "The IP address from which the Account's representative accepted the terms of service.",
-			Required:    true,
-		},
-		"additional_terms_of_service.account.user_agent": {
-			Type:        "string",
-			Description: "The user agent of the browser from which the Account's representative accepted the terms of service.",
-		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of birth.",
-			Required:    true,
-		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-			Required:    true,
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-			Required:    true,
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"person_token": {
-			Type:        "string",
-			Description: "The person token generated by the person token api.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
-		},
-	},
-}
-
-var V2CoreEventDestinationsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v2/core/event_destinations/{id}",
-	Method:  "DELETE",
-	Summary: "Delete an Event Destination",
-}
-
-var V2CoreEventDestinationsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v2/core/event_destinations/{id}",
-	Method:  "GET",
-	Summary: "Retrieve an Event Destination",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response.",
-		},
-	},
-}
-
-var V2CoreEventDestinationsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v2/core/event_destinations/{id}",
-	Method:  "POST",
-	Summary: "Update an Event Destination",
-	Params: map[string]*resource.ParamSpec{
-		"description": {
-			Type:        "string",
-			Description: "An optional description of what the event destination is used for.",
-		},
-		"enabled_events": {
-			Type:        "array",
-			Description: "The list of events to enable for this endpoint.",
-		},
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
-		},
-		"name": {
-			Type:        "string",
-			Description: "Event destination name.",
-		},
-		"webhook_endpoint.url": {
-			Type:        "string",
-			Description: "The URL of the webhook endpoint.",
-			Required:    true,
-		},
-	},
-}
-
-var V2CoreEventDestinationsDisable = resource.OperationSpec{
-	Name:    "disable",
-	Path:    "/v2/core/event_destinations/{id}/disable",
-	Method:  "POST",
-	Summary: "Disable an Event Destination",
-}
-
-var V2CoreEventDestinationsEnable = resource.OperationSpec{
-	Name:    "enable",
-	Path:    "/v2/core/event_destinations/{id}/enable",
-	Method:  "POST",
-	Summary: "Enable an Event Destination",
-}
-
-var V2CoreEventDestinationsPing = resource.OperationSpec{
-	Name:    "ping",
-	Path:    "/v2/core/event_destinations/{id}/ping",
-	Method:  "POST",
-	Summary: "Ping an Event Destination",
-}
-
-var V2CoreEventDestinationsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v2/core/event_destinations",
-	Method:  "GET",
-	Summary: "List Event Destinations",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "The page size.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "The requested page.",
-		},
-	},
-}
-
 var V2CoreEventDestinationsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v2/core/event_destinations",
@@ -3177,905 +3986,96 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 	},
 }
 
-var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v2/core/accounts/{account_id}/person_tokens",
+var V2CoreEventDestinationsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v2/core/event_destinations/{id}",
+	Method:  "DELETE",
+	Summary: "Delete an Event Destination",
+}
+
+var V2CoreEventDestinationsDisable = resource.OperationSpec{
+	Name:    "disable",
+	Path:    "/v2/core/event_destinations/{id}/disable",
 	Method:  "POST",
-	Summary: "Create a Person Token",
+	Summary: "Disable an Event Destination",
+}
+
+var V2CoreEventDestinationsEnable = resource.OperationSpec{
+	Name:    "enable",
+	Path:    "/v2/core/event_destinations/{id}/enable",
+	Method:  "POST",
+	Summary: "Enable an Event Destination",
+}
+
+var V2CoreEventDestinationsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v2/core/event_destinations",
+	Method:  "GET",
+	Summary: "List Event Destinations",
 	Params: map[string]*resource.ParamSpec{
-		"additional_terms_of_service.account.shown_and_accepted": {
-			Type:        "boolean",
-			Description: "The boolean value indicating if the terms of service have been accepted.",
+		"include": {
+			Type:        "array",
+			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
 		},
-		"address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"date_of_birth.day": {
+		"limit": {
 			Type:        "integer",
-			Description: "The day of the birth.",
-			Required:    true,
+			Description: "The page size.",
 		},
-		"date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.company_authorization.type": {
+		"page": {
 			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"email": {
-			Type:        "string",
-			Description: "Email.",
-		},
-		"given_name": {
-			Type:        "string",
-			Description: "The person's first name.",
-		},
-		"legal_gender": {
-			Type:        "string",
-			Description: "The person's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"nationalities": {
-			Type:        "array",
-			Description: "The nationalities (countries) this person is associated with.",
-		},
-		"phone": {
-			Type:        "string",
-			Description: "The phone number for this person.",
-		},
-		"political_exposure": {
-			Type:        "string",
-			Description: "The person's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"relationship.authorizer": {
-			Type:        "boolean",
-			Description: "Whether the individual is an authorizer of the Account's identity.",
-		},
-		"relationship.director": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a director of the associated legal entity.",
-		},
-		"relationship.executive": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an executive of the associated legal entity.",
-		},
-		"relationship.legal_guardian": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a legal guardian of the associated legal entity.",
-		},
-		"relationship.owner": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is an owner of the associated legal entity.",
-		},
-		"relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percentage of ownership the person has in the associated legal entity.",
-			Format:      "decimal",
-		},
-		"relationship.representative": {
-			Type:        "boolean",
-			Description: "Indicates whether the person is a representative of the associated legal entity.",
-		},
-		"relationship.title": {
-			Type:        "string",
-			Description: "The title or position the person holds in the associated legal entity.",
-		},
-		"script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"surname": {
-			Type:        "string",
-			Description: "The person's last name.",
+			Description: "The requested page.",
 		},
 	},
 }
 
-var V2CoreAccountPersonTokensRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v2/core/accounts/{account_id}/person_tokens/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a Person Token",
+var V2CoreEventDestinationsPing = resource.OperationSpec{
+	Name:    "ping",
+	Path:    "/v2/core/event_destinations/{id}/ping",
+	Method:  "POST",
+	Summary: "Ping an Event Destination",
 }
 
-var V2CoreAccountTokensCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v2/core/account_tokens",
-	Method:  "POST",
-	Summary: "Create an Account Token",
+var V2CoreEventDestinationsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v2/core/event_destinations/{id}",
+	Method:  "GET",
+	Summary: "Retrieve an Event Destination",
 	Params: map[string]*resource.ParamSpec{
-		"contact_email": {
-			Type:        "string",
-			Description: "The default contact email address for the Account. Required when configuring the account as a merchant or recipient.",
-		},
-		"contact_phone": {
-			Type:        "string",
-			Description: "The default contact phone for the Account.",
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "A descriptive name for the Account. This name will be surfaced in the Stripe Dashboard and on any invoices sent to the Account.",
-		},
-		"identity.attestations.directorship_declaration.attested": {
-			Type:        "boolean",
-			Description: "A boolean indicating if the directors information has been attested.",
-		},
-		"identity.attestations.ownership_declaration.attested": {
-			Type:        "boolean",
-			Description: "A boolean indicating if the beneficial owner information has been attested.",
-		},
-		"identity.attestations.persons_provided.directors": {
-			Type:        "boolean",
-			Description: "Whether the company’s directors have been provided. Set this Boolean to true after creating all the company’s directors with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
-		},
-		"identity.attestations.persons_provided.executives": {
-			Type:        "boolean",
-			Description: "Whether the company’s executives have been provided. Set this Boolean to true after creating all the company’s executives with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
-		},
-		"identity.attestations.persons_provided.owners": {
-			Type:        "boolean",
-			Description: "Whether the company’s owners have been provided. Set this Boolean to true after creating all the company’s owners with the [Persons API](https://docs.stripe.com/api/v2/core/accounts/createperson).",
-		},
-		"identity.attestations.persons_provided.ownership_exemption_reason": {
-			Type:        "string",
-			Description: "Reason for why the company is exempt from providing ownership information.",
-			Enum: []resource.EnumSpec{
-				{Value: "qualified_entity_exceeds_ownership_threshold"},
-				{Value: "qualifies_as_financial_institution"},
-			},
-		},
-		"identity.attestations.representative_declaration.attested": {
-			Type:        "boolean",
-			Description: "A boolean indicating if the representative is authorized to act as the representative of their legal entity.",
-		},
-		"identity.attestations.terms_of_service.account.shown_and_accepted": {
-			Type:        "boolean",
-			Description: "The boolean value indicating if the terms of service have been accepted.",
-		},
-		"identity.business_details.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.business_details.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.business_details.address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.business_details.address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.business_details.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.business_details.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.business_details.address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.business_details.annual_revenue.amount.currency": {
-			Type:        "string",
-			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Required:    true,
-		},
-		"identity.business_details.annual_revenue.amount.value": {
-			Type:        "integer",
-			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
-			Required:    true,
-		},
-		"identity.business_details.annual_revenue.fiscal_year_end": {
-			Type:        "string",
-			Description: "The close-out date of the preceding fiscal year in ISO 8601 format. E.g. 2023-12-31 for the 31st of December, 2023.",
-		},
-		"identity.business_details.documents.bank_account_ownership_verification.files": {
+		"include": {
 			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.company_license.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.company_license.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.company_registration_verification.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.company_registration_verification.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.business_details.documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.business_details.documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"identity.business_details.documents.proof_of_address.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.proof_of_address.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.proof_of_registration.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.proof_of_registration.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.business_details.estimated_worker_count": {
-			Type:        "integer",
-			Description: "Estimated maximum number of workers currently engaged by the business (including employees, contractors, and vendors).",
-		},
-		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:        "string",
-			Description: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase. Must be a [supported currency](https://stripe.com/docs/currencies).",
-			Required:    true,
-		},
-		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:        "integer",
-			Description: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units).",
-			Required:    true,
-		},
-		"identity.business_details.phone": {
-			Type:        "string",
-			Description: "The phone number of the Business Entity.",
-		},
-		"identity.business_details.registered_name": {
-			Type:        "string",
-			Description: "The business legal name.",
-		},
-		"identity.business_details.registration_date.day": {
-			Type:        "integer",
-			Description: "The day of registration, between 1 and 31.",
-			Required:    true,
-		},
-		"identity.business_details.registration_date.month": {
-			Type:        "integer",
-			Description: "The month of registration, between 1 and 12.",
-			Required:    true,
-		},
-		"identity.business_details.registration_date.year": {
-			Type:        "integer",
-			Description: "The four-digit year of registration.",
-			Required:    true,
-		},
-		"identity.business_details.script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.business_details.script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.business_details.script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.business_details.script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.business_details.script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.business_details.script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.business_details.script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.business_details.script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.business_details.script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.business_details.script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.business_details.script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.business_details.script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.business_details.script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.business_details.script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.business_details.script_names.kana.registered_name": {
-			Type:        "string",
-			Description: "Registered name of the business.",
-		},
-		"identity.business_details.script_names.kanji.registered_name": {
-			Type:        "string",
-			Description: "Registered name of the business.",
-		},
-		"identity.business_details.structure": {
-			Type:        "string",
-			Description: "The category identifying the legal structure of the business.",
-			Enum: []resource.EnumSpec{
-				{Value: "cooperative"},
-				{Value: "free_zone_establishment"},
-				{Value: "free_zone_llc"},
-				{Value: "governmental_unit"},
-				{Value: "government_instrumentality"},
-				{Value: "incorporated_association"},
-				{Value: "incorporated_non_profit"},
-				{Value: "incorporated_partnership"},
-				{Value: "limited_liability_partnership"},
-				{Value: "llc"},
-				{Value: "multi_member_llc"},
-				{Value: "private_company"},
-				{Value: "private_corporation"},
-				{Value: "private_partnership"},
-				{Value: "public_company"},
-				{Value: "public_corporation"},
-				{Value: "public_listed_corporation"},
-				{Value: "public_partnership"},
-				{Value: "registered_charity"},
-				{Value: "single_member_llc"},
-				{Value: "sole_establishment"},
-				{Value: "sole_proprietorship"},
-				{Value: "tax_exempt_government_instrumentality"},
-				{Value: "trust"},
-				{Value: "unincorporated_association"},
-				{Value: "unincorporated_non_profit"},
-				{Value: "unincorporated_partnership"},
-			},
-		},
-		"identity.entity_type": {
-			Type:        "string",
-			Description: "The entity type.",
-			Enum: []resource.EnumSpec{
-				{Value: "company"},
-				{Value: "government_entity"},
-				{Value: "individual"},
-				{Value: "non_profit"},
-			},
-		},
-		"identity.individual.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.individual.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.individual.address.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.individual.address.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.individual.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.individual.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.individual.address.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.individual.date_of_birth.day": {
-			Type:        "integer",
-			Description: "The day of the birth.",
-			Required:    true,
-		},
-		"identity.individual.date_of_birth.month": {
-			Type:        "integer",
-			Description: "The month of birth.",
-			Required:    true,
-		},
-		"identity.individual.date_of_birth.year": {
-			Type:        "integer",
-			Description: "The year of birth.",
-			Required:    true,
-		},
-		"identity.individual.documents.company_authorization.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.individual.documents.company_authorization.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.individual.documents.passport.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.individual.documents.passport.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.individual.documents.primary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.individual.documents.primary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.individual.documents.primary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"identity.individual.documents.secondary_verification.front_back.back": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the back of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.individual.documents.secondary_verification.front_back.front": {
-			Type:        "string",
-			Description: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document. The purpose of the uploaded file should be 'identity_document'. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size.",
-		},
-		"identity.individual.documents.secondary_verification.type": {
-			Type:        "string",
-			Description: "The format of the verification document. Currently supports `front_back` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "front_back"},
-			},
-		},
-		"identity.individual.documents.visa.files": {
-			Type:        "array",
-			Description: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
-			Required:    true,
-		},
-		"identity.individual.documents.visa.type": {
-			Type:        "string",
-			Description: "The format of the document. Currently supports `files` only.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "files"},
-			},
-		},
-		"identity.individual.email": {
-			Type:        "string",
-			Description: "The individual's email address.",
-		},
-		"identity.individual.given_name": {
-			Type:        "string",
-			Description: "The individual's first name.",
-		},
-		"identity.individual.legal_gender": {
-			Type:        "string",
-			Description: "The individual's gender (International regulations require either \"male\" or \"female\").",
-			Enum: []resource.EnumSpec{
-				{Value: "female"},
-				{Value: "male"},
-			},
-		},
-		"identity.individual.nationalities": {
-			Type:        "array",
-			Description: "The countries where the individual is a national. Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.individual.phone": {
-			Type:        "string",
-			Description: "The individual's phone number.",
-		},
-		"identity.individual.political_exposure": {
-			Type:        "string",
-			Description: "The individual's political exposure.",
-			Enum: []resource.EnumSpec{
-				{Value: "existing"},
-				{Value: "none"},
-			},
-		},
-		"identity.individual.relationship.director": {
-			Type:        "boolean",
-			Description: "Whether the person is a director of the account's identity. Directors are typically members of the governing board of the company, or responsible for ensuring the company meets its regulatory obligations.",
-		},
-		"identity.individual.relationship.executive": {
-			Type:        "boolean",
-			Description: "Whether the person has significant responsibility to control, manage, or direct the organization.",
-		},
-		"identity.individual.relationship.owner": {
-			Type:        "boolean",
-			Description: "Whether the person is an owner of the account’s identity.",
-		},
-		"identity.individual.relationship.percent_ownership": {
-			Type:        "string",
-			Description: "The percent owned by the person of the account's legal entity.",
-			Format:      "decimal",
-		},
-		"identity.individual.relationship.title": {
-			Type:        "string",
-			Description: "The person's title (e.g., CEO, Support Engineer).",
-		},
-		"identity.individual.script_addresses.kana.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.individual.script_addresses.kana.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.individual.script_addresses.kana.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.individual.script_addresses.kana.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.individual.script_addresses.kana.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.individual.script_addresses.kana.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.individual.script_addresses.kana.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.individual.script_addresses.kanji.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"identity.individual.script_addresses.kanji.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-		},
-		"identity.individual.script_addresses.kanji.line1": {
-			Type:        "string",
-			Description: "Address line 1 (e.g., street, PO Box, or company name).",
-		},
-		"identity.individual.script_addresses.kanji.line2": {
-			Type:        "string",
-			Description: "Address line 2 (e.g., apartment, suite, unit, or building).",
-		},
-		"identity.individual.script_addresses.kanji.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"identity.individual.script_addresses.kanji.state": {
-			Type:        "string",
-			Description: "State, county, province, or region.",
-		},
-		"identity.individual.script_addresses.kanji.town": {
-			Type:        "string",
-			Description: "Town or district.",
-		},
-		"identity.individual.script_names.kana.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"identity.individual.script_names.kana.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"identity.individual.script_names.kanji.given_name": {
-			Type:        "string",
-			Description: "The person's first or given name.",
-		},
-		"identity.individual.script_names.kanji.surname": {
-			Type:        "string",
-			Description: "The person's last or family name.",
-		},
-		"identity.individual.surname": {
-			Type:        "string",
-			Description: "The individual's last name.",
+			Description: "Additional fields to include in the response.",
 		},
 	},
 }
 
-var V2CoreAccountTokensRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v2/core/account_tokens/{id}",
-	Method:  "GET",
-	Summary: "Retrieve an Account Token",
+var V2CoreEventDestinationsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v2/core/event_destinations/{id}",
+	Method:  "POST",
+	Summary: "Update an Event Destination",
+	Params: map[string]*resource.ParamSpec{
+		"description": {
+			Type:        "string",
+			Description: "An optional description of what the event destination is used for.",
+		},
+		"enabled_events": {
+			Type:        "array",
+			Description: "The list of events to enable for this endpoint.",
+		},
+		"include": {
+			Type:        "array",
+			Description: "Additional fields to include in the response. Currently supports `webhook_endpoint.url`.",
+		},
+		"name": {
+			Type:        "string",
+			Description: "Event destination name.",
+		},
+		"webhook_endpoint.url": {
+			Type:        "string",
+			Description: "The URL of the webhook endpoint.",
+			Required:    true,
+		},
+	},
 }
 
 var V2CoreEventsList = resource.OperationSpec{

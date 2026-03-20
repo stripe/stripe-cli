@@ -4,41 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1AppsSecretsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/apps/secrets",
-	Method:  "GET",
-	Summary: "List secrets",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1AppsSecretsFind = resource.OperationSpec{
-	Name:    "find",
-	Path:    "/v1/apps/secrets/find",
-	Method:  "GET",
-	Summary: "Find a Secret",
-	Params: map[string]*resource.ParamSpec{
-		"name": {
-			Type:        "string",
-			Description: "A name for the secret that's unique within the scope.",
-			Required:    true,
-		},
-	},
-}
-
 var V1AppsSecretsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/apps/secrets",
@@ -99,6 +64,41 @@ var V1AppsSecretsDeleteWhere = resource.OperationSpec{
 		"scope.user": {
 			Type:        "string",
 			Description: "The user ID. This field is required if `type` is set to `user`, and should not be provided if `type` is set to `account`.",
+		},
+	},
+}
+
+var V1AppsSecretsFind = resource.OperationSpec{
+	Name:    "find",
+	Path:    "/v1/apps/secrets/find",
+	Method:  "GET",
+	Summary: "Find a Secret",
+	Params: map[string]*resource.ParamSpec{
+		"name": {
+			Type:        "string",
+			Description: "A name for the secret that's unique within the scope.",
+			Required:    true,
+		},
+	},
+}
+
+var V1AppsSecretsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/apps/secrets",
+	Method:  "GET",
+	Summary: "List secrets",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
 		},
 	},
 }

@@ -4,22 +4,69 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1TerminalLocationsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/terminal/locations/{location}",
-	Method:  "DELETE",
-	Summary: "Delete a Location",
+var V1TerminalConfigurationsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/terminal/configurations",
+	Method:  "POST",
+	Summary: "Create a Configuration",
+	Params: map[string]*resource.ParamSpec{
+		"bbpos_wisepad3.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"bbpos_wisepos_e.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image to display on the reader",
+		},
+		"name": {
+			Type:        "string",
+			Description: "Name of the configuration",
+		},
+		"reboot_window.end_hour": {
+			Type:        "integer",
+			Description: "Integer between 0 to 23 that represents the end hour of the reboot time window. The value must be different than the start_hour.",
+			Required:    true,
+		},
+		"reboot_window.start_hour": {
+			Type:        "integer",
+			Description: "Integer between 0 to 23 that represents the start hour of the reboot time window.",
+			Required:    true,
+		},
+		"stripe_s700.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"stripe_s710.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+		"verifone_p400.splashscreen": {
+			Type:        "string",
+			Description: "A File ID representing an image you want to display on the reader.",
+		},
+	},
 }
 
-var V1TerminalLocationsList = resource.OperationSpec{
+var V1TerminalConfigurationsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/terminal/configurations/{configuration}",
+	Method:  "DELETE",
+	Summary: "Delete a Configuration",
+}
+
+var V1TerminalConfigurationsList = resource.OperationSpec{
 	Name:    "list",
-	Path:    "/v1/terminal/locations",
+	Path:    "/v1/terminal/configurations",
 	Method:  "GET",
-	Summary: "List all Locations",
+	Summary: "List all Configurations",
 	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:        "string",
 			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"is_account_default": {
+			Type:        "boolean",
+			Description: "if present, only return the account default or non-default configurations.",
 		},
 		"limit": {
 			Type:        "integer",
@@ -32,11 +79,37 @@ var V1TerminalLocationsList = resource.OperationSpec{
 	},
 }
 
-var V1TerminalLocationsRetrieve = resource.OperationSpec{
+var V1TerminalConfigurationsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/terminal/locations/{location}",
+	Path:    "/v1/terminal/configurations/{configuration}",
 	Method:  "GET",
-	Summary: "Retrieve a Location",
+	Summary: "Retrieve a Configuration",
+}
+
+var V1TerminalConfigurationsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/terminal/configurations/{configuration}",
+	Method:  "POST",
+	Summary: "Update a Configuration",
+	Params: map[string]*resource.ParamSpec{
+		"name": {
+			Type:        "string",
+			Description: "Name of the configuration",
+		},
+	},
+}
+
+var V1TerminalConnectionTokensCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/terminal/connection_tokens",
+	Method:  "POST",
+	Summary: "Create a Connection Token",
+	Params: map[string]*resource.ParamSpec{
+		"location": {
+			Type:        "string",
+			Description: "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://docs.stripe.com/terminal/fleet/locations-and-zones?dashboard-or-api=api#connection-tokens).",
+		},
+	},
 }
 
 var V1TerminalLocationsCreate = resource.OperationSpec{
@@ -149,6 +222,41 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 	},
 }
 
+var V1TerminalLocationsDelete = resource.OperationSpec{
+	Name:    "delete",
+	Path:    "/v1/terminal/locations/{location}",
+	Method:  "DELETE",
+	Summary: "Delete a Location",
+}
+
+var V1TerminalLocationsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/terminal/locations",
+	Method:  "GET",
+	Summary: "List all Locations",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1TerminalLocationsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/terminal/locations/{location}",
+	Method:  "GET",
+	Summary: "Retrieve a Location",
+}
+
 var V1TerminalLocationsUpdate = resource.OperationSpec{
 	Name:    "update",
 	Path:    "/v1/terminal/locations/{location}",
@@ -258,19 +366,6 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 	},
 }
 
-var V1TerminalConnectionTokensCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/terminal/connection_tokens",
-	Method:  "POST",
-	Summary: "Create a Connection Token",
-	Params: map[string]*resource.ParamSpec{
-		"location": {
-			Type:        "string",
-			Description: "The id of the location that this connection token is scoped to. If specified the connection token will only be usable with readers assigned to that location, otherwise the connection token will be usable with all readers. Note that location scoping only applies to internet-connected readers. For more details, see [the docs on scoping connection tokens](https://docs.stripe.com/terminal/fleet/locations-and-zones?dashboard-or-api=api#connection-tokens).",
-		},
-	},
-}
-
 var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/terminal/onboarding_links",
@@ -301,11 +396,71 @@ var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 	},
 }
 
-var V1TerminalReadersDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/terminal/readers/{reader}",
-	Method:  "DELETE",
-	Summary: "Delete a Reader",
+var V1TerminalReadersCancelAction = resource.OperationSpec{
+	Name:    "cancel_action",
+	Path:    "/v1/terminal/readers/{reader}/cancel_action",
+	Method:  "POST",
+	Summary: "Cancel the current reader action",
+}
+
+var V1TerminalReadersCollectInputs = resource.OperationSpec{
+	Name:    "collect_inputs",
+	Path:    "/v1/terminal/readers/{reader}/collect_inputs",
+	Method:  "POST",
+	Summary: "Collect inputs using a Reader",
+}
+
+var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
+	Name:    "collect_payment_method",
+	Path:    "/v1/terminal/readers/{reader}/collect_payment_method",
+	Method:  "POST",
+	Summary: "Hand off a PaymentIntent to a Reader and collect card details",
+	Params: map[string]*resource.ParamSpec{
+		"collect_config.allow_redisplay": {
+			Type:        "string",
+			Description: "This field indicates whether this payment method can be shown again to its customer in a checkout flow. Stripe products such as Checkout and Elements use this field to determine whether a payment method can be shown as a saved payment method in a checkout flow.",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "limited"},
+				{Value: "unspecified"},
+			},
+		},
+		"collect_config.enable_customer_cancellation": {
+			Type:        "boolean",
+			Description: "Enables cancel button on transaction screens.",
+		},
+		"collect_config.skip_tipping": {
+			Type:        "boolean",
+			Description: "Override showing a tipping selection screen on this transaction.",
+		},
+		"collect_config.tipping.amount_eligible": {
+			Type:        "integer",
+			Description: "Amount used to calculate tip suggestions on tipping selection screen for this transaction. Must be a positive integer in the smallest currency unit (e.g., 100 cents to represent $1.00 or 100 to represent ¥100, a zero-decimal currency).",
+		},
+		"payment_intent": {
+			Type:        "string",
+			Description: "The ID of the PaymentIntent to collect a payment method for.",
+			Required:    true,
+		},
+	},
+}
+
+var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
+	Name:    "confirm_payment_intent",
+	Path:    "/v1/terminal/readers/{reader}/confirm_payment_intent",
+	Method:  "POST",
+	Summary: "Confirm a PaymentIntent on the Reader",
+	Params: map[string]*resource.ParamSpec{
+		"confirm_config.return_url": {
+			Type:        "string",
+			Description: "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.",
+		},
+		"payment_intent": {
+			Type:        "string",
+			Description: "The ID of the PaymentIntent to confirm.",
+			Required:    true,
+		},
+	},
 }
 
 var V1TerminalReadersCreate = resource.OperationSpec{
@@ -330,31 +485,65 @@ var V1TerminalReadersCreate = resource.OperationSpec{
 	},
 }
 
-var V1TerminalReadersUpdate = resource.OperationSpec{
-	Name:    "update",
+var V1TerminalReadersDelete = resource.OperationSpec{
+	Name:    "delete",
 	Path:    "/v1/terminal/readers/{reader}",
-	Method:  "POST",
-	Summary: "Update a Reader",
+	Method:  "DELETE",
+	Summary: "Delete a Reader",
+}
+
+var V1TerminalReadersList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/terminal/readers",
+	Method:  "GET",
+	Summary: "List all Readers",
 	Params: map[string]*resource.ParamSpec{
-		"label": {
+		"device_type": {
 			Type:        "string",
-			Description: "The new label of the reader.",
+			Description: "Filters readers by device type",
+			Enum: []resource.EnumSpec{
+				{Value: "bbpos_chipper2x"},
+				{Value: "bbpos_wisepad3"},
+				{Value: "bbpos_wisepos_e"},
+				{Value: "mobile_phone_reader"},
+				{Value: "simulated_stripe_s700"},
+				{Value: "simulated_stripe_s710"},
+				{Value: "simulated_wisepos_e"},
+				{Value: "stripe_m2"},
+				{Value: "stripe_s700"},
+				{Value: "stripe_s710"},
+				{Value: "verifone_P400"},
+			},
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"location": {
+			Type:        "string",
+			Description: "A location ID to filter the response list to only readers at the specific location",
+		},
+		"serial_number": {
+			Type:        "string",
+			Description: "Filters readers by serial number",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+		"status": {
+			Type:        "string",
+			Description: "A status filter to filter readers to only offline or online readers",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
 		},
 	},
-}
-
-var V1TerminalReadersCancelAction = resource.OperationSpec{
-	Name:    "cancel_action",
-	Path:    "/v1/terminal/readers/{reader}/cancel_action",
-	Method:  "POST",
-	Summary: "Cancel the current reader action",
-}
-
-var V1TerminalReadersCollectInputs = resource.OperationSpec{
-	Name:    "collect_inputs",
-	Path:    "/v1/terminal/readers/{reader}/collect_inputs",
-	Method:  "POST",
-	Summary: "Collect inputs using a Reader",
 }
 
 var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
@@ -457,118 +646,11 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 	},
 }
 
-var V1TerminalReadersList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/terminal/readers",
-	Method:  "GET",
-	Summary: "List all Readers",
-	Params: map[string]*resource.ParamSpec{
-		"device_type": {
-			Type:        "string",
-			Description: "Filters readers by device type",
-			Enum: []resource.EnumSpec{
-				{Value: "bbpos_chipper2x"},
-				{Value: "bbpos_wisepad3"},
-				{Value: "bbpos_wisepos_e"},
-				{Value: "mobile_phone_reader"},
-				{Value: "simulated_stripe_s700"},
-				{Value: "simulated_stripe_s710"},
-				{Value: "simulated_wisepos_e"},
-				{Value: "stripe_m2"},
-				{Value: "stripe_s700"},
-				{Value: "stripe_s710"},
-				{Value: "verifone_P400"},
-			},
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"location": {
-			Type:        "string",
-			Description: "A location ID to filter the response list to only readers at the specific location",
-		},
-		"serial_number": {
-			Type:        "string",
-			Description: "Filters readers by serial number",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "A status filter to filter readers to only offline or online readers",
-			Enum: []resource.EnumSpec{
-				{Value: "offline"},
-				{Value: "online"},
-			},
-		},
-	},
-}
-
 var V1TerminalReadersRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
 	Path:    "/v1/terminal/readers/{reader}",
 	Method:  "GET",
 	Summary: "Retrieve a Reader",
-}
-
-var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
-	Name:    "collect_payment_method",
-	Path:    "/v1/terminal/readers/{reader}/collect_payment_method",
-	Method:  "POST",
-	Summary: "Hand off a PaymentIntent to a Reader and collect card details",
-	Params: map[string]*resource.ParamSpec{
-		"collect_config.allow_redisplay": {
-			Type:        "string",
-			Description: "This field indicates whether this payment method can be shown again to its customer in a checkout flow. Stripe products such as Checkout and Elements use this field to determine whether a payment method can be shown as a saved payment method in a checkout flow.",
-			Enum: []resource.EnumSpec{
-				{Value: "always"},
-				{Value: "limited"},
-				{Value: "unspecified"},
-			},
-		},
-		"collect_config.enable_customer_cancellation": {
-			Type:        "boolean",
-			Description: "Enables cancel button on transaction screens.",
-		},
-		"collect_config.skip_tipping": {
-			Type:        "boolean",
-			Description: "Override showing a tipping selection screen on this transaction.",
-		},
-		"collect_config.tipping.amount_eligible": {
-			Type:        "integer",
-			Description: "Amount used to calculate tip suggestions on tipping selection screen for this transaction. Must be a positive integer in the smallest currency unit (e.g., 100 cents to represent $1.00 or 100 to represent ¥100, a zero-decimal currency).",
-		},
-		"payment_intent": {
-			Type:        "string",
-			Description: "The ID of the PaymentIntent to collect a payment method for.",
-			Required:    true,
-		},
-	},
-}
-
-var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
-	Name:    "confirm_payment_intent",
-	Path:    "/v1/terminal/readers/{reader}/confirm_payment_intent",
-	Method:  "POST",
-	Summary: "Confirm a PaymentIntent on the Reader",
-	Params: map[string]*resource.ParamSpec{
-		"confirm_config.return_url": {
-			Type:        "string",
-			Description: "The URL to redirect your customer back to after they authenticate or cancel their payment on the payment method's app or site. If you'd prefer to redirect to a mobile application, you can alternatively supply an application URI scheme.",
-		},
-		"payment_intent": {
-			Type:        "string",
-			Description: "The ID of the PaymentIntent to confirm.",
-			Required:    true,
-		},
-	},
 }
 
 var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
@@ -676,97 +758,15 @@ var V1TerminalReadersTestHelpersTimeoutInputCollection = resource.OperationSpec{
 	Summary: "Simulate an input collection timeout",
 }
 
-var V1TerminalConfigurationsUpdate = resource.OperationSpec{
+var V1TerminalReadersUpdate = resource.OperationSpec{
 	Name:    "update",
-	Path:    "/v1/terminal/configurations/{configuration}",
+	Path:    "/v1/terminal/readers/{reader}",
 	Method:  "POST",
-	Summary: "Update a Configuration",
+	Summary: "Update a Reader",
 	Params: map[string]*resource.ParamSpec{
-		"name": {
+		"label": {
 			Type:        "string",
-			Description: "Name of the configuration",
-		},
-	},
-}
-
-var V1TerminalConfigurationsDelete = resource.OperationSpec{
-	Name:    "delete",
-	Path:    "/v1/terminal/configurations/{configuration}",
-	Method:  "DELETE",
-	Summary: "Delete a Configuration",
-}
-
-var V1TerminalConfigurationsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/terminal/configurations",
-	Method:  "GET",
-	Summary: "List all Configurations",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"is_account_default": {
-			Type:        "boolean",
-			Description: "if present, only return the account default or non-default configurations.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1TerminalConfigurationsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/terminal/configurations/{configuration}",
-	Method:  "GET",
-	Summary: "Retrieve a Configuration",
-}
-
-var V1TerminalConfigurationsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/terminal/configurations",
-	Method:  "POST",
-	Summary: "Create a Configuration",
-	Params: map[string]*resource.ParamSpec{
-		"bbpos_wisepad3.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"bbpos_wisepos_e.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image to display on the reader",
-		},
-		"name": {
-			Type:        "string",
-			Description: "Name of the configuration",
-		},
-		"reboot_window.end_hour": {
-			Type:        "integer",
-			Description: "Integer between 0 to 23 that represents the end hour of the reboot time window. The value must be different than the start_hour.",
-			Required:    true,
-		},
-		"reboot_window.start_hour": {
-			Type:        "integer",
-			Description: "Integer between 0 to 23 that represents the start hour of the reboot time window.",
-			Required:    true,
-		},
-		"stripe_s700.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"stripe_s710.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
-		},
-		"verifone_p400.splashscreen": {
-			Type:        "string",
-			Description: "A File ID representing an image you want to display on the reader.",
+			Description: "The new label of the reader.",
 		},
 	},
 }

@@ -4,12 +4,85 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
+var V2PreviewBillingBillSettingVersionsList = resource.OperationSpec{
 	Name:      "list",
-	Path:      "/v2/billing/collection_settings",
+	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "List Collection Settings",
+	Summary:   "List Bill Setting Versions",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "Opaque page token.",
+		},
+	},
+}
+
+var V2PreviewBillingBillSettingVersionsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Bill Setting Version",
+}
+
+var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/billing/bill_settings",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a Bill Setting",
+	Params: map[string]*resource.ParamSpec{
+		"calculation.tax.type": {
+			Type:        "string",
+			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "manual"},
+			},
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "An optional customer-facing display name for the CollectionSetting object.\nMaximum length of 250 characters.",
+		},
+		"invoice.time_until_due.interval": {
+			Type:        "string",
+			Description: "The interval unit for the time until due.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"invoice.time_until_due.interval_count": {
+			Type:        "integer",
+			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
+			Required:    true,
+		},
+		"invoice_rendering_template": {
+			Type:        "string",
+			Description: "The ID of the invoice rendering template to be used when generating invoices.",
+		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
+		},
+	},
+}
+
+var V2PreviewBillingBillSettingsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/billing/bill_settings",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Bill Settings",
 	Params: map[string]*resource.ParamSpec{
 		"limit": {
 			Type:        "integer",
@@ -24,6 +97,273 @@ var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
 			Description: "Opaque page token.",
 		},
 	},
+}
+
+var V2PreviewBillingBillSettingsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/bill_settings/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Bill Setting",
+}
+
+var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/billing/bill_settings/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a Bill Setting",
+	Params: map[string]*resource.ParamSpec{
+		"calculation.tax.type": {
+			Type:        "string",
+			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "manual"},
+			},
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "An optional customer-facing display name for the BillSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
+		},
+		"invoice.time_until_due.interval": {
+			Type:        "string",
+			Description: "The interval unit for the time until due.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"invoice.time_until_due.interval_count": {
+			Type:        "integer",
+			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
+			Required:    true,
+		},
+		"invoice_rendering_template": {
+			Type:        "string",
+			Description: "The ID of the invoice rendering template to be used when generating invoices.",
+		},
+		"live_version": {
+			Type:        "string",
+			Description: "Optionally change the live version of the BillSetting. Providing `live_version = \"latest\"` will set the\nBillSetting' `live_version` to its latest version.",
+		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
+		},
+	},
+}
+
+var V2PreviewBillingCadencesCancel = resource.OperationSpec{
+	Name:      "cancel",
+	Path:      "/v2/billing/cadences/{id}/cancel",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Cancel a Billing Cadence",
+}
+
+var V2PreviewBillingCadencesCreate = resource.OperationSpec{
+	Name:      "create",
+	Path:      "/v2/billing/cadences",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Create a Billing Cadence",
+	Params: map[string]*resource.ParamSpec{
+		"billing_cycle.day.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.day.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.day.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.interval_count": {
+			Type:        "integer",
+			Description: "The number of intervals (specified in the interval attribute) between\ncadence billings. For example, type=month and interval_count=3 bills every\n3 months. If this is not provided, it will default to 1.",
+		},
+		"billing_cycle.month.day_of_month": {
+			Type:        "integer",
+			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
+			Required:    true,
+		},
+		"billing_cycle.month.month_of_year": {
+			Type:        "integer",
+			Description: "The month to anchor the billing on for a type=\"month\" billing cycle from\n1-12. If not provided, this will default to the month the cadence was created.\nThis setting can only be used for monthly billing cycles with `interval_count` of 2, 3, 4 or 6.\nAll occurrences will be calculated from month provided.",
+		},
+		"billing_cycle.month.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.month.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.month.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.type": {
+			Type:        "string",
+			Description: "The frequency at which a cadence bills.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"billing_cycle.week.day_of_week": {
+			Type:        "integer",
+			Description: "The day of the week to bill the type=week billing cycle on.\nNumbered from 1-7 for Monday to Sunday respectively, based on the ISO-8601\nweek day numbering. If not provided, this will default to the day the\ncadence was created.",
+			Required:    true,
+		},
+		"billing_cycle.week.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.week.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.week.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.year.day_of_month": {
+			Type:        "integer",
+			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
+		},
+		"billing_cycle.year.month_of_year": {
+			Type:        "integer",
+			Description: "The month to bill on from 1-12. If not provided, this will default to the\nmonth the cadence was created.",
+		},
+		"billing_cycle.year.time.hour": {
+			Type:        "integer",
+			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
+			Required:    true,
+		},
+		"billing_cycle.year.time.minute": {
+			Type:        "integer",
+			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"billing_cycle.year.time.second": {
+			Type:        "integer",
+			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
+			Required:    true,
+		},
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
+		},
+		"payer.billing_profile": {
+			Type:        "string",
+			Description: "The ID of the Billing Profile object which determines how a bill will be paid.",
+			Required:    true,
+		},
+	},
+}
+
+var V2PreviewBillingCadencesList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/billing/cadences",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List billing cadences",
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:        "array",
+			Description: "Additional resource to include in the response.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
+		},
+		"lookup_keys": {
+			Type:        "array",
+			Description: "Only return the cadences with these lookup_keys, if any exist. You can specify up to 10 lookup_keys.\nMutually exclusive with `test_clock` and `payer`.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "Opaque page token.",
+		},
+		"test_clock": {
+			Type:        "string",
+			Description: "If provided, only cadences that specifically reference the provided test clock ID (via the\ncustomer's test clock) will be returned.\nMutually exclusive with `payer`.",
+		},
+	},
+}
+
+var V2PreviewBillingCadencesRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/cadences/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Billing Cadence",
+	Params: map[string]*resource.ParamSpec{
+		"include": {
+			Type:        "array",
+			Description: "Additional resource to include in the response.",
+		},
+	},
+}
+
+var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/billing/cadences/{id}",
+	Method:    "POST",
+	IsPreview: true,
+	Summary:   "Update a Billing Cadence",
+	Params: map[string]*resource.ParamSpec{
+		"lookup_key": {
+			Type:        "string",
+			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
+		},
+	},
+}
+
+var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Collection Setting Versions",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "Opaque page token.",
+		},
+	},
+}
+
+var V2PreviewBillingCollectionSettingVersionsRetrieve = resource.OperationSpec{
+	Name:      "retrieve",
+	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "Retrieve a Collection Setting Version",
 }
 
 var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
@@ -171,6 +511,28 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 				{Value: "instant"},
 				{Value: "microdeposits"},
 			},
+		},
+	},
+}
+
+var V2PreviewBillingCollectionSettingsList = resource.OperationSpec{
+	Name:      "list",
+	Path:      "/v2/billing/collection_settings",
+	Method:    "GET",
+	IsPreview: true,
+	Summary:   "List Collection Settings",
+	Params: map[string]*resource.ParamSpec{
+		"limit": {
+			Type:        "integer",
+			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
+		},
+		"lookup_keys": {
+			Type:        "array",
+			Description: "Only return the settings with these lookup_keys, if any exist.\nYou can specify up to 10 lookup_keys.",
+		},
+		"page": {
+			Type:        "string",
+			Description: "Opaque page token.",
 		},
 	},
 }
@@ -364,160 +726,6 @@ var V2PreviewBillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingBillSettingVersionsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Bill Setting Versions",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "Opaque page token.",
-		},
-	},
-}
-
-var V2PreviewBillingBillSettingVersionsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Bill Setting Version",
-}
-
-var V2PreviewBillingBillSettingsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/bill_settings",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Bill Settings",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
-		},
-		"lookup_keys": {
-			Type:        "array",
-			Description: "Only return the settings with these lookup_keys, if any exist.\nYou can specify up to 10 lookup_keys.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "Opaque page token.",
-		},
-	},
-}
-
-var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/bill_settings",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Create a Bill Setting",
-	Params: map[string]*resource.ParamSpec{
-		"calculation.tax.type": {
-			Type:        "string",
-			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "manual"},
-			},
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "An optional customer-facing display name for the CollectionSetting object.\nMaximum length of 250 characters.",
-		},
-		"invoice.time_until_due.interval": {
-			Type:        "string",
-			Description: "The interval unit for the time until due.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"invoice.time_until_due.interval_count": {
-			Type:        "integer",
-			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
-			Required:    true,
-		},
-		"invoice_rendering_template": {
-			Type:        "string",
-			Description: "The ID of the invoice rendering template to be used when generating invoices.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
-		},
-	},
-}
-
-var V2PreviewBillingBillSettingsRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/bill_settings/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Bill Setting",
-}
-
-var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/bill_settings/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update a Bill Setting",
-	Params: map[string]*resource.ParamSpec{
-		"calculation.tax.type": {
-			Type:        "string",
-			Description: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant. Defaults to \"manual\".",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "automatic"},
-				{Value: "manual"},
-			},
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "An optional customer-facing display name for the BillSetting object.\nTo remove the display name, set it to an empty string in the request.\nMaximum length of 250 characters.",
-		},
-		"invoice.time_until_due.interval": {
-			Type:        "string",
-			Description: "The interval unit for the time until due.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"invoice.time_until_due.interval_count": {
-			Type:        "integer",
-			Description: "The number of interval units. For example, if interval=day and interval_count=30,\nthe invoice will be due in 30 days.",
-			Required:    true,
-		},
-		"invoice_rendering_template": {
-			Type:        "string",
-			Description: "The ID of the invoice rendering template to be used when generating invoices.",
-		},
-		"live_version": {
-			Type:        "string",
-			Description: "Optionally change the live version of the BillSetting. Providing `live_version = \"latest\"` will set the\nBillSetting' `live_version` to its latest version.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve settings dynamically from a static string.\nThis may be up to 200 characters.",
-		},
-	},
-}
-
 var V2PreviewBillingMeterEventSessionsCreate = resource.OperationSpec{
 	Name:      "create",
 	Path:      "/v2/billing/meter_event_session",
@@ -526,184 +734,26 @@ var V2PreviewBillingMeterEventSessionsCreate = resource.OperationSpec{
 	Summary:   "Create a Meter Event Stream Authentication Session",
 }
 
-var V2PreviewBillingCadencesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/cadences/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update a Billing Cadence",
-	Params: map[string]*resource.ParamSpec{
-		"lookup_key": {
-			Type:        "string",
-			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
-		},
-	},
-}
-
-var V2PreviewBillingCadencesCancel = resource.OperationSpec{
-	Name:      "cancel",
-	Path:      "/v2/billing/cadences/{id}/cancel",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Cancel a Billing Cadence",
-}
-
-var V2PreviewBillingCadencesList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/cadences",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List billing cadences",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional resource to include in the response.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
-		},
-		"lookup_keys": {
-			Type:        "array",
-			Description: "Only return the cadences with these lookup_keys, if any exist. You can specify up to 10 lookup_keys.\nMutually exclusive with `test_clock` and `payer`.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "Opaque page token.",
-		},
-		"test_clock": {
-			Type:        "string",
-			Description: "If provided, only cadences that specifically reference the provided test clock ID (via the\ncustomer's test clock) will be returned.\nMutually exclusive with `payer`.",
-		},
-	},
-}
-
-var V2PreviewBillingCadencesCreate = resource.OperationSpec{
+var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
 	Name:      "create",
-	Path:      "/v2/billing/cadences",
+	Path:      "/v2/billing/meter_events",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Create a Billing Cadence",
+	Summary:   "Create a Meter Event with synchronous validation",
 	Params: map[string]*resource.ParamSpec{
-		"billing_cycle.day.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
-		"billing_cycle.day.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.day.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.interval_count": {
-			Type:        "integer",
-			Description: "The number of intervals (specified in the interval attribute) between\ncadence billings. For example, type=month and interval_count=3 bills every\n3 months. If this is not provided, it will default to 1.",
-		},
-		"billing_cycle.month.day_of_month": {
-			Type:        "integer",
-			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
-			Required:    true,
-		},
-		"billing_cycle.month.month_of_year": {
-			Type:        "integer",
-			Description: "The month to anchor the billing on for a type=\"month\" billing cycle from\n1-12. If not provided, this will default to the month the cadence was created.\nThis setting can only be used for monthly billing cycles with `interval_count` of 2, 3, 4 or 6.\nAll occurrences will be calculated from month provided.",
-		},
-		"billing_cycle.month.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
-		"billing_cycle.month.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.month.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.type": {
+		"event_name": {
 			Type:        "string",
-			Description: "The frequency at which a cadence bills.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "month"},
-				{Value: "week"},
-				{Value: "year"},
-			},
-		},
-		"billing_cycle.week.day_of_week": {
-			Type:        "integer",
-			Description: "The day of the week to bill the type=week billing cycle on.\nNumbered from 1-7 for Monday to Sunday respectively, based on the ISO-8601\nweek day numbering. If not provided, this will default to the day the\ncadence was created.",
+			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
 			Required:    true,
 		},
-		"billing_cycle.week.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
-		"billing_cycle.week.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.week.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.year.day_of_month": {
-			Type:        "integer",
-			Description: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31. If this number is greater than the number of days in the month being\nbilled, this will anchor to the last day of the month. If not provided,\nthis will default to the day the cadence was created.",
-		},
-		"billing_cycle.year.month_of_year": {
-			Type:        "integer",
-			Description: "The month to bill on from 1-12. If not provided, this will default to the\nmonth the cadence was created.",
-		},
-		"billing_cycle.year.time.hour": {
-			Type:        "integer",
-			Description: "The hour at which the billing cycle ends.\nThis must be an integer between 0 and 23, inclusive.\n0 represents midnight, and 23 represents 11 PM.",
-			Required:    true,
-		},
-		"billing_cycle.year.time.minute": {
-			Type:        "integer",
-			Description: "The minute at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"billing_cycle.year.time.second": {
-			Type:        "integer",
-			Description: "The second at which the billing cycle ends.\nMust be an integer between 0 and 59, inclusive.",
-			Required:    true,
-		},
-		"lookup_key": {
+		"identifier": {
 			Type:        "string",
-			Description: "A lookup key used to retrieve cadences dynamically from a static string. Maximum length of 200 characters.",
+			Description: "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period.",
 		},
-		"payer.billing_profile": {
+		"timestamp": {
 			Type:        "string",
-			Description: "The ID of the Billing Profile object which determines how a bill will be paid.",
-			Required:    true,
-		},
-	},
-}
-
-var V2PreviewBillingCadencesRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/cadences/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a Billing Cadence",
-	Params: map[string]*resource.ParamSpec{
-		"include": {
-			Type:        "array",
-			Description: "Additional resource to include in the response.",
+			Description: "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
+			Format:      "date-time",
 		},
 	},
 }
@@ -731,36 +781,6 @@ var V2PreviewBillingProfilesCreate = resource.OperationSpec{
 		"lookup_key": {
 			Type:        "string",
 			Description: "An internal key you can use to search for a particular billing profile. It must be unique among billing profiles for a given customer.\nMaximum length of 200 characters.",
-		},
-	},
-}
-
-var V2PreviewBillingProfilesRetrieve = resource.OperationSpec{
-	Name:      "retrieve",
-	Path:      "/v2/billing/profiles/{id}",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "Retrieve a billing profile",
-}
-
-var V2PreviewBillingProfilesUpdate = resource.OperationSpec{
-	Name:      "update",
-	Path:      "/v2/billing/profiles/{id}",
-	Method:    "POST",
-	IsPreview: true,
-	Summary:   "Update a Billing Profile",
-	Params: map[string]*resource.ParamSpec{
-		"default_payment_method": {
-			Type:        "string",
-			Description: "The ID of the payment method object.",
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "A customer-facing name for the billing profile.\nMaximum length of 250 characters.\nTo remove the display_name from the object, set it to null in the request.",
-		},
-		"lookup_key": {
-			Type:        "string",
-			Description: "An internal key you can use to search for a particular billing profile. It must be unique among billing profiles for a given customer.\nMaximum length of 200 characters.\nTo remove the lookup_key from the object, set it to null in the request.",
 		},
 	},
 }
@@ -804,52 +824,32 @@ var V2PreviewBillingProfilesList = resource.OperationSpec{
 	},
 }
 
-var V2PreviewBillingCollectionSettingVersionsList = resource.OperationSpec{
-	Name:      "list",
-	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions",
-	Method:    "GET",
-	IsPreview: true,
-	Summary:   "List Collection Setting Versions",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:        "integer",
-			Description: "Optionally set the maximum number of results per page. Defaults to 20.",
-		},
-		"page": {
-			Type:        "string",
-			Description: "Opaque page token.",
-		},
-	},
-}
-
-var V2PreviewBillingCollectionSettingVersionsRetrieve = resource.OperationSpec{
+var V2PreviewBillingProfilesRetrieve = resource.OperationSpec{
 	Name:      "retrieve",
-	Path:      "/v2/billing/collection_settings/{collection_setting_id}/versions/{id}",
+	Path:      "/v2/billing/profiles/{id}",
 	Method:    "GET",
 	IsPreview: true,
-	Summary:   "Retrieve a Collection Setting Version",
+	Summary:   "Retrieve a billing profile",
 }
 
-var V2PreviewBillingMeterEventsCreate = resource.OperationSpec{
-	Name:      "create",
-	Path:      "/v2/billing/meter_events",
+var V2PreviewBillingProfilesUpdate = resource.OperationSpec{
+	Name:      "update",
+	Path:      "/v2/billing/profiles/{id}",
 	Method:    "POST",
 	IsPreview: true,
-	Summary:   "Create a Meter Event with synchronous validation",
+	Summary:   "Update a Billing Profile",
 	Params: map[string]*resource.ParamSpec{
-		"event_name": {
+		"default_payment_method": {
 			Type:        "string",
-			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
-			Required:    true,
+			Description: "The ID of the payment method object.",
 		},
-		"identifier": {
+		"display_name": {
 			Type:        "string",
-			Description: "A unique identifier for the event. If not provided, one will be generated.\nWe recommend using a globally unique identifier for this. We’ll enforce\nuniqueness within a rolling 24 hour period.",
+			Description: "A customer-facing name for the billing profile.\nMaximum length of 250 characters.\nTo remove the display_name from the object, set it to null in the request.",
 		},
-		"timestamp": {
+		"lookup_key": {
 			Type:        "string",
-			Description: "The time of the event. Must be within the past 35 calendar days or up to\n5 minutes in the future. Defaults to current timestamp if not specified.",
-			Format:      "date-time",
+			Description: "An internal key you can use to search for a particular billing profile. It must be unique among billing profiles for a given customer.\nMaximum length of 200 characters.\nTo remove the lookup_key from the object, set it to null in the request.",
 		},
 	},
 }

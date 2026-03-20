@@ -4,27 +4,6 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1CheckoutSessionsListLineItems = resource.OperationSpec{
-	Name:    "list_line_items",
-	Path:    "/v1/checkout/sessions/{session}/line_items",
-	Method:  "GET",
-	Summary: "Retrieve a Checkout Session's line items",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
 var V1CheckoutSessionsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v1/checkout/sessions",
@@ -1404,46 +1383,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 	},
 }
 
-var V1CheckoutSessionsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/checkout/sessions/{session}",
-	Method:  "POST",
-	Summary: "Update a Checkout Session",
-	Params: map[string]*resource.ParamSpec{
-		"collected_information.shipping_details.address.city": {
-			Type:        "string",
-			Description: "City, district, suburb, town, or village.",
-		},
-		"collected_information.shipping_details.address.country": {
-			Type:        "string",
-			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
-			Required:    true,
-		},
-		"collected_information.shipping_details.address.line1": {
-			Type:        "string",
-			Description: "Address line 1, such as the street, PO Box, or company name.",
-			Required:    true,
-		},
-		"collected_information.shipping_details.address.line2": {
-			Type:        "string",
-			Description: "Address line 2, such as the apartment, suite, unit, or building.",
-		},
-		"collected_information.shipping_details.address.postal_code": {
-			Type:        "string",
-			Description: "ZIP or postal code.",
-		},
-		"collected_information.shipping_details.address.state": {
-			Type:        "string",
-			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
-		},
-		"collected_information.shipping_details.name": {
-			Type:        "string",
-			Description: "The name of customer",
-			Required:    true,
-		},
-	},
-}
-
 var V1CheckoutSessionsExpire = resource.OperationSpec{
 	Name:    "expire",
 	Path:    "/v1/checkout/sessions/{session}/expire",
@@ -1505,9 +1444,70 @@ var V1CheckoutSessionsList = resource.OperationSpec{
 	},
 }
 
+var V1CheckoutSessionsListLineItems = resource.OperationSpec{
+	Name:    "list_line_items",
+	Path:    "/v1/checkout/sessions/{session}/line_items",
+	Method:  "GET",
+	Summary: "Retrieve a Checkout Session's line items",
+	Params: map[string]*resource.ParamSpec{
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
 var V1CheckoutSessionsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
 	Path:    "/v1/checkout/sessions/{session}",
 	Method:  "GET",
 	Summary: "Retrieve a Checkout Session",
+}
+
+var V1CheckoutSessionsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/checkout/sessions/{session}",
+	Method:  "POST",
+	Summary: "Update a Checkout Session",
+	Params: map[string]*resource.ParamSpec{
+		"collected_information.shipping_details.address.city": {
+			Type:        "string",
+			Description: "City, district, suburb, town, or village.",
+		},
+		"collected_information.shipping_details.address.country": {
+			Type:        "string",
+			Description: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2)).",
+			Required:    true,
+		},
+		"collected_information.shipping_details.address.line1": {
+			Type:        "string",
+			Description: "Address line 1, such as the street, PO Box, or company name.",
+			Required:    true,
+		},
+		"collected_information.shipping_details.address.line2": {
+			Type:        "string",
+			Description: "Address line 2, such as the apartment, suite, unit, or building.",
+		},
+		"collected_information.shipping_details.address.postal_code": {
+			Type:        "string",
+			Description: "ZIP or postal code.",
+		},
+		"collected_information.shipping_details.address.state": {
+			Type:        "string",
+			Description: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2)).",
+		},
+		"collected_information.shipping_details.name": {
+			Type:        "string",
+			Description: "The name of customer",
+			Required:    true,
+		},
+	},
 }

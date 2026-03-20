@@ -52,11 +52,11 @@ var V1IdentityVerificationReportsRetrieve = resource.OperationSpec{
 	Summary: "Retrieve a VerificationReport",
 }
 
-var V1IdentityVerificationSessionsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/identity/verification_sessions/{session}",
-	Method:  "GET",
-	Summary: "Retrieve a VerificationSession",
+var V1IdentityVerificationSessionsCancel = resource.OperationSpec{
+	Name:    "cancel",
+	Path:    "/v1/identity/verification_sessions/{session}/cancel",
+	Method:  "POST",
+	Summary: "Cancel a VerificationSession",
 }
 
 var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
@@ -114,45 +114,6 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 	},
 }
 
-var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/identity/verification_sessions/{session}",
-	Method:  "POST",
-	Summary: "Update a VerificationSession",
-	Params: map[string]*resource.ParamSpec{
-		"provided_details.email": {
-			Type:        "string",
-			Description: "Email of user being verified",
-		},
-		"provided_details.phone": {
-			Type:        "string",
-			Description: "Phone number of user being verified",
-		},
-		"type": {
-			Type:        "string",
-			Description: "The type of [verification check](https://docs.stripe.com/identity/verification-checks) to be performed.",
-			Enum: []resource.EnumSpec{
-				{Value: "document"},
-				{Value: "id_number"},
-			},
-		},
-	},
-}
-
-var V1IdentityVerificationSessionsCancel = resource.OperationSpec{
-	Name:    "cancel",
-	Path:    "/v1/identity/verification_sessions/{session}/cancel",
-	Method:  "POST",
-	Summary: "Cancel a VerificationSession",
-}
-
-var V1IdentityVerificationSessionsRedact = resource.OperationSpec{
-	Name:    "redact",
-	Path:    "/v1/identity/verification_sessions/{session}/redact",
-	Method:  "POST",
-	Summary: "Redact a VerificationSession",
-}
-
 var V1IdentityVerificationSessionsList = resource.OperationSpec{
 	Name:    "list",
 	Path:    "/v1/identity/verification_sessions",
@@ -195,6 +156,45 @@ var V1IdentityVerificationSessionsList = resource.OperationSpec{
 				{Value: "processing"},
 				{Value: "requires_input"},
 				{Value: "verified"},
+			},
+		},
+	},
+}
+
+var V1IdentityVerificationSessionsRedact = resource.OperationSpec{
+	Name:    "redact",
+	Path:    "/v1/identity/verification_sessions/{session}/redact",
+	Method:  "POST",
+	Summary: "Redact a VerificationSession",
+}
+
+var V1IdentityVerificationSessionsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/identity/verification_sessions/{session}",
+	Method:  "GET",
+	Summary: "Retrieve a VerificationSession",
+}
+
+var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/identity/verification_sessions/{session}",
+	Method:  "POST",
+	Summary: "Update a VerificationSession",
+	Params: map[string]*resource.ParamSpec{
+		"provided_details.email": {
+			Type:        "string",
+			Description: "Email of user being verified",
+		},
+		"provided_details.phone": {
+			Type:        "string",
+			Description: "Phone number of user being verified",
+		},
+		"type": {
+			Type:        "string",
+			Description: "The type of [verification check](https://docs.stripe.com/identity/verification-checks) to be performed.",
+			Enum: []resource.EnumSpec{
+				{Value: "document"},
+				{Value: "id_number"},
 			},
 		},
 	},

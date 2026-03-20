@@ -4,227 +4,18 @@ package resources
 
 import "github.com/stripe/stripe-cli/pkg/cmd/resource"
 
-var V1BillingMeterEventsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/billing/meter_events",
+var V1BillingAlertsActivate = resource.OperationSpec{
+	Name:    "activate",
+	Path:    "/v1/billing/alerts/{id}/activate",
 	Method:  "POST",
-	Summary: "Create a billing meter event",
-	Params: map[string]*resource.ParamSpec{
-		"event_name": {
-			Type:        "string",
-			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
-			Required:    true,
-		},
-		"identifier": {
-			Type:        "string",
-			Description: "A unique identifier for the event. If not provided, one is generated. We recommend using UUID-like identifiers. We will enforce uniqueness within a rolling period of at least 24 hours. The enforcement of uniqueness primarily addresses issues arising from accidental retries or other problems occurring within extremely brief time intervals. This approach helps prevent duplicate entries and ensures data integrity in high-frequency operations.",
-		},
-		"timestamp": {
-			Type:        "integer",
-			Description: "The time of the event. Measured in seconds since the Unix epoch. Must be within the past 35 calendar days or up to 5 minutes in the future. Defaults to current timestamp if not specified.",
-			Format:      "unix-time",
-		},
-	},
+	Summary: "Activate a billing alert",
 }
 
-var V1BillingMetersReactivate = resource.OperationSpec{
-	Name:    "reactivate",
-	Path:    "/v1/billing/meters/{id}/reactivate",
+var V1BillingAlertsArchive = resource.OperationSpec{
+	Name:    "archive",
+	Path:    "/v1/billing/alerts/{id}/archive",
 	Method:  "POST",
-	Summary: "Reactivate a billing meter",
-}
-
-var V1BillingMetersList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/billing/meters",
-	Method:  "GET",
-	Summary: "List billing meters",
-	Params: map[string]*resource.ParamSpec{
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-		"status": {
-			Type:        "string",
-			Description: "Filter results to only include meters with the given status.",
-			Enum: []resource.EnumSpec{
-				{Value: "active"},
-				{Value: "inactive"},
-			},
-		},
-	},
-}
-
-var V1BillingMetersRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/billing/meters/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a billing meter",
-}
-
-var V1BillingMetersCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/billing/meters",
-	Method:  "POST",
-	Summary: "Create a billing meter",
-	Params: map[string]*resource.ParamSpec{
-		"customer_mapping.event_payload_key": {
-			Type:        "string",
-			Description: "The key in the meter event payload to use for mapping the event to a customer.",
-			Required:    true,
-		},
-		"customer_mapping.type": {
-			Type:        "string",
-			Description: "The method for mapping a meter event to a customer. Must be `by_id`.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "by_id"},
-			},
-		},
-		"default_aggregation.formula": {
-			Type:        "string",
-			Description: "Specifies how events are aggregated. Allowed values are `count` to count the number of events, `sum` to sum each event's value and `last` to take the last event's value in the window.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "count"},
-				{Value: "last"},
-				{Value: "sum"},
-			},
-		},
-		"display_name": {
-			Type:        "string",
-			Description: "The meter’s name. Not visible to the customer.",
-			Required:    true,
-		},
-		"event_name": {
-			Type:        "string",
-			Description: "The name of the meter event to record usage for. Corresponds with the `event_name` field on meter events.",
-			Required:    true,
-		},
-		"event_time_window": {
-			Type:        "string",
-			Description: "The time window which meter events have been pre-aggregated for, if any.",
-			Enum: []resource.EnumSpec{
-				{Value: "day"},
-				{Value: "hour"},
-			},
-		},
-		"value_settings.event_payload_key": {
-			Type:        "string",
-			Description: "The key in the usage event payload to use as the value for this meter. For example, if the event payload contains usage on a `bytes_used` field, then set the event_payload_key to \"bytes_used\".",
-			Required:    true,
-		},
-	},
-}
-
-var V1BillingMetersUpdate = resource.OperationSpec{
-	Name:    "update",
-	Path:    "/v1/billing/meters/{id}",
-	Method:  "POST",
-	Summary: "Update a billing meter",
-	Params: map[string]*resource.ParamSpec{
-		"display_name": {
-			Type:        "string",
-			Description: "The meter’s name. Not visible to the customer.",
-		},
-	},
-}
-
-var V1BillingMetersDeactivate = resource.OperationSpec{
-	Name:    "deactivate",
-	Path:    "/v1/billing/meters/{id}/deactivate",
-	Method:  "POST",
-	Summary: "Deactivate a billing meter",
-}
-
-var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v1/billing/meter_event_adjustments",
-	Method:  "POST",
-	Summary: "Create a billing meter event adjustment",
-	Params: map[string]*resource.ParamSpec{
-		"cancel.identifier": {
-			Type:        "string",
-			Description: "Unique identifier for the event. You can only cancel events within 24 hours of Stripe receiving them.",
-		},
-		"event_name": {
-			Type:        "string",
-			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
-			Required:    true,
-		},
-		"type": {
-			Type:        "string",
-			Description: "Specifies whether to cancel a single event or a range of events for a time period. Time period cancellation is not supported yet.",
-			Required:    true,
-			Enum: []resource.EnumSpec{
-				{Value: "cancel"},
-			},
-		},
-	},
-}
-
-var V1BillingCreditBalanceSummariesRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/billing/credit_balance_summary",
-	Method:  "GET",
-	Summary: "Retrieve the credit balance summary for a customer",
-	Params: map[string]*resource.ParamSpec{
-		"customer": {
-			Type:        "string",
-			Description: "The customer whose credit balance summary you're retrieving.",
-		},
-		"customer_account": {
-			Type:        "string",
-			Description: "The account representing the customer whose credit balance summary you're retrieving.",
-		},
-	},
-}
-
-var V1BillingAlertsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/billing/alerts",
-	Method:  "GET",
-	Summary: "List billing alerts",
-	Params: map[string]*resource.ParamSpec{
-		"alert_type": {
-			Type:        "string",
-			Description: "Filter results to only include this type of alert.",
-			Enum: []resource.EnumSpec{
-				{Value: "usage_threshold"},
-			},
-		},
-		"ending_before": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
-		},
-		"limit": {
-			Type:        "integer",
-			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
-		},
-		"meter": {
-			Type:        "string",
-			Description: "Filter results to only include alerts with the given meter.",
-		},
-		"starting_after": {
-			Type:        "string",
-			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
-		},
-	},
-}
-
-var V1BillingAlertsRetrieve = resource.OperationSpec{
-	Name:    "retrieve",
-	Path:    "/v1/billing/alerts/{id}",
-	Method:  "GET",
-	Summary: "Retrieve a billing alert",
+	Summary: "Archive a billing alert",
 }
 
 var V1BillingAlertsCreate = resource.OperationSpec{
@@ -267,20 +58,6 @@ var V1BillingAlertsCreate = resource.OperationSpec{
 	},
 }
 
-var V1BillingAlertsActivate = resource.OperationSpec{
-	Name:    "activate",
-	Path:    "/v1/billing/alerts/{id}/activate",
-	Method:  "POST",
-	Summary: "Activate a billing alert",
-}
-
-var V1BillingAlertsArchive = resource.OperationSpec{
-	Name:    "archive",
-	Path:    "/v1/billing/alerts/{id}/archive",
-	Method:  "POST",
-	Summary: "Archive a billing alert",
-}
-
 var V1BillingAlertsDeactivate = resource.OperationSpec{
 	Name:    "deactivate",
 	Path:    "/v1/billing/alerts/{id}/deactivate",
@@ -288,19 +65,79 @@ var V1BillingAlertsDeactivate = resource.OperationSpec{
 	Summary: "Deactivate a billing alert",
 }
 
-var V1BillingCreditGrantsList = resource.OperationSpec{
+var V1BillingAlertsList = resource.OperationSpec{
 	Name:    "list",
-	Path:    "/v1/billing/credit_grants",
+	Path:    "/v1/billing/alerts",
 	Method:  "GET",
-	Summary: "List credit grants",
+	Summary: "List billing alerts",
+	Params: map[string]*resource.ParamSpec{
+		"alert_type": {
+			Type:        "string",
+			Description: "Filter results to only include this type of alert.",
+			Enum: []resource.EnumSpec{
+				{Value: "usage_threshold"},
+			},
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"meter": {
+			Type:        "string",
+			Description: "Filter results to only include alerts with the given meter.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1BillingAlertsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/billing/alerts/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a billing alert",
+}
+
+var V1BillingCreditBalanceSummariesRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/billing/credit_balance_summary",
+	Method:  "GET",
+	Summary: "Retrieve the credit balance summary for a customer",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
 			Type:        "string",
-			Description: "Only return credit grants for this customer.",
+			Description: "The customer whose credit balance summary you're retrieving.",
 		},
 		"customer_account": {
 			Type:        "string",
-			Description: "Only return credit grants for this account representing the customer.",
+			Description: "The account representing the customer whose credit balance summary you're retrieving.",
+		},
+	},
+}
+
+var V1BillingCreditBalanceTransactionsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/billing/credit_balance_transactions",
+	Method:  "GET",
+	Summary: "List credit balance transactions",
+	Params: map[string]*resource.ParamSpec{
+		"credit_grant": {
+			Type:        "string",
+			Description: "The credit grant for which to fetch credit balance transactions.",
+		},
+		"customer": {
+			Type:        "string",
+			Description: "The customer whose credit balance transactions you're retrieving.",
+		},
+		"customer_account": {
+			Type:        "string",
+			Description: "The account representing the customer whose credit balance transactions you're retrieving.",
 		},
 		"ending_before": {
 			Type:        "string",
@@ -317,11 +154,11 @@ var V1BillingCreditGrantsList = resource.OperationSpec{
 	},
 }
 
-var V1BillingCreditGrantsRetrieve = resource.OperationSpec{
+var V1BillingCreditBalanceTransactionsRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/billing/credit_grants/{id}",
+	Path:    "/v1/billing/credit_balance_transactions/{id}",
 	Method:  "GET",
-	Summary: "Retrieve a credit grant",
+	Summary: "Retrieve a credit balance transaction",
 }
 
 var V1BillingCreditGrantsCreate = resource.OperationSpec{
@@ -393,6 +230,49 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 	},
 }
 
+var V1BillingCreditGrantsExpire = resource.OperationSpec{
+	Name:    "expire",
+	Path:    "/v1/billing/credit_grants/{id}/expire",
+	Method:  "POST",
+	Summary: "Expire a credit grant",
+}
+
+var V1BillingCreditGrantsList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/billing/credit_grants",
+	Method:  "GET",
+	Summary: "List credit grants",
+	Params: map[string]*resource.ParamSpec{
+		"customer": {
+			Type:        "string",
+			Description: "Only return credit grants for this customer.",
+		},
+		"customer_account": {
+			Type:        "string",
+			Description: "Only return credit grants for this account representing the customer.",
+		},
+		"ending_before": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
+		},
+		"limit": {
+			Type:        "integer",
+			Description: "A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 10.",
+		},
+		"starting_after": {
+			Type:        "string",
+			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
+		},
+	},
+}
+
+var V1BillingCreditGrantsRetrieve = resource.OperationSpec{
+	Name:    "retrieve",
+	Path:    "/v1/billing/credit_grants/{id}",
+	Method:  "GET",
+	Summary: "Retrieve a credit grant",
+}
+
 var V1BillingCreditGrantsUpdate = resource.OperationSpec{
 	Name:    "update",
 	Path:    "/v1/billing/credit_grants/{id}",
@@ -406,18 +286,37 @@ var V1BillingCreditGrantsUpdate = resource.OperationSpec{
 	},
 }
 
-var V1BillingCreditGrantsExpire = resource.OperationSpec{
-	Name:    "expire",
-	Path:    "/v1/billing/credit_grants/{id}/expire",
-	Method:  "POST",
-	Summary: "Expire a credit grant",
-}
-
 var V1BillingCreditGrantsVoidGrant = resource.OperationSpec{
 	Name:    "void_grant",
 	Path:    "/v1/billing/credit_grants/{id}/void",
 	Method:  "POST",
 	Summary: "Void a credit grant",
+}
+
+var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/billing/meter_event_adjustments",
+	Method:  "POST",
+	Summary: "Create a billing meter event adjustment",
+	Params: map[string]*resource.ParamSpec{
+		"cancel.identifier": {
+			Type:        "string",
+			Description: "Unique identifier for the event. You can only cancel events within 24 hours of Stripe receiving them.",
+		},
+		"event_name": {
+			Type:        "string",
+			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
+			Required:    true,
+		},
+		"type": {
+			Type:        "string",
+			Description: "Specifies whether to cancel a single event or a range of events for a time period. Time period cancellation is not supported yet.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "cancel"},
+			},
+		},
+	},
 }
 
 var V1BillingMeterEventSummariesList = resource.OperationSpec{
@@ -466,24 +365,97 @@ var V1BillingMeterEventSummariesList = resource.OperationSpec{
 	},
 }
 
-var V1BillingCreditBalanceTransactionsList = resource.OperationSpec{
-	Name:    "list",
-	Path:    "/v1/billing/credit_balance_transactions",
-	Method:  "GET",
-	Summary: "List credit balance transactions",
+var V1BillingMeterEventsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/billing/meter_events",
+	Method:  "POST",
+	Summary: "Create a billing meter event",
 	Params: map[string]*resource.ParamSpec{
-		"credit_grant": {
+		"event_name": {
 			Type:        "string",
-			Description: "The credit grant for which to fetch credit balance transactions.",
+			Description: "The name of the meter event. Corresponds with the `event_name` field on a meter.",
+			Required:    true,
 		},
-		"customer": {
+		"identifier": {
 			Type:        "string",
-			Description: "The customer whose credit balance transactions you're retrieving.",
+			Description: "A unique identifier for the event. If not provided, one is generated. We recommend using UUID-like identifiers. We will enforce uniqueness within a rolling period of at least 24 hours. The enforcement of uniqueness primarily addresses issues arising from accidental retries or other problems occurring within extremely brief time intervals. This approach helps prevent duplicate entries and ensures data integrity in high-frequency operations.",
 		},
-		"customer_account": {
+		"timestamp": {
+			Type:        "integer",
+			Description: "The time of the event. Measured in seconds since the Unix epoch. Must be within the past 35 calendar days or up to 5 minutes in the future. Defaults to current timestamp if not specified.",
+			Format:      "unix-time",
+		},
+	},
+}
+
+var V1BillingMetersCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v1/billing/meters",
+	Method:  "POST",
+	Summary: "Create a billing meter",
+	Params: map[string]*resource.ParamSpec{
+		"customer_mapping.event_payload_key": {
 			Type:        "string",
-			Description: "The account representing the customer whose credit balance transactions you're retrieving.",
+			Description: "The key in the meter event payload to use for mapping the event to a customer.",
+			Required:    true,
 		},
+		"customer_mapping.type": {
+			Type:        "string",
+			Description: "The method for mapping a meter event to a customer. Must be `by_id`.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "by_id"},
+			},
+		},
+		"default_aggregation.formula": {
+			Type:        "string",
+			Description: "Specifies how events are aggregated. Allowed values are `count` to count the number of events, `sum` to sum each event's value and `last` to take the last event's value in the window.",
+			Required:    true,
+			Enum: []resource.EnumSpec{
+				{Value: "count"},
+				{Value: "last"},
+				{Value: "sum"},
+			},
+		},
+		"display_name": {
+			Type:        "string",
+			Description: "The meter’s name. Not visible to the customer.",
+			Required:    true,
+		},
+		"event_name": {
+			Type:        "string",
+			Description: "The name of the meter event to record usage for. Corresponds with the `event_name` field on meter events.",
+			Required:    true,
+		},
+		"event_time_window": {
+			Type:        "string",
+			Description: "The time window which meter events have been pre-aggregated for, if any.",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "hour"},
+			},
+		},
+		"value_settings.event_payload_key": {
+			Type:        "string",
+			Description: "The key in the usage event payload to use as the value for this meter. For example, if the event payload contains usage on a `bytes_used` field, then set the event_payload_key to \"bytes_used\".",
+			Required:    true,
+		},
+	},
+}
+
+var V1BillingMetersDeactivate = resource.OperationSpec{
+	Name:    "deactivate",
+	Path:    "/v1/billing/meters/{id}/deactivate",
+	Method:  "POST",
+	Summary: "Deactivate a billing meter",
+}
+
+var V1BillingMetersList = resource.OperationSpec{
+	Name:    "list",
+	Path:    "/v1/billing/meters",
+	Method:  "GET",
+	Summary: "List billing meters",
+	Params: map[string]*resource.ParamSpec{
 		"ending_before": {
 			Type:        "string",
 			Description: "A cursor for use in pagination. `ending_before` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, starting with `obj_bar`, your subsequent call can include `ending_before=obj_bar` in order to fetch the previous page of the list.",
@@ -496,12 +468,40 @@ var V1BillingCreditBalanceTransactionsList = resource.OperationSpec{
 			Type:        "string",
 			Description: "A cursor for use in pagination. `starting_after` is an object ID that defines your place in the list. For instance, if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include `starting_after=obj_foo` in order to fetch the next page of the list.",
 		},
+		"status": {
+			Type:        "string",
+			Description: "Filter results to only include meters with the given status.",
+			Enum: []resource.EnumSpec{
+				{Value: "active"},
+				{Value: "inactive"},
+			},
+		},
 	},
 }
 
-var V1BillingCreditBalanceTransactionsRetrieve = resource.OperationSpec{
+var V1BillingMetersReactivate = resource.OperationSpec{
+	Name:    "reactivate",
+	Path:    "/v1/billing/meters/{id}/reactivate",
+	Method:  "POST",
+	Summary: "Reactivate a billing meter",
+}
+
+var V1BillingMetersRetrieve = resource.OperationSpec{
 	Name:    "retrieve",
-	Path:    "/v1/billing/credit_balance_transactions/{id}",
+	Path:    "/v1/billing/meters/{id}",
 	Method:  "GET",
-	Summary: "Retrieve a credit balance transaction",
+	Summary: "Retrieve a billing meter",
+}
+
+var V1BillingMetersUpdate = resource.OperationSpec{
+	Name:    "update",
+	Path:    "/v1/billing/meters/{id}",
+	Method:  "POST",
+	Summary: "Update a billing meter",
+	Params: map[string]*resource.ParamSpec{
+		"display_name": {
+			Type:        "string",
+			Description: "The meter’s name. Not visible to the customer.",
+		},
+	},
 }

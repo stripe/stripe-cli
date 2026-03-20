@@ -31,6 +31,13 @@ var V2BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 	},
 }
 
+var V2BillingMeterEventSessionsCreate = resource.OperationSpec{
+	Name:    "create",
+	Path:    "/v2/billing/meter_event_session",
+	Method:  "POST",
+	Summary: "Create a Meter Event Stream Authentication Session",
+}
+
 var V2BillingMeterEventsCreate = resource.OperationSpec{
 	Name:    "create",
 	Path:    "/v2/billing/meter_events",
@@ -52,11 +59,4 @@ var V2BillingMeterEventsCreate = resource.OperationSpec{
 			Format:      "date-time",
 		},
 	},
-}
-
-var V2BillingMeterEventSessionsCreate = resource.OperationSpec{
-	Name:    "create",
-	Path:    "/v2/billing/meter_event_session",
-	Method:  "POST",
-	Summary: "Create a Meter Event Stream Authentication Session",
 }
