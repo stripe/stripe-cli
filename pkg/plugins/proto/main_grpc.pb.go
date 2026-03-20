@@ -121,8 +121,12 @@ var Main_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	CoreCLIHelper_Echo_FullMethodName          = "/proto.CoreCLIHelper/Echo"
-	CoreCLIHelper_SendAnalytics_FullMethodName = "/proto.CoreCLIHelper/SendAnalytics"
+	CoreCLIHelper_Echo_FullMethodName                    = "/proto.CoreCLIHelper/Echo"
+	CoreCLIHelper_SendAnalytics_FullMethodName           = "/proto.CoreCLIHelper/SendAnalytics"
+	CoreCLIHelper_KeychainGetPassword_FullMethodName     = "/proto.CoreCLIHelper/KeychainGetPassword"
+	CoreCLIHelper_KeychainSetPassword_FullMethodName     = "/proto.CoreCLIHelper/KeychainSetPassword"
+	CoreCLIHelper_KeychainDeletePassword_FullMethodName  = "/proto.CoreCLIHelper/KeychainDeletePassword"
+	CoreCLIHelper_KeychainFindCredentials_FullMethodName = "/proto.CoreCLIHelper/KeychainFindCredentials"
 )
 
 // CoreCLIHelperClient is the client API for CoreCLIHelper service.
@@ -131,6 +135,10 @@ const (
 type CoreCLIHelperClient interface {
 	Echo(ctx context.Context, in *EchoRequest, opts ...grpc.CallOption) (*EchoResponse, error)
 	SendAnalytics(ctx context.Context, in *SendAnalyticsRequest, opts ...grpc.CallOption) (*SendAnalyticsResponse, error)
+	KeychainGetPassword(ctx context.Context, in *KeychainGetPasswordRequest, opts ...grpc.CallOption) (*KeychainGetPasswordResponse, error)
+	KeychainSetPassword(ctx context.Context, in *KeychainSetPasswordRequest, opts ...grpc.CallOption) (*KeychainSetPasswordResponse, error)
+	KeychainDeletePassword(ctx context.Context, in *KeychainDeletePasswordRequest, opts ...grpc.CallOption) (*KeychainDeletePasswordResponse, error)
+	KeychainFindCredentials(ctx context.Context, in *KeychainFindCredentialsRequest, opts ...grpc.CallOption) (*KeychainFindCredentialsResponse, error)
 }
 
 type coreCLIHelperClient struct {
@@ -161,12 +169,56 @@ func (c *coreCLIHelperClient) SendAnalytics(ctx context.Context, in *SendAnalyti
 	return out, nil
 }
 
+func (c *coreCLIHelperClient) KeychainGetPassword(ctx context.Context, in *KeychainGetPasswordRequest, opts ...grpc.CallOption) (*KeychainGetPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KeychainGetPasswordResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_KeychainGetPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) KeychainSetPassword(ctx context.Context, in *KeychainSetPasswordRequest, opts ...grpc.CallOption) (*KeychainSetPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KeychainSetPasswordResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_KeychainSetPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) KeychainDeletePassword(ctx context.Context, in *KeychainDeletePasswordRequest, opts ...grpc.CallOption) (*KeychainDeletePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KeychainDeletePasswordResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_KeychainDeletePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *coreCLIHelperClient) KeychainFindCredentials(ctx context.Context, in *KeychainFindCredentialsRequest, opts ...grpc.CallOption) (*KeychainFindCredentialsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(KeychainFindCredentialsResponse)
+	err := c.cc.Invoke(ctx, CoreCLIHelper_KeychainFindCredentials_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CoreCLIHelperServer is the server API for CoreCLIHelper service.
 // All implementations must embed UnimplementedCoreCLIHelperServer
 // for forward compatibility.
 type CoreCLIHelperServer interface {
 	Echo(context.Context, *EchoRequest) (*EchoResponse, error)
 	SendAnalytics(context.Context, *SendAnalyticsRequest) (*SendAnalyticsResponse, error)
+	KeychainGetPassword(context.Context, *KeychainGetPasswordRequest) (*KeychainGetPasswordResponse, error)
+	KeychainSetPassword(context.Context, *KeychainSetPasswordRequest) (*KeychainSetPasswordResponse, error)
+	KeychainDeletePassword(context.Context, *KeychainDeletePasswordRequest) (*KeychainDeletePasswordResponse, error)
+	KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error)
 	mustEmbedUnimplementedCoreCLIHelperServer()
 }
 
@@ -182,6 +234,18 @@ func (UnimplementedCoreCLIHelperServer) Echo(context.Context, *EchoRequest) (*Ec
 }
 func (UnimplementedCoreCLIHelperServer) SendAnalytics(context.Context, *SendAnalyticsRequest) (*SendAnalyticsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendAnalytics not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) KeychainGetPassword(context.Context, *KeychainGetPasswordRequest) (*KeychainGetPasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeychainGetPassword not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) KeychainSetPassword(context.Context, *KeychainSetPasswordRequest) (*KeychainSetPasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeychainSetPassword not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) KeychainDeletePassword(context.Context, *KeychainDeletePasswordRequest) (*KeychainDeletePasswordResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeychainDeletePassword not implemented")
+}
+func (UnimplementedCoreCLIHelperServer) KeychainFindCredentials(context.Context, *KeychainFindCredentialsRequest) (*KeychainFindCredentialsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeychainFindCredentials not implemented")
 }
 func (UnimplementedCoreCLIHelperServer) mustEmbedUnimplementedCoreCLIHelperServer() {}
 func (UnimplementedCoreCLIHelperServer) testEmbeddedByValue()                       {}
@@ -240,6 +304,78 @@ func _CoreCLIHelper_SendAnalytics_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CoreCLIHelper_KeychainGetPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeychainGetPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).KeychainGetPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_KeychainGetPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).KeychainGetPassword(ctx, req.(*KeychainGetPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_KeychainSetPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeychainSetPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).KeychainSetPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_KeychainSetPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).KeychainSetPassword(ctx, req.(*KeychainSetPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_KeychainDeletePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeychainDeletePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).KeychainDeletePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_KeychainDeletePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).KeychainDeletePassword(ctx, req.(*KeychainDeletePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CoreCLIHelper_KeychainFindCredentials_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeychainFindCredentialsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CoreCLIHelperServer).KeychainFindCredentials(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CoreCLIHelper_KeychainFindCredentials_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CoreCLIHelperServer).KeychainFindCredentials(ctx, req.(*KeychainFindCredentialsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CoreCLIHelper_ServiceDesc is the grpc.ServiceDesc for CoreCLIHelper service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -254,6 +390,22 @@ var CoreCLIHelper_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendAnalytics",
 			Handler:    _CoreCLIHelper_SendAnalytics_Handler,
+		},
+		{
+			MethodName: "KeychainGetPassword",
+			Handler:    _CoreCLIHelper_KeychainGetPassword_Handler,
+		},
+		{
+			MethodName: "KeychainSetPassword",
+			Handler:    _CoreCLIHelper_KeychainSetPassword_Handler,
+		},
+		{
+			MethodName: "KeychainDeletePassword",
+			Handler:    _CoreCLIHelper_KeychainDeletePassword_Handler,
+		},
+		{
+			MethodName: "KeychainFindCredentials",
+			Handler:    _CoreCLIHelper_KeychainFindCredentials_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
