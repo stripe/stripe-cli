@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -57,6 +58,29 @@ const (
 
 // KeyRing ...
 var KeyRing keyring.Keyring
+
+func getKeyringConfig() keyring.Config {
+	c := keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	}
+
+	if runtime.GOOS == "linux" {
+		c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		c.FilePasswordFunc = func(prompt string) (string, error) {
+			fmt.Fprintf(os.Stdout, "%s: ", prompt)
+			b, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return "", err
+			}
+			fmt.Println()
+			return string(b), nil
+		}
+	}
+
+	return c
+}
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -476,16 +500,6 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return nil
 }
 
-func fileKeyringPassphrasePrompt(prompt string) (string, error) {
-	fmt.Fprintf(os.Stdout, "%s: ", prompt)
-	b, err := term.ReadPassword(int(os.Stdin.Fd()))
-	if err != nil {
-		return "", err
-	}
-	fmt.Println()
-	return string(b), nil
-}
-
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -496,12 +510,7 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-		FileDir:                  getConfigFolder(os.Getenv("XDG_CONFIG_HOME")),
-		FilePasswordFunc:         fileKeyringPassphrasePrompt,
-	})
+	ring, err := keyring.Open(getKeyringConfig())
 	if err != nil {
 		return nil, err
 	}

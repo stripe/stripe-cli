@@ -178,12 +178,7 @@ func (c *Config) InitConfig() {
 	}
 
 	// initialize key ring
-	KeyRing, err = keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-		FileDir:                  getConfigFolder(os.Getenv("XDG_CONFIG_HOME")),
-		FilePasswordFunc:         fileKeyringPassphrasePrompt,
-	})
+	KeyRing, err = keyring.Open(getKeyringConfig())
 	if err != nil {
 		log.WithFields(log.Fields{
 			"prefix": "config.Config.InitConfig",
