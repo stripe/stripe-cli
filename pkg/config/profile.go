@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -57,6 +58,29 @@ const (
 
 // KeyRing ...
 var KeyRing keyring.Keyring
+
+func getKeyringConfig() keyring.Config {
+	c := keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	}
+
+	if runtime.GOOS == "linux" {
+		c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		c.FilePasswordFunc = func(prompt string) (string, error) {
+			fmt.Fprintf(os.Stdout, "%s: ", prompt)
+			b, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return "", err
+			}
+			fmt.Println()
+			return string(b), nil
+		}
+	}
+
+	return c
+}
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -355,17 +379,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeConfig(runtimeViper)
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
@@ -496,10 +510,7 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	})
+	ring, err := keyring.Open(getKeyringConfig())
 	if err != nil {
 		return nil, err
 	}

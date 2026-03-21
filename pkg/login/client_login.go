@@ -78,17 +78,20 @@ func (a *Authenticator) Login(ctx context.Context, links *Links) error {
 				return res.Err
 			}
 
+			if res.IsAboutToSaveCreds {
+				if s != nil {
+					s.Stop()
+				}
+				continue
+			}
+
 			message, err := SuccessMessage(ctx, res.Account, stripe.DefaultAPIBaseURL, res.TestModeAPIKey)
 			if err != nil {
 				fmt.Printf("> Error verifying the CLI was set up successfully: %s\n", err)
 				return err
 			}
 
-			if s == nil {
-				fmt.Printf("\n> %s\n", message)
-			} else {
-				ansi.StopSpinner(s, message, os.Stdout)
-			}
+			fmt.Printf("> %s\n", message)
 			fmt.Println(ansi.Italic("Please note: this key will expire after 90 days, at which point you'll need to re-authenticate."))
 			return nil
 		}
