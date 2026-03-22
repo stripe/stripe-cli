@@ -57,6 +57,10 @@ jobs:
         with:
           go-version: 1.26.0
 
+      - name: Run setup
+        if: steps.changes.outputs.has_changes == 'true'
+        run: make setup
+
       - name: Run go generate
         if: steps.changes.outputs.has_changes == 'true'
         run: go generate ./...
