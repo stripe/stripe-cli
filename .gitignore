@@ -10,6 +10,7 @@ default_cassette.yaml
 stripe-completion.bash
 stripe-completion.zsh
 aiworklist/
+third_party/go-plugin/
 
 # Claude Code local configuration (auto-added)
 .claude/*.local.*

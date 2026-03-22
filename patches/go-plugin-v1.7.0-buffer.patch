@@ -1,0 +1,107 @@
+diff --git a/client.go b/client.go
+--- a/client.go
++++ b/client.go
+@@ -75,6 +75,9 @@
+ // defaultPluginLogBufferSize is the default size of the buffer used to read from stderr for plugin log lines.
+ const defaultPluginLogBufferSize = 64 * 1024
+ 
++// defaultPluginStdoutBufferSize matches bufio.Scanner's default max token size.
++const defaultPluginStdoutBufferSize = bufio.MaxScanTokenSize
++
+ // Client handles the lifecycle of a plugin application. It launches
+ // plugins, connects to them, dispenses interface implementations, and handles
+ // killing the process.
+@@ -226,6 +229,10 @@
+ 	// If this is 0, then the default of 64KB is used.
+ 	PluginLogBufferSize int
+ 
++	// PluginStdoutBufferSize is the maximum token size(bytes) to read from stdout.
++	// If this is 0, then the default of 64KB is used.
++	PluginStdoutBufferSize int
++
+ 	// AutoMTLS has the client and server automatically negotiate mTLS for
+ 	// transport authentication. This ensures that only the original client will
+ 	// be allowed to connect to the server, and all other connections will be
+@@ -425,6 +432,9 @@
+ 	if config.PluginLogBufferSize == 0 {
+ 		config.PluginLogBufferSize = defaultPluginLogBufferSize
+ 	}
++	if config.PluginStdoutBufferSize == 0 {
++		config.PluginStdoutBufferSize = defaultPluginStdoutBufferSize
++	}
+ 
+ 	c = &Client{
+ 		config: config,
+@@ -798,11 +808,16 @@
+ 		defer close(linesCh)
+ 
+ 		scanner := bufio.NewScanner(runner.Stdout())
++		initialStdoutBufferSize := c.config.PluginStdoutBufferSize
++		if initialStdoutBufferSize > defaultPluginStdoutBufferSize {
++			initialStdoutBufferSize = defaultPluginStdoutBufferSize
++		}
++		scanner.Buffer(make([]byte, 0, initialStdoutBufferSize), c.config.PluginStdoutBufferSize)
+ 		for scanner.Scan() {
+ 			linesCh <- scanner.Text()
+ 		}
+ 		if scanner.Err() != nil {
+-			c.logger.Error("error encountered while scanning stdout", "error", scanner.Err())
++			c.logger.Debug("error encountered while scanning stdout", "error", scanner.Err())
+ 		}
+ 	}()
+ 
+diff --git a/client_test.go b/client_test.go
+--- a/client_test.go
++++ b/client_test.go
+@@ -185,6 +185,29 @@
+ 	assertLines(t, logger.errorLogs, 0)
+ }
+ 
++func TestClient_longStdoutLine(t *testing.T) {
++	t.Parallel()
++
++	process := helperProcess("stdout-long-line")
++	logger := &trackingLogger{Logger: hclog.Default()}
++	c := NewClient(&ClientConfig{
++		Cmd:                    process,
++		HandshakeConfig:        testHandshake,
++		Plugins:                testPluginMap,
++		Logger:                 logger,
++		PluginStdoutBufferSize: 128 * 1024,
++	})
++	defer c.Kill()
++
++	if _, err := c.Start(); err != nil {
++		t.Fatalf("err should be nil, got %s", err)
++	}
++
++	time.Sleep(100 * time.Millisecond)
++
++	assertLines(t, logger.errorLogs, 0)
++}
++
+ type delayedStdoutCmdRunner struct {
+ 	*cmdrunner.CmdRunner
+ }
+diff --git a/plugin_test.go b/plugin_test.go
+--- a/plugin_test.go
++++ b/plugin_test.go
+@@ -14,6 +14,7 @@
+ 	"net/rpc"
+ 	"os"
+ 	"os/exec"
++	"strings"
+ 	"testing"
+ 	"time"
+ 
+@@ -513,6 +514,10 @@
+ 	case "mock":
+ 		fmt.Printf("%d|%d|tcp|:1234\n", CoreProtocolVersion, testHandshake.ProtocolVersion)
+ 		<-make(chan int)
++	case "stdout-long-line":
++		fmt.Printf("%d|%d|tcp|:1234\n", CoreProtocolVersion, testHandshake.ProtocolVersion)
++		_, _ = fmt.Fprintln(os.Stdout, strings.Repeat("x", 70*1024))
++		time.Sleep(1 * time.Minute)
+ 	case "start-timeout":
+ 		time.Sleep(1 * time.Minute)
+ 		os.Exit(1)

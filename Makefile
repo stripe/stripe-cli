@@ -7,9 +7,14 @@ export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
 export GOLANGCI_LINT_VERSION := v2.10.1
+GO_PLUGIN_BOOTSTRAP_SCRIPT := ./scripts/bootstrap-go-plugin.sh
+
+bootstrap-go-plugin:
+	$(GO_PLUGIN_BOOTSTRAP_SCRIPT)
+.PHONY: bootstrap-go-plugin
 
 # Install all the build and lint dependencies
-setup:
+setup: bootstrap-go-plugin
 	go mod download
 .PHONY: setup
 
@@ -21,7 +26,7 @@ githooks-init:
 # Run all the tests
 # On macOS, CGO_ENABLED=0 works around a Go 1.26.0 linker crash with -race (https://github.com/golang/go/issues/77593)
 TEST_CGO_ENABLED := $(if $(filter Darwin,$(shell uname -s)),0,)
-test:
+test: bootstrap-go-plugin
 	$(if $(TEST_CGO_ENABLED),CGO_ENABLED=$(TEST_CGO_ENABLED)) go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
 .PHONY: test
 
@@ -31,7 +36,7 @@ cover: test
 .PHONY: cover
 
 # Build a production-like binary for canary tests
-build-canary:
+build-canary: bootstrap-go-plugin
 	go generate ./...
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o stripe ./cmd/stripe
 .PHONY: build-canary
@@ -53,7 +58,7 @@ fmt:
 .PHONY: fmt
 
 # Run all the linters
-lint: bin/golangci-lint
+lint: bootstrap-go-plugin bin/golangci-lint
 	./bin/golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 ./...
 .PHONY: lint
 
@@ -61,7 +66,7 @@ bin/golangci-lint:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s $(GOLANGCI_LINT_VERSION)
 
 # Clean go.mod
-go-mod-tidy:
+go-mod-tidy: bootstrap-go-plugin
 	@go mod tidy -v
 	@git diff HEAD
 	@git diff-index --quiet HEAD
@@ -72,19 +77,19 @@ ci: build-all-platforms test go-mod-tidy protoc-ci
 .PHONY: ci
 
 # Build a beta version of stripe
-build:
+build: bootstrap-go-plugin
 	go generate ./...
 	go build -o stripe cmd/stripe/main.go
 .PHONY: build
 
 # Build a beta version of stripe with the `dev` tag
-build-dev:
+build-dev: bootstrap-go-plugin
 	go generate -tags dev ./...
 	go build -o stripe cmd/stripe/main.go
 .PHONY: build-dev
 
 # Build a beta version of stripe for all supported platforms
-build-all-platforms:
+build-all-platforms: bootstrap-go-plugin
 	go generate ./...
 	env GOOS=darwin go build -o stripe-darwin cmd/stripe/main.go
 	env GOOS=linux go build -o stripe-linux cmd/stripe/main.go
@@ -92,7 +97,7 @@ build-all-platforms:
 .PHONY: build-all-platforms
 
 # Build a version of stripe with the `localdev` tag
-build-localdev:
+build-localdev: bootstrap-go-plugin
 	go generate ./...
 	go build -o stripe -tags localdev cmd/stripe/main.go
 .PHONY: build-dev
@@ -142,7 +147,7 @@ update-node-checksums:
 .PHONY: update-node-checksums
 
 # Handle all protobuf generation.
-protoc:
+protoc: bootstrap-go-plugin
 	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
 	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
 	@go mod tidy

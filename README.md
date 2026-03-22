@@ -148,8 +148,9 @@ Got feedback for us? Please don't hesitate to tell us on [feedback](https://stri
 
 See [Developing the Stripe CLI](../../wiki/developing-the-stripe-cli) for more info on how to make contributions to this project.
 
+Run `make setup` before building or testing locally. It bootstraps a patched `github.com/hashicorp/go-plugin` checkout into `third_party/go-plugin`; that directory is generated locally and is not checked in.
+
 ## License
 Copyright (c) Stripe. All rights reserved.
 
 Licensed under the [Apache License 2.0 license](blob/master/LICENSE).
-
