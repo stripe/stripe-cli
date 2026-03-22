@@ -4,8 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
+	"time"
 
+	hclog "github.com/hashicorp/go-hclog"
+	hcplugin "github.com/hashicorp/go-plugin"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
@@ -179,4 +184,43 @@ func TestUninstall(t *testing.T) {
 	require.False(t, dirExists)
 
 	require.Equal(t, 0, len(config.GetInstalledPlugins()))
+}
+
+func TestNewPluginClientConfigUsesBoundedStdoutBuffer(t *testing.T) {
+	clientConfig := newPluginClientConfig(
+		&exec.Cmd{Path: "test"},
+		"projects",
+		hcplugin.HandshakeConfig{},
+		map[int]hcplugin.PluginSet{},
+		time.Second,
+	)
+
+	require.Equal(t, pluginStdoutBufferSize, clientConfig.PluginStdoutBufferSize)
+}
+
+func TestNewPluginClientConfigLoggerLevelTracksDebugMode(t *testing.T) {
+	previousLevel := log.GetLevel()
+	t.Cleanup(func() {
+		log.SetLevel(previousLevel)
+	})
+
+	log.SetLevel(log.InfoLevel)
+	infoConfig := newPluginClientConfig(
+		&exec.Cmd{Path: "test"},
+		"projects",
+		hcplugin.HandshakeConfig{},
+		map[int]hcplugin.PluginSet{},
+		time.Second,
+	)
+	require.Equal(t, hclog.Off, infoConfig.Logger.GetLevel())
+
+	log.SetLevel(log.DebugLevel)
+	debugConfig := newPluginClientConfig(
+		&exec.Cmd{Path: "test"},
+		"projects",
+		hcplugin.HandshakeConfig{},
+		map[int]hcplugin.PluginSet{},
+		time.Second,
+	)
+	require.Equal(t, hclog.Debug, debugConfig.Logger.GetLevel())
 }

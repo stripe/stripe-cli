@@ -98,3 +98,5 @@ require (
 	golang.org/x/text v0.34.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/hashicorp/go-plugin => ./third_party/go-plugin

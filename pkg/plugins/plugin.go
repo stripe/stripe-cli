@@ -35,6 +35,8 @@ var (
 	PluginsPath string
 )
 
+const pluginStdoutBufferSize = 1 << 20
+
 // Plugin contains the plugin properties
 type Plugin struct {
 	Shortname        string    `toml:"Shortname"`
@@ -80,6 +82,38 @@ func (p *Plugin) getPluginInterface() (hcplugin.HandshakeConfig, map[int]hcplugi
 	}
 
 	return handshakeConfig, pluginSetMap
+}
+
+func pluginChildLogLevel() hclog.Level {
+	if log.IsLevelEnabled(log.DebugLevel) {
+		return hclog.Debug
+	}
+
+	return hclog.Off
+}
+
+func newPluginChildLogger(shortname string) hclog.Logger {
+	return hclog.New(&hclog.LoggerOptions{
+		Name:  fmt.Sprintf("plugin.child.%s", shortname),
+		Level: pluginChildLogLevel(),
+	})
+}
+
+func newPluginClientConfig(cmd *exec.Cmd, shortname string, handshakeConfig hcplugin.HandshakeConfig, pluginSetMap map[int]hcplugin.PluginSet, timeout time.Duration) *hcplugin.ClientConfig {
+	return &hcplugin.ClientConfig{
+		HandshakeConfig:        handshakeConfig,
+		VersionedPlugins:       pluginSetMap,
+		Cmd:                    cmd,
+		SyncStdout:             os.Stdout,
+		SyncStderr:             os.Stderr,
+		Logger:                 newPluginChildLogger(shortname),
+		Managed:                true,
+		StartTimeout:           timeout,
+		PluginStdoutBufferSize: pluginStdoutBufferSize,
+		AllowedProtocols: []hcplugin.Protocol{
+			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
+		},
+	}
 }
 
 // getPluginInstallPath computes the absolute path of a specific plugin version's installation dir
@@ -407,25 +441,7 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 
 	handshakeConfig, pluginSetMap := p.getPluginInterface()
 	timeout, _ := time.ParseDuration("10s")
-
-	pluginLogger := hclog.New(&hclog.LoggerOptions{
-		Name:  fmt.Sprintf("plugin.child.%s", p.Shortname),
-		Level: hclog.LevelFromString("ERROR"),
-	})
-
-	clientConfig := &hcplugin.ClientConfig{
-		HandshakeConfig:  handshakeConfig,
-		VersionedPlugins: pluginSetMap,
-		Cmd:              cmd,
-		SyncStdout:       os.Stdout,
-		SyncStderr:       os.Stderr,
-		Logger:           pluginLogger,
-		Managed:          true,
-		StartTimeout:     timeout,
-		AllowedProtocols: []hcplugin.Protocol{
-			hcplugin.ProtocolGRPC, hcplugin.ProtocolNetRPC,
-		},
-	}
+	clientConfig := newPluginClientConfig(cmd, p.Shortname, handshakeConfig, pluginSetMap, timeout)
 
 	// Only validate checksum for standalone binaries, not when using a runtime
 	// When using a runtime, cmd.Path points to the node binary, not the plugin
