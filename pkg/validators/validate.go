@@ -150,7 +150,7 @@ func StatusCode(code string) error {
 		return nil
 	}
 
-	return fmt.Errorf("Provided status code %s is not in the range of acceptable status codes (200's, 400's, 500's)", code)
+	return fmt.Errorf("provided status code %s is not in the range of acceptable status codes (200's, 400's, 500's)", code)
 }
 
 // StatusCodeType validates that a provided status code type is one of those
@@ -159,7 +159,7 @@ func StatusCodeType(code string) error {
 	codeUpper := strings.ToUpper(code)
 
 	if codeUpper != "2XX" && codeUpper != "4XX" && codeUpper != "5XX" {
-		return fmt.Errorf("Provided status code type %s is not a valid type (2XX, 4XX, 5XX)", code)
+		return fmt.Errorf("provided status code type %s is not a valid type (2XX, 4XX, 5XX)", code)
 	}
 
 	return nil
@@ -169,12 +169,12 @@ func StatusCodeType(code string) error {
 func OneDollar(number string) error {
 	num, err := strconv.Atoi(number)
 	if err != nil {
-		return fmt.Errorf("Provided amount %v to charge should be an integer (eg. 100)", number)
+		return fmt.Errorf("provided amount %v to charge should be an integer (eg. 100)", number)
 	}
 
 	if num >= 100 {
 		return nil
 	}
 
-	return fmt.Errorf("Provided amount %v to charge is not at least 100", number)
+	return fmt.Errorf("provided amount %v to charge is not at least 100", number)
 }

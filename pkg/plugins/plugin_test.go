@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestLookUpLatestVersion(t *testing.T) {
@@ -37,6 +39,31 @@ func TestInstall(t *testing.T) {
 	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
 }
 
+func TestInstallSucceedsIfNoAPIKey(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+
+	originalPluginBaseURL := requests.DefaultPluginData.PluginBaseURL
+	requests.DefaultPluginData.PluginBaseURL = testServers.ArtifactoryServer.URL
+	defer func() {
+		requests.DefaultPluginData.PluginBaseURL = originalPluginBaseURL
+	}()
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	err := plugin.Install(context.Background(), config, fs, "2.0.1", testServers.StripeServer.URL)
+	require.Nil(t, err)
+	file := fmt.Sprintf("/plugins/appA/2.0.1/stripe-cli-app-a%s", GetBinaryExtension())
+	fileExists, err := afero.Exists(fs, file)
+	require.Nil(t, err)
+	require.True(t, fileExists)
+
+	require.Equal(t, []string{"appA"}, config.GetInstalledPlugins())
+}
+
 func TestInstallFailsIfChecksumCouldNotBeFound(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
@@ -46,7 +73,7 @@ func TestInstallFailsIfChecksumCouldNotBeFound(t *testing.T) {
 
 	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
 	err := plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL)
-	require.EqualError(t, err, "Could not locate a valid checksum for appA version 0.0.0")
+	require.EqualError(t, err, "could not locate a valid checksum for appA version 0.0.0")
 
 	// Require that we don't save the binary if checkum does not match
 	file := fmt.Sprintf("/plugins/appA/0.0.0/stripe-cli-app-a%s", GetBinaryExtension())
@@ -123,7 +150,7 @@ func TestInstallDoesNotCleanIfInstallFails(t *testing.T) {
 
 	// Install fails for the same plugin because the checksum could not be found in manifest
 	err = plugin.Install(context.Background(), config, fs, "0.0.0", testServers.StripeServer.URL)
-	require.EqualError(t, err, "Could not locate a valid checksum for appA version 0.0.0")
+	require.EqualError(t, err, "could not locate a valid checksum for appA version 0.0.0")
 	failedFile := fmt.Sprintf("/plugins/appA/0.0.0/stripe-cli-app-a%s", GetBinaryExtension())
 	fileExists, _ = afero.Exists(fs, failedFile)
 	require.False(t, fileExists, "Test setup failed -- did not expect plugin to be downloaded")

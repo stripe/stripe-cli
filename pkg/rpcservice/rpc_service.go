@@ -1,3 +1,4 @@
+// Package rpcservice implements the gRPC server for CLI integrations.
 package rpcservice
 
 import (

@@ -24,7 +24,7 @@ func AddTerminalSubCmds(rootCmd *cobra.Command, cfg *config.Config) error {
 	}
 
 	if !found {
-		return errors.New("Could not find terminal command")
+		return errors.New("could not find terminal command")
 	}
 
 	return nil

@@ -1,3 +1,4 @@
+// Package resource provides auto-generated API resource commands.
 package resource
 
 import (

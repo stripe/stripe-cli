@@ -1,3 +1,4 @@
+// Package parsers provides query and fixture data parsing utilities.
 package parsers
 
 import (
@@ -131,7 +132,7 @@ func ParseToFormData(params interface{}, queryRespMap map[string]gjson.Result) (
 // each leaf node has a terminal type (String, Int, etc) that can no
 // longer be recursively traversed.
 func ParseMapForFormData(params map[string]interface{}, parent string, index int, queryRespMap map[string]gjson.Result) ([]string, error) {
-	data := make([]string, len(params))
+	data := make([]string, 0, len(params))
 
 	var keyname string
 
@@ -288,9 +289,10 @@ func findSimilarQueryNames(queryRespMap map[string]gjson.Result, name string) ([
 func ParseQuery(queryString string, queryRespMap map[string]gjson.Result) (string, error) {
 	value := queryString
 
-	if queryString == "${time-now-RFC3339}" {
+	switch queryString {
+	case "${time-now-RFC3339}":
 		return time.Now().Format(time.RFC3339), nil
-	} else if queryString == "${generate-uuid}" {
+	case "${generate-uuid}":
 		return uuid.NewString(), nil
 	}
 

@@ -1,3 +1,4 @@
+// Package spec provides OpenAPI specification parsing.
 package spec
 
 import (
@@ -68,13 +69,17 @@ type StripeOperation struct {
 }
 
 // StripeEvent is a struct containing information about a Stripe event.
+//
+// If EventKind is defined and set to "thin", it indicates a thin event.
+// EventKind is optional.
 type StripeEvent struct {
-	EventType string `json:"type"`
+	EventType string  `json:"type"`
+	EventKind *string `json:"kind,omitempty"`
 }
 
 type StripeError struct {
 	Code           string `json:"code"`
-	HttpStatusCode int    `json:"httpStatusCode"`
+	HTTPStatusCode int    `json:"httpStatusCode"`
 }
 
 // StripeEnumValue represents a single value in a Stripe enum
@@ -115,7 +120,9 @@ var supportedSchemaFields = []string{
 	// This is currently being used to store additional metadata for our SDKs. It's
 	// passed through our Spec and should be ignored
 	"x-stripeParam",
+	"x-stripeProperty",
 	"x-stripeResource",
+	"x-stableId",
 	"deprecated",
 
 	// This is currently a hint for the server-side so I haven't included it in
@@ -222,6 +229,7 @@ type Operation struct {
 	Parameters  []*Parameter            `json:"parameters"`
 	RequestBody *RequestBody            `json:"requestBody"`
 	Responses   map[StatusCode]Response `json:"responses"`
+	Servers     []Server                `json:"servers"`
 }
 
 // Parameter is a struct representing a request parameter to an HTTP operation
@@ -242,6 +250,11 @@ type Path string
 type RequestBody struct {
 	Content  map[string]MediaType `json:"content"`
 	Required bool                 `json:"required"`
+}
+
+// Server is a struct representing server information in an OpenAPI specification.
+type Server struct {
+	URL string `json:"url"`
 }
 
 // Response is a struct representing the response of an HTTP operation in an

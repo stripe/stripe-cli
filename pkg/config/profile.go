@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -57,6 +58,29 @@ const (
 
 // KeyRing ...
 var KeyRing keyring.Keyring
+
+func getKeyringConfig() keyring.Config {
+	c := keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	}
+
+	if runtime.GOOS == "linux" {
+		c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		c.FilePasswordFunc = func(prompt string) (string, error) {
+			fmt.Fprintf(os.Stdout, "%s: ", prompt)
+			b, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return "", err
+			}
+			fmt.Println()
+			return string(b), nil
+		}
+	}
+
+	return c
+}
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -355,17 +379,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeConfig(runtimeViper)
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
@@ -486,41 +500,6 @@ func (p *Profile) deleteLivemodeValue(key string) error {
 	return nil
 }
 
-// ExperimentalFields are currently only used for request signing
-type ExperimentalFields struct {
-	ContextualName string
-	PrivateKey     string
-	StripeHeaders  string
-}
-
-const (
-	experimentalPrefix         = "experimental"
-	experimentalStripeHeaders  = experimentalPrefix + "." + "stripe_headers"
-	experimentalContextualName = experimentalPrefix + "." + "contextual_name"
-	experimentalPrivateKey     = experimentalPrefix + "." + "private_key"
-)
-
-// GetExperimentalFields returns a struct of the profile's experimental fields. These fields are only ever additive in functionality.
-// If the API key is being overridden, via the --api-key flag or STRIPE_API_KEY env variable, this returns an empty struct.
-func (p *Profile) GetExperimentalFields() ExperimentalFields {
-	if err := viper.ReadInConfig(); err == nil && os.Getenv("STRIPE_API_KEY") == "" && p.APIKey == "" {
-		name := viper.GetString(p.GetConfigField(experimentalContextualName))
-		privKey := viper.GetString(p.GetConfigField(experimentalPrivateKey))
-		headers := viper.GetString(p.GetConfigField(experimentalStripeHeaders))
-
-		return ExperimentalFields{
-			ContextualName: name,
-			PrivateKey:     privKey,
-			StripeHeaders:  headers,
-		}
-	}
-	return ExperimentalFields{
-		ContextualName: "",
-		PrivateKey:     "",
-		StripeHeaders:  "",
-	}
-}
-
 // SessionCredentials are the credentials needed for this session
 type SessionCredentials struct {
 	UAT        string `json:"uat"`
@@ -531,10 +510,7 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	})
+	ring, err := keyring.Open(getKeyringConfig())
 	if err != nil {
 		return nil, err
 	}

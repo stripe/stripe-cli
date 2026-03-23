@@ -1,10 +1,13 @@
+// Package logtailing provides real-time API log streaming.
 package logtailing
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -114,7 +117,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 
 		if err != nil {
 			t.cfg.OutCh <- websocket.ErrorElement{
-				Error: fmt.Errorf("Error while authenticating with Stripe: %v", err),
+				Error: fmt.Errorf("error while authenticating with Stripe: %v", err),
 			}
 			return err
 		}
@@ -162,7 +165,7 @@ func (t *Tailer) Run(ctx context.Context) error {
 					State: websocket.Reconnecting,
 				}
 			} else {
-				err := fmt.Errorf("Session expired. Terminating after %d failed attempts to reauthorize", nAttempts)
+				err := fmt.Errorf("session expired, terminating after %d failed attempts to reauthorize", nAttempts)
 				t.cfg.OutCh <- websocket.ErrorElement{
 					Error: err,
 				}
@@ -191,7 +194,7 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 
 	filters, err := jsonifyFilters(t.cfg.Filters)
 	if err != nil {
-		return nil, fmt.Errorf("Error while converting log filters to JSON encoding: %v", err)
+		return nil, fmt.Errorf("error while converting log filters to JSON encoding: %v", err)
 	}
 
 	go func() {
@@ -205,6 +208,14 @@ func (t *Tailer) createSession(ctx context.Context) (*stripeauth.StripeCLISessio
 			})
 
 			if err == nil {
+				exitCh <- struct{}{}
+				return
+			}
+
+			if clientError, ok := stripeauth.IsAuthorizationClientError(err); ok {
+				if clientError.StatusCode == http.StatusTooManyRequests {
+					err = errors.New("you have too many `stripe logs tail` sessions open, please close some and try again")
+				}
 				exitCh <- struct{}{}
 				return
 			}

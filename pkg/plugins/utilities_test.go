@@ -2,6 +2,9 @@ package plugins
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -9,7 +12,20 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
+
+// CustomTestConfig is a test config that allows overriding the config folder path
+type CustomTestConfig struct {
+	TestConfig
+	customConfigPath string
+}
+
+// GetConfigFolder overrides the TestConfig method to return a custom path
+func (c *CustomTestConfig) GetConfigFolder(xdgPath string) string {
+	return c.customConfigPath
+}
 
 func TestGetPluginList(t *testing.T) {
 	fs := setUpFS()
@@ -180,7 +196,7 @@ func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Received an empty plugin manifest")
+	require.ErrorContains(t, err, "received an empty plugin manifest")
 	// We expect the /plugins.toml file in the test fs has NOT been updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
@@ -196,4 +212,279 @@ func TestIsPluginCommand(t *testing.T) {
 
 	require.True(t, IsPluginCommand(pluginCmd))
 	require.False(t, IsPluginCommand(notPluginCmd))
+}
+
+func TestRefreshPluginManifestSucceedsIfNoAPIKey(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	config.Profile.APIKey = ""
+	testServers := setUpServers(t, nil, nil)
+	defer func() { testServers.CloseAll() }()
+
+	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+}
+
+func TestIsValidNodeLTSVersion(t *testing.T) {
+	validVersions := []string{"18", "20", "22", "24", "26"}
+	for _, version := range validVersions {
+		require.True(t, isValidNodeLTSVersion(version), "Expected %s to be valid LTS version", version)
+	}
+
+	invalidVersions := []string{"10", "11", "12", "13", "14", "15", "16", "17", "19", "21", "23", "25"}
+	for _, version := range invalidVersions {
+		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid LTS version", version)
+	}
+
+	invalidFormats := []string{"", "abc", "20.0", "v20", "20.0.0", "node20"}
+	for _, version := range invalidFormats {
+		require.False(t, isValidNodeLTSVersion(version), "Expected %s to be invalid format", version)
+	}
+}
+
+func TestValidateRuntimeVersionsValid(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname: "test-plugin",
+				Releases: []Release{
+					{
+						Version: "1.0.0",
+						Runtime: map[string]string{"node": "18"},
+					},
+					{
+						Version: "1.1.0",
+						Runtime: map[string]string{"node": "20"},
+					},
+					{
+						Version: "2.0.0",
+						Runtime: map[string]string{"node": "24"},
+					},
+				},
+			},
+		},
+	}
+
+	err := validateRuntimeVersions(pluginList)
+	require.Nil(t, err)
+}
+
+func TestValidateRuntimeVersionsInvalidNonLTS(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname: "test-plugin",
+				Releases: []Release{
+					{
+						Version: "1.0.0",
+						Runtime: map[string]string{"node": "19"},
+					},
+				},
+			},
+		},
+	}
+
+	err := validateRuntimeVersions(pluginList)
+	require.NotNil(t, err)
+	require.ErrorContains(t, err, "invalid Node.js version '19'")
+	require.ErrorContains(t, err, "test-plugin")
+	require.ErrorContains(t, err, "Only LTS major versions are allowed")
+}
+
+func TestValidateRuntimeVersionsInvalidOldVersion(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname: "test-plugin",
+				Releases: []Release{
+					{
+						Version: "1.0.0",
+						Runtime: map[string]string{"node": "10"},
+					},
+				},
+			},
+		},
+	}
+
+	err := validateRuntimeVersions(pluginList)
+	require.NotNil(t, err)
+	require.ErrorContains(t, err, "invalid Node.js version '10'")
+}
+
+func TestValidateRuntimeVersionsNoRuntime(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname: "test-plugin",
+				Releases: []Release{
+					{
+						Version: "1.0.0",
+					},
+				},
+			},
+		},
+	}
+
+	err := validateRuntimeVersions(pluginList)
+	require.Nil(t, err)
+}
+
+func TestValidatePluginManifestWithInvalidRuntime(t *testing.T) {
+	invalidManifest := `
+[[Plugin]]
+  Shortname = "test-app"
+  Binary = "stripe-cli-test-app"
+  MagicCookieValue = "TEST-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "1.0.0"
+    Sum = "abcdef1234567890"
+    Runtime = {node = "17"}
+`
+
+	_, err := validatePluginManifest([]byte(invalidManifest))
+	require.NotNil(t, err)
+	require.ErrorContains(t, err, "invalid Node.js version '17'")
+}
+
+func TestValidatePluginManifestWithValidRuntime(t *testing.T) {
+	validManifest := `
+[[Plugin]]
+  Shortname = "test-app"
+  Binary = "stripe-cli-test-app"
+  MagicCookieValue = "TEST-COOKIE"
+
+  [[Plugin.Release]]
+    Arch = "amd64"
+    OS = "darwin"
+    Version = "1.0.0"
+    Sum = "abcdef1234567890"
+    Runtime = {node = "24"}
+`
+
+	pluginList, err := validatePluginManifest([]byte(validManifest))
+	require.Nil(t, err)
+	require.NotNil(t, pluginList)
+	require.Equal(t, 1, len(pluginList.Plugins))
+	require.Equal(t, "24", pluginList.Plugins[0].Releases[0].Runtime["node"])
+}
+
+func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+	config.InitConfig()
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+
+	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch req.URL.String() {
+		case "/plugins.toml":
+			res.Write(manifestContent)
+		case "/plugins-nonexistent.toml":
+			res.WriteHeader(http.StatusNotFound)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+	defer func() { artifactoryServer.Close() }()
+
+	stripeServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		switch url := req.URL.String(); url {
+		case "/v1/stripecli/get-plugin-url":
+			pd := requests.PluginData{
+				PluginBaseURL:       artifactoryServer.URL,
+				AdditionalManifests: []string{"plugins-nonexistent.toml"},
+			}
+			body, err := json.Marshal(pd)
+			if err != nil {
+				t.Error(err)
+			}
+			res.Write(body)
+		default:
+			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
+		}
+	}))
+
+	err := RefreshPluginManifest(context.Background(), config, fs, stripeServer.URL)
+	require.Nil(t, err)
+}
+
+func TestAddPluginToListSortsBySemver(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname:        "test-plugin",
+				MagicCookieValue: "TEST-COOKIE-123",
+				Releases: []Release{
+					{Version: "1.0.0", OS: "darwin", Arch: "amd64"},
+					{Version: "1.2.0", OS: "darwin", Arch: "amd64"},
+				},
+			},
+		},
+	}
+
+	// Add a plugin with versions that would be sorted incorrectly by string comparison
+	newPlugin := Plugin{
+		Shortname:        "test-plugin",
+		MagicCookieValue: "TEST-COOKIE-123",
+		Releases: []Release{
+			{Version: "1.10.0", OS: "darwin", Arch: "amd64"}, // String comparison would put this before 1.2.0
+			{Version: "1.9.0", OS: "darwin", Arch: "amd64"},  // Should come after 1.2.0 but before 1.10.0
+			{Version: "2.0.0", OS: "darwin", Arch: "amd64"},
+			{Version: "1.0.1", OS: "darwin", Arch: "amd64"}, // Should come after 1.0.0 but before 1.2.0
+		},
+	}
+
+	addPluginToList(pluginList, newPlugin)
+
+	// Verify the plugin was merged (not added as a new one)
+	require.Equal(t, 1, len(pluginList.Plugins))
+
+	// Verify all releases are present
+	require.Equal(t, 6, len(pluginList.Plugins[0].Releases))
+
+	// Verify they are sorted by semver (not by string comparison)
+	expectedOrder := []string{"1.0.0", "1.0.1", "1.2.0", "1.9.0", "1.10.0", "2.0.0"}
+	for i, release := range pluginList.Plugins[0].Releases {
+		require.Equal(t, expectedOrder[i], release.Version,
+			"Expected release %d to be version %s, but got %s", i, expectedOrder[i], release.Version)
+	}
+}
+
+func TestRefreshPluginManifestCreatesConfigDirectory(t *testing.T) {
+	// Create a test config that uses a non-root directory
+	testConfigPath := "/test-config-dir"
+	customConfig := &CustomTestConfig{
+		customConfigPath: testConfigPath,
+	}
+	customConfig.InitConfig()
+
+	// Create a fresh filesystem without the config directory
+	fs := afero.NewMemMapFs()
+
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer func() { testServers.CloseAll() }()
+
+	// Verify the config directory doesn't exist yet
+	exists, err := afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.False(t, exists)
+
+	// Refresh the manifest which should create the config directory
+	err = RefreshPluginManifest(context.Background(), customConfig, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// Verify the config directory now exists
+	exists, err = afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.True(t, exists)
+
+	// Verify the plugins.toml file was created
+	pluginManifestPath := testConfigPath + "/plugins.toml"
+	exists, err = afero.Exists(fs, pluginManifestPath)
+	require.Nil(t, err)
+	require.True(t, exists)
 }

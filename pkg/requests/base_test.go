@@ -12,8 +12,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/stripe/stripe-cli/pkg/config"
 )
 
 func TestBuildDataForRequest(t *testing.T) {
@@ -78,7 +76,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
 	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
-	expected := "Invalid data argument: fry"
+	expected := "invalid data argument: fry"
 
 	data, err := rb.BuildDataForRequest(params)
 	require.Equal(t, "", data)
@@ -112,6 +110,71 @@ func TestMakeRequest(t *testing.T) {
 	}
 
 	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/foo/bar", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_GetV2(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+
+		reqBody, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		require.Equal(t, http.MethodGet, r.Method)
+		require.Equal(t, "/v2/core/events", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "limit=10&types=v2.core.event_destination.ping&types=v1.billing.meter.no_meter_found", r.URL.RawQuery)
+		require.Equal(t, "", string(reqBody))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodGet
+
+	params := &RequestParameters{
+		data: []string{`{
+			"limit": 10,
+			"types": [
+				"v2.core.event_destination.ping",
+				"v1.billing.meter.no_meter_found"
+			]
+		}`},
+	}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/events", params, make(map[string]interface{}), true, nil)
+	require.NoError(t, err)
+}
+
+func TestMakeRequest_PostV2(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+
+		reqBody, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v2/core/event_destinations", r.URL.Path)
+		require.Equal(t, "Bearer sk_test_1234", r.Header.Get("Authorization"))
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		require.NotEmpty(t, r.UserAgent())
+		require.NotEmpty(t, r.Header.Get("X-Stripe-Client-User-Agent"))
+		require.Equal(t, "", r.URL.RawQuery)
+		require.Equal(t, `{"name":"foo"}`, string(reqBody))
+	}))
+	defer ts.Close()
+
+	rb := Base{APIBaseURL: ts.URL}
+	rb.Method = http.MethodPost
+
+	params := &RequestParameters{
+		data: []string{`{"name": "foo"}`},
+	}
+
+	_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v2/core/event_destinations", params, make(map[string]interface{}), true, nil)
 	require.NoError(t, err)
 }
 
@@ -247,6 +310,9 @@ func TestNormalizePath(t *testing.T) {
 	require.Equal(t, "/v1/charges", normalizePath("v1/charges"))
 	require.Equal(t, "/v1/charges", normalizePath("/charges"))
 	require.Equal(t, "/v1/charges", normalizePath("charges"))
+
+	require.Equal(t, "/v2/core/events", normalizePath("/v2/core/events"))
+	require.Equal(t, "/v2/core/events", normalizePath("v2/core/events"))
 }
 
 func TestCreateOrNormalizePath(t *testing.T) {
@@ -300,28 +366,34 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	})
 }
 
-func TestRequestSigning(t *testing.T) {
-	rb := Base{}
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
-		StripeHeaders:  "Stripe-Context=test-context;Authorization=TEST-PREFIX 123",
-		ContextualName: "test-name",
-		PrivateKey:     "test-key",
+func TestParseJSONDataFlag(t *testing.T) {
+	t.Run("no arguments", func(t *testing.T) {
+		data, err := parseJSONDataFlag([]string{})
+		require.Nil(t, err)
+		require.Empty(t, data)
 	})
-	require.NoError(t, err)
-	require.Equal(t, "test-context", req.Header.Get("Stripe-Context"))
-	require.Equal(t, "TEST-PREFIX 123", req.Header.Get("Authorization"))
-}
+	t.Run("empty data", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{""})
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 
-func TestRequestSigningShouldNotBeCalled(t *testing.T) {
-	rb := Base{}
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	err := rb.experimentalRequestSigning(req, config.ExperimentalFields{
-		StripeHeaders:  "",
-		ContextualName: "",
-		PrivateKey:     "",
+		_, err = parseJSONDataFlag([]string{"  "})
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
-	require.NoError(t, err)
-	require.Equal(t, "", req.Header.Get("Stripe-Context"))
-	require.Equal(t, "", req.Header.Get("Authorization"))
+	t.Run("multiple data arguments", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{`{}`, `{}`})
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
+	})
+	t.Run("key-value data", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{"x=y"})
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
+	})
+	t.Run("invalid JSON", func(t *testing.T) {
+		_, err := parseJSONDataFlag([]string{`{"key": }`})
+		require.Error(t, err)
+	})
+	t.Run("valid JSON", func(t *testing.T) {
+		data, err := parseJSONDataFlag([]string{`{"key": "x=y"}`})
+		require.Nil(t, err)
+		require.Equal(t, map[string]interface{}{"key": "x=y"}, data)
+	})
 }
