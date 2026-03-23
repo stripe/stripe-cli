@@ -24,7 +24,7 @@ func TestSuccessMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
+		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123",
 		msg,
 	)
 }
@@ -38,7 +38,7 @@ func TestSuccessMessageNoDisplayName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
+		"Done! The Stripe CLI is configured for your account with account id acct_123",
 		msg,
 	)
 }
@@ -49,7 +49,7 @@ func TestSuccessMessageBasicMessage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"Done! The Stripe CLI is configured\n",
+		"Done! The Stripe CLI is configured",
 		msg,
 	)
 }
@@ -73,7 +73,7 @@ func TestSuccessMessageGetAccount(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123\n",
+		"Done! The Stripe CLI is configured for test_disp_name with account id acct_123",
 		msg,
 	)
 }
@@ -96,7 +96,7 @@ func TestSuccessMessageGetAccountNoDisplayName(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(
 		t,
-		"Done! The Stripe CLI is configured for your account with account id acct_123\n",
+		"Done! The Stripe CLI is configured for your account with account id acct_123",
 		msg,
 	)
 }
