@@ -1,46 +1,59 @@
+version: "2"
+
 run:
   tests: true
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
-    - exportloopref
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - goprintffuncname
-    - gosimple
     - govet
     - ineffassign
     - misspell
     - nakedret
-    - revive
-    # - rowserrcheck -- disabled because of https://github.com/golangci/golangci-lint/issues/2649
     - staticcheck
-    # - structcheck -- disabled because of https://github.com/golangci/golangci-lint/issues/2649
-    - typecheck
     - unconvert
     - unused
-    - varcheck
     - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          list-mode: lax
+          allow:
+            - $all
+          deny: []
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    misspell:
+      locale: US
+    staticcheck:
+      checks:
+        - all
+  exclusions:
+    presets: []
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+      - path: resources_cmds\.go
+        linters:
+          - dupl
 
-linters-settings:
-  goimports:
-    local-prefixes: github.com/stripe/stripe-cli
-  misspell:
-    locale: US
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - dupl
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/stripe/stripe-cli

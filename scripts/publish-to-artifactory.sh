@@ -13,6 +13,7 @@ REPO="stripe-cli-$FORMAT"
 PACKAGE="stripe"
 DISTRIBUTIONS="stable"
 COMPONENTS="main"
+FILENAME_BASENAME=$(basename "$FILENAME")
 
 if [ -z "$ARTIFACTORY_SECRET" ]; then
   echo "ARTIFACTORY_SECRET is not set"
@@ -31,11 +32,11 @@ artifactoryUpload () {
       fi
 
       echo "setting deployment to debian repo"
-      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/pool/$PACKAGE/$VERSION/$ARCH/$PACKAGE.deb;deb.distribution=$DISTRIBUTIONS;deb.component=$COMPONENTS;deb.architecture=$ARCH"
+      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/pool/$PACKAGE/$VERSION/$ARCH/$FILENAME_BASENAME;deb.distribution=$DISTRIBUTIONS;deb.component=$COMPONENTS;deb.architecture=$ARCH"
   elif [[ $FORMAT == "rpm" ]]
   then
       echo "setting deployment to rpm repo"
-      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/$PACKAGE/$VERSION/$ARCH/$PACKAGE.rpm"
+      UPLOAD_URL="https://stripe.jfrog.io/artifactory/$REPO-local/$PACKAGE/$VERSION/$ARCH/$FILENAME_BASENAME"
   else
       echo "unrecognised package format"
       exit 1

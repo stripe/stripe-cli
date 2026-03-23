@@ -9,35 +9,45 @@ permissions:
   contents: write
 
 jobs:
+  canary-tests:
+    uses: ./.github/workflows/canary-test.yml
+    with:
+      run_api_tests: true
+    secrets:
+      STRIPE_TEST_API_KEY: ${{ secrets.STRIPE_TEST_API_KEY }}
+
   build-mac:
+    needs: [canary-tests]
     runs-on: macos-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.19
+          go-version: 1.26.0
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v7
         with:
-          version: v0.184.0
-          args: release -f .goreleaser/mac.yml --rm-dist
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/mac.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
   build-linux:
-    runs-on: ubuntu-latest
+    needs: [canary-tests]
+    runs-on: ubuntu-22.04
     env:
       # https://goreleaser.com/customization/docker_manifest/
       DOCKER_CLI_EXPERIMENTAL: "enabled"
 
     steps:
       - name: Code checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       -
@@ -48,36 +58,39 @@ jobs:
         run: |
           echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.19
+          go-version: 1.26.0
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v7
         with:
-          version: v0.184.0
-          args: release -f .goreleaser/linux.yml --rm-dist
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/linux.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ARTIFACTORY_SECRET: ${{ secrets.ARTIFACTORY_SECRET }}
 
   build-windows:
+    needs: [canary-tests]
     runs-on: windows-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.19
+          go-version: 1.26.0
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v7
         with:
-          version: v0.184.0
-          args: release -f .goreleaser/windows.yml --rm-dist
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/windows.yml --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -87,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Code checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Upload to VirusTotal
         run: scripts/upload-zip-to-virustotal.sh
         shell: bash

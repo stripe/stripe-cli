@@ -28,7 +28,7 @@ func newResourcesCmd() *resourcesCmd {
 
 func getResourcesHelpTemplate() string {
 	// This template uses `.Parent` to access subcommands on the root command.
-	return fmt.Sprintf(`%s{{range $index, $cmd := .Parent.Commands}}{{if (or (eq (index $.Parent.Annotations $cmd.Name) "resource") (eq (index $.Parent.Annotations $cmd.Name) "namespace"))}}
+	return fmt.Sprintf(`%s{{range $index, $cmd := .Parent.Commands}}{{if (and (not $cmd.Hidden) (or (eq (index $.Parent.Annotations $cmd.Name) "resource") (eq (index $.Parent.Annotations $cmd.Name) "namespace")))}}
   {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
 
 Use "stripe [command] --help" for more information about a command.

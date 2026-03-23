@@ -19,6 +19,7 @@ var inspectHeaders = []string{
 	"Idempotency-Replayed",
 	"Request-Id",
 	"Stripe-Account",
+	"Stripe-Context",
 	"Stripe-Version",
 }
 

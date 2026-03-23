@@ -1,3 +1,4 @@
+// Package proxy forwards webhook events to local endpoints.
 package proxy
 
 import (

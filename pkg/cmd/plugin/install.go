@@ -1,3 +1,4 @@
+// Package plugin provides plugin management commands.
 package plugin
 
 import (
@@ -5,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -90,22 +90,12 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 }
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
+	}
+
 	var err error
 	color := ansi.Color(os.Stdout)
-
-	// check if plugin manfest exists to be updated with the plugin to be installed
-	configPath := ic.cfg.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
-	_, err = afero.ReadFile(ic.fs, pluginManifestPath)
-	if os.IsNotExist(err) {
-		// plugin manifest does not exist. will need to retrieve from web
-		// api key is required to retrieve the plugin manifest
-		_, err = ic.cfg.GetProfile().GetAPIKey(false)
-		if err != nil {
-			fmt.Println(color.Red("x could not install plugin. please run `stripe login` and try again"))
-			return fmt.Errorf("installation process exited")
-		}
-	}
 
 	// Refresh the plugin before proceeding
 	err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
@@ -118,9 +108,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err == nil {
-		fmt.Println(color.Green("✔ installation complete."))
-	}
+	fmt.Println(color.Green("✔ installation complete."))
 
 	return nil
 }

@@ -35,23 +35,41 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
-// commands to set values for request parameters. The string is wrapped to the
-// terminal's width.
+// commands to set values for request parameters.
+//
+// For enum parameters, the possible values are shown inline (e.g. --status
+// complete|expired|open), truncated with "..." if they would exceed the
+// terminal width. For other parameters, the API type is shown in angle
+// brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 	var sb strings.Builder
 
-	// We're cheating a little bit in thie method: we're not actually wrapping
-	// anything, just printing out the flag names and assuming that no name
-	// will be long enough to go over the terminal's width.
-	// We do this instead of using pflag's `FlagUsagesWrapped` function because
-	// we don't want to print the types (all request parameters flags are
-	// defined as strings in the CLI, but it would be confusing to print that
-	// out as a lot of them are not strings in the API).
-	// If/when we do add help strings for request parameters flags, we'll have
-	// to do actual wrapping.
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
-		if _, ok := flag.Annotations["request"]; ok {
-			sb.WriteString(fmt.Sprintf("      --%s\n", flag.Name))
+		if _, ok := flag.Annotations["request"]; !ok {
+			return
+		}
+
+		if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
+			const maxDisplayedEnumValues = 5
+			prefix := fmt.Sprintf("      --%s ", flag.Name)
+
+			if len(enumVals) <= maxDisplayedEnumValues {
+				fmt.Fprintf(&sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
+			} else {
+				fmt.Fprintf(&sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
+			}
+		} else if apiType, ok := flag.Annotations["apitype"]; ok {
+			typeName := apiType[0]
+			switch typeName {
+			case "array":
+				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
+			case "boolean":
+				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
+			default:
+				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
+			}
+		} else {
+			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
 		}
 	})
 
@@ -118,11 +136,16 @@ func getUsageTemplate() string {
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
 
 %s
-  {{rpad "get" 29}} Quickly retrieve resources from Stripe
   {{rpad "charges" 29}} Make requests (capture, create, list, etc) on charges
   {{rpad "customers" 29}} Make requests (create, delete, list, etc) on customers
   {{rpad "payment_intents" 29}} Make requests (cancel, capture, confirm, etc) on payment intents
   {{rpad "..." 29}} %s
+  {{rpad "v2" 29}} %s
+
+%s
+  {{rpad "get" 29}} Make GET requests to the Stripe API
+  {{rpad "post" 29}} Make POST requests to the Stripe API
+  {{rpad "delete" 29}} Make DELETE requests to the Stripe API
 
 %s{{range $index, $cmd := .Commands}}{{if (not (or (index $.Annotations $cmd.Name) $cmd.Hidden))}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
@@ -145,6 +168,8 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Stripe commands:"),
 		ansi.Bold("Resource commands:"),
 		ansi.Italic("To see more resource commands, run `stripe resources help`"),
+		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
+		ansi.Bold("API commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),

@@ -21,7 +21,7 @@ import (
 func TestAllowRequestIfHeaderPresent(t *testing.T) {
 	ctx := withAuth(context.Background())
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 	md := metadata.New(map[string]string{"foo-bar": "1"})
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -44,14 +44,14 @@ func TestRejectRequestIfHeaderAbsent(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	_, err = client.Version(ctx, &rpc.VersionRequest{})
-	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
+	expected := status.Errorf(codes.Unauthenticated, "%s", fmt.Sprintf("%s header is not supplied", requiredHeader))
 
 	assert.Equal(t, expected.Error(), err.Error())
 }
 
 func TestRejectRequestIfMetadataEmpty(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///bufnet", grpc.WithContextDialer(bufDialer), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestRejectRequestIfMetadataEmpty(t *testing.T) {
 	client := rpc.NewStripeCLIClient(conn)
 
 	_, err = client.Version(ctx, &rpc.VersionRequest{})
-	expected := status.Errorf(codes.Unauthenticated, fmt.Sprintf("%s header is not supplied", requiredHeader))
+	expected := status.Errorf(codes.Unauthenticated, "%s", fmt.Sprintf("%s header is not supplied", requiredHeader))
 
 	assert.Equal(t, expected.Error(), err.Error())
 }

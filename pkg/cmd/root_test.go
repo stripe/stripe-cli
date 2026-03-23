@@ -20,10 +20,14 @@ func executeCommand(root *cobra.Command, args ...string) (output string, err err
 
 func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command, output string, err error) {
 	buf := new(bytes.Buffer)
-	root.SetOutput(buf)
+	root.SetOut(buf)
+	root.SetErr(buf)
 	root.SetArgs(args)
 
 	c, err = root.ExecuteC()
+
+	// Resets args for the next test run to avoid arguments for flags being carried over
+	root.SetArgs([]string{})
 
 	return c, buf.String(), err
 }
@@ -114,9 +118,8 @@ func TestReadProjectFlagHasPrecedence(t *testing.T) {
 func TestV2BillingOverrides(t *testing.T) {
 	Execute(context.Background())
 
-	output, err := executeCommand(rootCmd, "billing")
+	output, err := executeCommand(rootCmd, "v2", "billing")
 
-	require.Contains(t, output, "meter_event_session")
 	require.Contains(t, output, "meter_event_stream")
 	require.NoError(t, err)
 }

@@ -1,3 +1,4 @@
+version: 2
 env:
   - GO111MODULE=on
 before:
@@ -29,9 +30,12 @@ builds:
     goarch:
       - arm64
 archives:
-  - replacements:
-      darwin: mac-os
-      amd64: x86_64
+  - name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin"}}mac-os
+      {{- else }}{{ .Os }}{{end}}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
     files:
       - none*
 changelog:
@@ -43,9 +47,9 @@ changelog:
 checksum:
   name_template: "{{ .ProjectName }}-mac-checksums.txt"
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  version_template: "{{ .Version }}-next"
 brews:
-  - tap:
+  - repository:
       owner: stripe
       name: homebrew-stripe-cli
       token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}" # This token can access the repo, but GITHUB_TOKEN cannot

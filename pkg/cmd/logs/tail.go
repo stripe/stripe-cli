@@ -1,3 +1,4 @@
+// Package logs provides the logs tail command.
 package logs
 
 import (
@@ -6,10 +7,12 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/briandowns/spinner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -19,7 +22,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/logtailing"
-	logTailing "github.com/stripe/stripe-cli/pkg/logtailing"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 	"github.com/stripe/stripe-cli/pkg/version"
@@ -28,13 +30,15 @@ import (
 
 const outputFormatJSON = "JSON"
 
+var newlineRegex = regexp.MustCompile("[\r\n]")
+
 // TailCmd wraps the configuration for the tail command
 type TailCmd struct {
 	apiBaseURL string
 	cfg        *config.Config
 	Cmd        *cobra.Command
 	format     string
-	LogFilters *logTailing.LogFilters
+	LogFilters *logtailing.LogFilters
 	noWSS      bool
 }
 
@@ -42,7 +46,7 @@ type TailCmd struct {
 func NewTailCmd(config *config.Config) *TailCmd {
 	tailCmd := &TailCmd{
 		cfg:        config,
-		LogFilters: &logTailing.LogFilters{},
+		LogFilters: &logtailing.LogFilters{},
 	}
 
 	tailCmd.Cmd = &cobra.Command{
@@ -146,6 +150,10 @@ func withSIGTERMCancel(ctx context.Context, onCancel func()) context.Context {
 }
 
 func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(tailCmd.apiBaseURL); err != nil {
+		return err
+	}
+
 	err := tailCmd.validateArgs()
 	if err != nil {
 		return err
@@ -178,7 +186,7 @@ func (tailCmd *TailCmd) runTailCmd(cmd *cobra.Command, args []string) error {
 
 	logtailingOutCh := make(chan websocket.IElement)
 
-	tailer := logTailing.New(&logTailing.Config{
+	tailer := logtailing.New(&logtailing.Config{
 		Client: &stripe.Client{
 			APIKey:  key,
 			BaseURL: apiBase,
@@ -285,6 +293,8 @@ func createVisitor(logger *log.Logger, format string) *websocket.Visitor {
 				return fmt.Errorf("VisitData received unexpected type for DataElement, got %T expected %T", de, logtailing.EventPayload{})
 			}
 
+			sanitizePayload(&log)
+
 			if strings.ToUpper(format) == outputFormatJSON {
 				fmt.Println(ansi.ColorizeJSON(de.Marshaled, false, os.Stdout))
 				return nil
@@ -332,4 +342,26 @@ func urlForRequestID(payload *logtailing.EventPayload) string {
 	}
 
 	return fmt.Sprintf("https://dashboard.stripe.com%s/logs/%s", maybeTest, payload.RequestID)
+}
+
+func sanitize(str string) string {
+	withoutAnsi := stripansi.Strip(str)
+	withoutNewlines := newlineRegex.ReplaceAllLiteralString(withoutAnsi, "")
+	return strings.TrimSpace(withoutNewlines)
+}
+
+func sanitizePayload(payload *logtailing.EventPayload) {
+	payload.Error.Charge = sanitize(payload.Error.Charge)
+	payload.Error.Code = sanitize(payload.Error.Code)
+	payload.Error.DeclineCode = sanitize(payload.Error.DeclineCode)
+	payload.Error.ErrorInsight = sanitize(payload.Error.ErrorInsight)
+	payload.Error.Message = sanitize(payload.Error.Message)
+	payload.Error.Param = sanitize(payload.Error.Param)
+	payload.Error.Type = sanitize(payload.Error.Type)
+
+	payload.Method = sanitize(payload.Method)
+
+	payload.RequestID = sanitize(payload.RequestID)
+
+	payload.URL = sanitize(payload.URL)
 }

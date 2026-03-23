@@ -1,3 +1,4 @@
+// Package stripe provides the HTTP client for the Stripe API.
 package stripe
 
 import (
@@ -15,17 +16,16 @@ import (
 	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
-// DefaultAPIBaseURL is the default base URL for API requests
-const DefaultAPIBaseURL = "https://api.stripe.com"
-
-// DefaultFilesAPIBaseURL is the default base URL for Files API requsts
-const DefaultFilesAPIBaseURL = "https://files.stripe.com"
-
-// DefaultDashboardBaseURL is the default base URL for dashboard requests
-const DefaultDashboardBaseURL = "https://dashboard.stripe.com"
-
 // APIVersion is API version used in CLI
 const APIVersion = "2019-03-14"
+
+// v1 and v2 API interop constants
+const (
+	V1ContentType = "application/x-www-form-urlencoded"
+	V2ContentType = "application/json"
+	V1Request     = "v1"
+	V2Request     = "v2"
+)
 
 // Client is the API client used to sent requests to Stripe.
 type Client struct {
@@ -77,8 +77,13 @@ func (c *Client) PerformRequest(ctx context.Context, method, path string, params
 		return nil, err
 	}
 
+	// if path starts with v1
+	if IsV2Path(path) {
+		req.Header.Set("Content-Type", V2ContentType)
+	} else {
+		req.Header.Set("Content-Type", V1ContentType)
+	}
 	req.Header.Set("Accept-Encoding", "identity")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", useragent.GetEncodedUserAgent())
 	req.Header.Set("X-Stripe-Client-User-Agent", useragent.GetEncodedStripeUserAgent())
 
@@ -169,4 +174,9 @@ func newHTTPClient(verbose bool, printableHeaders []string, unixSocket string) *
 	return &http.Client{
 		Transport: httpTransport,
 	}
+}
+
+// IsV2Path checks if the path is for V1 API
+func IsV2Path(path string) bool {
+	return strings.HasPrefix(path, "/"+V2Request)
 }

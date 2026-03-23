@@ -1,3 +1,4 @@
+// Package fixtures provides declarative test data creation via fixture files.
 package fixtures
 
 import (
@@ -373,7 +374,7 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		return make([]byte, 0), err
 	}
 
-	params, err := fxt.createParams(data.Params, apiVersion)
+	params, err := fxt.createParams(data.Params, apiVersion, path, data.Method)
 	if err != nil {
 		return make([]byte, 0), err
 	}
@@ -391,28 +392,25 @@ func (fxt *Fixture) makeRequest(ctx context.Context, data FixtureRequest, apiVer
 		additionalConfigure = fxt.addCustomHeaders(data.Headers)
 	}
 
-	if strings.HasPrefix(path, "/v2/") {
-		jsonPayload := ""
-		if strings.ToLower(data.Method) == "post" {
-			jsonPayload, err = fxt.createJSONPayload(data.Params)
-			if err != nil {
-				return make([]byte, 0), err
-			}
-		}
-
-		return req.MakeV2Request(ctx, fxt.APIKey, path, params, true, additionalConfigure, jsonPayload)
-	}
-
-	return req.MakeRequest(ctx, fxt.APIKey, path, params, true, additionalConfigure)
+	return req.MakeRequest(ctx, fxt.APIKey, path, params, make(map[string]interface{}), true, additionalConfigure)
 }
 
-func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*requests.RequestParameters, error) {
+func (fxt *Fixture) createParams(params interface{}, apiVersion string, path string, method string) (*requests.RequestParameters, error) {
 	requestParams := requests.RequestParameters{}
-	parsed, err := parsers.ParseToFormData(params, fxt.Responses)
-	if err != nil {
-		return &requestParams, err
+
+	if strings.HasPrefix(path, "/v2/") && strings.ToLower(method) == "post" {
+		jsonPayload, err := fxt.createJSONPayload(params)
+		if err != nil {
+			return &requestParams, err
+		}
+		requestParams.AppendData([]string{jsonPayload})
+	} else {
+		parsed, err := parsers.ParseToFormData(params, fxt.Responses)
+		if err != nil {
+			return &requestParams, err
+		}
+		requestParams.AppendData(parsed)
 	}
-	requestParams.AppendData(parsed)
 
 	requestParams.SetStripeAccount(fxt.StripeAccount)
 
@@ -421,23 +419,6 @@ func (fxt *Fixture) createParams(params interface{}, apiVersion string) (*reques
 	}
 
 	return &requestParams, nil
-}
-
-func (fxt *Fixture) createJSONPayload(params interface{}) (string, error) {
-	if params == nil {
-		return "{}", nil
-	}
-	parsedJSON, err := parsers.ParseToApplicationJSON(params, fxt.Responses)
-	if err != nil {
-		return "", err
-	}
-
-	jsonParams, err := json.Marshal(parsedJSON)
-	if err != nil {
-		return "", err
-	}
-
-	return string(jsonParams), nil
 }
 
 func (fxt *Fixture) updateEnv(env map[string]string) error {
@@ -583,4 +564,20 @@ func reverse(list []string) []string {
 		reversed[i], reversed[opp] = reversed[opp], reversed[i]
 	}
 	return reversed
+}
+
+func (fxt *Fixture) createJSONPayload(params interface{}) (string, error) {
+	if params == nil {
+		return "", nil
+	}
+	parsedJSON, err := parsers.ParseToApplicationJSON(params, fxt.Responses)
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := json.Marshal(parsedJSON)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
 }

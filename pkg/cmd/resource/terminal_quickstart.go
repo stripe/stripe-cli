@@ -40,26 +40,26 @@ func (cc *QuickstartCmd) runQuickstartCmd(cmd *cobra.Command, args []string) err
 	key, err := cc.cfg.Profile.GetAPIKey(false)
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return fmt.Errorf("%s", err.Error())
 	}
 
 	err = validators.APIKeyNotRestricted(key)
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return fmt.Errorf("%s", err.Error())
 	}
 
 	readers := terminal.ReaderNames()
 	reader, err := terminal.ReaderTypeSelectPrompt(readers)
 
 	if err != nil {
-		return fmt.Errorf(err.Error())
+		return fmt.Errorf("%s", err.Error())
 	}
 
 	if reader == terminal.ReaderList["verifone-p400"].Name {
 		err = terminal.QuickstartP400(cmd.Context(), cc.cfg)
 		if err != nil {
-			return fmt.Errorf(err.Error())
+			return fmt.Errorf("%s", err.Error())
 		}
 	}
 

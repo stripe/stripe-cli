@@ -68,7 +68,9 @@ API version, filter events, or even load your saved webhook endpoints from your
 Stripe account.`,
 		Example: `stripe listen
   stripe listen --events charge.captured,charge.updated \
-    --forward-to localhost:3000/events`,
+    --forward-to localhost:3000/events
+  stripe listen --thin-events v1.billing.meter.no_meter_found \
+    --forward-thin-to localhost:3000/thin-events`,
 		RunE: lc.runListenCmd,
 	}
 
@@ -116,6 +118,10 @@ Stripe account.`,
 // Normally, this function would be listed alphabetically with the others declared in this file,
 // but since it's acting as the core functionality for the cmd above, I'm keeping it close.
 func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(lc.apiBaseURL); err != nil {
+		return err
+	}
+
 	if !lc.printJSON && !lc.onlyPrintSecret && !lc.skipUpdate {
 		version.CheckLatestVersion()
 	}
@@ -129,6 +135,12 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if strings.Contains(key, "sk_org") {
+		log.Errorf("The listen command is not supported in an organization sandbox at this time.")
+		return nil
+	}
+
 	apiBase, err := url.Parse(lc.apiBaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to parse API base url: %w", err)
@@ -155,6 +167,8 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	accountID, _ := Config.Profile.GetAccountID()
+
 	logger := log.StandardLogger()
 	proxyVisitor := lc.createVisitor(logger, lc.format, lc.printJSON)
 	proxyOutCh := make(chan websocket.IElement)
@@ -180,6 +194,7 @@ func (lc *listenCmd) runListenCmd(cmd *cobra.Command, args []string) error {
 		Events:                lc.events,
 		ThinEvents:            lc.thinEvents,
 		OutCh:                 proxyOutCh,
+		LoggedInAccountID:     accountID,
 	})
 	if err != nil {
 		return err
@@ -241,7 +256,7 @@ func (lc *listenCmd) createVisitor(logger *log.Logger, format string, printJSON 
 					color.Red("ERROR"),
 					ee.Error,
 				)
-				log.Errorf(errStr)
+				log.Errorf("%s", errStr)
 
 				// Don't exit program
 				return nil

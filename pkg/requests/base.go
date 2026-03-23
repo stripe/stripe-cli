@@ -1,3 +1,4 @@
+// Package requests builds and executes Stripe API requests.
 package requests
 
 import (
@@ -12,10 +13,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/parsers"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 
 	"github.com/spf13/cobra"
@@ -31,6 +38,7 @@ type RequestParameters struct {
 	limit         string
 	version       string
 	stripeAccount string
+	stripeContext string
 }
 
 // AppendData appends data to the request parameters.
@@ -51,6 +59,11 @@ func (r *RequestParameters) SetIdempotency(value string) {
 // SetStripeAccount sets the value for the `Stripe-Account` header.
 func (r *RequestParameters) SetStripeAccount(value string) {
 	r.stripeAccount = value
+}
+
+// SetStripeContext sets the value for the `Stripe-Context` header.
+func (r *RequestParameters) SetStripeContext(value string) {
+	r.stripeContext = value
 }
 
 // SetVersion sets the value for the `Stripe-Version` header.
@@ -101,6 +114,8 @@ type Base struct {
 
 	Livemode bool
 
+	IsPreviewCommand bool
+
 	autoConfirm bool
 	showHeaders bool
 }
@@ -109,6 +124,10 @@ var confirmationCommands = map[string]bool{http.MethodDelete: true}
 
 // RunRequestsCmd is the interface exposed for the CLI to run network requests through
 func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(rb.APIBaseURL); err != nil {
+		return err
+	}
+
 	if len(args) > 1 {
 		return fmt.Errorf("this command only supports one argument. Run with the --help flag to see usage and examples")
 	}
@@ -135,7 +154,7 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = rb.MakeRequest(cmd.Context(), apiKey, path, &rb.Parameters, false, nil)
+	_, err = rb.MakeRequest(cmd.Context(), apiKey, path, &rb.Parameters, make(map[string]interface{}), false, nil)
 
 	return err
 }
@@ -151,6 +170,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.idempotency, "idempotency", "i", "", "Set the idempotency key for the request, prevents replaying the same requests within 24 hours")
 	rb.Cmd.Flags().StringVarP(&rb.Parameters.version, "stripe-version", "v", "", "Set the Stripe API version to use for your request")
 	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
+	rb.Cmd.Flags().StringVar(&rb.Parameters.stripeContext, "stripe-context", "", "Set a header identifying the compartment context")
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
@@ -203,24 +223,8 @@ func (rb *Base) MakeMultiPartRequest(ctx context.Context, apiKey, path string, p
 	return rb.performRequest(ctx, client, path, params, reqBody.String(), errOnStatus, configure)
 }
 
-// MakeV2Request will make a application/json request to the Stripe API with the specific payload given to it.
-func (rb *Base) MakeV2Request(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error, jsonPayload string) ([]byte, error) {
-	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
-	if err != nil {
-		return []byte{}, err
-	}
-
-	client := &stripe.Client{
-		BaseURL: parsedBaseURL,
-		APIKey:  apiKey,
-		Verbose: rb.showHeaders,
-	}
-
-	return rb.performRequest(ctx, client, path, params, jsonPayload, errOnStatus, additionalConfigure)
-}
-
 // MakeRequest will make a request to the Stripe API with the specific variables given to it
-func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
 	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
 	if err != nil {
 		return []byte{}, err
@@ -232,13 +236,28 @@ func (rb *Base) MakeRequest(ctx context.Context, apiKey, path string, params *Re
 		Verbose: rb.showHeaders,
 	}
 
-	return rb.MakeRequestWithClient(ctx, client, path, params, errOnStatus, additionalConfigure)
+	return rb.MakeRequestWithClient(ctx, client, path, params, additionalParams, errOnStatus, additionalConfigure)
 }
 
 // MakeRequestWithClient will make a request to the Stripe API with the specific
 // variables given to it using the provided client.
-func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
-	data, err := rb.BuildDataForRequest(params)
+func (rb *Base) MakeRequestWithClient(ctx context.Context, client stripe.RequestPerformer, path string, params *RequestParameters, additionalParams map[string]interface{}, errOnStatus bool, additionalConfigure func(req *http.Request) error) ([]byte, error) {
+	parsedBaseURL, err := url.Parse(rb.APIBaseURL)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	apiGeneration := stripe.V1Request
+	if stripe.IsV2Path(path) {
+		apiGeneration = stripe.V2Request
+	}
+
+	var data string
+	if apiGeneration == stripe.V2Request {
+		data, err = BuildDataForV2Request(rb.Method, path, params.data, additionalParams)
+	} else {
+		data, err = BuildDataForV1Request(rb.Method, parsedBaseURL.Path, params, additionalParams, make(map[string]gjson.Result))
+	}
 	if err != nil {
 		return []byte{}, err
 	}
@@ -250,20 +269,11 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	configure := func(req *http.Request) error {
 		rb.setIdempotencyHeader(req, params)
 		rb.setStripeAccountHeader(req, params)
-		rb.setVersionHeader(req, params)
+		rb.setStripeContextHeader(req, params)
+		rb.setVersionHeader(req, params, path)
 		if additionalConfigure != nil {
 			if err := additionalConfigure(req); err != nil {
 				return err
-			}
-		}
-
-		if rb.Profile != nil {
-			experimentalFields := rb.Profile.GetExperimentalFields()
-			if experimentalFields.StripeHeaders != "" {
-				err := rb.experimentalRequestSigning(req, experimentalFields)
-				if err != nil {
-					return err
-				}
 			}
 		}
 
@@ -289,8 +299,20 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			return []byte{}, err
 		}
 
-		result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
-		fmt.Print(result)
+		// Check if the response is a PDF file
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(contentType, "application/pdf") {
+			// Extract a filename from the path (e.g., /v1/quotes/qt_123/pdf -> qt_123.pdf)
+			filename := extractFilenameFromPath(path, "pdf")
+			err := os.WriteFile(filename, body, 0644)
+			if err != nil {
+				return []byte{}, fmt.Errorf("failed to save PDF file: %w", err)
+			}
+			fmt.Printf("PDF saved to: %s\n", filename)
+		} else {
+			result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
+			fmt.Println(result)
+		}
 	}
 
 	return body, nil
@@ -308,8 +330,10 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 
 	var errorBody requestErrorBody
 	json.Unmarshal(body, &errorBody)
+
+	msg := "Request failed"
 	return RequestError{
-		msg:        "Request failed",
+		msg:        msg,
 		StatusCode: statusCode,
 		ErrorType:  errorBody.Content.Type,
 		ErrorCode:  errorBody.Content.Code,
@@ -317,9 +341,94 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 	}
 }
 
+// extractFilenameFromPath extracts a meaningful filename from an API path
+// For example: /v1/quotes/qt_123/pdf -> qt_123.pdf
+func extractFilenameFromPath(path string, extension string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+
+	// Look for an ID-like part (starts with common Stripe prefixes)
+	for _, part := range parts {
+		if strings.HasPrefix(part, "qt_") ||
+			strings.HasPrefix(part, "in_") ||
+			strings.HasPrefix(part, "pi_") ||
+			strings.HasPrefix(part, "ch_") ||
+			strings.HasPrefix(part, "file_") {
+			return part + "." + extension
+		}
+	}
+
+	// Fallback: use the last meaningful part before the extension
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] != extension && parts[i] != "" {
+			return parts[i] + "." + extension
+		}
+	}
+
+	// Final fallback
+	return "download." + extension
+}
+
 // Confirm calls the confirmCommand() function, triggering the confirmation process
 func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
+}
+
+// BuildDataForV1Request transforms the v2 post data into v1 post request param shape
+func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestParameters, additionalParams map[string]interface{}, queryRespMap map[string]gjson.Result) (string, error) {
+	req := Base{
+		Method:         strings.ToUpper(method),
+		SuppressOutput: true,
+		APIBaseURL:     apiBaseURL,
+	}
+
+	v1Params, err := createV1Params(requestParams, additionalParams, queryRespMap)
+	if err != nil {
+		return "", err
+	}
+
+	dataStr, err := req.BuildDataForRequest(v1Params)
+	if err != nil {
+		return "", err
+	}
+
+	return dataStr, nil
+}
+
+// createV1Params combine the data flag and property flag parameters into request parameters
+func createV1Params(requestParams *RequestParameters, additionalParams map[string]interface{}, queryRespMap map[string]gjson.Result) (*RequestParameters, error) {
+	// clean up data param arrays
+	dataFlagParams := make([]string, 0)
+	for _, datum := range requestParams.data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return nil, fmt.Errorf("invalid data argument: %s", datum)
+		}
+
+		if _, ok := additionalParams[split[0]]; ok {
+			return nil, fmt.Errorf("flag %q already set", split[0])
+		}
+
+		dataFlagParams = append(dataFlagParams, datum)
+	}
+
+	// merge params
+	result := RequestParameters{}
+	result.AppendData(dataFlagParams)
+	result.AppendExpand(requestParams.expand)
+	result.startingAfter = requestParams.startingAfter
+	result.endingBefore = requestParams.endingBefore
+	result.SetIdempotency(requestParams.idempotency)
+	result.limit = requestParams.limit
+	result.SetStripeAccount("")
+	result.SetVersion("")
+
+	parsed, err := parsers.ParseToFormData(additionalParams, queryRespMap)
+	if err != nil {
+		return &result, err
+	}
+	result.AppendData(parsed)
+
+	return &result, nil
 }
 
 // BuildDataForRequest builds request payload
@@ -338,7 +447,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
-				return "", fmt.Errorf("Invalid data argument: %s", datum)
+				return "", fmt.Errorf("invalid data argument: %s", datum)
 			}
 
 			keys = append(keys, splitDatum[0])
@@ -371,15 +480,110 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 	return encode(keys, values), nil
 }
 
+// BuildDataForV2Request encodes the parameters for the API request.
+//
+// For GET requests, it merges these params and URL-encodes them:
+//
+//  1. the URL query params
+//  2. params from the --data flag
+//  3. any additional params from the caller
+//
+// For non-GET requests, it merges these params and marshalls them to JSON:
+//
+//  1. params from the --data flag
+//  2. any additional params from the caller
+func BuildDataForV2Request(method string, path string, data []string, additionalParams map[string]interface{}) (string, error) {
+	dataFlagParams, err := parseJSONDataFlag(data)
+	if err != nil {
+		return "", err
+	}
+
+	// GET params are URL encoded
+	if method == http.MethodGet {
+		pathFragment, err := url.Parse(path)
+		if err != nil {
+			return "", err
+		}
+		urlQueryParams := pathFragment.Query()
+		if err := setQueryParams(&urlQueryParams, dataFlagParams); err != nil {
+			return "", err
+		}
+		if err := setQueryParams(&urlQueryParams, additionalParams); err != nil {
+			return "", err
+		}
+		return urlQueryParams.Encode(), nil
+	}
+
+	// non-GET params are marshaled to JSON
+	for k, v := range additionalParams {
+		dataFlagParams[k] = v
+	}
+	marshaled, err := json.Marshal(dataFlagParams)
+	if err != nil {
+		return "", err
+	}
+
+	params := string(marshaled)
+
+	if params == "{}" {
+		params = ""
+	}
+	return params, nil
+}
+
+var errJSONDataFlagInvalid = errors.New("v2 API takes a single 'data' param containing a full JSON string")
+
+func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
+	dataFlagParams := make(map[string]interface{})
+	if len(data) == 0 {
+		return dataFlagParams, nil
+	}
+
+	jsonData := strings.TrimSpace(data[0])
+	isKeyValueData, _ := regexp.MatchString(`^\w+=.*$`, jsonData)
+	if len(data) > 1 || len(jsonData) == 0 || isKeyValueData {
+		return nil, errJSONDataFlagInvalid
+	}
+
+	if err := json.Unmarshal([]byte(jsonData), &dataFlagParams); err != nil {
+		return nil, fmt.Errorf("data is invalid json: %s", data)
+	}
+
+	return dataFlagParams, nil
+}
+
+func setQueryParams(queryParams *url.Values, paramsMap map[string]interface{}) error {
+	for k, v := range paramsMap {
+		switch val := reflect.ValueOf(v); val.Kind() {
+		case reflect.Slice:
+			for _, vv := range v.([]interface{}) {
+				str, err := toString(vv)
+				if err != nil {
+					return err
+				}
+				queryParams.Add(k, str)
+			}
+		default:
+			str, err := toString(v)
+			if err != nil {
+				return err
+			}
+			queryParams.Set(k, str)
+		}
+	}
+	return nil
+}
+
 func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer, string, error) {
 	var body bytes.Buffer
 	mp := multipart.NewWriter(&body)
 	defer mp.Close()
+
 	for _, datum := range params.data {
 		splitDatum := strings.SplitN(datum, "=", 2)
 
 		if len(splitDatum) < 2 {
-			return nil, "", fmt.Errorf("Invalid data argument: %s", datum)
+			return nil, "", fmt.Errorf("invalid data argument: %s", datum)
 		}
 
 		key := splitDatum[0]
@@ -449,15 +653,29 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 	}
 }
 
-func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters) {
-	if params.version != "" {
+func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
+	switch {
+	case params.version != "":
+		// User explicitly provided a version, use it
 		request.Header.Set("Stripe-Version", params.version)
+	case rb.IsPreviewCommand:
+		// If this is a preview command, use the preview version
+		request.Header.Set("Stripe-Version", StripePreviewVersionHeaderValue)
+	case stripe.IsV2Path(path):
+		// Otherwise, if it's a v2 path, use the normal v2 version
+		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
 	}
 }
 
 func (rb *Base) setStripeAccountHeader(request *http.Request, params *RequestParameters) {
 	if params.stripeAccount != "" {
 		request.Header.Set("Stripe-Account", params.stripeAccount)
+	}
+}
+
+func (rb *Base) setStripeContextHeader(request *http.Request, params *RequestParameters) {
+	if params.stripeContext != "" {
+		request.Header.Set("Stripe-Context", params.stripeContext)
 	}
 }
 
@@ -494,18 +712,18 @@ func createOrNormalizePath(arg string) (string, error) {
 			return path + arg, nil
 		}
 
-		return "", fmt.Errorf("Unrecognized object id: %s", arg)
+		return "", fmt.Errorf("unrecognized object id: %s", arg)
 	}
 
 	return normalizePath(arg), nil
 }
 
 func normalizePath(path string) string {
-	if strings.HasPrefix(path, "/v1/") {
+	if strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v2/") {
 		return path
 	}
 
-	if strings.HasPrefix(path, "v1/") {
+	if strings.HasPrefix(path, "v1/") || strings.HasPrefix(path, "v2/") {
 		return "/" + path
 	}
 
@@ -516,34 +734,17 @@ func normalizePath(path string) string {
 	return "/v1/" + path
 }
 
-func (rb *Base) experimentalRequestSigning(req *http.Request, experimentalFields config.ExperimentalFields) error {
-	privKey := experimentalFields.PrivateKey
-
-	keyToValues := strings.Split(strings.Trim(experimentalFields.StripeHeaders, ";"), ";")
-	for _, pair := range keyToValues {
-		header := strings.Split(pair, "=")
-		if len(header) != 2 {
-			continue
-		}
-		headerName := header[0]
-		headerValue := header[1]
-		if headerName == stripeContextHeaderName {
-			displayMessage := fmt.Sprintf("Operating in %s %s\n", ansi.Bold(experimentalFields.ContextualName), ansi.Color(os.Stdout).Gray(10, "("+headerValue+")..."))
-			fmt.Print(ansi.Color(os.Stdout).Gray(10, displayMessage))
-		} else if headerName == authorizationHeaderName && privKey == "" {
-			creds, err := rb.Profile.GetSessionCredentials()
-			if err != nil {
-				return err
-			}
-			headerValue += creds.UAT
-			privKey = creds.PrivateKey
-		}
-		req.Header.Set(headerName, headerValue)
+func toString(value interface{}) (string, error) {
+	switch val := reflect.ValueOf(value); val.Kind() {
+	case reflect.String:
+		return val.String(), nil
+	case reflect.Float64:
+		return fmt.Sprintf("%v", val.Float()), nil
+	case reflect.Int:
+		return strconv.FormatInt(val.Int(), 10), nil
+	case reflect.Bool:
+		return strconv.FormatBool(val.Bool()), nil
+	default:
+		return "", fmt.Errorf("unsupported query param type: %s", val.Kind().String())
 	}
-	if len(keyToValues) > 0 {
-		// Must sign the request AFTER all headers have been set
-		SignRequest(req, privKey)
-	}
-
-	return nil
 }

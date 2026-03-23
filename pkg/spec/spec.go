@@ -1,3 +1,4 @@
+// Package spec provides OpenAPI specification parsing.
 package spec
 
 import (
@@ -67,6 +68,26 @@ type StripeOperation struct {
 	Path       string   `json:"path"`
 }
 
+// StripeEvent is a struct containing information about a Stripe event.
+//
+// If EventKind is defined and set to "thin", it indicates a thin event.
+// EventKind is optional.
+type StripeEvent struct {
+	EventType string  `json:"type"`
+	EventKind *string `json:"kind,omitempty"`
+}
+
+type StripeError struct {
+	Code           string `json:"code"`
+	HTTPStatusCode int    `json:"httpStatusCode"`
+}
+
+// StripeEnumValue represents a single value in a Stripe enum
+type StripeEnumValue struct {
+	Description string `json:"description"`
+	Value       string `json:"value"`
+}
+
 // This is a list of fields that either we handle properly or we're confident
 // it's safe to ignore. If a field not in this list appears in the OpenAPI spec,
 // then we'll get an error so we remember to update stripe-mock to support it.
@@ -74,6 +95,7 @@ var supportedSchemaFields = []string{
 	"$ref",
 	"additionalProperties",
 	"anyOf",
+	"oneOf",
 	"description",
 	"enum",
 	"format",
@@ -90,12 +112,17 @@ var supportedSchemaFields = []string{
 	"x-resourceId",
 	"x-stripeOperations",
 	"x-stripeMostCommon",
+	"x-stripeEvent",
+	"x-stripeNotPublic",
+	"x-stripeError",
+	"x-stripeEnum",
 
 	// This is currently being used to store additional metadata for our SDKs. It's
 	// passed through our Spec and should be ignored
 	"x-stripeParam",
+	"x-stripeProperty",
 	"x-stripeResource",
-	"x-stripeEvent",
+	"x-stableId",
 	"deprecated",
 
 	// This is currently a hint for the server-side so I haven't included it in
@@ -115,6 +142,7 @@ type Schema struct {
 	AdditionalProperties interface{} `json:"additionalProperties,omitempty"`
 
 	AnyOf      []*Schema          `json:"anyOf,omitempty"`
+	OneOf      []*Schema          `json:"oneOf,omitempty"`
 	Enum       []interface{}      `json:"enum,omitempty"`
 	Format     string             `json:"format,omitempty"`
 	Items      *Schema            `json:"items,omitempty"`
@@ -134,6 +162,10 @@ type Schema struct {
 	XResourceID         string              `json:"x-resourceId,omitempty"`
 	XStripeOperations   *[]StripeOperation  `json:"x-stripeOperations,omitempty"`
 	XStripeMostCommon   []string            `json:"x-stripeMostCommon,omitempty"`
+	XStripeEvent        *StripeEvent        `json:"x-stripeEvent,omitempty"`
+	XStripeNotPublic    bool                `json:"x-stripeNotPublic,omitempty"`
+	XStripeError        *StripeError        `json:"x-stripeError"`
+	XStripeEnum         []StripeEnumValue   `json:"x-stripeEnum,omitempty"`
 }
 
 func (s *Schema) String() string {
@@ -197,6 +229,7 @@ type Operation struct {
 	Parameters  []*Parameter            `json:"parameters"`
 	RequestBody *RequestBody            `json:"requestBody"`
 	Responses   map[StatusCode]Response `json:"responses"`
+	Servers     []Server                `json:"servers"`
 }
 
 // Parameter is a struct representing a request parameter to an HTTP operation
@@ -217,6 +250,11 @@ type Path string
 type RequestBody struct {
 	Content  map[string]MediaType `json:"content"`
 	Required bool                 `json:"required"`
+}
+
+// Server is a struct representing server information in an OpenAPI specification.
+type Server struct {
+	URL string `json:"url"`
 }
 
 // Response is a struct representing the response of an HTTP operation in an

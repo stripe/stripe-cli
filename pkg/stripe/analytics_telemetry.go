@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/stripe/stripe-cli/pkg/useragent"
 	"github.com/stripe/stripe-cli/pkg/version"
 )
 
@@ -38,10 +40,12 @@ type CLIAnalyticsEventMetadata struct {
 	InvocationID      string `url:"invocation_id"`      // The invocation id is unique to each context object and represents all events coming from one command / gRPC method call
 	UserAgent         string `url:"user_agent"`         // the application that is used to create this request
 	CommandPath       string `url:"command_path"`       // the command or gRPC method that initiated this request
+	CommandFlags      string `url:"command_flags"`      // Comma-separated list of flags that were passed to the command (only includes flag names, not their values)
 	Merchant          string `url:"merchant"`           // the merchant ID: ex. acct_xxxx
 	CLIVersion        string `url:"cli_version"`        // the version of the CLI
 	OS                string `url:"os"`                 // the OS of the system
 	GeneratedResource bool   `url:"generated_resource"` // whether or not this was a generated resource
+	AIAgent           string `url:"ai_agent,omitempty"` // the AI coding agent that invoked the CLI, if any
 }
 
 // TelemetryClient is an interface that can send two types of events: an API request, and just general events.
@@ -71,6 +75,7 @@ func NewEventMetadata() *CLIAnalyticsEventMetadata {
 		InvocationID: uuid.NewString(),
 		CLIVersion:   version.Version,
 		OS:           runtime.GOOS,
+		AIAgent:      useragent.DetectAIAgent(os.Getenv),
 	}
 }
 
@@ -131,6 +136,11 @@ func (e *CLIAnalyticsEventMetadata) SetUserAgent(userAgent string) {
 // SetCommandPath sets the commandPath on the CLIAnalyticsEventContext object
 func (e *CLIAnalyticsEventMetadata) SetCommandPath(commandPath string) {
 	e.CommandPath = commandPath
+}
+
+// SetCommandFlags sets the flags on the CLIAnalyticsEventContext object
+func (e *CLIAnalyticsEventMetadata) SetCommandFlags(commandFlags string) {
+	e.CommandFlags = commandFlags
 }
 
 // SendAPIRequestEvent is a special function for API requests

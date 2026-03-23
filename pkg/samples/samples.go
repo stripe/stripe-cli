@@ -1,3 +1,4 @@
+// Package samples manages Stripe sample application setup.
 package samples
 
 import (
@@ -20,7 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	g "github.com/stripe/stripe-cli/pkg/git"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
@@ -140,7 +140,7 @@ type SampleManager struct {
 func NewSampleManager(config *config.Config) (*SampleManager, error) {
 	sampleManager := &SampleManager{
 		Fs:              afero.NewOsFs(),
-		Git:             gitpkg.Operations{},
+		Git:             g.Operations{},
 		ConfigureDotEnv: ConfigureDotEnv,
 		Config:          config,
 	}
@@ -161,7 +161,7 @@ func NewSampleManager(config *config.Config) (*SampleManager, error) {
 // 5. parse the sample cli config file
 func (s *SampleManager) Initialize(app string) error {
 	if app == "" {
-		return errors.New("Sample name is empty")
+		return errors.New("sample name is empty")
 	}
 
 	appPath, err := s.appCacheFolder(app)
@@ -181,7 +181,7 @@ func (s *SampleManager) Initialize(app string) error {
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
 		sampleData, ok := list[app]
 		if !ok {
-			return fmt.Errorf("Sample %s does not exist", app)
+			return fmt.Errorf("sample %s does not exist", app)
 		}
 		err = s.Git.Clone(appPath, sampleData.GitRepo())
 		if err != nil {
@@ -190,15 +190,13 @@ func (s *SampleManager) Initialize(app string) error {
 	} else {
 		err := s.Git.Pull(appPath)
 		if err != nil {
-			if err != nil {
-				switch e := err.Error(); e {
-				case git.NoErrAlreadyUpToDate.Error():
-					// Repo is already up to date. This isn't a program
-					// error to continue as normal
-					break
-				default:
-					return err
-				}
+			switch e := err.Error(); e {
+			case git.NoErrAlreadyUpToDate.Error():
+				// Repo is already up to date. This isn't a program
+				// error to continue as normal
+				break
+			default:
+				return err
 			}
 		}
 	}
@@ -241,7 +239,7 @@ func (s *SampleManager) Copy(target string) error {
 		// empty string is a valid option
 		if s.SelectedConfig.Server != "" && !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
 			return fmt.Errorf(
-				"Server %s doesn't exist for sample integration %s. Available servers: %v",
+				"server %s doesn't exist for sample integration %s, available servers: %v",
 				s.SelectedConfig.Server,
 				integration,
 				s.SelectedConfig.Integration.Servers,
@@ -261,7 +259,7 @@ func (s *SampleManager) Copy(target string) error {
 		// empty string is a valid option
 		if s.SelectedConfig.Client != "" && !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
 			return fmt.Errorf(
-				"Client %s doesn't exist for sample integration %s. Available clients: %v",
+				"client %s doesn't exist for sample integration %s, available clients: %v",
 				s.SelectedConfig.Client,
 				integration,
 				s.SelectedConfig.Integration.Clients,
@@ -452,7 +450,7 @@ func (s *SampleManager) GetSampleConfig(sampleName string, forceRefresh bool) (*
 	if _, ok := samplesList[sampleName]; !ok {
 		errorMessage := fmt.Sprintf(`The sample provided is not currently supported by the CLI: %s
 To see supported samples, run 'stripe samples list'`, sampleName)
-		return nil, fmt.Errorf(errorMessage)
+		return nil, fmt.Errorf("%s", errorMessage)
 	}
 
 	err = s.Initialize(sampleName)

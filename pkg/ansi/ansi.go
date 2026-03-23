@@ -1,3 +1,4 @@
+// Package ansi provides helpers for terminal color and formatting.
 package ansi
 
 import (
@@ -70,7 +71,7 @@ func ColorizeJSON(json string, darkStyle bool, w io.Writer) string {
 		style = darkTerminalStyle
 	}
 
-	return string(pretty.Color([]byte(json), style))
+	return string(pretty.Color(pretty.Pretty([]byte(json)), style))
 }
 
 // ColorizeStatus returns a colorized number for HTTP status code

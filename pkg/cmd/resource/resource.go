@@ -53,6 +53,10 @@ func GetResourceCmdName(name string) string {
 		return "terminal"
 	case "settings":
 		return "settings"
+	case "credit_balance_summary":
+		return "credit_balance_summaries"
+	case "meter_event_summary":
+		return "meter_event_summaries"
 	default:
 		return name + "s"
 	}
@@ -132,6 +136,8 @@ func PostProcessResourceCommands(rootCmd *cobra.Command, cfg *config.Config) err
 	if err != nil {
 		return err
 	}
+
+	HideAliasedCommands(rootCmd)
 
 	return nil
 }

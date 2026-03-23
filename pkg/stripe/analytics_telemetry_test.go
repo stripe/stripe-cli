@@ -14,6 +14,7 @@ import (
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/stripe"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 // Context Tests
@@ -65,7 +66,7 @@ func TestSetCobraCommandContext(t *testing.T) {
 func TestSetCobraCommandContext_SetsGeneratedResourceForGeneratedCommands(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, &config.Config{})
+	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
 	tel := stripe.NewEventMetadata()
 	tel.SetCobraCommandContext(oc.Cmd)
 	require.True(t, tel.GeneratedResource)
@@ -95,6 +96,8 @@ func TestSendAPIRequestEvent(t *testing.T) {
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "request_id=req_zzz")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
+		// ai_agent should not be present when empty (omitempty)
+		require.NotContains(t, bodyString, "ai_agent")
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -148,6 +151,8 @@ func TestSendEvent(t *testing.T) {
 		require.Contains(t, bodyString, "merchant=acct_1234")
 		require.Contains(t, bodyString, "os=darwin")
 		require.Contains(t, bodyString, "user_agent=Unit+Test")
+		// ai_agent should not be present when empty (omitempty)
+		require.NotContains(t, bodyString, "ai_agent")
 	}))
 	defer ts.Close()
 	baseURL, _ := url.Parse(ts.URL)
@@ -161,6 +166,33 @@ func TestSendEvent(t *testing.T) {
 		Merchant:          "acct_1234",
 		GeneratedResource: false,
 	}
+	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
+	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
+	analyticsClient.SendEvent(processCtx, "foo", "bar")
+}
+
+func TestSendEvent_WithAIAgent(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		bodyString := string(body)
+		require.Contains(t, bodyString, "ai_agent=cursor")
+	}))
+	defer ts.Close()
+	baseURL, _ := url.Parse(ts.URL)
+
+	// Create metadata and manually set AIAgent field
+	telemetryMetadata := &stripe.CLIAnalyticsEventMetadata{
+		InvocationID:      "123456",
+		UserAgent:         "Unit Test",
+		CLIVersion:        "master",
+		OS:                "darwin",
+		CommandPath:       "stripe test",
+		Merchant:          "acct_1234",
+		GeneratedResource: false,
+		AIAgent:           "cursor",
+	}
+
 	processCtx := stripe.WithEventMetadata(context.Background(), telemetryMetadata)
 	analyticsClient := stripe.AnalyticsTelemetryClient{BaseURL: baseURL, HTTPClient: &http.Client{}}
 	analyticsClient.SendEvent(processCtx, "foo", "bar")
@@ -189,4 +221,68 @@ func TestTelemetryOptedOut(t *testing.T) {
 	require.True(t, stripe.TelemetryOptedOut("true"))
 	require.True(t, stripe.TelemetryOptedOut("True"))
 	require.True(t, stripe.TelemetryOptedOut("TRUE"))
+}
+
+// AI Agent Detection Tests
+func TestDetectAIAgent_WithClaudeCode(t *testing.T) {
+	// Mock env getter that returns CLAUDECODE
+	getEnv := func(key string) string {
+		if key == "CLAUDECODE" {
+			return "1"
+		}
+		return ""
+	}
+	result := useragent.DetectAIAgent(getEnv)
+	require.Equal(t, "claude_code", result)
+}
+
+func TestDetectAIAgent_NoAgentDetected(t *testing.T) {
+	// Mock env getter that returns empty strings
+	getEnv := func(key string) string {
+		return ""
+	}
+	result := useragent.DetectAIAgent(getEnv)
+	require.Equal(t, "", result)
+}
+
+func TestAIAgentDetection_AllAgents(t *testing.T) {
+	tests := []struct {
+		name     string
+		envVar   string
+		expected string
+	}{
+		{"Antigravity", "ANTIGRAVITY_CLI_ALIAS", "antigravity"},
+		{"Claude Code", "CLAUDECODE", "claude_code"},
+		{"Cline", "CLINE_ACTIVE", "cline"},
+		{"Codex CLI", "CODEX_SANDBOX", "codex_cli"},
+		{"Cursor", "CURSOR_AGENT", "cursor"},
+		{"Gemini CLI", "GEMINI_CLI", "gemini_cli"},
+		{"Open Code", "OPENCODE", "open_code"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock env getter that returns only the specific env var being tested
+			getEnv := func(key string) string {
+				if key == tt.envVar {
+					return "true"
+				}
+				return ""
+			}
+			result := useragent.DetectAIAgent(getEnv)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAIAgentDetection_Priority(t *testing.T) {
+	// Test that the first matching env var wins (antigravity comes before cursor)
+	getEnv := func(key string) string {
+		if key == "ANTIGRAVITY_CLI_ALIAS" || key == "CURSOR_AGENT" {
+			return "1"
+		}
+		return ""
+	}
+	result := useragent.DetectAIAgent(getEnv)
+	require.Equal(t, "antigravity", result)
 }
