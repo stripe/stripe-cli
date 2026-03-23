@@ -22,16 +22,29 @@ import (
 
 // InteractiveLogin lets the user set configuration on the command line
 func InteractiveLogin(ctx context.Context, config *config.Config) error {
-	apiKey, err := getConfigureAPIKey(os.Stdin)
+	return interactiveLoginWithParams(ctx, config, os.Stdin, stripe.DefaultAPIBaseURL)
+}
+
+func interactiveLoginWithParams(ctx context.Context, config *config.Config, input io.Reader, baseURL string) error {
+	apiKey, err := getConfigureAPIKey(input)
 	if err != nil {
 		return err
 	}
 
-	config.Profile.DeviceName = getConfigureDeviceName(os.Stdin)
-	config.Profile.TestModeAPIKey = apiKey
-	displayName, _ := getDisplayName(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
+	config.Profile.DeviceName = getConfigureDeviceName(input)
 
-	config.Profile.DisplayName = displayName
+	livemode := strings.HasPrefix(apiKey, "sk_live_") || strings.HasPrefix(apiKey, "rk_live_")
+	if livemode {
+		config.Profile.LiveModeAPIKey = apiKey
+	} else {
+		config.Profile.TestModeAPIKey = apiKey
+	}
+
+	account, err := acct.GetUserAccount(ctx, baseURL, apiKey)
+	if err == nil {
+		config.Profile.DisplayName = account.Settings.Dashboard.DisplayName
+		config.Profile.AccountID = account.ID
+	}
 
 	profileErr := config.Profile.CreateProfile()
 	if profileErr != nil {
@@ -41,7 +54,7 @@ func InteractiveLogin(ctx context.Context, config *config.Config) error {
 	// The '>' character is automatically included at the end of client login
 	// due to ansi spinner. Since no spinner is used with interactive login,
 	// we need to include it manually to maintain consistency in outputs.
-	message, err := SuccessMessage(ctx, nil, stripe.DefaultAPIBaseURL, apiKey)
+	message, err := SuccessMessage(ctx, nil, baseURL, apiKey)
 	if err != nil {
 		fmt.Printf("> Error verifying the CLI was setup successfully: %s\n", err)
 	} else {
@@ -49,22 +62,6 @@ func InteractiveLogin(ctx context.Context, config *config.Config) error {
 	}
 
 	return nil
-}
-
-// getDisplayName returns the display name for a successfully authenticated user
-func getDisplayName(ctx context.Context, account *acct.Account, baseURL string, apiKey string) (string, error) {
-	// Account will be nil if user did interactive login
-	if account == nil {
-		acc, err := acct.GetUserAccount(ctx, baseURL, apiKey)
-		if err != nil {
-			return "", err
-		}
-
-		account = acc
-	}
-	displayName := account.Settings.Dashboard.DisplayName
-
-	return displayName, nil
 }
 
 func getConfigureAPIKey(input io.Reader) (string, error) {
