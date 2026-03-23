@@ -136,12 +136,16 @@ func getUsageTemplate() string {
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
 
 %s
-  {{rpad "get" 29}} Quickly retrieve resources from Stripe
   {{rpad "charges" 29}} Make requests (capture, create, list, etc) on charges
   {{rpad "customers" 29}} Make requests (create, delete, list, etc) on customers
   {{rpad "payment_intents" 29}} Make requests (cancel, capture, confirm, etc) on payment intents
   {{rpad "..." 29}} %s
   {{rpad "v2" 29}} %s
+
+%s
+  {{rpad "get" 29}} Make GET requests to the Stripe API
+  {{rpad "post" 29}} Make POST requests to the Stripe API
+  {{rpad "delete" 29}} Make DELETE requests to the Stripe API
 
 %s{{range $index, $cmd := .Commands}}{{if (not (or (index $.Annotations $cmd.Name) $cmd.Hidden))}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
@@ -165,6 +169,7 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Resource commands:"),
 		ansi.Italic("To see more resource commands, run `stripe resources help`"),
 		ansi.Italic("To see only v2 resource commands, run `stripe v2 help`"),
+		ansi.Bold("API commands:"),
 		ansi.Bold("Other commands:"),
 		ansi.Bold("Available commands:"),
 		ansi.Bold("Flags:"),
