@@ -35,22 +35,40 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
-// commands to set values for request parameters. The string is wrapped to the
-// terminal's width.
+// commands to set values for request parameters.
+//
+// For enum parameters, the possible values are shown inline (e.g. --status
+// complete|expired|open), truncated with "..." if they would exceed the
+// terminal width. For other parameters, the API type is shown in angle
+// brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 	var sb strings.Builder
 
-	// We're cheating a little bit in thie method: we're not actually wrapping
-	// anything, just printing out the flag names and assuming that no name
-	// will be long enough to go over the terminal's width.
-	// We do this instead of using pflag's `FlagUsagesWrapped` function because
-	// we don't want to print the types (all request parameters flags are
-	// defined as strings in the CLI, but it would be confusing to print that
-	// out as a lot of them are not strings in the API).
-	// If/when we do add help strings for request parameters flags, we'll have
-	// to do actual wrapping.
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
-		if _, ok := flag.Annotations["request"]; ok {
+		if _, ok := flag.Annotations["request"]; !ok {
+			return
+		}
+
+		if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
+			const maxDisplayedEnumValues = 5
+			prefix := fmt.Sprintf("      --%s ", flag.Name)
+
+			if len(enumVals) <= maxDisplayedEnumValues {
+				fmt.Fprintf(&sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
+			} else {
+				fmt.Fprintf(&sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
+			}
+		} else if apiType, ok := flag.Annotations["apitype"]; ok {
+			typeName := apiType[0]
+			switch typeName {
+			case "array":
+				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
+			case "boolean":
+				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
+			default:
+				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
+			}
+		} else {
 			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
 		}
 	})
