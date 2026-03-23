@@ -1,6 +1,7 @@
 //go:generate go run ../gen/gen_resources_cmds.go
 //go:generate go run ../gen/gen_events_list.go
 
+// Package cmd implements all Stripe CLI commands.
 package cmd
 
 import (

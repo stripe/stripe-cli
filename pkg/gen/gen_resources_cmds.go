@@ -51,6 +51,7 @@ type OperationData struct {
 	HTTPVerb  string
 	PropFlags map[string]string
 	EnumFlags map[string][]spec.StripeEnumValue
+	ServerURL string
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
@@ -75,12 +76,7 @@ var test_helpers_path = "test_helpers"
 func main() {
 	// This is the script that generates the `resources.go` file from the
 	// OpenAPI spec files.
-	//
-	// There are two loading strategies:
-	// 1. Legacy: Load separate V1, V2, and V2 Preview spec files
-	// 2. Unified: Load unified spec files that contain both V1 and V2 together
-
-	templateData, gaVersion, previewVersion, err := getTemplateDataFromUnifiedSpec()
+	templateData, gaVersion, previewVersion, err := getTemplateData()
 	if err != nil {
 		panic(err)
 	}
@@ -155,79 +151,13 @@ func generateStripeVersionHeader(version string, previewVersion string) {
 	}
 }
 
-// getTemplateData loads resource data from separate v1, v2, and v2 preview spec files.
-// This is the legacy approach that requires three separate spec files.
-// Returns template data along with GA and preview version strings for the stripe version header.
-func getTemplateData() (*TemplateData, string, string, error) {
-	// Load the v1 OpenAPI spec
-	v1Spec, err := spec.LoadSpec(gen.PathStripeSpec)
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	// Load the v2 OpenAPI spec
-	v2Spec, err := spec.LoadSpec(gen.PathStripeSpecV2)
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	v2PreviewSpec, err := spec.LoadSpec(gen.PathStripeSpecV2Preview)
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	data := &TemplateData{
-		ApiNamespaces: make(map[ApiNamespace]*ApiNamespaceData),
-	}
-
-	// Map API namespaces to their respective specs
-	apiSpecs := map[ApiNamespace]*spec.Spec{
-		V1Namespace:        v1Spec,
-		V2Namespace:        v2Spec,
-		V2PreviewNamespace: v2PreviewSpec,
-	}
-
-	// Process each spec
-	for apiNamespace, apiSpec := range apiSpecs {
-		// Iterate over every resource schema
-		for name, schema := range apiSpec.Components.Schemas {
-			// Skip resources that don't have any operations
-			if schema.XStripeOperations == nil {
-				continue
-			}
-
-			// Skip non-public resources except for preview resources
-			if schema.XStripeNotPublic && apiNamespace != V2PreviewNamespace {
-				continue
-			}
-
-			err := genCmdTemplate(apiNamespace, name, name, data, apiSpec)
-			if err != nil {
-				return nil, "", "", err
-			}
-
-			alias := resource.GetCmdAlias(name)
-			if alias != "" {
-				// Aliased commands write a second entry into the resource commands, and use post-processing to hide the
-				// command from the index (e.g. when running `stripe resources`)
-				err := genCmdTemplate(apiNamespace, name, alias, data, apiSpec)
-				if err != nil {
-					return nil, "", "", err
-				}
-			}
-		}
-	}
-
-	return data, v2Spec.Info.Version, v2PreviewSpec.Info.Version, nil
-}
-
-// getTemplateDataFromUnifiedSpec loads resource data from unified spec files that contain
+// getTemplateData loads resource data from unified spec files that contain
 // both v1 and v2 APIs together. This approach:
 //   - Uses path-based detection to determine v1 vs v2 (see getApiNamespaceFromOperations)
 //   - Processes GA spec for v1/v2 commands, preview spec for v1-preview/v2-preview commands
 //
 // Returns template data along with GA and preview version strings for the stripe version header.
-func getTemplateDataFromUnifiedSpec() (*TemplateData, string, string, error) {
+func getTemplateData() (*TemplateData, string, string, error) {
 	// Load both unified specs
 	gaSpec, err := spec.LoadSpec(gen.PathUnifiedSpec)
 	if err != nil {
@@ -429,12 +359,19 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 
 		properties, enums := getMethodProperties(apiNamespace, specOp, op)
 
+		// Extract server URL if specified
+		serverURL := ""
+		if len(specOp.Servers) > 0 {
+			serverURL = specOp.Servers[0].URL
+		}
+
 		if hasSubResources {
 			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
 				Path:      op.Path,
 				HTTPVerb:  httpString,
 				PropFlags: properties,
 				EnumFlags: enums,
+				ServerURL: serverURL,
 			}
 		} else {
 			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
@@ -442,6 +379,7 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 				HTTPVerb:  httpString,
 				PropFlags: properties,
 				EnumFlags: enums,
+				ServerURL: serverURL,
 			}
 		}
 	}
@@ -490,6 +428,8 @@ func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op s
 					// Save enum values if they exist
 					if len(schema.XStripeEnum) > 0 {
 						enumValues[propName] = schema.XStripeEnum
+					} else if len(schema.Enum) > 0 {
+						enumValues[propName] = enumToStripeEnumValues(schema.Enum)
 					}
 				}
 			}
@@ -514,10 +454,29 @@ func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op s
 			}
 
 			properties[param.Name] = *scalarType
+
+			// Save enum values if they exist
+			if len(schema.XStripeEnum) > 0 {
+				enumValues[param.Name] = schema.XStripeEnum
+			} else if len(schema.Enum) > 0 {
+				enumValues[param.Name] = enumToStripeEnumValues(schema.Enum)
+			}
 		}
 	}
 
 	return properties, enumValues
+}
+
+// enumToStripeEnumValues converts a plain JSON Schema enum array ([]interface{})
+// to []spec.StripeEnumValue, using each value as-is with an empty description.
+func enumToStripeEnumValues(values []interface{}) []spec.StripeEnumValue {
+	result := make([]spec.StripeEnumValue, 0, len(values))
+	for _, v := range values {
+		if s, ok := v.(string); ok && s != "" {
+			result = append(result, spec.StripeEnumValue{Value: s})
+		}
+	}
+	return result
 }
 
 // getMediaType returns the content type for request bodies based on API namespace.

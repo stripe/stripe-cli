@@ -33,7 +33,7 @@ const (
 func main() {
 	// generate `events_list.go` from OpenAPI spec file
 	// code for this func from gen_resources_cmds.go
-	templateData, err := getTemplateDataFromUnifiedSpec()
+	templateData, err := getTemplateData()
 	if err != nil {
 		panic(err)
 	}
@@ -65,36 +65,11 @@ func main() {
 
 }
 
-// getTemplateData loads event data from separate V1 and V2 spec files and returns
-// template data with sorted event lists for code generation.
-func getTemplateData() (*TemplateData, error) {
-	eventsV1Set, err := getV1Events(gen.PathStripeSpec)
-	if err != nil {
-		return nil, err
-	}
-	eventsV2Set, err := getThinEvents(gen.PathStripeSpecV2)
-	if err != nil {
-		return nil, err
-	}
-	previewEventsV2Set, err := getThinEvents(gen.PathStripeSpecV2Preview)
-	if err != nil {
-		return nil, err
-	}
-
-	data := &TemplateData{
-		Events:            setToSortedSlice(eventsV1Set),
-		ThinEvents:        setToSortedSlice(eventsV2Set),
-		PreviewThinEvents: setToSortedSlice(previewEventsV2Set),
-	}
-
-	return data, nil
-}
-
-// getTemplateDataFromUnifiedSpec loads event data from unified spec files (which combine
+// getTemplateData loads event data from unified spec files (which combine
 // V1 and V2 events) and returns template data with sorted event lists for code generation.
 // Preview events are filtered to only include events that don't exist in the non-preview specs.
 // V1 preview events are excluded for now.
-func getTemplateDataFromUnifiedSpec() (*TemplateData, error) {
+func getTemplateData() (*TemplateData, error) {
 	eventsV1Set, err := getV1Events(gen.PathUnifiedSpec)
 	if err != nil {
 		return nil, err

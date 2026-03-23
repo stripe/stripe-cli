@@ -1,3 +1,4 @@
+// Package spec provides OpenAPI specification parsing.
 package spec
 
 import (
@@ -78,7 +79,7 @@ type StripeEvent struct {
 
 type StripeError struct {
 	Code           string `json:"code"`
-	HttpStatusCode int    `json:"httpStatusCode"`
+	HTTPStatusCode int    `json:"httpStatusCode"`
 }
 
 // StripeEnumValue represents a single value in a Stripe enum
@@ -228,6 +229,7 @@ type Operation struct {
 	Parameters  []*Parameter            `json:"parameters"`
 	RequestBody *RequestBody            `json:"requestBody"`
 	Responses   map[StatusCode]Response `json:"responses"`
+	Servers     []Server                `json:"servers"`
 }
 
 // Parameter is a struct representing a request parameter to an HTTP operation
@@ -248,6 +250,11 @@ type Path string
 type RequestBody struct {
 	Content  map[string]MediaType `json:"content"`
 	Required bool                 `json:"required"`
+}
+
+// Server is a struct representing server information in an OpenAPI specification.
+type Server struct {
+	URL string `json:"url"`
 }
 
 // Response is a struct representing the response of an HTTP operation in an

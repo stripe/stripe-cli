@@ -63,10 +63,6 @@ func DiscoverReaders(ctx context.Context, tsCtx TerminalSessionContext) ([]Reade
 
 	var readersList []Reader
 
-	if err != nil {
-		return readersList, err
-	}
-
 	client := &stripe.Client{
 		BaseURL: parsedBaseURL,
 		APIKey:  tsCtx.PstToken,

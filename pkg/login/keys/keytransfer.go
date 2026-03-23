@@ -9,9 +9,10 @@ import (
 
 // AsyncPollResult is the data returned from polling for keys
 type AsyncPollResult struct {
-	TestModeAPIKey string
-	Account        *acct.Account
-	Err            error
+	IsAboutToSaveCreds bool
+	TestModeAPIKey     string
+	Account            *acct.Account
+	Err                error
 }
 
 // KeyTransfer handles polling for API keys
@@ -43,6 +44,13 @@ func (rt *RAKTransfer) AsyncPollKey(ctx context.Context, pollURL string, interva
 			Err:            err,
 		}
 		return
+	}
+
+	ch <- AsyncPollResult{
+		IsAboutToSaveCreds: true,
+		TestModeAPIKey:     "",
+		Account:            nil,
+		Err:                err,
 	}
 
 	err = rt.configurer.SaveLoginDetails(response)

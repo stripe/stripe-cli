@@ -1,3 +1,4 @@
+// Package requests builds and executes Stripe API requests.
 package requests
 
 import (
@@ -298,8 +299,20 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 			return []byte{}, err
 		}
 
-		result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
-		fmt.Println(result)
+		// Check if the response is a PDF file
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(contentType, "application/pdf") {
+			// Extract a filename from the path (e.g., /v1/quotes/qt_123/pdf -> qt_123.pdf)
+			filename := extractFilenameFromPath(path, "pdf")
+			err := os.WriteFile(filename, body, 0644)
+			if err != nil {
+				return []byte{}, fmt.Errorf("failed to save PDF file: %w", err)
+			}
+			fmt.Printf("PDF saved to: %s\n", filename)
+		} else {
+			result := ansi.ColorizeJSON(string(body), rb.DarkStyle, os.Stdout)
+			fmt.Println(result)
+		}
 	}
 
 	return body, nil
@@ -328,12 +341,39 @@ func compileRequestError(body []byte, statusCode int) RequestError {
 	}
 }
 
+// extractFilenameFromPath extracts a meaningful filename from an API path
+// For example: /v1/quotes/qt_123/pdf -> qt_123.pdf
+func extractFilenameFromPath(path string, extension string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+
+	// Look for an ID-like part (starts with common Stripe prefixes)
+	for _, part := range parts {
+		if strings.HasPrefix(part, "qt_") ||
+			strings.HasPrefix(part, "in_") ||
+			strings.HasPrefix(part, "pi_") ||
+			strings.HasPrefix(part, "ch_") ||
+			strings.HasPrefix(part, "file_") {
+			return part + "." + extension
+		}
+	}
+
+	// Fallback: use the last meaningful part before the extension
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] != extension && parts[i] != "" {
+			return parts[i] + "." + extension
+		}
+	}
+
+	// Final fallback
+	return "download." + extension
+}
+
 // Confirm calls the confirmCommand() function, triggering the confirmation process
 func (rb *Base) Confirm() (bool, error) {
 	return rb.confirmCommand()
 }
 
-// BuildV1RequestData transforms the v2 post data into v1 post request param shape
+// BuildDataForV1Request transforms the v2 post data into v1 post request param shape
 func BuildDataForV1Request(method, apiBaseURL string, requestParams *RequestParameters, additionalParams map[string]interface{}, queryRespMap map[string]gjson.Result) (string, error) {
 	req := Base{
 		Method:         strings.ToUpper(method),
@@ -361,11 +401,11 @@ func createV1Params(requestParams *RequestParameters, additionalParams map[strin
 	for _, datum := range requestParams.data {
 		split := strings.SplitN(datum, "=", 2)
 		if len(split) < 2 {
-			return nil, fmt.Errorf("Invalid data argument: %s", datum)
+			return nil, fmt.Errorf("invalid data argument: %s", datum)
 		}
 
 		if _, ok := additionalParams[split[0]]; ok {
-			return nil, fmt.Errorf("Flag \"%s\" already set", split[0])
+			return nil, fmt.Errorf("flag %q already set", split[0])
 		}
 
 		dataFlagParams = append(dataFlagParams, datum)
@@ -407,7 +447,7 @@ func (rb *Base) BuildDataForRequest(params *RequestParameters) (string, error) {
 			splitDatum := strings.SplitN(datum, "=", 2)
 
 			if len(splitDatum) < 2 {
-				return "", fmt.Errorf("Invalid data argument: %s", datum)
+				return "", fmt.Errorf("invalid data argument: %s", datum)
 			}
 
 			keys = append(keys, splitDatum[0])
@@ -491,7 +531,7 @@ func BuildDataForV2Request(method string, path string, data []string, additional
 	return params, nil
 }
 
-var jsonDataFlagInvalidErr = errors.New("v2 API takes a single 'data' param containing a full JSON string.")
+var errJSONDataFlagInvalid = errors.New("v2 API takes a single 'data' param containing a full JSON string")
 
 func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
 	dataFlagParams := make(map[string]interface{})
@@ -502,7 +542,7 @@ func parseJSONDataFlag(data []string) (map[string]interface{}, error) {
 	jsonData := strings.TrimSpace(data[0])
 	isKeyValueData, _ := regexp.MatchString(`^\w+=.*$`, jsonData)
 	if len(data) > 1 || len(jsonData) == 0 || isKeyValueData {
-		return nil, jsonDataFlagInvalidErr
+		return nil, errJSONDataFlagInvalid
 	}
 
 	if err := json.Unmarshal([]byte(jsonData), &dataFlagParams); err != nil {
@@ -543,7 +583,7 @@ func (rb *Base) buildMultiPartRequest(params *RequestParameters) (*bytes.Buffer,
 		splitDatum := strings.SplitN(datum, "=", 2)
 
 		if len(splitDatum) < 2 {
-			return nil, "", fmt.Errorf("Invalid data argument: %s", datum)
+			return nil, "", fmt.Errorf("invalid data argument: %s", datum)
 		}
 
 		key := splitDatum[0]
@@ -672,7 +712,7 @@ func createOrNormalizePath(arg string) (string, error) {
 			return path + arg, nil
 		}
 
-		return "", fmt.Errorf("Unrecognized object id: %s", arg)
+		return "", fmt.Errorf("unrecognized object id: %s", arg)
 	}
 
 	return normalizePath(arg), nil

@@ -1,3 +1,4 @@
+// Package validators provides input validation for CLI commands.
 package validators
 
 import (
