@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 //
@@ -95,6 +96,36 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 // Private functions
 //
 
+func isAIAgent() bool {
+	return useragent.DetectAIAgent(os.Getenv) != ""
+}
+
+// AIAgentHelpAnnotationKey is the Cobra annotation key used to store
+// per-command help text shown only when an AI agent is detected.
+// Set it on any command via cmd.Annotations["ai_agent_help"] = "your text".
+const AIAgentHelpAnnotationKey = "ai_agent_help"
+
+func aiAgentHelp(cmd *cobra.Command) string {
+	if !isAIAgent() {
+		return ""
+	}
+
+	var sb strings.Builder
+
+	sb.WriteString(fmt.Sprintf("\n%s\n", ansi.Bold("Tips for AI agents:")))
+	sb.WriteString(fmt.Sprintf("  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY")))
+	sb.WriteString(fmt.Sprintf("  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`)))
+	sb.WriteString(fmt.Sprintf("  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources")))
+	sb.WriteString(fmt.Sprintf("  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help")))
+	sb.WriteString(fmt.Sprintf("  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account")))
+
+	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
+		sb.WriteString("\n" + extra)
+	}
+
+	return sb.String()
+}
+
 func getLogin(fs *afero.Fs, cfg *config.Config) string {
 	// We're checking against the path because we don't initialize the config
 	// at this point of execution.
@@ -159,7 +190,7 @@ func getUsageTemplate() string {
 %s
 {{WrappedInheritedFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableSubCommands}}
 
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}{{AIAgentHelp .}}
 `,
 		ansi.Bold("Usage:"),
 		ansi.Bold("Aliases:"),
@@ -193,4 +224,6 @@ func init() {
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
 	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
+	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
+	cobra.AddTemplateFunc("AIAgentHelp", func(cmd *cobra.Command) string { return aiAgentHelp(cmd) })
 }

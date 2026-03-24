@@ -107,7 +107,7 @@ func resourceUsageTemplate() string {
 %s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}{{AIAgentHelp .}}
 `,
 		ansi.Bold("Usage:"),
 		ansi.Bold("Aliases:"),
