@@ -62,7 +62,7 @@ func TestAIAgentHelp_Detected(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
 	output := aiAgentHelp(cmd)
 	require.NotEmpty(t, output)
-	assert.Contains(t, output, "Tips for AI agents")
+	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "--api-key")
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe resources")
@@ -90,7 +90,7 @@ func TestAIAgentHelp_WithAnnotation(t *testing.T) {
 	}
 	output := aiAgentHelp(cmd)
 	require.NotEmpty(t, output)
-	assert.Contains(t, output, "Tips for AI agents")
+	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "Custom tip for this command.")
 }
 

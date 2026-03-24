@@ -47,6 +47,8 @@ var rootCmd = &cobra.Command{
 		"logs":      "stripe",
 		"status":    "stripe",
 		"resources": "resources",
+		AIAgentHelpAnnotationKey: "  Visit https://docs.stripe.com/llms.txt?source=cli for latest guidance on how to integrate correctly.\n" +
+			"  Run `npx skills add --all stripe/ai` to add all Stripe AI skills to your agent.",
 	},
 	Version: version.Version,
 	Short:   "A CLI to help you integrate Stripe with your application",

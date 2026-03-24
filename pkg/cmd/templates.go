@@ -112,16 +112,17 @@ func aiAgentHelp(cmd *cobra.Command) string {
 
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%s\n", ansi.Bold("Tips for AI agents:")))
+	sb.WriteString(fmt.Sprintf("\n%s\n", ansi.Bold("[Agent guidance]")))
+
+	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
+		sb.WriteString(extra + "\n")
+	}
+
 	sb.WriteString(fmt.Sprintf("  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY")))
 	sb.WriteString(fmt.Sprintf("  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`)))
 	sb.WriteString(fmt.Sprintf("  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources")))
 	sb.WriteString(fmt.Sprintf("  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help")))
 	sb.WriteString(fmt.Sprintf("  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account")))
-
-	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
-		sb.WriteString("\n" + extra)
-	}
 
 	return sb.String()
 }
