@@ -108,21 +108,21 @@ const AIAgentHelpAnnotationKey = "ai_agent_help"
 func formatAgentGuidance(cmd *cobra.Command) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n\n%s\n", ansi.Bold("[Agent guidance]")))
+	fmt.Fprintf(&sb, "\n\n%s\n", ansi.Bold("[Agent guidance]"))
 
 	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
 		sb.WriteString(extra + "\n")
 	}
 
-	sb.WriteString(fmt.Sprintf("  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY")))
+	fmt.Fprintf(&sb, "  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
 
 	if cmd.Flags().Lookup("data") != nil {
-		sb.WriteString(fmt.Sprintf("  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`)))
+		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))
 	}
 
-	sb.WriteString(fmt.Sprintf("  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources")))
-	sb.WriteString(fmt.Sprintf("  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help")))
-	sb.WriteString(fmt.Sprintf("  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account")))
+	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
+	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
 
 	return sb.String()
 }
@@ -244,6 +244,6 @@ func init() {
 	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
-	cobra.AddTemplateFunc("AIAgentHelp", func(cmd *cobra.Command) string { return aiAgentHelp(cmd) })
-	cobra.AddTemplateFunc("AIAgentHelpTop", func(cmd *cobra.Command) string { return aiAgentHelpTop(cmd) })
+	cobra.AddTemplateFunc("AIAgentHelp", aiAgentHelp)
+	cobra.AddTemplateFunc("AIAgentHelpTop", aiAgentHelpTop)
 }
