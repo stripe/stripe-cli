@@ -252,7 +252,7 @@ func operationUsageTemplate(urlParams []string) string {
 {{.Example}}{{end}}{{if .HasAvailableSubCommands}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
 
 %s
 {{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
@@ -268,7 +268,7 @@ func operationUsageTemplate(urlParams []string) string {
 %s{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
   {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}{{AIAgentHelp .}}
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
 `,
 		ansi.Bold("Usage:"),
 		args,
