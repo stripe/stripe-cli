@@ -1,7 +1,9 @@
 package resource
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
 func TestNewOperationCmd(t *testing.T) {
@@ -162,6 +165,71 @@ func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
 	require.Error(t, err, "your API key has not been configured. Use `stripe login` to set your API key")
+}
+
+func TestRunOperationCmd_DryRun(t *testing.T) {
+	serverCalled := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	profile := config.Profile{APIKey: "sk_test_1234567890abcdef"}
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
+		"param1": "string",
+	}, map[string][]string{}, &config.Config{Profile: profile}, false, "")
+	oc.APIBaseURL = ts.URL
+
+	var buf bytes.Buffer
+	oc.Cmd.SetOut(&buf)
+	oc.Cmd.Flags().Set("param1", "value1")
+	oc.Cmd.Flags().Set("dry-run", "true")
+
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	require.NoError(t, err)
+	require.False(t, serverCalled, "HTTP server should not be called during dry-run")
+
+	var result requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	// "sk_test_1234567890abcdef" (24 chars) redacts to "sk_test_************cdef"
+	require.Equal(t, requests.DryRunOutput{DryRun: requests.DryRunDetails{
+		Method: "POST",
+		URL:    ts.URL + "/v1/bars/bar_123",
+		Params: map[string]interface{}{"param1": "value1"},
+		Headers: map[string]string{
+			"Authorization": "Bearer sk_test_************cdef",
+			"Content-Type":  "application/x-www-form-urlencoded",
+		},
+	}}, result)
+}
+
+func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {
+	viper.Reset()
+
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
+
+	var buf bytes.Buffer
+	oc.Cmd.SetOut(&buf)
+	oc.Cmd.Flags().Set("dry-run", "true")
+
+	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123"})
+
+	require.NoError(t, err, "dry-run should succeed even without an API key")
+
+	var result requests.DryRunOutput
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
+	require.Equal(t, requests.DryRunOutput{DryRun: requests.DryRunDetails{
+		Method:  "POST",
+		URL:     "https://api.stripe.com/v1/bars/bar_123",
+		Params:  map[string]interface{}{},
+		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+	}}, result)
 }
 
 func TestConstructParamFromDot(t *testing.T) {
