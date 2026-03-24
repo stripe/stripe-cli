@@ -596,10 +596,10 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 		URL:    "https://api.stripe.com/v1/customers",
 		Params: map[string]interface{}{},
 		Headers: map[string]string{
-			"Content-Type":   "application/x-www-form-urlencoded",
+			"Content-Type":    "application/x-www-form-urlencoded",
 			"Idempotency-Key": "idem-key-123",
-			"Stripe-Account": "acct_123",
-			"Stripe-Context": "ctx_456",
+			"Stripe-Account":  "acct_123",
+			"Stripe-Context":  "ctx_456",
 		},
 	}}, *output)
 }

@@ -61,12 +61,12 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	if oc.Base.DryRun {
+	if oc.DryRun {
 		dryRunKey := apiKey
 		if apiKeyErr != nil {
 			dryRunKey = ""
 		}
-		output, err := oc.Base.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
+		output, err := oc.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
 		if err != nil {
 			return err
 		}
