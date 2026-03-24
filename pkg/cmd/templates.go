@@ -105,14 +105,10 @@ func isAIAgent() bool {
 // Set it on any command via cmd.Annotations["ai_agent_help"] = "your text".
 const AIAgentHelpAnnotationKey = "ai_agent_help"
 
-func aiAgentHelp(cmd *cobra.Command) string {
-	if !isAIAgent() {
-		return ""
-	}
-
+func formatAgentGuidance(cmd *cobra.Command) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%s\n", ansi.Bold("[Agent guidance]")))
+	sb.WriteString(fmt.Sprintf("\n\n%s\n", ansi.Bold("[Agent guidance]")))
 
 	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
 		sb.WriteString(extra + "\n")
@@ -125,6 +121,24 @@ func aiAgentHelp(cmd *cobra.Command) string {
 	sb.WriteString(fmt.Sprintf("  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account")))
 
 	return sb.String()
+}
+
+// aiAgentHelpTop renders agent guidance only for the root command (no parent).
+// Used at the top of the root usage template.
+func aiAgentHelpTop(cmd *cobra.Command) string {
+	if !isAIAgent() || cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
+}
+
+// aiAgentHelp renders agent guidance for non-root commands.
+// Used in the pre-flags position of usage templates.
+func aiAgentHelp(cmd *cobra.Command) string {
+	if !isAIAgent() || !cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
 }
 
 func getLogin(fs *afero.Fs, cfg *config.Config) string {
@@ -153,7 +167,7 @@ If you're working on multiple projects, you can run the login command with the
 func getUsageTemplate() string {
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+  {{.CommandPath}} [command]{{end}}{{AIAgentHelpTop .}}{{if gt (len .Aliases) 0}}
 
 %s
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
@@ -227,4 +241,5 @@ func init() {
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
 	cobra.AddTemplateFunc("AIAgentHelp", func(cmd *cobra.Command) string { return aiAgentHelp(cmd) })
+	cobra.AddTemplateFunc("AIAgentHelpTop", func(cmd *cobra.Command) string { return aiAgentHelpTop(cmd) })
 }

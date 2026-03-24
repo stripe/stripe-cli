@@ -56,11 +56,9 @@ func TestIsAIAgent_NotDetected(t *testing.T) {
 	assert.False(t, isAIAgent())
 }
 
-func TestAIAgentHelp_Detected(t *testing.T) {
-	t.Setenv("CLAUDECODE", "1")
-
+func TestFormatAgentGuidance(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
-	output := aiAgentHelp(cmd)
+	output := formatAgentGuidance(cmd)
 	require.NotEmpty(t, output)
 	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "--api-key")
@@ -69,42 +67,50 @@ func TestAIAgentHelp_Detected(t *testing.T) {
 	assert.Contains(t, output, "--stripe-account")
 }
 
-func TestAIAgentHelp_NotDetected(t *testing.T) {
-	for _, key := range []string{"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI", "CURSOR_AGENT", "GEMINI_CLI", "OPENCODE"} {
-		t.Setenv(key, "")
-	}
-
-	cmd := &cobra.Command{Use: "test"}
-	output := aiAgentHelp(cmd)
-	assert.Empty(t, output)
-}
-
-func TestAIAgentHelp_WithAnnotation(t *testing.T) {
-	t.Setenv("CLAUDECODE", "1")
-
+func TestFormatAgentGuidance_WithAnnotation(t *testing.T) {
 	cmd := &cobra.Command{
 		Use: "test",
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Custom tip for this command.",
 		},
 	}
-	output := aiAgentHelp(cmd)
+	output := formatAgentGuidance(cmd)
 	require.NotEmpty(t, output)
 	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "Custom tip for this command.")
 }
 
-func TestAIAgentHelp_AnnotationIgnoredWithoutAgent(t *testing.T) {
+func TestAIAgentHelpTop_RootOnly(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	root := &cobra.Command{Use: "stripe"}
+	child := &cobra.Command{Use: "listen"}
+	root.AddCommand(child)
+
+	assert.NotEmpty(t, aiAgentHelpTop(root), "should render for root command")
+	assert.Empty(t, aiAgentHelpTop(child), "should not render for subcommand")
+}
+
+func TestAIAgentHelp_SubcommandOnly(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	root := &cobra.Command{Use: "stripe"}
+	child := &cobra.Command{Use: "listen"}
+	root.AddCommand(child)
+
+	assert.Empty(t, aiAgentHelp(root), "should not render for root command")
+	assert.NotEmpty(t, aiAgentHelp(child), "should render for subcommand")
+}
+
+func TestAIAgentHelp_NotDetected(t *testing.T) {
 	for _, key := range []string{"ANTIGRAVITY_CLI_ALIAS", "CLAUDECODE", "CLINE_ACTIVE", "CODEX_SANDBOX", "CODEX_THREAD_ID", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_CI", "CURSOR_AGENT", "GEMINI_CLI", "OPENCODE"} {
 		t.Setenv(key, "")
 	}
 
-	cmd := &cobra.Command{
-		Use: "test",
-		Annotations: map[string]string{
-			AIAgentHelpAnnotationKey: "  Custom tip for this command.",
-		},
-	}
-	output := aiAgentHelp(cmd)
-	assert.Empty(t, output)
+	root := &cobra.Command{Use: "stripe"}
+	child := &cobra.Command{Use: "listen"}
+	root.AddCommand(child)
+
+	assert.Empty(t, aiAgentHelpTop(root))
+	assert.Empty(t, aiAgentHelp(child))
 }
