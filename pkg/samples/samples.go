@@ -369,6 +369,7 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 
 		dotenv, err := godotenv.Parse(file)
 		if err != nil {
