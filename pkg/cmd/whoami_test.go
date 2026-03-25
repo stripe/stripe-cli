@@ -44,7 +44,7 @@ func TestWhoamiNotAuthenticatedJSON(t *testing.T) {
 		ProfileName: "default",
 		DeviceName:  "test-device",
 	}
-	wc.useJSON = true
+	wc.format = "json"
 
 	out, err := runWhoami(t, wc)
 	assert.ErrorIs(t, err, errNotAuthenticated)
@@ -72,7 +72,7 @@ func TestWhoamiWithTestKey(t *testing.T) {
 		APIKey:      "sk_test_1234567890abcdef",
 		AccountID:   "acct_123",
 	}
-	wc.useJSON = true
+	wc.format = "json"
 
 	out, err := runWhoami(t, wc)
 	require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestWhoamiWithLiveModeAPIKey(t *testing.T) {
 		DeviceName:  "test-device",
 		APIKey:      "sk_live_1234567890abcdef",
 	}
-	wc.useJSON = true
+	wc.format = "json"
 
 	out, err := runWhoami(t, wc)
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestWhoamiWithEnvVarKey(t *testing.T) {
 		ProfileName: "default",
 		DeviceName:  "test-device",
 	}
-	wc.useJSON = true
+	wc.format = "json"
 
 	out, err := runWhoami(t, wc)
 	require.NoError(t, err)

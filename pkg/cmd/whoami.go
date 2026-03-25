@@ -24,7 +24,7 @@ var errNotAuthenticated = errors.New("not authenticated")
 type whoamiCmd struct {
 	cmd     *cobra.Command
 	profile *config.Profile
-	useJSON bool
+	format  string
 }
 
 type whoamiKeyInfo struct {
@@ -57,20 +57,20 @@ func newWhoamiCmd() *whoamiCmd {
 
 Reads credentials from the config file and keychain — no API calls are made.
 
-Use --json for output suitable for scripting or agent consumption. The schema
-is stable: test_mode_key and live_mode_key are always present regardless of
-auth state, and authenticated: false indicates no usable credentials exist.
+Use --format json for output suitable for scripting or agent consumption. The
+schema is stable: test_mode_key and live_mode_key are always present regardless
+of auth state, and authenticated: false indicates no usable credentials exist.
 
 Exit codes:
   0  Authenticated (at least one key is available)
   1  Not authenticated, or an error occurred`,
 		Example: `stripe whoami
-  stripe whoami --json
-  stripe whoami --project-name myproject --json`,
+  stripe whoami --format json
+  stripe whoami --project-name myproject --format json`,
 		RunE: wc.runWhoamiCmd,
 	}
 
-	wc.cmd.Flags().BoolVar(&wc.useJSON, "json", false, "Output as JSON with a stable schema (suitable for scripting)")
+	wc.cmd.Flags().StringVar(&wc.format, "format", "", "Output format: 'json' for a stable JSON schema (suitable for scripting)")
 
 	return wc
 }
@@ -98,7 +98,7 @@ func (wc *whoamiCmd) runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	w := cmd.OutOrStdout()
-	if wc.useJSON {
+	if strings.EqualFold(wc.format, "json") {
 		b, err := json.MarshalIndent(out, "", "  ")
 		if err != nil {
 			return err
