@@ -124,10 +124,12 @@ type Base struct {
 
 // DryRunDetails contains the details of a dry-run request.
 type DryRunDetails struct {
-	Method  string                 `json:"method"`
-	URL     string                 `json:"url"`
-	Params  map[string]interface{} `json:"params"`
-	Headers map[string]string      `json:"headers"`
+	Method               string                 `json:"method"`
+	URL                  string                 `json:"url"`
+	Params               map[string]interface{} `json:"params"`
+	Headers              map[string]string      `json:"headers"`
+	AuthAvailable        bool                   `json:"auth_available"`
+	RequiresConfirmation bool                   `json:"requires_confirmation"`
 }
 
 // DryRunOutput is the top-level output for a dry-run request.
@@ -200,7 +202,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
-	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
+	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it. Outputs JSON with request details and preflight checks (auth_available, requires_confirmation).")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
@@ -442,10 +444,12 @@ func (rb *Base) BuildDryRunOutput(apiKey, baseURL, path string, params *RequestP
 
 	return &DryRunOutput{
 		DryRun: DryRunDetails{
-			Method:  rb.Method,
-			URL:     fullURL,
-			Params:  paramsMap,
-			Headers: headers,
+			Method:               rb.Method,
+			URL:                  fullURL,
+			Params:               paramsMap,
+			Headers:              headers,
+			AuthAvailable:        apiKey != "",
+			RequiresConfirmation: confirmationCommands[rb.Method],
 		},
 	}, nil
 }

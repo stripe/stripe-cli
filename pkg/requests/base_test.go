@@ -461,6 +461,8 @@ func TestBuildDryRunOutput_V1Post(t *testing.T) {
 			"Authorization": "Bearer sk_test_************cdef",
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
+		AuthAvailable:        true,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -485,6 +487,8 @@ func TestBuildDryRunOutput_V1PostDataParams(t *testing.T) {
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -508,7 +512,9 @@ func TestBuildDryRunOutput_V1Get(t *testing.T) {
 			"ending_before":  "cus_xyz",
 			"expand":         []interface{}{"default_source"},
 		},
-		Headers: map[string]string{},
+		Headers:              map[string]string{},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -530,6 +536,8 @@ func TestBuildDryRunOutput_V1PostExpand(t *testing.T) {
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -552,6 +560,8 @@ func TestBuildDryRunOutput_V2Post(t *testing.T) {
 			"Content-Type":   "application/json",
 			"Stripe-Version": StripeVersionHeaderValue,
 		},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -561,10 +571,12 @@ func TestBuildDryRunOutput_NoAPIKey(t *testing.T) {
 	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
-		Method:  "POST",
-		URL:     "https://api.stripe.com/v1/customers",
-		Params:  map[string]interface{}{},
-		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+		Method:               "POST",
+		URL:                  "https://api.stripe.com/v1/customers",
+		Params:               map[string]interface{}{},
+		Headers:              map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -574,10 +586,12 @@ func TestBuildDryRunOutput_ExplicitStripeVersion(t *testing.T) {
 	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{version: "2025-01-01"}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
-		Method:  "POST",
-		URL:     "https://api.stripe.com/v1/customers",
-		Params:  map[string]interface{}{},
-		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded", "Stripe-Version": "2025-01-01"},
+		Method:               "POST",
+		URL:                  "https://api.stripe.com/v1/customers",
+		Params:               map[string]interface{}{},
+		Headers:              map[string]string{"Content-Type": "application/x-www-form-urlencoded", "Stripe-Version": "2025-01-01"},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -601,6 +615,8 @@ func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
 			"Stripe-Account":  "acct_123",
 			"Stripe-Context":  "ctx_456",
 		},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 
@@ -610,10 +626,12 @@ func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
 	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers/cus_abc123", &RequestParameters{}, map[string]interface{}{})
 	require.NoError(t, err)
 	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
-		Method:  "GET",
-		URL:     "https://api.stripe.com/v1/customers/cus_abc123",
-		Params:  map[string]interface{}{},
-		Headers: map[string]string{},
+		Method:               "GET",
+		URL:                  "https://api.stripe.com/v1/customers/cus_abc123",
+		Params:               map[string]interface{}{},
+		Headers:              map[string]string{},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, *output)
 }
 

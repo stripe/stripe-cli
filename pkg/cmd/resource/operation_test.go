@@ -206,6 +206,8 @@ func TestRunOperationCmd_DryRun(t *testing.T) {
 			"Authorization": "Bearer sk_test_************cdef",
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
+		AuthAvailable:        true,
+		RequiresConfirmation: false,
 	}}, result)
 }
 
@@ -226,10 +228,12 @@ func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {
 	var result requests.DryRunOutput
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &result))
 	require.Equal(t, requests.DryRunOutput{DryRun: requests.DryRunDetails{
-		Method:  "POST",
-		URL:     "https://api.stripe.com/v1/bars/bar_123",
-		Params:  map[string]interface{}{},
-		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+		Method:               "POST",
+		URL:                  "https://api.stripe.com/v1/bars/bar_123",
+		Params:               map[string]interface{}{},
+		Headers:              map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+		AuthAvailable:        false,
+		RequiresConfirmation: false,
 	}}, result)
 }
 
