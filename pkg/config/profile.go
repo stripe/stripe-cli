@@ -1,6 +1,9 @@
 package config
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +14,6 @@ import (
 
 	"github.com/99designs/keyring"
 	"github.com/spf13/viper"
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/validators"
@@ -59,6 +61,39 @@ const (
 // KeyRing ...
 var KeyRing keyring.Keyring
 
+func isWSLFromVersion(procVersion string) bool {
+	lower := strings.ToLower(procVersion)
+	return strings.Contains(lower, "microsoft") || strings.Contains(lower, "wsl")
+}
+
+func isWSL() bool {
+	data, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return isWSLFromVersion(string(data))
+}
+
+func wslFilePasswordFromPaths(machineIDPath, bootIDPath string) (string, error) {
+	machineID, err := os.ReadFile(machineIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", machineIDPath, err)
+	}
+	bootID, err := os.ReadFile(bootIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", bootIDPath, err)
+	}
+	const appKey = "stripe-cli-keyring-v1"
+	mac := hmac.New(sha256.New, []byte(appKey))
+	mac.Write([]byte(strings.TrimSpace(string(machineID))))
+	mac.Write([]byte(strings.TrimSpace(string(bootID))))
+	return hex.EncodeToString(mac.Sum(nil)), nil
+}
+
+func wslFilePassword(_ string) (string, error) {
+	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
+}
+
 func getKeyringConfig() keyring.Config {
 	c := keyring.Config{
 		KeychainTrustApplication: true,
@@ -66,16 +101,12 @@ func getKeyringConfig() keyring.Config {
 	}
 
 	if runtime.GOOS == "linux" {
-		c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
 		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
-		c.FilePasswordFunc = func(prompt string) (string, error) {
-			fmt.Fprintf(os.Stdout, "%s: ", prompt)
-			b, err := term.ReadPassword(int(os.Stdin.Fd()))
-			if err != nil {
-				return "", err
-			}
-			fmt.Println()
-			return string(b), nil
+		c.FilePasswordFunc = wslFilePassword
+		if isWSL() {
+			c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		} else {
+			c.AllowedBackends = []keyring.BackendType{keyring.SecretServiceBackend, keyring.FileBackend}
 		}
 	}
 
