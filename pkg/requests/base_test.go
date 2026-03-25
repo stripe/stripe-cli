@@ -76,7 +76,7 @@ func TestBuildDataForRequestGetOnly(t *testing.T) {
 func TestBuildDataForRequestInvalidArgument(t *testing.T) {
 	rb := Base{}
 	params := &RequestParameters{data: []string{"bender=robot", "fry"}}
-	expected := "Invalid data argument: fry"
+	expected := "invalid data argument: fry"
 
 	data, err := rb.BuildDataForRequest(params)
 	require.Equal(t, "", data)
@@ -374,18 +374,18 @@ func TestParseJSONDataFlag(t *testing.T) {
 	})
 	t.Run("empty data", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{""})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 
 		_, err = parseJSONDataFlag([]string{"  "})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("multiple data arguments", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{`{}`, `{}`})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("key-value data", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{"x=y"})
-		require.ErrorIs(t, jsonDataFlagInvalidErr, err)
+		require.ErrorIs(t, errJSONDataFlagInvalid, err)
 	})
 	t.Run("invalid JSON", func(t *testing.T) {
 		_, err := parseJSONDataFlag([]string{`{"key": }`})

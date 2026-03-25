@@ -102,7 +102,7 @@ func TestInitializeFailsWithEmptyName(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("Sample name is empty"), err)
+	assert.Equal(t, errors.New("sample name is empty"), err)
 }
 
 func TestInitializeFailsWithNonexistentSample(t *testing.T) {
@@ -124,5 +124,5 @@ func TestInitializeFailsWithNonexistentSample(t *testing.T) {
 	}
 
 	err := sampleManager.Initialize(name)
-	assert.Equal(t, errors.New("Sample foo does not exist"), err)
+	assert.Equal(t, errors.New("sample foo does not exist"), err)
 }

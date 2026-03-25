@@ -53,7 +53,7 @@ type CreationResult struct {
 }
 
 // Create creates a sample at a destination with the selected integration, client language, and server language
-func (sampleManager *SampleManager) Create(
+func (s *SampleManager) Create(
 	ctx context.Context,
 	sampleName string,
 	selectedConfig *SelectedConfig,
@@ -63,7 +63,7 @@ func (sampleManager *SampleManager) Create(
 ) {
 	defer close(resultChan)
 
-	cacheFolder, err := sampleManager.appCacheFolder("samples-list")
+	cacheFolder, err := s.appCacheFolder("samples-list")
 	if err != nil {
 		logger := log.Logger{
 			Out: os.Stdout,
@@ -74,16 +74,16 @@ func (sampleManager *SampleManager) Create(
 			"error":  err,
 		}).Debug("Could not create cacheFolder for samples")
 	}
-	sampleManager.SampleLister = newCachedGithubSampleLister(sampleManager, sampleListGithubURL, cacheFolder)
+	s.SampleLister = newCachedGithubSampleLister(s, sampleListGithubURL, cacheFolder)
 
-	exists, _ := afero.DirExists(sampleManager.Fs, destination)
+	exists, _ := afero.DirExists(s.Fs, destination)
 	if exists {
-		resultChan <- CreationResult{Err: fmt.Errorf("Path already exists for: %s", destination)}
+		resultChan <- CreationResult{Err: fmt.Errorf("path already exists for: %s", destination)}
 		return
 	}
 
 	if forceRefresh {
-		err := sampleManager.DeleteCache(sampleName)
+		err := s.DeleteCache(sampleName)
 		if err != nil {
 			logger := log.Logger{
 				Out: os.Stdout,
@@ -103,7 +103,7 @@ func (sampleManager *SampleManager) Create(
 	// depending on whether or not it's. Additionally, this
 	// identifies if the sample has multiple integrations and what
 	// languages it supports.
-	err = sampleManager.Initialize(sampleName)
+	err = s.Initialize(sampleName)
 	if err != nil {
 		switch e := err.Error(); e {
 		case git.NoErrAlreadyUpToDate.Error():
@@ -123,7 +123,7 @@ func (sampleManager *SampleManager) Create(
 
 	resultChan <- CreationResult{State: DidInitialize}
 
-	sampleManager.SelectedConfig = *selectedConfig
+	s.SelectedConfig = *selectedConfig
 
 	// Setup to intercept ctrl+c
 	c := make(chan os.Signal, 1)
@@ -131,7 +131,7 @@ func (sampleManager *SampleManager) Create(
 
 	go func() {
 		<-c
-		sampleManager.Cleanup(sampleName)
+		s.Cleanup(sampleName)
 		os.Exit(1)
 	}()
 
@@ -140,7 +140,7 @@ func (sampleManager *SampleManager) Create(
 	// Create the target folder to copy the sample in to. We do
 	// this here in case any of the steps above fail, minimizing
 	// the change that we create a dangling empty folder
-	targetPath, err := sampleManager.MakeFolder(destination)
+	targetPath, err := s.MakeFolder(destination)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
 		return
@@ -148,7 +148,7 @@ func (sampleManager *SampleManager) Create(
 
 	// Perform the copy of the sample given the selected options
 	// from the selections above
-	err = sampleManager.Copy(targetPath)
+	err = s.Copy(targetPath)
 	if err != nil {
 		resultChan <- CreationResult{Err: err}
 		return
@@ -158,7 +158,7 @@ func (sampleManager *SampleManager) Create(
 
 	resultChan <- CreationResult{State: WillConfigure}
 
-	err = sampleManager.WriteDotEnv(ctx, targetPath)
+	err = s.WriteDotEnv(ctx, targetPath)
 	if err != nil {
 		if err == validators.ErrPubKeyNotConfigured {
 			resultChan <- CreationResult{State: DidConfigureWithoutTestPubKey}
@@ -170,5 +170,5 @@ func (sampleManager *SampleManager) Create(
 		resultChan <- CreationResult{State: DidConfigure}
 	}
 
-	resultChan <- CreationResult{State: Done, Path: targetPath, PostInstall: sampleManager.PostInstall()}
+	resultChan <- CreationResult{State: Done, Path: targetPath, PostInstall: s.PostInstall()}
 }

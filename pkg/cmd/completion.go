@@ -92,13 +92,13 @@ func selectShell(shell string, writeToStdout bool) error {
 		selected = detectShell()
 	}
 
-	switch {
-	case selected == "zsh":
+	switch selected {
+	case "zsh":
 		return genZsh(writeToStdout)
-	case selected == "bash":
+	case "bash":
 		return genBash(writeToStdout)
 	default:
-		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for either bash or zsh")
+		return fmt.Errorf("could not automatically detect your shell, please run the command with the `--shell` flag for either bash or zsh")
 	}
 }
 
@@ -126,9 +126,10 @@ func genBash(writeToStdout bool) error {
 
 	err := rootCmd.GenBashCompletionFile("stripe-completion.bash")
 	if err == nil {
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsMac)
-		} else if runtime.GOOS == "linux" {
+		case "linux":
 			fmt.Printf("%s%s\n", instructionsHeader, bashCompletionInstructionsLinux)
 		}
 	}

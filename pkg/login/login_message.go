@@ -28,7 +28,7 @@ func SuccessMessage(ctx context.Context, account *acct.Account, baseURL string, 
 
 	if displayName != "" && accountID != "" {
 		return fmt.Sprintf(
-			"Done! The Stripe CLI is configured for %s with account id %s\n",
+			"Done! The Stripe CLI is configured for %s with account id %s",
 			color.Bold(displayName),
 			color.Bold(accountID),
 		), nil
@@ -36,10 +36,10 @@ func SuccessMessage(ctx context.Context, account *acct.Account, baseURL string, 
 
 	if accountID != "" {
 		return fmt.Sprintf(
-			"Done! The Stripe CLI is configured for your account with account id %s\n",
+			"Done! The Stripe CLI is configured for your account with account id %s",
 			color.Bold(accountID),
 		), nil
 	}
 
-	return "Done! The Stripe CLI is configured\n", nil
+	return "Done! The Stripe CLI is configured", nil
 }

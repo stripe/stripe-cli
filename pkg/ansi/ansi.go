@@ -1,3 +1,4 @@
+// Package ansi provides helpers for terminal color and formatting.
 package ansi
 
 import (

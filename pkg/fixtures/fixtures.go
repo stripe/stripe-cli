@@ -1,3 +1,4 @@
+// Package fixtures provides declarative test data creation via fixture files.
 package fixtures
 
 import (

@@ -1,3 +1,4 @@
+// Package status provides Stripe API status page integration.
 package status
 
 import (

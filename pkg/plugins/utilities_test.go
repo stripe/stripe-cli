@@ -16,6 +16,17 @@ import (
 	"github.com/stripe/stripe-cli/pkg/requests"
 )
 
+// CustomTestConfig is a test config that allows overriding the config folder path
+type CustomTestConfig struct {
+	TestConfig
+	customConfigPath string
+}
+
+// GetConfigFolder overrides the TestConfig method to return a custom path
+func (c *CustomTestConfig) GetConfigFolder(xdgPath string) string {
+	return c.customConfigPath
+}
+
 func TestGetPluginList(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
@@ -185,7 +196,7 @@ func TestRefreshPluginManifestFailsInvalidManifest(t *testing.T) {
 
 	err := RefreshPluginManifest(context.Background(), config, fs, testServers.StripeServer.URL)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Received an empty plugin manifest")
+	require.ErrorContains(t, err, "received an empty plugin manifest")
 	// We expect the /plugins.toml file in the test fs has NOT been updated
 	pluginManifestContent, err := afero.ReadFile(fs, "/plugins.toml")
 	require.Nil(t, err)
@@ -276,7 +287,7 @@ func TestValidateRuntimeVersionsInvalidNonLTS(t *testing.T) {
 
 	err := validateRuntimeVersions(pluginList)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '19'")
+	require.ErrorContains(t, err, "invalid Node.js version '19'")
 	require.ErrorContains(t, err, "test-plugin")
 	require.ErrorContains(t, err, "Only LTS major versions are allowed")
 }
@@ -298,7 +309,7 @@ func TestValidateRuntimeVersionsInvalidOldVersion(t *testing.T) {
 
 	err := validateRuntimeVersions(pluginList)
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '10'")
+	require.ErrorContains(t, err, "invalid Node.js version '10'")
 }
 
 func TestValidateRuntimeVersionsNoRuntime(t *testing.T) {
@@ -336,7 +347,7 @@ func TestValidatePluginManifestWithInvalidRuntime(t *testing.T) {
 
 	_, err := validatePluginManifest([]byte(invalidManifest))
 	require.NotNil(t, err)
-	require.ErrorContains(t, err, "Invalid Node.js version '17'")
+	require.ErrorContains(t, err, "invalid Node.js version '17'")
 }
 
 func TestValidatePluginManifestWithValidRuntime(t *testing.T) {
@@ -368,10 +379,10 @@ func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
 	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
 
 	artifactoryServer := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		switch url := req.URL.String(); {
-		case url == "/plugins.toml":
+		switch req.URL.String() {
+		case "/plugins.toml":
 			res.Write(manifestContent)
-		case url == "/plugins-nonexistent.toml":
+		case "/plugins-nonexistent.toml":
 			res.WriteHeader(http.StatusNotFound)
 		default:
 			t.Errorf("Received an unexpected request URL: %s", req.URL.String())
@@ -398,4 +409,82 @@ func TestRefreshPluginSucceedsIfAdditionalManifestNotFound(t *testing.T) {
 
 	err := RefreshPluginManifest(context.Background(), config, fs, stripeServer.URL)
 	require.Nil(t, err)
+}
+
+func TestAddPluginToListSortsBySemver(t *testing.T) {
+	pluginList := &PluginList{
+		Plugins: []Plugin{
+			{
+				Shortname:        "test-plugin",
+				MagicCookieValue: "TEST-COOKIE-123",
+				Releases: []Release{
+					{Version: "1.0.0", OS: "darwin", Arch: "amd64"},
+					{Version: "1.2.0", OS: "darwin", Arch: "amd64"},
+				},
+			},
+		},
+	}
+
+	// Add a plugin with versions that would be sorted incorrectly by string comparison
+	newPlugin := Plugin{
+		Shortname:        "test-plugin",
+		MagicCookieValue: "TEST-COOKIE-123",
+		Releases: []Release{
+			{Version: "1.10.0", OS: "darwin", Arch: "amd64"}, // String comparison would put this before 1.2.0
+			{Version: "1.9.0", OS: "darwin", Arch: "amd64"},  // Should come after 1.2.0 but before 1.10.0
+			{Version: "2.0.0", OS: "darwin", Arch: "amd64"},
+			{Version: "1.0.1", OS: "darwin", Arch: "amd64"}, // Should come after 1.0.0 but before 1.2.0
+		},
+	}
+
+	addPluginToList(pluginList, newPlugin)
+
+	// Verify the plugin was merged (not added as a new one)
+	require.Equal(t, 1, len(pluginList.Plugins))
+
+	// Verify all releases are present
+	require.Equal(t, 6, len(pluginList.Plugins[0].Releases))
+
+	// Verify they are sorted by semver (not by string comparison)
+	expectedOrder := []string{"1.0.0", "1.0.1", "1.2.0", "1.9.0", "1.10.0", "2.0.0"}
+	for i, release := range pluginList.Plugins[0].Releases {
+		require.Equal(t, expectedOrder[i], release.Version,
+			"Expected release %d to be version %s, but got %s", i, expectedOrder[i], release.Version)
+	}
+}
+
+func TestRefreshPluginManifestCreatesConfigDirectory(t *testing.T) {
+	// Create a test config that uses a non-root directory
+	testConfigPath := "/test-config-dir"
+	customConfig := &CustomTestConfig{
+		customConfigPath: testConfigPath,
+	}
+	customConfig.InitConfig()
+
+	// Create a fresh filesystem without the config directory
+	fs := afero.NewMemMapFs()
+
+	manifestContent, _ := os.ReadFile("./test_artifacts/plugins.toml")
+	testServers := setUpServers(t, manifestContent, nil)
+	defer func() { testServers.CloseAll() }()
+
+	// Verify the config directory doesn't exist yet
+	exists, err := afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.False(t, exists)
+
+	// Refresh the manifest which should create the config directory
+	err = RefreshPluginManifest(context.Background(), customConfig, fs, testServers.StripeServer.URL)
+	require.Nil(t, err)
+
+	// Verify the config directory now exists
+	exists, err = afero.DirExists(fs, testConfigPath)
+	require.Nil(t, err)
+	require.True(t, exists)
+
+	// Verify the plugins.toml file was created
+	pluginManifestPath := testConfigPath + "/plugins.toml"
+	exists, err = afero.Exists(fs, pluginManifestPath)
+	require.Nil(t, err)
+	require.True(t, exists)
 }

@@ -78,7 +78,7 @@ func TestNewWebhookEventAck(t *testing.T) {
 
 	require.NotNil(t, msg.EventAck)
 	require.Equal(t, "event_ack", msg.EventAck.Type)
-	require.Equal(t, "evt_123", msg.EventAck.EventID)
+	require.Equal(t, "evt_123", msg.EventID)
 	require.Equal(t, "wc_123", msg.EventAck.WebhookConversationID)
 	require.Equal(t, "wh_123", msg.EventAck.WebhookID)
 }
@@ -92,7 +92,7 @@ func TestNewWebhookEventAckRequestLog(t *testing.T) {
 
 	require.NotNil(t, msg.EventAck)
 	require.Equal(t, "event_ack", msg.EventAck.Type)
-	require.Equal(t, "evt_123", msg.EventAck.EventID)
+	require.Equal(t, "evt_123", msg.EventID)
 	require.Equal(t, "", msg.EventAck.WebhookConversationID)
 }
 
@@ -105,6 +105,6 @@ func TestNewWebhookV2EventAck(t *testing.T) {
 
 	require.NotNil(t, msg.EventAck)
 	require.Equal(t, "event_ack", msg.EventAck.Type)
-	require.Equal(t, "evt_123", msg.EventAck.EventID)
+	require.Equal(t, "evt_123", msg.EventID)
 	require.Equal(t, "", msg.EventAck.WebhookConversationID)
 }
