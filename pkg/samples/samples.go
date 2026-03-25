@@ -249,7 +249,7 @@ func (s *SampleManager) Copy(target string) error {
 		serverSource := filepath.Join(s.repoPath, integration, "server", s.SelectedConfig.Server)
 		serverDestination := filepath.Join(target, "server")
 
-		err := copy.Copy(serverSource, serverDestination)
+		err := copy.Copy(serverSource, serverDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func (s *SampleManager) Copy(target string) error {
 		clientSource := filepath.Join(s.repoPath, integration, "client", s.SelectedConfig.Client)
 		clientDestination := filepath.Join(target, "client")
 
-		err := copy.Copy(clientSource, clientDestination)
+		err := copy.Copy(clientSource, clientDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -294,13 +294,22 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// Returns options to skip symlinks during file copy
+func skipSymlinks() copy.Options {
+	return copy.Options{
+		OnSymlink: func(src string) copy.SymlinkAction {
+			return copy.Skip
+		},
+	}
 }
 
 // ConfigureDotEnv returns a map of environment variables to copy into the
@@ -360,6 +369,7 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 
 		dotenv, err := godotenv.Parse(file)
 		if err != nil {
@@ -375,6 +385,13 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		}
 
 		envFile := filepath.Join(sampleLocation, "server", ".env")
+
+		// We refuse to write through a symlink to prevent a malicious
+		// sample from overwriting files outside the destination directory.
+		if isSymlink(envFile) {
+			return fmt.Errorf("refusing to write .env: %s is a symlink", envFile)
+		}
+
 		err = godotenv.Write(dotenv, envFile)
 		if err != nil {
 			return err
