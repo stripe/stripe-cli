@@ -52,6 +52,9 @@ For agents and scripts, use the two-step non-interactive flow:
       Prints a JSON object containing a browser_url, a verification_code to
       confirm the pairing, and a next_step command, then exits immediately.
       Activates automatically when stdin is not a terminal.
+      Immediately run the next_step command from the JSON output to poll
+      while the user approves in the browser; it blocks until authentication
+      completes.
 
   --complete <poll-url>
       Polls the given URL (from the next_step of a prior --non-interactive run)
@@ -73,7 +76,7 @@ For agents and scripts, use the two-step non-interactive flow:
 		RunE: lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
-	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login links as JSON and exit immediately, for use in scripts and agents")
+	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser")
 	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
 
 	// TODO: a flag to replace existing account?
