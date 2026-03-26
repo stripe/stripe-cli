@@ -122,7 +122,10 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 
 	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
 	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
-	fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
+
+	if cmd.Flags().Lookup("stripe-account") != nil {
+		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
+	}
 
 	return sb.String()
 }
@@ -177,7 +180,7 @@ func getUsageTemplate() string {
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 %s
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if (index .Annotations "get")}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
