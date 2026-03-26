@@ -116,8 +116,23 @@ type Base struct {
 
 	IsPreviewCommand bool
 
+	DryRun bool
+
 	autoConfirm bool
 	showHeaders bool
+}
+
+// DryRunDetails contains the details of a dry-run request.
+type DryRunDetails struct {
+	Method  string                 `json:"method"`
+	URL     string                 `json:"url"`
+	Params  map[string]interface{} `json:"params"`
+	Headers map[string]string      `json:"headers"`
+}
+
+// DryRunOutput is the top-level output for a dry-run request.
+type DryRunOutput struct {
+	DryRun DryRunDetails `json:"dry_run"`
 }
 
 var confirmationCommands = map[string]bool{http.MethodDelete: true}
@@ -136,6 +151,22 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	path, err := createOrNormalizePath(args[0])
+	if err != nil {
+		return err
+	}
+
+	if rb.DryRun {
+		apiKey, _ := rb.Profile.GetAPIKey(rb.Livemode)
+		output, err := rb.BuildDryRunOutput(apiKey, rb.APIBaseURL, path, &rb.Parameters, make(map[string]interface{}))
+		if err != nil {
+			return err
+		}
+		b, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil
+	}
+
 	confirmed, err := rb.confirmCommand()
 	if err != nil {
 		return err
@@ -145,11 +176,6 @@ func (rb *Base) RunRequestsCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	apiKey, err := rb.Profile.GetAPIKey(rb.Livemode)
-	if err != nil {
-		return err
-	}
-
-	path, err := createOrNormalizePath(args[0])
 	if err != nil {
 		return err
 	}
@@ -174,6 +200,7 @@ func (rb *Base) InitFlags() {
 	rb.Cmd.Flags().BoolVarP(&rb.showHeaders, "show-headers", "s", false, "Show response headers")
 	rb.Cmd.Flags().BoolVar(&rb.Livemode, "live", false, "Make a live request (default: test)")
 	rb.Cmd.Flags().BoolVar(&rb.DarkStyle, "dark-style", false, "Use a darker color scheme better suited for lighter command-lines")
+	rb.Cmd.Flags().BoolVar(&rb.DryRun, "dry-run", false, "Preview the request without sending it")
 
 	// Conditionally add flags for GET requests. I'm doing it here to keep `limit`, `start_after` and `ending_before` unexported
 	if rb.Method == http.MethodGet {
@@ -316,6 +343,175 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 	}
 
 	return body, nil
+}
+
+// BuildDryRunOutput constructs the dry-run output for a request without executing it.
+func (rb *Base) BuildDryRunOutput(apiKey, baseURL, path string, params *RequestParameters, additionalParams map[string]interface{}) (*DryRunOutput, error) {
+	isV2 := stripe.IsV2Path(path)
+
+	// Build params map
+	paramsMap := make(map[string]interface{})
+
+	if isV2 {
+		dataFlagParams, err := parseJSONDataFlag(params.data)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range dataFlagParams {
+			paramsMap[k] = v
+		}
+	} else {
+		v1Params, err := parseV1DataForDryRun(params.data)
+		if err != nil {
+			return nil, err
+		}
+		for k, v := range v1Params {
+			paramsMap[k] = v
+		}
+	}
+
+	for k, v := range additionalParams {
+		paramsMap[k] = v
+	}
+
+	// expand is sent in all v1 requests (body for POST/DELETE, query for GET)
+	if !isV2 && len(params.expand) > 0 {
+		expandList := make([]interface{}, len(params.expand))
+		for i, f := range params.expand {
+			expandList[i] = f
+		}
+		paramsMap["expand"] = expandList
+	}
+
+	// Pagination fields are GET-only
+	if rb.Method == http.MethodGet {
+		if params.limit != "" {
+			paramsMap["limit"] = params.limit
+		}
+		if params.startingAfter != "" {
+			paramsMap["starting_after"] = params.startingAfter
+		}
+		if params.endingBefore != "" {
+			paramsMap["ending_before"] = params.endingBefore
+		}
+	}
+
+	// Build URL using the same base+path resolution as client.go:PerformRequest,
+	// stripping any query string since params are shown separately.
+	parsedBase, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	parsedPath, err := url.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	parsedPath.RawQuery = ""
+	fullURL := parsedBase.ResolveReference(parsedPath).String()
+
+	// Build headers
+	headers := make(map[string]string)
+
+	if v := rb.computeVersionHeader(params, path); v != "" {
+		headers["Stripe-Version"] = v
+	}
+
+	if rb.Method != http.MethodGet {
+		if isV2 {
+			headers["Content-Type"] = "application/json"
+		} else {
+			headers["Content-Type"] = "application/x-www-form-urlencoded"
+		}
+	}
+
+	if params.idempotency != "" {
+		headers["Idempotency-Key"] = params.idempotency
+	}
+	if params.stripeAccount != "" {
+		headers["Stripe-Account"] = params.stripeAccount
+	}
+	if params.stripeContext != "" {
+		headers["Stripe-Context"] = params.stripeContext
+	}
+
+	if apiKey != "" && len(apiKey) >= 12 {
+		headers["Authorization"] = "Bearer " + config.RedactAPIKey(apiKey)
+	} else if apiKey != "" {
+		headers["Authorization"] = "Bearer " + apiKey
+	}
+
+	return &DryRunOutput{
+		DryRun: DryRunDetails{
+			Method:  rb.Method,
+			URL:     fullURL,
+			Params:  paramsMap,
+			Headers: headers,
+		},
+	}, nil
+}
+
+// parseV1DataForDryRun parses v1 key=value data entries into a nested map.
+// Supports bracket notation: metadata[foo]=bar → {"metadata": {"foo": "bar"}}
+//
+// Go's url.ParseQuery handles URL-encoded query strings but returns a flat
+// map[string][]string — it does not reconstruct bracket-notation nesting.
+// No standard Go library covers this pattern, which originates from Rails/PHP
+// conventions adopted by the Stripe v1 API. setNestedValue handles it manually.
+func parseV1DataForDryRun(data []string) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	for _, datum := range data {
+		split := strings.SplitN(datum, "=", 2)
+		if len(split) < 2 {
+			return nil, fmt.Errorf("invalid data argument: %s", datum)
+		}
+		setNestedValue(result, split[0], split[1])
+	}
+	return result, nil
+}
+
+// setNestedValue sets a value in a nested map using bracket notation keys.
+// e.g. "metadata[foo]" → sets result["metadata"]["foo"] = value
+func setNestedValue(m map[string]interface{}, key string, value string) {
+	bracketIdx := strings.Index(key, "[")
+	if bracketIdx == -1 {
+		m[key] = value
+		return
+	}
+
+	topKey := key[:bracketIdx]
+	rest := key[bracketIdx+1:]
+	closeIdx := strings.Index(rest, "]")
+	if closeIdx == -1 {
+		// malformed, treat as simple key
+		m[key] = value
+		return
+	}
+
+	innerKey := rest[:closeIdx]
+	remaining := rest[closeIdx+1:]
+
+	if innerKey == "" {
+		// array notation: key[]=value
+		existing, ok := m[topKey]
+		if !ok {
+			m[topKey] = []interface{}{value}
+			return
+		}
+		if arr, ok := existing.([]interface{}); ok {
+			m[topKey] = append(arr, value)
+		}
+		return
+	}
+
+	// nested object: key[innerKey]...=value
+	existing, ok := m[topKey]
+	if !ok {
+		existing = make(map[string]interface{})
+		m[topKey] = existing
+	}
+	if nested, ok := existing.(map[string]interface{}); ok {
+		setNestedValue(nested, innerKey+remaining, value)
+	}
 }
 
 func compileRequestError(body []byte, statusCode int) RequestError {
@@ -653,17 +849,21 @@ func (rb *Base) setIdempotencyHeader(request *http.Request, params *RequestParam
 	}
 }
 
-func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
+func (rb *Base) computeVersionHeader(params *RequestParameters, path string) string {
 	switch {
 	case params.version != "":
-		// User explicitly provided a version, use it
-		request.Header.Set("Stripe-Version", params.version)
+		return params.version
 	case rb.IsPreviewCommand:
-		// If this is a preview command, use the preview version
-		request.Header.Set("Stripe-Version", StripePreviewVersionHeaderValue)
+		return StripePreviewVersionHeaderValue
 	case stripe.IsV2Path(path):
-		// Otherwise, if it's a v2 path, use the normal v2 version
-		request.Header.Set("Stripe-Version", StripeVersionHeaderValue)
+		return StripeVersionHeaderValue
+	}
+	return ""
+}
+
+func (rb *Base) setVersionHeader(request *http.Request, params *RequestParameters, path string) {
+	if v := rb.computeVersionHeader(params, path); v != "" {
+		request.Header.Set("Stripe-Version", v)
 	}
 }
 
