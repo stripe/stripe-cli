@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/stripe"
@@ -12,6 +15,8 @@ type loginCmd struct {
 	cmd              *cobra.Command
 	interactive      bool
 	dashboardBaseURL string
+	nonInteractive   bool
+	completeURL      string
 }
 
 type loginListCmd struct {
@@ -29,10 +34,50 @@ func newLoginCmd() *loginCmd {
 		Use:   "login",
 		Args:  validators.NoArgs,
 		Short: "Login to your Stripe account",
-		Long:  `Login to your Stripe account to setup the CLI`,
-		RunE:  lc.runLoginCmd,
+		Long: `Login to your Stripe account to set up the CLI.
+
+By default (when stdin is a terminal), this opens a browser-based OAuth flow: it
+prints a pairing code, launches your browser to the Stripe Dashboard, and waits for
+you to approve the request before saving your credentials.
+
+Use --interactive when a browser is unavailable:
+
+  --interactive
+      Prompts you to paste an API key directly. Useful for SSH sessions or
+      CI environments with a human operator.
+
+For agents and scripts, use the two-step non-interactive flow:
+
+  --non-interactive
+      Prints a JSON object containing a browser_url, a verification_code to
+      confirm the pairing, and a next_step command, then exits immediately.
+      Activates automatically when stdin is not a terminal.
+      Immediately run the next_step command from the JSON output to poll
+      while the user approves in the browser; it blocks until authentication
+      completes.
+
+  --complete <poll-url>
+      Polls the given URL (from the next_step of a prior --non-interactive run)
+      until the user approves in the browser, then saves credentials.`,
+		Example: `# Standard browser login (default for TTY users)
+  stripe login
+
+  # Paste an API key instead of using a browser
+  stripe login --interactive
+
+  # Non-interactive: get links and exit (useful for agents/scripts)
+  stripe login --non-interactive
+
+  # Two-step agent-driven flow:
+  #   Step 1 – get the browser URL, verification code, and poll URL
+  stripe login --non-interactive
+  #   Step 2 – after the user approves in the browser, complete login
+  stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
+		RunE: lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
+	lc.cmd.Flags().BoolVar(&lc.nonInteractive, "non-interactive", false, "Print login URL and verification code as JSON and exit; immediately run the next_step command from the output to poll while the user approves in the browser")
+	lc.cmd.Flags().StringVar(&lc.completeURL, "complete", "", "Complete a browser login by polling the given URL (from 'stripe login --non-interactive')")
 
 	// TODO: a flag to replace existing account?
 	// TODO: what happens to if already logged into that account? - profile name should be the account id
@@ -71,6 +116,15 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 	if err := stripe.ValidateDashboardBaseURL(lc.dashboardBaseURL); err != nil {
 		return err
 	}
+
+	if lc.completeURL != "" {
+		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
+	}
+
+	if lc.nonInteractive || !term.IsTerminal(int(os.Stdin.Fd())) {
+		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
+	}
+
 	if lc.interactive {
 		return login.InteractiveLogin(cmd.Context(), &Config)
 	}
