@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -114,6 +115,8 @@ func Execute(ctx context.Context) {
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.Is(err, errNotAuthenticated):
+			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
@@ -209,6 +212,7 @@ func init() {
 	// rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
