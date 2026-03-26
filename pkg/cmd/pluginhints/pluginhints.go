@@ -18,7 +18,25 @@ import (
 	"github.com/stripe/stripe-cli/pkg/stripe"
 )
 
-const accessRequestURL = "https://docs.corp.stripe.com/scripts/request-access"
+// AddHintCommands registers a hint command for each known plugin that is not
+// present in installedPluginSet.
+func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPluginSet map[string]bool) {
+	if !installedPluginSet["apps"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.").Command,
+		)
+	}
+	if !installedPluginSet["generate"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "generate", "The generate plugin creates skeleton files for you to get started.", withPrivatePreview()).Command,
+		)
+	}
+	if !installedPluginSet["projects"] {
+		rootCmd.AddCommand(
+			newPluginHintCmd(cfg, "projects", "The projects plugin helps you scaffold and manage Stripe integration projects.").Command,
+		)
+	}
+}
 
 // pluginHintCmd is a placeholder Cobra command registered when a known plugin
 // is not installed. It either prompts the user to install the plugin (if
@@ -37,13 +55,20 @@ type pluginHintCmd struct {
 	stdout        io.Writer
 }
 
-func newPluginHintCmd(cfg *config.Config, name, description string, privatePreview bool) *pluginHintCmd {
+type option func(*pluginHintCmd)
+
+func withPrivatePreview() option {
+	return func(p *pluginHintCmd) {
+		p.privatePreview = true
+	}
+}
+
+func newPluginHintCmd(cfg *config.Config, name, description string, opts ...option) *pluginHintCmd {
 	fs := afero.NewOsFs()
 
 	p := &pluginHintCmd{
-		name:           name,
-		description:    description,
-		privatePreview: privatePreview,
+		name:        name,
+		description: description,
 		lookupFn: func(ctx context.Context) error {
 			if err := plugins.RefreshPluginManifest(ctx, cfg, fs, stripe.DefaultAPIBaseURL); err != nil {
 				return err
@@ -63,6 +88,10 @@ func newPluginHintCmd(cfg *config.Config, name, description string, privatePrevi
 		openBrowserFn: open.Browser,
 		stdin:         os.Stdin,
 		stdout:        os.Stdout,
+	}
+
+	for _, opt := range opts {
+		opt(p)
 	}
 
 	p.Command = &cobra.Command{
@@ -131,38 +160,8 @@ func (p *pluginHintCmd) suggestNotAvailable() error {
 	fmt.Fprintf(p.stdout, "\n")
 	fmt.Fprintf(p.stdout, "Your account: %s\n", accountID)
 	fmt.Fprintf(p.stdout, "\n")
-	fmt.Fprintf(p.stdout, "Log into a different account using stripe login or press enter to open the access request page in your browser:\n")
-	fmt.Fprintf(p.stdout, "%s\n", accessRequestURL)
-
-	var input string
-	fmt.Fscanln(p.stdin, &input)
-
-	if input == "" {
-		fmt.Fprintf(p.stdout, "\nOpening %s in your browser...\n", accessRequestURL)
-		if err := p.openBrowserFn(accessRequestURL); err != nil {
-			return err
-		}
-	}
+	fmt.Fprintf(p.stdout, "Log into a different account using stripe login or reach out to Stripe support.\n")
+	os.Exit(1)
 
 	return nil
-}
-
-// AddHintCommands registers a hint command for each known plugin that is not
-// present in installedPluginSet.
-func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPluginSet map[string]bool) {
-	if !installedPluginSet["apps"] {
-		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "apps", "This plugin lets you build and manage Stripe Apps.", false).Command,
-		)
-	}
-	if !installedPluginSet["generate"] {
-		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "generate", "The generate plugin creates skeleton files for you to get started.", true).Command,
-		)
-	}
-	if !installedPluginSet["projects"] {
-		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "projects", "The projects plugin helps you scaffold and manage Stripe integration projects.", false).Command,
-		)
-	}
 }
