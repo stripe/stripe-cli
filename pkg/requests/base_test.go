@@ -565,6 +565,24 @@ func TestBuildDryRunOutput_V2Post(t *testing.T) {
 	}}, *output)
 }
 
+func TestBuildDryRunOutput_Delete(t *testing.T) {
+	rb := Base{Method: http.MethodDelete}
+
+	output, err := rb.BuildDryRunOutput("sk_test_abcd", "https://api.stripe.com", "/v1/customers/cus_abc123", &RequestParameters{}, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "DELETE",
+		URL:    "https://api.stripe.com/v1/customers/cus_abc123",
+		Params: map[string]interface{}{},
+		Headers: map[string]string{
+			"Authorization": "Bearer sk_test_abcd",
+			"Content-Type":  "application/x-www-form-urlencoded",
+		},
+		AuthAvailable:        true,
+		RequiresConfirmation: true,
+	}}, *output)
+}
+
 func TestBuildDryRunOutput_NoAPIKey(t *testing.T) {
 	rb := Base{Method: http.MethodPost}
 
