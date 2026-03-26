@@ -366,6 +366,257 @@ func TestIsAPIKeyExpiredError(t *testing.T) {
 	})
 }
 
+func TestComputeVersionHeader(t *testing.T) {
+	t.Run("explicit version", func(t *testing.T) {
+		rb := Base{}
+		params := &RequestParameters{version: "2025-01-01"}
+		require.Equal(t, "2025-01-01", rb.computeVersionHeader(params, "/v1/customers"))
+	})
+	t.Run("preview command", func(t *testing.T) {
+		rb := Base{IsPreviewCommand: true}
+		params := &RequestParameters{}
+		require.Equal(t, StripePreviewVersionHeaderValue, rb.computeVersionHeader(params, "/v1/customers"))
+	})
+	t.Run("v2 path", func(t *testing.T) {
+		rb := Base{}
+		params := &RequestParameters{}
+		require.Equal(t, StripeVersionHeaderValue, rb.computeVersionHeader(params, "/v2/billing/meters"))
+	})
+	t.Run("v1 path no version", func(t *testing.T) {
+		rb := Base{}
+		params := &RequestParameters{}
+		require.Equal(t, "", rb.computeVersionHeader(params, "/v1/customers"))
+	})
+	t.Run("explicit version takes precedence over preview", func(t *testing.T) {
+		rb := Base{IsPreviewCommand: true}
+		params := &RequestParameters{version: "2025-01-01"}
+		require.Equal(t, "2025-01-01", rb.computeVersionHeader(params, "/v1/customers"))
+	})
+}
+
+func TestParseV1DataForDryRun(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{})
+		require.NoError(t, err)
+		require.Empty(t, result)
+	})
+	t.Run("simple key-value", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{"email=test@example.com"})
+		require.NoError(t, err)
+		require.Equal(t, map[string]interface{}{"email": "test@example.com"}, result)
+	})
+	t.Run("value with equals sign", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{"redirect=https://example.com?a=1&b=2"})
+		require.NoError(t, err)
+		require.Equal(t, "https://example.com?a=1&b=2", result["redirect"])
+	})
+	t.Run("nested bracket notation", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{"metadata[env]=staging", "metadata[version]=2"})
+		require.NoError(t, err)
+		meta, ok := result["metadata"].(map[string]interface{})
+		require.True(t, ok)
+		require.Equal(t, "staging", meta["env"])
+		require.Equal(t, "2", meta["version"])
+	})
+	t.Run("deep nesting", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{"shipping[address][line1]=123 Main St"})
+		require.NoError(t, err)
+		shipping, ok := result["shipping"].(map[string]interface{})
+		require.True(t, ok)
+		address, ok := shipping["address"].(map[string]interface{})
+		require.True(t, ok)
+		require.Equal(t, "123 Main St", address["line1"])
+	})
+	t.Run("array notation", func(t *testing.T) {
+		result, err := parseV1DataForDryRun([]string{"items[]=a", "items[]=b"})
+		require.NoError(t, err)
+		items, ok := result["items"].([]interface{})
+		require.True(t, ok)
+		require.Equal(t, []interface{}{"a", "b"}, items)
+	})
+	t.Run("invalid argument no equals", func(t *testing.T) {
+		_, err := parseV1DataForDryRun([]string{"no-equals-sign"})
+		require.Error(t, err)
+	})
+}
+
+func TestBuildDryRunOutput_V1Post(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	additional := map[string]interface{}{
+		"email":       "test@example.com",
+		"description": "Test Customer",
+	}
+
+	// "sk_test_1234567890abcdef" (24 chars) redacts to "sk_test_************cdef"
+	output, err := rb.BuildDryRunOutput("sk_test_1234567890abcdef", "https://api.stripe.com", "/v1/customers", &RequestParameters{}, additional)
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "POST",
+		URL:    "https://api.stripe.com/v1/customers",
+		Params: map[string]interface{}{
+			"email":       "test@example.com",
+			"description": "Test Customer",
+		},
+		Headers: map[string]string{
+			"Authorization": "Bearer sk_test_************cdef",
+			"Content-Type":  "application/x-www-form-urlencoded",
+		},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_V1PostDataParams(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{
+		data: []string{"metadata[env]=staging", "metadata[version]=2"},
+	}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "POST",
+		URL:    "https://api.stripe.com/v1/customers",
+		Params: map[string]interface{}{
+			"email": "test@example.com",
+			"metadata": map[string]interface{}{
+				"env":     "staging",
+				"version": "2",
+			},
+		},
+		Headers: map[string]string{
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_V1Get(t *testing.T) {
+	rb := Base{Method: http.MethodGet}
+	params := &RequestParameters{
+		limit:         "5",
+		startingAfter: "cus_abc",
+		endingBefore:  "cus_xyz",
+		expand:        []string{"default_source"},
+	}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "GET",
+		URL:    "https://api.stripe.com/v1/customers",
+		Params: map[string]interface{}{
+			"limit":          "5",
+			"starting_after": "cus_abc",
+			"ending_before":  "cus_xyz",
+			"expand":         []interface{}{"default_source"},
+		},
+		Headers: map[string]string{},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_V1PostExpand(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{
+		expand: []string{"default_source", "invoice_settings"},
+	}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{"email": "test@example.com"})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "POST",
+		URL:    "https://api.stripe.com/v1/customers",
+		Params: map[string]interface{}{
+			"email":  "test@example.com",
+			"expand": []interface{}{"default_source", "invoice_settings"},
+		},
+		Headers: map[string]string{
+			"Content-Type": "application/x-www-form-urlencoded",
+		},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_V2Post(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{
+		data: []string{`{"event_name": "foo", "value": 100}`},
+	}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v2/billing/meter_events", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "POST",
+		URL:    "https://api.stripe.com/v2/billing/meter_events",
+		Params: map[string]interface{}{
+			"event_name": "foo",
+			"value":      float64(100),
+		},
+		Headers: map[string]string{
+			"Content-Type":   "application/json",
+			"Stripe-Version": StripeVersionHeaderValue,
+		},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_NoAPIKey(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{}, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method:  "POST",
+		URL:     "https://api.stripe.com/v1/customers",
+		Params:  map[string]interface{}{},
+		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_ExplicitStripeVersion(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", &RequestParameters{version: "2025-01-01"}, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method:  "POST",
+		URL:     "https://api.stripe.com/v1/customers",
+		Params:  map[string]interface{}{},
+		Headers: map[string]string{"Content-Type": "application/x-www-form-urlencoded", "Stripe-Version": "2025-01-01"},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_OptionalHeaders(t *testing.T) {
+	rb := Base{Method: http.MethodPost}
+	params := &RequestParameters{
+		idempotency:   "idem-key-123",
+		stripeAccount: "acct_123",
+		stripeContext: "ctx_456",
+	}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers", params, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method: "POST",
+		URL:    "https://api.stripe.com/v1/customers",
+		Params: map[string]interface{}{},
+		Headers: map[string]string{
+			"Content-Type":    "application/x-www-form-urlencoded",
+			"Idempotency-Key": "idem-key-123",
+			"Stripe-Account":  "acct_123",
+			"Stripe-Context":  "ctx_456",
+		},
+	}}, *output)
+}
+
+func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
+	rb := Base{Method: http.MethodGet}
+
+	output, err := rb.BuildDryRunOutput("", "https://api.stripe.com", "/v1/customers/cus_abc123", &RequestParameters{}, map[string]interface{}{})
+	require.NoError(t, err)
+	require.Equal(t, DryRunOutput{DryRun: DryRunDetails{
+		Method:  "GET",
+		URL:     "https://api.stripe.com/v1/customers/cus_abc123",
+		Params:  map[string]interface{}{},
+		Headers: map[string]string{},
+	}}, *output)
+}
+
 func TestParseJSONDataFlag(t *testing.T) {
 	t.Run("no arguments", func(t *testing.T) {
 		data, err := parseJSONDataFlag([]string{})
