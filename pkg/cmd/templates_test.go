@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
@@ -65,6 +66,7 @@ func TestFormatAgentGuidance(t *testing.T) {
 	assert.Contains(t, output, "STRIPE_API_KEY")
 	assert.Contains(t, output, "stripe resources")
 	assert.NotContains(t, output, "--stripe-account", "should not show --stripe-account when flag is not defined")
+	assert.NotContains(t, output, "-d", "should not show -d when data flag is not defined")
 }
 
 func TestFormatAgentGuidance_WithAnnotation(t *testing.T) {
@@ -78,6 +80,37 @@ func TestFormatAgentGuidance_WithAnnotation(t *testing.T) {
 	require.NotEmpty(t, output)
 	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "Custom tip for this command.")
+}
+
+func TestFormatAgentGuidance_AnnotationRendersBeforeSharedTips(t *testing.T) {
+	cmd := &cobra.Command{
+		Use: "test",
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Per-command tip.",
+		},
+	}
+	output := formatAgentGuidance(cmd)
+	annotationIdx := strings.Index(output, "Per-command tip")
+	apiKeyIdx := strings.Index(output, "--api-key")
+	require.Greater(t, annotationIdx, 0, "annotation should be present")
+	require.Greater(t, apiKeyIdx, 0, "shared tip should be present")
+	assert.Less(t, annotationIdx, apiKeyIdx, "per-command annotation should render before shared tips")
+}
+
+func TestFormatAgentGuidance_DataFlagShownWhenPresent(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().StringArrayP("data", "d", nil, "Data for the API request")
+
+	output := formatAgentGuidance(cmd)
+	assert.Contains(t, output, "-d", "should show -d tip when data flag is defined")
+}
+
+func TestFormatAgentGuidance_StripeAccountShownWhenPresent(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("stripe-account", "", "Set a header identifying the connected account")
+
+	output := formatAgentGuidance(cmd)
+	assert.Contains(t, output, "--stripe-account", "should show --stripe-account when flag is defined")
 }
 
 func TestAIAgentHelpTop_RootOnly(t *testing.T) {
@@ -113,4 +146,58 @@ func TestAIAgentHelp_NotDetected(t *testing.T) {
 
 	assert.Empty(t, aiAgentHelpTop(root))
 	assert.Empty(t, aiAgentHelp(child))
+}
+
+// noop is a minimal RunE so Cobra considers the command "available".
+var noop = func(cmd *cobra.Command, args []string) error { return nil }
+
+// Test that subcommands with ai_agent_help annotations don't render root
+// command groups (Webhook commands, Resource commands, etc.). This was a
+// bug where .Annotations was used as a root-vs-subcommand signal.
+func TestUsageTemplate_SubcommandWithAnnotationDoesNotShowRootGroups(t *testing.T) {
+	t.Setenv("CLAUDECODE", "1")
+
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":    "http",
+			"listen": "webhooks",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	child := &cobra.Command{
+		Use:   "login",
+		Short: "Login to your Stripe account",
+		RunE:  noop,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Use --interactive for non-browser auth.",
+		},
+	}
+	root.AddCommand(child)
+
+	output := child.UsageString()
+	assert.NotContains(t, output, "Webhook commands", "subcommand should not render root command groups")
+	assert.NotContains(t, output, "Resource commands", "subcommand should not render root command groups")
+	assert.Contains(t, output, "login", "subcommand should show its own usage")
+}
+
+// Test that the root command still renders its categorized command groups.
+func TestUsageTemplate_RootShowsCommandGroups(t *testing.T) {
+	root := &cobra.Command{
+		Use: "stripe",
+		Annotations: map[string]string{
+			"get":    "http",
+			"listen": "webhooks",
+		},
+	}
+	root.SetUsageTemplate(getUsageTemplate())
+
+	listen := &cobra.Command{Use: "listen", Short: "Listen for webhook events", RunE: noop}
+	get := &cobra.Command{Use: "get", Short: "Make GET requests", RunE: noop}
+	root.AddCommand(listen, get)
+
+	output := root.UsageString()
+	assert.Contains(t, output, "Webhook commands")
+	assert.Contains(t, output, "API commands")
 }
