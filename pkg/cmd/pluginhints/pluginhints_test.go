@@ -128,24 +128,60 @@ func TestPromptInstall_InstallError_ReturnsError(t *testing.T) {
 
 // --- suggestNotAvailable ---
 
-func TestSuggestNotAvailable_NoAccountID_ReturnsLoginError(t *testing.T) {
-	p := newTestCmd("generate", withPrivatePreview())
-	p.accountIDFn = func() (string, error) { return "", nil }
+func TestSuggestNotAvailable_NoAccountID_ExitsWithOne(t *testing.T) {
+	if os.Getenv("TEST_SUBPROCESS") == "1" {
+		p := &pluginHintCmd{
+			name:           "generate",
+			description:    "Test description.",
+			privatePreview: true,
+			stdout:         os.Stdout,
+			stdin:          strings.NewReader(""),
+		}
+		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
+		p.accountIDFn = func() (string, error) { return "", nil }
+		p.suggestNotAvailable() //nolint:errcheck
+		return
+	}
 
-	err := p.suggestNotAvailable()
+	var stdout bytes.Buffer
+	cmd := exec.Command(os.Args[0], "-test.run=TestSuggestNotAvailable_NoAccountID_ExitsWithOne")
+	cmd.Env = append(os.Environ(), "TEST_SUBPROCESS=1")
+	cmd.Stdout = &stdout
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "stripe login")
+	err := cmd.Run()
+
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 1, exitErr.ExitCode())
+	assert.Contains(t, stdout.String(), "stripe login")
 }
 
-func TestSuggestNotAvailable_AccountIDError_ReturnsLoginError(t *testing.T) {
-	p := newTestCmd("generate", withPrivatePreview())
-	p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
+func TestSuggestNotAvailable_AccountIDError_ExitsWithOne(t *testing.T) {
+	if os.Getenv("TEST_SUBPROCESS") == "1" {
+		p := &pluginHintCmd{
+			name:           "generate",
+			description:    "Test description.",
+			privatePreview: true,
+			stdout:         os.Stdout,
+			stdin:          strings.NewReader(""),
+		}
+		p.Command = &cobra.Command{Use: "generate", RunE: p.run}
+		p.accountIDFn = func() (string, error) { return "", errors.New("not configured") }
+		p.suggestNotAvailable() //nolint:errcheck
+		return
+	}
 
-	err := p.suggestNotAvailable()
+	var stdout bytes.Buffer
+	cmd := exec.Command(os.Args[0], "-test.run=TestSuggestNotAvailable_AccountIDError_ExitsWithOne")
+	cmd.Env = append(os.Environ(), "TEST_SUBPROCESS=1")
+	cmd.Stdout = &stdout
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "stripe login")
+	err := cmd.Run()
+
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	assert.Equal(t, 1, exitErr.ExitCode())
+	assert.Contains(t, stdout.String(), "stripe login")
 }
 
 func TestSuggestNotAvailable_ShowsAccountID_ExitsWithOne(t *testing.T) {

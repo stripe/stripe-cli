@@ -28,12 +28,12 @@ func AddHintCommands(rootCmd *cobra.Command, cfg *config.Config, installedPlugin
 	}
 	if !installedPluginSet["generate"] {
 		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "generate", "The generate plugin creates skeleton files for you to get started.", withPrivatePreview()).Command,
+			newPluginHintCmd(cfg, "generate", "This plugin creates skeleton files to get you started.", withPrivatePreview()).Command,
 		)
 	}
 	if !installedPluginSet["projects"] {
 		rootCmd.AddCommand(
-			newPluginHintCmd(cfg, "projects", "The projects plugin helps you scaffold and manage Stripe integration projects.").Command,
+			newPluginHintCmd(cfg, "projects", "This plugin scaffolds and manages Stripe integration projects.").Command,
 		)
 	}
 }
@@ -126,9 +126,7 @@ func (p *pluginHintCmd) promptInstall(ctx context.Context) error {
 	fmt.Fprintf(p.stdout, "The \"%s\" plugin is required to run this command.\n", p.name)
 	fmt.Fprintf(p.stdout, "\n")
 	fmt.Fprintf(p.stdout, "%s\n", p.description)
-	fmt.Fprintf(p.stdout, "You can also install it by using stripe plugin install %s.\n", p.name)
-	fmt.Fprintf(p.stdout, "\n")
-	fmt.Fprintf(p.stdout, "Press Enter to install, or Ctrl+C to cancel.")
+	fmt.Fprintf(p.stdout, "You can run 'stripe plugin install %s' or press Enter to install", p.name)
 
 	var input string
 	fmt.Fscanln(p.stdin, &input)
@@ -151,16 +149,14 @@ func (p *pluginHintCmd) suggestNotAvailable() error {
 	accountID, err := p.accountIDFn()
 
 	if err != nil || accountID == "" {
-		return fmt.Errorf("the '%s' plugin is in private preview; you must be logged in to use it — run `stripe login` to authenticate", p.name)
+		fmt.Fprintf(p.stdout, "The '%s' plugin is in private preview. Run 'stripe login' to verify your account has access.\n", p.name)
+		os.Exit(1)
+		return nil
 	}
 
-	fmt.Fprintf(p.stdout, "The '%s' plugin is in private preview and not available for your account.\n", p.name)
+	fmt.Fprintf(p.stdout, "The logged-in account %s does not have access to the private preview 'generate' plugin. Log into a different account with 'stripe login', or contact Stripe support.\n", accountID)
 	fmt.Fprintf(p.stdout, "\n")
 	fmt.Fprintf(p.stdout, "%s\n", p.description)
-	fmt.Fprintf(p.stdout, "\n")
-	fmt.Fprintf(p.stdout, "Your account: %s\n", accountID)
-	fmt.Fprintf(p.stdout, "\n")
-	fmt.Fprintf(p.stdout, "Log into a different account using stripe login or reach out to Stripe support.\n")
 	os.Exit(1)
 
 	return nil
