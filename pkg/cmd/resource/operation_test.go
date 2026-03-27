@@ -416,7 +416,7 @@ func TestConstructParamFromDot(t *testing.T) {
 	require.Equal(t, "shipping[address][line1]", param)
 }
 
-func TestNewOperationCmd_FlagUsageFromDescription(t *testing.T) {
+func TestNewOperationCmd_FlagRegistered(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
 	oc := NewOperationCmd(parentCmd, &OperationSpec{
@@ -424,13 +424,13 @@ func TestNewOperationCmd_FlagUsageFromDescription(t *testing.T) {
 		Path:   "/v1/customers",
 		Method: http.MethodPost,
 		Params: map[string]*ParamSpec{
-			"email": {Type: "string", Description: "The customer's email address."},
+			"email": {Type: "string"},
 		},
 	}, &config.Config{})
 
 	flag := oc.Cmd.Flags().Lookup("email")
 	require.NotNil(t, flag)
-	require.Equal(t, "The customer's email address.", flag.Usage)
+	require.Equal(t, "", flag.Usage)
 }
 
 func TestNewOperationCmd_WithServerURL(t *testing.T) {

@@ -51,7 +51,6 @@ type OperationData struct {
 	Name      string // operation name, e.g. "create"
 	Path      string
 	HTTPVerb  string
-	Summary   string
 	IsPreview bool
 	ServerURL string
 	VarName   string
@@ -359,7 +358,6 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 			Name:      op.MethodName,
 			Path:      op.Path,
 			HTTPVerb:  httpString,
-			Summary:   specOp.Summary,
 			IsPreview: isPreview,
 			ServerURL: serverURL,
 			VarName:   varName,
@@ -413,11 +411,10 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 					}
 
 					ps := &resource.ParamSpec{
-						Type:        *scalarType,
-						Description: schema.Description,
-						Required:    requiredSet[propName],
-						Format:      schema.Format,
-						Enum:        mergeEnumValues(schema),
+						Type:     *scalarType,
+						Required: requiredSet[propName],
+						Format:   schema.Format,
+						Enum:     mergeEnumValues(schema),
 					}
 					params[propName] = ps
 				}
@@ -439,11 +436,10 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			}
 
 			ps := &resource.ParamSpec{
-				Type:        *scalarType,
-				Description: param.Description,
-				Required:    param.Required,
-				Format:      schema.Format,
-				Enum:        mergeEnumValues(schema),
+				Type:     *scalarType,
+				Required: param.Required,
+				Format:   schema.Format,
+				Enum:     mergeEnumValues(schema),
 			}
 			params[param.Name] = ps
 		}
@@ -467,11 +463,10 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, prefix string,
 
 			isRequired := containsStr(schema.Required, propName)
 			ps := &resource.ParamSpec{
-				Type:        *scalarType,
-				Description: propSchema.Description,
-				Required:    isRequired,
-				Format:      propSchema.Format,
-				Enum:        mergeEnumValues(propSchema),
+				Type:     *scalarType,
+				Required: isRequired,
+				Format:   propSchema.Format,
+				Enum:     mergeEnumValues(propSchema),
 			}
 			params[key] = ps
 		}
@@ -498,8 +493,7 @@ func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
 				continue
 			}
 			enums = append(enums, resource.EnumSpec{
-				Value:       val,
-				Description: descByValue[val],
+				Value: val,
 			})
 		}
 		return enums
@@ -509,8 +503,7 @@ func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
 	var enums []resource.EnumSpec
 	for _, ev := range schema.XStripeEnum {
 		enums = append(enums, resource.EnumSpec{
-			Value:       ev.Value,
-			Description: ev.Description,
+			Value: ev.Value,
 		})
 	}
 	return enums

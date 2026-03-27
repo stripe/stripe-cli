@@ -176,19 +176,17 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 
-		description := paramSpec.Description
-
 		switch paramSpec.Type {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, description)
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, description)
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, description)
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})

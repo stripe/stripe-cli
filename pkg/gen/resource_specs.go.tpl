@@ -14,17 +14,11 @@ var {{ .VarName }} = resource.OperationSpec{
 {{- if .Op.ServerURL }}
 	ServerURL: {{ .Op.ServerURL | quote }},
 {{- end }}
-{{- if .Op.Summary }}
-	Summary: {{ .Op.Summary | quote }},
-{{- end }}
 {{- if .Op.Params }}
 	Params: map[string]*resource.ParamSpec{
 	{{- range $name, $ps := .Op.Params }}
 		{{ $name | quote }}: {
 			Type: {{ $ps.Type | quote }},
-		{{- if $ps.Description }}
-			Description: {{ $ps.Description | quote }},
-		{{- end }}
 		{{- if $ps.Required }}
 			Required: true,
 		{{- end }}
@@ -34,7 +28,7 @@ var {{ .VarName }} = resource.OperationSpec{
 		{{- if $ps.Enum }}
 			Enum: []resource.EnumSpec{
 			{{- range $ps.Enum }}
-				{Value: {{ .Value | quote }}{{ if .Description }}, Description: {{ .Description | quote }}{{ end }}},
+				{Value: {{ .Value | quote }}},
 			{{- end }}
 			},
 		{{- end }}
