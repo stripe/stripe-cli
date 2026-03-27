@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
 // ConfigCmd handles `stripe plugin config` for reading and writing plugin settings.
@@ -55,30 +56,30 @@ func (cc *ConfigCmd) run(cmd *cobra.Command, args []string) error {
 		return cc.setUpdates(args[0], args[1], args[2])
 	case cc.unset != "" && len(args) == 0:
 		// stripe plugin config --unset updates  (global)
-		return cc.cfg.DeleteConfigField(fmt.Sprintf("plugin_configs.__global.%s", cc.unset))
+		return cc.cfg.DeleteConfigField(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, cc.unset))
 	case cc.unset != "" && len(args) == 1:
 		// stripe plugin config <plugin> --unset updates
 		pluginName := args[0]
 		if !slices.Contains(cc.cfg.GetInstalledPlugins(), pluginName) {
 			return fmt.Errorf("plugin %q is not installed", pluginName)
 		}
-		return cc.cfg.DeleteConfigField(fmt.Sprintf("plugin_configs.%s.%s", pluginName, cc.unset))
+		return cc.cfg.DeleteConfigField(plugins.PluginConfigKey(pluginName, cc.unset))
 	default:
 		return cmd.Help()
 	}
 }
 
 func (cc *ConfigCmd) setUpdates(scope, field, value string) error {
-	if field != "updates" {
+	if field != plugins.PluginConfigUpdatesField {
 		return fmt.Errorf("unknown config field %q", field)
 	}
 	if value != "on" && value != "off" {
 		return fmt.Errorf("invalid value %q for updates — must be \"on\" or \"off\"", value)
 	}
-	if scope != "__global" {
+	if scope != plugins.PluginConfigGlobalScope {
 		if !slices.Contains(cc.cfg.GetInstalledPlugins(), scope) {
 			return fmt.Errorf("plugin %q is not installed", scope)
 		}
 	}
-	return cc.cfg.WriteConfigField(fmt.Sprintf("plugin_configs.%s.%s", scope, field), value)
+	return cc.cfg.WriteConfigField(plugins.PluginConfigKey(scope, field), value)
 }

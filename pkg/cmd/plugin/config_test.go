@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
 func setupPluginConfigTest(t *testing.T) (*config.Config, func()) {
@@ -46,7 +47,7 @@ func TestGlobalSet_UpdatesOn(t *testing.T) {
 
 	err := cc.run(cc.Cmd, []string{"updates", "on"})
 	require.NoError(t, err)
-	assert.Equal(t, "on", viper.GetString("plugin_configs.__global.updates"))
+	assert.Equal(t, "on", viper.GetString(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
 }
 
 func TestGlobalSet_UpdatesOff(t *testing.T) {
@@ -58,7 +59,7 @@ func TestGlobalSet_UpdatesOff(t *testing.T) {
 
 	err := cc.run(cc.Cmd, []string{"updates", "off"})
 	require.NoError(t, err)
-	assert.Equal(t, "off", viper.GetString("plugin_configs.__global.updates"))
+	assert.Equal(t, "off", viper.GetString(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
 }
 
 func TestGlobalSet_InvalidValue(t *testing.T) {
@@ -91,14 +92,14 @@ func TestGlobalUnset_Updates(t *testing.T) {
 	cfg, cleanup := setupPluginConfigTest(t)
 	defer cleanup()
 
-	require.NoError(t, cfg.WriteConfigField("plugin_configs.__global.updates", "off"))
+	require.NoError(t, cfg.WriteConfigField(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField), "off"))
 
 	cc := newTestConfigCmd(cfg)
-	cc.unset = "updates"
+	cc.unset = plugins.PluginConfigUpdatesField
 
 	err := cc.run(cc.Cmd, []string{})
 	require.NoError(t, err)
-	assert.False(t, viper.IsSet("plugin_configs.__global.updates"))
+	assert.False(t, viper.IsSet(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
 }
 
 // -- per-plugin --set -------------------------------------------------------
@@ -114,7 +115,7 @@ func TestPluginSet_UpdatesOff(t *testing.T) {
 
 	err := cc.run(cc.Cmd, []string{"apps", "updates", "off"})
 	require.NoError(t, err)
-	assert.Equal(t, "off", viper.GetString("plugin_configs.apps.updates"))
+	assert.Equal(t, "off", viper.GetString(plugins.PluginConfigKey("apps", plugins.PluginConfigUpdatesField)))
 }
 
 func TestPluginSet_NotInstalled(t *testing.T) {
@@ -150,14 +151,14 @@ func TestPluginUnset_Updates(t *testing.T) {
 	defer cleanup()
 
 	require.NoError(t, cfg.WriteConfigField("installed_plugins", []string{"apps"}))
-	require.NoError(t, cfg.WriteConfigField("plugin_configs.apps.updates", "off"))
+	require.NoError(t, cfg.WriteConfigField(plugins.PluginConfigKey("apps", plugins.PluginConfigUpdatesField), "off"))
 
 	cc := newTestConfigCmd(cfg)
-	cc.unset = "updates"
+	cc.unset = plugins.PluginConfigUpdatesField
 
 	err := cc.run(cc.Cmd, []string{"apps"})
 	require.NoError(t, err)
-	assert.False(t, viper.IsSet("plugin_configs.apps.updates"))
+	assert.False(t, viper.IsSet(plugins.PluginConfigKey("apps", plugins.PluginConfigUpdatesField)))
 }
 
 func TestPluginUnset_NotInstalled(t *testing.T) {
