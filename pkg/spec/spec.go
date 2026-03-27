@@ -226,7 +226,6 @@ type MediaType struct {
 type Operation struct {
 	Deprecated  *bool                   `json:"deprecated"`
 	Description string                  `json:"description"`
-	Summary     string                  `json:"summary"`
 	OperationID string                  `json:"operation_id"`
 	Parameters  []*Parameter            `json:"parameters"`
 	RequestBody *RequestBody            `json:"requestBody"`
