@@ -204,9 +204,14 @@ func TestRunOperationCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	profile := config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-	}, map[string][]string{}, &config.Config{Profile: profile}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+		},
+	}, &config.Config{Profile: profile})
 	oc.APIBaseURL = ts.URL
 
 	var buf bytes.Buffer
@@ -237,7 +242,11 @@ func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {
 	viper.Reset()
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+	}, &config.Config{})
 
 	var buf bytes.Buffer
 	oc.Cmd.SetOut(&buf)
@@ -309,8 +318,16 @@ func TestRunOperationCmd_DryRunParity_V1(t *testing.T) {
 
 	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
 		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-		oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost,
-			propFlags, map[string][]string{}, &config.Config{Profile: profile}, false, "")
+		params := make(map[string]*ParamSpec, len(propFlags))
+		for name, typ := range propFlags {
+			params[name] = &ParamSpec{Type: typ}
+		}
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "foo",
+			Path:   "/v1/bars/{id}",
+			Method: http.MethodPost,
+			Params: params,
+		}, &config.Config{Profile: profile})
 		oc.APIBaseURL = ts.URL
 		oc.Cmd.Flags().Set("param1", "value1")
 		oc.Cmd.Flags().Set("int-param", "42")
@@ -359,9 +376,11 @@ func TestRunOperationCmd_DryRunParity_V2(t *testing.T) {
 
 	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
 		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-		oc := NewOperationCmd(parentCmd, "create", "/v2/billing/meter_events",
-			http.MethodPost, map[string]string{}, map[string][]string{},
-			&config.Config{Profile: profile}, false, "")
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "create",
+			Path:   "/v2/billing/meter_events",
+			Method: http.MethodPost,
+		}, &config.Config{Profile: profile})
 		oc.APIBaseURL = ts.URL
 		oc.Cmd.Flags().Set("data", jsonData)
 		if dryRun {
