@@ -555,23 +555,6 @@ func apiNsPrefix(apiNamespace ApiNamespace) string {
 	}
 }
 
-// specFileName returns the file name for a spec file given the api namespace and sub-namespace.
-// The empty sub-namespace is mapped to "global" to avoid collision with an actual "core" sub-namespace.
-func specFileName(apiNs, nsName string) string {
-	apiNsFile := strings.ReplaceAll(apiNs, "-", "_")
-	nsFile := nsName
-	if nsFile == "" {
-		nsFile = "global"
-	}
-	nsFile = strings.ReplaceAll(nsFile, " ", "_")
-	return fmt.Sprintf("specs_%s_%s_gen.go", apiNsFile, nsFile)
-}
-
-type specGroupKey struct {
-	apiNs  string
-	nsName string
-}
-
 type varEntry struct {
 	VarName string
 	Op      *OperationData
@@ -593,54 +576,47 @@ func cleanGeneratedFiles(dir string) error {
 	return nil
 }
 
-// generateSpecFiles writes one specs_*_gen.go file per (apiNamespace, nsName) group
-// using resource_specs.go.tpl.
+// generateSpecFiles writes a single specs_gen.go file containing all operation
+// spec variables, sorted by VarName for stable output.
 func generateSpecFiles(data *TemplateData, outputDir string) error {
 	tmpl := template.Must(template.
 		New(pathSpecName).
 		Funcs(templateFuncs).
 		ParseFiles(pathSpecTemplate))
-	groups := make(map[specGroupKey][]varEntry)
 
-	for apiNs, nsData := range data.ApiNamespaces {
-		for nsName, nsDataInner := range nsData.Namespaces {
+	var entries []varEntry
+	for _, nsData := range data.ApiNamespaces {
+		for _, nsDataInner := range nsData.Namespaces {
 			for _, resData := range nsDataInner.Resources {
 				for _, opData := range resData.Operations {
-					key := specGroupKey{apiNs, nsName}
-					groups[key] = append(groups[key], varEntry{VarName: opData.VarName, Op: opData})
+					entries = append(entries, varEntry{VarName: opData.VarName, Op: opData})
 				}
 				for _, subResData := range resData.SubResources {
 					for _, opData := range subResData.Operations {
-						key := specGroupKey{apiNs, nsName}
-						groups[key] = append(groups[key], varEntry{VarName: opData.VarName, Op: opData})
+						entries = append(entries, varEntry{VarName: opData.VarName, Op: opData})
 					}
 				}
 			}
 		}
 	}
 
-	for key, entries := range groups {
-		sort.Slice(entries, func(i, j int) bool {
-			return entries[i].VarName < entries[j].VarName
-		})
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].VarName < entries[j].VarName
+	})
 
-		var result bytes.Buffer
-		if err := tmpl.Execute(&result, entries); err != nil {
-			return fmt.Errorf("spec file %s: %w", specFileName(key.apiNs, key.nsName), err)
-		}
-
-		formatted, err := format.Source(result.Bytes())
-		if err != nil {
-			return fmt.Errorf("format error in %s: %w\n%s", specFileName(key.apiNs, key.nsName), err, result.String())
-		}
-
-		filePath := filepath.Join(outputDir, specFileName(key.apiNs, key.nsName))
-		fmt.Printf("writing %s\n", filePath)
-		if err := os.WriteFile(filePath, formatted, 0644); err != nil {
-			return err
-		}
+	var result bytes.Buffer
+	if err := tmpl.Execute(&result, entries); err != nil {
+		return fmt.Errorf("spec file specs_gen.go: %w", err)
 	}
-	return nil
+
+	formatted, err := format.Source(result.Bytes())
+	if err != nil {
+		return fmt.Errorf("format error in specs_gen.go: %w\n%s", err, result.String())
+	}
+
+	filePath := filepath.Join(outputDir, "specs_gen.go")
+	fmt.Printf("writing %s\n", filePath)
+	return os.WriteFile(filePath, formatted, 0644)
 }
 
 // getMediaType returns the content type for request bodies based on API namespace.
