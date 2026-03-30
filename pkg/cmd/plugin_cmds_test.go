@@ -52,6 +52,87 @@ func TestFlagsArePassedAsArgs(t *testing.T) {
 	require.Equal(t, "testarg --log-level=info", strings.Join(pluginCmd.ParsedArgs, " "))
 }
 
+func TestAddPluginSubcommandStubs(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "myapp",
+		Shortdesc:        "My app plugin",
+		Binary:           "stripe-cli-myapp",
+		MagicCookieValue: "magic",
+		Commands: []plugins.CommandInfo{
+			{
+				Name: "create",
+				Desc: "Create a resource",
+			},
+			{
+				Name: "logs",
+				Desc: "View logs",
+				Commands: []plugins.CommandInfo{
+					{
+						Name: "tail",
+						Desc: "Tail logs in real-time",
+					},
+				},
+			},
+		},
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	// Verify subcommand stubs were created
+	subCmds := ptc.cmd.Commands()
+	require.Equal(t, 2, len(subCmds))
+
+	assert.Equal(t, "create", subCmds[0].Name())
+	assert.Equal(t, "Create a resource", subCmds[0].Short)
+	assert.Equal(t, "plugin", subCmds[0].Annotations["scope"])
+
+	assert.Equal(t, "logs", subCmds[1].Name())
+	assert.Equal(t, "View logs", subCmds[1].Short)
+
+	// Verify nested subcommand
+	logSubCmds := subCmds[1].Commands()
+	require.Equal(t, 1, len(logSubCmds))
+	assert.Equal(t, "tail", logSubCmds[0].Name())
+	assert.Equal(t, "Tail logs in real-time", logSubCmds[0].Short)
+	assert.Equal(t, "plugin", logSubCmds[0].Annotations["scope"])
+}
+
+func TestAddPluginSubcommandStubsEmpty(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "simple",
+		Shortdesc:        "A simple plugin",
+		Binary:           "stripe-cli-simple",
+		MagicCookieValue: "magic",
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	// No subcommands should be created
+	assert.Equal(t, 0, len(ptc.cmd.Commands()))
+}
+
+func TestAddPluginSubcommandStubsSkipsEmptyName(t *testing.T) {
+	plugin := plugins.Plugin{
+		Shortname:        "badplugin",
+		Shortdesc:        "A plugin with bad manifest data",
+		Binary:           "stripe-cli-bad",
+		MagicCookieValue: "magic",
+		Commands: []plugins.CommandInfo{
+			{Name: "valid", Desc: "A valid command"},
+			{Name: "", Desc: "Entry with empty name"},
+			{Name: "also-valid", Desc: "Another valid command"},
+		},
+	}
+
+	ptc := newPluginTemplateCmd(&Config, &plugin)
+
+	// Only the two valid entries should become subcommands
+	cmds := ptc.cmd.Commands()
+	assert.Equal(t, 2, len(cmds))
+	assert.Equal(t, "also-valid", cmds[0].Name())
+	assert.Equal(t, "valid", cmds[1].Name())
+}
+
 func TestSubsliceAfter(t *testing.T) {
 	tests := []struct {
 		name     string

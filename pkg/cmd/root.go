@@ -111,6 +111,20 @@ func Execute(ctx context.Context) {
 
 	rootCmd.SetUsageTemplate(getUsageTemplate())
 	rootCmd.SetVersionTemplate(version.Template)
+
+	// Handle --map before ExecuteContext so it works for non-runnable
+	// commands (namespaces, root) where PersistentPreRun never fires.
+	if mode := getMapMode(os.Args[1:]); mode != mapModeDefault {
+		remaining := stripMapFlag(os.Args[1:])
+		targetCmd, _, _ := rootCmd.Find(remaining)
+		if targetCmd == nil || (targetCmd == rootCmd && len(remaining) > 0) {
+			fmt.Fprintf(os.Stderr, "Unknown command %q — showing full command tree.\n\n", strings.Join(remaining, " "))
+			targetCmd = rootCmd
+		}
+		printCommandMap(os.Stdout, targetCmd, mode)
+		return
+	}
+
 	if err := rootCmd.ExecuteContext(updatedCtx); err != nil {
 		errString := err.Error()
 
@@ -185,6 +199,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&Config.Profile.DeviceName, "device-name", "", "device name")
 	rootCmd.PersistentFlags().StringVar(&Config.LogLevel, "log-level", "info", "log level (debug, info, trace, warn, error)")
 	rootCmd.PersistentFlags().StringVarP(&Config.Profile.ProfileName, "project-name", "p", "default", "the project name to read from for config")
+	rootCmd.PersistentFlags().String("map", "", "Print a command tree [tree|compact|paths|json]")
+	rootCmd.PersistentFlags().Lookup("map").NoOptDefVal = "tree"
 	rootCmd.Flags().BoolP("version", "v", false, "Get the version of the Stripe CLI")
 
 	// tell viper to monitor the following flags:

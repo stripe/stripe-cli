@@ -35,13 +35,21 @@ var (
 	PluginsPath string
 )
 
+// CommandInfo describes a plugin subcommand for tree display (e.g. in --map).
+type CommandInfo struct {
+	Name     string        `toml:"Name" json:"name"`
+	Desc     string        `toml:"Desc" json:"desc,omitempty"`
+	Commands []CommandInfo `toml:"Command,omitempty" json:"commands,omitempty"`
+}
+
 // Plugin contains the plugin properties
 type Plugin struct {
-	Shortname        string    `toml:"Shortname"`
-	Shortdesc        string    `toml:"Shortdesc"`
-	Binary           string    `toml:"Binary"`
-	Releases         []Release `toml:"Release"`
-	MagicCookieValue string    `toml:"MagicCookieValue"`
+	Shortname        string        `toml:"Shortname"`
+	Shortdesc        string        `toml:"Shortdesc"`
+	Binary           string        `toml:"Binary"`
+	Releases         []Release     `toml:"Release"`
+	MagicCookieValue string        `toml:"MagicCookieValue"`
+	Commands         []CommandInfo `toml:"Command,omitempty"`
 }
 
 // PluginList contains a list of plugins
