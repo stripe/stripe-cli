@@ -110,7 +110,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	if err == nil {
-		successMsg := fmt.Sprintf("✔ Installation of v%s complete.", version)
+		successMsg := fmt.Sprintf("✔ installation of v%s complete.", version)
 		fmt.Println(color.Green(successMsg))
 	}
 

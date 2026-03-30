@@ -34,7 +34,7 @@ When a user installs a plugin with runtime requirements:
 $ stripe plugin install generate
 downloading Node.js v20.18.1 runtime...
 installing 'generate' v1.0.0...
-✔ Installation of 1.0.0 complete.
+✔ installation of 1.0.0 complete.
 ```
 
 The runtime is:
