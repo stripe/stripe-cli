@@ -138,17 +138,17 @@ func TestOldProfileDeleted(t *testing.T) {
 		DisplayName:    "",
 	}
 
-	v = p.deleteProfile(v)
+	v = p.deleteAuthFields(v)
 	err = p.writeProfile(v)
 	require.NoError(t, err)
 
 	require.FileExists(t, c.ProfilesFile)
 
-	// Overwrites keys
+	// Overwrites auth keys
 	require.Equal(t, "device-after-test", v.GetString(p.GetConfigField(DeviceNameName)))
 	require.Equal(t, "sk_test_456", v.GetString(p.GetConfigField(TestModeAPIKeyName)))
 	require.Equal(t, "", v.GetString(p.GetConfigField(DisplayNameName)))
-	// Deletes nested keys
+	// Deletes experimental section
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
 	// Leaves the other profile untouched
