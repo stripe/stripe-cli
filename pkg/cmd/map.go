@@ -139,10 +139,6 @@ func parseMapMode(arg string) (mapMode, bool) {
 		return mapModePaths, true
 	case "json":
 		return mapModeJSON, true
-	case "true":
-		return mapModeTree, true
-	case "false":
-		return mapModeDefault, false
 	default:
 		return mapModeDefault, false
 	}
@@ -171,13 +167,9 @@ func getMapMode(args []string) mapMode {
 			if ok {
 				return mode
 			}
-			// parseMapMode returns false for --map=false (backward compat)
-			// and for unknown values. Distinguish the two:
 			if strings.HasPrefix(a, "--map=") {
 				val := a[len("--map="):]
-				if val != "false" {
-					fmt.Fprintf(mapStderr(), "Unknown --map mode %q. Valid modes: tree, compact, paths, json\n", val)
-				}
+				fmt.Fprintf(mapStderr(), "Unknown --map mode %q. Valid modes: tree, compact, paths, json\n", val)
 			}
 			return mapModeDefault
 		}

@@ -408,40 +408,23 @@ func TestOfflineMapUnknownCommand(t *testing.T) {
 	}
 }
 
-func TestOfflineMapEqualsTrue(t *testing.T) {
+func TestOfflineMapInvalidModeShowsError(t *testing.T) {
 	runner := getRunner(t)
 
-	// --map=true is backward-compatible alias for bare --map (tree mode)
-	result, err := runner.Run("--map=true")
-	if err != nil {
-		fatalf(t, "Failed to run 'stripe --map=true': %v", err)
-	}
-
-	if result.ExitCode != 0 {
-		errorf(t, "Expected exit code 0, got %d. Stderr: %s", result.ExitCode, result.Stderr)
-	}
-
-	if !strings.Contains(result.Stdout, "stripe") {
-		errorf(t, "Expected tree output, got: %s", result.Stdout)
-	}
-
-	if !strings.Contains(result.Stdout, "├──") && !strings.Contains(result.Stdout, "└──") {
-		errorf(t, "Expected tree with box-drawing characters, got: %s", result.Stdout)
-	}
-}
-
-func TestOfflineMapEqualsFalseIgnored(t *testing.T) {
-	runner := getRunner(t)
-
-	// --map=false should NOT trigger map output; should behave like normal invocation
+	// --map=false is not a valid mode and should show an error
 	result, err := runner.Run("--map=false")
 	if err != nil {
 		fatalf(t, "Failed to run 'stripe --map=false': %v", err)
 	}
 
-	// Should behave like `stripe` with no args (help/usage), not a tree
+	// Should NOT produce tree output
 	if strings.Contains(result.Stdout, "├──") || strings.Contains(result.Stdout, "└──") {
 		errorf(t, "Expected --map=false to NOT produce tree output, got: %s", result.Stdout)
+	}
+
+	// Should show unknown mode error on stderr
+	if !strings.Contains(result.Stderr, "Unknown --map mode") {
+		errorf(t, "Expected unknown mode error on stderr, got: %s", result.Stderr)
 	}
 }
 

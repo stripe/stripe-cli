@@ -173,10 +173,6 @@ func TestGetMapMode(t *testing.T) {
 	assert.Equal(t, mapModePaths, getMapMode([]string{"--map=paths"}))
 	assert.Equal(t, mapModeJSON, getMapMode([]string{"--map=json"}))
 
-	// Backward compat
-	assert.Equal(t, mapModeTree, getMapMode([]string{"--map=true"}))
-	assert.Equal(t, mapModeDefault, getMapMode([]string{"--map=false"}))
-
 	// No flag
 	assert.Equal(t, mapModeDefault, getMapMode([]string{"issuing"}))
 	assert.Equal(t, mapModeDefault, getMapMode([]string{}))
@@ -207,8 +203,6 @@ func TestStripMapFlag(t *testing.T) {
 	assert.Equal(t, []string{}, stripMapFlag([]string{"--map"}))
 	assert.Equal(t, []string{"a", "b"}, stripMapFlag([]string{"a", "b"}))
 	// --map=value forms are stripped
-	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"issuing", "--map=true"}))
-	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map=false", "issuing"}))
 	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map=compact", "issuing"}))
 	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map=paths", "issuing"}))
 	assert.Equal(t, []string{"issuing"}, stripMapFlag([]string{"--map=json", "issuing"}))
@@ -426,14 +420,6 @@ func TestParseMapMode(t *testing.T) {
 	mode, ok = parseMapMode("--map=json")
 	assert.Equal(t, mapModeJSON, mode)
 	assert.True(t, ok)
-
-	mode, ok = parseMapMode("--map=true")
-	assert.Equal(t, mapModeTree, mode)
-	assert.True(t, ok)
-
-	mode, ok = parseMapMode("--map=false")
-	assert.Equal(t, mapModeDefault, mode)
-	assert.False(t, ok)
 
 	mode, ok = parseMapMode("--map=invalid")
 	assert.Equal(t, mapModeDefault, mode)
