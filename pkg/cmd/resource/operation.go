@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -48,10 +49,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
-	if err != nil {
-		return err
-	}
+	apiKey, apiKeyErr := oc.Profile.GetAPIKey(oc.Livemode)
 
 	path := formatURL(oc.Path, args)
 	requestParams := make(map[string]interface{})
@@ -59,9 +57,26 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	oc.addIntRequestParams(requestParams)
 	oc.addBoolRequestParams(requestParams)
 
-	err = oc.addArrayRequestParams(requestParams)
-	if err != nil {
+	if err := oc.addArrayRequestParams(requestParams); err != nil {
 		return err
+	}
+
+	if oc.DryRun {
+		dryRunKey := apiKey
+		if apiKeyErr != nil {
+			dryRunKey = ""
+		}
+		output, err := oc.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
+		if err != nil {
+			return err
+		}
+		b, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil
+	}
+
+	if apiKeyErr != nil {
+		return apiKeyErr
 	}
 
 	if oc.HTTPVerb == http.MethodDelete {
@@ -99,7 +114,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
+	_, err := oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 

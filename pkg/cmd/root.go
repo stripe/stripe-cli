@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
@@ -116,6 +118,8 @@ func Execute(ctx context.Context) {
 		projectNameFlag := rootCmd.Flag("project-name").Value.String()
 
 		switch {
+		case errors.Is(err, errNotAuthenticated):
+			// whoami already printed output; just exit non-zero
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
@@ -211,6 +215,7 @@ func init() {
 	// rootCmd.AddCommand(newStatusCmd().cmd)
 	rootCmd.AddCommand(newTriggerCmd().cmd)
 	rootCmd.AddCommand(newVersionCmd().cmd)
+	rootCmd.AddCommand(newWhoamiCmd().cmd)
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
@@ -230,12 +235,18 @@ func init() {
 	nfs := afero.NewOsFs()
 	pluginList := Config.GetInstalledPlugins()
 
+	installedPluginSet := make(map[string]bool)
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
+			installedPluginSet[p] = true
 		}
 	}
+
+	// For known plugins not yet installed, add a hint command so users get
+	// a helpful message instead of "unknown command".
+	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
