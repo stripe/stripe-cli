@@ -37,7 +37,12 @@ func newFixturesCmd(cfg *config.Config) *FixturesCmd {
 		Args:  validators.ExactArgs(1),
 		Short: "Run fixtures to populate your account with data",
 		Long:  `Run fixtures to populate your account with data`,
-		RunE:  fixturesCmd.runFixturesCmd,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Fixtures execute a sequence of API requests defined in a JSON file.\n" +
+				"  Use `--override` to customize parameters, e.g. `--override customer:email=test@example.com`.\n" +
+				"  Reference prior responses with `${resource:json_path}` and env vars with `${.env:VAR|default}`.",
+		},
+		RunE: fixturesCmd.runFixturesCmd,
 	}
 
 	fixturesCmd.Cmd.Flags().StringVar(&fixturesCmd.stripeAccount, "stripe-account", "", "Set a header identifying the connected account")
