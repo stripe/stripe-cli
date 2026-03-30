@@ -13,6 +13,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
+	"github.com/stripe/stripe-cli/pkg/useragent"
 )
 
 //
@@ -95,6 +96,58 @@ func WrappedNonRequestParamsFlagUsages(cmd *cobra.Command) string {
 // Private functions
 //
 
+func isAIAgent() bool {
+	return useragent.DetectAIAgent(os.Getenv) != ""
+}
+
+// AIAgentHelpAnnotationKey is the Cobra annotation key used to store
+// per-command help text shown only when an AI agent is detected.
+// Set it on any command via cmd.Annotations["ai_agent_help"] = "your text".
+const AIAgentHelpAnnotationKey = "ai_agent_help"
+
+func formatAgentGuidance(cmd *cobra.Command) string {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, "\n\n%s\n", ansi.Bold("[Agent guidance]"))
+
+	if extra, ok := cmd.Annotations[AIAgentHelpAnnotationKey]; ok && extra != "" {
+		sb.WriteString(extra + "\n")
+	}
+
+	fmt.Fprintf(&sb, "  Use %s to pass your key non-interactively (or set %s).\n", ansi.Bold("--api-key"), ansi.Bold("STRIPE_API_KEY"))
+
+	if cmd.Flags().Lookup("data") != nil {
+		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))
+	}
+
+	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
+	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+
+	if cmd.Flags().Lookup("stripe-account") != nil {
+		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
+	}
+
+	return sb.String()
+}
+
+// aiAgentHelpTop renders agent guidance only for the root command (no parent).
+// Used at the top of the root usage template.
+func aiAgentHelpTop(cmd *cobra.Command) string {
+	if !isAIAgent() || cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
+}
+
+// aiAgentHelp renders agent guidance for non-root commands.
+// Used in the pre-flags position of usage templates.
+func aiAgentHelp(cmd *cobra.Command) string {
+	if !isAIAgent() || !cmd.HasParent() {
+		return ""
+	}
+	return formatAgentGuidance(cmd)
+}
+
 func getLogin(fs *afero.Fs, cfg *config.Config) string {
 	// We're checking against the path because we don't initialize the config
 	// at this point of execution.
@@ -121,13 +174,13 @@ If you're working on multiple projects, you can run the login command with the
 func getUsageTemplate() string {
 	return fmt.Sprintf(`%s{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+  {{.CommandPath}} [command]{{end}}{{AIAgentHelpTop .}}{{if gt (len .Aliases) 0}}
 
 %s
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 %s
-  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if .Annotations}}
+  {{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{if (index .Annotations "get")}}
 
 %s{{range $index, $cmd := .Commands}}{{if (eq (index $.Annotations $cmd.Name) "webhooks")}}
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}
@@ -151,7 +204,7 @@ func getUsageTemplate() string {
   {{rpad $cmd.Name $cmd.NamePadding}} {{$cmd.Short}}{{end}}{{end}}{{else}}
 
 %s{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+  {{rpad .Name .NamePadding}} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{AIAgentHelp .}}{{if .HasAvailableLocalFlags}}
 
 %s
 {{WrappedLocalFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
@@ -193,4 +246,7 @@ func init() {
 	cobra.AddTemplateFunc("WrappedLocalFlagUsages", WrappedLocalFlagUsages)
 	cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", WrappedRequestParamsFlagUsages)
 	cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", WrappedNonRequestParamsFlagUsages)
+	cobra.AddTemplateFunc("IsAIAgent", isAIAgent)
+	cobra.AddTemplateFunc("AIAgentHelp", aiAgentHelp)
+	cobra.AddTemplateFunc("AIAgentHelpTop", aiAgentHelpTop)
 }

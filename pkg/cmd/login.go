@@ -73,6 +73,10 @@ For agents and scripts, use the two-step non-interactive flow:
   stripe login --non-interactive
   #   Step 2 – after the user approves in the browser, complete login
   stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
+		Annotations: map[string]string{
+			AIAgentHelpAnnotationKey: "  Prefer setting STRIPE_API_KEY or using `--api-key` over `stripe login` for non-interactive use.\n" +
+				"  If you must login, use `stripe login --interactive` to enter an API key without opening a browser.",
+		},
 		RunE: lc.runLoginCmd,
 	}
 	lc.cmd.Flags().BoolVarP(&lc.interactive, "interactive", "i", false, "Run interactive configuration mode if you cannot open a browser")
