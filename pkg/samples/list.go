@@ -90,15 +90,13 @@ func (l *cachedGithubSampleLister) getFromCacheOrGithub(noNetwork bool) (map[str
 	} else if !noNetwork {
 		err := l.s.Git.Pull(l.cacheFolder)
 		if err != nil {
-			if err != nil {
-				switch e := err.Error(); e {
-				case git.NoErrAlreadyUpToDate.Error():
-					// Repo is already up to date. This isn't a program
-					// error to continue as normal
-					break
-				default:
-					return nil, err
-				}
+			switch e := err.Error(); e {
+			case git.NoErrAlreadyUpToDate.Error():
+				// Repo is already up to date. This isn't a program
+				// error to continue as normal
+				break
+			default:
+				return nil, err
 			}
 		}
 	}

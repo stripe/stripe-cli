@@ -9,6 +9,17 @@ import (
 	"github.com/spf13/afero"
 )
 
+// isSymlink returns true if the file at path is a symbolic link.
+// Returns false if the path does not exist or cannot be stat'd.
+func isSymlink(path string) bool {
+	// os.Lstat inspects the link entry itself (rather than following it like os.Stat)
+	entry, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	return entry.Mode().Type() == os.ModeSymlink
+}
+
 // cacheFolder is the local directory where we place local copies of samples
 func (s *SampleManager) cacheFolder() (string, error) {
 	configPath := s.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
@@ -48,7 +59,7 @@ func (s *SampleManager) MakeFolder(name string) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", fmt.Errorf("Path already exists, aborting: %s", appFolder)
+		return "", fmt.Errorf("path already exists, aborting: %s", appFolder)
 	}
 
 	return appFolder, nil
@@ -83,8 +94,10 @@ func (s *SampleManager) GetFiles(path string) ([]string, error) {
 	}
 
 	for _, f := range files {
-		// We only want files
-		if !f.IsDir() {
+		// We only want regular files, not directories or symlinks.
+		// Filtering symlinks prevents malicious sample repositories from
+		// using symlinks to escape the destination directory.
+		if !f.IsDir() && !isSymlink(filepath.Join(path, f.Name())) {
 			file = append(file, f.Name())
 		}
 	}

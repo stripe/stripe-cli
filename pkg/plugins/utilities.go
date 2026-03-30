@@ -19,6 +19,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	hcplugin "github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/go-version"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -98,7 +99,7 @@ func LookUpPlugin(ctx context.Context, config config.IConfig, fs afero.Fs, plugi
 		}
 	}
 
-	return plugin, fmt.Errorf("Could not find a plugin named %s", pluginName)
+	return plugin, fmt.Errorf("could not find a plugin named %s", pluginName)
 }
 
 // RefreshPluginManifest refreshes the plugin manifest
@@ -124,6 +125,12 @@ func RefreshPluginManifest(ctx context.Context, config config.IConfig, fs afero.
 
 	configPath := config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
 	pluginManifestPath := filepath.Join(configPath, "plugins.toml")
+
+	// Ensure the config directory exists
+	err = fs.MkdirAll(configPath, os.FileMode(0755))
+	if err != nil {
+		return err
+	}
 
 	body := new(bytes.Buffer)
 	if err := toml.NewEncoder(body).Encode(pluginList); err != nil {
@@ -202,7 +209,7 @@ func validateReleaseRuntimes(pluginName string, release Release) error {
 		// Check if the Node.js version is valid
 		if !isValidNodeLTSVersion(version) {
 			return fmt.Errorf(
-				"Invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
+				"invalid Node.js version '%s' for plugin '%s' version '%s'. Only LTS major versions are allowed (18, 20, 22, 24, etc.)",
 				version,
 				pluginName,
 				release.Version,
@@ -245,10 +252,10 @@ func validatePluginManifest(body []byte) (*PluginList, error) {
 	var manifestBody PluginList
 
 	if err := toml.Unmarshal(body, &manifestBody); err != nil {
-		return nil, fmt.Errorf("Received an invalid plugin manifest. Error: %s", err)
+		return nil, fmt.Errorf("received an invalid plugin manifest: %s", err)
 	}
 	if len(manifestBody.Plugins) == 0 {
-		return nil, fmt.Errorf("Received an empty plugin manifest")
+		return nil, fmt.Errorf("received an empty plugin manifest")
 	}
 	if err := validateRuntimeVersions(&manifestBody); err != nil {
 		return nil, err
@@ -274,7 +281,15 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 
 		// Other code assumes the releases are sorted with latest version last.
 		sort.Slice(pluginList.Plugins[idx].Releases, func(i, j int) bool {
-			return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+			vi, errI := version.NewVersion(pluginList.Plugins[idx].Releases[i].Version)
+			vj, errJ := version.NewVersion(pluginList.Plugins[idx].Releases[j].Version)
+
+			// If either version fails to parse, fall back to string comparison
+			if errI != nil || errJ != nil {
+				return pluginList.Plugins[idx].Releases[i].Version < pluginList.Plugins[idx].Releases[j].Version
+			}
+
+			return vi.LessThan(vj)
 		})
 	}
 }
@@ -319,7 +334,7 @@ func FetchRemoteResource(url string) ([]byte, error) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no such host") {
-			return nil, fmt.Errorf("Failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
+			return nil, fmt.Errorf("failed to find the plugin repository. Make sure you are on the latest version of the Stripe CLI: https://docs.stripe.com/stripe-cli/upgrade")
 		}
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/requests"
-	"github.com/stripe/stripe-cli/pkg/spec"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
@@ -49,10 +49,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	apiKey, err := oc.Profile.GetAPIKey(oc.Livemode)
-	if err != nil {
-		return err
-	}
+	apiKey, apiKeyErr := oc.Profile.GetAPIKey(oc.Livemode)
 
 	path := formatURL(oc.Path, args)
 	requestParams := make(map[string]interface{})
@@ -60,9 +57,26 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 	oc.addIntRequestParams(requestParams)
 	oc.addBoolRequestParams(requestParams)
 
-	err = oc.addArrayRequestParams(requestParams)
-	if err != nil {
+	if err := oc.addArrayRequestParams(requestParams); err != nil {
 		return err
+	}
+
+	if oc.DryRun {
+		dryRunKey := apiKey
+		if apiKeyErr != nil {
+			dryRunKey = ""
+		}
+		output, err := oc.BuildDryRunOutput(dryRunKey, oc.APIBaseURL, path, &oc.Parameters, requestParams)
+		if err != nil {
+			return err
+		}
+		b, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil
+	}
+
+	if apiKeyErr != nil {
+		return apiKeyErr
 	}
 
 	if oc.HTTPVerb == http.MethodDelete {
@@ -100,7 +114,7 @@ func (oc *OperationCmd) runOperationCmd(cmd *cobra.Command, args []string) error
 		return err
 	}
 	// else
-	_, err = oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
+	_, err := oc.MakeRequest(cmd.Context(), apiKey, path, &oc.Parameters, requestParams, false, nil)
 	return err
 }
 
@@ -130,7 +144,7 @@ func NewUnsupportedV2BillingOperationCmd(parentCmd *cobra.Command, name string, 
 
 // NewOperationCmd returns a new OperationCmd.
 func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
-	propFlags map[string]string, enumFlags map[string][]spec.StripeEnumValue, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
+	propFlags map[string]string, enumFlags map[string][]string, cfg *config.Config, isPreview bool, serverURL string) *OperationCmd {
 	urlParams := extractURLParams(path)
 	httpVerb = strings.ToUpper(httpVerb)
 
@@ -163,33 +177,24 @@ func NewOperationCmd(parentCmd *cobra.Command, name, path, httpVerb string,
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
 
-		// Create flag description
-		var description string
-		if enums, hasEnum := enumFlags[prop]; hasEnum {
-			// Create a description that includes enum values
-			enumValues := []string{}
-			for _, enum := range enums {
-				enumValues = append(enumValues, fmt.Sprintf("%s (%s)", enum.Value, enum.Description))
-			}
-			description = fmt.Sprintf("Possible values: %s", strings.Join(enumValues, ", "))
-		} else {
-			description = "" // Default empty description
-		}
-
 		switch propType {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, description)
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", description)
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, description)
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, description)
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
+		cmd.Flags().SetAnnotation(flagName, "apitype", []string{propType})
+		if enums, hasEnum := enumFlags[prop]; hasEnum && len(enums) > 0 {
+			cmd.Flags().SetAnnotation(flagName, "enum", enums)
+		}
 	}
 
 	cmd.SetUsageTemplate(operationUsageTemplate(urlParams))

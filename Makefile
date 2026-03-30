@@ -6,7 +6,7 @@ PROTOC_FAILURE_MESSAGE="\nFailed to compile protobuf files: protoc exited with c
 export GO111MODULE := on
 export GOBIN := $(shell pwd)/bin
 export PATH := $(GOBIN):$(PATH)
-export GOLANGCI_LINT_VERSION := v1.64.2
+export GOLANGCI_LINT_VERSION := v2.10.1
 
 # Install all the build and lint dependencies
 setup:
@@ -19,8 +19,10 @@ githooks-init:
 .PHONY: githooks-init
 
 # Run all the tests
+# On macOS, CGO_ENABLED=0 works around a Go 1.26.0 linker crash with -race (https://github.com/golang/go/issues/77593)
+TEST_CGO_ENABLED := $(if $(filter Darwin,$(shell uname -s)),0,)
 test:
-	go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
+	$(if $(TEST_CGO_ENABLED),CGO_ENABLED=$(TEST_CGO_ENABLED)) go test $(TEST_OPTIONS) -failfast -race -coverpkg=./... -covermode=atomic -coverprofile=coverage.txt $(SOURCE_FILES) -run $(TEST_PATTERN) -timeout=2m
 .PHONY: test
 
 # Run all the tests and opens the coverage report
@@ -46,14 +48,13 @@ canary-offline: build-canary
 
 # gofmt and goimports all go files
 fmt:
-	go install golang.org/x/tools/cmd/goimports@v0.5
+	go install golang.org/x/tools/cmd/goimports@v0.42.0
 	find . -not -path "./rpc*" -not -path "./pkg/plugins/proto*" -name '*.go' | while read -r file; do gofmt -w -s "$$file"; goimports -w -local github.com/stripe/stripe-cli "$$file"; done
 .PHONY: fmt
 
 # Run all the linters
 lint: bin/golangci-lint
-	# TODO: fix disabled linter issues
-	./bin/golangci-lint run ./...
+	./bin/golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 ./...
 .PHONY: lint
 
 bin/golangci-lint:
@@ -142,8 +143,8 @@ update-node-checksums:
 
 # Handle all protobuf generation.
 protoc:
-	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
-	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
 	@go mod tidy
 	make protoc-gen-all
 .PHONY: protoc

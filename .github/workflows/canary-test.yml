@@ -48,12 +48,12 @@ jobs:
           git config --global core.eol lf
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24.1'
+          go-version: '1.26.0'
 
       - name: Build binary (production-like)
         run: |

@@ -1,11 +1,14 @@
 package config
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -57,6 +60,58 @@ const (
 
 // KeyRing ...
 var KeyRing keyring.Keyring
+
+func isWSLFromVersion(procVersion string) bool {
+	lower := strings.ToLower(procVersion)
+	return strings.Contains(lower, "microsoft") || strings.Contains(lower, "wsl")
+}
+
+func isWSL() bool {
+	data, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return isWSLFromVersion(string(data))
+}
+
+func wslFilePasswordFromPaths(machineIDPath, bootIDPath string) (string, error) {
+	machineID, err := os.ReadFile(machineIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", machineIDPath, err)
+	}
+	bootID, err := os.ReadFile(bootIDPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %s: %w", bootIDPath, err)
+	}
+	const appKey = "stripe-cli-keyring-v1"
+	mac := hmac.New(sha256.New, []byte(appKey))
+	mac.Write([]byte(strings.TrimSpace(string(machineID))))
+	mac.Write([]byte(strings.TrimSpace(string(bootID))))
+	return hex.EncodeToString(mac.Sum(nil)), nil
+}
+
+func wslFilePassword(_ string) (string, error) {
+	return wslFilePasswordFromPaths("/etc/machine-id", "/proc/sys/kernel/random/boot_id")
+}
+
+func getKeyringConfig() keyring.Config {
+	c := keyring.Config{
+		KeychainTrustApplication: true,
+		ServiceName:              KeyManagementService,
+	}
+
+	if runtime.GOOS == "linux" {
+		c.FileDir = getConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
+		c.FilePasswordFunc = wslFilePassword
+		if isWSL() {
+			c.AllowedBackends = []keyring.BackendType{keyring.FileBackend}
+		} else {
+			c.AllowedBackends = []keyring.BackendType{keyring.SecretServiceBackend, keyring.FileBackend}
+		}
+	}
+
+	return c
+}
 
 // CreateProfile creates a profile when logging in
 func (p *Profile) CreateProfile() error {
@@ -355,17 +410,7 @@ func (p *Profile) writeProfile(runtimeViper *viper.Viper) error {
 		runtimeViper = p.safeRemove(runtimeViper, "publishable_key")
 	}
 
-	runtimeViper.SetConfigFile(profilesFile)
-
-	// Ensure we preserve the config file type
-	runtimeViper.SetConfigType(filepath.Ext(profilesFile))
-
-	err = runtimeViper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeConfig(runtimeViper)
 }
 
 func (p *Profile) safeRemove(v *viper.Viper, key string) *viper.Viper {
@@ -496,10 +541,7 @@ type SessionCredentials struct {
 // GetSessionCredentials retrieves the session credentials from the keyring
 func (p *Profile) GetSessionCredentials() (*SessionCredentials, error) {
 	key := p.GetConfigField("stripe_cli_session")
-	ring, err := keyring.Open(keyring.Config{
-		KeychainTrustApplication: true,
-		ServiceName:              KeyManagementService,
-	})
+	ring, err := keyring.Open(getKeyringConfig())
 	if err != nil {
 		return nil, err
 	}

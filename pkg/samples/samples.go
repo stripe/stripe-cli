@@ -1,3 +1,4 @@
+// Package samples manages Stripe sample application setup.
 package samples
 
 import (
@@ -20,7 +21,6 @@ import (
 	"github.com/stripe/stripe-cli/pkg/validators"
 
 	g "github.com/stripe/stripe-cli/pkg/git"
-	gitpkg "github.com/stripe/stripe-cli/pkg/git"
 	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/stripeauth"
 )
@@ -140,7 +140,7 @@ type SampleManager struct {
 func NewSampleManager(config *config.Config) (*SampleManager, error) {
 	sampleManager := &SampleManager{
 		Fs:              afero.NewOsFs(),
-		Git:             gitpkg.Operations{},
+		Git:             g.Operations{},
 		ConfigureDotEnv: ConfigureDotEnv,
 		Config:          config,
 	}
@@ -161,7 +161,7 @@ func NewSampleManager(config *config.Config) (*SampleManager, error) {
 // 5. parse the sample cli config file
 func (s *SampleManager) Initialize(app string) error {
 	if app == "" {
-		return errors.New("Sample name is empty")
+		return errors.New("sample name is empty")
 	}
 
 	appPath, err := s.appCacheFolder(app)
@@ -181,7 +181,7 @@ func (s *SampleManager) Initialize(app string) error {
 	if _, err := s.Fs.Stat(appPath); os.IsNotExist(err) {
 		sampleData, ok := list[app]
 		if !ok {
-			return fmt.Errorf("Sample %s does not exist", app)
+			return fmt.Errorf("sample %s does not exist", app)
 		}
 		err = s.Git.Clone(appPath, sampleData.GitRepo())
 		if err != nil {
@@ -239,7 +239,7 @@ func (s *SampleManager) Copy(target string) error {
 		// empty string is a valid option
 		if s.SelectedConfig.Server != "" && !contains(s.SelectedConfig.Integration.Servers, s.SelectedConfig.Server) {
 			return fmt.Errorf(
-				"Server %s doesn't exist for sample integration %s. Available servers: %v",
+				"server %s doesn't exist for sample integration %s, available servers: %v",
 				s.SelectedConfig.Server,
 				integration,
 				s.SelectedConfig.Integration.Servers,
@@ -249,7 +249,7 @@ func (s *SampleManager) Copy(target string) error {
 		serverSource := filepath.Join(s.repoPath, integration, "server", s.SelectedConfig.Server)
 		serverDestination := filepath.Join(target, "server")
 
-		err := copy.Copy(serverSource, serverDestination)
+		err := copy.Copy(serverSource, serverDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ func (s *SampleManager) Copy(target string) error {
 		// empty string is a valid option
 		if s.SelectedConfig.Client != "" && !contains(s.SelectedConfig.Integration.Clients, s.SelectedConfig.Client) {
 			return fmt.Errorf(
-				"Client %s doesn't exist for sample integration %s. Available clients: %v",
+				"client %s doesn't exist for sample integration %s, available clients: %v",
 				s.SelectedConfig.Client,
 				integration,
 				s.SelectedConfig.Integration.Clients,
@@ -269,7 +269,7 @@ func (s *SampleManager) Copy(target string) error {
 		clientSource := filepath.Join(s.repoPath, integration, "client", s.SelectedConfig.Client)
 		clientDestination := filepath.Join(target, "client")
 
-		err := copy.Copy(clientSource, clientDestination)
+		err := copy.Copy(clientSource, clientDestination, skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, integration, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
@@ -294,13 +294,22 @@ func (s *SampleManager) Copy(target string) error {
 	}
 
 	for _, file := range filesSource {
-		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file))
+		err = copy.Copy(filepath.Join(s.repoPath, file), filepath.Join(target, file), skipSymlinks())
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// Returns options to skip symlinks during file copy
+func skipSymlinks() copy.Options {
+	return copy.Options{
+		OnSymlink: func(src string) copy.SymlinkAction {
+			return copy.Skip
+		},
+	}
 }
 
 // ConfigureDotEnv returns a map of environment variables to copy into the
@@ -360,6 +369,7 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		if err != nil {
 			return err
 		}
+		defer file.Close()
 
 		dotenv, err := godotenv.Parse(file)
 		if err != nil {
@@ -375,6 +385,13 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 		}
 
 		envFile := filepath.Join(sampleLocation, "server", ".env")
+
+		// We refuse to write through a symlink to prevent a malicious
+		// sample from overwriting files outside the destination directory.
+		if isSymlink(envFile) {
+			return fmt.Errorf("refusing to write .env: %s is a symlink", envFile)
+		}
+
 		err = godotenv.Write(dotenv, envFile)
 		if err != nil {
 			return err
