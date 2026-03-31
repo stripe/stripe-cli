@@ -20,6 +20,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -235,7 +236,7 @@ func init() {
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
-	addAllResourcesCmds(rootCmd)
+	resources.AddAllResourcesCmds(rootCmd, &Config)
 	addV2BillingStubs(rootCmd)
 
 	err := resource.PostProcessResourceCommands(rootCmd, &Config)

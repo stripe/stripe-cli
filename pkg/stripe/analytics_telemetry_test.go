@@ -66,7 +66,11 @@ func TestSetCobraCommandContext(t *testing.T) {
 func TestSetCobraCommandContext_SetsGeneratedResourceForGeneratedCommands(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := resource.NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
+	oc := resource.NewOperationCmd(parentCmd, &resource.OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodGet,
+	}, &config.Config{})
 	tel := stripe.NewEventMetadata()
 	tel.SetCobraCommandContext(oc.Cmd)
 	require.True(t, tel.GeneratedResource)
