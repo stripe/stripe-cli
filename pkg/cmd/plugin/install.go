@@ -65,13 +65,13 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error {
+func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (version string, err error) {
 	pluginName, version := parseInstallArg(arg)
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 
 	if err != nil {
-		return err
+		return version, err
 	}
 
 	if len(version) == 0 {
@@ -86,7 +86,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) error 
 
 	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
 
-	return err
+	return version, err
 }
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
@@ -95,6 +95,7 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	var err error
+	var version string
 	color := ansi.Color(os.Stdout)
 
 	// Refresh the plugin before proceeding
@@ -103,12 +104,12 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	err = ic.installPluginByName(cmd, args[0])
+	version, err = ic.installPluginByName(cmd, args[0])
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(color.Green("✔ installation complete."))
+	fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 
 	return nil
 }
