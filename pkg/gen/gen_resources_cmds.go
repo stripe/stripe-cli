@@ -415,10 +415,11 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 					}
 
 					ps := &resource.ParamSpec{
-						Type:     *scalarType,
-						Required: requiredSet[propName],
-						Format:   schema.Format,
-						Enum:     mergeEnumValues(schema),
+						Type:             *scalarType,
+						ShortDescription: gen.FirstSentence(schema.Description),
+						Required:         requiredSet[propName],
+						Format:           schema.Format,
+						Enum:             mergeEnumValues(schema),
 					}
 					params[propName] = ps
 				}
@@ -442,10 +443,11 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			}
 
 			ps := &resource.ParamSpec{
-				Type:     *scalarType,
-				Required: param.Required,
-				Format:   schema.Format,
-				Enum:     mergeEnumValues(schema),
+				Type:             *scalarType,
+				ShortDescription: gen.FirstSentence(param.Description),
+				Required:         param.Required,
+				Format:           schema.Format,
+				Enum:             mergeEnumValues(schema),
 			}
 			params[param.Name] = ps
 		}
@@ -488,10 +490,11 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequire
 				locallyRequired[key] = true
 			}
 			ps := &resource.ParamSpec{
-				Type:     *scalarType,
-				Required: isTrulyRequired,
-				Format:   propSchema.Format,
-				Enum:     mergeEnumValues(propSchema),
+				Type:             *scalarType,
+				ShortDescription: gen.FirstSentence(propSchema.Description),
+				Required:         isTrulyRequired,
+				Format:           propSchema.Format,
+				Enum:             mergeEnumValues(propSchema),
 			}
 			params[key] = ps
 		}
@@ -540,6 +543,11 @@ func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[s
 func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
 	if len(schema.Enum) == 0 && len(schema.XStripeEnum) == 0 {
 		return nil
+	}
+
+	descByValue := make(map[string]string, len(schema.XStripeEnum))
+	for _, ev := range schema.XStripeEnum {
+		descByValue[ev.Value] = ev.Description
 	}
 
 	if len(schema.Enum) > 0 {

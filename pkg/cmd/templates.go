@@ -45,6 +45,9 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 	var sb strings.Builder
 
+	descIndent := strings.Repeat(" ", 10)
+	termWidth := getTerminalWidth()
+
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 		if _, ok := flag.Annotations["request"]; !ok {
 			return
@@ -78,8 +81,46 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 		} else {
 			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
 		}
+
+		if flag.Usage != "" {
+			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(flag.Usage, termWidth, len(descIndent)))
+		}
 	})
 
+	return sb.String()
+}
+
+// wrapText word-wraps s to fit within width columns. Continuation lines are
+// indented by indent spaces.
+func wrapText(s string, width, indent int) string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return ""
+	}
+
+	prefix := strings.Repeat(" ", indent)
+	lineWidth := width - indent
+	if lineWidth < 20 {
+		lineWidth = 20
+	}
+
+	var sb strings.Builder
+	col := 0
+	for i, word := range words {
+		if i == 0 {
+			sb.WriteString(word)
+			col = len(word)
+		} else if col+1+len(word) > lineWidth {
+			sb.WriteString("\n")
+			sb.WriteString(prefix)
+			sb.WriteString(word)
+			col = len(word)
+		} else {
+			sb.WriteString(" ")
+			sb.WriteString(word)
+			col += 1 + len(word)
+		}
+	}
 	return sb.String()
 }
 

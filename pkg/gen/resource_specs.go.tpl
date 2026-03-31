@@ -19,6 +19,9 @@ var {{ .VarName }} = resource.OperationSpec{
 	{{- range $name, $ps := .Op.Params }}
 		{{ $name | quote }}: {
 			Type: {{ $ps.Type | quote }},
+		{{- if $ps.ShortDescription }}
+			ShortDescription: {{ $ps.ShortDescription | quote }},
+		{{- end }}
 		{{- if $ps.Required }}
 			Required: true,
 		{{- end }}

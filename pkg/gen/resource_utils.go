@@ -1,6 +1,73 @@
 package gen
 
-import "github.com/stripe/stripe-cli/pkg/spec"
+import (
+	"strings"
+
+	"github.com/stripe/stripe-cli/pkg/spec"
+)
+
+// sentenceAbbrevs lists dot-terminated tokens that never split a sentence
+// mid-string. "e.g" and "i.e" always introduce continuation text.
+// "etc" is intentionally absent: it IS a valid sentence boundary mid-string,
+// but its trailing period is preserved when it ends the string (see below).
+var sentenceAbbrevs = map[string]bool{
+	"e.g": true,
+	"i.e": true,
+}
+
+// FirstSentence returns the first sentence of s using a lightweight heuristic.
+// It splits on ". " where the character before the period is a letter, digit,
+// ")", or "]", and the character after the space starts with an uppercase
+// letter, backtick, or "[". Paragraph breaks ("\n\n") are always a boundary.
+// Known abbreviations (e.g., "e.g", "i.e") are never split.
+func FirstSentence(s string) string {
+	if s == "" {
+		return ""
+	}
+	// Paragraph break is always a sentence boundary.
+	if i := strings.Index(s, "\n\n"); i >= 0 {
+		s = strings.TrimRight(s[:i], " \t")
+	}
+	for i := 1; i < len(s); i++ {
+		if s[i] != '.' {
+			continue
+		}
+		atEnd := i == len(s)-1
+		// For a mid-string period, require ". " or ".\n" followed by an uppercase
+		// letter, backtick, or "[". Single newlines are used as soft line breaks
+		// between sentences in many spec descriptions.
+		if !atEnd {
+			if (s[i+1] != ' ' && s[i+1] != '\n') || i+2 >= len(s) {
+				continue
+			}
+			next := s[i+2]
+			if !((next >= 'A' && next <= 'Z') || next == '`' || next == '[') {
+				continue
+			}
+		}
+		prev := s[i-1]
+		if !((prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') ||
+			(prev >= '0' && prev <= '9') || prev == ')' || prev == ']') {
+			continue
+		}
+		// Walk back to find the word before the period.
+		wordStart := i - 1
+		for wordStart > 0 && s[wordStart-1] != ' ' && s[wordStart-1] != '\t' &&
+			s[wordStart-1] != '\n' && s[wordStart-1] != '(' && s[wordStart-1] != '[' {
+			wordStart--
+		}
+		word := strings.ToLower(s[wordStart:i])
+		if sentenceAbbrevs[word] {
+			continue
+		}
+		if atEnd && word == "etc" {
+			// "etc." ends a list and conventionally retains its period.
+			return s
+		}
+		return s[:i]
+	}
+	return s
+}
 
 // ResolveObjectSchema returns s if it is a plain object schema (type "object" or has
 // Properties), or the first anyOf/oneOf branch that is an object schema. Returns nil if

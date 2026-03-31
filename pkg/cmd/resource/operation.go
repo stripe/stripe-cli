@@ -176,20 +176,21 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
+		desc := paramSpec.ShortDescription
 
 		switch paramSpec.Type {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, desc)
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "clearable_object":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, desc)
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, desc)
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
