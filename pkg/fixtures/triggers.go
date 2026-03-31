@@ -8,6 +8,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/afero"
 
@@ -17,12 +18,27 @@ import (
 //go:embed triggers/*
 var triggers embed.FS
 
-// Events is a mapping of pre-built trigger events and the corresponding json file.
-// It is built automatically from the embedded triggers/ directory: the event name
-// is derived from the filename (e.g. customer.created.json → customer.created).
-// Fixture files may declare additional event aliases in _meta.aliases when a single
-// fixture logically serves multiple events.
-var Events = buildEventsMap()
+var (
+	events     map[string]string
+	eventsOnce sync.Once
+)
+
+// getEvents returns the lazily-initialized event→fixture-path map. The map is built
+// once on first access by scanning the embedded triggers/ directory. Event names are
+// derived from filenames (e.g. customer.created.json → customer.created); fixture files
+// may declare additional names in _meta.aliases.
+func getEvents() map[string]string {
+	eventsOnce.Do(func() { events = buildEventsMap() })
+	return events
+}
+
+// fixtureAliasesMeta is a minimal struct used during map construction to extract
+// _meta.aliases without parsing the full fixtures array.
+type fixtureAliasesMeta struct {
+	Meta struct {
+		Aliases []string `json:"aliases"`
+	} `json:"_meta"`
+}
 
 func buildEventsMap() map[string]string {
 	m := make(map[string]string)
@@ -47,14 +63,42 @@ func buildEventsMap() map[string]string {
 		if readErr != nil {
 			continue
 		}
-		var data FixtureData
-		if json.Unmarshal(b, &data) == nil {
-			for _, alias := range data.Meta.Aliases {
+		var meta fixtureAliasesMeta
+		if json.Unmarshal(b, &meta) == nil {
+			for _, alias := range meta.Meta.Aliases {
 				m[alias] = path
 			}
 		}
 	}
 	return m
+}
+
+// FixtureContents returns the JSON content of the embedded fixture for the given event
+// name. The JSON is re-serialized from the parsed FixtureData struct, matching the
+// format produced by GetFixtureFileContent.
+func FixtureContents(eventName string) (string, error) {
+	path, ok := getEvents()[eventName]
+	if !ok {
+		return "", fmt.Errorf("event %q is not supported", eventName)
+	}
+	f, err := triggers.Open(path)
+	if err != nil {
+		return "", err
+	}
+	b, readErr := io.ReadAll(f)
+	f.Close()
+	if readErr != nil {
+		return "", readErr
+	}
+	var data FixtureData
+	if err := json.Unmarshal(b, &data); err != nil {
+		return "", err
+	}
+	out, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
@@ -100,7 +144,7 @@ func EventList() string {
 // EventNames returns an array of all the event names
 func EventNames() []string {
 	names := []string{}
-	for name := range Events {
+	for name := range getEvents() {
 		names = append(names, name)
 	}
 
@@ -122,7 +166,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 	}
 
 	if len(raw) == 0 {
-		if file, ok := Events[event]; ok {
+		if file, ok := getEvents()[event]; ok {
 			fixture, err = BuildFromFixtureFile(fs, apiKey, stripeAccount, baseURL, file, skip, override, add, remove, edit)
 			if err != nil {
 				return nil, err
@@ -155,7 +199,7 @@ func Trigger(ctx context.Context, event string, stripeAccount string, baseURL st
 
 func reverseMap() map[string]string {
 	reversed := make(map[string]string)
-	for name, file := range Events {
+	for name, file := range getEvents() {
 		reversed[file] = name
 	}
 
