@@ -2079,13 +2079,13 @@ var V1BalanceRetrieve = resource.OperationSpec{
 	Method: "GET",
 }
 
-var V1BalanceSettingssRetrieve = resource.OperationSpec{
+var V1BalanceSettingsRetrieve = resource.OperationSpec{
 	Name:   "retrieve",
 	Path:   "/v1/balance_settings",
 	Method: "GET",
 }
 
-var V1BalanceSettingssUpdate = resource.OperationSpec{
+var V1BalanceSettingsUpdate = resource.OperationSpec{
 	Name:   "update",
 	Path:   "/v1/balance_settings",
 	Method: "POST",

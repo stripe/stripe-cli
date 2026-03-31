@@ -480,11 +480,6 @@ func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
 		return nil
 	}
 
-	descByValue := make(map[string]string, len(schema.XStripeEnum))
-	for _, ev := range schema.XStripeEnum {
-		descByValue[ev.Value] = ev.Description
-	}
-
 	if len(schema.Enum) > 0 {
 		var enums []resource.EnumSpec
 		for _, rawVal := range schema.Enum {
