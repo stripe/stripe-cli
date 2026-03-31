@@ -116,6 +116,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	c.InitConfig()
 
 	p.WriteConfigField("experimental.stripe_headers", "test-headers")
+	p.WriteConfigField("color", "on")
 
 	v := viper.New()
 
@@ -151,6 +152,8 @@ func TestOldProfileDeleted(t *testing.T) {
 	// Deletes experimental section
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
+	// Leaves non-auth fields untouched
+	require.Equal(t, "on", v.GetString(p.GetConfigField("color")))
 	// Leaves the other profile untouched
 	require.Equal(t, "foo-device-name", v.GetString(untouchedProfile.GetConfigField(DeviceNameName)))
 	require.Equal(t, "foo_test_123", v.GetString(untouchedProfile.GetConfigField(TestModeAPIKeyName)))
