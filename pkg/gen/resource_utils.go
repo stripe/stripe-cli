@@ -41,4 +41,3 @@ func GetType(schema *spec.Schema) *string {
 
 	return nil
 }
-

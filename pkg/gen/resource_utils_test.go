@@ -99,4 +99,3 @@ func TestGetTypeComplexArray(t *testing.T) {
 
 	assert.Nil(t, result)
 }
-
