@@ -32,14 +32,6 @@ func getEvents() map[string]string {
 	return events
 }
 
-// fixtureAliasesMeta is a minimal struct used during map construction to extract
-// _meta.aliases without parsing the full fixtures array.
-type fixtureAliasesMeta struct {
-	Meta struct {
-		Aliases []string `json:"aliases"`
-	} `json:"_meta"`
-}
-
 func buildEventsMap() map[string]string {
 	m := make(map[string]string)
 	entries, err := triggers.ReadDir("triggers")
@@ -63,7 +55,11 @@ func buildEventsMap() map[string]string {
 		if readErr != nil {
 			continue
 		}
-		var meta fixtureAliasesMeta
+		var meta struct {
+			Meta struct {
+				Aliases []string `json:"aliases"`
+			} `json:"_meta"`
+		}
 		if json.Unmarshal(b, &meta) == nil {
 			for _, alias := range meta.Meta.Aliases {
 				m[alias] = path
