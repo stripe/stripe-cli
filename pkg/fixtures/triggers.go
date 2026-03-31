@@ -55,6 +55,8 @@ func buildEventsMap() map[string]string {
 		if readErr != nil {
 			continue
 		}
+		// Partial parse: only _meta.aliases is needed here; unmarshaling into
+		// the full FixtureData struct would wastefully parse the fixtures array.
 		var meta struct {
 			Meta struct {
 				Aliases []string `json:"aliases"`
