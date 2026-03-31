@@ -88,7 +88,7 @@ func TestNoMissingFixtureFiles(t *testing.T) {
 
 // TestNoDuplicateEventClaims ensures no two fixture files claim the same event name,
 // either via basename or via _meta.aliases. Duplicates would cause non-deterministic
-// behaviour since buildEventsMap iterates directory entries in filesystem order.
+// behavior since buildEventsMap iterates directory entries in filesystem order.
 func TestNoDuplicateEventClaims(t *testing.T) {
 	entries, err := triggers.ReadDir("triggers")
 	require.NoError(t, err, "Failed to read triggers directory")
