@@ -22,7 +22,11 @@ import (
 func TestNewOperationCmd(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodGet, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodGet,
+	}, &config.Config{})
 
 	require.Equal(t, "foo", oc.Name)
 	require.Equal(t, "/v1/bars/{id}", oc.Path)
@@ -38,13 +42,18 @@ func TestNewOperationCmd(t *testing.T) {
 func TestNewOperationCmd_NumberType(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
-	oc := NewOperationCmd(parentCmd, "create", "/v1/test", http.MethodPost, map[string]string{
-		"percentage":   "number",
-		"percent_off":  "number",
-		"string_param": "string",
-		"int_param":    "integer",
-		"bool_param":   "boolean",
-	}, map[string][]string{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"percentage":   {Type: "number"},
+			"percent_off":  {Type: "number"},
+			"string_param": {Type: "string"},
+			"int_param":    {Type: "integer"},
+			"bool_param":   {Type: "boolean"},
+		},
+	}, &config.Config{})
 
 	// Check that number type parameters create string flags
 	_, err := oc.Cmd.Flags().GetString("percentage")
@@ -90,15 +99,20 @@ func TestRunOperationCmd(t *testing.T) {
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
 	}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1":                 "string",
-		"param2":                 "string",
-		"param_with_underscores": "string",
-		"param.with.dots":        "string",
-		"param_array":            "array",
-	}, map[string][]string{}, &config.Config{
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1":                 {Type: "string"},
+			"param2":                 {Type: "string"},
+			"param_with_underscores": {Type: "string"},
+			"param.with.dots":        {Type: "string"},
+			"param_array":            {Type: "array"},
+		},
+	}, &config.Config{
 		Profile: profile,
-	}, false, "")
+	})
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -137,11 +151,16 @@ func TestRunOperationCmd_ExtraParams(t *testing.T) {
 	profile := config.Profile{
 		APIKey: "sk_test_1234",
 	}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-	}, map[string][]string{}, &config.Config{
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+		},
+	}, &config.Config{
 		Profile: profile,
-	}, false, "")
+	})
 	oc.APIBaseURL = ts.URL
 
 	oc.Cmd.Flags().Set("param1", "value1")
@@ -158,10 +177,15 @@ func TestRunOperationCmd_NoAPIKey(t *testing.T) {
 	viper.Reset()
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-		"param2": "string",
-	}, map[string][]string{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+			"param2": {Type: "string"},
+		},
+	}, &config.Config{})
 
 	err := oc.runOperationCmd(oc.Cmd, []string{"bar_123", "param1=value1", "param2=value2"})
 
@@ -180,9 +204,14 @@ func TestRunOperationCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	profile := config.Profile{APIKey: "sk_test_1234567890abcdef"}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{
-		"param1": "string",
-	}, map[string][]string{}, &config.Config{Profile: profile}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"param1": {Type: "string"},
+		},
+	}, &config.Config{Profile: profile})
 	oc.APIBaseURL = ts.URL
 
 	var buf bytes.Buffer
@@ -213,7 +242,11 @@ func TestRunOperationCmd_DryRun_NoAPIKey(t *testing.T) {
 	viper.Reset()
 
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-	oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost, map[string]string{}, map[string][]string{}, &config.Config{}, false, "")
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "foo",
+		Path:   "/v1/bars/{id}",
+		Method: http.MethodPost,
+	}, &config.Config{})
 
 	var buf bytes.Buffer
 	oc.Cmd.SetOut(&buf)
@@ -285,8 +318,16 @@ func TestRunOperationCmd_DryRunParity_V1(t *testing.T) {
 
 	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
 		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-		oc := NewOperationCmd(parentCmd, "foo", "/v1/bars/{id}", http.MethodPost,
-			propFlags, map[string][]string{}, &config.Config{Profile: profile}, false, "")
+		params := make(map[string]*ParamSpec, len(propFlags))
+		for name, typ := range propFlags {
+			params[name] = &ParamSpec{Type: typ}
+		}
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "foo",
+			Path:   "/v1/bars/{id}",
+			Method: http.MethodPost,
+			Params: params,
+		}, &config.Config{Profile: profile})
 		oc.APIBaseURL = ts.URL
 		oc.Cmd.Flags().Set("param1", "value1")
 		oc.Cmd.Flags().Set("int-param", "42")
@@ -335,9 +376,11 @@ func TestRunOperationCmd_DryRunParity_V2(t *testing.T) {
 
 	newOC := func(dryRun bool) (*OperationCmd, *cobra.Command) {
 		parentCmd := &cobra.Command{Annotations: make(map[string]string)}
-		oc := NewOperationCmd(parentCmd, "create", "/v2/billing/meter_events",
-			http.MethodPost, map[string]string{}, map[string][]string{},
-			&config.Config{Profile: profile}, false, "")
+		oc := NewOperationCmd(parentCmd, &OperationSpec{
+			Name:   "create",
+			Path:   "/v2/billing/meter_events",
+			Method: http.MethodPost,
+		}, &config.Config{Profile: profile})
 		oc.APIBaseURL = ts.URL
 		oc.Cmd.Flags().Set("data", jsonData)
 		if dryRun {
@@ -373,11 +416,33 @@ func TestConstructParamFromDot(t *testing.T) {
 	require.Equal(t, "shipping[address][line1]", param)
 }
 
+func TestNewOperationCmd_FlagRegistered(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string"},
+		},
+	}, &config.Config{})
+
+	flag := oc.Cmd.Flags().Lookup("email")
+	require.NotNil(t, flag)
+	require.Equal(t, "", flag.Usage)
+}
+
 func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
 	serverURL := "https://files.stripe.com/"
-	oc := NewOperationCmd(parentCmd, "pdf", "/v1/quotes/{quote}/pdf", http.MethodGet, map[string]string{}, map[string][]string{}, &config.Config{}, false, serverURL)
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:      "pdf",
+		Path:      "/v1/quotes/{quote}/pdf",
+		Method:    http.MethodGet,
+		ServerURL: serverURL,
+	}, &config.Config{})
 
 	require.Equal(t, "pdf", oc.Name)
 	require.Equal(t, "/v1/quotes/{quote}/pdf", oc.Path)

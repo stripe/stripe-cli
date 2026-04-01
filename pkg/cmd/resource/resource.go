@@ -57,6 +57,8 @@ func GetResourceCmdName(name string) string {
 		return "credit_balance_summaries"
 	case "meter_event_summary":
 		return "meter_event_summaries"
+	case "balance_settings":
+		return "balance_settings"
 	default:
 		return name + "s"
 	}
