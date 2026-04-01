@@ -21,7 +21,7 @@ func Logout(config *config.Config) error {
 
 	profileName := config.Profile.ProfileName
 
-	err := config.RemoveProfile(profileName)
+	err := config.RemoveAuthFields(profileName)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func Logout(config *config.Config) error {
 func All(cfg *config.Config) error {
 	fmt.Println("Logging out...")
 
-	err := cfg.RemoveAllProfiles()
+	err := cfg.RemoveAllAuthFields()
 	if err != nil {
 		return err
 	}

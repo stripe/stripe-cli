@@ -44,6 +44,8 @@ type IConfig interface {
 	SwitchProfile(targetProfileName string) error
 	RemoveProfile(profileName string) error
 	RemoveAllProfiles() error
+	RemoveAuthFields(profileName string) error
+	RemoveAllAuthFields() error
 	WriteConfigField(field string, value interface{}) error
 	GetInstalledPlugins() []string
 }
@@ -374,6 +376,49 @@ func (c *Config) RemoveAllProfiles() error {
 				return err
 			}
 
+			deleteLivemodeKey(LiveModeAPIKeyName, field)
+		}
+	}
+
+	return writeConfig(runtimeViper)
+}
+
+// RemoveAuthFields removes only auth-related fields for the named profile,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAuthFields(profileName string) error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			var profileNameAttr string
+			switch v := value.(type) {
+			case map[string]interface{}:
+				if pn, ok := v["profile_name"].(string); ok {
+					profileNameAttr = pn
+				}
+			case map[string]string:
+				profileNameAttr = v["profile_name"]
+			}
+			if field == profileName || profileNameAttr == profileName {
+				p := &Profile{ProfileName: field}
+				runtimeViper = p.deleteAuthFields(runtimeViper)
+				deleteLivemodeKey(LiveModeAPIKeyName, field)
+			}
+		}
+	}
+
+	return writeConfig(runtimeViper)
+}
+
+// RemoveAllAuthFields removes only auth-related fields from all profiles,
+// preserving non-auth settings like color.
+func (c *Config) RemoveAllAuthFields() error {
+	runtimeViper := viper.GetViper()
+
+	for field, value := range runtimeViper.AllSettings() {
+		if isProfile(value) {
+			p := &Profile{ProfileName: field}
+			runtimeViper = p.deleteAuthFields(runtimeViper)
 			deleteLivemodeKey(LiveModeAPIKeyName, field)
 		}
 	}
