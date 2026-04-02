@@ -89,8 +89,11 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 		}
 
 		if flag.Usage != "" {
-			rendered := renderMarkdown(flag.Usage, os.Stdout)
-			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(rendered, termWidth, len(descIndent)))
+			text := flag.Usage
+			if ansi.ColorsEnabled(os.Stdout) {
+				text = renderMarkdown(flag.Usage, os.Stdout)
+			}
+			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(text, termWidth, len(descIndent)))
 		}
 	})
 

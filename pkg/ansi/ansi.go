@@ -59,6 +59,12 @@ func Color(w io.Writer) aurora.Aurora {
 	return aurora.NewAurora(shouldUseColors(w))
 }
 
+// ColorsEnabled reports whether ANSI color output should be used for the
+// given writer, respecting ForceColors, DisableColors, CLICOLOR, and TTY state.
+func ColorsEnabled(w io.Writer) bool {
+	return shouldUseColors(w)
+}
+
 // ColorizeJSON returns a colorized version of the input JSON, if the writer
 // supports colors.
 func ColorizeJSON(json string, darkStyle bool, w io.Writer) string {
