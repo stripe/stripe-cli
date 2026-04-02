@@ -115,15 +115,13 @@ func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder
 		return
 	case *goldmarkast.CodeSpan:
 		var code strings.Builder
-		code.WriteByte('`')
 		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
 			if t, ok := c.(*goldmarkast.Text); ok {
 				code.Write(t.Segment.Value(src))
 			}
 		}
-		code.WriteByte('`')
 		color := ansi.Color(w)
-		sb.WriteString(color.Sprintf(color.Faint(code.String())))
+		sb.WriteString(color.Sprintf(color.Bold(color.Blue(code.String()))))
 		return
 	case *goldmarkast.Emphasis:
 		var inner strings.Builder
@@ -143,12 +141,9 @@ func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder
 		}
 		url := string(node.Destination)
 		color := ansi.Color(w)
-		styled := color.Sprintf(color.Underline(color.Cyan(linkText.String())))
-		if term.IsTerminal(int(os.Stdout.Fd())) {
-			sb.WriteString(ansi.Linkify(styled, url, w))
-		} else {
-			fmt.Fprintf(sb, "%s (%s)", linkText.String(), url)
-		}
+		sb.WriteString(color.Sprintf(color.Bold(linkText.String())))
+		sb.WriteByte(' ')
+		sb.WriteString(ansi.Linkify(color.Sprintf(color.Faint(color.Underline(color.Cyan(url)))), url, w))
 		return
 	}
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
@@ -166,7 +161,7 @@ func visibleLen(s string) int {
 }
 
 // ansiFields splits s on ASCII whitespace, treating ANSI escape sequences
-// (including OSC 8 hyperlinks) as opaque — spaces inside OSC sequences are
+// (including OSC sequences) as opaque — spaces inside an OSC sequence are
 // not used as word-break points.
 func ansiFields(s string) []string {
 	var words []string
