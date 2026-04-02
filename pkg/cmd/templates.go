@@ -180,14 +180,20 @@ func ansiFields(s string) []string {
 		b := s[i]
 		switch {
 		case b == 0x1b && i+1 < len(s) && s[i+1] == ']':
+			// OSC sequence start (\x1b]): consume both bytes together so that
+			// spaces inside the sequence (e.g. inside a URL) don't break words.
 			inOSC = true
 			cur.WriteByte(b)
-			i++
+			cur.WriteByte(s[i+1])
+			i += 2
 		case b == 0x1b && i+1 < len(s) && s[i+1] == '\\' && inOSC:
+			// String Terminator (\x1b\): consume both bytes.
 			inOSC = false
 			cur.WriteByte(b)
-			i++
+			cur.WriteByte(s[i+1])
+			i += 2
 		case b == 0x07 && inOSC:
+			// BEL terminator: single byte.
 			inOSC = false
 			cur.WriteByte(b)
 			i++
@@ -399,13 +405,10 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 }
 
 func getTerminalWidth() int {
-	var width int
-
 	width, _, err := term.GetSize(0)
 	if err != nil {
-		width = 80
+		return 80
 	}
-
 	return width
 }
 

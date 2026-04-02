@@ -122,11 +122,7 @@ func canStartSentence(s string, i int) bool {
 // wordBefore returns the lowercase word that ends at s[end] (exclusive),
 // scanning back to the nearest whitespace or opening bracket.
 func wordBefore(s string, end int) string {
-	start := end
-	for start > 0 && s[start-1] != ' ' && s[start-1] != '\t' &&
-		s[start-1] != '\n' && s[start-1] != '(' && s[start-1] != '[' {
-		start--
-	}
+	start := strings.LastIndexAny(s[:end], " \t\n([") + 1
 	return strings.ToLower(s[start:end])
 }
 
