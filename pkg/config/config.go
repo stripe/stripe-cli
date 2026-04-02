@@ -227,10 +227,13 @@ func (c *Config) CopyProfile(source string, target string) error {
 		return fmt.Errorf("source '%s' is not a profile", source)
 	}
 
-	// Clone the profile map and update profile_name
+	// Clone the profile map and update profile_name.
+	// Drop the top-level "plugin_configs" key — it is a reserved config
+	// section, not a profile field, and must not be carried into the copy.
 	safeTarget := strings.ReplaceAll(target, ".", " ")
 	existingMap := existing.(map[string]any)
 	newProfile := maps.Clone(existingMap)
+	delete(newProfile, "plugin_configs")
 	newProfile["profile_name"] = safeTarget
 
 	runtimeViper.Set(safeTarget, newProfile)

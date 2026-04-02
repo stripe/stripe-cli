@@ -78,6 +78,31 @@ func TestCopyProfile(t *testing.T) {
 	require.Equal(t, "backup", v.GetString("backup.profile_name"))
 }
 
+func TestCopyProfile_SkipsPluginConfigsField(t *testing.T) {
+	c, _, cleanup := setupTestConfig(t)
+	defer cleanup()
+
+	// Create a source profile
+	p := Profile{
+		ProfileName:    "default",
+		TestModeAPIKey: "sk_test_123",
+	}
+	c.Profile = p
+	err := p.CreateProfile()
+	require.NoError(t, err)
+
+	// Seed a plugin_configs entry in viper (simulates a real config with plugin settings)
+	viper.Set("plugin_configs.__global.updates", "off")
+	viper.ReadInConfig()
+
+	err = c.CopyProfile("default", "backup")
+	require.NoError(t, err)
+
+	v := viper.GetViper()
+	require.True(t, v.IsSet("backup"))
+	require.False(t, v.IsSet("backup.plugin_configs"), "plugin_configs must not be copied into the new profile")
+}
+
 func TestCopyProfileErrors(t *testing.T) {
 	c, _, cleanup := setupTestConfig(t)
 	defer cleanup()
