@@ -6,20 +6,11 @@ import (
 	"github.com/stripe/stripe-cli/pkg/spec"
 )
 
-// sentenceAbbrevs lists dot-terminated tokens that never split a sentence
-// mid-string. "e.g" and "i.e" always introduce continuation text.
-// "etc" is intentionally absent: it IS a valid sentence boundary mid-string,
-// but its trailing period is preserved when it ends the string (see below).
-var sentenceAbbrevs = map[string]bool{
-	"e.g": true,
-	"i.e": true,
-}
-
 // FirstSentence returns the first sentence of s using a lightweight heuristic.
-// It splits on ". " where the character before the period is a letter, digit,
-// ")", or "]", and the character after the space starts with an uppercase
-// letter, backtick, or "[". Paragraph breaks ("\n\n") are always a boundary.
-// Known abbreviations (e.g., "e.g", "i.e") are never split.
+// Paragraph breaks ("\n\n") are always a boundary. Otherwise it splits on
+// ". " or ".\n" where canEndSentence holds for the character before the period
+// and canStartSentence holds for the character after the separator. Known
+// abbreviations (e.g., "e.g", "i.e") are never split on.
 func FirstSentence(s string) string {
 	if s == "" {
 		return ""
@@ -32,37 +23,26 @@ func FirstSentence(s string) string {
 		if s[i] != '.' {
 			continue
 		}
-		atEnd := i == len(s)-1
-		// For a mid-string period, require ". " or ".\n" followed by an uppercase
-		// letter, backtick, or "[". Single newlines are used as soft line breaks
-		// between sentences in many spec descriptions.
-		if !atEnd {
-			if (s[i+1] != ' ' && s[i+1] != '\n') || i+2 >= len(s) {
-				continue
-			}
-			next := s[i+2]
-			if !((next >= 'A' && next <= 'Z') || next == '`' || next == '[' ||
-				(next == '(' && i+3 < len(s) && s[i+3] >= 'A' && s[i+3] <= 'Z')) {
-				continue
-			}
-		}
-		prev := s[i-1]
-		if !((prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') ||
-			(prev >= '0' && prev <= '9') || prev == ')' || prev == ']' || prev == '`') {
+		if !canEndSentence(s[i-1]) {
 			continue
 		}
-		// Walk back to find the word before the period.
-		wordStart := i - 1
-		for wordStart > 0 && s[wordStart-1] != ' ' && s[wordStart-1] != '\t' &&
-			s[wordStart-1] != '\n' && s[wordStart-1] != '(' && s[wordStart-1] != '[' {
-			wordStart--
+
+		atEnd := i == len(s)-1
+
+		// Mid-string: require ". " or ".\n" followed by a sentence-starting char.
+		// Single newlines act as soft line breaks between sentences in many specs.
+		if !atEnd {
+			if (s[i+1] != ' ' && s[i+1] != '\n') || !canStartSentence(s, i+2) {
+				continue
+			}
 		}
-		word := strings.ToLower(s[wordStart:i])
+
+		word := wordBefore(s, i)
 		if sentenceAbbrevs[word] {
 			continue
 		}
 		if atEnd && word == "etc" {
-			// "etc." ends a list and conventionally retains its period.
+			// "etc." at end of string conventionally retains its period.
 			return s
 		}
 		return s[:i]
@@ -110,6 +90,44 @@ func IsClearableObject(s *spec.Schema) bool {
 		}
 	}
 	return hasObject && hasEmptyString
+}
+
+// sentenceAbbrevs lists lowercase word forms that are never sentence boundaries
+// even when followed by a period and a space. "etc" is intentionally absent:
+// it is a valid boundary mid-string (handled separately above).
+var sentenceAbbrevs = map[string]bool{
+	"e.g": true,
+	"i.e": true,
+}
+
+// canEndSentence reports whether c is a valid character immediately before a
+// sentence-ending period: a letter, digit, closing bracket, or backtick.
+func canEndSentence(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') || c == ')' || c == ']' || c == '`'
+}
+
+// canStartSentence reports whether s[i] looks like the first character of a
+// new sentence: an uppercase letter, backtick, "[", or "(" immediately followed
+// by an uppercase letter.
+func canStartSentence(s string, i int) bool {
+	if i >= len(s) {
+		return false
+	}
+	c := s[i]
+	return (c >= 'A' && c <= 'Z') || c == '`' || c == '[' ||
+		(c == '(' && i+1 < len(s) && s[i+1] >= 'A' && s[i+1] <= 'Z')
+}
+
+// wordBefore returns the lowercase word that ends at s[end] (exclusive),
+// scanning back to the nearest whitespace or opening bracket.
+func wordBefore(s string, end int) string {
+	start := end
+	for start > 0 && s[start-1] != ' ' && s[start-1] != '\t' &&
+		s[start-1] != '\n' && s[start-1] != '(' && s[start-1] != '[' {
+		start--
+	}
+	return strings.ToLower(s[start:end])
 }
 
 var scalarTypes = map[string]bool{
