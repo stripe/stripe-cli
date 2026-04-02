@@ -25,7 +25,7 @@ func newPluginCmd() *pluginCmd {
 	pc.cmd.AddCommand(plugin.NewInstallCmd(&Config).Cmd)
 	pc.cmd.AddCommand(plugin.NewUpgradeCmd(&Config).Cmd)
 	pc.cmd.AddCommand(plugin.NewUninstallCmd(&Config).Cmd)
-	pc.cmd.AddCommand(plugin.NewConfigCmd(&Config).Cmd)
+	pc.cmd.AddCommand(plugin.NewAutoUpdateCmd(&Config).Cmd)
 
 	return pc
 }
