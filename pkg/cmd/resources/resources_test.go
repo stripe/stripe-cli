@@ -2,6 +2,7 @@ package resources_test
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -95,6 +96,51 @@ func TestGeneratedV2SpecWiresFlags(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 	oc := resource.NewOperationCmd(parentCmd, &spec, &config.Config{})
 	require.Equal(t, "create", oc.Name)
+}
+
+// TestMostCommonSubField_NonRequiredParent verifies that sub-fields of a mostCommon object
+// that is NOT top-level required are tagged MostCommon=true but Required=false.
+// This ensures they appear in the common usage example but not the required-fields example.
+// Concretely: prices create has "recurring" as mostCommon but not required;
+// "recurring.interval" is required within recurring and should be MostCommon, not Required.
+func TestMostCommonSubField_NonRequiredParent(t *testing.T) {
+	spec := resources.V1PricesCreate
+	require.NotNil(t, spec.Params)
+
+	interval, ok := spec.Params["recurring.interval"]
+	require.True(t, ok, "expected 'recurring.interval' param in V1PricesCreate")
+	assert.False(t, interval.Required, "recurring.interval should not be Required (parent 'recurring' is not top-level required)")
+	assert.True(t, interval.MostCommon, "recurring.interval should be MostCommon (locally required within a mostCommon parent)")
+}
+
+// TestMostCommonSubField_RequiredParent verifies that sub-fields of a mostCommon object
+// that IS top-level required are tagged both Required=true and MostCommon=true.
+// Concretely: apps/secrets create has "scope" as both top-level required and mostCommon;
+// "scope.type" is required within scope.
+func TestMostCommonSubField_RequiredParent(t *testing.T) {
+	spec := resources.V1AppsSecretsCreate
+	require.NotNil(t, spec.Params)
+
+	scopeType, ok := spec.Params["scope.type"]
+	require.True(t, ok, "expected 'scope.type' param in V1AppsSecretsCreate")
+	assert.True(t, scopeType.Required, "scope.type should be Required (parent 'scope' is top-level required)")
+	assert.True(t, scopeType.MostCommon, "scope.type should be MostCommon (locally required within a mostCommon parent)")
+}
+
+// TestDeeplyNestedField_NotRequired verifies that a deeply nested field (depth 2+) whose
+// ancestor chain includes a non-required object is NOT marked Required, even if it is
+// required within its immediate parent. This is the bug fixed by the parentRequired chain.
+func TestDeeplyNestedField_NotRequired(t *testing.T) {
+	spec := resources.V1PaymentIntentsCreate
+	require.NotNil(t, spec.Params)
+
+	// hooks is not top-level required; any nested field should have Required=false
+	// regardless of how many levels of local required-ness exist.
+	for name, ps := range spec.Params {
+		if strings.HasPrefix(name, "hooks.") {
+			assert.False(t, ps.Required, "param %q under non-required 'hooks' should not be Required", name)
+		}
+	}
 }
 
 // TestAddResourceCmds verifies the coordinator registers commands without panicking.

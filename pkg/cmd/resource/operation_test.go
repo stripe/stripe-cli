@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -452,4 +454,129 @@ func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	flag := oc.Cmd.Flags().Lookup("api-base")
 	require.NotNil(t, flag)
 	require.Equal(t, serverURL, flag.DefValue)
+}
+
+func TestBuildExamples_RequiredAndMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/payment_intents",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"amount":      {Type: "integer", Required: true},
+			"currency":    {Type: "string", Required: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe payment_intents create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 5)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+	assert.Equal(t, "", lines[2])
+	assert.Equal(t, "  # common usage", lines[3])
+	require.Contains(t, lines[4], "--amount")
+	require.Contains(t, lines[4], "--currency")
+	require.Contains(t, lines[4], "--description")
+}
+
+func TestBuildExamples_MostCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.Contains(t, result, "# common usage")
+	// Only one section — no blank-line separator
+	require.NotContains(t, result, "\n\n")
+}
+
+func TestBuildExamples_SameSetSuppressesCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"amount":   {Type: "integer", Required: true, MostCommon: true},
+			"currency": {Type: "string", Required: true, MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	// Only one section when MostCommon adds nothing beyond required
+	require.Contains(t, result, "# required fields")
+	require.NotContains(t, result, "\n\n")
+}
+
+func TestBuildExamples_NoRequiredNoMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/customers",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"limit": {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe customers list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_EnumValue(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"status": {
+				Type:     "string",
+				Required: true,
+				Enum:     []EnumSpec{{Value: "active"}, {Value: "inactive"}},
+			},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	require.Contains(t, result, "# required fields")
+	require.Contains(t, result, "$ stripe test create --status active")
+}
+
+// TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
+// both Required and MostCommon (the generator produces this for required sub-fields of a
+// required mostCommon object), alongside params that are only MostCommon. Required+MostCommon
+// params must appear in both lines — only once per line — and must not be duplicated.
+func TestBuildExamples_RequiredMostCommonAndCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			// required-only: appears in both lines
+			"currency": {Type: "string", Required: true},
+			// required+mostcommon: goes into reqFields only (else-if); still in second line via reqFields
+			"amount": {Type: "integer", Required: true, MostCommon: true},
+			// mostcommon-only: goes into commonFields; appears only in second line
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 5)
+
+	// lines[1]: required fields command (amount, currency); no description
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+
+	// lines[4]: common usage command — all three fields, each exactly once
+	require.Contains(t, lines[4], "--amount")
+	require.Contains(t, lines[4], "--currency")
+	require.Contains(t, lines[4], "--description")
+	assert.Equal(t, 1, strings.Count(lines[4], "--amount"), "--amount must appear exactly once")
+	assert.Equal(t, 1, strings.Count(lines[4], "--currency"), "--currency must appear exactly once")
 }

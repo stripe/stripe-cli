@@ -10,8 +10,9 @@ var V1AccountLinksCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"collect": {
 			Type: "string",
@@ -35,14 +36,17 @@ var V1AccountLinksCreate = resource.OperationSpec{
 			},
 		},
 		"refresh_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "account_onboarding"},
 				{Value: "account_update"},
@@ -57,12 +61,12 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"components.account_management.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.account_management.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -71,8 +75,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.account_onboarding.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.account_onboarding.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -81,8 +84,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.balances.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.balances.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -100,8 +102,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.disputes_list.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.disputes_list.features.capture_payments": {
 			Type: "boolean",
@@ -116,12 +117,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.documents.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.financial_account.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.financial_account.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -136,15 +135,13 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.financial_account_transactions.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.financial_account_transactions.features.card_spend_dispute_management": {
 			Type: "boolean",
 		},
 		"components.instant_payouts_promotion.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.instant_payouts_promotion.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -156,8 +153,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.issuing_card.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.issuing_card.features.card_management": {
 			Type: "boolean",
@@ -172,8 +168,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.issuing_cards_list.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.issuing_cards_list.features.card_management": {
 			Type: "boolean",
@@ -191,8 +186,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.notification_banner.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.notification_banner.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -201,8 +195,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.payment_details.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payment_details.features.capture_payments": {
 			Type: "boolean",
@@ -217,8 +210,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.payment_disputes.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payment_disputes.features.destination_on_behalf_of_charge_management": {
 			Type: "boolean",
@@ -230,8 +222,7 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.payments.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payments.features.capture_payments": {
 			Type: "boolean",
@@ -246,12 +237,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.payout_details.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payouts.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payouts.features.disable_stripe_user_authentication": {
 			Type: "boolean",
@@ -269,16 +258,13 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"components.payouts_list.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.tax_registrations.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.tax_settings.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 	},
 }
@@ -298,17 +284,14 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"business_profile.annual_revenue.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"business_profile.annual_revenue.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"business_profile.annual_revenue.fiscal_year_end": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"business_profile.estimated_worker_count": {
 			Type: "integer",
@@ -320,13 +303,11 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"business_profile.monthly_estimated_revenue.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"business_profile.monthly_estimated_revenue.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"business_profile.name": {
 			Type: "string",
@@ -365,7 +346,8 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"business_type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -759,7 +741,8 @@ var V1AccountsCreate = resource.OperationSpec{
 			},
 		},
 		"country": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"default_currency": {
 			Type:   "string",
@@ -799,7 +782,8 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"external_account": {
 			Type: "string",
@@ -1081,7 +1065,8 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 				{Value: "express"},
@@ -1140,8 +1125,9 @@ var V1AccountsReject = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"reason": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -1161,17 +1147,14 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"business_profile.annual_revenue.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"business_profile.annual_revenue.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"business_profile.annual_revenue.fiscal_year_end": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"business_profile.estimated_worker_count": {
 			Type: "integer",
@@ -1183,13 +1166,11 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"business_profile.monthly_estimated_revenue.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"business_profile.monthly_estimated_revenue.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"business_profile.name": {
 			Type: "string",
@@ -1228,7 +1209,8 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"business_type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -1630,7 +1612,8 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"external_account": {
 			Type: "string",
@@ -1923,8 +1906,9 @@ var V1ApplePayDomainsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -1996,20 +1980,24 @@ var V1AppsSecretsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"payload": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"scope.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "user"},
@@ -2027,12 +2015,14 @@ var V1AppsSecretsDeleteWhere = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"scope.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "user"},
@@ -2205,7 +2195,8 @@ var V1BankAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_for_currency": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type: "array",
@@ -2228,7 +2219,8 @@ var V1BankAccountsVerify = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
-			Type: "array",
+			Type:       "array",
+			MostCommon: true,
 		},
 	},
 }
@@ -2251,27 +2243,29 @@ var V1BillingAlertsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"alert_type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "usage_threshold"},
 			},
 		},
 		"title": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"usage_threshold.gte": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"usage_threshold.meter": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"usage_threshold.recurrence": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "one_time"},
 			},
@@ -2369,17 +2363,16 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount.monetary.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"amount.monetary.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"amount.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "monetary"},
 			},
@@ -2391,31 +2384,38 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 			},
 		},
 		"category": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "paid"},
 				{Value: "promotional"},
 			},
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"effective_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"expires_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"priority": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -2461,7 +2461,8 @@ var V1BillingCreditGrantsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -2481,12 +2482,14 @@ var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"event_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 			},
@@ -2538,15 +2541,18 @@ var V1BillingMeterEventsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"event_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"identifier": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"timestamp": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -2557,19 +2563,20 @@ var V1BillingMetersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"customer_mapping.event_payload_key": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_mapping.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "by_id"},
 			},
 		},
 		"default_aggregation.formula": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "count"},
 				{Value: "last"},
@@ -2577,23 +2584,26 @@ var V1BillingMetersCreate = resource.OperationSpec{
 			},
 		},
 		"display_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"event_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"event_time_window": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "hour"},
 			},
 		},
 		"value_settings.event_payload_key": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -2646,7 +2656,8 @@ var V1BillingMetersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"display_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -2666,37 +2677,32 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"features.customer_update.allowed_updates": {
 			Type: "array",
 		},
 		"features.customer_update.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.invoice_history.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.payment_method_update.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.payment_method_update.payment_method_configuration": {
 			Type: "string",
 		},
 		"features.subscription_cancel.cancellation_reason.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.subscription_cancel.cancellation_reason.options": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"features.subscription_cancel.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.subscription_cancel.mode": {
 			Type: "string",
@@ -2724,8 +2730,7 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"features.subscription_update.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.subscription_update.proration_behavior": {
 			Type: "string",
@@ -2743,11 +2748,12 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 			},
 		},
 		"login_page.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -2787,7 +2793,8 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"business_profile.headline": {
 			Type: "string",
@@ -2799,7 +2806,8 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"features.customer_update.allowed_updates": {
 			Type: "array",
@@ -2808,19 +2816,16 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"features.invoice_history.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.payment_method_update.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.payment_method_update.payment_method_configuration": {
 			Type: "string",
 		},
 		"features.subscription_cancel.cancellation_reason.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.subscription_cancel.cancellation_reason.options": {
 			Type: "array",
@@ -2872,11 +2877,12 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"login_page.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -2887,24 +2893,25 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"configuration": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"flow_data.after_completion.hosted_confirmation.custom_message": {
 			Type: "string",
 		},
 		"flow_data.after_completion.redirect.return_url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"flow_data.after_completion.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "portal_homepage"},
@@ -2912,31 +2919,26 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"flow_data.subscription_cancel.retention.coupon_offer.coupon": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"flow_data.subscription_cancel.retention.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "coupon_offer"},
 			},
 		},
 		"flow_data.subscription_cancel.subscription": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"flow_data.subscription_update.subscription": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"flow_data.subscription_update_confirm.subscription": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"flow_data.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "payment_method_update"},
 				{Value: "subscription_cancel"},
@@ -2945,7 +2947,8 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"locale": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "bg"},
@@ -2997,10 +3000,12 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"on_behalf_of": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -3023,7 +3028,8 @@ var V1CapabilitiesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"requested": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -3077,7 +3083,8 @@ var V1CardsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_for_currency": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type: "array",
@@ -3122,22 +3129,27 @@ var V1ChargesCapture = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee_amount": {
 			Type: "integer",
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor_suffix": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
@@ -3154,10 +3166,12 @@ var V1ChargesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee_amount": {
 			Type: "integer",
@@ -3166,18 +3180,21 @@ var V1ChargesCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination.account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination.amount": {
 			Type: "integer",
@@ -3189,7 +3206,8 @@ var V1ChargesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.address.city": {
 			Type: "string",
@@ -3213,8 +3231,8 @@ var V1ChargesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.phone": {
 			Type: "string",
@@ -3223,20 +3241,22 @@ var V1ChargesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"source": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor_suffix": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
 		},
 		"transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"transfer_group": {
 			Type: "string",
@@ -3303,21 +3323,23 @@ var V1ChargesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"fraud_details.user_report": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "fraudulent"},
 				{Value: "safe"},
 			},
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.address.city": {
 			Type: "string",
@@ -3341,8 +3363,8 @@ var V1ChargesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.phone": {
 			Type: "string",
@@ -3368,22 +3390,20 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"after_expiration.recovery.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"allow_promotion_codes": {
 			Type: "boolean",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -3448,8 +3468,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"branding_settings.icon.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "file"},
 				{Value: "url"},
@@ -3462,8 +3481,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"branding_settings.logo.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "file"},
 				{Value: "url"},
@@ -3476,11 +3494,11 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"client_reference_id": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"consent_collection.payment_method_reuse_agreement.position": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "hidden"},
@@ -3505,7 +3523,8 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Format: "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
 			Type: "string",
@@ -3518,7 +3537,8 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"customer_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_update.address": {
 			Type: "string",
@@ -3552,8 +3572,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type: "array",
@@ -3568,8 +3587,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -3622,7 +3640,8 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"mode": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "payment"},
 				{Value: "setup"},
@@ -3630,15 +3649,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"name_collection.business.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"name_collection.business.optional": {
 			Type: "boolean",
 		},
 		"name_collection.individual.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"name_collection.individual.optional": {
 			Type: "boolean",
@@ -3684,8 +3701,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_intent_data.shipping.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_intent_data.shipping.address.line2": {
 			Type: "string",
@@ -3700,8 +3716,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_intent_data.shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_intent_data.shipping.phone": {
 			Type: "string",
@@ -3719,8 +3734,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"payment_intent_data.transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_intent_data.transfer_group": {
 			Type: "string",
@@ -3970,15 +3984,13 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
 			Type: "array",
 		},
 		"payment_method_options.customer_balance.bank_transfer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "eu_bank_transfer"},
 				{Value: "gb_bank_transfer"},
@@ -4380,8 +4392,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_options.wechat_pay.client": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "android"},
 				{Value: "ios"},
@@ -4405,8 +4416,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"phone_number_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"redirect_on_completion": {
 			Type: "string",
@@ -4417,7 +4427,8 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"saved_payment_method_options.allow_redisplay_filters": {
 			Type: "array",
@@ -4443,8 +4454,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping_address_collection.allowed_countries": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"submit_type": {
 			Type: "string",
@@ -4471,8 +4481,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"subscription_data.billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -4488,8 +4497,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -4499,8 +4507,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"subscription_data.pending_invoice_item_interval.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -4522,8 +4529,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"subscription_data.transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"subscription_data.trial_end": {
 			Type:   "integer",
@@ -4533,8 +4539,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -4542,11 +4547,11 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"success_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"tax_id_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"tax_id_collection.required": {
 			Type: "string",
@@ -4556,7 +4561,8 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"ui_mode": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "elements"},
 				{Value: "embedded_page"},
@@ -4655,12 +4661,10 @@ var V1CheckoutSessionsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"collected_information.shipping_details.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"collected_information.shipping_details.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"collected_information.shipping_details.address.line2": {
 			Type: "string",
@@ -4672,8 +4676,7 @@ var V1CheckoutSessionsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"collected_information.shipping_details.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -4690,22 +4693,26 @@ var V1ClimateOrdersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"beneficiary.public_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"currency": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"metric_tons": {
-			Type:   "string",
-			Format: "decimal",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "decimal",
 		},
 		"product": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -4797,19 +4804,17 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -4820,12 +4825,10 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -4846,8 +4849,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -4890,8 +4892,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -4943,16 +4944,13 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -4965,23 +4963,19 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -5027,12 +5021,10 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -5043,8 +5035,8 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -5148,8 +5140,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.card.installments.plan.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
 				{Value: "fixed_count"},
@@ -5157,10 +5148,12 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"setup_future_usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -5185,8 +5178,8 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.phone": {
 			Type: "string",
@@ -5223,17 +5216,20 @@ var V1CouponsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount_off": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"applies_to.products": {
 			Type: "array",
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"duration": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "forever"},
 				{Value: "once"},
@@ -5250,10 +5246,12 @@ var V1CouponsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"percent_off": {
-			Type: "number",
+			Type:       "number",
+			MostCommon: true,
 		},
 		"redeem_by": {
 			Type:   "integer",
@@ -5300,7 +5298,8 @@ var V1CouponsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -5345,17 +5344,20 @@ var V1CreditNotesCreate = resource.OperationSpec{
 			},
 		},
 		"invoice": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"memo": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"out_of_band_amount": {
 			Type: "integer",
 		},
 		"reason": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "duplicate"},
 				{Value: "fraudulent"},
@@ -5516,7 +5518,8 @@ var V1CreditNotesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"memo": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -5533,16 +5536,19 @@ var V1CustomerBalanceTransactionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -5582,7 +5588,8 @@ var V1CustomerBalanceTransactionsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -5616,12 +5623,10 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"components.buy_button.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.customer_sheet.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.customer_sheet.features.payment_method_allow_redisplay_filters": {
 			Type: "array",
@@ -5634,8 +5639,7 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"components.mobile_payment_element.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.mobile_payment_element.features.payment_method_allow_redisplay_filters": {
 			Type: "array",
@@ -5670,8 +5674,7 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"components.payment_element.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"components.payment_element.features.payment_method_allow_redisplay_filters": {
 			Type: "array",
@@ -5708,11 +5711,11 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 			},
 		},
 		"components.pricing_table.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
 			Type: "string",
@@ -5763,10 +5766,12 @@ var V1CustomersCreate = resource.OperationSpec{
 			},
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"individual_name": {
 			Type: "string",
@@ -5781,16 +5786,19 @@ var V1CustomersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"next_invoice_sequence": {
 			Type: "integer",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"phone": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"preferred_locales": {
 			Type: "array",
@@ -5831,15 +5839,15 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"bank_transfer.eu_bank_transfer.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"bank_transfer.requested_address_types": {
 			Type: "array",
 		},
 		"bank_transfer.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "eu_bank_transfer"},
 				{Value: "gb_bank_transfer"},
@@ -5849,13 +5857,15 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 			},
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"funding_type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "bank_transfer"},
 			},
@@ -6019,13 +6029,15 @@ var V1CustomersTestHelpersFundCashBalance = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"reference": {
 			Type: "string",
@@ -6056,10 +6068,12 @@ var V1CustomersUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"individual_name": {
 			Type: "string",
@@ -6074,13 +6088,15 @@ var V1CustomersUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"next_invoice_sequence": {
 			Type: "integer",
 		},
 		"phone": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"preferred_locales": {
 			Type: "array",
@@ -6238,7 +6254,8 @@ var V1DisputesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"submit": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -6276,12 +6293,14 @@ var V1EntitlementsFeaturesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"lookup_key": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6324,7 +6343,8 @@ var V1EntitlementsFeaturesUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -6335,16 +6355,20 @@ var V1EphemeralKeysCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"issuing_card": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"nonce": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"verification_session": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -6422,8 +6446,9 @@ var V1ExternalAccountsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"external_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6507,7 +6532,8 @@ var V1ExternalAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_for_currency": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type: "array",
@@ -6530,7 +6556,8 @@ var V1FeeRefundsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -6570,12 +6597,14 @@ var V1FileLinksCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"file": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6618,7 +6647,8 @@ var V1FileLinksUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"expires_at": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -6735,8 +6765,9 @@ var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6753,8 +6784,9 @@ var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6765,8 +6797,9 @@ var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"features": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6786,8 +6819,9 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"account_holder.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "customer"},
@@ -6800,14 +6834,17 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"permissions": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 		"prefetch": {
-			Type: "array",
+			Type:       "array",
+			MostCommon: true,
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -6854,19 +6891,22 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"replacements": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 		"request.body": {
 			Type: "string",
 		},
 		"url": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -6945,7 +6985,8 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"client_reference_id": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"provided_details.email": {
 			Type: "string",
@@ -6954,31 +6995,36 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"related_customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"related_customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"related_person.account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"related_person.person": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "document"},
 				{Value: "id_number"},
 			},
 		},
 		"verification_flow": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -7045,7 +7091,8 @@ var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "document"},
 				{Value: "id_number"},
@@ -7077,28 +7124,29 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"discountable": {
 			Type: "boolean",
 		},
 		"period.end": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"period.start": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
 			Type: "string",
@@ -7110,8 +7158,7 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"price_data.product_data.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.product_data.tax_code": {
 			Type: "string",
@@ -7141,8 +7188,9 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"quantity_decimal": {
-			Type:   "string",
-			Format: "decimal",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "decimal",
 		},
 		"tax_rates": {
 			Type: "array",
@@ -7240,20 +7288,25 @@ var V1InvoiceitemsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"discountable": {
 			Type: "boolean",
@@ -7262,23 +7315,21 @@ var V1InvoiceitemsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"period.end": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"period.start": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.tax_behavior": {
 			Type: "string",
@@ -7379,32 +7430,32 @@ var V1InvoiceitemsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"discountable": {
 			Type: "boolean",
 		},
 		"period.end": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"period.start": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.tax_behavior": {
 			Type: "string",
@@ -7464,10 +7515,12 @@ var V1InvoicesAttachPayment = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_intent": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_record": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -7484,18 +7537,18 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"auto_advance": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -7506,7 +7559,8 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"collection_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -7517,10 +7571,12 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Format: "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"days_until_due": {
 			Type: "integer",
@@ -7535,7 +7591,8 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"due_date": {
 			Type:   "integer",
@@ -7549,22 +7606,19 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"from_invoice.action": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "revision"},
 			},
 		},
 		"from_invoice.invoice": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"issuer.account": {
 			Type: "string",
 		},
 		"issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -7614,8 +7668,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.unit": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -7625,12 +7678,10 @@ var V1InvoicesCreate = resource.OperationSpec{
 			},
 		},
 		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.unit": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -7640,21 +7691,17 @@ var V1InvoicesCreate = resource.OperationSpec{
 			},
 		},
 		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"shipping_cost.shipping_rate_data.display_name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping_cost.shipping_rate_data.fixed_amount.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"shipping_cost.shipping_rate_data.fixed_amount.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"shipping_cost.shipping_rate_data.tax_behavior": {
 			Type: "string",
@@ -7692,8 +7739,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping_details.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping_details.phone": {
 			Type: "string",
@@ -7702,14 +7748,14 @@ var V1InvoicesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"subscription": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
 		},
 		"transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -7720,15 +7766,14 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -7739,10 +7784,12 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			Format: "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_details.tax.ip_address": {
 			Type: "string",
@@ -7759,8 +7806,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			Type: "string",
 		},
 		"issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -7787,8 +7833,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			},
 		},
 		"schedule_details.billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -7810,7 +7855,8 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			},
 		},
 		"subscription": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"subscription_details.billing_cycle_anchor": {
 			Type: "string",
@@ -7823,8 +7869,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 			},
 		},
 		"subscription_details.billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -7882,7 +7927,8 @@ var V1InvoicesFinalizeInvoice = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"auto_advance": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -8016,18 +8062,18 @@ var V1InvoicesUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"auto_advance": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -8038,7 +8084,8 @@ var V1InvoicesUpdate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"collection_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -8057,7 +8104,8 @@ var V1InvoicesUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"due_date": {
 			Type:   "integer",
@@ -8073,8 +8121,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -8178,10 +8225,12 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"capture_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"close_authorization": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -8296,7 +8345,8 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"amount_details.atm_fee": {
 			Type: "integer",
@@ -8315,12 +8365,14 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -8755,8 +8807,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"risk_assessment.card_testing_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -8767,8 +8818,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"risk_assessment.fraud_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -8785,8 +8835,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"risk_assessment.merchant_dispute_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -8813,16 +8862,14 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"verification_data.authentication_exemption.claimed_by": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acquirer"},
 				{Value: "issuer"},
 			},
 		},
 		"verification_data.authentication_exemption.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "low_value_transaction"},
 				{Value: "transaction_risk_analysis"},
@@ -8846,8 +8893,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			},
 		},
 		"verification_data.three_d_secure.result": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "attempt_acknowledged"},
 				{Value: "authenticated"},
@@ -8878,8 +8924,9 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"final_amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -8971,11 +9018,13 @@ var V1IssuingAuthorizationsTestHelpersIncrement = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"increment_amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"is_amount_controllable": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -8986,8 +9035,9 @@ var V1IssuingAuthorizationsTestHelpersRespond = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"confirmed": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -8998,7 +9048,8 @@ var V1IssuingAuthorizationsTestHelpersReverse = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"reverse_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -9040,7 +9091,8 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"individual.card_issuing.user_terms_acceptance.date": {
 			Type:   "integer",
@@ -9053,16 +9105,13 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"individual.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.first_name": {
 			Type: "string",
@@ -9077,11 +9126,13 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"phone_number": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"preferred_locales": {
 			Type: "array",
@@ -9171,23 +9222,19 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"billing.address.city": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"billing.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"billing.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"billing.address.line2": {
 			Type: "string",
 		},
 		"billing.address.postal_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"billing.address.state": {
 			Type: "string",
@@ -9196,7 +9243,8 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"individual.card_issuing.user_terms_acceptance.date": {
 			Type:   "integer",
@@ -9209,16 +9257,13 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"individual.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"individual.first_name": {
 			Type: "string",
@@ -9233,7 +9278,8 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"phone_number": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"preferred_locales": {
 			Type: "array",
@@ -9269,24 +9315,27 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"cardholder": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"exp_month": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"exp_year": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"financial_account": {
 			Type: "string",
 		},
 		"lifecycle_controls.cancel_after.payment_count": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"personalization_design": {
 			Type: "string",
@@ -9310,30 +9359,25 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.address.city": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.line2": {
 			Type: "string",
 		},
 		"shipping.address.postal_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.state": {
 			Type: "string",
 		},
 		"shipping.address_validation.mode": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "disabled"},
 				{Value: "normalization_only"},
@@ -9344,8 +9388,7 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.phone_number": {
 			Type: "string",
@@ -9381,15 +9424,17 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"status": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "inactive"},
 			},
 		},
 		"type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "physical"},
 				{Value: "virtual"},
@@ -9490,7 +9535,8 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "lost"},
 				{Value: "stolen"},
@@ -9503,30 +9549,25 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.address.city": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.line2": {
 			Type: "string",
 		},
 		"shipping.address.postal_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.address.state": {
 			Type: "string",
 		},
 		"shipping.address_validation.mode": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "disabled"},
 				{Value: "normalization_only"},
@@ -9537,8 +9578,7 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"shipping.phone_number": {
 			Type: "string",
@@ -9574,7 +9614,8 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"status": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "canceled"},
@@ -9606,11 +9647,11 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 			},
 		},
 		"transaction": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"treasury.received_debit": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -9690,7 +9731,8 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"card_logo": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"carrier_text.footer_body": {
 			Type: "string",
@@ -9705,21 +9747,25 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"lookup_key": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"physical_bundle": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"preferences.is_default": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"transfer_lookup_key": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -9791,23 +9837,28 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"card_logo": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"lookup_key": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"physical_bundle": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"preferences.is_default": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"transfer_lookup_key": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -9895,8 +9946,9 @@ var V1IssuingTokensUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"status": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "deleted"},
@@ -9951,16 +10003,19 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"merchant_data.category": {
 			Type: "string",
@@ -10398,16 +10453,19 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"merchant_data.category": {
 			Type: "string",
@@ -10845,7 +10903,8 @@ var V1IssuingTransactionsTestHelpersRefund = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"refund_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -10879,28 +10938,29 @@ var V1LineItemsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"discountable": {
 			Type: "boolean",
 		},
 		"period.end": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"period.start": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
 			Type: "string",
@@ -10912,8 +10972,7 @@ var V1LineItemsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"price_data.product_data.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.product_data.tax_code": {
 			Type: "string",
@@ -10943,8 +11002,9 @@ var V1LineItemsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"quantity_decimal": {
-			Type:   "string",
-			Format: "decimal",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "decimal",
 		},
 		"tax_rates": {
 			Type: "array",
@@ -11011,11 +11071,13 @@ var V1PaymentIntentsApplyCustomerBalance = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 	},
 }
@@ -11026,7 +11088,8 @@ var V1PaymentIntentsCancel = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "abandoned"},
 				{Value: "duplicate"},
@@ -11049,7 +11112,8 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"amount_to_capture": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee_amount": {
 			Type: "integer",
@@ -11058,8 +11122,7 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"hooks.inputs.tax.calculation": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"statement_descriptor": {
 			Type: "string",
@@ -11096,8 +11159,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "array",
 		},
 		"hooks.inputs.tax.calculation": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"mandate": {
 			Type: "string",
@@ -11106,19 +11168,17 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -11129,12 +11189,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -11155,8 +11213,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -11199,8 +11256,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -11252,16 +11308,13 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -11274,23 +11327,19 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -11336,12 +11385,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -11352,8 +11399,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -11454,13 +11500,15 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"return_url": {
 			Type: "string",
 		},
 		"setup_future_usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -11478,8 +11526,9 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"amount_details.discount_amount": {
 			Type: "integer",
@@ -11498,8 +11547,8 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"automatic_payment_methods.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"capture_method": {
 			Type: "string",
@@ -11510,7 +11559,8 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"confirm": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"confirmation_method": {
 			Type: "string",
@@ -11523,18 +11573,22 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"error_on_requires_action": {
 			Type: "boolean",
@@ -11543,14 +11597,14 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"hooks.inputs.tax.calculation": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"mandate": {
 			Type: "string",
 		},
 		"off_session": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"on_behalf_of": {
 			Type: "string",
@@ -11562,22 +11616,20 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_configuration": {
 			Type: "string",
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -11588,12 +11640,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -11614,8 +11664,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -11658,8 +11707,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -11711,16 +11759,13 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -11733,23 +11778,19 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -11795,12 +11836,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -11811,8 +11850,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -11913,13 +11951,15 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"return_url": {
 			Type: "string",
 		},
 		"setup_future_usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -11947,8 +11987,8 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.phone": {
 			Type: "string",
@@ -11957,17 +11997,18 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor_suffix": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
 		},
 		"transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"transfer_group": {
 			Type: "string",
@@ -11984,8 +12025,9 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"amount_details.discount_amount": {
 			Type: "integer",
@@ -11997,11 +12039,11 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 			Type: "integer",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"hooks.inputs.tax.calculation": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_details.customer_reference": {
 			Type: "string",
@@ -12010,7 +12052,8 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 			Type: "string",
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
@@ -12079,7 +12122,8 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee_amount": {
 			Type: "integer",
@@ -12093,42 +12137,43 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"excluded_payment_method_types": {
 			Type: "array",
 		},
 		"hooks.inputs.tax.calculation": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_configuration": {
 			Type: "string",
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -12139,12 +12184,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -12165,8 +12208,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -12209,8 +12251,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -12262,16 +12303,13 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -12284,23 +12322,19 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -12346,12 +12380,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -12362,8 +12394,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -12461,20 +12492,24 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"receipt_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"setup_future_usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"statement_descriptor_suffix": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"transfer_data.amount": {
 			Type: "integer",
@@ -12491,10 +12526,12 @@ var V1PaymentIntentsVerifyMicrodeposits = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
-			Type: "array",
+			Type:       "array",
+			MostCommon: true,
 		},
 		"descriptor_code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -12508,12 +12545,10 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"after_completion.redirect.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"after_completion.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "redirect"},
@@ -12529,15 +12564,13 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -12551,8 +12584,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			},
 		},
 		"consent_collection.payment_method_reuse_agreement.position": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "hidden"},
@@ -12587,8 +12619,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type: "array",
@@ -12603,23 +12634,20 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
 		},
 		"name_collection.business.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"name_collection.business.optional": {
 			Type: "boolean",
 		},
 		"name_collection.individual.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"name_collection.individual.optional": {
 			Type: "boolean",
@@ -12665,16 +12693,13 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"phone_number_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"restrictions.completed_sessions.limit": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"shipping_address_collection.allowed_countries": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"submit_type": {
 			Type: "string",
@@ -12693,8 +12718,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -12704,8 +12728,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -12713,8 +12736,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			},
 		},
 		"tax_id_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"tax_id_collection.required": {
 			Type: "string",
@@ -12727,8 +12749,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -12782,18 +12803,17 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"after_completion.hosted_confirmation.custom_message": {
 			Type: "string",
 		},
 		"after_completion.redirect.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"after_completion.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "redirect"},
@@ -12803,15 +12823,13 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -12835,8 +12853,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type: "array",
@@ -12851,8 +12868,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -12881,8 +12897,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"phone_number_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"submit_type": {
 			Type: "string",
@@ -12898,8 +12913,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -12909,8 +12923,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"tax_id_collection.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"tax_id_collection.required": {
 			Type: "string",
@@ -13208,7 +13221,8 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 			},
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"naver_pay.display_preference.preference": {
 			Type: "string",
@@ -13243,7 +13257,8 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 			},
 		},
 		"parent": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"pay_by_bank.display_preference.preference": {
 			Type: "string",
@@ -13432,7 +13447,8 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"affirm.display_preference.preference": {
 			Type: "string",
@@ -13707,7 +13723,8 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 			},
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"naver_pay.display_preference.preference": {
 			Type: "string",
@@ -13894,11 +13911,13 @@ var V1PaymentMethodDomainsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"enabled": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -13938,7 +13957,8 @@ var V1PaymentMethodDomainsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"enabled": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -13955,10 +13975,12 @@ var V1PaymentMethodsAttach = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -13969,16 +13991,13 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"allow_redisplay": {
 			Type: "string",
@@ -13989,12 +14008,10 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			},
 		},
 		"au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"bacs_debit.account_number": {
 			Type: "string",
@@ -14015,15 +14032,14 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"custom.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"eps.bank": {
 			Type: "string",
@@ -14066,8 +14082,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			},
 		},
 		"fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -14119,16 +14134,13 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			},
 		},
 		"klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"naver_pay.funding": {
 			Type: "string",
@@ -14141,23 +14153,19 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"nz_bank_account.reference": {
 			Type: "string",
 		},
 		"nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"p24.bank": {
 			Type: "string",
@@ -14191,7 +14199,8 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payto.account_number": {
 			Type: "string",
@@ -14206,12 +14215,10 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -14222,7 +14229,8 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			},
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -14492,13 +14500,15 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount_requested.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"amount_requested.value": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"customer_details.customer": {
 			Type: "string",
@@ -14513,32 +14523,36 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 			Type: "string",
 		},
 		"customer_presence": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"failed.failed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"guaranteed.guaranteed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"initiated_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"outcome": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "guaranteed"},
@@ -14587,12 +14601,11 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 			},
 		},
 		"processor_details.custom.payment_reference": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"processor_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 			},
@@ -14630,25 +14643,28 @@ var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"failed.failed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"guaranteed.guaranteed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"initiated_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"outcome": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "guaranteed"},
@@ -14729,9 +14745,10 @@ var V1PaymentRecordsReportPaymentAttemptCanceled = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"canceled_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -14742,9 +14759,10 @@ var V1PaymentRecordsReportPaymentAttemptFailed = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"failed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -14755,9 +14773,10 @@ var V1PaymentRecordsReportPaymentAttemptGuaranteed = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"guaranteed_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -14780,7 +14799,8 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 			Type: "string",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -14791,40 +14811,43 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"initiated_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"outcome": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "refunded"},
 			},
 		},
 		"processor_details.custom.refund_reference": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"processor_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 			},
 		},
 		"refunded.refunded_at": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -14841,8 +14864,9 @@ var V1PaymentSourcesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"source": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"validate": {
 			Type: "boolean",
@@ -14888,16 +14912,19 @@ var V1PayoutsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination": {
 			Type: "string",
@@ -14921,7 +14948,8 @@ var V1PayoutsCreate = resource.OperationSpec{
 			},
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -15058,10 +15086,12 @@ var V1PersonsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"first_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"first_name_kana": {
 			Type: "string",
@@ -15076,13 +15106,15 @@ var V1PersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"id_number": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"id_number_secondary": {
 			Type: "string",
 		},
 		"last_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"last_name_kana": {
 			Type: "string",
@@ -15100,7 +15132,8 @@ var V1PersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"phone": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"political_exposure": {
 			Type: "string",
@@ -15152,7 +15185,8 @@ var V1PersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"ssn_last_4": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"us_cfpb_data.ethnicity_details.ethnicity": {
 			Type: "array",
@@ -15298,10 +15332,12 @@ var V1PersonsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"first_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"first_name_kana": {
 			Type: "string",
@@ -15316,13 +15352,15 @@ var V1PersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"id_number": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"id_number_secondary": {
 			Type: "string",
 		},
 		"last_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"last_name_kana": {
 			Type: "string",
@@ -15340,7 +15378,8 @@ var V1PersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"phone": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"political_exposure": {
 			Type: "string",
@@ -15392,7 +15431,8 @@ var V1PersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"ssn_last_4": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"us_cfpb_data.ethnicity_details.ethnicity": {
 			Type: "array",
@@ -15430,10 +15470,12 @@ var V1PlansCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"amount_decimal": {
 			Type:   "string",
@@ -15447,16 +15489,18 @@ var V1PlansCreate = resource.OperationSpec{
 			},
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"id": {
 			Type: "string",
 		},
 		"interval": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -15471,10 +15515,12 @@ var V1PlansCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"product": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"tiers_mode": {
 			Type: "string",
@@ -15484,12 +15530,10 @@ var V1PlansCreate = resource.OperationSpec{
 			},
 		},
 		"transform_usage.divide_by": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"transform_usage.round": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
 				{Value: "up"},
@@ -15552,10 +15596,12 @@ var V1PlansUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"product": {
 			Type: "string",
@@ -15572,7 +15618,8 @@ var V1PricesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"billing_scheme": {
 			Type: "string",
@@ -15582,13 +15629,13 @@ var V1PricesCreate = resource.OperationSpec{
 			},
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"custom_unit_amount.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"custom_unit_amount.maximum": {
 			Type: "integer",
@@ -15603,10 +15650,12 @@ var V1PricesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"product": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"product_data.active": {
 			Type: "boolean",
@@ -15615,8 +15664,7 @@ var V1PricesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"product_data.name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"product_data.statement_descriptor": {
 			Type: "string",
@@ -15628,8 +15676,8 @@ var V1PricesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"recurring.interval": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -15654,7 +15702,8 @@ var V1PricesCreate = resource.OperationSpec{
 			},
 		},
 		"tax_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -15672,19 +15721,18 @@ var V1PricesCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"transform_quantity.divide_by": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"transform_quantity.round": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
 				{Value: "up"},
 			},
 		},
 		"unit_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"unit_amount_decimal": {
 			Type:   "string",
@@ -15763,16 +15811,19 @@ var V1PricesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"lookup_key": {
 			Type: "string",
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"tax_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -15791,8 +15842,9 @@ var V1ProductFeaturesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"entitlement_feature": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -15832,16 +15884,15 @@ var V1ProductsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"default_price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"default_price_data.custom_unit_amount.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"default_price_data.custom_unit_amount.maximum": {
 			Type: "integer",
@@ -15853,8 +15904,7 @@ var V1ProductsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"default_price_data.recurring.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -15881,33 +15931,32 @@ var V1ProductsCreate = resource.OperationSpec{
 			Format: "decimal",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"id": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"images": {
 			Type: "array",
 		},
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"package_dimensions.height": {
-			Type:     "number",
-			Required: true,
+			Type: "number",
 		},
 		"package_dimensions.length": {
-			Type:     "number",
-			Required: true,
+			Type: "number",
 		},
 		"package_dimensions.weight": {
-			Type:     "number",
-			Required: true,
+			Type: "number",
 		},
 		"package_dimensions.width": {
-			Type:     "number",
-			Required: true,
+			Type: "number",
 		},
 		"shippable": {
 			Type: "boolean",
@@ -15916,7 +15965,8 @@ var V1ProductsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"tax_code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"type": {
 			Type: "string",
@@ -16009,19 +16059,23 @@ var V1ProductsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"default_price": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"images": {
 			Type: "array",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shippable": {
 			Type: "boolean",
@@ -16030,7 +16084,8 @@ var V1ProductsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"tax_code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"unit_label": {
 			Type: "string",
@@ -16050,7 +16105,8 @@ var V1PromotionCodesCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer": {
 			Type: "string",
@@ -16069,8 +16125,9 @@ var V1PromotionCodesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"promotion.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "coupon"},
 			},
@@ -16164,15 +16221,13 @@ var V1QuotesCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -16208,8 +16263,7 @@ var V1QuotesCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"from_quote.quote": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"header": {
 			Type: "string",
@@ -16221,8 +16275,7 @@ var V1QuotesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -16239,8 +16292,7 @@ var V1QuotesCreate = resource.OperationSpec{
 			},
 		},
 		"subscription_data.billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -16367,15 +16419,13 @@ var V1QuotesUpdate = resource.OperationSpec{
 			Type: "number",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -16417,8 +16467,7 @@ var V1QuotesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -16477,8 +16526,8 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"client_device_metadata_details.radar_session": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_details.customer": {
 			Type: "string",
@@ -16496,13 +16545,15 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_details.amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"payment_details.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"payment_details.description": {
 			Type: "string",
@@ -16524,8 +16575,7 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_details.money_movement_details.money_movement_type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 			},
@@ -16597,12 +16647,14 @@ var V1RadarValueListItemsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"value": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"value_list": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -16652,11 +16704,13 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"alias": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"item_type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "card_bin"},
 				{Value: "card_fingerprint"},
@@ -16672,8 +16726,9 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 			},
 		},
 		"name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -16722,10 +16777,12 @@ var V1RadarValueListsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"alias": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -16742,32 +16799,40 @@ var V1RefundsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"charge": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"instructions_email": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"origin": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "customer_balance"},
 			},
 		},
 		"payment_intent": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"reason": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "duplicate"},
 				{Value: "fraudulent"},
@@ -17500,8 +17565,9 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 			},
 		},
 		"report_type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -17629,7 +17695,8 @@ var V1SetupIntentsCancel = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "abandoned"},
 				{Value: "duplicate"},
@@ -17648,19 +17715,17 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -17671,12 +17736,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -17697,8 +17760,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -17741,8 +17803,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -17794,16 +17855,13 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -17816,23 +17874,19 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -17878,12 +17932,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -17894,8 +17946,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -18032,21 +18083,18 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
 			},
 		},
 		"payment_method_options.card.mandate_options.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
 			Type: "string",
@@ -18056,8 +18104,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -18070,13 +18117,11 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.reference": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.start_date": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:   "integer",
+			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
 			Type: "array",
@@ -18136,8 +18181,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -18381,23 +18425,27 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"automatic_payment_methods.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"confirm": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"confirmation_token": {
 			Type: "string",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"excluded_payment_method_types": {
 			Type: "array",
@@ -18409,22 +18457,20 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_configuration": {
 			Type: "string",
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -18435,12 +18481,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -18461,8 +18505,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -18505,8 +18548,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -18558,16 +18600,13 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -18580,23 +18619,19 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -18642,12 +18677,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -18658,8 +18691,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -18796,21 +18828,18 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
 			},
 		},
 		"payment_method_options.card.mandate_options.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
 			Type: "string",
@@ -18820,8 +18849,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -18834,13 +18862,11 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.reference": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.start_date": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:   "integer",
+			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
 			Type: "array",
@@ -18900,8 +18926,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -19127,16 +19152,15 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"single_use.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"single_use.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -19200,13 +19224,16 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"excluded_payment_method_types": {
 			Type: "array",
@@ -19215,22 +19242,20 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_configuration": {
 			Type: "string",
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -19241,12 +19266,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -19267,8 +19290,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -19311,8 +19333,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -19364,16 +19385,13 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -19386,23 +19404,19 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -19448,12 +19462,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -19464,8 +19476,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -19602,21 +19613,18 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
 			},
 		},
 		"payment_method_options.card.mandate_options.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
 			Type: "string",
@@ -19626,8 +19634,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -19640,13 +19647,11 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"payment_method_options.card.mandate_options.reference": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_options.card.mandate_options.start_date": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:   "integer",
+			Format: "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
 			Type: "array",
@@ -19706,8 +19711,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -19938,10 +19942,12 @@ var V1SetupIntentsVerifyMicrodeposits = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amounts": {
-			Type: "array",
+			Type:       "array",
+			MostCommon: true,
 		},
 		"descriptor_code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -19952,8 +19958,7 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"delivery_estimate.maximum.unit": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -19963,12 +19968,10 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 			},
 		},
 		"delivery_estimate.maximum.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"delivery_estimate.minimum.unit": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -19978,24 +19981,25 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 			},
 		},
 		"delivery_estimate.minimum.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"display_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"fixed_amount.amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"fixed_amount.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"tax_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -20003,10 +20007,12 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 			},
 		},
 		"tax_code": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed_amount"},
 			},
@@ -20053,10 +20059,12 @@ var V1ShippingRatesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"tax_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -20072,14 +20080,17 @@ var V1SourcesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"flow": {
 			Type: "string",
@@ -20098,8 +20109,7 @@ var V1SourcesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"mandate.acceptance.offline.contact_email": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"mandate.acceptance.online.date": {
 			Type:   "integer",
@@ -20112,8 +20122,7 @@ var V1SourcesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"mandate.acceptance.status": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "accepted"},
 				{Value: "pending"},
@@ -20157,7 +20166,8 @@ var V1SourcesCreate = resource.OperationSpec{
 			},
 		},
 		"original_source": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"owner.address.city": {
 			Type: "string",
@@ -20195,8 +20205,8 @@ var V1SourcesCreate = resource.OperationSpec{
 			},
 		},
 		"redirect.return_url": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"source_order.shipping.address.city": {
 			Type: "string",
@@ -20205,8 +20215,7 @@ var V1SourcesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"source_order.shipping.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"source_order.shipping.address.line2": {
 			Type: "string",
@@ -20230,13 +20239,15 @@ var V1SourcesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"token": {
 			Type: "string",
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"usage": {
 			Type: "string",
@@ -20288,7 +20299,8 @@ var V1SourcesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"mandate.acceptance.date": {
 			Type:   "integer",
@@ -20298,8 +20310,7 @@ var V1SourcesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"mandate.acceptance.offline.contact_email": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"mandate.acceptance.online.date": {
 			Type:   "integer",
@@ -20312,8 +20323,7 @@ var V1SourcesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"mandate.acceptance.status": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "accepted"},
 				{Value: "pending"},
@@ -20390,8 +20400,7 @@ var V1SourcesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"source_order.shipping.address.line1": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"source_order.shipping.address.line2": {
 			Type: "string",
@@ -20423,8 +20432,9 @@ var V1SourcesVerify = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"values": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -20435,7 +20445,8 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -20447,20 +20458,18 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"price": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.recurring.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -20487,7 +20496,8 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 			Format: "decimal",
 		},
 		"proration_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -20499,11 +20509,13 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"quantity": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"subscription": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"tax_rates": {
 			Type: "array",
@@ -20553,7 +20565,8 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"payment_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -20565,20 +20578,18 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"price": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"price_data.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:   "string",
+			Format: "currency",
 		},
 		"price_data.product": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"price_data.recurring.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -20605,7 +20616,8 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 			Format: "decimal",
 		},
 		"proration_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -20617,7 +20629,8 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"quantity": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"tax_rates": {
 			Type: "array",
@@ -20631,7 +20644,8 @@ var V1SubscriptionSchedulesCancel = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"invoice_now": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"prorate": {
 			Type: "boolean",
@@ -20652,15 +20666,15 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			},
 		},
 		"billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
 			},
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
 			Type: "string",
@@ -20669,15 +20683,13 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"default_settings.automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"default_settings.automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -20713,8 +20725,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_settings.invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -20736,7 +20747,8 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"start_date": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -20805,15 +20817,13 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 			Type: "number",
 		},
 		"default_settings.automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"default_settings.automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -20849,8 +20859,7 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"default_settings.invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -20869,7 +20878,8 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 			},
 		},
 		"proration_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -20894,15 +20904,14 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -20917,8 +20926,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Format: "unix-time",
 		},
 		"billing_cycle_anchor_config.day_of_month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle_anchor_config.hour": {
 			Type: "integer",
@@ -20940,8 +20948,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			},
 		},
 		"billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -20961,20 +20968,24 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			},
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer_account": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"days_until_due": {
 			Type: "integer",
 		},
 		"default_payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"default_source": {
 			Type: "string",
@@ -20983,7 +20994,8 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"invoice_settings.account_tax_ids": {
 			Type: "array",
@@ -20992,8 +21004,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -21006,7 +21017,8 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -21036,8 +21048,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "number",
 		},
 		"transfer_data.destination": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"trial_end": {
 			Type: "string",
@@ -21049,8 +21060,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"trial_settings.end_behavior.missing_payment_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -21142,8 +21152,9 @@ var V1SubscriptionsMigrate = resource.OperationSpec{
 			},
 		},
 		"billing_mode.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "flexible"},
 			},
@@ -21157,14 +21168,16 @@ var V1SubscriptionsResume = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"billing_cycle_anchor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
 			},
 		},
 		"proration_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -21211,15 +21224,14 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "number",
 		},
 		"automatic_tax.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"automatic_tax.liability.account": {
 			Type: "string",
 		},
 		"automatic_tax.liability.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -21265,7 +21277,8 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"default_payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"default_source": {
 			Type: "string",
@@ -21274,7 +21287,8 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"invoice_settings.account_tax_ids": {
 			Type: "array",
@@ -21283,8 +21297,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice_settings.issuer.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -21297,7 +21310,8 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -21316,7 +21330,8 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			},
 		},
 		"proration_behavior": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -21334,8 +21349,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"trial_settings.end_behavior.missing_payment_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -21363,9 +21377,10 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
 			Type: "string",
@@ -21374,8 +21389,7 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"customer_details.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"customer_details.address.line1": {
 			Type: "string",
@@ -21411,8 +21425,7 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"ship_from_details.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"ship_from_details.address.line1": {
 			Type: "string",
@@ -21500,8 +21513,9 @@ var V1TaxIdsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ad_nrt"},
 				{Value: "ae_trn"},
@@ -21618,8 +21632,9 @@ var V1TaxIdsCreate = resource.OperationSpec{
 			},
 		},
 		"value": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -21659,31 +21674,39 @@ var V1TaxRatesCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"country": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"display_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"inclusive": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			Required:   true,
+			MostCommon: true,
 		},
 		"jurisdiction": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"percentage": {
-			Type:     "number",
-			Required: true,
+			Type:       "number",
+			Required:   true,
+			MostCommon: true,
 		},
 		"state": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"tax_type": {
 			Type: "string",
@@ -21745,22 +21768,28 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"country": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"display_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"jurisdiction": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"state": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"tax_type": {
 			Type: "string",
@@ -21790,12 +21819,14 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active_from": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"country": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"country_options.ae.standard.place_of_supply_scheme": {
 			Type: "string",
@@ -21805,8 +21836,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ae.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -21819,15 +21849,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.al.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.am.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -21840,15 +21868,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ao.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.at.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -21856,8 +21882,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.at.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -21873,8 +21898,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.au.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -21887,15 +21911,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.aw.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.az.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -21908,8 +21930,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ba.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -21922,8 +21943,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bb.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -21936,15 +21956,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bd.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.be.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -21952,8 +21970,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.be.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -21969,15 +21986,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bf.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.bg.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -21985,8 +22000,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bg.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22002,15 +22016,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bh.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.bj.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22023,26 +22035,22 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.bs.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.by.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ca.province_standard.province": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"country_options.ca.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "province_standard"},
 				{Value: "simplified"},
@@ -22057,8 +22065,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.cd.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -22071,50 +22078,43 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ch.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.cl.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.cm.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.co.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.cr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.cv.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.cy.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22122,8 +22122,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.cy.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22132,8 +22131,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.cz.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22141,8 +22139,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.cz.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22151,8 +22148,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.de.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22160,8 +22156,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.de.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22170,8 +22165,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.dk.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22179,8 +22173,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.dk.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22189,15 +22182,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ec.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ee.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22205,8 +22196,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ee.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22215,15 +22205,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.eg.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.es.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22231,8 +22219,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.es.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22248,15 +22235,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.et.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.fi.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22264,8 +22249,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.fi.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22274,8 +22258,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.fr.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22283,8 +22266,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.fr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22300,15 +22282,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.gb.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.ge.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22321,15 +22301,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.gn.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.gr.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22337,8 +22315,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.gr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22347,8 +22324,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.hr.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22356,8 +22332,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.hr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22366,8 +22341,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.hu.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22375,8 +22349,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.hu.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22385,15 +22358,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.id.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ie.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22401,8 +22372,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ie.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22411,8 +22381,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.in.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22425,15 +22394,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.is.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.it.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22441,8 +22408,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.it.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22458,64 +22424,55 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.jp.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.ke.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.kg.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.kh.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.kr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.kz.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.la.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.lk.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.lt.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22523,8 +22480,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.lt.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22533,8 +22489,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.lu.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22542,8 +22497,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.lu.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22552,8 +22506,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.lv.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22561,8 +22514,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.lv.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22571,15 +22523,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ma.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.md.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22592,8 +22542,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.me.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -22606,8 +22555,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.mk.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -22620,15 +22568,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.mr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.mt.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22636,8 +22582,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.mt.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22646,29 +22591,25 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.mx.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.my.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ng.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.nl.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22676,8 +22617,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.nl.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22693,15 +22633,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.no.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.np.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22714,8 +22652,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.nz.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -22728,29 +22665,25 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.om.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.pe.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ph.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.pl.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22758,8 +22691,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.pl.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22768,8 +22700,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.pt.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22777,8 +22708,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.pt.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22787,8 +22717,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ro.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22796,8 +22725,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.ro.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22813,29 +22741,25 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.rs.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.ru.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.sa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.se.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22843,8 +22767,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.se.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22860,15 +22783,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.sg.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.si.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22876,8 +22797,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.si.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22886,8 +22806,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.sk.standard.place_of_supply_scheme": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -22895,8 +22814,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.sk.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -22905,8 +22823,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.sn.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -22919,76 +22836,64 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.sr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.th.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.tj.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.tr.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.tw.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.tz.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ua.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.ug.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.us.local_amusement_tax.jurisdiction": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"country_options.us.local_lease_tax.jurisdiction": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"country_options.us.state": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"country_options.us.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "local_amusement_tax"},
 				{Value: "local_lease_tax"},
@@ -23005,22 +22910,19 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.uy.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.uz.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
 		},
 		"country_options.vn.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -23033,15 +22935,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.za.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"country_options.zm.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -23054,15 +22954,15 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			},
 		},
 		"country_options.zw.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
 		},
 		"expires_at": {
-			Type:   "integer",
-			Format: "unix-time",
+			Type:       "integer",
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -23105,10 +23005,12 @@ var V1TaxRegistrationsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"active_from": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"expires_at": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -23162,16 +23064,18 @@ var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"calculation": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"posted_at": {
 			Type:   "integer",
 			Format: "unix-time",
 		},
 		"reference": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -23182,31 +23086,33 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"flat_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"mode": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "full"},
 				{Value: "partial"},
 			},
 		},
 		"original_transaction": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"reference": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"shipping_cost.amount": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"shipping_cost.amount_tax": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 	},
 }
@@ -23249,12 +23155,10 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"reboot_window.end_hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"reboot_window.start_hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"stripe_s700.splashscreen": {
 			Type: "string",
@@ -23317,7 +23221,8 @@ var V1TerminalConnectionTokensCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"location": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -23331,8 +23236,8 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"address.country": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"address.line1": {
 			Type: "string",
@@ -23392,7 +23297,8 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"display_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"display_name_kana": {
 			Type: "string",
@@ -23504,7 +23410,8 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"display_name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"display_name_kana": {
 			Type: "string",
@@ -23527,18 +23434,19 @@ var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"link_options.apple_terms_and_conditions.merchant_display_name": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"link_type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "apple_terms_and_conditions"},
 			},
 		},
 		"on_behalf_of": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -23578,8 +23486,9 @@ var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
 			Type: "integer",
 		},
 		"payment_intent": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -23593,8 +23502,9 @@ var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_intent": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -23605,14 +23515,17 @@ var V1TerminalReadersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"label": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"location": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"registration_code": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -23675,8 +23588,9 @@ var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_intent": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"process_config.allow_redisplay": {
 			Type: "string",
@@ -23707,8 +23621,9 @@ var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"allow_redisplay": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "always"},
 				{Value: "limited"},
@@ -23719,8 +23634,9 @@ var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"setup_intent": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -23731,22 +23647,27 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"charge": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_intent": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"refund_application_fee": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"refund_payment_config.enable_customer_cancellation": {
 			Type: "boolean",
 		},
 		"reverse_transfer": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -23763,20 +23684,21 @@ var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"cart.currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"cart.tax": {
 			Type: "integer",
 		},
 		"cart.total": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "cart"},
 			},
@@ -23796,16 +23718,13 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 			Type: "string",
 		},
 		"card.exp_month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"card.exp_year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"card.number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"card_present.number": {
 			Type: "string",
@@ -23814,7 +23733,8 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 			Type: "string",
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 				{Value: "card_present"},
@@ -23830,7 +23750,8 @@ var V1TerminalReadersTestHelpersSucceedInputCollection = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"skip_non_required_inputs": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -23851,7 +23772,8 @@ var V1TerminalReadersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"label": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -23862,19 +23784,17 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"payment_method_data.acss_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.institution_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.acss_debit.transit_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.allow_redisplay": {
 			Type: "string",
@@ -23885,12 +23805,10 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.au_becs_debit.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type: "string",
@@ -23911,8 +23829,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.boleto.tax_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.eps.bank": {
 			Type: "string",
@@ -23955,8 +23872,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.fpx.bank": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -24008,16 +23924,13 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.klarna.dob.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.klarna.dob.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type: "string",
@@ -24030,23 +23943,19 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
 		},
 		"payment_method_data.nz_bank_account.suffix": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.p24.bank": {
 			Type: "string",
@@ -24092,12 +24001,10 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.sepa_debit.iban": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payment_method_data.sofort.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -24108,8 +24015,8 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -24213,8 +24120,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.card.installments.plan.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
 				{Value: "fixed_count"},
@@ -24222,10 +24128,12 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			},
 		},
 		"return_url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"setup_future_usage": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -24250,8 +24158,8 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"shipping.name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"shipping.phone": {
 			Type: "string",
@@ -24265,13 +24173,15 @@ var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"reference": {
 			Type: "string",
@@ -24285,10 +24195,12 @@ var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"capture_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"close_authorization": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -24403,7 +24315,8 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"amount_details.atm_fee": {
 			Type: "integer",
@@ -24422,12 +24335,14 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			},
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -24862,8 +24777,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"risk_assessment.card_testing_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -24874,8 +24788,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			},
 		},
 		"risk_assessment.fraud_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -24892,8 +24805,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"risk_assessment.merchant_dispute_risk.level": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -24920,16 +24832,14 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			},
 		},
 		"verification_data.authentication_exemption.claimed_by": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "acquirer"},
 				{Value: "issuer"},
 			},
 		},
 		"verification_data.authentication_exemption.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "low_value_transaction"},
 				{Value: "transaction_risk_analysis"},
@@ -24953,8 +24863,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			},
 		},
 		"verification_data.three_d_secure.result": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "attempt_acknowledged"},
 				{Value: "authenticated"},
@@ -24985,8 +24894,9 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"final_amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type: "string",
@@ -25078,11 +24988,13 @@ var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"increment_amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"is_amount_controllable": {
-			Type: "boolean",
+			Type:       "boolean",
+			MostCommon: true,
 		},
 	},
 }
@@ -25093,8 +25005,9 @@ var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"confirmed": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -25105,7 +25018,8 @@ var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"reverse_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -25172,16 +25086,19 @@ var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"merchant_data.category": {
 			Type: "string",
@@ -25619,16 +25536,19 @@ var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpe
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"card": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:   "string",
-			Format: "currency",
+			Type:       "string",
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"merchant_data.category": {
 			Type: "string",
@@ -26066,7 +25986,8 @@ var V1TestHelpersIssuingTransactionsRefund = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"refund_amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 	},
 }
@@ -26089,16 +26010,13 @@ var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
 			Type: "string",
 		},
 		"card.exp_month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"card.exp_year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"card.number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"card_present.number": {
 			Type: "string",
@@ -26107,7 +26025,8 @@ var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
 			Type: "string",
 		},
 		"type": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 				{Value: "card_present"},
@@ -26123,7 +26042,8 @@ var V1TestHelpersTerminalReadersSucceedInputCollection = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"skip_non_required_inputs": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -26144,9 +26064,10 @@ var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"frozen_time": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 	},
 }
@@ -26157,12 +26078,14 @@ var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"frozen_time": {
-			Type:     "integer",
-			Required: true,
-			Format:   "unix-time",
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
+			Format:     "unix-time",
 		},
 		"name": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -26275,12 +26198,12 @@ var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"tracking_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -26339,12 +26262,12 @@ var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"tracking_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -26368,24 +26291,28 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"initiating_payment_method_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -26400,8 +26327,9 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"network": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -26416,24 +26344,28 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"initiating_payment_method_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -26448,8 +26380,9 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"network": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 			},
@@ -26812,8 +26745,8 @@ var V1TokensCreate = resource.OperationSpec{
 			},
 		},
 		"bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"bank_account.account_type": {
 			Type: "string",
@@ -26825,8 +26758,8 @@ var V1TokensCreate = resource.OperationSpec{
 			},
 		},
 		"bank_account.country": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"bank_account.currency": {
 			Type:   "string",
@@ -26839,14 +26772,15 @@ var V1TokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"card": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"customer": {
 			Type: "string",
 		},
 		"cvc_update.cvc": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 		},
 		"person.additional_tos_acceptances.account.date": {
 			Type:   "integer",
@@ -27072,15 +27006,18 @@ var V1TopupsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"source": {
 			Type: "string",
@@ -27138,7 +27075,8 @@ var V1TopupsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -27149,10 +27087,12 @@ var V1TransferReversalsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"refund_application_fee": {
 			Type: "boolean",
@@ -27195,19 +27135,23 @@ var V1TransfersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"source_transaction": {
 			Type: "string",
@@ -27264,7 +27208,8 @@ var V1TransfersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -27275,8 +27220,9 @@ var V1TreasuryCreditReversalsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"received_credit": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -27325,8 +27271,9 @@ var V1TreasuryDebitReversalsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"received_debit": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -27388,8 +27335,8 @@ var V1TreasuryFinancialAccountsClose = resource.OperationSpec{
 			Type: "string",
 		},
 		"forwarding_settings.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "payment_method"},
@@ -27404,43 +27351,35 @@ var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"features.card_issuing.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.deposit_insurance.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.financial_addresses.aba.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.inbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.intra_stripe_flows.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_payments.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_payments.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_transfers.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"platform_restrictions.inbound_flows": {
 			Type: "string",
@@ -27457,8 +27396,9 @@ var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
 			},
 		},
 		"supported_currencies": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -27508,40 +27448,31 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"features.card_issuing.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.deposit_insurance.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.financial_addresses.aba.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.inbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.intra_stripe_flows.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_payments.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_payments.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"features.outbound_transfers.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"forwarding_settings.financial_account": {
 			Type: "string",
@@ -27550,15 +27481,16 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"forwarding_settings.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "payment_method"},
 			},
 		},
 		"nickname": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"platform_restrictions.inbound_flows": {
 			Type: "string",
@@ -27583,40 +27515,34 @@ var V1TreasuryFinancialAccountsUpdateFeatures = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"card_issuing.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"deposit_insurance.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"financial_addresses.aba.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"inbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"intra_stripe_flows.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"outbound_payments.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"outbound_payments.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"outbound_transfers.ach.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"outbound_transfers.us_domestic_wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 	},
 }
@@ -27633,27 +27559,33 @@ var V1TreasuryInboundTransfersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"origin_payment_method": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -27744,22 +27676,27 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"customer": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination_payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination_payment_method_data.billing_details.email": {
 			Type: "string",
@@ -27774,8 +27711,8 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"destination_payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "us_bank_account"},
@@ -27808,15 +27745,17 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"end_user_details.present": {
-			Type:     "boolean",
-			Required: true,
+			Type:       "boolean",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -27905,12 +27844,12 @@ var V1TreasuryOutboundPaymentsTestHelpersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"tracking_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -27940,36 +27879,42 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination_payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"destination_payment_method_data.financial_account": {
 			Type: "string",
 		},
 		"destination_payment_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 			},
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"statement_descriptor": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -28052,12 +27997,12 @@ var V1TreasuryOutboundTransfersTestHelpersUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"tracking_details.ach.trace_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"tracking_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -28115,24 +28060,28 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"initiating_payment_method_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -28147,8 +28096,9 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"network": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -28197,24 +28147,28 @@ var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type:     "integer",
-			Required: true,
+			Type:       "integer",
+			Required:   true,
+			MostCommon: true,
 		},
 		"currency": {
-			Type:     "string",
-			Required: true,
-			Format:   "currency",
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
+			Format:     "currency",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"financial_account": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 		"initiating_payment_method_details.type": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -28229,8 +28183,9 @@ var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"network": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 			},
@@ -28332,7 +28287,8 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"api_version": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "2011-01-01"},
 				{Value: "2011-06-21"},
@@ -28462,15 +28418,18 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"enabled_events": {
-			Type:     "array",
-			Required: true,
+			Type:       "array",
+			Required:   true,
+			MostCommon: true,
 		},
 		"url": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -28510,16 +28469,19 @@ var V1WebhookEndpointsUpdate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"description": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"disabled": {
 			Type: "boolean",
 		},
 		"enabled_events": {
-			Type: "array",
+			Type:       "array",
+			MostCommon: true,
 		},
 		"url": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 	},
 }
@@ -28596,12 +28558,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 			},
 		},
 		"use_case.account_onboarding.configurations": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"use_case.account_onboarding.refresh_url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"use_case.account_onboarding.return_url": {
 			Type: "string",
@@ -28621,12 +28581,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 			},
 		},
 		"use_case.account_update.configurations": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"use_case.account_update.refresh_url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"use_case.account_update.return_url": {
 			Type: "string",
@@ -28672,35 +28630,28 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -28712,8 +28663,7 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -28725,19 +28675,16 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -28865,13 +28812,11 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
-			Type:     "string",
-			Required: true,
-			Format:   "date-time",
+			Type:   "string",
+			Format: "date-time",
 		},
 		"additional_terms_of_service.account.ip": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"additional_terms_of_service.account.user_agent": {
 			Type: "string",
@@ -28880,8 +28825,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"address.line1": {
 			Type: "string",
@@ -28899,35 +28843,28 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -28936,12 +28873,10 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -28950,23 +28885,19 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29029,8 +28960,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"script_addresses.kana.line1": {
 			Type: "string",
@@ -29051,8 +28981,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"script_addresses.kanji.line1": {
 			Type: "string",
@@ -29150,35 +29079,28 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29190,8 +29112,7 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -29203,19 +29124,16 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29398,78 +29316,64 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29481,41 +29385,34 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29524,12 +29421,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -29538,16 +29433,13 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
@@ -29660,35 +29552,28 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29700,8 +29585,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -29713,19 +29597,16 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -29888,8 +29769,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.customer.capabilities.automatic_indirect_tax.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.customer.shipping.address.city": {
 			Type: "string",
@@ -29934,180 +29814,136 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.merchant.capabilities.ach_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.acss_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.affirm_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.afterpay_clearpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.alma_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.amazon_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.au_becs_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.bacs_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.bancontact_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.card_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.cartes_bancaires_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.cashapp_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.eps_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.fpx_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.gb_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.grabpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.ideal_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.jcb_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.jp_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.kakao_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.klarna_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.konbini_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.kr_card_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.link_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.multibanco_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.mx_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.oxxo_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.p24_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.pay_by_bank_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.payco_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.promptpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.revolut_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.samsung_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.twint_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.us_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.zip_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.card_payments.decline_on.avs_failure": {
 			Type: "boolean",
@@ -30152,8 +29988,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.merchant.support.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"configuration.merchant.support.address.line1": {
 			Type: "string",
@@ -30180,8 +30015,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"contact_email": {
 			Type: "string",
@@ -30213,8 +30047,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"defaults.responsibilities.fees_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -30223,8 +30056,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			},
 		},
 		"defaults.responsibilities.losses_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -30280,13 +30112,11 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.attestations.terms_of_service.account.date": {
-			Type:     "string",
-			Required: true,
-			Format:   "date-time",
+			Type:   "string",
+			Format: "date-time",
 		},
 		"identity.attestations.terms_of_service.account.ip": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.attestations.terms_of_service.account.user_agent": {
 			Type: "string",
@@ -30295,8 +30125,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.address.line1": {
 			Type: "string",
@@ -30314,78 +30143,64 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -30394,45 +30209,37 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -30441,12 +30248,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -30455,23 +30260,19 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
 		},
 		"identity.business_details.script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.script_addresses.kana.line1": {
 			Type: "string",
@@ -30492,8 +30293,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.script_addresses.kanji.line1": {
 			Type: "string",
@@ -30564,8 +30364,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.address.line1": {
 			Type: "string",
@@ -30583,35 +30382,28 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -30620,12 +30412,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -30634,23 +30424,19 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -30701,8 +30487,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.script_addresses.kana.line1": {
 			Type: "string",
@@ -30723,8 +30508,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.script_addresses.kanji.line1": {
 			Type: "string",
@@ -31130,8 +30914,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"defaults.responsibilities.fees_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -31140,8 +30923,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			},
 		},
 		"defaults.responsibilities.losses_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -31248,78 +31030,64 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -31331,41 +31099,34 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -31374,12 +31135,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -31388,16 +31147,13 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
@@ -31513,35 +31269,28 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -31553,8 +31302,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -31566,19 +31314,16 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -31694,12 +31439,10 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"amazon_eventbridge.aws_region": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"description": {
 			Type: "string",
@@ -31738,8 +31481,7 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 			},
 		},
 		"webhook_endpoint.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -31814,8 +31556,7 @@ var V2CoreEventDestinationsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"webhook_endpoint.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -31875,8 +31616,7 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -31886,8 +31626,7 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice.time_until_due.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -31896,8 +31635,7 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 			},
 		},
 		"invoice.time_until_due.interval_count": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"invoice_rendering_template": {
 			Type: "string",
@@ -31940,8 +31678,7 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
 		"calculation.tax.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -31951,8 +31688,7 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"invoice.time_until_due.interval": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -31961,8 +31697,7 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 			},
 		},
 		"invoice.time_until_due.interval_count": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"invoice_rendering_template": {
 			Type: "string",
@@ -31990,38 +31725,31 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
 		"billing_cycle.day.time.hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.day.time.minute": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.day.time.second": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.interval_count": {
 			Type: "integer",
 		},
 		"billing_cycle.month.day_of_month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.month.month_of_year": {
 			Type: "integer",
 		},
 		"billing_cycle.month.time.hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.month.time.minute": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.month.time.second": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.type": {
 			Type:     "string",
@@ -32034,20 +31762,16 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 			},
 		},
 		"billing_cycle.week.day_of_week": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.week.time.hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.week.time.minute": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.week.time.second": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.year.day_of_month": {
 			Type: "integer",
@@ -32056,16 +31780,13 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"billing_cycle.year.time.hour": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.year.time.minute": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"billing_cycle.year.time.second": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"lookup_key": {
 			Type: "string",
@@ -32164,12 +31885,10 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email_delivery.payment_due.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"email_delivery.payment_due.include_payment_link": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"lookup_key": {
 			Type: "string",
@@ -32227,8 +31946,7 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "BE"},
 				{Value: "DE"},
@@ -32264,8 +31982,7 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 			Type: "array",
 		},
 		"payment_method_options.us_bank_account.verification_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "instant"},
@@ -32317,12 +32034,10 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"email_delivery.payment_due.enabled": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"email_delivery.payment_due.include_payment_link": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"live_version": {
 			Type: "string",
@@ -32383,8 +32098,7 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 			},
 		},
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "BE"},
 				{Value: "DE"},
@@ -32420,8 +32134,7 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"payment_method_options.us_bank_account.verification_method": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "instant"},
@@ -32586,12 +32299,10 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 			},
 		},
 		"use_case.account_onboarding.configurations": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"use_case.account_onboarding.refresh_url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"use_case.account_onboarding.return_url": {
 			Type: "string",
@@ -32611,12 +32322,10 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 			},
 		},
 		"use_case.account_update.configurations": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"use_case.account_update.refresh_url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"use_case.account_update.return_url": {
 			Type: "string",
@@ -32663,35 +32372,28 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -32703,8 +32405,7 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -32716,19 +32417,16 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -32858,13 +32556,11 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
 		"additional_terms_of_service.account.date": {
-			Type:     "string",
-			Required: true,
-			Format:   "date-time",
+			Type:   "string",
+			Format: "date-time",
 		},
 		"additional_terms_of_service.account.ip": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"additional_terms_of_service.account.user_agent": {
 			Type: "string",
@@ -32873,8 +32569,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"address.line1": {
 			Type: "string",
@@ -32892,35 +32587,28 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -32929,12 +32617,10 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -32943,23 +32629,19 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33022,8 +32704,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"script_addresses.kana.line1": {
 			Type: "string",
@@ -33044,8 +32725,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"script_addresses.kanji.line1": {
 			Type: "string",
@@ -33147,35 +32827,28 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33187,8 +32860,7 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33200,19 +32872,16 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33399,78 +33068,64 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33482,41 +33137,34 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33525,12 +33173,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -33539,16 +33185,13 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
@@ -33661,35 +33304,28 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33701,8 +33337,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33714,19 +33349,16 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33901,8 +33533,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.customer.capabilities.automatic_indirect_tax.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.customer.shipping.address.city": {
 			Type: "string",
@@ -33947,180 +33578,136 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.merchant.capabilities.ach_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.acss_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.affirm_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.afterpay_clearpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.alma_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.amazon_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.au_becs_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.bacs_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.bancontact_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.card_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.cartes_bancaires_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.cashapp_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.eps_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.fpx_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.gb_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.grabpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.ideal_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.jcb_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.jp_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.kakao_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.klarna_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.konbini_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.kr_card_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.link_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.multibanco_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.mx_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.oxxo_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.p24_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.pay_by_bank_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.payco_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.promptpay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.revolut_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.samsung_pay_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.twint_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.us_bank_transfer_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.capabilities.zip_payments.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.merchant.card_payments.decline_on.avs_failure": {
 			Type: "boolean",
@@ -34173,8 +33760,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.merchant.support.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"configuration.merchant.support.address.line1": {
 			Type: "string",
@@ -34201,60 +33787,46 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"configuration.recipient.capabilities.bank_accounts.local.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.recipient.capabilities.bank_accounts.wire.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.recipient.capabilities.cards.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.holds_currencies.eur.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.holds_currencies.gbp.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.holds_currencies.usd.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.outbound_payments.cards.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"contact_email": {
 			Type: "string",
@@ -34286,8 +33858,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"defaults.responsibilities.fees_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -34296,8 +33867,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			},
 		},
 		"defaults.responsibilities.losses_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -34356,25 +33926,21 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.attestations.terms_of_service.account.date": {
-			Type:     "string",
-			Required: true,
-			Format:   "date-time",
+			Type:   "string",
+			Format: "date-time",
 		},
 		"identity.attestations.terms_of_service.account.ip": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.attestations.terms_of_service.account.user_agent": {
 			Type: "string",
 		},
 		"identity.attestations.terms_of_service.storer.date": {
-			Type:     "string",
-			Required: true,
-			Format:   "date-time",
+			Type:   "string",
+			Format: "date-time",
 		},
 		"identity.attestations.terms_of_service.storer.ip": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.attestations.terms_of_service.storer.user_agent": {
 			Type: "string",
@@ -34383,8 +33949,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.address.line1": {
 			Type: "string",
@@ -34402,78 +33967,64 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34482,45 +34033,37 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34529,12 +34072,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -34543,23 +34084,19 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
 		},
 		"identity.business_details.script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.script_addresses.kana.line1": {
 			Type: "string",
@@ -34580,8 +34117,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.script_addresses.kanji.line1": {
 			Type: "string",
@@ -34652,8 +34188,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.address.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.address.line1": {
 			Type: "string",
@@ -34671,35 +34206,28 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34708,12 +34236,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34722,23 +34248,19 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.front_back.front": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34789,8 +34311,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.script_addresses.kana.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.script_addresses.kana.line1": {
 			Type: "string",
@@ -34811,8 +34332,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.script_addresses.kanji.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.individual.script_addresses.kanji.line1": {
 			Type: "string",
@@ -35283,8 +34803,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"defaults.responsibilities.fees_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -35293,8 +34812,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			},
 		},
 		"defaults.responsibilities.losses_collector": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -35404,78 +34922,64 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.annual_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type: "string",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_license.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_license.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35487,41 +34991,34 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.business_details.documents.proof_of_address.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_address.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35530,12 +35027,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.phone": {
 			Type: "string",
@@ -35544,16 +35039,13 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.business_details.registration_date.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.registration_date.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type: "string",
@@ -35669,35 +35161,28 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.date_of_birth.day": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.month": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.date_of_birth.year": {
-			Type:     "integer",
-			Required: true,
+			Type: "integer",
 		},
 		"identity.individual.documents.company_authorization.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.company_authorization.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
 		},
 		"identity.individual.documents.passport.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.passport.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35709,8 +35194,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.primary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -35722,19 +35206,16 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"identity.individual.documents.secondary_verification.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
 		},
 		"identity.individual.documents.visa.files": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"identity.individual.documents.visa.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35872,8 +35353,7 @@ var V2PreviewCoreBatchJobsCreate = resource.OperationSpec{
 			Type: "integer",
 		},
 		"notification_suppression.scope": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -35900,12 +35380,10 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 	IsPreview: true,
 	Params: map[string]*resource.ParamSpec{
 		"amazon_eventbridge.aws_account_id": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"amazon_eventbridge.aws_region": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"description": {
 			Type: "string",
@@ -35945,8 +35423,7 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 			},
 		},
 		"webhook_endpoint.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -36028,8 +35505,7 @@ var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"webhook_endpoint.url": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 	},
 }
@@ -36100,8 +35576,7 @@ var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
 			},
 		},
 		"confirmation_of_payee.initiate": {
-			Type:     "boolean",
-			Required: true,
+			Type: "boolean",
 		},
 		"confirmation_of_payee.name": {
 			Type: "string",
@@ -36366,8 +35841,7 @@ var V2PreviewMoneyManagementFinancialAccountsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"storage.holds_currencies": {
-			Type:     "array",
-			Required: true,
+			Type: "array",
 		},
 		"type": {
 			Type:     "string",
@@ -36643,8 +36117,7 @@ var V2PreviewMoneyManagementOutboundPaymentsCreate = resource.OperationSpec{
 			Required: true,
 		},
 		"recipient_notification.setting": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "configured"},
 				{Value: "none"},
@@ -36728,8 +36201,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.bank_account_type": {
 			Type: "string",
@@ -36742,12 +36214,10 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.bank_account.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.routing_number": {
 			Type: "string",
@@ -36756,24 +36226,19 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.card.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.card.exp_month": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.card.exp_year": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.card.number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},
@@ -36822,8 +36287,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.bank_account.account_number": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.bank_account_type": {
 			Type: "string",
@@ -36836,12 +36300,10 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.bank_account.country": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.currency": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 		},
 		"payout_method_data.bank_account.routing_number": {
 			Type: "string",
@@ -36862,8 +36324,7 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payout_method_data.type": {
-			Type:     "string",
-			Required: true,
+			Type: "string",
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},

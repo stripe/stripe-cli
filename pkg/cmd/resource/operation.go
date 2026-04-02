@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -219,7 +220,84 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[opSpec.Name] = "operation"
 
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		if c.Example == "" {
+			c.Example = buildExamples(c.CommandPath(), opSpec)
+		}
+		defaultHelp(c, args)
+	})
+
 	return operationCmd
+}
+
+// paramFlagName converts a param key (underscore-separated) to its flag name (hyphen-separated).
+// e.g. "account_balance" → "account-balance", "usage_threshold.gte" → "usage-threshold.gte"
+func paramFlagName(param string) string {
+	return strings.ReplaceAll(param, "_", "-")
+}
+
+// exampleValue returns the placeholder value string to use in an example for the given param.
+// Enum params use their first allowed value; others use a type-tagged placeholder.
+func exampleValue(ps *ParamSpec) string {
+	if len(ps.Enum) > 0 {
+		return ps.Enum[0].Value
+	}
+	switch ps.Type {
+	case "integer":
+		return "<integer>"
+	case "boolean":
+		return "<boolean>"
+	default:
+		return "<string>"
+	}
+}
+
+// buildExamples generates up to two example invocations for a command's --help output.
+// The goal is quick orientation: the first section shows the absolute minimum needed to call
+// the API; the second shows a richer invocation with the most commonly useful parameters.
+//
+// Section 1 (# required fields): required params only. Omitted when there are no required params.
+// Section 2 (# common usage): required + MostCommon params. Omitted when MostCommon adds
+// nothing beyond required (i.e. when commonFields is empty).
+func buildExamples(cmdPath string, opSpec *OperationSpec) string {
+	var reqFields, commonFields []string
+	for name, p := range opSpec.Params {
+		if p.Required {
+			reqFields = append(reqFields, name)
+		} else if p.MostCommon {
+			commonFields = append(commonFields, name)
+		}
+	}
+	sort.Strings(reqFields)
+	sort.Strings(commonFields)
+
+	var sections []string
+	if len(reqFields) > 0 {
+		sections = append(sections, "  # required fields\n"+buildExampleLine(cmdPath, reqFields, opSpec.Params))
+	}
+	if len(commonFields) > 0 {
+		combined := append(append([]string{}, reqFields...), commonFields...)
+		sort.Strings(combined)
+		sections = append(sections, "  # common usage\n"+buildExampleLine(cmdPath, combined, opSpec.Params))
+	}
+	return strings.Join(sections, "\n\n")
+}
+
+// buildExampleLine constructs a single example command line for the given fields.
+func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamSpec) string {
+	var tokens []string
+	for _, field := range fields {
+		ps, ok := params[field]
+		if !ok {
+			continue
+		}
+		tokens = append(tokens, fmt.Sprintf("--%s %s", paramFlagName(field), exampleValue(ps)))
+	}
+	if len(tokens) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("  $ %s %s", cmdPath, strings.Join(tokens, " "))
 }
 
 //
