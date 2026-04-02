@@ -630,3 +630,63 @@ func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
 	result := buildExamples("stripe charges list", opSpec)
 	require.Equal(t, "", result)
 }
+
+func TestClearableObject_BracesTranslatedToEmptyString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "update",
+		Path:   "/v1/customers/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"shipping": {Type: "clearable_object"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("shipping", "{}")
+	parentCmd.SetArgs([]string{"update", "cus_123"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "", vals["shipping"][0], "{} should be translated to empty string for clearable_object")
+}
+
+func TestClearableObject_BracesNotTranslatedForPlainString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/things",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"name": {Type: "string"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("name", "{}")
+	parentCmd.SetArgs([]string{"create"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "{}", vals["name"][0], "{} should be sent as-is for plain string params")
+}

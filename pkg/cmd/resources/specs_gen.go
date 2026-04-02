@@ -655,6 +655,15 @@ var V1AccountsCreate = resource.OperationSpec{
 		"company.phone": {
 			Type: "string",
 		},
+		"company.registration_date.day": {
+			Type: "integer",
+		},
+		"company.registration_date.month": {
+			Type: "integer",
+		},
+		"company.registration_date.year": {
+			Type: "integer",
+		},
 		"company.registration_number": {
 			Type: "string",
 		},
@@ -850,6 +859,15 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"individual.address_kanji.town": {
 			Type: "string",
+		},
+		"individual.dob.day": {
+			Type: "integer",
+		},
+		"individual.dob.month": {
+			Type: "integer",
+		},
+		"individual.dob.year": {
+			Type: "integer",
 		},
 		"individual.email": {
 			Type: "string",
@@ -1518,6 +1536,15 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"company.phone": {
 			Type: "string",
 		},
+		"company.registration_date.day": {
+			Type: "integer",
+		},
+		"company.registration_date.month": {
+			Type: "integer",
+		},
+		"company.registration_date.year": {
+			Type: "integer",
+		},
 		"company.registration_number": {
 			Type: "string",
 		},
@@ -1680,6 +1707,15 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"individual.address_kanji.town": {
 			Type: "string",
+		},
+		"individual.dob.day": {
+			Type: "integer",
+		},
+		"individual.dob.month": {
+			Type: "integer",
+		},
+		"individual.dob.year": {
+			Type: "integer",
 		},
 		"individual.email": {
 			Type: "string",
@@ -3522,6 +3558,18 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			Type:   "string",
 			Format: "currency",
 		},
+		"custom_text.after_submit.message": {
+			Type: "string",
+		},
+		"custom_text.shipping_address.message": {
+			Type: "string",
+		},
+		"custom_text.submit.message": {
+			Type: "string",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type: "string",
+		},
 		"customer": {
 			Type:       "string",
 			MostCommon: true,
@@ -3592,6 +3640,16 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
+		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type: "string",
 		},
 		"locale": {
 			Type: "string",
@@ -4744,6 +4802,16 @@ var V1ClimateOrdersUpdate = resource.OperationSpec{
 	Name:   "update",
 	Path:   "/v1/climate/orders/{order}",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"beneficiary": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"beneficiary.public_name": {
+			Type:       "string",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1ClimateProductsList = resource.OperationSpec{
@@ -4834,6 +4902,24 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -5751,6 +5837,28 @@ var V1CustomersCreate = resource.OperationSpec{
 	Path:   "/v1/customers",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"address": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"address.city": {
+			Type: "string",
+		},
+		"address.country": {
+			Type: "string",
+		},
+		"address.line1": {
+			Type: "string",
+		},
+		"address.line2": {
+			Type: "string",
+		},
+		"address.postal_code": {
+			Type: "string",
+		},
+		"address.state": {
+			Type: "string",
+		},
 		"balance": {
 			Type: "integer",
 		},
@@ -5785,6 +5893,16 @@ var V1CustomersCreate = resource.OperationSpec{
 		"invoice_settings.footer": {
 			Type: "string",
 		},
+		"invoice_settings.rendering_options.amount_tax_display": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_settings.rendering_options.template": {
+			Type: "string",
+		},
 		"name": {
 			Type:       "string",
 			MostCommon: true,
@@ -5802,6 +5920,35 @@ var V1CustomersCreate = resource.OperationSpec{
 		},
 		"preferred_locales": {
 			Type: "array",
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type: "string",
+		},
+		"shipping.address.country": {
+			Type: "string",
+		},
+		"shipping.address.line1": {
+			Type: "string",
+		},
+		"shipping.address.line2": {
+			Type: "string",
+		},
+		"shipping.address.postal_code": {
+			Type: "string",
+		},
+		"shipping.address.state": {
+			Type: "string",
+		},
+		"shipping.name": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"shipping.phone": {
+			Type: "string",
 		},
 		"source": {
 			Type: "string",
@@ -6050,6 +6197,28 @@ var V1CustomersUpdate = resource.OperationSpec{
 	Path:   "/v1/customers/{customer}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"address": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"address.city": {
+			Type: "string",
+		},
+		"address.country": {
+			Type: "string",
+		},
+		"address.line1": {
+			Type: "string",
+		},
+		"address.line2": {
+			Type: "string",
+		},
+		"address.postal_code": {
+			Type: "string",
+		},
+		"address.state": {
+			Type: "string",
+		},
 		"balance": {
 			Type: "integer",
 		},
@@ -6087,6 +6256,16 @@ var V1CustomersUpdate = resource.OperationSpec{
 		"invoice_settings.footer": {
 			Type: "string",
 		},
+		"invoice_settings.rendering_options.amount_tax_display": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_settings.rendering_options.template": {
+			Type: "string",
+		},
 		"name": {
 			Type:       "string",
 			MostCommon: true,
@@ -6100,6 +6279,35 @@ var V1CustomersUpdate = resource.OperationSpec{
 		},
 		"preferred_locales": {
 			Type: "array",
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type: "string",
+		},
+		"shipping.address.country": {
+			Type: "string",
+		},
+		"shipping.address.line1": {
+			Type: "string",
+		},
+		"shipping.address.line2": {
+			Type: "string",
+		},
+		"shipping.address.postal_code": {
+			Type: "string",
+		},
+		"shipping.address.state": {
+			Type: "string",
+		},
+		"shipping.name": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"shipping.phone": {
+			Type: "string",
 		},
 		"source": {
 			Type: "string",
@@ -6210,6 +6418,52 @@ var V1DisputesUpdate = resource.OperationSpec{
 		},
 		"evidence.duplicate_charge_id": {
 			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_account_id": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_device_fingerprint": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_device_id": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_email_address": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_purchase_ip": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.merchandise_or_services": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "services"},
+			},
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.product_description": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.city": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.country": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.line1": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.line2": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.postal_code": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.state": {
+			Type: "string",
+		},
+		"evidence.enhanced_evidence.visa_compliance.fee_acknowledged": {
+			Type: "boolean",
 		},
 		"evidence.product_description": {
 			Type: "string",
@@ -6988,6 +7242,18 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 			Type:       "string",
 			MostCommon: true,
 		},
+		"options.document.allowed_types": {
+			Type: "array",
+		},
+		"options.document.require_id_number": {
+			Type: "boolean",
+		},
+		"options.document.require_live_capture": {
+			Type: "boolean",
+		},
+		"options.document.require_matching_selfie": {
+			Type: "boolean",
+		},
 		"provided_details.email": {
 			Type: "string",
 		},
@@ -7084,6 +7350,18 @@ var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
 	Path:   "/v1/identity/verification_sessions/{session}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"options.document.allowed_types": {
+			Type: "array",
+		},
+		"options.document.require_id_number": {
+			Type: "boolean",
+		},
+		"options.document.require_live_capture": {
+			Type: "boolean",
+		},
+		"options.document.require_matching_selfie": {
+			Type: "boolean",
+		},
 		"provided_details.email": {
 			Type: "string",
 		},
@@ -7507,6 +7785,12 @@ var V1InvoicesAddLines = resource.OperationSpec{
 	Name:   "add_lines",
 	Path:   "/v1/invoices/{invoice}/add_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesAttachPayment = resource.OperationSpec{
@@ -7632,6 +7916,103 @@ var V1InvoicesCreate = resource.OperationSpec{
 		},
 		"payment_settings.default_mandate": {
 			Type: "string",
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.enabled": {
+			Type: "boolean",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.count": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.plan.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
 		},
 		"payment_settings.payment_method_types": {
 			Type: "array",
@@ -7790,6 +8171,48 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"customer_account": {
 			Type:       "string",
 			MostCommon: true,
+		},
+		"customer_details.address.city": {
+			Type: "string",
+		},
+		"customer_details.address.country": {
+			Type: "string",
+		},
+		"customer_details.address.line1": {
+			Type: "string",
+		},
+		"customer_details.address.line2": {
+			Type: "string",
+		},
+		"customer_details.address.postal_code": {
+			Type: "string",
+		},
+		"customer_details.address.state": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.city": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.country": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.line1": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.line2": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.postal_code": {
+			Type: "string",
+		},
+		"customer_details.shipping.address.state": {
+			Type: "string",
+		},
+		"customer_details.shipping.name": {
+			Type: "string",
+		},
+		"customer_details.shipping.phone": {
+			Type: "string",
 		},
 		"customer_details.tax.ip_address": {
 			Type: "string",
@@ -8018,6 +8441,12 @@ var V1InvoicesRemoveLines = resource.OperationSpec{
 	Name:   "remove_lines",
 	Path:   "/v1/invoices/{invoice}/remove_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesRetrieve = resource.OperationSpec{
@@ -8136,6 +8565,103 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"payment_settings.default_mandate": {
 			Type: "string",
 		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.enabled": {
+			Type: "boolean",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.count": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.plan.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
 		"payment_settings.payment_method_types": {
 			Type: "array",
 		},
@@ -8160,7 +8686,102 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"rendering.template_version": {
 			Type: "integer",
 		},
+		"shipping_cost": {
+			Type: "clearable_object",
+		},
+		"shipping_cost.shipping_rate": {
+			Type: "string",
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.unit": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business_day"},
+				{Value: "day"},
+				{Value: "hour"},
+				{Value: "month"},
+				{Value: "week"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.value": {
+			Type: "integer",
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.unit": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business_day"},
+				{Value: "day"},
+				{Value: "hour"},
+				{Value: "month"},
+				{Value: "week"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.value": {
+			Type: "integer",
+		},
+		"shipping_cost.shipping_rate_data.display_name": {
+			Type: "string",
+		},
+		"shipping_cost.shipping_rate_data.fixed_amount.amount": {
+			Type: "integer",
+		},
+		"shipping_cost.shipping_rate_data.fixed_amount.currency": {
+			Type:   "string",
+			Format: "currency",
+		},
+		"shipping_cost.shipping_rate_data.tax_behavior": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclusive"},
+				{Value: "inclusive"},
+				{Value: "unspecified"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.tax_code": {
+			Type: "string",
+		},
+		"shipping_cost.shipping_rate_data.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed_amount"},
+			},
+		},
+		"shipping_details": {
+			Type: "clearable_object",
+		},
+		"shipping_details.address.city": {
+			Type: "string",
+		},
+		"shipping_details.address.country": {
+			Type: "string",
+		},
+		"shipping_details.address.line1": {
+			Type: "string",
+		},
+		"shipping_details.address.line2": {
+			Type: "string",
+		},
+		"shipping_details.address.postal_code": {
+			Type: "string",
+		},
+		"shipping_details.address.state": {
+			Type: "string",
+		},
+		"shipping_details.name": {
+			Type: "string",
+		},
+		"shipping_details.phone": {
+			Type: "string",
+		},
 		"statement_descriptor": {
+			Type: "string",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type: "integer",
+		},
+		"transfer_data.destination": {
 			Type: "string",
 		},
 	},
@@ -8170,6 +8791,12 @@ var V1InvoicesUpdateLines = resource.OperationSpec{
 	Name:   "update_lines",
 	Path:   "/v1/invoices/{invoice}/update_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesVoidInvoice = resource.OperationSpec{
@@ -9633,6 +10260,131 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 		"amount": {
 			Type: "integer",
 		},
+		"evidence.canceled.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.canceled.canceled_at": {
+			Type: "integer",
+		},
+		"evidence.canceled.cancellation_policy_provided": {
+			Type: "boolean",
+		},
+		"evidence.canceled.cancellation_reason": {
+			Type: "string",
+		},
+		"evidence.canceled.expected_at": {
+			Type: "integer",
+		},
+		"evidence.canceled.explanation": {
+			Type: "string",
+		},
+		"evidence.canceled.product_description": {
+			Type: "string",
+		},
+		"evidence.canceled.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.canceled.return_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.canceled.returned_at": {
+			Type: "integer",
+		},
+		"evidence.duplicate.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.duplicate.card_statement": {
+			Type: "string",
+		},
+		"evidence.duplicate.cash_receipt": {
+			Type: "string",
+		},
+		"evidence.duplicate.check_image": {
+			Type: "string",
+		},
+		"evidence.duplicate.explanation": {
+			Type: "string",
+		},
+		"evidence.duplicate.original_transaction": {
+			Type: "string",
+		},
+		"evidence.fraudulent.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.fraudulent.explanation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.explanation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.received_at": {
+			Type: "integer",
+		},
+		"evidence.merchandise_not_as_described.return_description": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.return_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.merchandise_not_as_described.returned_at": {
+			Type: "integer",
+		},
+		"evidence.no_valid_authorization.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.no_valid_authorization.explanation": {
+			Type: "string",
+		},
+		"evidence.not_received.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.not_received.expected_at": {
+			Type: "integer",
+		},
+		"evidence.not_received.explanation": {
+			Type: "string",
+		},
+		"evidence.not_received.product_description": {
+			Type: "string",
+		},
+		"evidence.not_received.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.other.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.other.explanation": {
+			Type: "string",
+		},
+		"evidence.other.product_description": {
+			Type: "string",
+		},
+		"evidence.other.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
 		"evidence.reason": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -9645,6 +10397,21 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 				{Value: "other"},
 				{Value: "service_not_as_described"},
 			},
+		},
+		"evidence.service_not_as_described.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.canceled_at": {
+			Type: "integer",
+		},
+		"evidence.service_not_as_described.cancellation_reason": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.explanation": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.received_at": {
+			Type: "integer",
 		},
 		"transaction": {
 			Type:       "string",
@@ -9709,6 +10476,131 @@ var V1IssuingDisputesUpdate = resource.OperationSpec{
 		"amount": {
 			Type: "integer",
 		},
+		"evidence.canceled.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.canceled.canceled_at": {
+			Type: "integer",
+		},
+		"evidence.canceled.cancellation_policy_provided": {
+			Type: "boolean",
+		},
+		"evidence.canceled.cancellation_reason": {
+			Type: "string",
+		},
+		"evidence.canceled.expected_at": {
+			Type: "integer",
+		},
+		"evidence.canceled.explanation": {
+			Type: "string",
+		},
+		"evidence.canceled.product_description": {
+			Type: "string",
+		},
+		"evidence.canceled.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.canceled.return_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.canceled.returned_at": {
+			Type: "integer",
+		},
+		"evidence.duplicate.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.duplicate.card_statement": {
+			Type: "string",
+		},
+		"evidence.duplicate.cash_receipt": {
+			Type: "string",
+		},
+		"evidence.duplicate.check_image": {
+			Type: "string",
+		},
+		"evidence.duplicate.explanation": {
+			Type: "string",
+		},
+		"evidence.duplicate.original_transaction": {
+			Type: "string",
+		},
+		"evidence.fraudulent.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.fraudulent.explanation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.explanation": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.received_at": {
+			Type: "integer",
+		},
+		"evidence.merchandise_not_as_described.return_description": {
+			Type: "string",
+		},
+		"evidence.merchandise_not_as_described.return_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.merchandise_not_as_described.returned_at": {
+			Type: "integer",
+		},
+		"evidence.no_valid_authorization.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.no_valid_authorization.explanation": {
+			Type: "string",
+		},
+		"evidence.not_received.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.not_received.expected_at": {
+			Type: "integer",
+		},
+		"evidence.not_received.explanation": {
+			Type: "string",
+		},
+		"evidence.not_received.product_description": {
+			Type: "string",
+		},
+		"evidence.not_received.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.other.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.other.explanation": {
+			Type: "string",
+		},
+		"evidence.other.product_description": {
+			Type: "string",
+		},
+		"evidence.other.product_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
 		"evidence.reason": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -9721,6 +10613,21 @@ var V1IssuingDisputesUpdate = resource.OperationSpec{
 				{Value: "other"},
 				{Value: "service_not_as_described"},
 			},
+		},
+		"evidence.service_not_as_described.additional_documentation": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.canceled_at": {
+			Type: "integer",
+		},
+		"evidence.service_not_as_described.cancellation_reason": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.explanation": {
+			Type: "string",
+		},
+		"evidence.service_not_as_described.received_at": {
+			Type: "integer",
 		},
 	},
 }
@@ -9839,6 +10746,22 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 		"card_logo": {
 			Type:       "string",
 			MostCommon: true,
+		},
+		"carrier_text": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"carrier_text.footer_body": {
+			Type: "string",
+		},
+		"carrier_text.footer_title": {
+			Type: "string",
+		},
+		"carrier_text.header_body": {
+			Type: "string",
+		},
+		"carrier_text.header_title": {
+			Type: "string",
 		},
 		"lookup_key": {
 			Type:       "string",
@@ -11111,6 +12034,18 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 		"amount_details.enforce_arithmetic_validation": {
 			Type: "boolean",
 		},
+		"amount_details.shipping.amount": {
+			Type: "integer",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type: "string",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type: "string",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type: "integer",
+		},
 		"amount_to_capture": {
 			Type:       "integer",
 			MostCommon: true,
@@ -11122,6 +12057,15 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 			Type: "boolean",
 		},
 		"hooks.inputs.tax.calculation": {
+			Type: "string",
+		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type: "string",
+		},
+		"payment_details.order_reference": {
 			Type: "string",
 		},
 		"statement_descriptor": {
@@ -11141,6 +12085,27 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 	Path:   "/v1/payment_intents/{intent}/confirm",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"amount_details": {
+			Type: "clearable_object",
+		},
+		"amount_details.discount_amount": {
+			Type: "integer",
+		},
+		"amount_details.enforce_arithmetic_validation": {
+			Type: "boolean",
+		},
+		"amount_details.shipping.amount": {
+			Type: "integer",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type: "string",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type: "string",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type: "integer",
+		},
 		"capture_method": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -11164,8 +12129,37 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"mandate": {
 			Type: "string",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"off_session": {
 			Type: "boolean",
+		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type: "string",
+		},
+		"payment_details.order_reference": {
+			Type: "string",
 		},
 		"payment_method": {
 			Type:       "string",
@@ -11198,6 +12192,24 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -11493,6 +12505,993 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.us_bank_account.routing_number": {
 			Type: "string",
 		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type: "string",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type: "string",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type: "string",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type: "string",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type: "array",
+		},
+		"payment_method_options.card.moto": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type: "string",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type: "integer",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type: "array",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type: "string",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type: "boolean",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type: "string",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type: "integer",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type: "string",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type: "string",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_types": {
 			Type: "array",
 		},
@@ -11513,6 +13512,41 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type: "string",
+		},
+		"shipping.address.country": {
+			Type: "string",
+		},
+		"shipping.address.line1": {
+			Type: "string",
+		},
+		"shipping.address.line2": {
+			Type: "string",
+		},
+		"shipping.address.postal_code": {
+			Type: "string",
+		},
+		"shipping.address.state": {
+			Type: "string",
+		},
+		"shipping.carrier": {
+			Type: "string",
+		},
+		"shipping.name": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"shipping.phone": {
+			Type: "string",
+		},
+		"shipping.tracking_number": {
+			Type: "string",
 		},
 		"use_stripe_sdk": {
 			Type: "boolean",
@@ -11535,6 +13569,18 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		},
 		"amount_details.enforce_arithmetic_validation": {
 			Type: "boolean",
+		},
+		"amount_details.shipping.amount": {
+			Type: "integer",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type: "string",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type: "string",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type: "integer",
 		},
 		"application_fee_amount": {
 			Type: "integer",
@@ -11602,6 +13648,26 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"mandate": {
 			Type: "string",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"off_session": {
 			Type:       "boolean",
 			MostCommon: true,
@@ -11649,6 +13715,24 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -11943,6 +14027,993 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		},
 		"payment_method_data.us_bank_account.routing_number": {
 			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type: "string",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type: "string",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type: "string",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type: "string",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type: "array",
+		},
+		"payment_method_options.card.moto": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type: "string",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type: "integer",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type: "array",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type: "string",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type: "boolean",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type: "string",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type: "integer",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type: "string",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type: "string",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
 		},
 		"payment_method_types": {
 			Type: "array",
@@ -12035,6 +15106,18 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 		"amount_details.enforce_arithmetic_validation": {
 			Type: "boolean",
 		},
+		"amount_details.shipping.amount": {
+			Type: "integer",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type: "string",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type: "string",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type: "integer",
+		},
 		"application_fee_amount": {
 			Type: "integer",
 		},
@@ -12125,6 +15208,27 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type:       "integer",
 			MostCommon: true,
 		},
+		"amount_details": {
+			Type: "clearable_object",
+		},
+		"amount_details.discount_amount": {
+			Type: "integer",
+		},
+		"amount_details.enforce_arithmetic_validation": {
+			Type: "boolean",
+		},
+		"amount_details.shipping.amount": {
+			Type: "integer",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type: "string",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type: "string",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type: "integer",
+		},
 		"application_fee_amount": {
 			Type: "integer",
 		},
@@ -12157,6 +15261,15 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "array",
 		},
 		"hooks.inputs.tax.calculation": {
+			Type: "string",
+		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type: "string",
+		},
+		"payment_details.order_reference": {
 			Type: "string",
 		},
 		"payment_method": {
@@ -12193,6 +15306,24 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -12488,6 +15619,993 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.us_bank_account.routing_number": {
 			Type: "string",
 		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type: "string",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type: "string",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type: "string",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type: "string",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type: "string",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type: "array",
+		},
+		"payment_method_options.card.moto": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type: "boolean",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type: "string",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type: "integer",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type: "string",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type: "boolean",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type: "array",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type: "integer",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type: "integer",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type: "string",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type: "string",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type: "integer",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type: "boolean",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type: "string",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type: "string",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type: "integer",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type: "integer",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type: "string",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type: "string",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type: "array",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type: "string",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type: "string",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_types": {
 			Type: "array",
 		},
@@ -12502,6 +16620,41 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type: "string",
+		},
+		"shipping.address.country": {
+			Type: "string",
+		},
+		"shipping.address.line1": {
+			Type: "string",
+		},
+		"shipping.address.line2": {
+			Type: "string",
+		},
+		"shipping.address.postal_code": {
+			Type: "string",
+		},
+		"shipping.address.state": {
+			Type: "string",
+		},
+		"shipping.carrier": {
+			Type: "string",
+		},
+		"shipping.name": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"shipping.phone": {
+			Type: "string",
+		},
+		"shipping.tracking_number": {
+			Type: "string",
 		},
 		"statement_descriptor": {
 			Type:       "string",
@@ -12608,6 +16761,18 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			Type:   "string",
 			Format: "currency",
 		},
+		"custom_text.after_submit.message": {
+			Type: "string",
+		},
+		"custom_text.shipping_address.message": {
+			Type: "string",
+		},
+		"custom_text.submit.message": {
+			Type: "string",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type: "string",
+		},
 		"customer_creation": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -12639,6 +16804,16 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
+		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type: "string",
 		},
 		"name_collection.business.enabled": {
 			Type: "boolean",
@@ -12842,6 +17017,18 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "required"},
 			},
 		},
+		"custom_text.after_submit.message": {
+			Type: "string",
+		},
+		"custom_text.shipping_address.message": {
+			Type: "string",
+		},
+		"custom_text.submit.message": {
+			Type: "string",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type: "string",
+		},
 		"customer_creation": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -12874,6 +17061,31 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "self"},
 			},
 		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type: "string",
+		},
+		"name_collection": {
+			Type: "clearable_object",
+		},
+		"name_collection.business.enabled": {
+			Type: "boolean",
+		},
+		"name_collection.business.optional": {
+			Type: "boolean",
+		},
+		"name_collection.individual.enabled": {
+			Type: "boolean",
+		},
+		"name_collection.individual.optional": {
+			Type: "boolean",
+		},
 		"payment_intent_data.description": {
 			Type: "string",
 		},
@@ -12899,6 +17111,18 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"phone_number_collection.enabled": {
 			Type: "boolean",
 		},
+		"restrictions": {
+			Type: "clearable_object",
+		},
+		"restrictions.completed_sessions.limit": {
+			Type: "integer",
+		},
+		"shipping_address_collection": {
+			Type: "clearable_object",
+		},
+		"shipping_address_collection.allowed_countries": {
+			Type: "array",
+		},
 		"submit_type": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -12921,6 +17145,14 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		},
 		"subscription_data.trial_period_days": {
 			Type: "integer",
+		},
+		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cancel"},
+				{Value: "create_invoice"},
+				{Value: "pause"},
+			},
 		},
 		"tax_id_collection.enabled": {
 			Type: "boolean",
@@ -14019,6 +18251,24 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"bacs_debit.sort_code": {
 			Type: "string",
 		},
+		"billing_details.address.city": {
+			Type: "string",
+		},
+		"billing_details.address.country": {
+			Type: "string",
+		},
+		"billing_details.address.line1": {
+			Type: "string",
+		},
+		"billing_details.address.line2": {
+			Type: "string",
+		},
+		"billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"billing_details.address.state": {
+			Type: "string",
+		},
 		"billing_details.email": {
 			Type: "string",
 		},
@@ -14032,6 +18282,26 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"boleto.tax_id": {
+			Type: "string",
+		},
+		"card.cvc": {
+			Type: "string",
+		},
+		"card.exp_month": {
+			Type: "integer",
+		},
+		"card.exp_year": {
+			Type: "integer",
+		},
+		"card.networks.preferred": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cartes_bancaires"},
+				{Value: "mastercard"},
+				{Value: "visa"},
+			},
+		},
+		"card.number": {
 			Type: "string",
 		},
 		"custom.type": {
@@ -14442,6 +18712,24 @@ var V1PaymentMethodsUpdate = resource.OperationSpec{
 				{Value: "unspecified"},
 			},
 		},
+		"billing_details.address.city": {
+			Type: "string",
+		},
+		"billing_details.address.country": {
+			Type: "string",
+		},
+		"billing_details.address.line1": {
+			Type: "string",
+		},
+		"billing_details.address.line2": {
+			Type: "string",
+		},
+		"billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"billing_details.address.state": {
+			Type: "string",
+		},
 		"billing_details.email": {
 			Type: "string",
 		},
@@ -14802,6 +19090,34 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 			Type:       "string",
 			MostCommon: true,
 		},
+		"shipping_details": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping_details.address.city": {
+			Type: "string",
+		},
+		"shipping_details.address.country": {
+			Type: "string",
+		},
+		"shipping_details.address.line1": {
+			Type: "string",
+		},
+		"shipping_details.address.line2": {
+			Type: "string",
+		},
+		"shipping_details.address.postal_code": {
+			Type: "string",
+		},
+		"shipping_details.address.state": {
+			Type: "string",
+		},
+		"shipping_details.name": {
+			Type: "string",
+		},
+		"shipping_details.phone": {
+			Type: "string",
+		},
 	},
 }
 
@@ -15076,6 +19392,22 @@ var V1PersonsCreate = resource.OperationSpec{
 		"address_kanji.town": {
 			Type: "string",
 		},
+		"dob": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"dob.day": {
+			Type:       "integer",
+			MostCommon: true,
+		},
+		"dob.month": {
+			Type:       "integer",
+			MostCommon: true,
+		},
+		"dob.year": {
+			Type:       "integer",
+			MostCommon: true,
+		},
 		"documents.company_authorization.files": {
 			Type: "array",
 		},
@@ -15322,6 +19654,22 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"address_kanji.town": {
 			Type: "string",
 		},
+		"dob": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"dob.day": {
+			Type:       "integer",
+			MostCommon: true,
+		},
+		"dob.month": {
+			Type:       "integer",
+			MostCommon: true,
+		},
+		"dob.year": {
+			Type:       "integer",
+			MostCommon: true,
+		},
 		"documents.company_authorization.files": {
 			Type: "array",
 		},
@@ -15518,9 +19866,24 @@ var V1PlansCreate = resource.OperationSpec{
 			Type:       "string",
 			MostCommon: true,
 		},
-		"product": {
+		"product.active": {
+			Type: "boolean",
+		},
+		"product.id": {
+			Type: "string",
+		},
+		"product.name": {
 			Type:       "string",
 			MostCommon: true,
+		},
+		"product.statement_descriptor": {
+			Type: "string",
+		},
+		"product.tax_code": {
+			Type: "string",
+		},
+		"product.unit_label": {
+			Type: "string",
 		},
 		"tiers_mode": {
 			Type: "string",
@@ -15814,6 +20177,9 @@ var V1PricesUpdate = resource.OperationSpec{
 			Type:       "boolean",
 			MostCommon: true,
 		},
+		"currency_options": {
+			Type: "clearable_object",
+		},
 		"lookup_key": {
 			Type: "string",
 		},
@@ -16077,6 +20443,21 @@ var V1ProductsUpdate = resource.OperationSpec{
 			Type:       "string",
 			MostCommon: true,
 		},
+		"package_dimensions": {
+			Type: "clearable_object",
+		},
+		"package_dimensions.height": {
+			Type: "number",
+		},
+		"package_dimensions.length": {
+			Type: "number",
+		},
+		"package_dimensions.weight": {
+			Type: "number",
+		},
+		"package_dimensions.width": {
+			Type: "number",
+		},
 		"shippable": {
 			Type: "boolean",
 		},
@@ -16310,6 +20691,18 @@ var V1QuotesCreate = resource.OperationSpec{
 		"test_clock": {
 			Type: "string",
 		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type: "integer",
+		},
+		"transfer_data.amount_percent": {
+			Type: "number",
+		},
+		"transfer_data.destination": {
+			Type: "string",
+		},
 	},
 }
 
@@ -16484,6 +20877,18 @@ var V1QuotesUpdate = resource.OperationSpec{
 		},
 		"subscription_data.trial_period_days": {
 			Type: "integer",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type: "integer",
+		},
+		"transfer_data.amount_percent": {
+			Type: "number",
+		},
+		"transfer_data.destination": {
+			Type: "string",
 		},
 	},
 }
@@ -17714,6 +22119,26 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"confirmation_token": {
 			Type: "string",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"payment_method": {
 			Type:       "string",
 			MostCommon: true,
@@ -17745,6 +22170,24 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -18453,6 +22896,26 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"flow_directions": {
 			Type: "array",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type: "string",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"on_behalf_of": {
 			Type: "string",
 		},
@@ -18490,6 +22953,24 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -19275,6 +23756,24 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -20444,6 +24943,12 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 	Path:   "/v1/subscription_items",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.usage_gte": {
+			Type: "integer",
+		},
 		"payment_behavior": {
 			Type:       "string",
 			MostCommon: true,
@@ -20561,6 +25066,12 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 	Path:   "/v1/subscription_items/{item}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.usage_gte": {
+			Type: "integer",
+		},
 		"off_session": {
 			Type: "boolean",
 		},
@@ -20702,6 +25213,12 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 				{Value: "phase_start"},
 			},
 		},
+		"default_settings.billing_thresholds.amount_gte": {
+			Type: "integer",
+		},
+		"default_settings.billing_thresholds.reset_billing_cycle_anchor": {
+			Type: "boolean",
+		},
 		"default_settings.collection_method": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -20732,6 +25249,12 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 			},
 		},
 		"default_settings.on_behalf_of": {
+			Type: "string",
+		},
+		"default_settings.transfer_data.amount_percent": {
+			Type: "number",
+		},
+		"default_settings.transfer_data.destination": {
 			Type: "string",
 		},
 		"end_behavior": {
@@ -20836,6 +25359,12 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 				{Value: "phase_start"},
 			},
 		},
+		"default_settings.billing_thresholds.amount_gte": {
+			Type: "integer",
+		},
+		"default_settings.billing_thresholds.reset_billing_cycle_anchor": {
+			Type: "boolean",
+		},
 		"default_settings.collection_method": {
 			Type: "string",
 			Enum: []resource.EnumSpec{
@@ -20866,6 +25395,12 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 			},
 		},
 		"default_settings.on_behalf_of": {
+			Type: "string",
+		},
+		"default_settings.transfer_data.amount_percent": {
+			Type: "number",
+		},
+		"default_settings.transfer_data.destination": {
 			Type: "string",
 		},
 		"end_behavior": {
@@ -20954,6 +25489,15 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "flexible"},
 			},
 		},
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.amount_gte": {
+			Type: "integer",
+		},
+		"billing_thresholds.reset_billing_cycle_anchor": {
+			Type: "boolean",
+		},
 		"cancel_at": {
 			Type: "integer",
 		},
@@ -21026,6 +25570,114 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "pending_if_incomplete"},
 			},
 		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.card.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
 		"payment_settings.payment_method_types": {
 			Type: "array",
 		},
@@ -21035,6 +25687,21 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "off"},
 				{Value: "on_subscription"},
 			},
+		},
+		"pending_invoice_item_interval": {
+			Type: "clearable_object",
+		},
+		"pending_invoice_item_interval.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"pending_invoice_item_interval.interval_count": {
+			Type: "integer",
 		},
 		"proration_behavior": {
 			Type: "string",
@@ -21244,6 +25911,15 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "unchanged"},
 			},
 		},
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.amount_gte": {
+			Type: "integer",
+		},
+		"billing_thresholds.reset_billing_cycle_anchor": {
+			Type: "boolean",
+		},
 		"cancel_at": {
 			Type: "integer",
 		},
@@ -21309,6 +25985,21 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"on_behalf_of": {
 			Type: "string",
 		},
+		"pause_collection": {
+			Type: "clearable_object",
+		},
+		"pause_collection.behavior": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "keep_as_draft"},
+				{Value: "mark_uncollectible"},
+				{Value: "void"},
+			},
+		},
+		"pause_collection.resumes_at": {
+			Type:   "integer",
+			Format: "unix-time",
+		},
 		"payment_behavior": {
 			Type:       "string",
 			MostCommon: true,
@@ -21317,6 +26008,114 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "default_incomplete"},
 				{Value: "error_if_incomplete"},
 				{Value: "pending_if_incomplete"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount_type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.description": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.card.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type: "string",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type: "integer",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type: "array",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
 			},
 		},
 		"payment_settings.payment_method_types": {
@@ -21328,6 +26127,21 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "off"},
 				{Value: "on_subscription"},
 			},
+		},
+		"pending_invoice_item_interval": {
+			Type: "clearable_object",
+		},
+		"pending_invoice_item_interval.interval": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"pending_invoice_item_interval.interval_count": {
+			Type: "integer",
 		},
 		"proration_behavior": {
 			Type:       "string",
@@ -21341,6 +26155,15 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"proration_date": {
 			Type:   "integer",
 			Format: "unix-time",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount_percent": {
+			Type: "number",
+		},
+		"transfer_data.destination": {
+			Type: "string",
 		},
 		"trial_end": {
 			Type: "string",
@@ -23151,8 +27974,20 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 		"bbpos_wisepos_e.splashscreen": {
 			Type: "string",
 		},
+		"cellular": {
+			Type: "clearable_object",
+		},
+		"cellular.enabled": {
+			Type: "boolean",
+		},
 		"name": {
 			Type: "string",
+		},
+		"offline": {
+			Type: "clearable_object",
+		},
+		"offline.enabled": {
+			Type: "boolean",
 		},
 		"reboot_window.end_hour": {
 			Type: "integer",
@@ -23166,8 +28001,245 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 		"stripe_s710.splashscreen": {
 			Type: "string",
 		},
+		"tipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"tipping.aed.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.aed.percentages": {
+			Type: "array",
+		},
+		"tipping.aed.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.aud.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.aud.percentages": {
+			Type: "array",
+		},
+		"tipping.aud.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.cad.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.cad.percentages": {
+			Type: "array",
+		},
+		"tipping.cad.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.chf.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.chf.percentages": {
+			Type: "array",
+		},
+		"tipping.chf.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.czk.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.czk.percentages": {
+			Type: "array",
+		},
+		"tipping.czk.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.dkk.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.dkk.percentages": {
+			Type: "array",
+		},
+		"tipping.dkk.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.eur.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.eur.percentages": {
+			Type: "array",
+		},
+		"tipping.eur.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.gbp.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.gbp.percentages": {
+			Type: "array",
+		},
+		"tipping.gbp.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.gip.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.gip.percentages": {
+			Type: "array",
+		},
+		"tipping.gip.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.hkd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.hkd.percentages": {
+			Type: "array",
+		},
+		"tipping.hkd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.huf.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.huf.percentages": {
+			Type: "array",
+		},
+		"tipping.huf.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.jpy.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.jpy.percentages": {
+			Type: "array",
+		},
+		"tipping.jpy.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.mxn.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.mxn.percentages": {
+			Type: "array",
+		},
+		"tipping.mxn.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.myr.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.myr.percentages": {
+			Type: "array",
+		},
+		"tipping.myr.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.nok.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.nok.percentages": {
+			Type: "array",
+		},
+		"tipping.nok.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.nzd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.nzd.percentages": {
+			Type: "array",
+		},
+		"tipping.nzd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.pln.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.pln.percentages": {
+			Type: "array",
+		},
+		"tipping.pln.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.ron.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.ron.percentages": {
+			Type: "array",
+		},
+		"tipping.ron.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.sek.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.sek.percentages": {
+			Type: "array",
+		},
+		"tipping.sek.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.sgd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.sgd.percentages": {
+			Type: "array",
+		},
+		"tipping.sgd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.usd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.usd.percentages": {
+			Type: "array",
+		},
+		"tipping.usd.smart_tip_threshold": {
+			Type: "integer",
+		},
 		"verifone_p400.splashscreen": {
 			Type: "string",
+		},
+		"wifi": {
+			Type: "clearable_object",
+		},
+		"wifi.enterprise_eap_peap.ca_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.password": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.ssid": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.username": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.ca_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.client_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.private_key_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.private_key_file_password": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.ssid": {
+			Type: "string",
+		},
+		"wifi.personal_psk.password": {
+			Type: "string",
+		},
+		"wifi.personal_psk.ssid": {
+			Type: "string",
+		},
+		"wifi.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "enterprise_eap_peap"},
+				{Value: "enterprise_eap_tls"},
+				{Value: "personal_psk"},
+			},
 		},
 	},
 }
@@ -23209,8 +28281,300 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 	Path:   "/v1/terminal/configurations/{configuration}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"bbpos_wisepad3": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"bbpos_wisepad3.splashscreen": {
+			Type: "string",
+		},
+		"bbpos_wisepos_e": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"bbpos_wisepos_e.splashscreen": {
+			Type: "string",
+		},
+		"cellular": {
+			Type: "clearable_object",
+		},
+		"cellular.enabled": {
+			Type: "boolean",
+		},
 		"name": {
 			Type: "string",
+		},
+		"offline": {
+			Type: "clearable_object",
+		},
+		"offline.enabled": {
+			Type: "boolean",
+		},
+		"reboot_window": {
+			Type: "clearable_object",
+		},
+		"reboot_window.end_hour": {
+			Type: "integer",
+		},
+		"reboot_window.start_hour": {
+			Type: "integer",
+		},
+		"stripe_s700": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"stripe_s700.splashscreen": {
+			Type: "string",
+		},
+		"stripe_s710": {
+			Type: "clearable_object",
+		},
+		"stripe_s710.splashscreen": {
+			Type: "string",
+		},
+		"tipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"tipping.aed.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.aed.percentages": {
+			Type: "array",
+		},
+		"tipping.aed.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.aud.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.aud.percentages": {
+			Type: "array",
+		},
+		"tipping.aud.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.cad.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.cad.percentages": {
+			Type: "array",
+		},
+		"tipping.cad.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.chf.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.chf.percentages": {
+			Type: "array",
+		},
+		"tipping.chf.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.czk.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.czk.percentages": {
+			Type: "array",
+		},
+		"tipping.czk.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.dkk.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.dkk.percentages": {
+			Type: "array",
+		},
+		"tipping.dkk.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.eur.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.eur.percentages": {
+			Type: "array",
+		},
+		"tipping.eur.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.gbp.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.gbp.percentages": {
+			Type: "array",
+		},
+		"tipping.gbp.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.gip.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.gip.percentages": {
+			Type: "array",
+		},
+		"tipping.gip.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.hkd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.hkd.percentages": {
+			Type: "array",
+		},
+		"tipping.hkd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.huf.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.huf.percentages": {
+			Type: "array",
+		},
+		"tipping.huf.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.jpy.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.jpy.percentages": {
+			Type: "array",
+		},
+		"tipping.jpy.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.mxn.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.mxn.percentages": {
+			Type: "array",
+		},
+		"tipping.mxn.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.myr.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.myr.percentages": {
+			Type: "array",
+		},
+		"tipping.myr.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.nok.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.nok.percentages": {
+			Type: "array",
+		},
+		"tipping.nok.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.nzd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.nzd.percentages": {
+			Type: "array",
+		},
+		"tipping.nzd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.pln.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.pln.percentages": {
+			Type: "array",
+		},
+		"tipping.pln.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.ron.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.ron.percentages": {
+			Type: "array",
+		},
+		"tipping.ron.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.sek.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.sek.percentages": {
+			Type: "array",
+		},
+		"tipping.sek.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.sgd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.sgd.percentages": {
+			Type: "array",
+		},
+		"tipping.sgd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"tipping.usd.fixed_amounts": {
+			Type: "array",
+		},
+		"tipping.usd.percentages": {
+			Type: "array",
+		},
+		"tipping.usd.smart_tip_threshold": {
+			Type: "integer",
+		},
+		"verifone_p400": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"verifone_p400.splashscreen": {
+			Type: "string",
+		},
+		"wifi": {
+			Type: "clearable_object",
+		},
+		"wifi.enterprise_eap_peap.ca_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.password": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.ssid": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_peap.username": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.ca_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.client_certificate_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.private_key_file": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.private_key_file_password": {
+			Type: "string",
+		},
+		"wifi.enterprise_eap_tls.ssid": {
+			Type: "string",
+		},
+		"wifi.personal_psk.password": {
+			Type: "string",
+		},
+		"wifi.personal_psk.ssid": {
+			Type: "string",
+		},
+		"wifi.type": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "enterprise_eap_peap"},
+				{Value: "enterprise_eap_tls"},
+				{Value: "personal_psk"},
+			},
 		},
 	},
 }
@@ -23814,6 +29178,24 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 			Type: "string",
 		},
 		"payment_method_data.bacs_debit.sort_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"payment_method_data.billing_details.address.state": {
 			Type: "string",
 		},
 		"payment_method_data.billing_details.email": {
@@ -26521,6 +31903,15 @@ var V1TokensCreate = resource.OperationSpec{
 		"account.company.phone": {
 			Type: "string",
 		},
+		"account.company.registration_date.day": {
+			Type: "integer",
+		},
+		"account.company.registration_date.month": {
+			Type: "integer",
+		},
+		"account.company.registration_date.year": {
+			Type: "integer",
+		},
 		"account.company.registration_number": {
 			Type: "string",
 		},
@@ -26636,6 +32027,15 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.individual.address_kanji.town": {
 			Type: "string",
+		},
+		"account.individual.dob.day": {
+			Type: "integer",
+		},
+		"account.individual.dob.month": {
+			Type: "integer",
+		},
+		"account.individual.dob.year": {
+			Type: "integer",
 		},
 		"account.individual.email": {
 			Type: "string",
@@ -26771,7 +32171,50 @@ var V1TokensCreate = resource.OperationSpec{
 		"bank_account.routing_number": {
 			Type: "string",
 		},
-		"card": {
+		"card.address_city": {
+			Type: "string",
+		},
+		"card.address_country": {
+			Type: "string",
+		},
+		"card.address_line1": {
+			Type: "string",
+		},
+		"card.address_line2": {
+			Type: "string",
+		},
+		"card.address_state": {
+			Type: "string",
+		},
+		"card.address_zip": {
+			Type: "string",
+		},
+		"card.currency": {
+			Type: "string",
+		},
+		"card.cvc": {
+			Type: "string",
+		},
+		"card.exp_month": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"card.exp_year": {
+			Type:       "string",
+			MostCommon: true,
+		},
+		"card.name": {
+			Type: "string",
+		},
+		"card.networks.preferred": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "cartes_bancaires"},
+				{Value: "mastercard"},
+				{Value: "visa"},
+			},
+		},
+		"card.number": {
 			Type:       "string",
 			MostCommon: true,
 		},
@@ -26851,6 +32294,15 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"person.address_kanji.town": {
 			Type: "string",
+		},
+		"person.dob.day": {
+			Type: "integer",
+		},
+		"person.dob.month": {
+			Type: "integer",
+		},
+		"person.dob.year": {
+			Type: "integer",
 		},
 		"person.documents.company_authorization.files": {
 			Type: "array",
@@ -27698,6 +33150,24 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 			Type:       "string",
 			MostCommon: true,
 		},
+		"destination_payment_method_data.billing_details.address.city": {
+			Type: "string",
+		},
+		"destination_payment_method_data.billing_details.address.country": {
+			Type: "string",
+		},
+		"destination_payment_method_data.billing_details.address.line1": {
+			Type: "string",
+		},
+		"destination_payment_method_data.billing_details.address.line2": {
+			Type: "string",
+		},
+		"destination_payment_method_data.billing_details.address.postal_code": {
+			Type: "string",
+		},
+		"destination_payment_method_data.billing_details.address.state": {
+			Type: "string",
+		},
 		"destination_payment_method_data.billing_details.email": {
 			Type: "string",
 		},
@@ -27740,6 +33210,13 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 		},
 		"destination_payment_method_data.us_bank_account.routing_number": {
 			Type: "string",
+		},
+		"destination_payment_method_options.us_bank_account.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
+			},
 		},
 		"end_user_details.ip_address": {
 			Type: "string",
@@ -27905,6 +33382,13 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 			MostCommon: true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
+			},
+		},
+		"destination_payment_method_options.us_bank_account.network": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
 			},
 		},
 		"financial_account": {

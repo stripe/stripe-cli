@@ -403,8 +403,11 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 					continue
 				}
 
-				if schema.Type == "object" {
-					addDenormalizedParams(params, locallyRequired, propName, schema, requiredSet[propName])
+				if obj := gen.ResolveObjectSchema(schema); obj != nil {
+					addDenormalizedParams(params, locallyRequired, propName, obj, requiredSet[propName])
+					if gen.IsClearableObject(schema) {
+						params[propName] = &resource.ParamSpec{Type: "clearable_object"}
+					}
 				} else {
 					scalarType := gen.GetType(schema)
 					if scalarType == nil {
@@ -473,8 +476,8 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequire
 		isLocallyRequired := containsStr(schema.Required, propName)
 		isTrulyRequired := parentRequired && isLocallyRequired
 
-		if propSchema.Type == "object" {
-			addDenormalizedParams(params, locallyRequired, key, propSchema, isTrulyRequired)
+		if obj := gen.ResolveObjectSchema(propSchema); obj != nil {
+			addDenormalizedParams(params, locallyRequired, key, obj, isTrulyRequired)
 		} else {
 			scalarType := gen.GetType(propSchema)
 			if scalarType == nil {
