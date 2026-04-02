@@ -41,13 +41,14 @@ func FirstSentence(s string) string {
 				continue
 			}
 			next := s[i+2]
-			if !((next >= 'A' && next <= 'Z') || next == '`' || next == '[') {
+			if !((next >= 'A' && next <= 'Z') || next == '`' || next == '[' ||
+				(next == '(' && i+3 < len(s) && s[i+3] >= 'A' && s[i+3] <= 'Z')) {
 				continue
 			}
 		}
 		prev := s[i-1]
 		if !((prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') ||
-			(prev >= '0' && prev <= '9') || prev == ')' || prev == ']') {
+			(prev >= '0' && prev <= '9') || prev == ')' || prev == ']' || prev == '`') {
 			continue
 		}
 		// Walk back to find the word before the period.

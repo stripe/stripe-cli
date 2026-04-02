@@ -870,7 +870,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"company.registration_number": {
 			Type:             "string",
-			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong)",
+			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
 		},
 		"company.representative_declaration.date": {
 			Type:             "integer",
@@ -916,7 +916,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"company.tax_id": {
 			Type:             "string",
-			ShortDescription: "The business ID number of the company, as appropriate for the company’s country. (Examples are an Employer ID Number in the U.S., a Business Number in Canada, or a Company Number in the UK.)",
+			ShortDescription: "The business ID number of the company, as appropriate for the company’s country",
 		},
 		"company.tax_id_registrar": {
 			Type:             "string",
@@ -928,11 +928,11 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"controller.fees.payer": {
 			Type:             "string",
@@ -978,35 +978,35 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.signer.person": {
 			Type:             "string",
@@ -1014,7 +1014,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.signer.person": {
 			Type:             "string",
@@ -1138,7 +1138,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"individual.id_number": {
 			Type:             "string",
-			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country. (Examples are a Social Security Number in the U.S., or a Social Insurance Number in Canada)",
+			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country",
 		},
 		"individual.id_number_secondary": {
 			Type:             "string",
@@ -1222,19 +1222,19 @@ var V1AccountsCreate = resource.OperationSpec{
 		},
 		"individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"settings.bacs_debit_payments.display_name": {
 			Type:             "string",
@@ -1974,7 +1974,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"company.registration_number": {
 			Type:             "string",
-			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong)",
+			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
 		},
 		"company.representative_declaration.date": {
 			Type:             "integer",
@@ -2020,7 +2020,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"company.tax_id": {
 			Type:             "string",
-			ShortDescription: "The business ID number of the company, as appropriate for the company’s country. (Examples are an Employer ID Number in the U.S., a Business Number in Canada, or a Company Number in the UK.)",
+			ShortDescription: "The business ID number of the company, as appropriate for the company’s country",
 		},
 		"company.tax_id_registrar": {
 			Type:             "string",
@@ -2032,11 +2032,11 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"default_currency": {
 			Type:             "string",
@@ -2045,35 +2045,35 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_registration.signer.person": {
 			Type:             "string",
@@ -2081,7 +2081,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.proof_of_ultimate_beneficial_ownership.signer.person": {
 			Type:             "string",
@@ -2205,7 +2205,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"individual.id_number": {
 			Type:             "string",
-			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country. (Examples are a Social Security Number in the U.S., or a Social Insurance Number in Canada)",
+			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country",
 		},
 		"individual.id_number_secondary": {
 			Type:             "string",
@@ -2289,19 +2289,19 @@ var V1AccountsUpdate = resource.OperationSpec{
 		},
 		"individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"settings.bacs_debit_payments.display_name": {
 			Type:             "string",
@@ -2643,13 +2643,13 @@ var V1BalanceRetrieve = resource.OperationSpec{
 	Method: "GET",
 }
 
-var V1BalanceSettingssRetrieve = resource.OperationSpec{
+var V1BalanceSettingsRetrieve = resource.OperationSpec{
 	Name:   "retrieve",
 	Path:   "/v1/balance_settings",
 	Method: "GET",
 }
 
-var V1BalanceSettingssUpdate = resource.OperationSpec{
+var V1BalanceSettingsUpdate = resource.OperationSpec{
 	Name:   "update",
 	Path:   "/v1/balance_settings",
 	Method: "POST",
@@ -2797,7 +2797,7 @@ var V1BankAccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -3808,7 +3808,7 @@ var V1CardsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -4089,7 +4089,7 @@ var V1ChargesUpdate = resource.OperationSpec{
 		},
 		"fraud_details.user_report": {
 			Type:             "string",
-			ShortDescription: "Either `safe` or `fraudulent`.",
+			ShortDescription: "Either `safe` or `fraudulent`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fraudulent"},
@@ -4177,7 +4177,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -4343,7 +4343,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"customer_update.address": {
 			Type:             "string",
-			ShortDescription: "Describes whether Checkout saves the billing address onto `customer.address`.\nTo always collect a full billing address, use `billing_address_collection`. Defaults to `never`.",
+			ShortDescription: "Describes whether Checkout saves the billing address onto `customer.address`",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "never"},
@@ -4351,7 +4351,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"customer_update.name": {
 			Type:             "string",
-			ShortDescription: "Describes whether Checkout saves the name onto `customer.name`. Defaults to `never`.",
+			ShortDescription: "Describes whether Checkout saves the name onto `customer.name`",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "never"},
@@ -4359,7 +4359,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"customer_update.shipping": {
 			Type:             "string",
-			ShortDescription: "Describes whether Checkout saves shipping information onto `customer.shipping`.\nTo collect shipping information, use `shipping_address_collection`. Defaults to `never`.",
+			ShortDescription: "Describes whether Checkout saves shipping information onto `customer.shipping`",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "never"},
@@ -4397,7 +4397,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"invoice_creation.invoice_data.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
@@ -5295,7 +5295,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"payment_method_options.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -5387,7 +5387,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"redirect_on_completion": {
 			Type:             "string",
-			ShortDescription: "This parameter applies to `ui_mode: embedded`. Learn more about the [redirect behavior](https://docs.stripe.com/payments/checkout/custom-success-page?payment-ui=embedded-form) of embedded sessions",
+			ShortDescription: "This parameter applies to `ui_mode: embedded`",
 			Enum: []resource.EnumSpec{
 				{Value: "always"},
 				{Value: "if_required"},
@@ -5478,7 +5478,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"subscription_data.invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
@@ -5510,7 +5510,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		},
 		"subscription_data.proration_behavior": {
 			Type:             "string",
-			ShortDescription: "Determines how to handle prorations resulting from the `billing_cycle_anchor`. If no value is passed, the default is `create_prorations`.",
+			ShortDescription: "Determines how to handle prorations resulting from the `billing_cycle_anchor`",
 			Enum: []resource.EnumSpec{
 				{Value: "create_prorations"},
 				{Value: "none"},
@@ -6181,7 +6181,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -6237,7 +6237,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		},
 		"payment_method_options.card.installments.plan.type": {
 			Type:             "string",
-			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`.",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
@@ -6462,7 +6462,7 @@ var V1CreditNotesCreate = resource.OperationSpec{
 		},
 		"email_type": {
 			Type:             "string",
-			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`.",
+			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`",
 			Enum: []resource.EnumSpec{
 				{Value: "credit_note"},
 				{Value: "none"},
@@ -6558,7 +6558,7 @@ var V1CreditNotesPreview = resource.OperationSpec{
 		},
 		"email_type": {
 			Type:             "string",
-			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`.",
+			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`",
 			Enum: []resource.EnumSpec{
 				{Value: "credit_note"},
 				{Value: "none"},
@@ -6614,7 +6614,7 @@ var V1CreditNotesPreviewLines = resource.OperationSpec{
 		},
 		"email_type": {
 			Type:             "string",
-			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`.",
+			ShortDescription: "Type of email to send to the customer, one of `credit_note` or `none` and the default is `credit_note`",
 			Enum: []resource.EnumSpec{
 				{Value: "credit_note"},
 				{Value: "none"},
@@ -7840,7 +7840,7 @@ var V1ExternalAccountsUpdate = resource.OperationSpec{
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"exp_month": {
 			Type:             "string",
@@ -8987,7 +8987,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -9005,7 +9005,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay this invoice using the default source attached to the customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -9073,7 +9073,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		},
 		"issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"issuer.type": {
 			Type:             "string",
@@ -9272,7 +9272,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -9311,7 +9311,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		},
 		"issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"issuer.type": {
 			Type:             "string",
@@ -9506,7 +9506,7 @@ var V1InvoicesList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "The status of the invoice, one of `draft`, `open`, `paid`, `uncollectible`, or `void`. [Learn more](https://docs.stripe.com/billing/invoices/workflow#workflow-overview)",
+			ShortDescription: "The status of the invoice, one of `draft`, `open`, `paid`, `uncollectible`, or `void`",
 			Enum: []resource.EnumSpec{
 				{Value: "draft"},
 				{Value: "open"},
@@ -9623,7 +9623,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -9641,7 +9641,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically` or `send_invoice`. This field can be updated only on `draft` invoices",
+			ShortDescription: "Either `charge_automatically` or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -9682,7 +9682,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		},
 		"issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"issuer.type": {
 			Type:             "string",
@@ -9911,7 +9911,7 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -10072,7 +10072,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		},
 		"fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -10495,7 +10495,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		},
 		"verification_data.address_line1_check": {
 			Type:             "string",
-			ShortDescription: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`.",
+			ShortDescription: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`",
 			Enum: []resource.EnumSpec{
 				{Value: "match"},
 				{Value: "mismatch"},
@@ -10504,7 +10504,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		},
 		"verification_data.address_postal_code_check": {
 			Type:             "string",
-			ShortDescription: "Whether the cardholder provided a postal code and if it matched the cardholder’s `billing.address.postal_code`.",
+			ShortDescription: "Whether the cardholder provided a postal code and if it matched the cardholder’s `billing.address.postal_code`",
 			Enum: []resource.EnumSpec{
 				{Value: "match"},
 				{Value: "mismatch"},
@@ -10667,7 +10667,7 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 		},
 		"fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -10814,11 +10814,11 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"name": {
 			Type:             "string",
@@ -10851,7 +10851,7 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		},
 		"spending_controls.spending_limits_currency": {
 			Type:             "string",
-			ShortDescription: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency",
+			ShortDescription: "Currency of amounts within `spending_limits`",
 		},
 		"status": {
 			Type:             "string",
@@ -10863,7 +10863,7 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "One of `individual` or `company`. See [Choose a cardholder type](https://docs.stripe.com/issuing/other/choose-cardholder) for more details",
+			ShortDescription: "One of `individual` or `company`",
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "individual"},
@@ -11006,11 +11006,11 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		},
 		"individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`.",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"phone_number": {
 			Type:             "string",
@@ -11038,7 +11038,7 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		},
 		"spending_controls.spending_limits_currency": {
 			Type:             "string",
-			ShortDescription: "Currency of amounts within `spending_limits`. Defaults to your merchant country's currency",
+			ShortDescription: "Currency of amounts within `spending_limits`",
 		},
 		"status": {
 			Type:             "string",
@@ -11319,7 +11319,7 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 	Params: map[string]*resource.ParamSpec{
 		"cancellation_reason": {
 			Type:             "string",
-			ShortDescription: "Reason why the `status` of this card is `canceled`.",
+			ShortDescription: "Reason why the `status` of this card is `canceled`",
 			Enum: []resource.EnumSpec{
 				{Value: "lost"},
 				{Value: "stolen"},
@@ -12296,7 +12296,7 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -12778,7 +12778,7 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -13064,7 +13064,7 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 		},
 		"final_capture": {
 			Type:             "boolean",
-			ShortDescription: "Defaults to `true`. When capturing a PaymentIntent, setting `final_capture` to `false` notifies Stripe to not release the remaining uncaptured funds to make sure that they're captured in future requests",
+			ShortDescription: "Defaults to `true`",
 		},
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
@@ -13106,7 +13106,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		},
 		"error_on_requires_action": {
 			Type:             "boolean",
-			ShortDescription: "Set to `true` to fail the payment attempt if the PaymentIntent transitions into `requires_action`. This parameter is intended for simpler integrations that do not handle customer actions, like [saving cards without authentication](https://docs.stripe.com/payments/save-card-without-authentication)",
+			ShortDescription: "Set to `true` to fail the payment attempt if the PaymentIntent transitions into `requires_action`",
 		},
 		"excluded_payment_method_types": {
 			Type:             "array",
@@ -13468,7 +13468,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -13622,7 +13622,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		},
 		"error_on_requires_action": {
 			Type:             "boolean",
-			ShortDescription: "Set to `true` to fail the payment attempt if the PaymentIntent transitions into `requires_action`. Use this parameter for simpler integrations that don't handle customer actions, such as [saving cards without authentication](https://docs.stripe.com/payments/save-card-without-authentication)",
+			ShortDescription: "Set to `true` to fail the payment attempt if the PaymentIntent transitions into `requires_action`",
 		},
 		"excluded_payment_method_types": {
 			Type:             "array",
@@ -14000,7 +14000,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -14646,7 +14646,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -14782,7 +14782,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -14862,7 +14862,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		},
 		"invoice_creation.invoice_data.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
@@ -14972,7 +14972,7 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		},
 		"subscription_data.invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
@@ -15110,7 +15110,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -15160,7 +15160,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		},
 		"invoice_creation.invoice_data.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
@@ -15217,7 +15217,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		},
 		"subscription_data.invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
@@ -16779,7 +16779,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		},
 		"upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -17513,7 +17513,7 @@ var V1PayoutsCreate = resource.OperationSpec{
 		},
 		"method": {
 			Type:             "string",
-			ShortDescription: "The method used to send this payout, which is `standard` or `instant`. We support `instant` for payouts to debit cards and bank accounts in certain countries",
+			ShortDescription: "The method used to send this payout, which is `standard` or `instant`",
 			Enum: []resource.EnumSpec{
 				{Value: "instant"},
 				{Value: "standard"},
@@ -17570,7 +17570,7 @@ var V1PayoutsList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return payouts that have the given status: `pending`, `paid`, `failed`, or `canceled`.",
+			ShortDescription: "Only return payouts that have the given status: `pending`, `paid`, `failed`, or `canceled`",
 		},
 	},
 }
@@ -17693,15 +17693,15 @@ var V1PersonsCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"email": {
 			Type:             "string",
@@ -17853,19 +17853,19 @@ var V1PersonsCreate = resource.OperationSpec{
 		},
 		"verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 	},
 }
@@ -18002,15 +18002,15 @@ var V1PersonsUpdate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"email": {
 			Type:             "string",
@@ -18162,19 +18162,19 @@ var V1PersonsUpdate = resource.OperationSpec{
 		},
 		"verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 	},
 }
@@ -18256,7 +18256,7 @@ var V1PlansCreate = resource.OperationSpec{
 		},
 		"transform_usage.round": {
 			Type:             "string",
-			ShortDescription: "After division, either round the result `up` or `down`.",
+			ShortDescription: "After division, either round the result `up` or `down`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
@@ -18371,7 +18371,7 @@ var V1PricesCreate = resource.OperationSpec{
 		},
 		"custom_unit_amount.enabled": {
 			Type:             "boolean",
-			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`.",
+			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`",
 			Required:         true,
 		},
 		"custom_unit_amount.maximum": {
@@ -18482,7 +18482,7 @@ var V1PricesCreate = resource.OperationSpec{
 		},
 		"transform_quantity.round": {
 			Type:             "string",
-			ShortDescription: "After division, either round the result `up` or `down`.",
+			ShortDescription: "After division, either round the result `up` or `down`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
@@ -18541,7 +18541,7 @@ var V1PricesList = resource.OperationSpec{
 		},
 		"type": {
 			Type:             "string",
-			ShortDescription: "Only return prices of type `recurring` or `one_time`.",
+			ShortDescription: "Only return prices of type `recurring` or `one_time`",
 			Enum: []resource.EnumSpec{
 				{Value: "one_time"},
 				{Value: "recurring"},
@@ -18672,7 +18672,7 @@ var V1ProductsCreate = resource.OperationSpec{
 		},
 		"default_price_data.custom_unit_amount.enabled": {
 			Type:             "boolean",
-			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`.",
+			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`",
 			Required:         true,
 		},
 		"default_price_data.custom_unit_amount.maximum": {
@@ -19069,7 +19069,7 @@ var V1QuotesCreate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -19082,7 +19082,7 @@ var V1QuotesCreate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay invoices at the end of the subscription cycle or at invoice finalization using the default payment method attached to the subscription or customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -19132,7 +19132,7 @@ var V1QuotesCreate = resource.OperationSpec{
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_settings.issuer.type": {
 			Type:             "string",
@@ -19311,7 +19311,7 @@ var V1QuotesUpdate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -19324,7 +19324,7 @@ var V1QuotesUpdate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay invoices at the end of the subscription cycle or at invoice finalization using the default payment method attached to the subscription or customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -19365,7 +19365,7 @@ var V1QuotesUpdate = resource.OperationSpec{
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_settings.issuer.type": {
 			Type:             "string",
@@ -19931,7 +19931,7 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 		},
 		"parameters.timezone": {
 			Type:             "string",
-			ShortDescription: "Defaults to `Etc/UTC`. The output timezone for all timestamps in the report",
+			ShortDescription: "Defaults to `Etc/UTC`",
 			Enum: []resource.EnumSpec{
 				{Value: "Africa/Abidjan"},
 				{Value: "Africa/Accra"},
@@ -20536,7 +20536,7 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 		},
 		"report_type": {
 			Type:             "string",
-			ShortDescription: "The ID of the [report type](https://docs.stripe.com/reporting/statements/api#report-types) to run, such as `\"balance.summary.1\"`.",
+			ShortDescription: "The ID of the [report type](https://docs.stripe.com/reporting/statements/api#report-types) to run, such as `\"balance.summary.1\"`",
 			Required:         true,
 		},
 	},
@@ -21044,7 +21044,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -21144,7 +21144,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
@@ -21453,7 +21453,7 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		},
 		"payment_method_options.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -21924,7 +21924,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -22024,7 +22024,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
@@ -22333,7 +22333,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		},
 		"payment_method_options.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -22854,7 +22854,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -22954,7 +22954,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
@@ -23263,7 +23263,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		},
 		"payment_method_options.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -23522,7 +23522,7 @@ var V1SourcesCreate = resource.OperationSpec{
 		},
 		"mandate.acceptance.offline.contact_email": {
 			Type:             "string",
-			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`.",
+			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`",
 			Required:         true,
 		},
 		"mandate.acceptance.online.date": {
@@ -23563,11 +23563,11 @@ var V1SourcesCreate = resource.OperationSpec{
 		},
 		"mandate.amount": {
 			Type:             "integer",
-			ShortDescription: "The amount specified by the mandate. (Leave null for a mandate covering all amounts)",
+			ShortDescription: "The amount specified by the mandate",
 		},
 		"mandate.currency": {
 			Type:             "string",
-			ShortDescription: "The currency specified by the mandate. (Must match `currency` of the source)",
+			ShortDescription: "The currency specified by the mandate",
 			Format:           "currency",
 		},
 		"mandate.interval": {
@@ -23765,7 +23765,7 @@ var V1SourcesUpdate = resource.OperationSpec{
 		},
 		"mandate.acceptance.offline.contact_email": {
 			Type:             "string",
-			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`.",
+			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`",
 			Required:         true,
 		},
 		"mandate.acceptance.online.date": {
@@ -23806,11 +23806,11 @@ var V1SourcesUpdate = resource.OperationSpec{
 		},
 		"mandate.amount": {
 			Type:             "integer",
-			ShortDescription: "The amount specified by the mandate. (Leave null for a mandate covering all amounts)",
+			ShortDescription: "The amount specified by the mandate",
 		},
 		"mandate.currency": {
 			Type:             "string",
-			ShortDescription: "The currency specified by the mandate. (Must match `currency` of the source)",
+			ShortDescription: "The currency specified by the mandate",
 			Format:           "currency",
 		},
 		"mandate.interval": {
@@ -24213,7 +24213,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"default_settings.automatic_tax.liability.type": {
 			Type:             "string",
@@ -24234,7 +24234,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		},
 		"default_settings.collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -24258,7 +24258,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		},
 		"default_settings.invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"default_settings.invoice_settings.issuer.type": {
 			Type:             "string",
@@ -24376,7 +24376,7 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"default_settings.automatic_tax.liability.type": {
 			Type:             "string",
@@ -24397,7 +24397,7 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		},
 		"default_settings.collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay the underlying subscription at the end of each billing cycle using the default source attached to the customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -24421,7 +24421,7 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		},
 		"default_settings.invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"default_settings.invoice_settings.issuer.type": {
 			Type:             "string",
@@ -24480,7 +24480,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -24549,7 +24549,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay this subscription at the end of the cycle using the default source attached to the customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -24594,7 +24594,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_settings.issuer.type": {
 			Type:             "string",
@@ -24615,7 +24615,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"payment_behavior": {
 			Type:             "string",
-			ShortDescription: "Only applies to subscriptions with `collection_method=charge_automatically`.",
+			ShortDescription: "Only applies to subscriptions with `collection_method=charge_automatically`",
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -24637,7 +24637,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		},
 		"proration_behavior": {
 			Type:             "string",
-			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) resulting from the `billing_cycle_anchor`. If no value is passed, the default is `create_prorations`.",
+			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) resulting from the `billing_cycle_anchor`",
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24799,7 +24799,7 @@ var V1SubscriptionsResume = resource.OperationSpec{
 		},
 		"proration_behavior": {
 			Type:             "string",
-			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) resulting from the `billing_cycle_anchor` being `unchanged`. When the `billing_cycle_anchor` is set to `now` (default value), no prorations are generated",
+			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) resulting from the `billing_cycle_anchor` being `unchanged`",
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24857,7 +24857,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"automatic_tax.liability.type": {
 			Type:             "string",
@@ -24870,7 +24870,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		},
 		"billing_cycle_anchor": {
 			Type:             "string",
-			ShortDescription: "Either `now` or `unchanged`. Setting the value to `now` resets the subscription's billing cycle anchor to the current time (in UTC)",
+			ShortDescription: "Either `now` or `unchanged`",
 			Enum: []resource.EnumSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
@@ -24904,7 +24904,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		},
 		"collection_method": {
 			Type:             "string",
-			ShortDescription: "Either `charge_automatically`, or `send_invoice`. When charging automatically, Stripe will attempt to pay this subscription at the end of the cycle using the default source attached to the customer",
+			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -24936,7 +24936,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		},
 		"invoice_settings.issuer.account": {
 			Type:             "string",
-			ShortDescription: "The connected account being referenced when `type` is `account`.",
+			ShortDescription: "The connected account being referenced when `type` is `account`",
 		},
 		"invoice_settings.issuer.type": {
 			Type:             "string",
@@ -25396,7 +25396,7 @@ var V1TaxRatesCreate = resource.OperationSpec{
 		},
 		"tax_type": {
 			Type:             "string",
-			ShortDescription: "The high-level tax type, such as `vat` or `sales_tax`.",
+			ShortDescription: "The high-level tax type, such as `vat` or `sales_tax`",
 			Enum: []resource.EnumSpec{
 				{Value: "amusement_tax"},
 				{Value: "communications_tax"},
@@ -25486,7 +25486,7 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 		},
 		"tax_type": {
 			Type:             "string",
-			ShortDescription: "The high-level tax type, such as `vat` or `sales_tax`.",
+			ShortDescription: "The high-level tax type, such as `vat` or `sales_tax`",
 			Enum: []resource.EnumSpec{
 				{Value: "amusement_tax"},
 				{Value: "communications_tax"},
@@ -25532,7 +25532,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ae.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25548,7 +25548,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.al.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25556,7 +25556,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.am.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25572,7 +25572,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ao.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25609,7 +25609,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.au.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25625,7 +25625,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.aw.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25633,7 +25633,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.az.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25649,7 +25649,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ba.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25665,7 +25665,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bb.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25681,7 +25681,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bd.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25718,7 +25718,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bf.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25755,7 +25755,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bh.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25763,7 +25763,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bj.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25779,7 +25779,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.bs.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25787,7 +25787,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.by.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25818,7 +25818,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.cd.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25834,7 +25834,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ch.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -25842,7 +25842,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.cl.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25850,7 +25850,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.cm.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25858,7 +25858,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.co.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25866,7 +25866,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.cr.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25874,7 +25874,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.cv.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25966,7 +25966,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ec.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -25995,7 +25995,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.eg.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26032,7 +26032,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.et.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26090,7 +26090,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.gb.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26098,7 +26098,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ge.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26114,7 +26114,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.gn.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26185,7 +26185,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.id.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26214,7 +26214,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.in.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26230,7 +26230,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.is.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26267,7 +26267,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.jp.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26275,7 +26275,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ke.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26283,7 +26283,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.kg.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26291,7 +26291,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.kh.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26299,7 +26299,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.kr.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26307,7 +26307,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.kz.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26315,7 +26315,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.la.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26323,7 +26323,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.lk.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26394,7 +26394,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ma.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26402,7 +26402,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.md.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26418,7 +26418,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.me.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26434,7 +26434,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.mk.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26450,7 +26450,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.mr.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26479,7 +26479,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.mx.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26487,7 +26487,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.my.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26495,7 +26495,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ng.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26532,7 +26532,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.no.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26540,7 +26540,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.np.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26556,7 +26556,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.nz.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26572,7 +26572,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.om.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26580,7 +26580,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.pe.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26588,7 +26588,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ph.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26667,7 +26667,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.rs.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26675,7 +26675,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ru.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26683,7 +26683,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.sa.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26720,7 +26720,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.sg.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26770,7 +26770,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.sn.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26786,7 +26786,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.sr.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26794,7 +26794,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.th.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26802,7 +26802,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.tj.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26810,7 +26810,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.tr.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26818,7 +26818,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.tw.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26826,7 +26826,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.tz.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26834,7 +26834,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ua.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26842,7 +26842,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.ug.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26885,7 +26885,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.uy.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26893,7 +26893,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.uz.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26901,7 +26901,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.vn.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26917,7 +26917,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.za.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -26925,7 +26925,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.zm.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
@@ -26941,7 +26941,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		},
 		"country_options.zw.type": {
 			Type:             "string",
-			ShortDescription: "Type of registration to be created in `country`.",
+			ShortDescription: "Type of registration to be created in `country`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
@@ -28235,7 +28235,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		},
 		"payment_method_data.upi.mandate_options.amount_type": {
 			Type:             "string",
-			ShortDescription: "One of `fixed` or `maximum`. If `fixed`, the `amount` param refers to the exact amount to be charged in future payments",
+			ShortDescription: "One of `fixed` or `maximum`",
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -28291,7 +28291,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		},
 		"payment_method_options.card.installments.plan.type": {
 			Type:             "string",
-			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`.",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
 			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
@@ -28480,7 +28480,7 @@ var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -28641,7 +28641,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		},
 		"fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -29064,7 +29064,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		},
 		"verification_data.address_line1_check": {
 			Type:             "string",
-			ShortDescription: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`.",
+			ShortDescription: "Whether the cardholder provided an address first line and if it matched the cardholder’s `billing.address.line1`",
 			Enum: []resource.EnumSpec{
 				{Value: "match"},
 				{Value: "mismatch"},
@@ -29073,7 +29073,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		},
 		"verification_data.address_postal_code_check": {
 			Type:             "string",
-			ShortDescription: "Whether the cardholder provided a postal code and if it matched the cardholder’s `billing.address.postal_code`.",
+			ShortDescription: "Whether the cardholder provided a postal code and if it matched the cardholder’s `billing.address.postal_code`",
 			Enum: []resource.EnumSpec{
 				{Value: "match"},
 				{Value: "mismatch"},
@@ -29236,7 +29236,7 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 		},
 		"fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -29805,7 +29805,7 @@ var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -30287,7 +30287,7 @@ var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpe
 		},
 		"purchase_details.fuel.unit": {
 			Type:             "string",
-			ShortDescription: "The units for `quantity_decimal`. One of `charging_minute`, `imperial_gallon`, `kilogram`, `kilowatt_hour`, `liter`, `pound`, `us_gallon`, or `other`.",
+			ShortDescription: "The units for `quantity_decimal`",
 			Enum: []resource.EnumSpec{
 				{Value: "charging_minute"},
 				{Value: "imperial_gallon"},
@@ -30935,7 +30935,7 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.company.registration_number": {
 			Type:             "string",
-			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes. (Examples are the CIN for companies and LLP IN for partnerships in India, and the Company Registration Number in Hong Kong)",
+			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
 		},
 		"account.company.representative_declaration.date": {
 			Type:             "integer",
@@ -30981,7 +30981,7 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.company.tax_id": {
 			Type:             "string",
-			ShortDescription: "The business ID number of the company, as appropriate for the company’s country. (Examples are an Employer ID Number in the U.S., a Business Number in Canada, or a Company Number in the UK.)",
+			ShortDescription: "The business ID number of the company, as appropriate for the company’s country",
 		},
 		"account.company.tax_id_registrar": {
 			Type:             "string",
@@ -30993,11 +30993,11 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.company.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"account.company.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of a document returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `additional_verification`",
 		},
 		"account.individual.address.city": {
 			Type:             "string",
@@ -31105,7 +31105,7 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.individual.id_number": {
 			Type:             "string",
-			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country. (Examples are a Social Security Number in the U.S., or a Social Insurance Number in Canada)",
+			ShortDescription: "The government-issued ID number of the individual, as appropriate for the representative's country",
 		},
 		"account.individual.id_number_secondary": {
 			Type:             "string",
@@ -31189,19 +31189,19 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"account.individual.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.individual.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"account.tos_shown_and_accepted": {
 			Type:             "boolean",
@@ -31246,7 +31246,7 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"bank_account.payment_method": {
 			Type:             "string",
-			ShortDescription: "The ID of a Payment Method with a `type` of `us_bank_account`. The Payment Method's bank account information will be copied and returned as a Bank Account Token",
+			ShortDescription: "The ID of a Payment Method with a `type` of `us_bank_account`",
 		},
 		"bank_account.routing_number": {
 			Type:             "string",
@@ -31360,15 +31360,15 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"person.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`.",
+			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
 		},
 		"person.email": {
 			Type:             "string",
@@ -31516,19 +31516,19 @@ var V1TokensCreate = resource.OperationSpec{
 		},
 		"person.verification.additional_document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.additional_document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.document.back": {
 			Type:             "string",
-			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The back of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"person.verification.document.front": {
 			Type:             "string",
-			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`. The uploaded file needs to be a color image (smaller than 8,000px by 8,000px), in JPG, PNG, or PDF format, and less than 10 MB in size",
+			ShortDescription: "The front of an ID returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `identity_document`",
 		},
 		"pii.id_number": {
 			Type:             "string",
@@ -32264,7 +32264,7 @@ var V1TreasuryInboundTransfersList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return InboundTransfers that have the given status: `processing`, `succeeded`, `failed` or `canceled`.",
+			ShortDescription: "Only return InboundTransfers that have the given status: `processing`, `succeeded`, `failed` or `canceled`",
 			Enum: []resource.EnumSpec{
 				{Value: "canceled"},
 				{Value: "failed"},
@@ -32368,7 +32368,7 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 		},
 		"destination_payment_method_data.financial_account": {
 			Type:             "string",
-			ShortDescription: "Required if type is set to `financial_account`. The FinancialAccount ID to send funds to",
+			ShortDescription: "Required if type is set to `financial_account`",
 		},
 		"destination_payment_method_data.type": {
 			Type:             "string",
@@ -32460,7 +32460,7 @@ var V1TreasuryOutboundPaymentsList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return OutboundPayments that have the given status: `processing`, `failed`, `posted`, `returned`, or `canceled`.",
+			ShortDescription: "Only return OutboundPayments that have the given status: `processing`, `failed`, `posted`, `returned`, or `canceled`",
 			Enum: []resource.EnumSpec{
 				{Value: "canceled"},
 				{Value: "failed"},
@@ -32580,7 +32580,7 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 		},
 		"destination_payment_method_data.financial_account": {
 			Type:             "string",
-			ShortDescription: "Required if type is set to `financial_account`. The FinancialAccount ID to send funds to",
+			ShortDescription: "Required if type is set to `financial_account`",
 		},
 		"destination_payment_method_data.type": {
 			Type:             "string",
@@ -32626,7 +32626,7 @@ var V1TreasuryOutboundTransfersList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return OutboundTransfers that have the given status: `processing`, `canceled`, `failed`, `posted`, or `returned`.",
+			ShortDescription: "Only return OutboundTransfers that have the given status: `processing`, `canceled`, `failed`, `posted`, or `returned`",
 			Enum: []resource.EnumSpec{
 				{Value: "canceled"},
 				{Value: "failed"},
@@ -32738,7 +32738,7 @@ var V1TreasuryReceivedCreditsList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return ReceivedCredits that have the given status: `succeeded` or `failed`.",
+			ShortDescription: "Only return ReceivedCredits that have the given status: `succeeded` or `failed`",
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "succeeded"},
@@ -32834,7 +32834,7 @@ var V1TreasuryReceivedDebitsList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return ReceivedDebits that have the given status: `succeeded` or `failed`.",
+			ShortDescription: "Only return ReceivedDebits that have the given status: `succeeded` or `failed`",
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "succeeded"},
@@ -32932,7 +32932,7 @@ var V1TreasuryTransactionEntrysList = resource.OperationSpec{
 		},
 		"order_by": {
 			Type:             "string",
-			ShortDescription: "The results are in reverse chronological order by `created` or `effective_at`. The default is `created`.",
+			ShortDescription: "The results are in reverse chronological order by `created` or `effective_at`",
 			Enum: []resource.EnumSpec{
 				{Value: "created"},
 				{Value: "effective_at"},
@@ -32979,7 +32979,7 @@ var V1TreasuryTransactionsList = resource.OperationSpec{
 		},
 		"order_by": {
 			Type:             "string",
-			ShortDescription: "The results are in reverse chronological order by `created` or `posted_at`. The default is `created`.",
+			ShortDescription: "The results are in reverse chronological order by `created` or `posted_at`",
 			Enum: []resource.EnumSpec{
 				{Value: "created"},
 				{Value: "posted_at"},
@@ -32991,7 +32991,7 @@ var V1TreasuryTransactionsList = resource.OperationSpec{
 		},
 		"status": {
 			Type:             "string",
-			ShortDescription: "Only return Transactions that have the given status: `open`, `posted`, or `void`.",
+			ShortDescription: "Only return Transactions that have the given status: `open`, `posted`, or `void`",
 			Enum: []resource.EnumSpec{
 				{Value: "open"},
 				{Value: "posted"},
@@ -33407,7 +33407,7 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -33420,7 +33420,7 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -33465,7 +33465,7 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -33692,7 +33692,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -33705,7 +33705,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -33752,7 +33752,7 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -34004,7 +34004,7 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -34017,7 +34017,7 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -34062,7 +34062,7 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -34318,7 +34318,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -34331,7 +34331,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -34344,7 +34344,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -34357,7 +34357,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -34370,7 +34370,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -34383,7 +34383,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -34412,7 +34412,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -34425,7 +34425,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -34438,7 +34438,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -34638,7 +34638,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -34651,7 +34651,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -34696,7 +34696,7 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
@@ -34868,7 +34868,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
-			ShortDescription: "Describes the customer's tax exemption status, which is `none`, `exempt`, or `reverse`. When set to reverse, invoice and receipt PDFs include the following text: “Reverse charge”.",
+			ShortDescription: "Describes the customer's tax exemption status, which is `none`, `exempt`, or `reverse`",
 			Enum: []resource.EnumSpec{
 				{Value: "exempt"},
 				{Value: "none"},
@@ -35462,7 +35462,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -35475,7 +35475,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -35488,7 +35488,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -35501,7 +35501,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -35514,7 +35514,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -35527,7 +35527,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -35557,7 +35557,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -35570,7 +35570,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -35583,7 +35583,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -35790,7 +35790,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -35803,7 +35803,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -35850,7 +35850,7 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
@@ -36050,7 +36050,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
-			ShortDescription: "The customer account's tax exemption status: `none`, `exempt`, or `reverse`. When `reverse`, invoice and receipt PDFs include \"Reverse charge\".",
+			ShortDescription: "The customer account's tax exemption status: `none`, `exempt`, or `reverse`",
 			Enum: []resource.EnumSpec{
 				{Value: "exempt"},
 				{Value: "none"},
@@ -36063,7 +36063,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.validate_location": {
 			Type:             "string",
-			ShortDescription: "A per-request flag that indicates when Stripe should validate the customer tax location - defaults to `auto`.",
+			ShortDescription: "A per-request flag that indicates when Stripe should validate the customer tax location - defaults to `auto`",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "deferred"},
@@ -36641,7 +36641,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -36654,7 +36654,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -36667,7 +36667,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -36680,7 +36680,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -36693,7 +36693,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -36706,7 +36706,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -36735,7 +36735,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -36748,7 +36748,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -36761,7 +36761,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -36965,7 +36965,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -36978,7 +36978,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -37023,7 +37023,7 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
@@ -38318,7 +38318,7 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -38331,7 +38331,7 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -38376,7 +38376,7 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -38605,7 +38605,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -38618,7 +38618,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -38665,7 +38665,7 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -38921,7 +38921,7 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.company_authorization.type": {
@@ -38934,7 +38934,7 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.passport.type": {
@@ -38979,7 +38979,7 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		},
 		"documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"documents.visa.type": {
@@ -39240,7 +39240,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -39253,7 +39253,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -39266,7 +39266,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -39279,7 +39279,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -39292,7 +39292,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -39305,7 +39305,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -39334,7 +39334,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -39347,7 +39347,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -39360,7 +39360,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -39560,7 +39560,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -39573,7 +39573,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -39618,7 +39618,7 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
@@ -39793,7 +39793,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
-			ShortDescription: "Describes the customer's tax exemption status, which is `none`, `exempt`, or `reverse`. When set to reverse, invoice and receipt PDFs include the following text: “Reverse charge”.",
+			ShortDescription: "Describes the customer's tax exemption status, which is `none`, `exempt`, or `reverse`",
 			Enum: []resource.EnumSpec{
 				{Value: "exempt"},
 				{Value: "none"},
@@ -39806,7 +39806,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.location_source": {
 			Type:             "string",
-			ShortDescription: "The data source used to identify the customer's tax location - defaults to `identity_address`. Will only be used for automatic tax calculation on the customer's Invoices and Subscriptions",
+			ShortDescription: "The data source used to identify the customer's tax location - defaults to `identity_address`",
 			Enum: []resource.EnumSpec{
 				{Value: "identity_address"},
 				{Value: "ip_address"},
@@ -40490,7 +40490,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -40503,7 +40503,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -40516,7 +40516,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -40529,7 +40529,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -40542,7 +40542,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -40555,7 +40555,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -40585,7 +40585,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -40598,7 +40598,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -40611,7 +40611,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -40818,7 +40818,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -40831,7 +40831,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -40878,7 +40878,7 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
@@ -41081,7 +41081,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.exempt": {
 			Type:             "string",
-			ShortDescription: "The customer account's tax exemption status: `none`, `exempt`, or `reverse`. When `reverse`, invoice and receipt PDFs include \"Reverse charge\".",
+			ShortDescription: "The customer account's tax exemption status: `none`, `exempt`, or `reverse`",
 			Enum: []resource.EnumSpec{
 				{Value: "exempt"},
 				{Value: "none"},
@@ -41104,7 +41104,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"configuration.customer.automatic_indirect_tax.validate_location": {
 			Type:             "string",
-			ShortDescription: "A per-request flag that indicates when Stripe should validate the customer tax location - defaults to `auto`.",
+			ShortDescription: "A per-request flag that indicates when Stripe should validate the customer tax location - defaults to `auto`",
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "deferred"},
@@ -41755,7 +41755,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
@@ -41768,7 +41768,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
@@ -41781,7 +41781,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
@@ -41794,7 +41794,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
@@ -41807,7 +41807,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
@@ -41820,7 +41820,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
@@ -41849,7 +41849,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
@@ -41862,7 +41862,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
@@ -41875,7 +41875,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
@@ -42079,7 +42079,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
@@ -42092,7 +42092,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
@@ -42137,7 +42137,7 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		},
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
-			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`.",
+			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
 			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {

@@ -2,13 +2,19 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/yuin/goldmark"
+	goldmarkast "github.com/yuin/goldmark/ast"
+	goldmarktext "github.com/yuin/goldmark/text"
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -83,17 +89,127 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 		}
 
 		if flag.Usage != "" {
-			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(flag.Usage, termWidth, len(descIndent)))
+			rendered := renderMarkdown(flag.Usage, os.Stdout)
+			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(rendered, termWidth, len(descIndent)))
 		}
 	})
 
 	return sb.String()
 }
 
+// renderMarkdown parses s as inline CommonMark and returns a string with ANSI
+// formatting applied: bold → ansi.Bold, italic → ansi.Italic, code spans →
+// faint-colored `backticks`, links → underlined cyan + OSC 8 in TTY or
+// "text (url)" in non-TTY.
+func renderMarkdown(s string, w io.Writer) string {
+	doc := goldmark.New().Parser().Parse(goldmarktext.NewReader([]byte(s)))
+	var sb strings.Builder
+	renderNode(doc, []byte(s), w, &sb)
+	return strings.TrimSpace(sb.String())
+}
+
+func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder) {
+	switch node := n.(type) {
+	case *goldmarkast.Text:
+		sb.Write(node.Segment.Value(src))
+		return
+	case *goldmarkast.CodeSpan:
+		var code strings.Builder
+		code.WriteByte('`')
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			if t, ok := c.(*goldmarkast.Text); ok {
+				code.Write(t.Segment.Value(src))
+			}
+		}
+		code.WriteByte('`')
+		color := ansi.Color(w)
+		sb.WriteString(color.Sprintf(color.Faint(code.String())))
+		return
+	case *goldmarkast.Emphasis:
+		var inner strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &inner)
+		}
+		if node.Level == 2 {
+			sb.WriteString(ansi.Bold(inner.String()))
+		} else {
+			sb.WriteString(ansi.Italic(inner.String()))
+		}
+		return
+	case *goldmarkast.Link:
+		var linkText strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &linkText)
+		}
+		url := string(node.Destination)
+		color := ansi.Color(w)
+		styled := color.Sprintf(color.Underline(color.Cyan(linkText.String())))
+		if term.IsTerminal(int(os.Stdout.Fd())) {
+			sb.WriteString(ansi.Linkify(styled, url, w))
+		} else {
+			fmt.Fprintf(sb, "%s (%s)", linkText.String(), url)
+		}
+		return
+	}
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		renderNode(c, src, w, sb)
+	}
+}
+
+// ansiEscRe matches CSI escape sequences (\x1b[...m) and OSC sequences
+// (\x1b]...\x1b\) used by ANSI color codes and OSC 8 hyperlinks.
+var ansiEscRe = regexp.MustCompile("\x1b(?:\\[[0-9;]*[a-zA-Z]|\\][^\x1b]*\x1b\\\\)")
+
+// visibleLen returns the display width of s, ignoring ANSI escape bytes.
+func visibleLen(s string) int {
+	return utf8.RuneCountInString(ansiEscRe.ReplaceAllString(s, ""))
+}
+
+// ansiFields splits s on ASCII whitespace, treating ANSI escape sequences
+// (including OSC 8 hyperlinks) as opaque — spaces inside OSC sequences are
+// not used as word-break points.
+func ansiFields(s string) []string {
+	var words []string
+	var cur strings.Builder
+	inOSC := false
+	i := 0
+	for i < len(s) {
+		b := s[i]
+		switch {
+		case b == 0x1b && i+1 < len(s) && s[i+1] == ']':
+			inOSC = true
+			cur.WriteByte(b)
+			i++
+		case b == 0x1b && i+1 < len(s) && s[i+1] == '\\' && inOSC:
+			inOSC = false
+			cur.WriteByte(b)
+			i++
+		case b == 0x07 && inOSC:
+			inOSC = false
+			cur.WriteByte(b)
+			i++
+		case !inOSC && (b == ' ' || b == '\t' || b == '\n' || b == '\r'):
+			if cur.Len() > 0 {
+				words = append(words, cur.String())
+				cur.Reset()
+			}
+			i++
+		default:
+			cur.WriteByte(b)
+			i++
+		}
+	}
+	if cur.Len() > 0 {
+		words = append(words, cur.String())
+	}
+	return words
+}
+
 // wrapText word-wraps s to fit within width columns. Continuation lines are
-// indented by indent spaces.
+// indented by indent spaces. ANSI escape sequences (including OSC 8 hyperlinks)
+// are treated as zero-width for measurement purposes.
 func wrapText(s string, width, indent int) string {
-	words := strings.Fields(s)
+	words := ansiFields(s)
 	if len(words) == 0 {
 		return ""
 	}
@@ -107,18 +223,19 @@ func wrapText(s string, width, indent int) string {
 	var sb strings.Builder
 	col := 0
 	for i, word := range words {
+		wlen := visibleLen(word)
 		if i == 0 {
 			sb.WriteString(word)
-			col = len(word)
-		} else if col+1+len(word) > lineWidth {
+			col = wlen
+		} else if col+1+wlen > lineWidth {
 			sb.WriteString("\n")
 			sb.WriteString(prefix)
 			sb.WriteString(word)
-			col = len(word)
+			col = wlen
 		} else {
 			sb.WriteString(" ")
 			sb.WriteString(word)
-			col += 1 + len(word)
+			col += 1 + wlen
 		}
 	}
 	return sb.String()

@@ -177,6 +177,8 @@ func TestFirstSentence(t *testing.T) {
 		{"Amount in cents (e.g., 100 for $1.00). Must be.", "Amount in cents (e.g., 100 for $1.00)", ") triggers split"},
 		{"See [docs](https://example.com). Sign in.", "See [docs](https://example.com)", "markdown link ending sentence"},
 		{"See [link](url) for details. Next sentence.", "See [link](url) for details", "markdown link mid-sentence"},
+		{"Set `enabled`. Next sentence.", "Set `enabled`", "backtick-terminated token ends sentence"},
+		{"Apply taxes. (Examples include VAT and GST.)", "Apply taxes", "(Uppercase triggers split"},
 		{"First sentence.\nSecond sentence.", "First sentence", "single newline between sentences splits on first"},
 		{"First para.\n\nSecond para.", "First para", "paragraph split — trailing period stripped"},
 		{"", "", "empty"},
@@ -270,7 +272,7 @@ func TestFirstSentenceSpec(t *testing.T) {
 							// Sentence split: assert valid sentence start two chars after result.
 							if len(remainder) >= 3 {
 								next := remainder[2]
-								validStart := (next >= 'A' && next <= 'Z') || next == '`' || next == '['
+								validStart := (next >= 'A' && next <= 'Z') || next == '`' || next == '[' || next == '('
 								assert.True(t, validStart,
 									"character after sentence split should start a sentence; desc=%q result=%q next=%q",
 									desc, result, string(next))
