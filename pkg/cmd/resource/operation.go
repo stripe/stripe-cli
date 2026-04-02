@@ -240,15 +240,15 @@ func paramFlagName(param string) string {
 // exampleValue returns the placeholder value string to use in an example for the given param.
 // Enum params use their first allowed value; others use a type-tagged placeholder.
 func exampleValue(ps *ParamSpec) string {
-	if len(ps.Enum) > 0 {
-		return ps.Enum[0].Value
-	}
 	switch ps.Type {
 	case "integer":
 		return "<integer>"
 	case "boolean":
 		return "<boolean>"
 	default:
+		if len(ps.Enum) > 0 {
+			return "<enum>"
+		}
 		return "<string>"
 	}
 }

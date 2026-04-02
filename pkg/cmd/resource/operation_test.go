@@ -543,7 +543,7 @@ func TestBuildExamples_EnumValue(t *testing.T) {
 	}
 	result := buildExamples("stripe test create", opSpec)
 	require.Contains(t, result, "# required fields")
-	require.Contains(t, result, "$ stripe test create --status active")
+	require.Contains(t, result, "$ stripe test create --status <enum>")
 }
 
 // TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
