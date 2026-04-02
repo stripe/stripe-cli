@@ -46,7 +46,7 @@ type IConfig interface {
 	RemoveAllProfiles() error
 	RemoveAuthFields(profileName string) error
 	RemoveAllAuthFields() error
-	WriteConfigField(field string, value any) error
+	WriteConfigField(field string, value interface{}) error
 	GetInstalledPlugins() []string
 }
 
@@ -231,7 +231,7 @@ func (c *Config) CopyProfile(source string, target string) error {
 	// Drop the top-level "plugin_configs" key — it is a reserved config
 	// section, not a profile field, and must not be carried into the copy.
 	safeTarget := strings.ReplaceAll(target, ".", " ")
-	existingMap := existing.(map[string]any)
+	existingMap := existing.(map[string]interface{})
 	newProfile := maps.Clone(existingMap)
 	delete(newProfile, "plugin_configs")
 	newProfile["profile_name"] = safeTarget
@@ -247,7 +247,7 @@ func (c *Config) ListProfiles() error {
 
 	for _, value := range runtimeViper.AllSettings() {
 		// TODO: there's probably a better way to e.g. hydrate a Profile and read from there?
-		profile, isProfile := value.(map[string]any)
+		profile, isProfile := value.(map[string]interface{})
 		if isProfile {
 			displayName, _ := profile["display_name"].(string)
 			if !slices.Contains(profiles, displayName) {
@@ -346,7 +346,7 @@ func (c *Config) RemoveProfile(profileName string) error {
 		if isProfile(value) {
 			var profileNameAttr string
 			switch v := value.(type) {
-			case map[string]any:
+			case map[string]interface{}:
 				if pn, ok := v["profile_name"].(string); ok {
 					profileNameAttr = pn
 				}
@@ -445,9 +445,9 @@ func deleteLivemodeKey(key string, profile string) error {
 }
 
 // isProfile identifies whether a value in the config pertains to a profile.
-func isProfile(value any) bool {
+func isProfile(value interface{}) bool {
 	// TODO: ianjabour - ideally find a better way to identify projects in config
-	_, ok := value.(map[string]any)
+	_, ok := value.(map[string]interface{})
 	if !ok {
 		_, ok = value.(map[string]string)
 	}
@@ -457,7 +457,7 @@ func isProfile(value any) bool {
 
 // WriteConfigField updates a configuration field and writes the updated
 // configuration to disk.
-func (c *Config) WriteConfigField(field string, value any) error {
+func (c *Config) WriteConfigField(field string, value interface{}) error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(field, value)
 
@@ -538,24 +538,24 @@ func makePath(path string) error {
 
 // taken from https://github.com/spf13/viper/blob/master/util.go#L199,
 // we need this to delete configs, remove when viper supprts unset natively
-func deepSearch(m map[string]any, path []string) map[string]any {
+func deepSearch(m map[string]interface{}, path []string) map[string]interface{} {
 	for _, k := range path {
 		m2, ok := m[k]
 		if !ok {
 			// intermediate key does not exist
 			// => create it and continue from there
-			m3 := make(map[string]any)
+			m3 := make(map[string]interface{})
 			m[k] = m3
 			m = m3
 
 			continue
 		}
 
-		m3, ok := m2.(map[string]any)
+		m3, ok := m2.(map[string]interface{})
 		if !ok {
 			// intermediate key is a value
 			// => replace with a new map
-			m3 = make(map[string]any)
+			m3 = make(map[string]interface{})
 			m[k] = m3
 		}
 
