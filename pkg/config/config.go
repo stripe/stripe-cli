@@ -464,17 +464,6 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	return runtimeViper.WriteConfig()
 }
 
-// DeleteConfigField removes a top-level (non-profile-scoped) configuration
-// field and writes the updated configuration to disk.
-func (c *Config) DeleteConfigField(field string) error {
-	v, err := removeKey(viper.GetViper(), field)
-	if err != nil {
-		return err
-	}
-
-	return writeConfig(v)
-}
-
 // writeConfig writes a viper instance to the config file and syncs the global viper.
 func writeConfig(runtimeViper *viper.Viper) error {
 	profilesFile := viper.ConfigFileUsed()
