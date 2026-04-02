@@ -97,10 +97,8 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 	return sb.String()
 }
 
-// renderMarkdown parses s as inline CommonMark and returns a string with ANSI
-// formatting applied: bold → ansi.Bold, italic → ansi.Italic, code spans →
-// faint-colored `backticks`, links → underlined cyan + OSC 8 in TTY or
-// "text (url)" in non-TTY.
+// renderMarkdown parses s as inline CommonMark and maps common formatting to
+// ANSI codes: bold, italic, code spans, and links.
 func renderMarkdown(s string, w io.Writer) string {
 	doc := goldmark.New().Parser().Parse(goldmarktext.NewReader([]byte(s)))
 	var sb strings.Builder
@@ -153,6 +151,11 @@ func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder
 
 // ansiEscRe matches CSI escape sequences (\x1b[...m) and OSC sequences
 // (\x1b]...\x1b\) used by ANSI color codes and OSC 8 hyperlinks.
+//
+// Note: github.com/acarl005/stripansi is already in go.mod and could replace
+// this regex in visibleLen, but its pattern targets BEL-terminated OSC
+// (\x1b]...\x07) and may not cover the ST-terminated form (\x1b]...\x1b\)
+// used by OSC 8 hyperlinks. Using our own regex keeps the two cases consistent.
 var ansiEscRe = regexp.MustCompile("\x1b(?:\\[[0-9;]*[a-zA-Z]|\\][^\x1b]*\x1b\\\\)")
 
 // visibleLen returns the display width of s, ignoring ANSI escape bytes.
@@ -163,6 +166,11 @@ func visibleLen(s string) int {
 // ansiFields splits s on ASCII whitespace, treating ANSI escape sequences
 // (including OSC sequences) as opaque — spaces inside an OSC sequence are
 // not used as word-break points.
+//
+// We roll this ourselves rather than using muesli/reflow because reflow's
+// wordwrap package has no concept of a continuation-line indent: combining
+// reflow/wordwrap + reflow/indent still doesn't produce a single wrapping pass
+// with a per-line prefix, and the extra dependency isn't worth the complexity.
 func ansiFields(s string) []string {
 	var words []string
 	var cur strings.Builder
