@@ -279,8 +279,6 @@ func operationUsageTemplate(urlParams []string) string {
 {{WrappedRequestParamsFlagUsages . | trimTrailingWhitespaces}}
 
 %s
-
-%s
 {{WrappedNonRequestParamsFlagUsages . | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
 
 %s
@@ -297,7 +295,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 		ansi.Bold("Examples:"),
 		ansi.Bold("Available Operations:"),
 		ansi.Bold("Request Parameters:"),
-		ansi.Italic("Note: all types are specifically for the Stripe CLI itself, not the Stripe API. The CLI handles\ntransforming types to what the API expects."),
 		ansi.Bold("Flags:"),
 		ansi.Bold("Global Flags:"),
 		ansi.Bold("Additional help topics:"),
