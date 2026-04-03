@@ -8,6 +8,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 // AutoUpdateCmd handles `stripe plugin auto-update` for enabling/disabling automatic plugin updates.
@@ -35,6 +36,7 @@ Omit the plugin name to apply the setting globally to all plugins.`,
   stripe plugin auto-update --disable
   stripe plugin auto-update apps --enable
   stripe plugin auto-update apps --disable`,
+		Args:   validators.MaximumNArgs(1),
 		RunE:   ac.run,
 		Hidden: true,
 	}
