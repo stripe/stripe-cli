@@ -191,6 +191,9 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 		cmd.Flags().SetAnnotation(flagName, "apitype", []string{paramSpec.Type})
+		if paramSpec.Format != "" {
+			cmd.Flags().SetAnnotation(flagName, "format", []string{paramSpec.Format})
+		}
 		if len(paramSpec.Enum) > 0 {
 			enumVals := make([]string, 0, len(paramSpec.Enum))
 			for _, ev := range paramSpec.Enum {

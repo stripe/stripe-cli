@@ -433,6 +433,37 @@ func TestNewOperationCmd_FlagRegistered(t *testing.T) {
 	require.Equal(t, "", flag.Usage)
 }
 
+func TestNewOperationCmd_FormatAnnotation(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/charges",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"created":     {Type: "integer", Format: "unix-time"},
+			"currency":    {Type: "string", Format: "currency"},
+			"description": {Type: "string"},
+		},
+	}, &config.Config{})
+
+	cmd := parentCmd.Commands()[0]
+
+	// Params with a format get the "format" annotation.
+	createdFlag := cmd.Flags().Lookup("created")
+	require.NotNil(t, createdFlag)
+	require.Equal(t, []string{"unix-time"}, createdFlag.Annotations["format"])
+
+	currencyFlag := cmd.Flags().Lookup("currency")
+	require.NotNil(t, currencyFlag)
+	require.Equal(t, []string{"currency"}, currencyFlag.Annotations["format"])
+
+	// Params without a format have no "format" annotation.
+	descFlag := cmd.Flags().Lookup("description")
+	require.NotNil(t, descFlag)
+	require.Nil(t, descFlag.Annotations["format"])
+}
+
 func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 

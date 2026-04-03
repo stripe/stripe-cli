@@ -67,7 +67,11 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 			case "boolean":
 				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
 			default:
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
+				label := typeName
+				if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+					label = formatVals[0]
+				}
+				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, label)
 			}
 		} else {
 			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
