@@ -33,7 +33,7 @@ type ParamSpec struct {
 	// Depth 2+ params are never marked; examples stay concise.
 	MostCommon bool
 
-	Format string     // e.g. "date-time", "unix-time"
+	Format string // e.g. "date-time", "unix-time"
 	Enum   []EnumSpec
 }
 
