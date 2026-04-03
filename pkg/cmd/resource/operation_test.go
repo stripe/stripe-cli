@@ -469,16 +469,11 @@ func TestBuildExamples_RequiredAndMostCommon(t *testing.T) {
 	}
 	result := buildExamples("stripe payment_intents create", opSpec)
 	lines := strings.Split(result, "\n")
-	require.Len(t, lines, 5)
+	require.Len(t, lines, 2)
 	assert.Equal(t, "  # required fields", lines[0])
 	require.Contains(t, lines[1], "--amount")
 	require.Contains(t, lines[1], "--currency")
 	require.NotContains(t, lines[1], "--description")
-	assert.Equal(t, "", lines[2])
-	assert.Equal(t, "  # common usage", lines[3])
-	require.Contains(t, lines[4], "--amount")
-	require.Contains(t, lines[4], "--currency")
-	require.Contains(t, lines[4], "--description")
 }
 
 func TestBuildExamples_MostCommonOnly(t *testing.T) {
@@ -494,25 +489,8 @@ func TestBuildExamples_MostCommonOnly(t *testing.T) {
 	result := buildExamples("stripe customers create", opSpec)
 	require.Contains(t, result, "--email")
 	require.Contains(t, result, "--name")
-	require.Contains(t, result, "# common usage")
-	// Only one section — no blank-line separator
-	require.NotContains(t, result, "\n\n")
-}
-
-func TestBuildExamples_SameSetSuppressesCommon(t *testing.T) {
-	opSpec := &OperationSpec{
-		Name:   "create",
-		Path:   "/v1/test",
-		Method: http.MethodPost,
-		Params: map[string]*ParamSpec{
-			"amount":   {Type: "integer", Required: true, MostCommon: true},
-			"currency": {Type: "string", Required: true, MostCommon: true},
-		},
-	}
-	result := buildExamples("stripe test create", opSpec)
-	// Only one section when MostCommon adds nothing beyond required
-	require.Contains(t, result, "# required fields")
-	require.NotContains(t, result, "\n\n")
+	require.NotContains(t, result, "# common usage")
+	require.NotContains(t, result, "...")
 }
 
 func TestBuildExamples_NoRequiredNoMostCommon(t *testing.T) {
@@ -547,36 +525,77 @@ func TestBuildExamples_EnumValue(t *testing.T) {
 }
 
 // TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
-// both Required and MostCommon (the generator produces this for required sub-fields of a
-// required mostCommon object), alongside params that are only MostCommon. Required+MostCommon
-// params must appear in both lines — only once per line — and must not be duplicated.
+// both Required and MostCommon alongside params that are only MostCommon. Only the required
+// section should appear; MostCommon-only params are not shown.
 func TestBuildExamples_RequiredMostCommonAndCommonOnly(t *testing.T) {
 	opSpec := &OperationSpec{
 		Name:   "create",
 		Path:   "/v1/test",
 		Method: http.MethodPost,
 		Params: map[string]*ParamSpec{
-			// required-only: appears in both lines
-			"currency": {Type: "string", Required: true},
-			// required+mostcommon: goes into reqFields only (else-if); still in second line via reqFields
-			"amount": {Type: "integer", Required: true, MostCommon: true},
-			// mostcommon-only: goes into commonFields; appears only in second line
+			"currency":    {Type: "string", Required: true},
+			"amount":      {Type: "integer", Required: true, MostCommon: true},
 			"description": {Type: "string", MostCommon: true},
 		},
 	}
 	result := buildExamples("stripe test create", opSpec)
 	lines := strings.Split(result, "\n")
-	require.Len(t, lines, 5)
-
-	// lines[1]: required fields command (amount, currency); no description
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
 	require.Contains(t, lines[1], "--amount")
 	require.Contains(t, lines[1], "--currency")
 	require.NotContains(t, lines[1], "--description")
+}
 
-	// lines[4]: common usage command — all three fields, each exactly once
-	require.Contains(t, lines[4], "--amount")
-	require.Contains(t, lines[4], "--currency")
-	require.Contains(t, lines[4], "--description")
-	assert.Equal(t, 1, strings.Count(lines[4], "--amount"), "--amount must appear exactly once")
-	assert.Equal(t, 1, strings.Count(lines[4], "--currency"), "--currency must appear exactly once")
+func TestBuildExamples_FallbackMostCommon_All(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+			"phone": {Type: "string"},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// Both MostCommon params shown; plain param omitted; no ellipsis needed
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "--phone")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackMostCommon_Truncated(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"description": {Type: "string", MostCommon: true},
+			"email":       {Type: "string", MostCommon: true},
+			"name":        {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// First two alphabetically (description, email); name omitted; ellipsis appended
+	require.Contains(t, result, "--description")
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--name")
+	require.Contains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/charges",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"created":  {Type: "integer"},
+			"currency": {Type: "string"},
+			"limit":    {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe charges list", opSpec)
+	require.Equal(t, "", result)
 }

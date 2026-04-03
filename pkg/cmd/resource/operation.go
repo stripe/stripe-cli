@@ -238,7 +238,6 @@ func paramFlagName(param string) string {
 }
 
 // exampleValue returns the placeholder value string to use in an example for the given param.
-// Enum params use their first allowed value; others use a type-tagged placeholder.
 func exampleValue(ps *ParamSpec) string {
 	switch ps.Type {
 	case "integer":
@@ -253,39 +252,48 @@ func exampleValue(ps *ParamSpec) string {
 	}
 }
 
-// buildExamples generates up to two example invocations for a command's --help output.
-// The goal is quick orientation: the first section shows the absolute minimum needed to call
-// the API; the second shows a richer invocation with the most commonly useful parameters.
+// buildExamples generates an example invocation for a command's --help output.
+// The goal is quick orientation: show the minimum needed to call the API.
 //
-// Section 1 (# required fields): required params only. Omitted when there are no required params.
-// Section 2 (# common usage): required + MostCommon params. Omitted when MostCommon adds
-// nothing beyond required (i.e. when commonFields is empty).
+// If there are required params: show a single "# required fields" line with those params.
+// If there are no required params but MostCommon params exist: show up to the first two
+// (alphabetically), with a trailing " ..." if more exist.
+// If there are no params at all, or none are required or MostCommon: return "".
 func buildExamples(cmdPath string, opSpec *OperationSpec) string {
-	var reqFields, commonFields []string
+	var reqFields []string
 	for name, p := range opSpec.Params {
 		if p.Required {
 			reqFields = append(reqFields, name)
-		} else if p.MostCommon {
-			commonFields = append(commonFields, name)
 		}
 	}
 	sort.Strings(reqFields)
-	sort.Strings(commonFields)
 
-	var sections []string
 	if len(reqFields) > 0 {
-		sections = append(sections, "  # required fields\n"+buildExampleLine(cmdPath, reqFields, opSpec.Params))
+		return "  # required fields\n" + buildExampleLine(cmdPath, reqFields, opSpec.Params, false)
 	}
-	if len(commonFields) > 0 {
-		combined := append(append([]string{}, reqFields...), commonFields...)
-		sort.Strings(combined)
-		sections = append(sections, "  # common usage\n"+buildExampleLine(cmdPath, combined, opSpec.Params))
+
+	// No required fields: use MostCommon params if any are curated; otherwise no example.
+	var candidates []string
+	for name, p := range opSpec.Params {
+		if p.MostCommon {
+			candidates = append(candidates, name)
+		}
 	}
-	return strings.Join(sections, "\n\n")
+	sort.Strings(candidates)
+
+	if len(candidates) == 0 {
+		return ""
+	}
+	ellipsis := len(candidates) > 2
+	if ellipsis {
+		candidates = candidates[:2]
+	}
+	return buildExampleLine(cmdPath, candidates, opSpec.Params, ellipsis)
 }
 
 // buildExampleLine constructs a single example command line for the given fields.
-func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamSpec) string {
+// If ellipsis is true, " ..." is appended to indicate additional params exist.
+func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamSpec, ellipsis bool) string {
 	var tokens []string
 	for _, field := range fields {
 		ps, ok := params[field]
@@ -297,7 +305,11 @@ func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamS
 	if len(tokens) == 0 {
 		return ""
 	}
-	return fmt.Sprintf("  $ %s %s", cmdPath, strings.Join(tokens, " "))
+	line := fmt.Sprintf("  $ %s %s", cmdPath, strings.Join(tokens, " "))
+	if ellipsis {
+		line += " ..."
+	}
+	return line
 }
 
 //
