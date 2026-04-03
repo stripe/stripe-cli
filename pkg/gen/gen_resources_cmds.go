@@ -495,9 +495,9 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequire
 	}
 }
 
-// markMostCommon sets MostCommon on params to drive the richer example line in --help output.
-// The intent is: surface parameters that meaningfully illustrate a common use of the operation,
-// beyond what is strictly required. Two heuristics approximate this from the OpenAPI spec:
+// markMostCommon sets MostCommon on params, identifying parameters worth surfacing in CLI
+// help and tooling even when not strictly required. Two heuristics approximate this from
+// the OpenAPI spec:
 //
 //   - Depth-0 (no dots): marked when the key appears in the request body's x-stripeMostCommon
 //     annotation. Example: "description" is marked if listed in x-stripeMostCommon.
@@ -507,10 +507,10 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequire
 //     means required within the immediate parent schema, regardless of whether the parent
 //     itself is top-level required. The rationale: if a commonly-used object (e.g. "recurring")
 //     has fields that must be provided whenever the object is used (e.g. "interval"), those
-//     fields belong in the example whenever the parent is shown.
+//     fields are worth surfacing alongside the parent.
 //
-// Depth 2+ params are never marked. Surfacing deeply nested fields would make examples
-// unwieldy without meaningfully improving discoverability.
+// Depth 2+ params are never marked; the signal-to-noise tradeoff doesn't hold for deeply
+// nested fields.
 func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, rootMostCommon []string) {
 	mostCommonSet := make(map[string]bool, len(rootMostCommon))
 	for _, name := range rootMostCommon {
