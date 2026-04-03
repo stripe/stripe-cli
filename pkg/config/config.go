@@ -246,13 +246,18 @@ func (c *Config) ListProfiles() error {
 	var profiles []string
 
 	for _, value := range runtimeViper.AllSettings() {
-		// TODO: there's probably a better way to e.g. hydrate a Profile and read from there?
-		profile, isProfile := value.(map[string]interface{})
-		if isProfile {
-			displayName, _ := profile["display_name"].(string)
-			if !slices.Contains(profiles, displayName) {
-				profiles = append(profiles, displayName)
-			}
+		if !isProfile(value) {
+			continue
+		}
+		var displayName string
+		switch v := value.(type) {
+		case map[string]interface{}:
+			displayName, _ = v["display_name"].(string)
+		case map[string]string:
+			displayName = v["display_name"]
+		}
+		if displayName != "" && !slices.Contains(profiles, displayName) {
+			profiles = append(profiles, displayName)
 		}
 	}
 
@@ -444,15 +449,18 @@ func deleteLivemodeKey(key string, profile string) error {
 	return nil
 }
 
-// isProfile identifies whether a value in the config pertains to a profile.
+// isProfile identifies whether a config entry pertains to a user profile.
+// A profile is a map that contains a display_name field.
 func isProfile(value interface{}) bool {
-	// TODO: ianjabour - ideally find a better way to identify projects in config
-	_, ok := value.(map[string]interface{})
-	if !ok {
-		_, ok = value.(map[string]string)
+	switch v := value.(type) {
+	case map[string]interface{}:
+		_, ok := v["display_name"]
+		return ok
+	case map[string]string:
+		_, ok := v["display_name"]
+		return ok
 	}
-
-	return ok
+	return false
 }
 
 // WriteConfigField updates a configuration field and writes the updated

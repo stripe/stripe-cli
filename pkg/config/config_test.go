@@ -86,6 +86,7 @@ func TestCopyProfile_SkipsPluginConfigsField(t *testing.T) {
 	p := Profile{
 		ProfileName:    "default",
 		TestModeAPIKey: "sk_test_123",
+		DisplayName:    "Test Account",
 	}
 	c.Profile = p
 	err := p.CreateProfile()
