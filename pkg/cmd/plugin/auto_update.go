@@ -28,13 +28,15 @@ func NewAutoUpdateCmd(cfg *config.Config) *AutoUpdateCmd {
 		Short: "Enable or disable automatic updates for a plugin",
 		Long: `Enable or disable automatic background updates for a plugin.
 
-When disabled, the CLI will not check for or download newer versions automatically.
+By default, automatic updates are disabled. When disabled, the CLI will not check
+for or download newer versions automatically.
 Omit the plugin name to apply the setting globally to all plugins.`,
 		Example: `stripe plugin auto-update --enable
   stripe plugin auto-update --disable
   stripe plugin auto-update apps --enable
   stripe plugin auto-update apps --disable`,
-		RunE: ac.run,
+		RunE:   ac.run,
+		Hidden: true,
 	}
 
 	ac.Cmd.Flags().BoolVar(&ac.enable, "enable", false, "Enable automatic updates")
