@@ -1,13 +1,11 @@
 package proxy
 
 import (
-	"crypto/tls"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -224,16 +222,7 @@ func TestPostV2_UsesConfiguredHTTPClient(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	// create a client with InsecureSkipVerify so TLS works against the test server
-	httpClient := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
-	}
+	httpClient := ts.Client()
 
 	client := NewEndpointClient(
 		ts.URL,
