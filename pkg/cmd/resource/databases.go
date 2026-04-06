@@ -14,13 +14,12 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/requests"
 	"github.com/stripe/stripe-cli/pkg/stripe"
-	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
 const (
 	databaseJSONFlagName               = "json"
+	databaseRequestVersion             = "unsafe-development"
 	databaseDeleteConfirmationPhrase   = "remove StripeDB"
 	databaseUserDeleteConfirmationText = "remove user"
 )
@@ -29,44 +28,38 @@ const databasesLongDescription = `Manage StripeDB.
 
 These commands target unstable preview APIs and may change without notice.`
 
-type databaseRequest struct {
-	reqs requests.Base
-}
-
 type databaseCreateCmd struct {
-	databaseRequest
-	apiVersion string
+	opCmd *OperationCmd
 }
 
 type databaseRetrieveCmd struct {
-	databaseRequest
+	opCmd *OperationCmd
 }
 
 type databaseListCmd struct {
-	databaseRequest
+	opCmd *OperationCmd
 }
 
 type databaseUsersRetrieveCmd struct {
-	databaseRequest
+	opCmd *OperationCmd
 }
 
 type databaseUsersListCmd struct {
-	databaseRequest
+	opCmd *OperationCmd
 }
 
 type databaseDeleteCmd struct {
-	databaseRequest
-	yes bool
+	opCmd *OperationCmd
+	yes   bool
 }
 
 type databaseUsersCreateCmd struct {
-	databaseRequest
-	username string
+	opCmd *OperationCmd
 }
 
 type databaseUsersDeleteCmd struct {
-	databaseRequest
-	yes bool
+	opCmd *OperationCmd
+	yes   bool
 }
 
 type databaseConnection struct {
@@ -117,10 +110,63 @@ type databaseDetailField struct {
 	Value string
 }
 
+var (
+	databaseCreateOperationSpec = OperationSpec{
+		Name:   "create",
+		Path:   "/v2/data/databases",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"api_version": {Type: "string"},
+		},
+	}
+	databaseRetrieveOperationSpec = OperationSpec{
+		Name:   "retrieve",
+		Path:   "/v2/data/databases/{db_id}",
+		Method: http.MethodGet,
+	}
+	databaseListOperationSpec = OperationSpec{
+		Name:   "list",
+		Path:   "/v2/data/databases",
+		Method: http.MethodGet,
+	}
+	databaseDeleteOperationSpec = OperationSpec{
+		Name:   "delete",
+		Path:   "/v2/data/databases/{db_id}",
+		Method: http.MethodDelete,
+	}
+	databaseUsersCreateOperationSpec = OperationSpec{
+		Name:   "create",
+		Path:   "/v2/data/databases/{db_id}/users",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"username": {Type: "string"},
+		},
+	}
+	databaseUsersRetrieveOperationSpec = OperationSpec{
+		Name:   "retrieve",
+		Path:   "/v2/data/databases/{db_id}/users/{dbuser_id}",
+		Method: http.MethodGet,
+	}
+	databaseUsersListOperationSpec = OperationSpec{
+		Name:   "list",
+		Path:   "/v2/data/databases/{db_id}/users",
+		Method: http.MethodGet,
+	}
+	databaseUsersDeleteOperationSpec = OperationSpec{
+		Name:   "delete",
+		Path:   "/v2/data/databases/{db_id}/users/{dbuser_id}",
+		Method: http.MethodDelete,
+	}
+)
+
 // AddDatabasesCmd registers the hand-written StripeDB command tree. If a
 // generated command with the same name ever appears, prefer the manual version
 // until the custom implementation is removed.
 func AddDatabasesCmd(rootCmd *cobra.Command, cfg *config.Config) error {
+	if rootCmd.Annotations == nil {
+		rootCmd.Annotations = make(map[string]string)
+	}
+
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Use == "databases" {
 			rootCmd.RemoveCommand(cmd)
@@ -128,159 +174,136 @@ func AddDatabasesCmd(rootCmd *cobra.Command, cfg *config.Config) error {
 		}
 	}
 
-	rootCmd.AddCommand(newDatabasesCmd(cfg))
+	newDatabasesResourceCmd(rootCmd, cfg)
 	return nil
 }
 
 func newDatabasesCmd(cfg *config.Config) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:    "databases",
-		Args:   validators.NoArgs,
-		Short:  "Manage StripeDB (unstable preview APIs)",
-		Long:   databasesLongDescription,
-		Hidden: true,
+	rootCmd := &cobra.Command{
+		Use:         "stripe",
+		Annotations: make(map[string]string),
 	}
-	cmd.PersistentFlags().Bool(databaseJSONFlagName, false, "Return JSON output instead of formatted text")
-	addDatabaseCommands(cmd, cfg)
-	return cmd
+	databasesCmd := newDatabasesResourceCmd(rootCmd, cfg).Cmd
+	rootCmd.RemoveCommand(databasesCmd)
+	return databasesCmd
+}
+
+func newDatabasesResourceCmd(parentCmd *cobra.Command, cfg *config.Config) *ResourceCmd {
+	databasesCmd := NewResourceCmd(parentCmd, "databases")
+	databasesCmd.Cmd.Short = "Manage StripeDB (unstable preview APIs)"
+	databasesCmd.Cmd.Long = databasesLongDescription
+	databasesCmd.Cmd.PersistentFlags().Bool(databaseJSONFlagName, false, "Return JSON output instead of formatted text")
+	addDatabaseCommands(databasesCmd.Cmd, cfg)
+	databasesCmd.Cmd.Hidden = true
+
+	for _, cmd := range parentCmd.Commands() {
+		if cmd.Use == "databases" {
+			cmd.Short = databasesCmd.Cmd.Short
+			cmd.Long = databasesCmd.Cmd.Long
+			cmd.Hidden = true
+		}
+	}
+
+	return databasesCmd
 }
 
 func addDatabaseCommands(root *cobra.Command, cfg *config.Config) {
-	usersCmd := &cobra.Command{
-		Use:   "users",
-		Short: "Manage StripeDB users",
-		Long:  databasesLongDescription,
-		Args:  validators.NoArgs,
-	}
+	usersCmd := NewResourceCmd(root, "users")
+	usersCmd.Cmd.Short = "Manage StripeDB users"
+	usersCmd.Cmd.Long = databasesLongDescription
 
-	root.AddCommand(newDatabaseCreateCmd(cfg))
-	root.AddCommand(newDatabaseRetrieveCmd(cfg))
-	root.AddCommand(newDatabaseListCmd(cfg))
-	root.AddCommand(newDatabaseDeleteCmd(cfg))
-	usersCmd.AddCommand(newDatabaseUsersCreateCmd(cfg))
-	usersCmd.AddCommand(newDatabaseUsersRetrieveCmd(cfg))
-	usersCmd.AddCommand(newDatabaseUsersListCmd(cfg))
-	usersCmd.AddCommand(newDatabaseUsersDeleteCmd(cfg))
-	root.AddCommand(usersCmd)
+	newDatabaseCreateCmd(root, cfg)
+	newDatabaseRetrieveCmd(root, cfg)
+	newDatabaseListCmd(root, cfg)
+	newDatabaseDeleteCmd(root, cfg)
+	newDatabaseUsersCreateCmd(usersCmd.Cmd, cfg)
+	newDatabaseUsersRetrieveCmd(usersCmd.Cmd, cfg)
+	newDatabaseUsersListCmd(usersCmd.Cmd, cfg)
+	newDatabaseUsersDeleteCmd(usersCmd.Cmd, cfg)
 }
 
-func newDatabaseCreateCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseCreateCmd{}
-	cmd := &cobra.Command{
-		Use:   "create",
-		Args:  validators.NoArgs,
-		Short: "Create a StripeDB instance",
-		RunE:  runner.run,
+func newDatabaseOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *config.Config, short string) *OperationCmd {
+	opCmd := NewOperationCmd(parentCmd, opSpec, cfg)
+	opCmd.SuppressOutput = true
+	opCmd.Cmd.Short = short
+	opCmd.Cmd.Long = databasesLongDescription
+	_ = opCmd.Cmd.Flags().MarkHidden("stripe-version")
+
+	if strings.EqualFold(opSpec.Method, http.MethodDelete) {
+		_ = opCmd.Cmd.Flags().MarkHidden("confirm")
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodPost)
-	cmd.Flags().StringVar(&runner.apiVersion, "api-version", "", "API version to pin the StripeDB instance to")
-	return cmd
+
+	return opCmd
 }
 
-func newDatabaseRetrieveCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseRetrieveCmd{}
-	cmd := &cobra.Command{
-		Use:   "retrieve <db_id>",
-		Args:  validators.ExactArgs(1),
-		Short: "Retrieve a StripeDB instance",
-		RunE:  runner.run,
+func newDatabaseCreateCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseCreateCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseCreateOperationSpec, cfg, "Create a StripeDB instance"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodGet)
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseListCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseListCmd{}
-	cmd := &cobra.Command{
-		Use:   "list",
-		Args:  validators.NoArgs,
-		Short: "List StripeDB instances",
-		RunE:  runner.run,
+func newDatabaseRetrieveCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseRetrieveCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseRetrieveOperationSpec, cfg, "Retrieve a StripeDB instance"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodGet)
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseDeleteCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseDeleteCmd{}
-	cmd := &cobra.Command{
-		Use:   "delete <db_id>",
-		Args:  validators.ExactArgs(1),
-		Short: "Delete a StripeDB instance",
-		RunE:  runner.run,
+func newDatabaseListCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseListCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseListOperationSpec, cfg, "List StripeDB instances"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodDelete)
-	cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseUsersCreateCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersCreateCmd{}
-	cmd := &cobra.Command{
-		Use:   "create <db_id>",
-		Args:  validators.ExactArgs(1),
-		Short: "Create a StripeDB user",
-		RunE:  runner.run,
+func newDatabaseDeleteCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseDeleteCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseDeleteOperationSpec, cfg, "Delete a StripeDB instance"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodPost)
-	cmd.Flags().StringVar(&runner.username, "username", "", "Username to create")
-	return cmd
+	runner.opCmd.Cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseUsersRetrieveCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersRetrieveCmd{}
-	cmd := &cobra.Command{
-		Use:   "retrieve <db_id> <dbuser_id>",
-		Args:  validators.ExactArgs(2),
-		Short: "Retrieve a StripeDB user",
-		RunE:  runner.run,
+func newDatabaseUsersCreateCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseUsersCreateCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersCreateOperationSpec, cfg, "Create a StripeDB user"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodGet)
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseUsersListCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersListCmd{}
-	cmd := &cobra.Command{
-		Use:   "list <db_id>",
-		Args:  validators.ExactArgs(1),
-		Short: "List StripeDB users",
-		RunE:  runner.run,
+func newDatabaseUsersRetrieveCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseUsersRetrieveCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersRetrieveOperationSpec, cfg, "Retrieve a StripeDB user"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodGet)
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func newDatabaseUsersDeleteCmd(cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersDeleteCmd{}
-	cmd := &cobra.Command{
-		Use:   "delete <db_id> <dbuser_id>",
-		Args:  validators.ExactArgs(2),
-		Short: "Delete a StripeDB user",
-		RunE:  runner.run,
+func newDatabaseUsersListCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseUsersListCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersListOperationSpec, cfg, "List StripeDB users"),
 	}
-	initDatabaseRequest(&runner.reqs, cfg, cmd, http.MethodDelete)
-	cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
-	return cmd
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
-func initDatabaseRequest(reqBase *requests.Base, cfg *config.Config, cmd *cobra.Command, method string) {
-	reqBase.Method = method
-	reqBase.Profile = &cfg.Profile
-	reqBase.Cmd = cmd
-	reqBase.SuppressOutput = true
-	reqBase.APIBaseURL = stripe.DefaultAPIBaseURL
-	cmd.Flags().StringVar(&reqBase.APIBaseURL, "api-base", stripe.DefaultAPIBaseURL, "Sets the API base URL")
-	_ = cmd.Flags().MarkHidden("api-base")
+func newDatabaseUsersDeleteCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
+	runner := &databaseUsersDeleteCmd{
+		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersDeleteOperationSpec, cfg, "Delete a StripeDB user"),
+	}
+	runner.opCmd.Cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
+	runner.opCmd.Cmd.RunE = runner.run
+	return runner.opCmd.Cmd
 }
 
 func (runner *databaseCreateCmd) run(cmd *cobra.Command, args []string) error {
-	requestParams := map[string]interface{}{}
-	if cmd.Flags().Changed("api-version") {
-		requestParams["api_version"] = runner.apiVersion
-	}
-
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, "/v2/data/databases", requestParams)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -327,8 +350,7 @@ func (runner *databaseCreateCmd) run(cmd *cobra.Command, args []string) error {
 }
 
 func (runner *databaseRetrieveCmd) run(cmd *cobra.Command, args []string) error {
-	path := fmt.Sprintf("/v2/data/databases/%s", args[0])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -349,7 +371,7 @@ func (runner *databaseRetrieveCmd) run(cmd *cobra.Command, args []string) error 
 }
 
 func (runner *databaseListCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, "/v2/data/databases", nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -364,12 +386,17 @@ func (runner *databaseListCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	printDatabaseListHeading(out, runner.reqs.Profile)
+	printDatabaseListHeading(out, runner.opCmd.Profile)
 	printDatabaseTable(out, databases)
 	return nil
 }
 
 func (runner *databaseDeleteCmd) run(cmd *cobra.Command, args []string) error {
+	if runner.opCmd.DryRun {
+		_, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+		return err
+	}
+
 	if jsonOutputEnabled(cmd) && !runner.yes {
 		return fmt.Errorf("--yes is required with --json")
 	}
@@ -379,8 +406,7 @@ func (runner *databaseDeleteCmd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	path := fmt.Sprintf("/v2/data/databases/%s", args[0])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -394,13 +420,7 @@ func (runner *databaseDeleteCmd) run(cmd *cobra.Command, args []string) error {
 }
 
 func (runner *databaseUsersCreateCmd) run(cmd *cobra.Command, args []string) error {
-	requestParams := map[string]interface{}{}
-	if cmd.Flags().Changed("username") {
-		requestParams["username"] = runner.username
-	}
-
-	path := fmt.Sprintf("/v2/data/databases/%s/users", args[0])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, requestParams)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -427,8 +447,7 @@ func (runner *databaseUsersCreateCmd) run(cmd *cobra.Command, args []string) err
 }
 
 func (runner *databaseUsersRetrieveCmd) run(cmd *cobra.Command, args []string) error {
-	path := fmt.Sprintf("/v2/data/databases/%s/users/%s", args[0], args[1])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -447,8 +466,7 @@ func (runner *databaseUsersRetrieveCmd) run(cmd *cobra.Command, args []string) e
 }
 
 func (runner *databaseUsersListCmd) run(cmd *cobra.Command, args []string) error {
-	path := fmt.Sprintf("/v2/data/databases/%s/users", args[0])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -467,6 +485,11 @@ func (runner *databaseUsersListCmd) run(cmd *cobra.Command, args []string) error
 }
 
 func (runner *databaseUsersDeleteCmd) run(cmd *cobra.Command, args []string) error {
+	if runner.opCmd.DryRun {
+		_, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+		return err
+	}
+
 	if jsonOutputEnabled(cmd) && !runner.yes {
 		return fmt.Errorf("--yes is required with --json")
 	}
@@ -477,8 +500,7 @@ func (runner *databaseUsersDeleteCmd) run(cmd *cobra.Command, args []string) err
 		return err
 	}
 
-	path := fmt.Sprintf("/v2/data/databases/%s/users/%s", args[0], args[1])
-	body, err := executeDatabaseRequest(cmd, &runner.reqs, path, nil)
+	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -493,25 +515,49 @@ func (runner *databaseUsersDeleteCmd) run(cmd *cobra.Command, args []string) err
 	return nil
 }
 
-func executeDatabaseRequest(cmd *cobra.Command, reqBase *requests.Base, path string, additionalParams map[string]interface{}) ([]byte, error) {
-	if err := stripe.ValidateAPIBaseURL(reqBase.APIBaseURL); err != nil {
+func executeDatabaseOperation(cmd *cobra.Command, opCmd *OperationCmd, args []string) ([]byte, error) {
+	if err := stripe.ValidateAPIBaseURL(opCmd.APIBaseURL); err != nil {
 		return nil, err
 	}
 
-	if additionalParams == nil {
-		additionalParams = map[string]interface{}{}
-	}
+	opCmd.Parameters.SetVersion(databaseRequestVersion)
 
-	apiKey, err := reqBase.Profile.GetAPIKey(reqBase.Livemode)
-	if err != nil {
+	path := formatURL(opCmd.Path, args)
+	requestParams := make(map[string]interface{})
+	opCmd.addStringRequestParams(requestParams)
+	opCmd.addIntRequestParams(requestParams)
+	opCmd.addBoolRequestParams(requestParams)
+
+	if err := opCmd.addArrayRequestParams(requestParams); err != nil {
 		return nil, err
 	}
 
-	body, err := reqBase.MakeRequest(cmd.Context(), apiKey, path, &reqBase.Parameters, additionalParams, true,
-		func(req *http.Request) error {
-			req.Header.Set("Stripe-Version", "unsafe-development")
-			return nil
-		})
+	apiKey, apiKeyErr := opCmd.Profile.GetAPIKey(opCmd.Livemode)
+	if opCmd.DryRun {
+		dryRunKey := apiKey
+		if apiKeyErr != nil {
+			dryRunKey = ""
+		}
+
+		output, err := opCmd.BuildDryRunOutput(dryRunKey, opCmd.APIBaseURL, path, &opCmd.Parameters, requestParams)
+		if err != nil {
+			return nil, err
+		}
+		if output.DryRun.Headers == nil {
+			output.DryRun.Headers = make(map[string]string)
+		}
+		output.DryRun.Headers["Stripe-Version"] = databaseRequestVersion
+
+		b, _ := json.MarshalIndent(output, "", "  ")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil, nil
+	}
+
+	if apiKeyErr != nil {
+		return nil, apiKeyErr
+	}
+
+	body, err := opCmd.MakeRequest(cmd.Context(), apiKey, path, &opCmd.Parameters, requestParams, true, nil)
 	return body, err
 }
 

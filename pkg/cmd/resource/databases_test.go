@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,7 +21,28 @@ import (
 	"github.com/stripe/stripe-cli/pkg/config"
 )
 
+var databaseTemplateFuncsOnce sync.Once
+
+func ensureDatabaseTemplateFuncs() {
+	databaseTemplateFuncsOnce.Do(func() {
+		cobra.AddTemplateFunc("WrappedInheritedFlagUsages", func(cmd *cobra.Command) string {
+			return cmd.InheritedFlags().FlagUsagesWrapped(80)
+		})
+		cobra.AddTemplateFunc("WrappedLocalFlagUsages", func(cmd *cobra.Command) string {
+			return cmd.LocalFlags().FlagUsagesWrapped(80)
+		})
+		cobra.AddTemplateFunc("WrappedRequestParamsFlagUsages", func(cmd *cobra.Command) string {
+			return cmd.LocalFlags().FlagUsagesWrapped(80)
+		})
+		cobra.AddTemplateFunc("WrappedNonRequestParamsFlagUsages", func(cmd *cobra.Command) string {
+			return cmd.LocalFlags().FlagUsagesWrapped(80)
+		})
+		cobra.AddTemplateFunc("AIAgentHelp", func(*cobra.Command) string { return "" })
+	})
+}
+
 func newDatabaseTestRoot(cfg *config.Config) *cobra.Command {
+	ensureDatabaseTemplateFuncs()
 	return newDatabasesCmd(databaseTestConfig(cfg))
 }
 
@@ -204,6 +226,20 @@ func TestDatabaseHelp(t *testing.T) {
 	require.Contains(t, output, "--json")
 	require.Contains(t, output, "create")
 	require.Contains(t, output, "users")
+
+	createHelp, err := executeDatabaseCommand(root, nil, "create", "--help")
+	require.NoError(t, err)
+	require.Contains(t, createHelp, "--api-version")
+	require.Contains(t, createHelp, "--dry-run")
+	require.Contains(t, createHelp, "--live")
+	require.Contains(t, createHelp, "--stripe-account")
+	require.NotContains(t, createHelp, "--stripe-version")
+
+	deleteHelp, err := executeDatabaseCommand(root, nil, "delete", "--help")
+	require.NoError(t, err)
+	require.Contains(t, deleteHelp, "--yes")
+	require.NotContains(t, deleteHelp, "--confirm")
+	require.NotContains(t, deleteHelp, "--stripe-version")
 }
 
 func TestDatabaseCommands(t *testing.T) {
@@ -267,6 +303,15 @@ func TestDatabaseCommands(t *testing.T) {
 		require.NoError(t, err)
 		require.JSONEq(t, readDatabaseFixtureText(t, "GET_v2_data_databases.json"), output)
 		require.Contains(t, output, "\n  \"data\": [")
+	})
+
+	t.Run("list dry-run uses unsafe preview header", func(t *testing.T) {
+		root := newDatabaseTestRoot(&config.Config{})
+
+		output, err := executeDatabaseCommand(root, nil, "list", "--dry-run")
+		require.NoError(t, err)
+		require.Contains(t, output, `"Stripe-Version": "unsafe-development"`)
+		require.Contains(t, output, `"url": "https://api.stripe.com/v2/data/databases"`)
 	})
 
 	t.Run("delete shows confirmation prompt when declined", func(t *testing.T) {
