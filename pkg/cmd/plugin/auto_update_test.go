@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
 func setupAutoUpdateTest(t *testing.T) (*config.Config, func()) {
@@ -42,7 +41,7 @@ func TestGlobalEnable(t *testing.T) {
 
 	err := ac.run(ac.Cmd, []string{})
 	require.NoError(t, err)
-	assert.Equal(t, "on", viper.GetString(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
+	assert.Equal(t, "on", viper.GetString(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
 }
 
 // -- global --disable -------------------------------------------------------
@@ -56,7 +55,7 @@ func TestGlobalDisable(t *testing.T) {
 
 	err := ac.run(ac.Cmd, []string{})
 	require.NoError(t, err)
-	assert.Equal(t, "off", viper.GetString(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
+	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
 }
 
 // -- no flags → help --------------------------------------------------------
@@ -69,7 +68,7 @@ func TestNoFlags_ShowsHelp(t *testing.T) {
 
 	err := ac.run(ac.Cmd, []string{})
 	require.NoError(t, err)
-	assert.False(t, viper.IsSet(plugins.PluginConfigKey(plugins.PluginConfigGlobalScope, plugins.PluginConfigUpdatesField)))
+	assert.False(t, viper.IsSet(config.PluginConfigKey(config.PluginConfigGlobalScope, config.PluginConfigUpdatesField)))
 }
 
 // -- per-plugin --enable ----------------------------------------------------
@@ -85,7 +84,7 @@ func TestPluginEnable(t *testing.T) {
 
 	err := ac.run(ac.Cmd, []string{"apps"})
 	require.NoError(t, err)
-	assert.Equal(t, "on", viper.GetString(plugins.PluginConfigKey("apps", plugins.PluginConfigUpdatesField)))
+	assert.Equal(t, "on", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
 }
 
 // -- per-plugin --disable ---------------------------------------------------
@@ -101,7 +100,7 @@ func TestPluginDisable(t *testing.T) {
 
 	err := ac.run(ac.Cmd, []string{"apps"})
 	require.NoError(t, err)
-	assert.Equal(t, "off", viper.GetString(plugins.PluginConfigKey("apps", plugins.PluginConfigUpdatesField)))
+	assert.Equal(t, "off", viper.GetString(config.PluginConfigKey("apps", config.PluginConfigUpdatesField)))
 }
 
 // -- per-plugin not installed -----------------------------------------------

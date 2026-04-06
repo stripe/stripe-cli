@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
-	"github.com/stripe/stripe-cli/pkg/plugins"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -53,7 +52,7 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
 
-	scope := plugins.PluginConfigGlobalScope
+	scope := config.PluginConfigGlobalScope
 	if len(args) == 1 {
 		scope = args[0]
 		if !slices.Contains(ac.cfg.GetInstalledPlugins(), scope) {
@@ -66,5 +65,5 @@ func (ac *AutoUpdateCmd) run(cmd *cobra.Command, args []string) error {
 		value = "on"
 	}
 
-	return ac.cfg.WriteConfigField(plugins.PluginConfigKey(scope, plugins.PluginConfigUpdatesField), value)
+	return ac.cfg.WriteConfigField(config.PluginConfigKey(scope, config.PluginConfigUpdatesField), value)
 }

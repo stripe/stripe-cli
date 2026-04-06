@@ -1,4 +1,4 @@
-package plugins
+package config
 
 const (
 	// PluginConfigGlobalScope is used as the scope when a setting applies to all plugins.
@@ -7,6 +7,17 @@ const (
 	// PluginConfigUpdatesField is the config field name controlling automatic updates.
 	PluginConfigUpdatesField = "updates"
 )
+
+// isPluginConfigSection reports whether v is a plugin config section,
+// i.e. a map of the form <scope>.<plugin config key>.
+func isPluginConfigSection(v interface{}) bool {
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	_, ok = m[PluginConfigUpdatesField]
+	return ok
+}
 
 // PluginConfigKey returns the key for a plugin config field.
 // Use PluginConfigGlobalScope as scope to target all plugins.

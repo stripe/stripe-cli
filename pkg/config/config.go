@@ -4,7 +4,6 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -227,13 +226,16 @@ func (c *Config) CopyProfile(source string, target string) error {
 		return fmt.Errorf("source '%s' is not a profile", source)
 	}
 
-	// Clone the profile map and update profile_name.
-	// Drop the top-level "plugin_configs" key — it is a reserved config
-	// section, not a profile field, and must not be carried into the copy.
 	safeTarget := strings.ReplaceAll(target, ".", " ")
 	existingMap := existing.(map[string]interface{})
-	newProfile := maps.Clone(existingMap)
-	delete(newProfile, "plugin_configs")
+	newProfile := make(map[string]interface{})
+	for k, v := range existingMap {
+		if isPluginConfigSection(v) {
+			// Skip plugin config sections of the form <scope>.<plugin config key>.
+			continue
+		}
+		newProfile[k] = v
+	}
 	newProfile["profile_name"] = safeTarget
 
 	runtimeViper.Set(safeTarget, newProfile)
@@ -469,7 +471,7 @@ func (c *Config) WriteConfigField(field string, value interface{}) error {
 	runtimeViper := viper.GetViper()
 	runtimeViper.Set(field, value)
 
-	return runtimeViper.WriteConfig()
+	return writeConfig(runtimeViper)
 }
 
 // writeConfig writes a viper instance to the config file and syncs the global viper.
