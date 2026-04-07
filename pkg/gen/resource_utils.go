@@ -101,10 +101,11 @@ var sentenceAbbrevs = map[string]bool{
 }
 
 // canEndSentence reports whether c is a valid character immediately before a
-// sentence-ending period: a letter, digit, closing bracket, or backtick.
+// sentence-ending period: a letter, digit, closing bracket, backtick, or
+// closing double-quote (for descriptions ending like `"TX".`).
 func canEndSentence(c byte) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-		(c >= '0' && c <= '9') || c == ')' || c == ']' || c == '`'
+		(c >= '0' && c <= '9') || c == ')' || c == ']' || c == '`' || c == '"'
 }
 
 // canStartSentence reports whether s[i] looks like the first character of a

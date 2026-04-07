@@ -30890,7 +30890,7 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 		},
 		"ship_from_details.address.state": {
 			Type:             "string",
-			ShortDescription: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
+			ShortDescription: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\"",
 		},
 		"shipping_cost.amount": {
 			Type:             "integer",
@@ -32723,7 +32723,7 @@ var V1TaxSettingsUpdate = resource.OperationSpec{
 		},
 		"head_office.address.state": {
 			Type:             "string",
-			ShortDescription: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\".",
+			ShortDescription: "State/province as an [ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2) subdivision code, without country prefix, such as \"NY\" or \"TX\"",
 		},
 	},
 }

@@ -162,10 +162,12 @@ func TestFirstSentence(t *testing.T) {
 		// canEndSentence: uppercase letter (acronym before period)
 		{"Destination URL. The URL is activated at onboarding.", "Destination URL", "uppercase letter ends word before period"},
 
-		// canEndSentence: closing bracket / backtick
+		// canEndSentence: closing bracket / backtick / double-quote
 		{"Amount in cents (e.g., 100 for $1.00). Must be.", "Amount in cents (e.g., 100 for $1.00)", "closing paren before period"},
 		{"Set `enabled`. Next sentence.", "Set `enabled`", "backtick before period"},
 		{"See [docs](https://example.com). Sign in.", "See [docs](https://example.com)", "markdown link — closing paren before period"},
+		{`State code, such as "NY" or "TX".`, `State code, such as "NY" or "TX"`, "closing double-quote before period — trailing period stripped"},
+		{`State code, such as "NY" or "TX". Required.`, `State code, such as "NY" or "TX"`, "closing double-quote before period — mid-string split"},
 
 		// canStartSentence
 		{"U.S. only. Required.", "U.S. only", "lowercase after period does not start sentence — prevents U.S. split"},
