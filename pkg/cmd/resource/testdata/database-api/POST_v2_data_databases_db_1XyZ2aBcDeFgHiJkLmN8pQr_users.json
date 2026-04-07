@@ -1,0 +1,12 @@
+{
+  "database_user": {
+    "id": "dbuser_1JqM7xBcDeFgHiJkLmN8pQrS",
+    "object": "v2.data.database_user",
+    "livemode": false,
+    "database": "db_1XyZ2aBcDeFgHiJkLmN8pQr",
+    "username": "llama_user",
+    "password": "new_pass_123",
+    "url": "postgresql://llama_user:new_pass_123@db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com:5432/data",
+    "created": "2026-04-02T10:00:00Z"
+  }
+}

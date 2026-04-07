@@ -20,19 +20,40 @@ func newResourcesCmd() *resourcesCmd {
 		Use:   "resources",
 		Args:  validators.NoArgs,
 		Short: "List resource commands",
+		RunE:  rc.run,
 	}
-	rc.cmd.SetHelpTemplate(getResourcesHelpTemplate())
+	rc.cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		_ = rc.run(cmd, args)
+	})
 
 	return rc
 }
 
-func getResourcesHelpTemplate() string {
-	// This template uses `.Parent` to access subcommands on the root command.
-	return fmt.Sprintf(`%s{{range $index, $cmd := .Parent.Commands}}{{if (and (not $cmd.Hidden) (or (eq (index $.Parent.Annotations $cmd.Name) "resource") (eq (index $.Parent.Annotations $cmd.Name) "namespace")))}}
-  {{rpad $cmd.Name $cmd.NamePadding }} {{$cmd.Short}}{{end}}{{end}}
+func (rc *resourcesCmd) run(cmd *cobra.Command, _ []string) error {
+	parent := cmd.Parent()
+	if parent == nil {
+		return nil
+	}
 
-Use "stripe [command] --help" for more information about a command.
-`,
-		ansi.Bold("Available commands:"),
-	)
+	out := cmd.OutOrStdout()
+	fmt.Fprintln(out, ansi.Bold("Available commands:"))
+	for _, child := range parent.Commands() {
+		if !showInResources(parent, child) {
+			continue
+		}
+
+		fmt.Fprintf(out, "  %-*s %s\n", child.NamePadding(), child.Name(), child.Short)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, `Use "stripe [command] --help" for more information about a command.`)
+	return nil
+}
+
+func showInResources(parent *cobra.Command, cmd *cobra.Command) bool {
+	kind := parent.Annotations[cmd.Name()]
+	if kind != "resource" && kind != "namespace" {
+		return false
+	}
+
+	return !cmd.Hidden
 }
