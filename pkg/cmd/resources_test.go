@@ -28,14 +28,16 @@ const (
 func newResourcesTestRoot(t *testing.T) *cobra.Command {
 	t.Helper()
 
+	cfg := &config.Config{}
 	root := &cobra.Command{
 		Use:         "stripe",
 		Annotations: map[string]string{"resources": "resources"},
 	}
+	root.PersistentFlags().StringVar(&cfg.Profile.APIKey, "api-key", "", "Your API key to use for the command")
 	root.AddCommand(newResourcesCmd().cmd)
-	resources.AddAllResourcesCmds(root, &config.Config{})
-	require.NoError(t, resource.AddDatabasesCmd(root, &config.Config{}))
-	require.NoError(t, resource.PostProcessResourceCommands(root, &config.Config{}))
+	resources.AddAllResourcesCmds(root, cfg)
+	require.NoError(t, resource.AddDatabasesCmd(root, cfg))
+	require.NoError(t, resource.PostProcessResourceCommands(root, cfg))
 
 	return root
 }
