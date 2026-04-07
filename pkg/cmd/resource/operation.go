@@ -182,6 +182,8 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
 		case "string":
 			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+		case "clearable_object":
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "number":
 			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
 		case "integer":
@@ -410,10 +412,21 @@ func (oc *OperationCmd) addStringRequestParams(requestParams map[string]interfac
 		// only include fields explicitly set by the user to avoid conflicts between e.g. account_balance, balance
 		if oc.Cmd.Flags().Changed(stringProp) {
 			paramName := getParamName(stringProp)
+			val := *stringVal
+			// For clearable_object flags, "{}" is accepted as an alias for "" for
+			// compatibility with other tools. The v1 API requires an empty string to
+			// clear the field, so translate "{}" accordingly.
+			if val == "{}" {
+				if f := oc.Cmd.Flags().Lookup(stringProp); f != nil {
+					if apitype, ok := f.Annotations["apitype"]; ok && len(apitype) > 0 && apitype[0] == "clearable_object" {
+						val = ""
+					}
+				}
+			}
 			if strings.Contains(paramName, ".") {
-				constructedNestedStringParams(requestParams, strings.Split(paramName, "."), stringVal)
+				constructedNestedStringParams(requestParams, strings.Split(paramName, "."), &val)
 			} else {
-				requestParams[paramName] = *stringVal
+				requestParams[paramName] = val
 			}
 		}
 	}

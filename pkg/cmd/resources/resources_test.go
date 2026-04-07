@@ -143,6 +143,18 @@ func TestDeeplyNestedField_NotRequired(t *testing.T) {
 	}
 }
 
+// TestClearableObjectParam verifies that a known clearable-object field is generated
+// with Type "clearable_object" so the CLI can offer the right help text and translate
+// "{}" to "" when sending the request.
+func TestClearableObjectParam(t *testing.T) {
+	spec := resources.V1CustomersUpdate
+	require.NotNil(t, spec.Params)
+
+	shipping, ok := spec.Params["shipping"]
+	require.True(t, ok, "expected 'shipping' param in V1CustomersUpdate")
+	assert.Equal(t, "clearable_object", shipping.Type, "shipping should be a clearable_object (anyOf: object | empty string)")
+}
+
 // TestAddResourceCmds verifies the coordinator registers commands without panicking.
 func TestAddResourceCmds(t *testing.T) {
 	rootCmd := &cobra.Command{
