@@ -28,40 +28,6 @@ const databasesLongDescription = `Manage StripeDB.
 
 These commands target unstable preview APIs and may change without notice.`
 
-type databaseCreateCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseRetrieveCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseListCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseUsersRetrieveCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseUsersListCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseDeleteCmd struct {
-	opCmd *OperationCmd
-	yes   bool
-}
-
-type databaseUsersCreateCmd struct {
-	opCmd *OperationCmd
-}
-
-type databaseUsersDeleteCmd struct {
-	opCmd *OperationCmd
-	yes   bool
-}
-
 type databaseConnection struct {
 	Host         string `json:"host"`
 	Port         int    `json:"port"`
@@ -237,73 +203,75 @@ func newDatabaseOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cf
 }
 
 func newDatabaseCreateCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseCreateCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseCreateOperationSpec, cfg, "Create a StripeDB instance"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseCreateOperationSpec, cfg, "Create a StripeDB instance")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseCreate(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseRetrieveCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseRetrieveCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseRetrieveOperationSpec, cfg, "Retrieve a StripeDB instance"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseRetrieveOperationSpec, cfg, "Retrieve a StripeDB instance")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseRetrieve(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseListCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseListCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseListOperationSpec, cfg, "List StripeDB instances"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseListOperationSpec, cfg, "List StripeDB instances")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseList(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseDeleteCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseDeleteCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseDeleteOperationSpec, cfg, "Delete a StripeDB instance"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseDeleteOperationSpec, cfg, "Delete a StripeDB instance")
+	var yes bool
+	opCmd.Cmd.Flags().BoolVar(&yes, "yes", false, "Skip the confirmation prompt")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseDelete(cmd, opCmd, yes, args)
 	}
-	runner.opCmd.Cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseUsersCreateCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersCreateCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersCreateOperationSpec, cfg, "Create a StripeDB user"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseUsersCreateOperationSpec, cfg, "Create a StripeDB user")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseUsersCreate(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseUsersRetrieveCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersRetrieveCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersRetrieveOperationSpec, cfg, "Retrieve a StripeDB user"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseUsersRetrieveOperationSpec, cfg, "Retrieve a StripeDB user")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseUsersRetrieve(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseUsersListCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersListCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersListOperationSpec, cfg, "List StripeDB users"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseUsersListOperationSpec, cfg, "List StripeDB users")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseUsersList(cmd, opCmd, args)
 	}
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
 func newDatabaseUsersDeleteCmd(parentCmd *cobra.Command, cfg *config.Config) *cobra.Command {
-	runner := &databaseUsersDeleteCmd{
-		opCmd: newDatabaseOperationCmd(parentCmd, &databaseUsersDeleteOperationSpec, cfg, "Delete a StripeDB user"),
+	opCmd := newDatabaseOperationCmd(parentCmd, &databaseUsersDeleteOperationSpec, cfg, "Delete a StripeDB user")
+	var yes bool
+	opCmd.Cmd.Flags().BoolVar(&yes, "yes", false, "Skip the confirmation prompt")
+	opCmd.Cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		return runDatabaseUsersDelete(cmd, opCmd, yes, args)
 	}
-	runner.opCmd.Cmd.Flags().BoolVar(&runner.yes, "yes", false, "Skip the confirmation prompt")
-	runner.opCmd.Cmd.RunE = runner.run
-	return runner.opCmd.Cmd
+	return opCmd.Cmd
 }
 
-func (runner *databaseCreateCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseCreate(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -349,8 +317,8 @@ func (runner *databaseCreateCmd) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (runner *databaseRetrieveCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseRetrieve(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -370,8 +338,8 @@ func (runner *databaseRetrieveCmd) run(cmd *cobra.Command, args []string) error 
 	return nil
 }
 
-func (runner *databaseListCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseList(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -386,27 +354,27 @@ func (runner *databaseListCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	printDatabaseListHeading(out, runner.opCmd.Profile)
+	printDatabaseListHeading(out, opCmd.Profile)
 	printDatabaseTable(out, databases)
 	return nil
 }
 
-func (runner *databaseDeleteCmd) run(cmd *cobra.Command, args []string) error {
-	if runner.opCmd.DryRun {
-		_, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, args []string) error {
+	if opCmd.DryRun {
+		_, err := executeDatabaseOperation(cmd, opCmd, args)
 		return err
 	}
 
-	if jsonOutputEnabled(cmd) && !runner.yes {
+	if jsonOutputEnabled(cmd) && !yes {
 		return fmt.Errorf("--yes is required with --json")
 	}
 
-	confirmed, err := confirmDatabaseAction(cmd, runner.yes, "Warning: this will permanently delete your StripeDB instance.", databaseDeleteConfirmationPhrase)
+	confirmed, err := confirmDatabaseAction(cmd, yes, "Warning: this will permanently delete your StripeDB instance.", databaseDeleteConfirmationPhrase)
 	if err != nil || !confirmed {
 		return err
 	}
 
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -419,8 +387,8 @@ func (runner *databaseDeleteCmd) run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (runner *databaseUsersCreateCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseUsersCreate(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -446,8 +414,8 @@ func (runner *databaseUsersCreateCmd) run(cmd *cobra.Command, args []string) err
 	return nil
 }
 
-func (runner *databaseUsersRetrieveCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseUsersRetrieve(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -465,8 +433,8 @@ func (runner *databaseUsersRetrieveCmd) run(cmd *cobra.Command, args []string) e
 	return nil
 }
 
-func (runner *databaseUsersListCmd) run(cmd *cobra.Command, args []string) error {
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseUsersList(cmd *cobra.Command, opCmd *OperationCmd, args []string) error {
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
@@ -484,23 +452,23 @@ func (runner *databaseUsersListCmd) run(cmd *cobra.Command, args []string) error
 	return nil
 }
 
-func (runner *databaseUsersDeleteCmd) run(cmd *cobra.Command, args []string) error {
-	if runner.opCmd.DryRun {
-		_, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+func runDatabaseUsersDelete(cmd *cobra.Command, opCmd *OperationCmd, yes bool, args []string) error {
+	if opCmd.DryRun {
+		_, err := executeDatabaseOperation(cmd, opCmd, args)
 		return err
 	}
 
-	if jsonOutputEnabled(cmd) && !runner.yes {
+	if jsonOutputEnabled(cmd) && !yes {
 		return fmt.Errorf("--yes is required with --json")
 	}
 
 	prompt := fmt.Sprintf("Warning: this will permanently remove StripeDB access for user %s.", args[1])
-	confirmed, err := confirmDatabaseAction(cmd, runner.yes, prompt, databaseUserDeleteConfirmationText)
+	confirmed, err := confirmDatabaseAction(cmd, yes, prompt, databaseUserDeleteConfirmationText)
 	if err != nil || !confirmed {
 		return err
 	}
 
-	body, err := executeDatabaseOperation(cmd, runner.opCmd, args)
+	body, err := executeDatabaseOperation(cmd, opCmd, args)
 	if err != nil || body == nil {
 		return err
 	}
