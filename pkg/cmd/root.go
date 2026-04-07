@@ -261,9 +261,6 @@ func init() {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
 			installedPluginSet[p] = true
-			if rootCommandExists(rootCmd, plugin.Shortname) {
-				continue
-			}
 			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
@@ -271,16 +268,6 @@ func init() {
 	// For known plugins not yet installed, add a hint command so users get
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
-}
-
-func rootCommandExists(rootCmd *cobra.Command, name string) bool {
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == name {
-			return true
-		}
-	}
-
-	return false
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
