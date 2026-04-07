@@ -79,24 +79,11 @@ func FixtureContents(eventName string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("event %q is not supported", eventName)
 	}
-	f, err := triggers.Open(path)
+	f, err := NewFixtureFromFile(nil, "", "", "", path, nil, nil, nil, nil, false)
 	if err != nil {
 		return "", err
 	}
-	b, readErr := io.ReadAll(f)
-	f.Close()
-	if readErr != nil {
-		return "", readErr
-	}
-	var data FixtureData
-	if err := json.Unmarshal(b, &data); err != nil {
-		return "", err
-	}
-	out, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
+	return f.GetFixtureFileContent(), nil
 }
 
 // BuildFromFixtureFile creates a new fixture struct for a file
