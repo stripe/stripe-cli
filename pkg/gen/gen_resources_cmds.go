@@ -393,6 +393,7 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			for _, req := range media.Schema.Required {
 				requiredSet[req] = true
 			}
+			locallyRequired := make(map[string]bool)
 
 			for propName, schema := range media.Schema.Properties {
 				if propName == "metadata" || propName == "expand" {
@@ -403,7 +404,7 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 				}
 
 				if schema.Type == "object" {
-					addDenormalizedParams(params, propName, schema)
+					addDenormalizedParams(params, locallyRequired, propName, schema, requiredSet[propName])
 				} else {
 					scalarType := gen.GetType(schema)
 					if scalarType == nil {
@@ -419,6 +420,8 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 					params[propName] = ps
 				}
 			}
+
+			markMostCommon(params, locallyRequired, media.Schema.XStripeMostCommon)
 		}
 	} else {
 		for _, param := range specOp.Parameters {
@@ -449,26 +452,82 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 }
 
 // addDenormalizedParams recursively flattens an object schema into dot-notation params.
-func addDenormalizedParams(params map[string]*resource.ParamSpec, prefix string, schema *spec.Schema) {
+// For example, a "shipping" object with scalar properties "name" and "carrier" produces
+// the keys "shipping.name" and "shipping.carrier". Nested objects recurse further:
+// "shipping.address" (object) → "shipping.address.city", "shipping.address.country", etc.
+// Arrays of objects are skipped (no CLI representation for those).
+//
+// parentRequired indicates whether the object at prefix is itself required by its parent.
+// A nested field is only marked Required if every object in the ancestor chain is required —
+// i.e., parentRequired is true AND the field appears in schema.Required. This ensures that
+// Required on a ParamSpec means "unconditionally required by the API call," not merely
+// "required within its immediate parent object."
+//
+// locallyRequired is populated with keys for every scalar param that is required within its
+// immediate parent schema (regardless of whether ancestors are required). This is separate
+// from ParamSpec.Required and is used by markMostCommon's depth-1 rule: if a top-level
+// object is mostCommon, its locally-required children should also be marked mostCommon.
+func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, prefix string, schema *spec.Schema, parentRequired bool) {
 	for propName, propSchema := range schema.Properties {
 		key := prefix + "." + propName
+		isLocallyRequired := containsStr(schema.Required, propName)
+		isTrulyRequired := parentRequired && isLocallyRequired
 
 		if propSchema.Type == "object" {
-			addDenormalizedParams(params, key, propSchema)
+			addDenormalizedParams(params, locallyRequired, key, propSchema, isTrulyRequired)
 		} else {
 			scalarType := gen.GetType(propSchema)
 			if scalarType == nil {
 				continue
 			}
 
-			isRequired := containsStr(schema.Required, propName)
+			if isLocallyRequired {
+				locallyRequired[key] = true
+			}
 			ps := &resource.ParamSpec{
 				Type:     *scalarType,
-				Required: isRequired,
+				Required: isTrulyRequired,
 				Format:   propSchema.Format,
 				Enum:     mergeEnumValues(propSchema),
 			}
 			params[key] = ps
+		}
+	}
+}
+
+// markMostCommon sets MostCommon on params, identifying parameters worth surfacing in CLI
+// help and tooling even when not strictly required. Two heuristics approximate this from
+// the OpenAPI spec:
+//
+//   - Depth-0 (no dots): marked when the key appears in the request body's x-stripeMostCommon
+//     annotation. Example: "description" is marked if listed in x-stripeMostCommon.
+//
+//   - Depth-1 (one dot): marked when the param is locally required within its parent AND
+//     the parent key appears in x-stripeMostCommon. "Locally required" (locallyRequired map)
+//     means required within the immediate parent schema, regardless of whether the parent
+//     itself is top-level required. The rationale: if a commonly-used object (e.g. "recurring")
+//     has fields that must be provided whenever the object is used (e.g. "interval"), those
+//     fields are worth surfacing alongside the parent.
+//
+// Depth 2+ params are never marked; the signal-to-noise tradeoff doesn't hold for deeply
+// nested fields.
+func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, rootMostCommon []string) {
+	mostCommonSet := make(map[string]bool, len(rootMostCommon))
+	for _, name := range rootMostCommon {
+		mostCommonSet[name] = true
+	}
+	for paramName, paramSpec := range params {
+		if !strings.Contains(paramName, ".") {
+			if mostCommonSet[paramName] {
+				paramSpec.MostCommon = true
+			}
+			continue
+		}
+		if strings.Count(paramName, ".") == 1 && locallyRequired[paramName] {
+			parent := paramName[:strings.Index(paramName, ".")]
+			if mostCommonSet[parent] {
+				paramSpec.MostCommon = true
+			}
 		}
 	}
 }

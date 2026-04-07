@@ -22,6 +22,9 @@ var {{ .VarName }} = resource.OperationSpec{
 		{{- if $ps.Required }}
 			Required: true,
 		{{- end }}
+		{{- if $ps.MostCommon }}
+			MostCommon: true,
+		{{- end }}
 		{{- if $ps.Format }}
 			Format: {{ $ps.Format | quote }},
 		{{- end }}

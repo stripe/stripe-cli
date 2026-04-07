@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -219,7 +220,96 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 	parentCmd.AddCommand(cmd)
 	parentCmd.Annotations[opSpec.Name] = "operation"
 
+	defaultHelp := cmd.HelpFunc()
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		if c.Example == "" {
+			c.Example = buildExamples(c.CommandPath(), opSpec)
+		}
+		defaultHelp(c, args)
+	})
+
 	return operationCmd
+}
+
+// paramFlagName converts a param key (underscore-separated) to its flag name (hyphen-separated).
+// e.g. "account_balance" → "account-balance", "usage_threshold.gte" → "usage-threshold.gte"
+func paramFlagName(param string) string {
+	return strings.ReplaceAll(param, "_", "-")
+}
+
+// exampleValue returns the placeholder value string to use in an example for the given param.
+func exampleValue(ps *ParamSpec) string {
+	switch ps.Type {
+	case "integer":
+		return "<integer>"
+	case "boolean":
+		return "<boolean>"
+	default:
+		if len(ps.Enum) > 0 {
+			return "<enum>"
+		}
+		return "<string>"
+	}
+}
+
+// buildExamples generates an example invocation for a command's --help output.
+// The goal is quick orientation: show the minimum needed to call the API.
+//
+// If there are required params: show a single "# required fields" line with those params.
+// If there are no required params but MostCommon params exist: show up to the first two
+// (alphabetically), with a trailing " ..." if more exist.
+// If there are no params at all, or none are required or MostCommon: return "".
+func buildExamples(cmdPath string, opSpec *OperationSpec) string {
+	var reqFields []string
+	for name, p := range opSpec.Params {
+		if p.Required {
+			reqFields = append(reqFields, name)
+		}
+	}
+	sort.Strings(reqFields)
+
+	if len(reqFields) > 0 {
+		return "  # required fields\n" + buildExampleLine(cmdPath, reqFields, opSpec.Params, false)
+	}
+
+	// No required fields: use MostCommon params if any are curated; otherwise no example.
+	var candidates []string
+	for name, p := range opSpec.Params {
+		if p.MostCommon {
+			candidates = append(candidates, name)
+		}
+	}
+	sort.Strings(candidates)
+
+	if len(candidates) == 0 {
+		return ""
+	}
+	ellipsis := len(candidates) > 2
+	if ellipsis {
+		candidates = candidates[:2]
+	}
+	return buildExampleLine(cmdPath, candidates, opSpec.Params, ellipsis)
+}
+
+// buildExampleLine constructs a single example command line for the given fields.
+// If ellipsis is true, " ..." is appended to indicate additional params exist.
+func buildExampleLine(cmdPath string, fields []string, params map[string]*ParamSpec, ellipsis bool) string {
+	var tokens []string
+	for _, field := range fields {
+		ps, ok := params[field]
+		if !ok {
+			continue
+		}
+		tokens = append(tokens, fmt.Sprintf("--%s %s", paramFlagName(field), exampleValue(ps)))
+	}
+	if len(tokens) == 0 {
+		return ""
+	}
+	line := fmt.Sprintf("  $ %s %s", cmdPath, strings.Join(tokens, " "))
+	if ellipsis {
+		line += " ..."
+	}
+	return line
 }
 
 //
