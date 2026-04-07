@@ -316,6 +316,16 @@ func (rb *Base) performRequest(ctx context.Context, client stripe.RequestPerform
 
 	body, err := io.ReadAll(resp.Body)
 
+	// Print upgrade notices to stderr so users never miss them, regardless of --show-headers.
+	if !rb.SuppressOutput {
+		if notice := resp.Header.Get("Stripe-Api-Version-Upgrade-Notice"); notice != "" {
+			fmt.Fprintln(os.Stderr, ansi.Color(os.Stderr).Yellow("API version upgrade notice: "+notice))
+		}
+		if notice := resp.Header.Get("Stripe-Api-Integration-Path-Upgrade-Notice"); notice != "" {
+			fmt.Fprintln(os.Stderr, ansi.Color(os.Stderr).Yellow("API integration path upgrade notice: "+notice))
+		}
+	}
+
 	if resp.StatusCode == 401 || (errOnStatus && resp.StatusCode >= 300) {
 		requestError := compileRequestError(body, resp.StatusCode)
 		return []byte{}, requestError
