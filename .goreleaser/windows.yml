@@ -40,6 +40,8 @@ changelog:
       - "^test:"
 checksum:
   name_template: "{{ .ProjectName }}-windows-checksums.txt"
+release:
+  mode: append
 snapshot:
   version_template: "{{ .Version }}-next"
 scoops:

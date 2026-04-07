@@ -45,6 +45,8 @@ changelog:
       - "^test:"
 checksum:
   name_template: "{{ .ProjectName }}-linux-checksums.txt"
+release:
+  mode: append
 snapshot:
   version_template: "{{ .Version }}-next"
 nfpms:
