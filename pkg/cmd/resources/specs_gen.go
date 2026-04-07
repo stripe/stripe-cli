@@ -13,6 +13,7 @@ var V1AccountLinksCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The identifier of the account to create an account link for",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"collect": {
 			Type:             "string",
@@ -41,15 +42,18 @@ var V1AccountLinksCreate = resource.OperationSpec{
 		"refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the account link is expired, has been previously-visited, or is otherwise invalid",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "The URL that the user will be redirected to upon leaving or completing the linked flow",
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of account link the user is requesting",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "account_onboarding"},
 				{Value: "account_update"},
@@ -67,11 +71,11 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The identifier of the account to create an Account Session for",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"components.account_management.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.account_management.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -84,7 +88,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.account_onboarding.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.account_onboarding.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -97,7 +100,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.balances.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.balances.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -122,7 +124,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.disputes_list.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.disputes_list.features.capture_payments": {
 			Type:             "boolean",
@@ -143,12 +144,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.documents.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.financial_account.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.financial_account.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -169,7 +168,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.financial_account_transactions.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.financial_account_transactions.features.card_spend_dispute_management": {
 			Type:             "boolean",
@@ -178,7 +176,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.instant_payouts_promotion.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.instant_payouts_promotion.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -195,7 +192,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.issuing_card.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.issuing_card.features.card_management": {
 			Type:             "boolean",
@@ -216,7 +212,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.issuing_cards_list.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.issuing_cards_list.features.card_management": {
 			Type:             "boolean",
@@ -241,7 +236,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.notification_banner.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.notification_banner.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -254,7 +248,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payment_details.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.payment_details.features.capture_payments": {
 			Type:             "boolean",
@@ -275,7 +268,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payment_disputes.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.payment_disputes.features.destination_on_behalf_of_charge_management": {
 			Type:             "boolean",
@@ -292,7 +284,6 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payments.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.payments.features.capture_payments": {
 			Type:             "boolean",
@@ -313,12 +304,10 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payout_details.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.payouts.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.payouts.features.disable_stripe_user_authentication": {
 			Type:             "boolean",
@@ -343,17 +332,14 @@ var V1AccountSessionsCreate = resource.OperationSpec{
 		"components.payouts_list.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.tax_registrations.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 		"components.tax_settings.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the embedded component is enabled",
-			Required:         true,
 		},
 	},
 }
@@ -376,18 +362,15 @@ var V1AccountsCreate = resource.OperationSpec{
 		"business_profile.annual_revenue.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing the amount in the [smallest currency unit](/currencies#zero-decimal)",
-			Required:         true,
 		},
 		"business_profile.annual_revenue.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"business_profile.annual_revenue.fiscal_year_end": {
 			Type:             "string",
 			ShortDescription: "The close-out date of the preceding fiscal year in ISO 8601 format",
-			Required:         true,
 		},
 		"business_profile.estimated_worker_count": {
 			Type:             "integer",
@@ -404,12 +387,10 @@ var V1AccountsCreate = resource.OperationSpec{
 		"business_profile.monthly_estimated_revenue.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](/currencies#zero-decimal)",
-			Required:         true,
 		},
 		"business_profile.monthly_estimated_revenue.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"business_profile.name": {
@@ -463,6 +444,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		"business_type": {
 			Type:             "string",
 			ShortDescription: "The business type",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -868,6 +850,18 @@ var V1AccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
 		},
+		"company.registration_date.day": {
+			Type:             "integer",
+			ShortDescription: "The day of registration, between 1 and 31",
+		},
+		"company.registration_date.month": {
+			Type:             "integer",
+			ShortDescription: "The month of registration, between 1 and 12",
+		},
+		"company.registration_date.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of registration",
+		},
 		"company.registration_number": {
 			Type:             "string",
 			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
@@ -970,6 +964,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		"country": {
 			Type:             "string",
 			ShortDescription: "The country in which the account holder resides, or in which the business is legally established",
+			MostCommon:       true,
 		},
 		"default_currency": {
 			Type:             "string",
@@ -1023,6 +1018,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The email address of the account holder",
+			MostCommon:       true,
 		},
 		"external_account": {
 			Type:             "string",
@@ -1111,6 +1107,18 @@ var V1AccountsCreate = resource.OperationSpec{
 		"individual.address_kanji.town": {
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
+		},
+		"individual.dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+		},
+		"individual.dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+		},
+		"individual.dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
 		},
 		"individual.email": {
 			Type:             "string",
@@ -1390,6 +1398,7 @@ var V1AccountsCreate = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of Stripe account to create",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 				{Value: "express"},
@@ -1458,6 +1467,7 @@ var V1AccountsReject = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The reason for rejecting the account",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -1480,18 +1490,15 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"business_profile.annual_revenue.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing the amount in the [smallest currency unit](/currencies#zero-decimal)",
-			Required:         true,
 		},
 		"business_profile.annual_revenue.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"business_profile.annual_revenue.fiscal_year_end": {
 			Type:             "string",
 			ShortDescription: "The close-out date of the preceding fiscal year in ISO 8601 format",
-			Required:         true,
 		},
 		"business_profile.estimated_worker_count": {
 			Type:             "integer",
@@ -1508,12 +1515,10 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"business_profile.monthly_estimated_revenue.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](/currencies#zero-decimal)",
-			Required:         true,
 		},
 		"business_profile.monthly_estimated_revenue.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"business_profile.name": {
@@ -1567,6 +1572,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"business_type": {
 			Type:             "string",
 			ShortDescription: "The business type",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "company"},
 				{Value: "government_entity"},
@@ -1972,6 +1978,18 @@ var V1AccountsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
 		},
+		"company.registration_date.day": {
+			Type:             "integer",
+			ShortDescription: "The day of registration, between 1 and 31",
+		},
+		"company.registration_date.month": {
+			Type:             "integer",
+			ShortDescription: "The month of registration, between 1 and 12",
+		},
+		"company.registration_date.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of registration",
+		},
 		"company.registration_number": {
 			Type:             "string",
 			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
@@ -2090,6 +2108,7 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The email address of the account holder",
+			MostCommon:       true,
 		},
 		"external_account": {
 			Type:             "string",
@@ -2178,6 +2197,18 @@ var V1AccountsUpdate = resource.OperationSpec{
 		"individual.address_kanji.town": {
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
+		},
+		"individual.dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+		},
+		"individual.dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+		},
+		"individual.dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
 		},
 		"individual.email": {
 			Type:             "string",
@@ -2467,8 +2498,9 @@ var V1ApplePayDomainsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"domain_name": {
-			Type:     "string",
-			Required: true,
+			Type:       "string",
+			Required:   true,
+			MostCommon: true,
 		},
 	},
 }
@@ -2550,22 +2582,26 @@ var V1AppsSecretsCreate = resource.OperationSpec{
 		"expires_at": {
 			Type:             "integer",
 			ShortDescription: "The Unix timestamp for the expiry time of the secret, after which the secret deletes",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "A name for the secret that's unique within the scope",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"payload": {
 			Type:             "string",
 			ShortDescription: "The plaintext secret value to be stored",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"scope.type": {
 			Type:             "string",
 			ShortDescription: "The secret scope type",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "user"},
@@ -2587,11 +2623,13 @@ var V1AppsSecretsDeleteWhere = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A name for the secret that's unique within the scope",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"scope.type": {
 			Type:             "string",
 			ShortDescription: "The secret scope type",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "user"},
@@ -2794,6 +2832,7 @@ var V1BankAccountsUpdate = resource.OperationSpec{
 		"default_for_currency": {
 			Type:             "boolean",
 			ShortDescription: "When set to true, this becomes the default external account for its currency",
+			MostCommon:       true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
@@ -2822,6 +2861,7 @@ var V1BankAccountsVerify = resource.OperationSpec{
 		"amounts": {
 			Type:             "array",
 			ShortDescription: "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account",
+			MostCommon:       true,
 		},
 	},
 }
@@ -2847,6 +2887,7 @@ var V1BillingAlertsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The type of alert to create",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "usage_threshold"},
 			},
@@ -2855,21 +2896,22 @@ var V1BillingAlertsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The title of the alert",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"usage_threshold.gte": {
 			Type:             "integer",
 			ShortDescription: "Defines the threshold value that triggers the alert",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"usage_threshold.meter": {
 			Type:             "string",
 			ShortDescription: "The [Billing Meter](/api/billing/meter) ID whose usage is monitored",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"usage_threshold.recurrence": {
 			Type:             "string",
 			ShortDescription: "Defines how the alert will behave",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "one_time"},
 			},
@@ -2982,18 +3024,17 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 		"amount.monetary.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) of the `value` parameter",
-			Required:         true,
 			Format:           "currency",
 		},
 		"amount.monetary.value": {
 			Type:             "integer",
 			ShortDescription: "A positive integer representing the amount of the credit grant",
-			Required:         true,
 		},
 		"amount.type": {
 			Type:             "string",
 			ShortDescription: "The type of this amount",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "monetary"},
 			},
@@ -3008,6 +3049,7 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 		"category": {
 			Type:             "string",
 			ShortDescription: "The category of this credit grant",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "paid"},
 				{Value: "promotional"},
@@ -3016,28 +3058,34 @@ var V1BillingCreditGrantsCreate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the customer receiving the billing credits",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "ID of the account representing the customer receiving the billing credits",
+			MostCommon:       true,
 		},
 		"effective_at": {
 			Type:             "integer",
 			ShortDescription: "The time when the billing credits become effective-when they're eligible for use",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"expires_at": {
 			Type:             "integer",
 			ShortDescription: "The time when the billing credits expire",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "A descriptive name shown in the Dashboard",
+			MostCommon:       true,
 		},
 		"priority": {
 			Type:             "integer",
 			ShortDescription: "The desired priority for applying this credit grant",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3090,6 +3138,7 @@ var V1BillingCreditGrantsUpdate = resource.OperationSpec{
 		"expires_at": {
 			Type:             "integer",
 			ShortDescription: "The time when the billing credits created by this credit grant expire",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3113,11 +3162,13 @@ var V1BillingMeterEventAdjustmentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The name of the meter event",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "Specifies whether to cancel a single event or a range of events for a time period",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 			},
@@ -3179,14 +3230,17 @@ var V1BillingMeterEventsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The name of the meter event",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"identifier": {
 			Type:             "string",
 			ShortDescription: "A unique identifier for the event",
+			MostCommon:       true,
 		},
 		"timestamp": {
 			Type:             "integer",
 			ShortDescription: "The time of the event",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -3200,12 +3254,12 @@ var V1BillingMetersCreate = resource.OperationSpec{
 		"customer_mapping.event_payload_key": {
 			Type:             "string",
 			ShortDescription: "The key in the meter event payload to use for mapping the event to a customer",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"customer_mapping.type": {
 			Type:             "string",
 			ShortDescription: "The method for mapping a meter event to a customer",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "by_id"},
 			},
@@ -3214,6 +3268,7 @@ var V1BillingMetersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies how events are aggregated",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "count"},
 				{Value: "last"},
@@ -3224,15 +3279,18 @@ var V1BillingMetersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The meter’s name",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"event_name": {
 			Type:             "string",
 			ShortDescription: "The name of the meter event to record usage for",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"event_time_window": {
 			Type:             "string",
 			ShortDescription: "The time window which meter events have been pre-aggregated for, if any",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "hour"},
@@ -3241,7 +3299,7 @@ var V1BillingMetersCreate = resource.OperationSpec{
 		"value_settings.event_payload_key": {
 			Type:             "string",
 			ShortDescription: "The key in the usage event payload to use as the value for this meter",
-			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -3300,6 +3358,7 @@ var V1BillingMetersUpdate = resource.OperationSpec{
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "The meter’s name",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3324,6 +3383,7 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 		"default_return_url": {
 			Type:             "string",
 			ShortDescription: "The default URL to redirect customers to when they click on the portal's link to return to your website",
+			MostCommon:       true,
 		},
 		"features.customer_update.allowed_updates": {
 			Type:             "array",
@@ -3332,17 +3392,14 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 		"features.customer_update.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.invoice_history.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.payment_method_update.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.payment_method_update.payment_method_configuration": {
 			Type:             "string",
@@ -3351,17 +3408,14 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 		"features.subscription_cancel.cancellation_reason.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.subscription_cancel.cancellation_reason.options": {
 			Type:             "array",
 			ShortDescription: "Which cancellation reasons will be given as options to the customer",
-			Required:         true,
 		},
 		"features.subscription_cancel.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.subscription_cancel.mode": {
 			Type:             "string",
@@ -3395,7 +3449,6 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 		"features.subscription_update.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.subscription_update.proration_behavior": {
 			Type:             "string",
@@ -3417,11 +3470,12 @@ var V1BillingPortalConfigurationsCreate = resource.OperationSpec{
 		"login_page.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to generate a shareable URL [`login_page.url`](https://docs.stripe.com/api/customer_portal/configuration#portal_configuration_object-login_page-url) that will take your customers to a hosted login page for the customer portal",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The name of the configuration",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3468,6 +3522,7 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the configuration is active and can be used to create portal sessions",
+			MostCommon:       true,
 		},
 		"business_profile.headline": {
 			Type:             "string",
@@ -3484,6 +3539,7 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 		"default_return_url": {
 			Type:             "string",
 			ShortDescription: "The default URL to redirect customers to when they click on the portal's link to return to your website",
+			MostCommon:       true,
 		},
 		"features.customer_update.allowed_updates": {
 			Type:             "array",
@@ -3496,12 +3552,10 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 		"features.invoice_history.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.payment_method_update.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.payment_method_update.payment_method_configuration": {
 			Type:             "string",
@@ -3510,7 +3564,6 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 		"features.subscription_cancel.cancellation_reason.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"features.subscription_cancel.cancellation_reason.options": {
 			Type:             "array",
@@ -3573,11 +3626,12 @@ var V1BillingPortalConfigurationsUpdate = resource.OperationSpec{
 		"login_page.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to generate a shareable URL [`login_page.url`](https://docs.stripe.com/api/customer_portal/configuration#portal_configuration_object-login_page-url) that will take your customers to a hosted login page for the customer portal",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The name of the configuration",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3590,14 +3644,17 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"configuration": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing [configuration](https://docs.stripe.com/api/customer_portal/configurations) to use for this session, describing its functionality and features",
+			MostCommon:       true,
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing customer",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing account",
+			MostCommon:       true,
 		},
 		"flow_data.after_completion.hosted_confirmation.custom_message": {
 			Type:             "string",
@@ -3606,12 +3663,10 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"flow_data.after_completion.redirect.return_url": {
 			Type:             "string",
 			ShortDescription: "The URL the customer will be redirected to after the flow is completed",
-			Required:         true,
 		},
 		"flow_data.after_completion.type": {
 			Type:             "string",
 			ShortDescription: "The specified behavior after the flow is completed",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "portal_homepage"},
@@ -3621,12 +3676,10 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"flow_data.subscription_cancel.retention.coupon_offer.coupon": {
 			Type:             "string",
 			ShortDescription: "The ID of the coupon to be offered",
-			Required:         true,
 		},
 		"flow_data.subscription_cancel.retention.type": {
 			Type:             "string",
 			ShortDescription: "Type of retention strategy to use with the customer",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "coupon_offer"},
 			},
@@ -3634,22 +3687,19 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"flow_data.subscription_cancel.subscription": {
 			Type:             "string",
 			ShortDescription: "The ID of the subscription to be canceled",
-			Required:         true,
 		},
 		"flow_data.subscription_update.subscription": {
 			Type:             "string",
 			ShortDescription: "The ID of the subscription to be updated",
-			Required:         true,
 		},
 		"flow_data.subscription_update_confirm.subscription": {
 			Type:             "string",
 			ShortDescription: "The ID of the subscription to be updated",
-			Required:         true,
 		},
 		"flow_data.type": {
 			Type:             "string",
 			ShortDescription: "Type of flow that the customer will go through",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "payment_method_update"},
 				{Value: "subscription_cancel"},
@@ -3660,6 +3710,7 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"locale": {
 			Type:             "string",
 			ShortDescription: "The IETF language tag of the locale customer portal is displayed in",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "bg"},
@@ -3713,10 +3764,12 @@ var V1BillingPortalSessionsCreate = resource.OperationSpec{
 		"on_behalf_of": {
 			Type:             "string",
 			ShortDescription: "The `on_behalf_of` account to use for this session",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "The default URL to redirect customers to when they click on the portal's link to return to your website",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3741,6 +3794,7 @@ var V1CapabilitiesUpdate = resource.OperationSpec{
 		"requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new capability for an account, pass true",
+			MostCommon:       true,
 		},
 	},
 }
@@ -3805,6 +3859,7 @@ var V1CardsUpdate = resource.OperationSpec{
 		"default_for_currency": {
 			Type:             "boolean",
 			ShortDescription: "When set to true, this becomes the default external account for its currency",
+			MostCommon:       true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
@@ -3856,10 +3911,12 @@ var V1ChargesCapture = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to capture, which must be less than or equal to the original amount",
+			MostCommon:       true,
 		},
 		"application_fee": {
 			Type:             "integer",
 			ShortDescription: "An application fee to add on to this charge",
+			MostCommon:       true,
 		},
 		"application_fee_amount": {
 			Type:             "integer",
@@ -3868,14 +3925,17 @@ var V1ChargesCapture = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "The email address to send this charge's receipt to",
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "For a non-card charge, text that appears on the customer's statement as the statement descriptor",
+			MostCommon:       true,
 		},
 		"statement_descriptor_suffix": {
 			Type:             "string",
 			ShortDescription: "Provides information about a card charge",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -3896,9 +3956,11 @@ var V1ChargesCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount intended to be collected by this payment",
+			MostCommon:       true,
 		},
 		"application_fee": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"application_fee_amount": {
 			Type:             "integer",
@@ -3911,20 +3973,23 @@ var V1ChargesCreate = resource.OperationSpec{
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing customer that will be charged in this request",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to a `Charge` object",
+			MostCommon:       true,
 		},
 		"destination.account": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"destination.amount": {
 			Type:             "integer",
@@ -3941,6 +4006,7 @@ var V1ChargesCreate = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "The email address to which this charge's [receipt](https://docs.stripe.com/dashboard/receipts) will be sent",
+			MostCommon:       true,
 		},
 		"shipping.address.city": {
 			Type:             "string",
@@ -3973,7 +4039,7 @@ var V1ChargesCreate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping.phone": {
 			Type:             "string",
@@ -3986,14 +4052,17 @@ var V1ChargesCreate = resource.OperationSpec{
 		"source": {
 			Type:             "string",
 			ShortDescription: "A payment source to be charged",
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "For a non-card charge, text that appears on the customer's statement as the statement descriptor",
+			MostCommon:       true,
 		},
 		"statement_descriptor_suffix": {
 			Type:             "string",
 			ShortDescription: "Provides information about a card charge",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -4002,7 +4071,6 @@ var V1ChargesCreate = resource.OperationSpec{
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
-			Required:         true,
 		},
 		"transfer_group": {
 			Type:             "string",
@@ -4082,15 +4150,16 @@ var V1ChargesUpdate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing customer that will be associated with this request",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to a charge object",
+			MostCommon:       true,
 		},
 		"fraud_details.user_report": {
 			Type:             "string",
 			ShortDescription: "Either `safe` or `fraudulent`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fraudulent"},
 				{Value: "safe"},
@@ -4099,6 +4168,7 @@ var V1ChargesUpdate = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "This is the email address that the receipt for this charge will be sent to",
+			MostCommon:       true,
 		},
 		"shipping.address.city": {
 			Type:             "string",
@@ -4131,7 +4201,7 @@ var V1ChargesUpdate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping.phone": {
 			Type:             "string",
@@ -4164,7 +4234,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"after_expiration.recovery.enabled": {
 			Type:             "boolean",
 			ShortDescription: "If `true`, a recovery URL will be generated to recover this Checkout Session if it\nexpires before a successful transaction is completed",
-			Required:         true,
 		},
 		"allow_promotion_codes": {
 			Type:             "boolean",
@@ -4173,7 +4242,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -4182,7 +4251,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -4256,7 +4324,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"branding_settings.icon.type": {
 			Type:             "string",
 			ShortDescription: "The type of image for the icon",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "file"},
 				{Value: "url"},
@@ -4273,7 +4340,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"branding_settings.logo.type": {
 			Type:             "string",
 			ShortDescription: "The type of image for the logo",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "file"},
 				{Value: "url"},
@@ -4290,11 +4356,11 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"client_reference_id": {
 			Type:             "string",
 			ShortDescription: "A unique string to reference the Checkout Session",
+			MostCommon:       true,
 		},
 		"consent_collection.payment_method_reuse_agreement.position": {
 			Type:             "string",
 			ShortDescription: "Determines the position and visibility of the payment method reuse agreement in the UI",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "hidden"},
@@ -4321,9 +4387,26 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Format:           "currency",
 		},
+		"custom_text.after_submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.shipping_address.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of an existing Customer, if one exists",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
@@ -4340,6 +4423,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"customer_email": {
 			Type:             "string",
 			ShortDescription: "If provided, this value will be used when the Customer object is created",
+			MostCommon:       true,
 		},
 		"customer_update.address": {
 			Type:             "string",
@@ -4381,7 +4465,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"invoice_creation.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to enable invoice creation",
-			Required:         true,
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type:             "array",
@@ -4402,11 +4485,22 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
+		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type:             "string",
+			ShortDescription: "How line-item prices and amounts will be displayed with respect to tax on invoice PDFs",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type:             "string",
+			ShortDescription: "ID of the invoice rendering template to use for this invoice",
 		},
 		"locale": {
 			Type:             "string",
@@ -4458,6 +4552,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"mode": {
 			Type:             "string",
 			ShortDescription: "The mode of the Checkout Session",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "payment"},
 				{Value: "setup"},
@@ -4467,7 +4562,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"name_collection.business.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable business name collection on the Checkout Session",
-			Required:         true,
 		},
 		"name_collection.business.optional": {
 			Type:             "boolean",
@@ -4476,7 +4570,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"name_collection.individual.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable individual name collection on the Checkout Session",
-			Required:         true,
 		},
 		"name_collection.individual.optional": {
 			Type:             "boolean",
@@ -4534,7 +4627,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_intent_data.shipping.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"payment_intent_data.shipping.address.line2": {
 			Type:             "string",
@@ -4555,7 +4647,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_intent_data.shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
 		},
 		"payment_intent_data.shipping.phone": {
 			Type:             "string",
@@ -4580,7 +4671,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_intent_data.transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "If specified, successful charges will be attributed to the destination\naccount for tax reporting, and the funds from charges will be transferred\nto the destination account",
-			Required:         true,
 		},
 		"payment_intent_data.transfer_group": {
 			Type:             "string",
@@ -4876,7 +4966,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
 			Type:             "string",
 			ShortDescription: "The desired country code of the bank account information",
-			Required:         true,
 		},
 		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
 			Type:             "array",
@@ -4885,7 +4974,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_method_options.customer_balance.bank_transfer.type": {
 			Type:             "string",
 			ShortDescription: "The list of bank transfer types that this PaymentIntent is allowed to use for funding",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "eu_bank_transfer"},
 				{Value: "gb_bank_transfer"},
@@ -5354,7 +5442,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"payment_method_options.wechat_pay.client": {
 			Type:             "string",
 			ShortDescription: "The client type that the end customer will pay from",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "android"},
 				{Value: "ios"},
@@ -5383,7 +5470,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"phone_number_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to enable phone number collection",
-			Required:         true,
 		},
 		"redirect_on_completion": {
 			Type:             "string",
@@ -5397,6 +5483,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "The URL to redirect your customer back to after they authenticate or cancel their payment on the\npayment method's app or site",
+			MostCommon:       true,
 		},
 		"saved_payment_method_options.allow_redisplay_filters": {
 			Type:             "array",
@@ -5429,7 +5516,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"shipping_address_collection.allowed_countries": {
 			Type:             "array",
 			ShortDescription: "An array of two-letter ISO country codes representing which countries Checkout should provide as options for\nshipping locations",
-			Required:         true,
 		},
 		"submit_type": {
 			Type:             "string",
@@ -5462,7 +5548,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"subscription_data.billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -5483,7 +5568,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -5496,7 +5580,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"subscription_data.pending_invoice_item_interval.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies invoicing frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -5523,7 +5606,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"subscription_data.transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
-			Required:         true,
 		},
 		"subscription_data.trial_end": {
 			Type:             "integer",
@@ -5537,7 +5619,6 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
 			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -5547,11 +5628,11 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"success_url": {
 			Type:             "string",
 			ShortDescription: "The URL to which Stripe should send customers when payment or setup\nis complete",
+			MostCommon:       true,
 		},
 		"tax_id_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable tax ID collection during checkout",
-			Required:         true,
 		},
 		"tax_id_collection.required": {
 			Type:             "string",
@@ -5564,6 +5645,7 @@ var V1CheckoutSessionsCreate = resource.OperationSpec{
 		"ui_mode": {
 			Type:             "string",
 			ShortDescription: "The UI mode of the Session",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "elements"},
 				{Value: "embedded_page"},
@@ -5679,12 +5761,10 @@ var V1CheckoutSessionsUpdate = resource.OperationSpec{
 		"collected_information.shipping_details.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"collected_information.shipping_details.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"collected_information.shipping_details.address.line2": {
 			Type:             "string",
@@ -5701,7 +5781,6 @@ var V1CheckoutSessionsUpdate = resource.OperationSpec{
 		"collected_information.shipping_details.name": {
 			Type:             "string",
 			ShortDescription: "The name of customer",
-			Required:         true,
 		},
 	},
 }
@@ -5720,25 +5799,29 @@ var V1ClimateOrdersCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Requested amount of carbon removal units",
+			MostCommon:       true,
 		},
 		"beneficiary.public_name": {
 			Type:             "string",
 			ShortDescription: "Publicly displayable name for the end beneficiary of carbon removal",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Request currency for the order as a three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 		},
 		"metric_tons": {
 			Type:             "string",
 			ShortDescription: "Requested number of tons for the order",
+			MostCommon:       true,
 			Format:           "decimal",
 		},
 		"product": {
 			Type:             "string",
 			ShortDescription: "Unique identifier of the Climate product",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -5773,6 +5856,17 @@ var V1ClimateOrdersUpdate = resource.OperationSpec{
 	Name:   "update",
 	Path:   "/v1/climate/orders/{order}",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"beneficiary": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"beneficiary.public_name": {
+			Type:             "string",
+			ShortDescription: "Publicly displayable name for the end beneficiary of carbon removal",
+			MostCommon:       true,
+		},
+	},
 }
 
 var V1ClimateProductsList = resource.OperationSpec{
@@ -5841,21 +5935,19 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of an existing PaymentMethod",
+			MostCommon:       true,
 		},
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -5869,12 +5961,10 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -5883,6 +5973,30 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -5903,7 +6017,6 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -5950,7 +6063,6 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -6005,17 +6117,14 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -6032,17 +6141,14 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -6050,7 +6156,6 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -6103,12 +6208,10 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -6121,7 +6224,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -6238,7 +6341,6 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"payment_method_options.card.installments.plan.type": {
 			Type:             "string",
 			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
 				{Value: "fixed_count"},
@@ -6248,10 +6350,12 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "Return URL used to confirm the Intent",
+			MostCommon:       true,
 		},
 		"setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this ConfirmationToken's payment method",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -6284,7 +6388,7 @@ var V1ConfirmationTokensTestHelpersCreate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping.phone": {
 			Type:             "string",
@@ -6327,6 +6431,7 @@ var V1CouponsCreate = resource.OperationSpec{
 		"amount_off": {
 			Type:             "integer",
 			ShortDescription: "A positive integer representing the amount to subtract from an invoice total (required if `percent_off` is not passed)",
+			MostCommon:       true,
 		},
 		"applies_to.products": {
 			Type:             "array",
@@ -6335,11 +6440,13 @@ var V1CouponsCreate = resource.OperationSpec{
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) of the `amount_off` parameter (required if `amount_off` is passed)",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"duration": {
 			Type:             "string",
 			ShortDescription: "Specifies how long the discount will be in effect if used on a subscription",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "forever"},
 				{Value: "once"},
@@ -6361,10 +6468,12 @@ var V1CouponsCreate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "Name of the coupon displayed to customers on, for instance invoices, or receipts",
+			MostCommon:       true,
 		},
 		"percent_off": {
 			Type:             "number",
 			ShortDescription: "A positive float larger than 0, and smaller or equal to 100, that represents the discount the coupon will apply (required if `amount_off` is not passed)",
+			MostCommon:       true,
 		},
 		"redeem_by": {
 			Type:             "integer",
@@ -6418,6 +6527,7 @@ var V1CouponsUpdate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "Name of the coupon displayed to customers on, for instance invoices, or receipts",
+			MostCommon:       true,
 		},
 	},
 }
@@ -6472,10 +6582,12 @@ var V1CreditNotesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "ID of the invoice",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"memo": {
 			Type:             "string",
 			ShortDescription: "The credit note's memo appears on the credit note PDF",
+			MostCommon:       true,
 		},
 		"out_of_band_amount": {
 			Type:             "integer",
@@ -6484,6 +6596,7 @@ var V1CreditNotesCreate = resource.OperationSpec{
 		"reason": {
 			Type:             "string",
 			ShortDescription: "Reason for issuing this credit note, one of `duplicate`, `fraudulent`, `order_change`, or `product_unsatisfactory`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "duplicate"},
 				{Value: "fraudulent"},
@@ -6676,6 +6789,7 @@ var V1CreditNotesUpdate = resource.OperationSpec{
 		"memo": {
 			Type:             "string",
 			ShortDescription: "Credit note memo",
+			MostCommon:       true,
 		},
 	},
 }
@@ -6695,16 +6809,19 @@ var V1CustomerBalanceTransactionsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The integer amount in **cents (or local equivalent)** to apply to the customer's credit balance",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 	},
 }
@@ -6751,6 +6868,7 @@ var V1CustomerBalanceTransactionsUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 	},
 }
@@ -6789,12 +6907,10 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 		"components.buy_button.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the buy button is enabled",
-			Required:         true,
 		},
 		"components.customer_sheet.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the customer sheet is enabled",
-			Required:         true,
 		},
 		"components.customer_sheet.features.payment_method_allow_redisplay_filters": {
 			Type:             "array",
@@ -6811,7 +6927,6 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 		"components.mobile_payment_element.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the mobile payment element is enabled",
-			Required:         true,
 		},
 		"components.mobile_payment_element.features.payment_method_allow_redisplay_filters": {
 			Type:             "array",
@@ -6853,7 +6968,6 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 		"components.payment_element.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the Payment Element is enabled",
-			Required:         true,
 		},
 		"components.payment_element.features.payment_method_allow_redisplay_filters": {
 			Type:             "array",
@@ -6898,11 +7012,11 @@ var V1CustomerSessionsCreate = resource.OperationSpec{
 		"components.pricing_table.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the pricing table is enabled",
-			Required:         true,
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of an existing customer for which to create the Customer Session",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
@@ -6944,6 +7058,34 @@ var V1CustomersCreate = resource.OperationSpec{
 	Path:   "/v1/customers",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"address": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"address.country": {
+			Type:             "string",
+			ShortDescription: "A freeform text field for the country",
+		},
+		"address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"balance": {
 			Type:             "integer",
 			ShortDescription: "An integer amount in cents (or local equivalent) that represents the customer's current balance, which affect the customer's future invoices",
@@ -6964,10 +7106,12 @@ var V1CustomersCreate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string that you can attach to a customer object",
+			MostCommon:       true,
 		},
 		"email": {
 			Type:             "string",
 			ShortDescription: "Customer's email address",
+			MostCommon:       true,
 		},
 		"individual_name": {
 			Type:             "string",
@@ -6985,24 +7129,76 @@ var V1CustomersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Default footer to be displayed on invoices for this customer",
 		},
+		"invoice_settings.rendering_options.amount_tax_display": {
+			Type:             "string",
+			ShortDescription: "How line-item prices and amounts will be displayed with respect to tax on invoice PDFs",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_settings.rendering_options.template": {
+			Type:             "string",
+			ShortDescription: "ID of the invoice rendering template to use for future invoices",
+		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The customer's full name or business name",
+			MostCommon:       true,
 		},
 		"next_invoice_sequence": {
 			Type:             "integer",
 			ShortDescription: "The sequence to be used on the customer's next invoice",
 		},
 		"payment_method": {
-			Type: "string",
+			Type:       "string",
+			MostCommon: true,
 		},
 		"phone": {
 			Type:             "string",
 			ShortDescription: "The customer's phone number",
+			MostCommon:       true,
 		},
 		"preferred_locales": {
 			Type:             "array",
 			ShortDescription: "Customer's preferred languages, ordered by preference",
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping.address.country": {
+			Type:             "string",
+			ShortDescription: "A freeform text field for the country",
+		},
+		"shipping.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping.name": {
+			Type:             "string",
+			ShortDescription: "Customer name",
+			MostCommon:       true,
+		},
+		"shipping.phone": {
+			Type:             "string",
+			ShortDescription: "Customer phone (including extension)",
 		},
 		"source": {
 			Type: "string",
@@ -7046,7 +7242,6 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 		"bank_transfer.eu_bank_transfer.country": {
 			Type:             "string",
 			ShortDescription: "The desired country code of the bank account information",
-			Required:         true,
 		},
 		"bank_transfer.requested_address_types": {
 			Type:             "array",
@@ -7056,6 +7251,7 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The type of the `bank_transfer`",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "eu_bank_transfer"},
 				{Value: "gb_bank_transfer"},
@@ -7068,12 +7264,14 @@ var V1CustomersCreateFundingInstructions = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"funding_type": {
 			Type:             "string",
 			ShortDescription: "The `funding_type` to get the instructions for",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "bank_transfer"},
 			},
@@ -7254,11 +7452,13 @@ var V1CustomersTestHelpersFundCashBalance = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount to be used for this test cash balance transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"reference": {
@@ -7273,6 +7473,34 @@ var V1CustomersUpdate = resource.OperationSpec{
 	Path:   "/v1/customers/{customer}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"address": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"address.country": {
+			Type:             "string",
+			ShortDescription: "A freeform text field for the country",
+		},
+		"address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"balance": {
 			Type:             "integer",
 			ShortDescription: "An integer amount in cents (or local equivalent) that represents the customer's current balance, which affect the customer's future invoices",
@@ -7297,10 +7525,12 @@ var V1CustomersUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string that you can attach to a customer object",
+			MostCommon:       true,
 		},
 		"email": {
 			Type:             "string",
 			ShortDescription: "Customer's email address",
+			MostCommon:       true,
 		},
 		"individual_name": {
 			Type:             "string",
@@ -7318,9 +7548,22 @@ var V1CustomersUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Default footer to be displayed on invoices for this customer",
 		},
+		"invoice_settings.rendering_options.amount_tax_display": {
+			Type:             "string",
+			ShortDescription: "How line-item prices and amounts will be displayed with respect to tax on invoice PDFs",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_settings.rendering_options.template": {
+			Type:             "string",
+			ShortDescription: "ID of the invoice rendering template to use for future invoices",
+		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The customer's full name or business name",
+			MostCommon:       true,
 		},
 		"next_invoice_sequence": {
 			Type:             "integer",
@@ -7329,10 +7572,48 @@ var V1CustomersUpdate = resource.OperationSpec{
 		"phone": {
 			Type:             "string",
 			ShortDescription: "The customer's phone number",
+			MostCommon:       true,
 		},
 		"preferred_locales": {
 			Type:             "array",
 			ShortDescription: "Customer's preferred languages, ordered by preference",
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping.address.country": {
+			Type:             "string",
+			ShortDescription: "A freeform text field for the country",
+		},
+		"shipping.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping.name": {
+			Type:             "string",
+			ShortDescription: "Customer name",
+			MostCommon:       true,
+		},
+		"shipping.phone": {
+			Type:             "string",
+			ShortDescription: "Customer phone (including extension)",
 		},
 		"source": {
 			Type: "string",
@@ -7466,6 +7747,66 @@ var V1DisputesUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The Stripe ID for the prior charge which appears to be a duplicate of the disputed charge",
 		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_account_id": {
+			Type:             "string",
+			ShortDescription: "User Account ID used to log into business platform",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_device_fingerprint": {
+			Type:             "string",
+			ShortDescription: "Unique identifier of the cardholder’s device derived from a combination of at least two hardware and software attributes",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_device_id": {
+			Type:             "string",
+			ShortDescription: "Unique identifier of the cardholder’s device such as a device serial number (e.g., International Mobile Equipment Identity [IMEI])",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_email_address": {
+			Type:             "string",
+			ShortDescription: "The email address of the customer",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.customer_purchase_ip": {
+			Type:             "string",
+			ShortDescription: "The IP address that the customer used when making the purchase",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.merchandise_or_services": {
+			Type:             "string",
+			ShortDescription: "Categorization of disputed payment",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "services"},
+			},
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.product_description": {
+			Type:             "string",
+			ShortDescription: "A description of the product or service that was sold",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"evidence.enhanced_evidence.visa_compelling_evidence_3.disputed_transaction.shipping_address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"evidence.enhanced_evidence.visa_compliance.fee_acknowledged": {
+			Type:             "boolean",
+			ShortDescription: "A field acknowledging the fee incurred when countering a Visa compliance dispute",
+		},
 		"evidence.product_description": {
 			Type:             "string",
 			ShortDescription: "A description of the product or service that was sold",
@@ -7525,6 +7866,7 @@ var V1DisputesUpdate = resource.OperationSpec{
 		"submit": {
 			Type:             "boolean",
 			ShortDescription: "Whether to immediately submit evidence to the bank",
+			MostCommon:       true,
 		},
 	},
 }
@@ -7569,11 +7911,13 @@ var V1EntitlementsFeaturesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A unique key you provide as your own system identifier",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The feature's name, for your own purpose, not meant to be displayable to the customer",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -7624,6 +7968,7 @@ var V1EntitlementsFeaturesUpdate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "The feature's name, for your own purpose, not meant to be displayable to the customer",
+			MostCommon:       true,
 		},
 	},
 }
@@ -7636,18 +7981,22 @@ var V1EphemeralKeysCreate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of the Customer you'd like to modify using the resulting ephemeral key",
+			MostCommon:       true,
 		},
 		"issuing_card": {
 			Type:             "string",
 			ShortDescription: "The ID of the Issuing Card you'd like to access using the resulting ephemeral key",
+			MostCommon:       true,
 		},
 		"nonce": {
 			Type:             "string",
 			ShortDescription: "A single-use token, created by Stripe.js, used for creating ephemeral keys for Issuing Cards without exchanging sensitive information",
+			MostCommon:       true,
 		},
 		"verification_session": {
 			Type:             "string",
 			ShortDescription: "The ID of the Identity VerificationSession you'd like to access using the resulting ephemeral key",
+			MostCommon:       true,
 		},
 	},
 }
@@ -7739,6 +8088,7 @@ var V1ExternalAccountsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A token, like the ones returned by [Stripe.js](https://docs.stripe.com/js) or a dictionary containing a user's external account details (with the options shown below)",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -7837,6 +8187,7 @@ var V1ExternalAccountsUpdate = resource.OperationSpec{
 		"default_for_currency": {
 			Type:             "boolean",
 			ShortDescription: "When set to true, this becomes the default external account for its currency",
+			MostCommon:       true,
 		},
 		"documents.bank_account_ownership_verification.files": {
 			Type:             "array",
@@ -7865,6 +8216,7 @@ var V1FeeRefundsCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer, in _cents (or local equivalent)_, representing how much of this fee to refund",
+			MostCommon:       true,
 		},
 	},
 }
@@ -7909,12 +8261,14 @@ var V1FileLinksCreate = resource.OperationSpec{
 		"expires_at": {
 			Type:             "integer",
 			ShortDescription: "The link isn't usable after this future timestamp",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"file": {
 			Type:             "string",
 			ShortDescription: "The ID of the file",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -7965,6 +8319,7 @@ var V1FileLinksUpdate = resource.OperationSpec{
 		"expires_at": {
 			Type:             "string",
 			ShortDescription: "A future timestamp after which the link will no longer be usable, or `now` to expire the link immediately",
+			MostCommon:       true,
 		},
 	},
 }
@@ -8097,6 +8452,7 @@ var V1FinancialConnectionsAccountsRefresh = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The list of account features that you would like to refresh",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -8116,6 +8472,7 @@ var V1FinancialConnectionsAccountsSubscribe = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The list of account features to which you would like to subscribe",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -8129,6 +8486,7 @@ var V1FinancialConnectionsAccountsUnsubscribe = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The list of account features from which you would like to unsubscribe",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -8154,6 +8512,7 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of account holder to collect accounts for",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "customer"},
@@ -8171,14 +8530,17 @@ var V1FinancialConnectionsSessionsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "List of data features that you would like to request access to",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"prefetch": {
 			Type:             "array",
 			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "For webview integrations only",
+			MostCommon:       true,
 		},
 	},
 }
@@ -8233,11 +8595,13 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The PaymentMethod to insert into the forwarded request",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"replacements": {
 			Type:             "array",
 			ShortDescription: "The field kinds to be replaced in the forwarded request",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"request.body": {
 			Type:             "string",
@@ -8247,6 +8611,7 @@ var V1ForwardingRequestsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The destination URL for the forwarded request",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -8337,6 +8702,23 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 		"client_reference_id": {
 			Type:             "string",
 			ShortDescription: "A string to reference this user",
+			MostCommon:       true,
+		},
+		"options.document.allowed_types": {
+			Type:             "array",
+			ShortDescription: "Array of strings of allowed identity document types",
+		},
+		"options.document.require_id_number": {
+			Type:             "boolean",
+			ShortDescription: "Collect an ID number and perform an [ID number check](https://docs.stripe.com/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth",
+		},
+		"options.document.require_live_capture": {
+			Type:             "boolean",
+			ShortDescription: "Disable image uploads, identity document images have to be captured using the device’s camera",
+		},
+		"options.document.require_matching_selfie": {
+			Type:             "boolean",
+			ShortDescription: "Capture a face image and perform a [selfie check](https://docs.stripe.com/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face",
 		},
 		"provided_details.email": {
 			Type:             "string",
@@ -8349,28 +8731,32 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 		"related_customer": {
 			Type:             "string",
 			ShortDescription: "Customer ID",
+			MostCommon:       true,
 		},
 		"related_customer_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the Account representing a customer",
+			MostCommon:       true,
 		},
 		"related_person.account": {
 			Type:             "string",
 			ShortDescription: "A token representing a connected account",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"related_person.person": {
 			Type:             "string",
 			ShortDescription: "A token referencing a Person resource that this verification is being used to verify",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "The URL that the user will be redirected to upon completing the verification flow",
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of [verification check](https://docs.stripe.com/identity/verification-checks) to be performed",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "document"},
 				{Value: "id_number"},
@@ -8379,6 +8765,7 @@ var V1IdentityVerificationSessionsCreate = resource.OperationSpec{
 		"verification_flow": {
 			Type:             "string",
 			ShortDescription: "The ID of a verification flow from the Dashboard",
+			MostCommon:       true,
 		},
 	},
 }
@@ -8446,6 +8833,22 @@ var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
 	Path:   "/v1/identity/verification_sessions/{session}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"options.document.allowed_types": {
+			Type:             "array",
+			ShortDescription: "Array of strings of allowed identity document types",
+		},
+		"options.document.require_id_number": {
+			Type:             "boolean",
+			ShortDescription: "Collect an ID number and perform an [ID number check](https://docs.stripe.com/identity/verification-checks?type=id-number) with the document’s extracted name and date of birth",
+		},
+		"options.document.require_live_capture": {
+			Type:             "boolean",
+			ShortDescription: "Disable image uploads, identity document images have to be captured using the device’s camera",
+		},
+		"options.document.require_matching_selfie": {
+			Type:             "boolean",
+			ShortDescription: "Capture a face image and perform a [selfie check](https://docs.stripe.com/identity/verification-checks?type=selfie) comparing a photo ID and a picture of your user’s face",
+		},
 		"provided_details.email": {
 			Type:             "string",
 			ShortDescription: "Email of user being verified",
@@ -8457,6 +8860,7 @@ var V1IdentityVerificationSessionsUpdate = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of [verification check](https://docs.stripe.com/identity/verification-checks) to be performed",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "document"},
 				{Value: "id_number"},
@@ -8493,10 +8897,12 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The integer amount in cents (or local equivalent) of the charge to be applied to the upcoming invoice",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to the invoice item",
+			MostCommon:       true,
 		},
 		"discountable": {
 			Type:             "boolean",
@@ -8505,19 +8911,18 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 		"period.end": {
 			Type:             "integer",
 			ShortDescription: "The end of the period, which must be greater than or equal to the start",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"period.start": {
 			Type:             "integer",
 			ShortDescription: "The start of the period",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
@@ -8535,7 +8940,6 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 		"price_data.product_data.name": {
 			Type:             "string",
 			ShortDescription: "The product's name, meant to be displayable to the customer",
-			Required:         true,
 		},
 		"price_data.product_data.tax_code": {
 			Type:             "string",
@@ -8574,6 +8978,7 @@ var V1InvoiceLineItemsUpdate = resource.OperationSpec{
 		"quantity_decimal": {
 			Type:             "string",
 			ShortDescription: "Non-negative decimal with at most 12 decimal places",
+			MostCommon:       true,
 			Format:           "decimal",
 		},
 		"tax_rates": {
@@ -8684,23 +9089,28 @@ var V1InvoiceitemsCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The integer amount in cents (or local equivalent) of the charge to be applied to the upcoming invoice",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of the customer to bill for this invoice item",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the account representing the customer to bill for this invoice item",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to the invoice item",
+			MostCommon:       true,
 		},
 		"discountable": {
 			Type:             "boolean",
@@ -8713,25 +9123,23 @@ var V1InvoiceitemsCreate = resource.OperationSpec{
 		"period.end": {
 			Type:             "integer",
 			ShortDescription: "The end of the period, which must be greater than or equal to the start",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"period.start": {
 			Type:             "integer",
 			ShortDescription: "The start of the period",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Product](https://docs.stripe.com/api/products) that this [Price](https://docs.stripe.com/api/prices) will belong to",
-			Required:         true,
 		},
 		"price_data.tax_behavior": {
 			Type:             "string",
@@ -8853,10 +9261,12 @@ var V1InvoiceitemsUpdate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The integer amount in cents (or local equivalent) of the charge to be applied to the upcoming invoice",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to the invoice item",
+			MostCommon:       true,
 		},
 		"discountable": {
 			Type:             "boolean",
@@ -8865,25 +9275,23 @@ var V1InvoiceitemsUpdate = resource.OperationSpec{
 		"period.end": {
 			Type:             "integer",
 			ShortDescription: "The end of the period, which must be greater than or equal to the start",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"period.start": {
 			Type:             "integer",
 			ShortDescription: "The start of the period",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Product](https://docs.stripe.com/api/products) that this [Price](https://docs.stripe.com/api/prices) will belong to",
-			Required:         true,
 		},
 		"price_data.tax_behavior": {
 			Type:             "string",
@@ -8945,6 +9353,12 @@ var V1InvoicesAddLines = resource.OperationSpec{
 	Name:   "add_lines",
 	Path:   "/v1/invoices/{invoice}/add_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesAttachPayment = resource.OperationSpec{
@@ -8955,10 +9369,12 @@ var V1InvoicesAttachPayment = resource.OperationSpec{
 		"payment_intent": {
 			Type:             "string",
 			ShortDescription: "The ID of the PaymentIntent to attach to the invoice",
+			MostCommon:       true,
 		},
 		"payment_record": {
 			Type:             "string",
 			ShortDescription: "The ID of the PaymentRecord to attach to the invoice",
+			MostCommon:       true,
 		},
 	},
 }
@@ -8979,11 +9395,12 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"auto_advance": {
 			Type:             "boolean",
 			ShortDescription: "Controls whether Stripe performs [automatic collection](https://docs.stripe.com/invoicing/integration/automatic-advancement-collection) of the invoice",
+			MostCommon:       true,
 		},
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically computes tax on this invoice",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -8992,7 +9409,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9006,6 +9422,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"collection_method": {
 			Type:             "string",
 			ShortDescription: "Either `charge_automatically`, or `send_invoice`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -9019,10 +9436,12 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of the customer to bill",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the account to bill",
+			MostCommon:       true,
 		},
 		"days_until_due": {
 			Type:             "integer",
@@ -9043,6 +9462,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"due_date": {
 			Type:             "integer",
@@ -9061,7 +9481,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"from_invoice.action": {
 			Type:             "string",
 			ShortDescription: "The relation between the new invoice and the original invoice",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "revision"},
 			},
@@ -9069,7 +9488,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"from_invoice.invoice": {
 			Type:             "string",
 			ShortDescription: "The `id` of the invoice that will be cloned",
-			Required:         true,
 		},
 		"issuer.account": {
 			Type:             "string",
@@ -9078,7 +9496,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9095,6 +9512,120 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"payment_settings.default_mandate": {
 			Type:             "string",
 			ShortDescription: "ID of the mandate to be used for this invoice",
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Setting to true enables installments for this invoice",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.count": {
+			Type:             "integer",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.interval": {
+			Type:             "string",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.plan.type": {
+			Type:             "string",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The bank transfer type that can be used for funding",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum amount that can be collected in a single invoice",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
 		},
 		"payment_settings.payment_method_types": {
 			Type:             "array",
@@ -9140,7 +9671,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.unit": {
 			Type:             "string",
 			ShortDescription: "A unit of time",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -9152,12 +9682,10 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.value": {
 			Type:             "integer",
 			ShortDescription: "Must be greater than 0",
-			Required:         true,
 		},
 		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.unit": {
 			Type:             "string",
 			ShortDescription: "A unit of time",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -9169,22 +9697,18 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.value": {
 			Type:             "integer",
 			ShortDescription: "Must be greater than 0",
-			Required:         true,
 		},
 		"shipping_cost.shipping_rate_data.display_name": {
 			Type:             "string",
 			ShortDescription: "The name of the shipping rate, meant to be displayable to the customer",
-			Required:         true,
 		},
 		"shipping_cost.shipping_rate_data.fixed_amount.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer in cents representing how much to charge",
-			Required:         true,
 		},
 		"shipping_cost.shipping_rate_data.fixed_amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"shipping_cost.shipping_rate_data.tax_behavior": {
@@ -9234,7 +9758,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"shipping_details.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
 		},
 		"shipping_details.phone": {
 			Type:             "string",
@@ -9247,6 +9770,7 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"subscription": {
 			Type:             "string",
 			ShortDescription: "The ID of the subscription to invoice, if any",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -9255,7 +9779,6 @@ var V1InvoicesCreate = resource.OperationSpec{
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
-			Required:         true,
 		},
 	},
 }
@@ -9268,7 +9791,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically computes tax on this invoice",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -9277,7 +9800,6 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9291,10 +9813,68 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The identifier of the customer whose upcoming invoice you're retrieving",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The identifier of the account representing the customer whose upcoming invoice you're retrieving",
+			MostCommon:       true,
+		},
+		"customer_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"customer_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"customer_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"customer_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"customer_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"customer_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"customer_details.shipping.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"customer_details.shipping.address.country": {
+			Type:             "string",
+			ShortDescription: "A freeform text field for the country",
+		},
+		"customer_details.shipping.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"customer_details.shipping.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"customer_details.shipping.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"customer_details.shipping.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"customer_details.shipping.name": {
+			Type:             "string",
+			ShortDescription: "Customer name",
+		},
+		"customer_details.shipping.phone": {
+			Type:             "string",
+			ShortDescription: "Customer phone (including extension)",
 		},
 		"customer_details.tax.ip_address": {
 			Type:             "string",
@@ -9316,7 +9896,6 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9349,7 +9928,6 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"schedule_details.billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -9375,6 +9953,7 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"subscription": {
 			Type:             "string",
 			ShortDescription: "The identifier of the subscription for which you'd like to retrieve the upcoming invoice",
+			MostCommon:       true,
 		},
 		"subscription_details.billing_cycle_anchor": {
 			Type:             "string",
@@ -9391,7 +9970,6 @@ var V1InvoicesCreatePreview = resource.OperationSpec{
 		"subscription_details.billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -9460,6 +10038,7 @@ var V1InvoicesFinalizeInvoice = resource.OperationSpec{
 		"auto_advance": {
 			Type:             "boolean",
 			ShortDescription: "Controls whether Stripe performs [automatic collection](https://docs.stripe.com/invoicing/integration/automatic-advancement-collection) of the invoice",
+			MostCommon:       true,
 		},
 	},
 }
@@ -9564,6 +10143,12 @@ var V1InvoicesRemoveLines = resource.OperationSpec{
 	Name:   "remove_lines",
 	Path:   "/v1/invoices/{invoice}/remove_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesRetrieve = resource.OperationSpec{
@@ -9615,11 +10200,12 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"auto_advance": {
 			Type:             "boolean",
 			ShortDescription: "Controls whether Stripe performs [automatic collection](https://docs.stripe.com/invoicing/integration/automatic-advancement-collection) of the invoice",
+			MostCommon:       true,
 		},
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether Stripe automatically computes tax on this invoice",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -9628,7 +10214,6 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9642,6 +10227,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"collection_method": {
 			Type:             "string",
 			ShortDescription: "Either `charge_automatically` or `send_invoice`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "charge_automatically"},
 				{Value: "send_invoice"},
@@ -9666,6 +10252,7 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"due_date": {
 			Type:             "integer",
@@ -9687,7 +10274,6 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -9704,6 +10290,120 @@ var V1InvoicesUpdate = resource.OperationSpec{
 		"payment_settings.default_mandate": {
 			Type:             "string",
 			ShortDescription: "ID of the mandate to be used for this invoice",
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Setting to true enables installments for this invoice",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.count": {
+			Type:             "integer",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+		},
+		"payment_settings.payment_method_options.card.installments.plan.interval": {
+			Type:             "string",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_settings.payment_method_options.card.installments.plan.type": {
+			Type:             "string",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The bank transfer type that can be used for funding",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum amount that can be collected in a single invoice",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
 		},
 		"payment_settings.payment_method_types": {
 			Type:             "array",
@@ -9734,9 +10434,125 @@ var V1InvoicesUpdate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The specific version of invoice rendering template to use for this invoice",
 		},
+		"shipping_cost": {
+			Type: "clearable_object",
+		},
+		"shipping_cost.shipping_rate": {
+			Type:             "string",
+			ShortDescription: "The ID of the shipping rate to use for this order",
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.unit": {
+			Type:             "string",
+			ShortDescription: "A unit of time",
+			Enum: []resource.EnumSpec{
+				{Value: "business_day"},
+				{Value: "day"},
+				{Value: "hour"},
+				{Value: "month"},
+				{Value: "week"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.maximum.value": {
+			Type:             "integer",
+			ShortDescription: "Must be greater than 0",
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.unit": {
+			Type:             "string",
+			ShortDescription: "A unit of time",
+			Enum: []resource.EnumSpec{
+				{Value: "business_day"},
+				{Value: "day"},
+				{Value: "hour"},
+				{Value: "month"},
+				{Value: "week"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.delivery_estimate.minimum.value": {
+			Type:             "integer",
+			ShortDescription: "Must be greater than 0",
+		},
+		"shipping_cost.shipping_rate_data.display_name": {
+			Type:             "string",
+			ShortDescription: "The name of the shipping rate, meant to be displayable to the customer",
+		},
+		"shipping_cost.shipping_rate_data.fixed_amount.amount": {
+			Type:             "integer",
+			ShortDescription: "A non-negative integer in cents representing how much to charge",
+		},
+		"shipping_cost.shipping_rate_data.fixed_amount.currency": {
+			Type:             "string",
+			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			Format:           "currency",
+		},
+		"shipping_cost.shipping_rate_data.tax_behavior": {
+			Type:             "string",
+			ShortDescription: "Specifies whether the rate is considered inclusive of taxes or exclusive of taxes",
+			Enum: []resource.EnumSpec{
+				{Value: "exclusive"},
+				{Value: "inclusive"},
+				{Value: "unspecified"},
+			},
+		},
+		"shipping_cost.shipping_rate_data.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
+		"shipping_cost.shipping_rate_data.type": {
+			Type:             "string",
+			ShortDescription: "The type of calculation to use on the shipping rate",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed_amount"},
+			},
+		},
+		"shipping_details": {
+			Type: "clearable_object",
+		},
+		"shipping_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"shipping_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping_details.name": {
+			Type:             "string",
+			ShortDescription: "Recipient name",
+		},
+		"shipping_details.phone": {
+			Type:             "string",
+			ShortDescription: "Recipient phone (including extension)",
+		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "Extra information about a charge for the customer's credit card statement",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type:             "integer",
+			ShortDescription: "The amount that will be transferred automatically when the invoice is paid",
+		},
+		"transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 	},
 }
@@ -9745,6 +10561,12 @@ var V1InvoicesUpdateLines = resource.OperationSpec{
 	Name:   "update_lines",
 	Path:   "/v1/invoices/{invoice}/update_lines",
 	Method: "POST",
+	Params: map[string]*resource.ParamSpec{
+		"invoice_metadata": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+	},
 }
 
 var V1InvoicesVoidInvoice = resource.OperationSpec{
@@ -9809,10 +10631,12 @@ var V1IssuingAuthorizationsTestHelpersCapture = resource.OperationSpec{
 		"capture_amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to capture from the authorization",
+			MostCommon:       true,
 		},
 		"close_authorization": {
 			Type:             "boolean",
 			ShortDescription: "Whether to close the authorization after capture",
+			MostCommon:       true,
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type:             "string",
@@ -9952,6 +10776,7 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to authorize",
+			MostCommon:       true,
 		},
 		"amount_details.atm_fee": {
 			Type:             "integer",
@@ -9976,10 +10801,12 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Card associated with this authorization",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the authorization",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
@@ -10449,7 +11276,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"risk_assessment.card_testing_risk.level": {
 			Type:             "string",
 			ShortDescription: "The likelihood that this authorization is associated with card testing activity",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -10462,7 +11288,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"risk_assessment.fraud_risk.level": {
 			Type:             "string",
 			ShortDescription: "Stripe’s assessment of the likelihood of fraud on an authorization",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -10483,7 +11308,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"risk_assessment.merchant_dispute_risk.level": {
 			Type:             "string",
 			ShortDescription: "The likelihood that authorizations from this merchant will result in a dispute based on their history on Stripe Issuing",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -10514,7 +11338,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"verification_data.authentication_exemption.claimed_by": {
 			Type:             "string",
 			ShortDescription: "The entity that requested the exemption, either the acquiring merchant or the Issuing user",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acquirer"},
 				{Value: "issuer"},
@@ -10523,7 +11346,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"verification_data.authentication_exemption.type": {
 			Type:             "string",
 			ShortDescription: "The specific exemption claimed for this authorization",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "low_value_transaction"},
 				{Value: "transaction_risk_analysis"},
@@ -10551,7 +11373,6 @@ var V1IssuingAuthorizationsTestHelpersCreate = resource.OperationSpec{
 		"verification_data.three_d_secure.result": {
 			Type:             "string",
 			ShortDescription: "The outcome of the 3D Secure authentication request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "attempt_acknowledged"},
 				{Value: "authenticated"},
@@ -10586,6 +11407,7 @@ var V1IssuingAuthorizationsTestHelpersFinalizeAmount = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The final authorization amount that will be captured by the merchant",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type:             "string",
@@ -10696,10 +11518,12 @@ var V1IssuingAuthorizationsTestHelpersIncrement = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The amount to increment the authorization by",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"is_amount_controllable": {
 			Type:             "boolean",
 			ShortDescription: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization",
+			MostCommon:       true,
 		},
 	},
 }
@@ -10713,6 +11537,7 @@ var V1IssuingAuthorizationsTestHelpersRespond = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether to simulate the user confirming that the transaction was legitimate (true) or telling Stripe that it was fraudulent (false)",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -10725,6 +11550,7 @@ var V1IssuingAuthorizationsTestHelpersReverse = resource.OperationSpec{
 		"reverse_amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to reverse from the authorization",
+			MostCommon:       true,
 		},
 	},
 }
@@ -10775,6 +11601,7 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The cardholder's email address",
+			MostCommon:       true,
 		},
 		"individual.card_issuing.user_terms_acceptance.date": {
 			Type:             "integer",
@@ -10792,17 +11619,14 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 		"individual.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"individual.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"individual.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"individual.first_name": {
 			Type:             "string",
@@ -10824,10 +11648,12 @@ var V1IssuingCardholdersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The cardholder's name",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"phone_number": {
 			Type:             "string",
 			ShortDescription: "The cardholder's phone number",
+			MostCommon:       true,
 		},
 		"preferred_locales": {
 			Type:             "array",
@@ -10935,17 +11761,14 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"billing.address.city": {
 			Type:             "string",
 			ShortDescription: "City, district, suburb, town, or village",
-			Required:         true,
 		},
 		"billing.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"billing.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"billing.address.line2": {
 			Type:             "string",
@@ -10954,7 +11777,6 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"billing.address.postal_code": {
 			Type:             "string",
 			ShortDescription: "ZIP or postal code",
-			Required:         true,
 		},
 		"billing.address.state": {
 			Type:             "string",
@@ -10967,6 +11789,7 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The cardholder's email address",
+			MostCommon:       true,
 		},
 		"individual.card_issuing.user_terms_acceptance.date": {
 			Type:             "integer",
@@ -10984,17 +11807,14 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"individual.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"individual.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"individual.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"individual.first_name": {
 			Type:             "string",
@@ -11015,6 +11835,7 @@ var V1IssuingCardholdersUpdate = resource.OperationSpec{
 		"phone_number": {
 			Type:             "string",
 			ShortDescription: "The cardholder's phone number",
+			MostCommon:       true,
 		},
 		"preferred_locales": {
 			Type:             "array",
@@ -11059,19 +11880,23 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"cardholder": {
 			Type:             "string",
 			ShortDescription: "The [Cardholder](https://docs.stripe.com/api#issuing_cardholder_object) object with which the card will be associated",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency for the card",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"exp_month": {
 			Type:             "integer",
 			ShortDescription: "The desired expiration month (1-12) for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates)",
+			MostCommon:       true,
 		},
 		"exp_year": {
 			Type:             "integer",
 			ShortDescription: "The desired 4-digit expiration year for this card if [specifying a custom expiration date](/issuing/cards/virtual/issue-cards?testing-method=with-code#exp-dates)",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
@@ -11080,7 +11905,6 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"lifecycle_controls.cancel_after.payment_count": {
 			Type:             "integer",
 			ShortDescription: "The card is automatically cancelled when it makes this number of non-zero payment authorizations and transactions",
-			Required:         true,
 		},
 		"personalization_design": {
 			Type:             "string",
@@ -11111,17 +11935,14 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"shipping.address.city": {
 			Type:             "string",
 			ShortDescription: "City, district, suburb, town, or village",
-			Required:         true,
 		},
 		"shipping.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"shipping.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"shipping.address.line2": {
 			Type:             "string",
@@ -11130,7 +11951,6 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"shipping.address.postal_code": {
 			Type:             "string",
 			ShortDescription: "ZIP or postal code",
-			Required:         true,
 		},
 		"shipping.address.state": {
 			Type:             "string",
@@ -11139,7 +11959,6 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"shipping.address_validation.mode": {
 			Type:             "string",
 			ShortDescription: "The address validation capabilities to use",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "disabled"},
 				{Value: "normalization_only"},
@@ -11153,7 +11972,6 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "The name printed on the shipping label when shipping the card",
-			Required:         true,
 		},
 		"shipping.phone_number": {
 			Type:             "string",
@@ -11199,6 +12017,7 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 		"status": {
 			Type:             "string",
 			ShortDescription: "Whether authorizations can be approved on this card",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "inactive"},
@@ -11208,6 +12027,7 @@ var V1IssuingCardsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The type of card to issue",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "physical"},
 				{Value: "virtual"},
@@ -11320,6 +12140,7 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"cancellation_reason": {
 			Type:             "string",
 			ShortDescription: "Reason why the `status` of this card is `canceled`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "lost"},
 				{Value: "stolen"},
@@ -11335,17 +12156,14 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"shipping.address.city": {
 			Type:             "string",
 			ShortDescription: "City, district, suburb, town, or village",
-			Required:         true,
 		},
 		"shipping.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"shipping.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"shipping.address.line2": {
 			Type:             "string",
@@ -11354,7 +12172,6 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"shipping.address.postal_code": {
 			Type:             "string",
 			ShortDescription: "ZIP or postal code",
-			Required:         true,
 		},
 		"shipping.address.state": {
 			Type:             "string",
@@ -11363,7 +12180,6 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"shipping.address_validation.mode": {
 			Type:             "string",
 			ShortDescription: "The address validation capabilities to use",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "disabled"},
 				{Value: "normalization_only"},
@@ -11377,7 +12193,6 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "The name printed on the shipping label when shipping the card",
-			Required:         true,
 		},
 		"shipping.phone_number": {
 			Type:             "string",
@@ -11423,6 +12238,7 @@ var V1IssuingCardsUpdate = resource.OperationSpec{
 		"status": {
 			Type:             "string",
 			ShortDescription: "Dictates whether authorizations can be approved on this card",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "canceled"},
@@ -11441,6 +12257,166 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
 		},
+		"evidence.canceled.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.canceled.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "Date when order was canceled",
+		},
+		"evidence.canceled.cancellation_policy_provided": {
+			Type:             "boolean",
+			ShortDescription: "Whether the cardholder was provided with a cancellation policy",
+		},
+		"evidence.canceled.cancellation_reason": {
+			Type:             "string",
+			ShortDescription: "Reason for canceling the order",
+		},
+		"evidence.canceled.expected_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the cardholder expected to receive the product",
+		},
+		"evidence.canceled.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.canceled.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.canceled.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.canceled.return_status": {
+			Type:             "string",
+			ShortDescription: "Result of cardholder's attempt to return the product",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.canceled.returned_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was returned or attempted to be returned",
+		},
+		"evidence.duplicate.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.duplicate.card_statement": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Copy of the card statement showing that the product had already been paid for",
+		},
+		"evidence.duplicate.cash_receipt": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Copy of the receipt showing that the product had been paid for in cash",
+		},
+		"evidence.duplicate.check_image": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Image of the front and back of the check that was used to pay for the product",
+		},
+		"evidence.duplicate.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.duplicate.original_transaction": {
+			Type:             "string",
+			ShortDescription: "Transaction (e.g., ipi_...) that the disputed transaction is a duplicate of",
+		},
+		"evidence.fraudulent.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.fraudulent.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.merchandise_not_as_described.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.merchandise_not_as_described.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.merchandise_not_as_described.received_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was received",
+		},
+		"evidence.merchandise_not_as_described.return_description": {
+			Type:             "string",
+			ShortDescription: "Description of the cardholder's attempt to return the product",
+		},
+		"evidence.merchandise_not_as_described.return_status": {
+			Type:             "string",
+			ShortDescription: "Result of cardholder's attempt to return the product",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.merchandise_not_as_described.returned_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was returned or attempted to be returned",
+		},
+		"evidence.no_valid_authorization.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.no_valid_authorization.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.not_received.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.not_received.expected_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the cardholder expected to receive the product",
+		},
+		"evidence.not_received.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.not_received.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.not_received.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.other.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.other.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.other.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.other.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
 		"evidence.reason": {
 			Type:             "string",
 			ShortDescription: "The reason for filing the dispute",
@@ -11455,14 +12431,34 @@ var V1IssuingDisputesCreate = resource.OperationSpec{
 				{Value: "service_not_as_described"},
 			},
 		},
+		"evidence.service_not_as_described.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.service_not_as_described.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "Date when order was canceled",
+		},
+		"evidence.service_not_as_described.cancellation_reason": {
+			Type:             "string",
+			ShortDescription: "Reason for canceling the order",
+		},
+		"evidence.service_not_as_described.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.service_not_as_described.received_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was received",
+		},
 		"transaction": {
 			Type:             "string",
 			ShortDescription: "The ID of the issuing transaction to create a dispute for",
+			MostCommon:       true,
 		},
 		"treasury.received_debit": {
 			Type:             "string",
 			ShortDescription: "The ID of the ReceivedDebit to initiate an Issuings dispute for",
-			Required:         true,
 		},
 	},
 }
@@ -11527,6 +12523,166 @@ var V1IssuingDisputesUpdate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The dispute amount in the card's currency and in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
 		},
+		"evidence.canceled.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.canceled.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "Date when order was canceled",
+		},
+		"evidence.canceled.cancellation_policy_provided": {
+			Type:             "boolean",
+			ShortDescription: "Whether the cardholder was provided with a cancellation policy",
+		},
+		"evidence.canceled.cancellation_reason": {
+			Type:             "string",
+			ShortDescription: "Reason for canceling the order",
+		},
+		"evidence.canceled.expected_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the cardholder expected to receive the product",
+		},
+		"evidence.canceled.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.canceled.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.canceled.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.canceled.return_status": {
+			Type:             "string",
+			ShortDescription: "Result of cardholder's attempt to return the product",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.canceled.returned_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was returned or attempted to be returned",
+		},
+		"evidence.duplicate.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.duplicate.card_statement": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Copy of the card statement showing that the product had already been paid for",
+		},
+		"evidence.duplicate.cash_receipt": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Copy of the receipt showing that the product had been paid for in cash",
+		},
+		"evidence.duplicate.check_image": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Image of the front and back of the check that was used to pay for the product",
+		},
+		"evidence.duplicate.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.duplicate.original_transaction": {
+			Type:             "string",
+			ShortDescription: "Transaction (e.g., ipi_...) that the disputed transaction is a duplicate of",
+		},
+		"evidence.fraudulent.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.fraudulent.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.merchandise_not_as_described.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.merchandise_not_as_described.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.merchandise_not_as_described.received_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was received",
+		},
+		"evidence.merchandise_not_as_described.return_description": {
+			Type:             "string",
+			ShortDescription: "Description of the cardholder's attempt to return the product",
+		},
+		"evidence.merchandise_not_as_described.return_status": {
+			Type:             "string",
+			ShortDescription: "Result of cardholder's attempt to return the product",
+			Enum: []resource.EnumSpec{
+				{Value: "merchant_rejected"},
+				{Value: "successful"},
+			},
+		},
+		"evidence.merchandise_not_as_described.returned_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was returned or attempted to be returned",
+		},
+		"evidence.no_valid_authorization.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.no_valid_authorization.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.not_received.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.not_received.expected_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the cardholder expected to receive the product",
+		},
+		"evidence.not_received.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.not_received.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.not_received.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
+		"evidence.other.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.other.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.other.product_description": {
+			Type:             "string",
+			ShortDescription: "Description of the merchandise or service that was purchased",
+		},
+		"evidence.other.product_type": {
+			Type:             "string",
+			ShortDescription: "Whether the product was a merchandise or service",
+			Enum: []resource.EnumSpec{
+				{Value: "merchandise"},
+				{Value: "service"},
+			},
+		},
 		"evidence.reason": {
 			Type:             "string",
 			ShortDescription: "The reason for filing the dispute",
@@ -11541,6 +12697,26 @@ var V1IssuingDisputesUpdate = resource.OperationSpec{
 				{Value: "service_not_as_described"},
 			},
 		},
+		"evidence.service_not_as_described.additional_documentation": {
+			Type:             "string",
+			ShortDescription: "(ID of a [file upload](https://stripe.com/docs/guides/file-upload)) Additional documentation supporting the dispute",
+		},
+		"evidence.service_not_as_described.canceled_at": {
+			Type:             "integer",
+			ShortDescription: "Date when order was canceled",
+		},
+		"evidence.service_not_as_described.cancellation_reason": {
+			Type:             "string",
+			ShortDescription: "Reason for canceling the order",
+		},
+		"evidence.service_not_as_described.explanation": {
+			Type:             "string",
+			ShortDescription: "Explanation of why the cardholder is disputing this transaction",
+		},
+		"evidence.service_not_as_described.received_at": {
+			Type:             "integer",
+			ShortDescription: "Date when the product was received",
+		},
 	},
 }
 
@@ -11552,6 +12728,7 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 		"card_logo": {
 			Type:             "string",
 			ShortDescription: "The file for the card logo, for use with physical bundles that support card logos",
+			MostCommon:       true,
 		},
 		"carrier_text.footer_body": {
 			Type:             "string",
@@ -11572,24 +12749,28 @@ var V1IssuingPersonalizationDesignsCreate = resource.OperationSpec{
 		"lookup_key": {
 			Type:             "string",
 			ShortDescription: "A lookup key used to retrieve personalization designs dynamically from a static string",
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "Friendly display name",
+			MostCommon:       true,
 		},
 		"physical_bundle": {
 			Type:             "string",
 			ShortDescription: "The physical bundle object belonging to this personalization design",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"preferences.is_default": {
 			Type:             "boolean",
 			ShortDescription: "Whether we use this personalization design to create cards when one isn't specified",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"transfer_lookup_key": {
 			Type:             "boolean",
 			ShortDescription: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design",
+			MostCommon:       true,
 		},
 	},
 }
@@ -11670,27 +12851,52 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 		"card_logo": {
 			Type:             "string",
 			ShortDescription: "The file for the card logo, for use with physical bundles that support card logos",
+			MostCommon:       true,
+		},
+		"carrier_text": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"carrier_text.footer_body": {
+			Type:             "string",
+			ShortDescription: "The footer body text of the carrier letter",
+		},
+		"carrier_text.footer_title": {
+			Type:             "string",
+			ShortDescription: "The footer title text of the carrier letter",
+		},
+		"carrier_text.header_body": {
+			Type:             "string",
+			ShortDescription: "The header body text of the carrier letter",
+		},
+		"carrier_text.header_title": {
+			Type:             "string",
+			ShortDescription: "The header title text of the carrier letter",
 		},
 		"lookup_key": {
 			Type:             "string",
 			ShortDescription: "A lookup key used to retrieve personalization designs dynamically from a static string",
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "Friendly display name",
+			MostCommon:       true,
 		},
 		"physical_bundle": {
 			Type:             "string",
 			ShortDescription: "The physical bundle object belonging to this personalization design",
+			MostCommon:       true,
 		},
 		"preferences.is_default": {
 			Type:             "boolean",
 			ShortDescription: "Whether we use this personalization design to create cards when one isn't specified",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"transfer_lookup_key": {
 			Type:             "boolean",
 			ShortDescription: "If set to true, will atomically remove the lookup key from the existing personalization design, and assign it to this personalization design",
+			MostCommon:       true,
 		},
 	},
 }
@@ -11792,6 +12998,7 @@ var V1IssuingTokensUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies which status the token should be updated to",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "active"},
 				{Value: "deleted"},
@@ -11856,15 +13063,18 @@ var V1IssuingTransactionsTestHelpersCreateForceCapture = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to capture",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"card": {
 			Type:             "string",
 			ShortDescription: "Card associated with this transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the capture",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"merchant_data.category": {
@@ -12338,15 +13548,18 @@ var V1IssuingTransactionsTestHelpersCreateUnlinkedRefund = resource.OperationSpe
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to refund",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"card": {
 			Type:             "string",
 			ShortDescription: "Card associated with this unlinked refund transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the unlinked refund",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"merchant_data.category": {
@@ -12819,6 +14032,7 @@ var V1IssuingTransactionsTestHelpersRefund = resource.OperationSpec{
 		"refund_amount": {
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to refund",
+			MostCommon:       true,
 		},
 	},
 }
@@ -12857,10 +14071,12 @@ var V1LineItemsUpdate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The integer amount in cents (or local equivalent) of the charge to be applied to the upcoming invoice",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to the invoice item",
+			MostCommon:       true,
 		},
 		"discountable": {
 			Type:             "boolean",
@@ -12869,19 +14085,18 @@ var V1LineItemsUpdate = resource.OperationSpec{
 		"period.end": {
 			Type:             "integer",
 			ShortDescription: "The end of the period, which must be greater than or equal to the start",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"period.start": {
 			Type:             "integer",
 			ShortDescription: "The start of the period",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
@@ -12899,7 +14114,6 @@ var V1LineItemsUpdate = resource.OperationSpec{
 		"price_data.product_data.name": {
 			Type:             "string",
 			ShortDescription: "The product's name, meant to be displayable to the customer",
-			Required:         true,
 		},
 		"price_data.product_data.tax_code": {
 			Type:             "string",
@@ -12938,6 +14152,7 @@ var V1LineItemsUpdate = resource.OperationSpec{
 		"quantity_decimal": {
 			Type:             "string",
 			ShortDescription: "Non-negative decimal with at most 12 decimal places",
+			MostCommon:       true,
 			Format:           "decimal",
 		},
 		"tax_rates": {
@@ -13014,10 +14229,12 @@ var V1PaymentIntentsApplyCustomerBalance = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount that you intend to apply to this PaymentIntent from the customer’s cash balance",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 	},
@@ -13031,6 +14248,7 @@ var V1PaymentIntentsCancel = resource.OperationSpec{
 		"cancellation_reason": {
 			Type:             "string",
 			ShortDescription: "Reason for canceling this PaymentIntent",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "abandoned"},
 				{Value: "duplicate"},
@@ -13054,9 +14272,26 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Set to `false` to return arithmetic validation errors in the response without failing the request",
 		},
+		"amount_details.shipping.amount": {
+			Type:             "integer",
+			ShortDescription: "If a physical good is being shipped, the cost of shipping represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped from",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped to",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type:             "integer",
+			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
 		"amount_to_capture": {
 			Type:             "integer",
 			ShortDescription: "The amount to capture from the PaymentIntent, which must be less than or equal to the original amount",
+			MostCommon:       true,
 		},
 		"application_fee_amount": {
 			Type:             "integer",
@@ -13069,7 +14304,17 @@ var V1PaymentIntentsCapture = resource.OperationSpec{
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
 			ShortDescription: "The [TaxCalculation](https://docs.stripe.com/api/tax/calculations) id",
-			Required:         true,
+		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value to identify the customer",
+		},
+		"payment_details.order_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value assigned by the business to identify the transaction",
 		},
 		"statement_descriptor": {
 			Type:             "string",
@@ -13091,6 +14336,33 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 	Path:   "/v1/payment_intents/{intent}/confirm",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"amount_details": {
+			Type: "clearable_object",
+		},
+		"amount_details.discount_amount": {
+			Type:             "integer",
+			ShortDescription: "The total discount applied on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.enforce_arithmetic_validation": {
+			Type:             "boolean",
+			ShortDescription: "Set to `false` to return arithmetic validation errors in the response without failing the request",
+		},
+		"amount_details.shipping.amount": {
+			Type:             "integer",
+			ShortDescription: "If a physical good is being shipped, the cost of shipping represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped from",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped to",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type:             "integer",
+			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
 		"capture_method": {
 			Type:             "string",
 			ShortDescription: "Controls when the funds will be captured from the customer's account",
@@ -13115,34 +14387,66 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
 			ShortDescription: "The [TaxCalculation](https://docs.stripe.com/api/tax/calculations) id",
-			Required:         true,
 		},
 		"mandate": {
 			Type:             "string",
 			ShortDescription: "ID of the mandate that's used for this payment",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:             "integer",
+			ShortDescription: "The time at which the customer accepted the Mandate",
+			Format:           "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type:             "string",
+			ShortDescription: "The IP address from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent of the browser from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type:             "string",
+			ShortDescription: "The type of customer acceptance information included with the Mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"off_session": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to indicate that the customer isn't in your checkout flow during this payment attempt and can't authenticate",
 		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value to identify the customer",
+		},
+		"payment_details.order_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value assigned by the business to identify the transaction",
+		},
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or [compatible Source](https://docs.stripe.com/payments/payment-methods/transitioning#compatibility) object) to attach to this PaymentIntent",
+			MostCommon:       true,
 		},
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -13156,12 +14460,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -13170,6 +14472,30 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -13190,7 +14516,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -13237,7 +14562,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -13292,17 +14616,14 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -13319,17 +14640,14 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -13337,7 +14655,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -13390,12 +14707,10 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -13408,7 +14723,6 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -13511,6 +14825,1156 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Routing number of the bank account",
 		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type:             "string",
+			ShortDescription: "A URL for custom mandate text to render during confirmation step",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type:             "string",
+			ShortDescription: "Description of the mandate interval",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Payment schedule for the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Affirm authorization page that the customer is redirected to",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type:             "string",
+			ShortDescription: "An internal identifier or reference that this payment corresponds to",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before a Boleto voucher expires",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type:             "string",
+			ShortDescription: "A single-use `cvc_update` Token that represents a card CVC value",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Setting to true enables installments for this PaymentIntent",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type:             "integer",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type:             "string",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type:             "string",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type:             "string",
+			ShortDescription: "Specifies payment frequency",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of intervals between payments",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Unique identifier for the mandate or subscription",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:             "integer",
+			ShortDescription: "Start date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type:             "array",
+			ShortDescription: "Specifies the type of mandates supported",
+		},
+		"payment_method_options.card.moto": {
+			Type:             "boolean",
+			ShortDescription: "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA",
+		},
+		"payment_method_options.card.network": {
+			Type:             "string",
+			ShortDescription: "Selected network to process this PaymentIntent on",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [capture beyond the standard authorization validity window](https://docs.stripe.com/payments/extended-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [increment the authorization](https://docs.stripe.com/payments/incremental-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to make [multiple captures](https://docs.stripe.com/payments/multicapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to [overcapture](https://docs.stripe.com/payments/overcapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type:             "boolean",
+			ShortDescription: "When enabled, using a card that is attached to a customer will require the CVC to be provided again (i.e. using the cvc_token parameter)",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type:             "string",
+			ShortDescription: "The `transStatus` returned from the card Issuer’s ACS in the ARes",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type:             "string",
+			ShortDescription: "The cryptogram, also known as the \"authentication value\" (AAV, CAVV or\nAEVV)",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type:             "string",
+			ShortDescription: "The Electronic Commerce Indicator (ECI) is returned by your 3D Secure\nprovider and indicates what degree of authentication was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type:             "string",
+			ShortDescription: "The exemption requested via 3DS and accepted by the issuer at authentication time",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type:             "string",
+			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type:             "string",
+			ShortDescription: "The exemption indicator returned from Cartes Bancaires in the ARes.\nmessage extension: CB-EXEMPTION; string (4 characters)\nThis is a 3 byte bitmap (low significant byte first and most significant\nbit first) that has been Base64 encoded",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type:             "integer",
+			ShortDescription: "The risk score returned from Cartes Bancaires in the ARes.\nmessage extension: CB-SCORE; numeric value 0-99",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type:             "string",
+			ShortDescription: "The challenge indicator (`threeDSRequestorChallengeInd`) which was requested in the\nAReq sent to the card Issuer's ACS",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type:             "string",
+			ShortDescription: "For 3D Secure 1, the XID",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type:             "string",
+			ShortDescription: "The version of 3D Secure that was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to capture this payment beyond the standard [authorization validity window](https://docs.stripe.com/terminal/features/extended-authorizations#authorization-validity)",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to [increment](https://docs.stripe.com/terminal/features/incremental-authorizations) this PaymentIntent if the combination of MCC and card brand is eligible",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type:             "string",
+			ShortDescription: "Routing requested priority",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type:             "array",
+			ShortDescription: "List of address types that should be returned in the financial_addresses response",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The list of bank transfer types that this PaymentIntent is allowed to use for funding Permitted values include: `eu_bank_transfer`, `gb_bank_transfer`, `jp_bank_transfer`, `mx_bank_transfer`, or `us_bank_transfer`",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type:             "integer",
+			ShortDescription: "Your average amount value",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type:             "integer",
+			ShortDescription: "The lowest or minimum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type:             "string",
+			ShortDescription: "Interval at which the customer is making purchases",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of `purchase_interval` between charges",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Klarna authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type:             "string",
+			ShortDescription: "An optional 10 to 11 digit numeric-only string determining the confirmation code at applicable convenience stores",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days (between 1 and 60) after which Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type:             "string",
+			ShortDescription: "A product descriptor of up to 22 characters, which will appear to customers at the convenience store",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type:             "string",
+			ShortDescription: "[Deprecated] This is a legacy parameter that no longer has any function",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before an OXXO voucher expires",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type:             "boolean",
+			ShortDescription: "Confirm that the payer has accepted the P24 terms and conditions",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "[Preferred locale](https://docs.stripe.com/payments/paypal/supported-locales) of the PayPal checkout page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type:             "string",
+			ShortDescription: "A reference of the PayPal transaction visible to customer which is mapped to PayPal's invoice ID",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type:             "string",
+			ShortDescription: "The risk correlation ID for an on-session payment using a saved PayPal payment method",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount that will be collected",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "The type of amount that will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date, in YYYY-MM-DD format, after which payments will not be collected",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "The periodicity at which payments will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type:             "integer",
+			ShortDescription: "The number of payments that will be made during a payment period",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
+			Format:           "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Language shown to the payer on redirect",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type:             "string",
+			ShortDescription: "A reference for this payment to be displayed in the Swish app",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type:             "string",
+			ShortDescription: "For webview integrations only",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type:             "string",
+			ShortDescription: "The method used to collect offline mandate customer acceptance",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type:             "array",
+			ShortDescription: "Triggers validations to run across the selected networks",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose of the transaction",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type:             "string",
+			ShortDescription: "The app ID registered with WeChat Pay",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type:             "string",
+			ShortDescription: "The client type that the end customer will pay from",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
@@ -13522,6 +15986,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "Email address that the receipt for the resulting payment will be sent to",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
@@ -13530,10 +15995,56 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
+		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"shipping.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping.carrier": {
+			Type:             "string",
+			ShortDescription: "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+		},
+		"shipping.name": {
+			Type:             "string",
+			ShortDescription: "Recipient name",
+			MostCommon:       true,
+		},
+		"shipping.phone": {
+			Type:             "string",
+			ShortDescription: "Recipient phone (including extension)",
+		},
+		"shipping.tracking_number": {
+			Type:             "string",
+			ShortDescription: "The tracking number for a physical product, obtained from the delivery service",
 		},
 		"use_stripe_sdk": {
 			Type:             "boolean",
@@ -13551,6 +16062,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount intended to be collected by this PaymentIntent",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"amount_details.discount_amount": {
 			Type:             "integer",
@@ -13559,6 +16071,22 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"amount_details.enforce_arithmetic_validation": {
 			Type:             "boolean",
 			ShortDescription: "Set to `false` to return arithmetic validation errors in the response without failing the request",
+		},
+		"amount_details.shipping.amount": {
+			Type:             "integer",
+			ShortDescription: "If a physical good is being shipped, the cost of shipping represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped from",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped to",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type:             "integer",
+			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
 		},
 		"application_fee_amount": {
 			Type:             "integer",
@@ -13575,7 +16103,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"automatic_payment_methods.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether this feature is enabled",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"capture_method": {
 			Type:             "string",
@@ -13589,6 +16117,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"confirm": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to attempt to [confirm this PaymentIntent](https://docs.stripe.com/api/payment_intents/confirm) immediately",
+			MostCommon:       true,
 		},
 		"confirmation_method": {
 			Type:             "string",
@@ -13606,19 +16135,23 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the Customer this PaymentIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "ID of the Account representing the customer that this PaymentIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"error_on_requires_action": {
 			Type:             "boolean",
@@ -13631,15 +16164,39 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
 			ShortDescription: "The [TaxCalculation](https://docs.stripe.com/api/tax/calculations) id",
-			Required:         true,
 		},
 		"mandate": {
 			Type:             "string",
 			ShortDescription: "ID of the mandate that's used for this payment",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:             "integer",
+			ShortDescription: "The time at which the customer accepted the Mandate",
+			Format:           "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type:             "string",
+			ShortDescription: "The IP address from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent of the browser from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type:             "string",
+			ShortDescription: "The type of customer acceptance information included with the Mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"off_session": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to indicate that the customer isn't in your checkout flow during this payment attempt and can't authenticate",
+			MostCommon:       true,
 		},
 		"on_behalf_of": {
 			Type:             "string",
@@ -13656,6 +16213,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or [compatible Source](https://docs.stripe.com/payments/payment-methods#compatibility) object) to attach to this PaymentIntent",
+			MostCommon:       true,
 		},
 		"payment_method_configuration": {
 			Type:             "string",
@@ -13664,17 +16222,14 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -13688,12 +16243,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -13702,6 +16255,30 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -13722,7 +16299,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -13769,7 +16345,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -13824,17 +16399,14 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -13851,17 +16423,14 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -13869,7 +16438,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -13922,12 +16490,10 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -13940,7 +16506,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -14043,6 +16608,1156 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Routing number of the bank account",
 		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type:             "string",
+			ShortDescription: "A URL for custom mandate text to render during confirmation step",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type:             "string",
+			ShortDescription: "Description of the mandate interval",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Payment schedule for the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Affirm authorization page that the customer is redirected to",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type:             "string",
+			ShortDescription: "An internal identifier or reference that this payment corresponds to",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before a Boleto voucher expires",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type:             "string",
+			ShortDescription: "A single-use `cvc_update` Token that represents a card CVC value",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Setting to true enables installments for this PaymentIntent",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type:             "integer",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type:             "string",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type:             "string",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type:             "string",
+			ShortDescription: "Specifies payment frequency",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of intervals between payments",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Unique identifier for the mandate or subscription",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:             "integer",
+			ShortDescription: "Start date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type:             "array",
+			ShortDescription: "Specifies the type of mandates supported",
+		},
+		"payment_method_options.card.moto": {
+			Type:             "boolean",
+			ShortDescription: "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA",
+		},
+		"payment_method_options.card.network": {
+			Type:             "string",
+			ShortDescription: "Selected network to process this PaymentIntent on",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [capture beyond the standard authorization validity window](https://docs.stripe.com/payments/extended-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [increment the authorization](https://docs.stripe.com/payments/incremental-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to make [multiple captures](https://docs.stripe.com/payments/multicapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to [overcapture](https://docs.stripe.com/payments/overcapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type:             "boolean",
+			ShortDescription: "When enabled, using a card that is attached to a customer will require the CVC to be provided again (i.e. using the cvc_token parameter)",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type:             "string",
+			ShortDescription: "The `transStatus` returned from the card Issuer’s ACS in the ARes",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type:             "string",
+			ShortDescription: "The cryptogram, also known as the \"authentication value\" (AAV, CAVV or\nAEVV)",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type:             "string",
+			ShortDescription: "The Electronic Commerce Indicator (ECI) is returned by your 3D Secure\nprovider and indicates what degree of authentication was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type:             "string",
+			ShortDescription: "The exemption requested via 3DS and accepted by the issuer at authentication time",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type:             "string",
+			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type:             "string",
+			ShortDescription: "The exemption indicator returned from Cartes Bancaires in the ARes.\nmessage extension: CB-EXEMPTION; string (4 characters)\nThis is a 3 byte bitmap (low significant byte first and most significant\nbit first) that has been Base64 encoded",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type:             "integer",
+			ShortDescription: "The risk score returned from Cartes Bancaires in the ARes.\nmessage extension: CB-SCORE; numeric value 0-99",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type:             "string",
+			ShortDescription: "The challenge indicator (`threeDSRequestorChallengeInd`) which was requested in the\nAReq sent to the card Issuer's ACS",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type:             "string",
+			ShortDescription: "For 3D Secure 1, the XID",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type:             "string",
+			ShortDescription: "The version of 3D Secure that was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to capture this payment beyond the standard [authorization validity window](https://docs.stripe.com/terminal/features/extended-authorizations#authorization-validity)",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to [increment](https://docs.stripe.com/terminal/features/incremental-authorizations) this PaymentIntent if the combination of MCC and card brand is eligible",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type:             "string",
+			ShortDescription: "Routing requested priority",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type:             "array",
+			ShortDescription: "List of address types that should be returned in the financial_addresses response",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The list of bank transfer types that this PaymentIntent is allowed to use for funding Permitted values include: `eu_bank_transfer`, `gb_bank_transfer`, `jp_bank_transfer`, `mx_bank_transfer`, or `us_bank_transfer`",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type:             "integer",
+			ShortDescription: "Your average amount value",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type:             "integer",
+			ShortDescription: "The lowest or minimum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type:             "string",
+			ShortDescription: "Interval at which the customer is making purchases",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of `purchase_interval` between charges",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Klarna authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type:             "string",
+			ShortDescription: "An optional 10 to 11 digit numeric-only string determining the confirmation code at applicable convenience stores",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days (between 1 and 60) after which Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type:             "string",
+			ShortDescription: "A product descriptor of up to 22 characters, which will appear to customers at the convenience store",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type:             "string",
+			ShortDescription: "[Deprecated] This is a legacy parameter that no longer has any function",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before an OXXO voucher expires",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type:             "boolean",
+			ShortDescription: "Confirm that the payer has accepted the P24 terms and conditions",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "[Preferred locale](https://docs.stripe.com/payments/paypal/supported-locales) of the PayPal checkout page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type:             "string",
+			ShortDescription: "A reference of the PayPal transaction visible to customer which is mapped to PayPal's invoice ID",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type:             "string",
+			ShortDescription: "The risk correlation ID for an on-session payment using a saved PayPal payment method",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount that will be collected",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "The type of amount that will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date, in YYYY-MM-DD format, after which payments will not be collected",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "The periodicity at which payments will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type:             "integer",
+			ShortDescription: "The number of payments that will be made during a payment period",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
+			Format:           "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Language shown to the payer on redirect",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type:             "string",
+			ShortDescription: "A reference for this payment to be displayed in the Swish app",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type:             "string",
+			ShortDescription: "For webview integrations only",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type:             "string",
+			ShortDescription: "The method used to collect offline mandate customer acceptance",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type:             "array",
+			ShortDescription: "Triggers validations to run across the selected networks",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose of the transaction",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type:             "string",
+			ShortDescription: "The app ID registered with WeChat Pay",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type:             "string",
+			ShortDescription: "The client type that the end customer will pay from",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, a card) that this PaymentIntent can use",
@@ -14054,6 +17769,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "Email address to send the receipt to",
+			MostCommon:       true,
 		},
 		"return_url": {
 			Type:             "string",
@@ -14062,6 +17778,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -14098,7 +17815,7 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping.phone": {
 			Type:             "string",
@@ -14111,10 +17828,12 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "Text that appears on the customer's statement as the statement descriptor for a non-card charge",
+			MostCommon:       true,
 		},
 		"statement_descriptor_suffix": {
 			Type:             "string",
 			ShortDescription: "Provides information about a card charge",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -14123,7 +17842,6 @@ var V1PaymentIntentsCreate = resource.OperationSpec{
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "If specified, successful charges will be attributed to the destination\naccount for tax reporting, and the funds from charges will be transferred\nto the destination account",
-			Required:         true,
 		},
 		"transfer_group": {
 			Type:             "string",
@@ -14145,6 +17863,7 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The updated total amount that you intend to collect from the cardholder",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"amount_details.discount_amount": {
 			Type:             "integer",
@@ -14154,6 +17873,22 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Set to `false` to return arithmetic validation errors in the response without failing the request",
 		},
+		"amount_details.shipping.amount": {
+			Type:             "integer",
+			ShortDescription: "If a physical good is being shipped, the cost of shipping represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped from",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped to",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type:             "integer",
+			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
 		"application_fee_amount": {
 			Type:             "integer",
 			ShortDescription: "The amount of the application fee (if any) that will be requested to be applied to the payment and transferred to the application owner's Stripe account",
@@ -14161,11 +17896,11 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
 			ShortDescription: "The [TaxCalculation](https://docs.stripe.com/api/tax/calculations) id",
-			Required:         true,
 		},
 		"payment_details.customer_reference": {
 			Type:             "string",
@@ -14178,6 +17913,7 @@ var V1PaymentIntentsIncrementAuthorization = resource.OperationSpec{
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "Text that appears on the customer's statement as the statement descriptor for a non-card or card charge",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -14259,6 +17995,34 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount intended to be collected by this PaymentIntent",
+			MostCommon:       true,
+		},
+		"amount_details": {
+			Type: "clearable_object",
+		},
+		"amount_details.discount_amount": {
+			Type:             "integer",
+			ShortDescription: "The total discount applied on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.enforce_arithmetic_validation": {
+			Type:             "boolean",
+			ShortDescription: "Set to `false` to return arithmetic validation errors in the response without failing the request",
+		},
+		"amount_details.shipping.amount": {
+			Type:             "integer",
+			ShortDescription: "If a physical good is being shipped, the cost of shipping represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
+		},
+		"amount_details.shipping.from_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped from",
+		},
+		"amount_details.shipping.to_postal_code": {
+			Type:             "string",
+			ShortDescription: "If a physical good is being shipped, the postal code of where it is being shipped to",
+		},
+		"amount_details.tax.total_tax_amount": {
+			Type:             "integer",
+			ShortDescription: "The total amount of tax on the transaction represented in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
 		},
 		"application_fee_amount": {
 			Type:             "integer",
@@ -14276,19 +18040,23 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the Customer this PaymentIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "ID of the Account representing the customer that this PaymentIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"excluded_payment_method_types": {
 			Type:             "array",
@@ -14297,11 +18065,22 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"hooks.inputs.tax.calculation": {
 			Type:             "string",
 			ShortDescription: "The [TaxCalculation](https://docs.stripe.com/api/tax/calculations) id",
-			Required:         true,
+		},
+		"payment_details": {
+			Type: "clearable_object",
+		},
+		"payment_details.customer_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value to identify the customer",
+		},
+		"payment_details.order_reference": {
+			Type:             "string",
+			ShortDescription: "A unique value assigned by the business to identify the transaction",
 		},
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or [compatible Source](https://docs.stripe.com/payments/payment-methods/transitioning#compatibility) object) to attach to this PaymentIntent",
+			MostCommon:       true,
 		},
 		"payment_method_configuration": {
 			Type:             "string",
@@ -14310,17 +18089,14 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -14334,12 +18110,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -14348,6 +18122,30 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -14368,7 +18166,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -14415,7 +18212,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -14470,17 +18266,14 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -14497,17 +18290,14 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -14515,7 +18305,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -14568,12 +18357,10 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -14586,7 +18373,6 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -14689,6 +18475,1156 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Routing number of the bank account",
 		},
+		"payment_method_options.acss_debit.mandate_options.custom_mandate_url": {
+			Type:             "string",
+			ShortDescription: "A URL for custom mandate text to render during confirmation step",
+		},
+		"payment_method_options.acss_debit.mandate_options.interval_description": {
+			Type:             "string",
+			ShortDescription: "Description of the mandate interval",
+		},
+		"payment_method_options.acss_debit.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "Payment schedule for the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "combined"},
+				{Value: "interval"},
+				{Value: "sporadic"},
+			},
+		},
+		"payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_method_options.acss_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.acss_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.affirm.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.affirm.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Affirm authorization page that the customer is redirected to",
+		},
+		"payment_method_options.affirm.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.afterpay_clearpay.reference": {
+			Type:             "string",
+			ShortDescription: "An internal identifier or reference that this payment corresponds to",
+		},
+		"payment_method_options.afterpay_clearpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.alipay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.alma.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.amazon_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.au_becs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bacs_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.bacs_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.bacs_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_method_options.bancontact.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.billie.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.blik.code": {
+			Type:             "string",
+			ShortDescription: "The 6-digit BLIK code that a customer has generated using their banking application",
+		},
+		"payment_method_options.blik.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.boleto.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before a Boleto voucher expires",
+		},
+		"payment_method_options.boleto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.card.cvc_token": {
+			Type:             "string",
+			ShortDescription: "A single-use `cvc_update` Token that represents a card CVC value",
+		},
+		"payment_method_options.card.installments.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Setting to true enables installments for this PaymentIntent",
+		},
+		"payment_method_options.card.installments.plan.count": {
+			Type:             "integer",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+		},
+		"payment_method_options.card.installments.plan.interval": {
+			Type:             "string",
+			ShortDescription: "For `fixed_count` installment plans, this is required",
+			Enum: []resource.EnumSpec{
+				{Value: "month"},
+			},
+		},
+		"payment_method_options.card.installments.plan.type": {
+			Type:             "string",
+			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
+			Enum: []resource.EnumSpec{
+				{Value: "bonus"},
+				{Value: "fixed_count"},
+				{Value: "revolving"},
+			},
+		},
+		"payment_method_options.card.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
+		},
+		"payment_method_options.card.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.card.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.card.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.interval": {
+			Type:             "string",
+			ShortDescription: "Specifies payment frequency",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "sporadic"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.card.mandate_options.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of intervals between payments",
+		},
+		"payment_method_options.card.mandate_options.reference": {
+			Type:             "string",
+			ShortDescription: "Unique identifier for the mandate or subscription",
+		},
+		"payment_method_options.card.mandate_options.start_date": {
+			Type:             "integer",
+			ShortDescription: "Start date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.card.mandate_options.supported_types": {
+			Type:             "array",
+			ShortDescription: "Specifies the type of mandates supported",
+		},
+		"payment_method_options.card.moto": {
+			Type:             "boolean",
+			ShortDescription: "When specified, this parameter indicates that a transaction will be marked\nas MOTO (Mail Order Telephone Order) and thus out of scope for SCA",
+		},
+		"payment_method_options.card.network": {
+			Type:             "string",
+			ShortDescription: "Selected network to process this PaymentIntent on",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_method_options.card.request_extended_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [capture beyond the standard authorization validity window](https://docs.stripe.com/payments/extended-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_incremental_authorization": {
+			Type:             "string",
+			ShortDescription: "Request ability to [increment the authorization](https://docs.stripe.com/payments/incremental-authorization) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_multicapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to make [multiple captures](https://docs.stripe.com/payments/multicapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_overcapture": {
+			Type:             "string",
+			ShortDescription: "Request ability to [overcapture](https://docs.stripe.com/payments/overcapture) for this PaymentIntent",
+			Enum: []resource.EnumSpec{
+				{Value: "if_available"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_method_options.card.require_cvc_recollection": {
+			Type:             "boolean",
+			ShortDescription: "When enabled, using a card that is attached to a customer will require the CVC to be provided again (i.e. using the cvc_token parameter)",
+		},
+		"payment_method_options.card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kana": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.statement_descriptor_suffix_kanji": {
+			Type:             "string",
+			ShortDescription: "Provides information about a card payment that customers see on their statements",
+		},
+		"payment_method_options.card.three_d_secure.ares_trans_status": {
+			Type:             "string",
+			ShortDescription: "The `transStatus` returned from the card Issuer’s ACS in the ARes",
+			Enum: []resource.EnumSpec{
+				{Value: "A"},
+				{Value: "C"},
+				{Value: "I"},
+				{Value: "N"},
+				{Value: "R"},
+				{Value: "U"},
+				{Value: "Y"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.cryptogram": {
+			Type:             "string",
+			ShortDescription: "The cryptogram, also known as the \"authentication value\" (AAV, CAVV or\nAEVV)",
+		},
+		"payment_method_options.card.three_d_secure.electronic_commerce_indicator": {
+			Type:             "string",
+			ShortDescription: "The Electronic Commerce Indicator (ECI) is returned by your 3D Secure\nprovider and indicates what degree of authentication was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "01"},
+				{Value: "02"},
+				{Value: "05"},
+				{Value: "06"},
+				{Value: "07"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.exemption_indicator": {
+			Type:             "string",
+			ShortDescription: "The exemption requested via 3DS and accepted by the issuer at authentication time",
+			Enum: []resource.EnumSpec{
+				{Value: "low_risk"},
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
+			Type:             "string",
+			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
+			Enum: []resource.EnumSpec{
+				{Value: "0"},
+				{Value: "1"},
+				{Value: "2"},
+				{Value: "3"},
+				{Value: "4"},
+				{Value: "A"},
+			},
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_exemption": {
+			Type:             "string",
+			ShortDescription: "The exemption indicator returned from Cartes Bancaires in the ARes.\nmessage extension: CB-EXEMPTION; string (4 characters)\nThis is a 3 byte bitmap (low significant byte first and most significant\nbit first) that has been Base64 encoded",
+		},
+		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_score": {
+			Type:             "integer",
+			ShortDescription: "The risk score returned from Cartes Bancaires in the ARes.\nmessage extension: CB-SCORE; numeric value 0-99",
+		},
+		"payment_method_options.card.three_d_secure.requestor_challenge_indicator": {
+			Type:             "string",
+			ShortDescription: "The challenge indicator (`threeDSRequestorChallengeInd`) which was requested in the\nAReq sent to the card Issuer's ACS",
+		},
+		"payment_method_options.card.three_d_secure.transaction_id": {
+			Type:             "string",
+			ShortDescription: "For 3D Secure 1, the XID",
+		},
+		"payment_method_options.card.three_d_secure.version": {
+			Type:             "string",
+			ShortDescription: "The version of 3D Secure that was performed",
+			Enum: []resource.EnumSpec{
+				{Value: "1.0.2"},
+				{Value: "2.1.0"},
+				{Value: "2.2.0"},
+				{Value: "2.3.0"},
+				{Value: "2.3.1"},
+			},
+		},
+		"payment_method_options.card_present.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+				{Value: "manual_preferred"},
+			},
+		},
+		"payment_method_options.card_present.request_extended_authorization": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to capture this payment beyond the standard [authorization validity window](https://docs.stripe.com/terminal/features/extended-authorizations#authorization-validity)",
+		},
+		"payment_method_options.card_present.request_incremental_authorization_support": {
+			Type:             "boolean",
+			ShortDescription: "Request ability to [increment](https://docs.stripe.com/terminal/features/incremental-authorizations) this PaymentIntent if the combination of MCC and card brand is eligible",
+		},
+		"payment_method_options.card_present.routing.requested_priority": {
+			Type:             "string",
+			ShortDescription: "Routing requested priority",
+			Enum: []resource.EnumSpec{
+				{Value: "domestic"},
+				{Value: "international"},
+			},
+		},
+		"payment_method_options.cashapp.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.cashapp.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.crypto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_method_options.customer_balance.bank_transfer.requested_address_types": {
+			Type:             "array",
+			ShortDescription: "List of address types that should be returned in the financial_addresses response",
+		},
+		"payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The list of bank transfer types that this PaymentIntent is allowed to use for funding Permitted values include: `eu_bank_transfer`, `gb_bank_transfer`, `jp_bank_transfer`, `mx_bank_transfer`, or `us_bank_transfer`",
+			Enum: []resource.EnumSpec{
+				{Value: "eu_bank_transfer"},
+				{Value: "gb_bank_transfer"},
+				{Value: "jp_bank_transfer"},
+				{Value: "mx_bank_transfer"},
+				{Value: "us_bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+			Enum: []resource.EnumSpec{
+				{Value: "bank_transfer"},
+			},
+		},
+		"payment_method_options.customer_balance.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.eps.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.fpx.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.giropay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.grabpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.ideal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.kakao_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kakao_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.klarna.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.average_amount": {
+			Type:             "integer",
+			ShortDescription: "Your average amount value",
+		},
+		"payment_method_options.klarna.on_demand.maximum_amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.minimum_amount": {
+			Type:             "integer",
+			ShortDescription: "The lowest or minimum value you may charge a customer per purchase",
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval": {
+			Type:             "string",
+			ShortDescription: "Interval at which the customer is making purchases",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"payment_method_options.klarna.on_demand.purchase_interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of `purchase_interval` between charges",
+		},
+		"payment_method_options.klarna.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Klarna authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-CH"},
+				{Value: "de-DE"},
+				{Value: "el-GR"},
+				{Value: "en-AT"},
+				{Value: "en-AU"},
+				{Value: "en-BE"},
+				{Value: "en-CA"},
+				{Value: "en-CH"},
+				{Value: "en-CZ"},
+				{Value: "en-DE"},
+				{Value: "en-DK"},
+				{Value: "en-ES"},
+				{Value: "en-FI"},
+				{Value: "en-FR"},
+				{Value: "en-GB"},
+				{Value: "en-GR"},
+				{Value: "en-IE"},
+				{Value: "en-IT"},
+				{Value: "en-NL"},
+				{Value: "en-NO"},
+				{Value: "en-NZ"},
+				{Value: "en-PL"},
+				{Value: "en-PT"},
+				{Value: "en-RO"},
+				{Value: "en-SE"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "es-US"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-CA"},
+				{Value: "fr-CH"},
+				{Value: "fr-FR"},
+				{Value: "it-CH"},
+				{Value: "it-IT"},
+				{Value: "nb-NO"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "ro-RO"},
+				{Value: "sv-FI"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.klarna.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.konbini.confirmation_number": {
+			Type:             "string",
+			ShortDescription: "An optional 10 to 11 digit numeric-only string determining the confirmation code at applicable convenience stores",
+		},
+		"payment_method_options.konbini.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days (between 1 and 60) after which Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Konbini payment instructions will expire",
+		},
+		"payment_method_options.konbini.product_description": {
+			Type:             "string",
+			ShortDescription: "A product descriptor of up to 22 characters, which will appear to customers at the convenience store",
+		},
+		"payment_method_options.konbini.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.kr_card.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.kr_card.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.link.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.link.persistent_token": {
+			Type:             "string",
+			ShortDescription: "[Deprecated] This is a legacy parameter that no longer has any function",
+		},
+		"payment_method_options.link.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.mb_way.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.mobilepay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.mobilepay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.multibanco.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.naver_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.naver_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.nz_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.oxxo.expires_after_days": {
+			Type:             "integer",
+			ShortDescription: "The number of calendar days before an OXXO voucher expires",
+		},
+		"payment_method_options.oxxo.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.p24.tos_shown_and_accepted": {
+			Type:             "boolean",
+			ShortDescription: "Confirm that the payer has accepted the P24 terms and conditions",
+		},
+		"payment_method_options.payco.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paynow.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.paypal.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds will be captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.paypal.preferred_locale": {
+			Type:             "string",
+			ShortDescription: "[Preferred locale](https://docs.stripe.com/payments/paypal/supported-locales) of the PayPal checkout page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "cs-CZ"},
+				{Value: "da-DK"},
+				{Value: "de-AT"},
+				{Value: "de-DE"},
+				{Value: "de-LU"},
+				{Value: "el-GR"},
+				{Value: "en-GB"},
+				{Value: "en-US"},
+				{Value: "es-ES"},
+				{Value: "fi-FI"},
+				{Value: "fr-BE"},
+				{Value: "fr-FR"},
+				{Value: "fr-LU"},
+				{Value: "hu-HU"},
+				{Value: "it-IT"},
+				{Value: "nl-BE"},
+				{Value: "nl-NL"},
+				{Value: "pl-PL"},
+				{Value: "pt-PT"},
+				{Value: "sk-SK"},
+				{Value: "sv-SE"},
+			},
+		},
+		"payment_method_options.paypal.reference": {
+			Type:             "string",
+			ShortDescription: "A reference of the PayPal transaction visible to customer which is mapped to PayPal's invoice ID",
+		},
+		"payment_method_options.paypal.risk_correlation_id": {
+			Type:             "string",
+			ShortDescription: "The risk correlation ID for an on-session payment using a saved PayPal payment method",
+		},
+		"payment_method_options.paypal.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount that will be collected",
+		},
+		"payment_method_options.payto.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "The type of amount that will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.end_date": {
+			Type:             "string",
+			ShortDescription: "Date, in YYYY-MM-DD format, after which payments will not be collected",
+		},
+		"payment_method_options.payto.mandate_options.payment_schedule": {
+			Type:             "string",
+			ShortDescription: "The periodicity at which payments will be collected",
+			Enum: []resource.EnumSpec{
+				{Value: "adhoc"},
+				{Value: "annual"},
+				{Value: "daily"},
+				{Value: "fortnightly"},
+				{Value: "monthly"},
+				{Value: "quarterly"},
+				{Value: "semi_annual"},
+				{Value: "weekly"},
+			},
+		},
+		"payment_method_options.payto.mandate_options.payments_per_period": {
+			Type:             "integer",
+			ShortDescription: "The number of payments that will be made during a payment period",
+		},
+		"payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_method_options.payto.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.pix.amount_includes_iof": {
+			Type:             "string",
+			ShortDescription: "Determines if the amount includes the IOF tax",
+			Enum: []resource.EnumSpec{
+				{Value: "always"},
+				{Value: "never"},
+			},
+		},
+		"payment_method_options.pix.expires_after_seconds": {
+			Type:             "integer",
+			ShortDescription: "The number of seconds (between 10 and 1209600) after which Pix payment will expire",
+		},
+		"payment_method_options.pix.expires_at": {
+			Type:             "integer",
+			ShortDescription: "The timestamp at which the Pix expires (between 10 and 1209600 seconds in the future)",
+			Format:           "unix-time",
+		},
+		"payment_method_options.pix.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.promptpay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.revolut_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.revolut_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.samsung_pay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.satispay.capture_method": {
+			Type:             "string",
+			ShortDescription: "Controls when the funds are captured from the customer's account",
+			Enum: []resource.EnumSpec{
+				{Value: "manual"},
+			},
+		},
+		"payment_method_options.sepa_debit.mandate_options.reference_prefix": {
+			Type:             "string",
+			ShortDescription: "Prefix used to generate the Mandate reference",
+		},
+		"payment_method_options.sepa_debit.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.sepa_debit.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.sofort.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Language shown to the payer on redirect",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "es"},
+				{Value: "fr"},
+				{Value: "it"},
+				{Value: "nl"},
+				{Value: "pl"},
+			},
+		},
+		"payment_method_options.sofort.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+			},
+		},
+		"payment_method_options.swish.reference": {
+			Type:             "string",
+			ShortDescription: "A reference for this payment to be displayed in the Swish app",
+		},
+		"payment_method_options.swish.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.twint.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments",
+		},
+		"payment_method_options.upi.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_method_options.upi.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_method_options.upi.mandate_options.end_date": {
+			Type:             "integer",
+			ShortDescription: "End date of the mandate or subscription",
+			Format:           "unix-time",
+		},
+		"payment_method_options.upi.setup_future_usage": {
+			Type: "string",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_method_options.us_bank_account.financial_connections.return_url": {
+			Type:             "string",
+			ShortDescription: "For webview integrations only",
+		},
+		"payment_method_options.us_bank_account.mandate_options.collection_method": {
+			Type:             "string",
+			ShortDescription: "The method used to collect offline mandate customer acceptance",
+			Enum: []resource.EnumSpec{
+				{Value: "paper"},
+			},
+		},
+		"payment_method_options.us_bank_account.networks.requested": {
+			Type:             "array",
+			ShortDescription: "Triggers validations to run across the selected networks",
+		},
+		"payment_method_options.us_bank_account.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+				{Value: "off_session"},
+				{Value: "on_session"},
+			},
+		},
+		"payment_method_options.us_bank_account.target_date": {
+			Type:             "string",
+			ShortDescription: "Controls when Stripe will attempt to debit the funds from the customer's account",
+		},
+		"payment_method_options.us_bank_account.transaction_purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose of the transaction",
+			Enum: []resource.EnumSpec{
+				{Value: "goods"},
+				{Value: "other"},
+				{Value: "services"},
+				{Value: "unspecified"},
+			},
+		},
+		"payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Bank account verification method",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_method_options.wechat_pay.app_id": {
+			Type:             "string",
+			ShortDescription: "The app ID registered with WeChat Pay",
+		},
+		"payment_method_options.wechat_pay.client": {
+			Type:             "string",
+			ShortDescription: "The client type that the end customer will pay from",
+			Enum: []resource.EnumSpec{
+				{Value: "android"},
+				{Value: "ios"},
+				{Value: "web"},
+			},
+		},
+		"payment_method_options.wechat_pay.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
+		"payment_method_options.zip.setup_future_usage": {
+			Type:             "string",
+			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "none"},
+			},
+		},
 		"payment_method_types": {
 			Type:             "array",
 			ShortDescription: "The list of payment method types (for example, card) that this PaymentIntent can use",
@@ -14696,22 +19632,71 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"receipt_email": {
 			Type:             "string",
 			ShortDescription: "Email address that the receipt for the resulting payment will be sent to",
+			MostCommon:       true,
 		},
 		"setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this PaymentIntent's payment method",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
 			},
 		},
+		"shipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"shipping.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping.carrier": {
+			Type:             "string",
+			ShortDescription: "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+		},
+		"shipping.name": {
+			Type:             "string",
+			ShortDescription: "Recipient name",
+			MostCommon:       true,
+		},
+		"shipping.phone": {
+			Type:             "string",
+			ShortDescription: "Recipient phone (including extension)",
+		},
+		"shipping.tracking_number": {
+			Type:             "string",
+			ShortDescription: "The tracking number for a physical product, obtained from the delivery service",
+		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "Text that appears on the customer's statement as the statement descriptor for a non-card charge",
+			MostCommon:       true,
 		},
 		"statement_descriptor_suffix": {
 			Type:             "string",
 			ShortDescription: "Provides information about a card charge",
+			MostCommon:       true,
 		},
 		"transfer_data.amount": {
 			Type:             "integer",
@@ -14732,10 +19717,12 @@ var V1PaymentIntentsVerifyMicrodeposits = resource.OperationSpec{
 		"amounts": {
 			Type:             "array",
 			ShortDescription: "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account",
+			MostCommon:       true,
 		},
 		"descriptor_code": {
 			Type:             "string",
 			ShortDescription: "A six-character code starting with SM present in the microdeposit sent to the bank account",
+			MostCommon:       true,
 		},
 	},
 }
@@ -14752,12 +19739,10 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"after_completion.redirect.url": {
 			Type:             "string",
 			ShortDescription: "The URL the customer will be redirected to after the purchase is complete",
-			Required:         true,
 		},
 		"after_completion.type": {
 			Type:             "string",
 			ShortDescription: "The specified behavior after the purchase is complete",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "redirect"},
@@ -14778,7 +19763,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
-			Required:         true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -14787,7 +19771,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -14804,7 +19787,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"consent_collection.payment_method_reuse_agreement.position": {
 			Type:             "string",
 			ShortDescription: "Determines the position and visibility of the payment method reuse agreement in the UI",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "auto"},
 				{Value: "hidden"},
@@ -14831,6 +19813,22 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Format:           "currency",
 		},
+		"custom_text.after_submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.shipping_address.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
 		"customer_creation": {
 			Type:             "string",
 			ShortDescription: "Configures whether [checkout sessions](https://docs.stripe.com/api/checkout/sessions) created by this payment link create a [Customer](https://docs.stripe.com/api/customers)",
@@ -14846,7 +19844,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"invoice_creation.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type:             "array",
@@ -14867,16 +19864,26 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
 		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type:             "string",
+			ShortDescription: "How line-item prices and amounts will be displayed with respect to tax on invoice PDFs",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type:             "string",
+			ShortDescription: "ID of the invoice rendering template to use for this invoice",
+		},
 		"name_collection.business.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable business name collection on the payment link",
-			Required:         true,
 		},
 		"name_collection.business.optional": {
 			Type:             "boolean",
@@ -14885,7 +19892,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"name_collection.individual.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable individual name collection on the payment link",
-			Required:         true,
 		},
 		"name_collection.individual.optional": {
 			Type:             "boolean",
@@ -14943,17 +19949,14 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"phone_number_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to enable phone number collection",
-			Required:         true,
 		},
 		"restrictions.completed_sessions.limit": {
 			Type:             "integer",
 			ShortDescription: "The maximum number of checkout sessions that can be completed for the `completed_sessions` restriction to be met",
-			Required:         true,
 		},
 		"shipping_address_collection.allowed_countries": {
 			Type:             "array",
 			ShortDescription: "An array of two-letter ISO country codes representing which countries Checkout should provide as options for\nshipping locations",
-			Required:         true,
 		},
 		"submit_type": {
 			Type:             "string",
@@ -14977,7 +19980,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -14990,7 +19992,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
 			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -15000,7 +20001,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"tax_id_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable tax ID collection during checkout",
-			Required:         true,
 		},
 		"tax_id_collection.required": {
 			Type:             "string",
@@ -15017,7 +20017,6 @@ var V1PaymentLinksCreate = resource.OperationSpec{
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "If specified, successful charges will be attributed to the destination\naccount for tax reporting, and the funds from charges will be transferred\nto the destination account",
-			Required:         true,
 		},
 	},
 }
@@ -15080,6 +20079,7 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the payment link's `url` is active",
+			MostCommon:       true,
 		},
 		"after_completion.hosted_confirmation.custom_message": {
 			Type:             "string",
@@ -15088,12 +20088,10 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"after_completion.redirect.url": {
 			Type:             "string",
 			ShortDescription: "The URL the customer will be redirected to after the purchase is complete",
-			Required:         true,
 		},
 		"after_completion.type": {
 			Type:             "string",
 			ShortDescription: "The specified behavior after the purchase is complete",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "hosted_confirmation"},
 				{Value: "redirect"},
@@ -15106,7 +20104,6 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to [calculate tax automatically](https://docs.stripe.com/tax) using the customer's location",
-			Required:         true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -15115,7 +20112,6 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -15128,6 +20124,22 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 				{Value: "auto"},
 				{Value: "required"},
 			},
+		},
+		"custom_text.after_submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.shipping_address.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.submit.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
+		},
+		"custom_text.terms_of_service_acceptance.message": {
+			Type:             "string",
+			ShortDescription: "Text can be up to 1200 characters in length",
 		},
 		"customer_creation": {
 			Type:             "string",
@@ -15144,7 +20156,6 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"invoice_creation.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether the feature is enabled",
-			Required:         true,
 		},
 		"invoice_creation.invoice_data.account_tax_ids": {
 			Type:             "array",
@@ -15165,11 +20176,41 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"invoice_creation.invoice_data.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
 			},
+		},
+		"invoice_creation.invoice_data.rendering_options.amount_tax_display": {
+			Type:             "string",
+			ShortDescription: "How line-item prices and amounts will be displayed with respect to tax on invoice PDFs",
+			Enum: []resource.EnumSpec{
+				{Value: "exclude_tax"},
+				{Value: "include_inclusive_tax"},
+			},
+		},
+		"invoice_creation.invoice_data.rendering_options.template": {
+			Type:             "string",
+			ShortDescription: "ID of the invoice rendering template to use for this invoice",
+		},
+		"name_collection": {
+			Type: "clearable_object",
+		},
+		"name_collection.business.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Enable business name collection on the payment link",
+		},
+		"name_collection.business.optional": {
+			Type:             "boolean",
+			ShortDescription: "Whether the customer is required to provide their business name before checking out",
+		},
+		"name_collection.individual.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Enable individual name collection on the payment link",
+		},
+		"name_collection.individual.optional": {
+			Type:             "boolean",
+			ShortDescription: "Whether the customer is required to provide their full name before checking out",
 		},
 		"payment_intent_data.description": {
 			Type:             "string",
@@ -15202,7 +20243,20 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"phone_number_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to enable phone number collection",
-			Required:         true,
+		},
+		"restrictions": {
+			Type: "clearable_object",
+		},
+		"restrictions.completed_sessions.limit": {
+			Type:             "integer",
+			ShortDescription: "The maximum number of checkout sessions that can be completed for the `completed_sessions` restriction to be met",
+		},
+		"shipping_address_collection": {
+			Type: "clearable_object",
+		},
+		"shipping_address_collection.allowed_countries": {
+			Type:             "array",
+			ShortDescription: "An array of two-letter ISO country codes representing which countries Checkout should provide as options for\nshipping locations",
 		},
 		"submit_type": {
 			Type:             "string",
@@ -15222,7 +20276,6 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 		"subscription_data.invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -15232,10 +20285,18 @@ var V1PaymentLinksUpdate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Integer representing the number of trial period days before the customer is charged for the first time",
 		},
+		"subscription_data.trial_settings.end_behavior.missing_payment_method": {
+			Type:             "string",
+			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
+			Enum: []resource.EnumSpec{
+				{Value: "cancel"},
+				{Value: "create_invoice"},
+				{Value: "pause"},
+			},
+		},
 		"tax_id_collection.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enable tax ID collection during checkout",
-			Required:         true,
 		},
 		"tax_id_collection.required": {
 			Type:             "string",
@@ -15571,6 +20632,7 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "Configuration name",
+			MostCommon:       true,
 		},
 		"naver_pay.display_preference.preference": {
 			Type:             "string",
@@ -15611,6 +20673,7 @@ var V1PaymentMethodConfigurationsCreate = resource.OperationSpec{
 		"parent": {
 			Type:             "string",
 			ShortDescription: "Configuration's parent configuration",
+			MostCommon:       true,
 		},
 		"pay_by_bank.display_preference.preference": {
 			Type:             "string",
@@ -15824,6 +20887,7 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the configuration can be used for new payments",
+			MostCommon:       true,
 		},
 		"affirm.display_preference.preference": {
 			Type:             "string",
@@ -16134,6 +21198,7 @@ var V1PaymentMethodConfigurationsUpdate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "Configuration name",
+			MostCommon:       true,
 		},
 		"naver_pay.display_preference.preference": {
 			Type:             "string",
@@ -16345,10 +21410,12 @@ var V1PaymentMethodDomainsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The domain name that this payment method domain object represents",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether this payment method domain is enabled",
+			MostCommon:       true,
 		},
 	},
 }
@@ -16395,6 +21462,7 @@ var V1PaymentMethodDomainsUpdate = resource.OperationSpec{
 		"enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether this payment method domain is enabled",
+			MostCommon:       true,
 		},
 	},
 }
@@ -16413,10 +21481,12 @@ var V1PaymentMethodsAttach = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The ID of the customer to which to attach the PaymentMethod",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The ID of the Account representing the customer to which to attach the PaymentMethod",
+			MostCommon:       true,
 		},
 	},
 }
@@ -16429,17 +21499,14 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"allow_redisplay": {
 			Type:             "string",
@@ -16453,12 +21520,10 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"bacs_debit.account_number": {
 			Type:             "string",
@@ -16467,6 +21532,30 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"billing_details.email": {
 			Type:             "string",
@@ -16487,16 +21576,40 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
+		},
+		"card.cvc": {
+			Type:             "string",
+			ShortDescription: "The card's CVC",
+		},
+		"card.exp_month": {
+			Type:             "integer",
+			ShortDescription: "Two-digit number representing the card's expiration month",
+		},
+		"card.exp_year": {
+			Type:             "integer",
+			ShortDescription: "Four-digit number representing the card's expiration year",
+		},
+		"card.networks.preferred": {
+			Type:             "string",
+			ShortDescription: "The customer's preferred card network for co-branded cards",
+			Enum: []resource.EnumSpec{
+				{Value: "cartes_bancaires"},
+				{Value: "mastercard"},
+				{Value: "visa"},
+			},
+		},
+		"card.number": {
+			Type:             "string",
+			ShortDescription: "The card number, as a string without any separators",
 		},
 		"custom.type": {
 			Type:             "string",
 			ShortDescription: "ID of the Dashboard-only CustomPaymentMethodType",
-			Required:         true,
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The `Customer` to whom the original PaymentMethod is attached",
+			MostCommon:       true,
 		},
 		"eps.bank": {
 			Type:             "string",
@@ -16543,7 +21656,6 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -16598,17 +21710,14 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"naver_pay.funding": {
 			Type:             "string",
@@ -16625,17 +21734,14 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"nz_bank_account.reference": {
 			Type: "string",
@@ -16643,7 +21749,6 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"p24.bank": {
 			Type:             "string",
@@ -16680,6 +21785,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "The PaymentMethod to share",
+			MostCommon:       true,
 		},
 		"payto.account_number": {
 			Type:             "string",
@@ -16700,12 +21806,10 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -16718,6 +21822,7 @@ var V1PaymentMethodsCreate = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -16946,6 +22051,30 @@ var V1PaymentMethodsUpdate = resource.OperationSpec{
 				{Value: "unspecified"},
 			},
 		},
+		"billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
 		"billing_details.email": {
 			Type:             "string",
 			ShortDescription: "Email address",
@@ -17019,12 +22148,14 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"amount_requested.value": {
 			Type:             "integer",
 			ShortDescription: "A positive integer representing the amount in the currency's [minor unit](https://docs.stripe.com/currencies#zero-decimal)",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"customer_details.customer": {
 			Type:             "string",
@@ -17045,6 +22176,7 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 		"customer_presence": {
 			Type:             "string",
 			ShortDescription: "Indicates whether the customer was present in your checkout flow during this payment",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -17053,28 +22185,31 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"failed.failed_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment failed",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"guaranteed.guaranteed_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment was guaranteed",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"initiated_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment was initiated",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"outcome": {
 			Type:             "string",
 			ShortDescription: "The outcome of the reported payment",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "guaranteed"},
@@ -17138,12 +22273,11 @@ var V1PaymentRecordsReportPayment = resource.OperationSpec{
 		"processor_details.custom.payment_reference": {
 			Type:             "string",
 			ShortDescription: "An opaque string for manual reconciliation of this payment, for example a check number or a payment processor ID",
-			Required:         true,
 		},
 		"processor_details.type": {
 			Type:             "string",
 			ShortDescription: "The type of the processor details",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 			},
@@ -17191,28 +22325,31 @@ var V1PaymentRecordsReportPaymentAttempt = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"failed.failed_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment failed",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"guaranteed.guaranteed_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment was guaranteed",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"initiated_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported payment was initiated",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"outcome": {
 			Type:             "string",
 			ShortDescription: "The outcome of the reported payment",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "failed"},
 				{Value: "guaranteed"},
@@ -17317,6 +22454,7 @@ var V1PaymentRecordsReportPaymentAttemptCanceled = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "When the reported payment was canceled",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -17331,6 +22469,7 @@ var V1PaymentRecordsReportPaymentAttemptFailed = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "When the reported payment failed",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -17345,6 +22484,7 @@ var V1PaymentRecordsReportPaymentAttemptGuaranteed = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "When the reported payment was guaranteed",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -17374,6 +22514,43 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
+		},
+		"shipping_details": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"shipping_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"shipping_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"shipping_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"shipping_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"shipping_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"shipping_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+		},
+		"shipping_details.name": {
+			Type:             "string",
+			ShortDescription: "The shipping recipient's name",
+		},
+		"shipping_details.phone": {
+			Type:             "string",
+			ShortDescription: "The shipping recipient's phone number",
 		},
 	},
 }
@@ -17386,23 +22563,25 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 		"amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"amount.value": {
 			Type:             "integer",
 			ShortDescription: "A positive integer representing the amount in the currency's [minor unit](https://docs.stripe.com/currencies#zero-decimal)",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"initiated_at": {
 			Type:             "integer",
 			ShortDescription: "When the reported refund was initiated",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"outcome": {
 			Type:             "string",
 			ShortDescription: "The outcome of the reported refund",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "refunded"},
 			},
@@ -17410,12 +22589,12 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 		"processor_details.custom.refund_reference": {
 			Type:             "string",
 			ShortDescription: "A reference to the external refund",
-			Required:         true,
 		},
 		"processor_details.type": {
 			Type:             "string",
 			ShortDescription: "The type of the processor details",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "custom"},
 			},
@@ -17424,6 +22603,7 @@ var V1PaymentRecordsReportRefund = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "When the reported refund completed",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -17444,6 +22624,7 @@ var V1PaymentSourcesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Please refer to full [documentation](https://api.stripe.com) instead",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"validate": {
 			Type: "boolean",
@@ -17496,16 +22677,19 @@ var V1PayoutsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "A positive integer in cents representing how much to payout",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"destination": {
 			Type:             "string",
@@ -17535,6 +22719,7 @@ var V1PayoutsCreate = resource.OperationSpec{
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "A string that displays on the recipient's bank or card statement (up to 22 characters)",
+			MostCommon:       true,
 		},
 	},
 }
@@ -17691,6 +22876,25 @@ var V1PersonsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"dob": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+			MostCommon:       true,
+		},
+		"dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+			MostCommon:       true,
+		},
+		"dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
+			MostCommon:       true,
+		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
@@ -17706,10 +22910,12 @@ var V1PersonsCreate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The person's email address",
+			MostCommon:       true,
 		},
 		"first_name": {
 			Type:             "string",
 			ShortDescription: "The person's first name",
+			MostCommon:       true,
 		},
 		"first_name_kana": {
 			Type:             "string",
@@ -17730,6 +22936,7 @@ var V1PersonsCreate = resource.OperationSpec{
 		"id_number": {
 			Type:             "string",
 			ShortDescription: "The person's ID number, as appropriate for their country",
+			MostCommon:       true,
 		},
 		"id_number_secondary": {
 			Type:             "string",
@@ -17738,6 +22945,7 @@ var V1PersonsCreate = resource.OperationSpec{
 		"last_name": {
 			Type:             "string",
 			ShortDescription: "The person's last name",
+			MostCommon:       true,
 		},
 		"last_name_kana": {
 			Type:             "string",
@@ -17762,6 +22970,7 @@ var V1PersonsCreate = resource.OperationSpec{
 		"phone": {
 			Type:             "string",
 			ShortDescription: "The person's phone number",
+			MostCommon:       true,
 		},
 		"political_exposure": {
 			Type:             "string",
@@ -17830,6 +23039,7 @@ var V1PersonsCreate = resource.OperationSpec{
 		"ssn_last_4": {
 			Type:             "string",
 			ShortDescription: "The last four digits of the person's Social Security number (U.S. only)",
+			MostCommon:       true,
 		},
 		"us_cfpb_data.ethnicity_details.ethnicity": {
 			Type:             "array",
@@ -18000,6 +23210,25 @@ var V1PersonsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"dob": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+			MostCommon:       true,
+		},
+		"dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+			MostCommon:       true,
+		},
+		"dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
+			MostCommon:       true,
+		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document ids returned by a [file upload](https://api.stripe.com#create_file) with a `purpose` value of `account_requirement`",
@@ -18015,10 +23244,12 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"email": {
 			Type:             "string",
 			ShortDescription: "The person's email address",
+			MostCommon:       true,
 		},
 		"first_name": {
 			Type:             "string",
 			ShortDescription: "The person's first name",
+			MostCommon:       true,
 		},
 		"first_name_kana": {
 			Type:             "string",
@@ -18039,6 +23270,7 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"id_number": {
 			Type:             "string",
 			ShortDescription: "The person's ID number, as appropriate for their country",
+			MostCommon:       true,
 		},
 		"id_number_secondary": {
 			Type:             "string",
@@ -18047,6 +23279,7 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"last_name": {
 			Type:             "string",
 			ShortDescription: "The person's last name",
+			MostCommon:       true,
 		},
 		"last_name_kana": {
 			Type:             "string",
@@ -18071,6 +23304,7 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"phone": {
 			Type:             "string",
 			ShortDescription: "The person's phone number",
+			MostCommon:       true,
 		},
 		"political_exposure": {
 			Type:             "string",
@@ -18139,6 +23373,7 @@ var V1PersonsUpdate = resource.OperationSpec{
 		"ssn_last_4": {
 			Type:             "string",
 			ShortDescription: "The last four digits of the person's Social Security number (U.S. only)",
+			MostCommon:       true,
 		},
 		"us_cfpb_data.ethnicity_details.ethnicity": {
 			Type:             "array",
@@ -18187,10 +23422,12 @@ var V1PlansCreate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the plan is currently available for new subscriptions",
+			MostCommon:       true,
 		},
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer in cents (or local equivalent) (or 0 for a free plan) representing how much to charge on a recurring basis",
+			MostCommon:       true,
 		},
 		"amount_decimal": {
 			Type:             "string",
@@ -18209,6 +23446,7 @@ var V1PlansCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"id": {
@@ -18219,6 +23457,7 @@ var V1PlansCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies billing frequency",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -18237,9 +23476,32 @@ var V1PlansCreate = resource.OperationSpec{
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "A brief description of the plan, hidden from customers",
+			MostCommon:       true,
 		},
-		"product": {
-			Type: "string",
+		"product.active": {
+			Type:             "boolean",
+			ShortDescription: "Whether the product is currently available for purchase",
+		},
+		"product.id": {
+			Type:             "string",
+			ShortDescription: "The identifier for the product",
+		},
+		"product.name": {
+			Type:             "string",
+			ShortDescription: "The product's name, meant to be displayable to the customer",
+			MostCommon:       true,
+		},
+		"product.statement_descriptor": {
+			Type:             "string",
+			ShortDescription: "An arbitrary string to be displayed on your customer's credit card or bank statement",
+		},
+		"product.tax_code": {
+			Type:             "string",
+			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+		},
+		"product.unit_label": {
+			Type:             "string",
+			ShortDescription: "A label that represents units of this product",
 		},
 		"tiers_mode": {
 			Type:             "string",
@@ -18252,12 +23514,10 @@ var V1PlansCreate = resource.OperationSpec{
 		"transform_usage.divide_by": {
 			Type:             "integer",
 			ShortDescription: "Divide usage by this number",
-			Required:         true,
 		},
 		"transform_usage.round": {
 			Type:             "string",
 			ShortDescription: "After division, either round the result `up` or `down`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
 				{Value: "up"},
@@ -18330,10 +23590,12 @@ var V1PlansUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the plan is currently available for new subscriptions",
+			MostCommon:       true,
 		},
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "A brief description of the plan, hidden from customers",
+			MostCommon:       true,
 		},
 		"product": {
 			Type:             "string",
@@ -18354,6 +23616,7 @@ var V1PricesCreate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the price can be used for new purchases",
+			MostCommon:       true,
 		},
 		"billing_scheme": {
 			Type:             "string",
@@ -18367,12 +23630,12 @@ var V1PricesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"custom_unit_amount.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`",
-			Required:         true,
 		},
 		"custom_unit_amount.maximum": {
 			Type:             "integer",
@@ -18393,10 +23656,12 @@ var V1PricesCreate = resource.OperationSpec{
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "A brief description of the price, hidden from customers",
+			MostCommon:       true,
 		},
 		"product": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Product](https://docs.stripe.com/api/products) that this [Price](https://docs.stripe.com/api/prices) will belong to",
+			MostCommon:       true,
 		},
 		"product_data.active": {
 			Type:             "boolean",
@@ -18409,7 +23674,6 @@ var V1PricesCreate = resource.OperationSpec{
 		"product_data.name": {
 			Type:             "string",
 			ShortDescription: "The product's name, meant to be displayable to the customer",
-			Required:         true,
 		},
 		"product_data.statement_descriptor": {
 			Type:             "string",
@@ -18426,7 +23690,7 @@ var V1PricesCreate = resource.OperationSpec{
 		"recurring.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies billing frequency",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -18457,6 +23721,7 @@ var V1PricesCreate = resource.OperationSpec{
 		"tax_behavior": {
 			Type:             "string",
 			ShortDescription: "Only required if a [default tax behavior](https://docs.stripe.com/tax/products-prices-tax-categories-tax-behavior#setting-a-default-tax-behavior-(recommended)) was not provided in the Stripe Tax settings",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -18478,12 +23743,10 @@ var V1PricesCreate = resource.OperationSpec{
 		"transform_quantity.divide_by": {
 			Type:             "integer",
 			ShortDescription: "Divide usage by this number",
-			Required:         true,
 		},
 		"transform_quantity.round": {
 			Type:             "string",
 			ShortDescription: "After division, either round the result `up` or `down`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "down"},
 				{Value: "up"},
@@ -18492,6 +23755,7 @@ var V1PricesCreate = resource.OperationSpec{
 		"unit_amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer in cents (or local equivalent) (or 0 for a free price) representing how much to charge",
+			MostCommon:       true,
 		},
 		"unit_amount_decimal": {
 			Type:             "string",
@@ -18585,6 +23849,10 @@ var V1PricesUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the price can be used for new purchases",
+			MostCommon:       true,
+		},
+		"currency_options": {
+			Type: "clearable_object",
 		},
 		"lookup_key": {
 			Type:             "string",
@@ -18593,10 +23861,12 @@ var V1PricesUpdate = resource.OperationSpec{
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "A brief description of the price, hidden from customers",
+			MostCommon:       true,
 		},
 		"tax_behavior": {
 			Type:             "string",
 			ShortDescription: "Only required if a [default tax behavior](https://docs.stripe.com/tax/products-prices-tax-categories-tax-behavior#setting-a-default-tax-behavior-(recommended)) was not provided in the Stripe Tax settings",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -18619,6 +23889,7 @@ var V1ProductFeaturesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the [Feature](https://docs.stripe.com/api/entitlements/feature) object attached to this product",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -18663,17 +23934,16 @@ var V1ProductsCreate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the product is currently available for purchase",
+			MostCommon:       true,
 		},
 		"default_price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"default_price_data.custom_unit_amount.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Pass in `true` to enable `custom_unit_amount`, otherwise omit `custom_unit_amount`",
-			Required:         true,
 		},
 		"default_price_data.custom_unit_amount.maximum": {
 			Type:             "integer",
@@ -18690,7 +23960,6 @@ var V1ProductsCreate = resource.OperationSpec{
 		"default_price_data.recurring.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies billing frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -18723,10 +23992,12 @@ var V1ProductsCreate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "The product's description, meant to be displayable to the customer",
+			MostCommon:       true,
 		},
 		"id": {
 			Type:             "string",
 			ShortDescription: "An identifier will be randomly generated by Stripe",
+			MostCommon:       true,
 		},
 		"images": {
 			Type:             "array",
@@ -18736,26 +24007,23 @@ var V1ProductsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The product's name, meant to be displayable to the customer",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"package_dimensions.height": {
 			Type:             "number",
 			ShortDescription: "Height, in inches",
-			Required:         true,
 		},
 		"package_dimensions.length": {
 			Type:             "number",
 			ShortDescription: "Length, in inches",
-			Required:         true,
 		},
 		"package_dimensions.weight": {
 			Type:             "number",
 			ShortDescription: "Weight, in ounces",
-			Required:         true,
 		},
 		"package_dimensions.width": {
 			Type:             "number",
 			ShortDescription: "Width, in inches",
-			Required:         true,
 		},
 		"shippable": {
 			Type:             "boolean",
@@ -18768,6 +24036,7 @@ var V1ProductsCreate = resource.OperationSpec{
 		"tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
@@ -18877,14 +24146,17 @@ var V1ProductsUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the product is available for purchase",
+			MostCommon:       true,
 		},
 		"default_price": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Price](https://docs.stripe.com/api/prices) object that is the default price for this product",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "The product's description, meant to be displayable to the customer",
+			MostCommon:       true,
 		},
 		"images": {
 			Type:             "array",
@@ -18893,6 +24165,26 @@ var V1ProductsUpdate = resource.OperationSpec{
 		"name": {
 			Type:             "string",
 			ShortDescription: "The product's name, meant to be displayable to the customer",
+			MostCommon:       true,
+		},
+		"package_dimensions": {
+			Type: "clearable_object",
+		},
+		"package_dimensions.height": {
+			Type:             "number",
+			ShortDescription: "Height, in inches",
+		},
+		"package_dimensions.length": {
+			Type:             "number",
+			ShortDescription: "Length, in inches",
+		},
+		"package_dimensions.weight": {
+			Type:             "number",
+			ShortDescription: "Weight, in ounces",
+		},
+		"package_dimensions.width": {
+			Type:             "number",
+			ShortDescription: "Width, in inches",
 		},
 		"shippable": {
 			Type:             "boolean",
@@ -18905,6 +24197,7 @@ var V1ProductsUpdate = resource.OperationSpec{
 		"tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+			MostCommon:       true,
 		},
 		"unit_label": {
 			Type:             "string",
@@ -18929,6 +24222,7 @@ var V1PromotionCodesCreate = resource.OperationSpec{
 		"code": {
 			Type:             "string",
 			ShortDescription: "The customer-facing code",
+			MostCommon:       true,
 		},
 		"customer": {
 			Type:             "string",
@@ -18955,6 +24249,7 @@ var V1PromotionCodesCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies the type of promotion",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "coupon"},
 			},
@@ -19065,7 +24360,6 @@ var V1QuotesCreate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Controls whether Stripe will automatically compute tax on the resulting invoices or subscriptions as well as the quote itself",
-			Required:         true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -19074,7 +24368,6 @@ var V1QuotesCreate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -19120,7 +24413,6 @@ var V1QuotesCreate = resource.OperationSpec{
 		"from_quote.quote": {
 			Type:             "string",
 			ShortDescription: "The `id` of the quote that will be cloned",
-			Required:         true,
 		},
 		"header": {
 			Type:             "string",
@@ -19137,7 +24429,6 @@ var V1QuotesCreate = resource.OperationSpec{
 		"invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -19158,7 +24449,6 @@ var V1QuotesCreate = resource.OperationSpec{
 		"subscription_data.billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -19179,6 +24469,21 @@ var V1QuotesCreate = resource.OperationSpec{
 		"test_clock": {
 			Type:             "string",
 			ShortDescription: "ID of the test clock to attach to the quote",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type:             "integer",
+			ShortDescription: "The amount that will be transferred automatically when the invoice is paid",
+		},
+		"transfer_data.amount_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
+		"transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 	},
 }
@@ -19307,7 +24612,6 @@ var V1QuotesUpdate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Controls whether Stripe will automatically compute tax on the resulting invoices or subscriptions as well as the quote itself",
-			Required:         true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -19316,7 +24620,6 @@ var V1QuotesUpdate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -19370,7 +24673,6 @@ var V1QuotesUpdate = resource.OperationSpec{
 		"invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -19391,6 +24693,21 @@ var V1QuotesUpdate = resource.OperationSpec{
 		"subscription_data.trial_period_days": {
 			Type:             "integer",
 			ShortDescription: "Integer representing the number of trial period days before the customer is charged for the first time",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount": {
+			Type:             "integer",
+			ShortDescription: "The amount that will be transferred automatically when the invoice is paid",
+		},
+		"transfer_data.amount_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
+		"transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 	},
 }
@@ -19441,7 +24758,7 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 		"client_device_metadata_details.radar_session": {
 			Type:             "string",
 			ShortDescription: "ID for the Radar Session to associate with the payment evaluation",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"customer_details.customer": {
 			Type:             "string",
@@ -19467,11 +24784,13 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The intended amount to collect with this payment",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"payment_details.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"payment_details.description": {
@@ -19499,7 +24818,6 @@ var V1RadarPaymentEvaluationsCreate = resource.OperationSpec{
 		"payment_details.money_movement_details.money_movement_type": {
 			Type:             "string",
 			ShortDescription: "Describes the type of money movement",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 			},
@@ -19593,11 +24911,13 @@ var V1RadarValueListItemsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The value of the item (whose type must match the type of the parent value list)",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"value_list": {
 			Type:             "string",
 			ShortDescription: "The identifier of the value list which the created item will be added to",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -19656,10 +24976,12 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The name of the value list for use in rules",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"item_type": {
 			Type:             "string",
 			ShortDescription: "Type of the items in the value list",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "card_bin"},
 				{Value: "card_fingerprint"},
@@ -19678,6 +25000,7 @@ var V1RadarValueListsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The human-readable name of the value list",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -19734,10 +25057,12 @@ var V1RadarValueListsUpdate = resource.OperationSpec{
 		"alias": {
 			Type:             "string",
 			ShortDescription: "The name of the value list for use in rules",
+			MostCommon:       true,
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The human-readable name of the value list",
+			MostCommon:       true,
 		},
 	},
 }
@@ -19754,28 +25079,34 @@ var V1RefundsCreate = resource.OperationSpec{
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
 		"amount": {
-			Type: "integer",
+			Type:       "integer",
+			MostCommon: true,
 		},
 		"charge": {
 			Type:             "string",
 			ShortDescription: "The identifier of the charge to refund",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "Customer whose customer balance to refund from",
+			MostCommon:       true,
 		},
 		"instructions_email": {
 			Type:             "string",
 			ShortDescription: "For payment methods without native refund support (e.g., Konbini, PromptPay), use this email from the customer to receive refund instructions",
+			MostCommon:       true,
 		},
 		"origin": {
 			Type:             "string",
 			ShortDescription: "Origin of the refund",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "customer_balance"},
 			},
@@ -19783,10 +25114,12 @@ var V1RefundsCreate = resource.OperationSpec{
 		"payment_intent": {
 			Type:             "string",
 			ShortDescription: "The identifier of the PaymentIntent to refund",
+			MostCommon:       true,
 		},
 		"reason": {
 			Type:             "string",
 			ShortDescription: "String indicating the reason for the refund",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "duplicate"},
 				{Value: "fraudulent"},
@@ -20538,6 +25871,7 @@ var V1ReportingReportRunsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the [report type](https://docs.stripe.com/reporting/statements/api#report-types) to run, such as `\"balance.summary.1\"`",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -20683,6 +26017,7 @@ var V1SetupIntentsCancel = resource.OperationSpec{
 		"cancellation_reason": {
 			Type:             "string",
 			ShortDescription: "Reason for canceling this SetupIntent",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "abandoned"},
 				{Value: "duplicate"},
@@ -20701,24 +26036,46 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "ID of the ConfirmationToken used to confirm this SetupIntent",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:             "integer",
+			ShortDescription: "The time at which the customer accepted the Mandate",
+			Format:           "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type:             "string",
+			ShortDescription: "The IP address from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent of the browser from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type:             "string",
+			ShortDescription: "The type of customer acceptance information included with the Mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or saved Source object) to attach to this SetupIntent",
+			MostCommon:       true,
 		},
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -20732,12 +26089,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -20746,6 +26101,30 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -20766,7 +26145,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -20813,7 +26191,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -20868,17 +26245,14 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -20895,17 +26269,14 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -20913,7 +26284,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -20966,12 +26336,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -20984,7 +26352,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -21140,12 +26507,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
 			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
 			ShortDescription: "One of `fixed` or `maximum`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -21154,7 +26519,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.currency": {
 			Type:             "string",
 			ShortDescription: "Currency in which future payments will be charged",
-			Required:         true,
 			Format:           "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
@@ -21169,7 +26533,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies payment frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -21185,12 +26548,10 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.reference": {
 			Type:             "string",
 			ShortDescription: "Unique identifier for the mandate or subscription",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.start_date": {
 			Type:             "integer",
 			ShortDescription: "Start date of the mandate or subscription",
-			Required:         true,
 			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
@@ -21260,7 +26621,6 @@ var V1SetupIntentsConfirm = resource.OperationSpec{
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
 			Type:             "string",
 			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -21543,11 +26903,12 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"automatic_payment_methods.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Whether this feature is enabled",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"confirm": {
 			Type:             "boolean",
 			ShortDescription: "Set to `true` to attempt to confirm this SetupIntent immediately",
+			MostCommon:       true,
 		},
 		"confirmation_token": {
 			Type:             "string",
@@ -21556,14 +26917,17 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the Customer this SetupIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "ID of the Account this SetupIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"excluded_payment_method_types": {
 			Type:             "array",
@@ -21573,6 +26937,30 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "Indicates the directions of money movement for which this payment method is intended to be used",
 		},
+		"mandate_data": {
+			Type: "clearable_object",
+		},
+		"mandate_data.customer_acceptance.accepted_at": {
+			Type:             "integer",
+			ShortDescription: "The time at which the customer accepted the Mandate",
+			Format:           "unix-time",
+		},
+		"mandate_data.customer_acceptance.online.ip_address": {
+			Type:             "string",
+			ShortDescription: "The IP address from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.online.user_agent": {
+			Type:             "string",
+			ShortDescription: "The user agent of the browser from which the Mandate was accepted by the customer",
+		},
+		"mandate_data.customer_acceptance.type": {
+			Type:             "string",
+			ShortDescription: "The type of customer acceptance information included with the Mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "offline"},
+				{Value: "online"},
+			},
+		},
 		"on_behalf_of": {
 			Type:             "string",
 			ShortDescription: "The Stripe account ID created for this SetupIntent",
@@ -21580,6 +26968,7 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or saved Source object) to attach to this SetupIntent",
+			MostCommon:       true,
 		},
 		"payment_method_configuration": {
 			Type:             "string",
@@ -21588,17 +26977,14 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -21612,12 +26998,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -21626,6 +27010,30 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -21646,7 +27054,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -21693,7 +27100,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -21748,17 +27154,14 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -21775,17 +27178,14 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -21793,7 +27193,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -21846,12 +27245,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -21864,7 +27261,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -22020,12 +27416,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
 			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
 			ShortDescription: "One of `fixed` or `maximum`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -22034,7 +27428,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.currency": {
 			Type:             "string",
 			ShortDescription: "Currency in which future payments will be charged",
-			Required:         true,
 			Format:           "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
@@ -22049,7 +27442,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies payment frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -22065,12 +27457,10 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.reference": {
 			Type:             "string",
 			ShortDescription: "Unique identifier for the mandate or subscription",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.start_date": {
 			Type:             "integer",
 			ShortDescription: "Start date of the mandate or subscription",
-			Required:         true,
 			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
@@ -22140,7 +27530,6 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
 			Type:             "string",
 			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -22403,17 +27792,16 @@ var V1SetupIntentsCreate = resource.OperationSpec{
 		"single_use.amount": {
 			Type:             "integer",
 			ShortDescription: "Amount the customer is granting permission to collect later",
-			Required:         true,
 		},
 		"single_use.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"usage": {
 			Type:             "string",
 			ShortDescription: "Indicates how the payment method is intended to be used in the future",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -22490,14 +27878,17 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the Customer this SetupIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "ID of the Account this SetupIntent belongs to, if one exists",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"excluded_payment_method_types": {
 			Type:             "array",
@@ -22510,6 +27901,7 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the payment method (a PaymentMethod, Card, or saved Source object) to attach to this SetupIntent",
+			MostCommon:       true,
 		},
 		"payment_method_configuration": {
 			Type:             "string",
@@ -22518,17 +27910,14 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -22542,12 +27931,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -22556,6 +27943,30 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -22576,7 +27987,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -22623,7 +28033,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -22678,17 +28087,14 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -22705,17 +28111,14 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -22723,7 +28126,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -22776,12 +28178,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -22794,7 +28194,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -22950,12 +28349,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.amount": {
 			Type:             "integer",
 			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.amount_type": {
 			Type:             "string",
 			ShortDescription: "One of `fixed` or `maximum`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed"},
 				{Value: "maximum"},
@@ -22964,7 +28361,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.currency": {
 			Type:             "string",
 			ShortDescription: "Currency in which future payments will be charged",
-			Required:         true,
 			Format:           "currency",
 		},
 		"payment_method_options.card.mandate_options.description": {
@@ -22979,7 +28375,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies payment frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -22995,12 +28390,10 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.card.mandate_options.reference": {
 			Type:             "string",
 			ShortDescription: "Unique identifier for the mandate or subscription",
-			Required:         true,
 		},
 		"payment_method_options.card.mandate_options.start_date": {
 			Type:             "integer",
 			ShortDescription: "Start date of the mandate or subscription",
-			Required:         true,
 			Format:           "unix-time",
 		},
 		"payment_method_options.card.mandate_options.supported_types": {
@@ -23070,7 +28463,6 @@ var V1SetupIntentsUpdate = resource.OperationSpec{
 		"payment_method_options.card.three_d_secure.network_options.cartes_bancaires.cb_avalgo": {
 			Type:             "string",
 			ShortDescription: "The cryptogram calculation algorithm used by the card Issuer's ACS\nto calculate the Authentication cryptogram",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "0"},
 				{Value: "1"},
@@ -23337,10 +28729,12 @@ var V1SetupIntentsVerifyMicrodeposits = resource.OperationSpec{
 		"amounts": {
 			Type:             "array",
 			ShortDescription: "Two positive integers, in *cents*, equal to the values of the microdeposits sent to the bank account",
+			MostCommon:       true,
 		},
 		"descriptor_code": {
 			Type:             "string",
 			ShortDescription: "A six-character code starting with SM present in the microdeposit sent to the bank account",
+			MostCommon:       true,
 		},
 	},
 }
@@ -23353,7 +28747,6 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 		"delivery_estimate.maximum.unit": {
 			Type:             "string",
 			ShortDescription: "A unit of time",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -23365,12 +28758,10 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 		"delivery_estimate.maximum.value": {
 			Type:             "integer",
 			ShortDescription: "Must be greater than 0",
-			Required:         true,
 		},
 		"delivery_estimate.minimum.unit": {
 			Type:             "string",
 			ShortDescription: "A unit of time",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "business_day"},
 				{Value: "day"},
@@ -23382,27 +28773,28 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 		"delivery_estimate.minimum.value": {
 			Type:             "integer",
 			ShortDescription: "Must be greater than 0",
-			Required:         true,
 		},
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "The name of the shipping rate, meant to be displayable to the customer",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"fixed_amount.amount": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer in cents representing how much to charge",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"fixed_amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"tax_behavior": {
 			Type:             "string",
 			ShortDescription: "Specifies whether the rate is considered inclusive of taxes or exclusive of taxes",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -23412,10 +28804,12 @@ var V1ShippingRatesCreate = resource.OperationSpec{
 		"tax_code": {
 			Type:             "string",
 			ShortDescription: "A [tax code](https://docs.stripe.com/tax/tax-categories) ID",
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "The type of calculation to use on the shipping rate",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "fixed_amount"},
 			},
@@ -23470,10 +28864,12 @@ var V1ShippingRatesUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Whether the shipping rate can be used for new purchases",
+			MostCommon:       true,
 		},
 		"tax_behavior": {
 			Type:             "string",
 			ShortDescription: "Specifies whether the rate is considered inclusive of taxes or exclusive of taxes",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "exclusive"},
 				{Value: "inclusive"},
@@ -23491,15 +28887,18 @@ var V1SourcesCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount associated with the source",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO code for the currency](https://stripe.com/docs/currencies) associated with the source",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The `Customer` to whom the original source is attached to",
+			MostCommon:       true,
 		},
 		"flow": {
 			Type:             "string",
@@ -23523,7 +28922,6 @@ var V1SourcesCreate = resource.OperationSpec{
 		"mandate.acceptance.offline.contact_email": {
 			Type:             "string",
 			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`",
-			Required:         true,
 		},
 		"mandate.acceptance.online.date": {
 			Type:             "integer",
@@ -23541,7 +28939,6 @@ var V1SourcesCreate = resource.OperationSpec{
 		"mandate.acceptance.status": {
 			Type:             "string",
 			ShortDescription: "The status of the mandate acceptance",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "accepted"},
 				{Value: "pending"},
@@ -23593,6 +28990,7 @@ var V1SourcesCreate = resource.OperationSpec{
 		"original_source": {
 			Type:             "string",
 			ShortDescription: "The source to share",
+			MostCommon:       true,
 		},
 		"owner.address.city": {
 			Type:             "string",
@@ -23642,7 +29040,7 @@ var V1SourcesCreate = resource.OperationSpec{
 		"redirect.return_url": {
 			Type:             "string",
 			ShortDescription: "The URL you provide to redirect the customer back to you after they authenticated their payment",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"source_order.shipping.address.city": {
 			Type:             "string",
@@ -23655,7 +29053,6 @@ var V1SourcesCreate = resource.OperationSpec{
 		"source_order.shipping.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"source_order.shipping.address.line2": {
 			Type:             "string",
@@ -23688,6 +29085,7 @@ var V1SourcesCreate = resource.OperationSpec{
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string to be displayed on your customer's statement",
+			MostCommon:       true,
 		},
 		"token": {
 			Type:             "string",
@@ -23696,6 +29094,7 @@ var V1SourcesCreate = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "The `type` of the source to create",
+			MostCommon:       true,
 		},
 		"usage": {
 			Type: "string",
@@ -23753,6 +29152,7 @@ var V1SourcesUpdate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "Amount associated with the source",
+			MostCommon:       true,
 		},
 		"mandate.acceptance.date": {
 			Type:             "integer",
@@ -23766,7 +29166,6 @@ var V1SourcesUpdate = resource.OperationSpec{
 		"mandate.acceptance.offline.contact_email": {
 			Type:             "string",
 			ShortDescription: "An email to contact you with if a copy of the mandate is requested, required if `type` is `offline`",
-			Required:         true,
 		},
 		"mandate.acceptance.online.date": {
 			Type:             "integer",
@@ -23784,7 +29183,6 @@ var V1SourcesUpdate = resource.OperationSpec{
 		"mandate.acceptance.status": {
 			Type:             "string",
 			ShortDescription: "The status of the mandate acceptance",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "accepted"},
 				{Value: "pending"},
@@ -23880,7 +29278,6 @@ var V1SourcesUpdate = resource.OperationSpec{
 		"source_order.shipping.address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
-			Required:         true,
 		},
 		"source_order.shipping.address.line2": {
 			Type:             "string",
@@ -23922,6 +29319,7 @@ var V1SourcesVerify = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The values needed to verify the source",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -23931,9 +29329,17 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 	Path:   "/v1/subscription_items",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.usage_gte": {
+			Type:             "integer",
+			ShortDescription: "Number of units that meets the billing threshold to advance the subscription to a new billing period (e.g., it takes 10 $5 units to meet a $50 [monetary threshold](https://docs.stripe.com/api/subscriptions/update#update_subscription-billing_thresholds-amount_gte))",
+		},
 		"payment_behavior": {
 			Type:             "string",
 			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -23948,22 +29354,20 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 		"price": {
 			Type:             "string",
 			ShortDescription: "The ID of the price object",
+			MostCommon:       true,
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Product](https://docs.stripe.com/api/products) that this [Price](https://docs.stripe.com/api/prices) will belong to",
-			Required:         true,
 		},
 		"price_data.recurring.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies billing frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -23996,6 +29400,7 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 		"proration_behavior": {
 			Type:             "string",
 			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) when the billing cycle changes (e.g., when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24010,11 +29415,13 @@ var V1SubscriptionItemsCreate = resource.OperationSpec{
 		"quantity": {
 			Type:             "integer",
 			ShortDescription: "The quantity you'd like to apply to the subscription item you're creating",
+			MostCommon:       true,
 		},
 		"subscription": {
 			Type:             "string",
 			ShortDescription: "The identifier of the subscription to modify",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"tax_rates": {
 			Type:             "array",
@@ -24065,6 +29472,13 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 	Path:   "/v1/subscription_items/{item}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.usage_gte": {
+			Type:             "integer",
+			ShortDescription: "Number of units that meets the billing threshold to advance the subscription to a new billing period (e.g., it takes 10 $5 units to meet a $50 [monetary threshold](https://docs.stripe.com/api/subscriptions/update#update_subscription-billing_thresholds-amount_gte))",
+		},
 		"off_session": {
 			Type:             "boolean",
 			ShortDescription: "Indicates if a customer is on or off-session while an invoice payment is attempted",
@@ -24072,6 +29486,7 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		"payment_behavior": {
 			Type:             "string",
 			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
@@ -24086,22 +29501,20 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		"price": {
 			Type:             "string",
 			ShortDescription: "The ID of the price object",
+			MostCommon:       true,
 		},
 		"price_data.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 			Format:           "currency",
 		},
 		"price_data.product": {
 			Type:             "string",
 			ShortDescription: "The ID of the [Product](https://docs.stripe.com/api/products) that this [Price](https://docs.stripe.com/api/prices) will belong to",
-			Required:         true,
 		},
 		"price_data.recurring.interval": {
 			Type:             "string",
 			ShortDescription: "Specifies billing frequency",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -24134,6 +29547,7 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		"proration_behavior": {
 			Type:             "string",
 			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) when the billing cycle changes (e.g., when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24148,6 +29562,7 @@ var V1SubscriptionItemsUpdate = resource.OperationSpec{
 		"quantity": {
 			Type:             "integer",
 			ShortDescription: "The quantity you'd like to apply to the subscription item you're creating",
+			MostCommon:       true,
 		},
 		"tax_rates": {
 			Type:             "array",
@@ -24164,6 +29579,7 @@ var V1SubscriptionSchedulesCancel = resource.OperationSpec{
 		"invoice_now": {
 			Type:             "boolean",
 			ShortDescription: "If the subscription schedule is `active`, indicates if a final invoice will be generated that contains any un-invoiced metered usage and new/pending proration invoice items",
+			MostCommon:       true,
 		},
 		"prorate": {
 			Type:             "boolean",
@@ -24188,7 +29604,6 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
@@ -24197,6 +29612,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The identifier of the customer to create the subscription schedule for",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
@@ -24209,7 +29625,6 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"default_settings.automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enabled automatic tax calculation which will automatically compute tax rates on all invoices generated by the subscription",
-			Required:         true,
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type:             "string",
@@ -24218,7 +29633,6 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"default_settings.automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24231,6 +29645,14 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 				{Value: "automatic"},
 				{Value: "phase_start"},
 			},
+		},
+		"default_settings.billing_thresholds.amount_gte": {
+			Type:             "integer",
+			ShortDescription: "Monetary threshold that triggers the subscription to advance to a new billing period",
+		},
+		"default_settings.billing_thresholds.reset_billing_cycle_anchor": {
+			Type:             "boolean",
+			ShortDescription: "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached",
 		},
 		"default_settings.collection_method": {
 			Type:             "string",
@@ -24263,7 +29685,6 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"default_settings.invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24272,6 +29693,14 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"default_settings.on_behalf_of": {
 			Type:             "string",
 			ShortDescription: "The account on behalf of which to charge, for each of the associated subscription's invoices",
+		},
+		"default_settings.transfer_data.amount_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
+		"default_settings.transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 		"end_behavior": {
 			Type:             "string",
@@ -24290,6 +29719,7 @@ var V1SubscriptionSchedulesCreate = resource.OperationSpec{
 		"start_date": {
 			Type:             "integer",
 			ShortDescription: "When the subscription schedule starts",
+			MostCommon:       true,
 		},
 	},
 }
@@ -24372,7 +29802,6 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"default_settings.automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enabled automatic tax calculation which will automatically compute tax rates on all invoices generated by the subscription",
-			Required:         true,
 		},
 		"default_settings.automatic_tax.liability.account": {
 			Type:             "string",
@@ -24381,7 +29810,6 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"default_settings.automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24394,6 +29822,14 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 				{Value: "automatic"},
 				{Value: "phase_start"},
 			},
+		},
+		"default_settings.billing_thresholds.amount_gte": {
+			Type:             "integer",
+			ShortDescription: "Monetary threshold that triggers the subscription to advance to a new billing period",
+		},
+		"default_settings.billing_thresholds.reset_billing_cycle_anchor": {
+			Type:             "boolean",
+			ShortDescription: "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached",
 		},
 		"default_settings.collection_method": {
 			Type:             "string",
@@ -24426,7 +29862,6 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"default_settings.invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24435,6 +29870,14 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"default_settings.on_behalf_of": {
 			Type:             "string",
 			ShortDescription: "The account on behalf of which to charge, for each of the associated subscription's invoices",
+		},
+		"default_settings.transfer_data.amount_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
+		"default_settings.transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 		"end_behavior": {
 			Type:             "string",
@@ -24449,6 +29892,7 @@ var V1SubscriptionSchedulesUpdate = resource.OperationSpec{
 		"proration_behavior": {
 			Type:             "string",
 			ShortDescription: "If the update changes the billing configuration (item price, quantity, etc.) of the current phase, indicates how prorations from this change should be handled",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24476,7 +29920,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enabled automatic tax calculation which will automatically compute tax rates on all invoices generated by the subscription",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -24485,7 +29929,6 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24504,7 +29947,6 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"billing_cycle_anchor_config.day_of_month": {
 			Type:             "integer",
 			ShortDescription: "The day of the month the anchor should be",
-			Required:         true,
 		},
 		"billing_cycle_anchor_config.hour": {
 			Type:             "integer",
@@ -24533,11 +29975,21 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"billing_mode.type": {
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "classic"},
 				{Value: "flexible"},
 			},
+		},
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.amount_gte": {
+			Type:             "integer",
+			ShortDescription: "Monetary threshold that triggers the subscription to advance to a new billing period",
+		},
+		"billing_thresholds.reset_billing_cycle_anchor": {
+			Type:             "boolean",
+			ShortDescription: "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached",
 		},
 		"cancel_at": {
 			Type:             "integer",
@@ -24558,15 +30010,18 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "The identifier of the customer to subscribe",
+			MostCommon:       true,
 		},
 		"customer_account": {
 			Type:             "string",
 			ShortDescription: "The identifier of the account representing the customer to subscribe",
+			MostCommon:       true,
 		},
 		"days_until_due": {
 			Type:             "integer",
@@ -24575,6 +30030,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"default_payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the default payment method for the subscription",
+			MostCommon:       true,
 		},
 		"default_source": {
 			Type:             "string",
@@ -24587,6 +30043,7 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "The subscription's description, meant to be displayable to the customer",
+			MostCommon:       true,
 		},
 		"invoice_settings.account_tax_ids": {
 			Type:             "array",
@@ -24599,7 +30056,6 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24616,11 +30072,137 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"payment_behavior": {
 			Type:             "string",
 			ShortDescription: "Only applies to subscriptions with `collection_method=charge_automatically`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
 				{Value: "error_if_incomplete"},
 				{Value: "pending_if_incomplete"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.card.network": {
+			Type:             "string",
+			ShortDescription: "Selected network to process this Subscription on",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The bank transfer type that can be used for funding",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum amount that can be collected in a single invoice",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
 			},
 		},
 		"payment_settings.payment_method_types": {
@@ -24634,6 +30216,23 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 				{Value: "off"},
 				{Value: "on_subscription"},
 			},
+		},
+		"pending_invoice_item_interval": {
+			Type: "clearable_object",
+		},
+		"pending_invoice_item_interval.interval": {
+			Type:             "string",
+			ShortDescription: "Specifies invoicing frequency",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"pending_invoice_item_interval.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of intervals between invoices",
 		},
 		"proration_behavior": {
 			Type:             "string",
@@ -24651,7 +30250,6 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"transfer_data.destination": {
 			Type:             "string",
 			ShortDescription: "ID of an existing, connected Stripe account",
-			Required:         true,
 		},
 		"trial_end": {
 			Type:             "string",
@@ -24668,7 +30266,6 @@ var V1SubscriptionsCreate = resource.OperationSpec{
 		"trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
 			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -24777,6 +30374,7 @@ var V1SubscriptionsMigrate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Controls the calculation and orchestration of prorations and invoices for subscriptions",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "flexible"},
 			},
@@ -24792,6 +30390,7 @@ var V1SubscriptionsResume = resource.OperationSpec{
 		"billing_cycle_anchor": {
 			Type:             "string",
 			ShortDescription: "The billing cycle anchor that applies when the subscription is resumed",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
@@ -24800,6 +30399,7 @@ var V1SubscriptionsResume = resource.OperationSpec{
 		"proration_behavior": {
 			Type:             "string",
 			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) resulting from the `billing_cycle_anchor` being `unchanged`",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24853,7 +30453,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"automatic_tax.enabled": {
 			Type:             "boolean",
 			ShortDescription: "Enabled automatic tax calculation which will automatically compute tax rates on all invoices generated by the subscription",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"automatic_tax.liability.account": {
 			Type:             "string",
@@ -24862,7 +30462,6 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"automatic_tax.liability.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24875,6 +30474,17 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "now"},
 				{Value: "unchanged"},
 			},
+		},
+		"billing_thresholds": {
+			Type: "clearable_object",
+		},
+		"billing_thresholds.amount_gte": {
+			Type:             "integer",
+			ShortDescription: "Monetary threshold that triggers the subscription to advance to a new billing period",
+		},
+		"billing_thresholds.reset_billing_cycle_anchor": {
+			Type:             "boolean",
+			ShortDescription: "Indicates if the `billing_cycle_anchor` should be reset when a threshold is reached",
 		},
 		"cancel_at": {
 			Type:             "integer",
@@ -24917,6 +30527,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"default_payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of the default payment method for the subscription",
+			MostCommon:       true,
 		},
 		"default_source": {
 			Type:             "string",
@@ -24929,6 +30540,7 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "The subscription's description, meant to be displayable to the customer",
+			MostCommon:       true,
 		},
 		"invoice_settings.account_tax_ids": {
 			Type:             "array",
@@ -24941,7 +30553,6 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"invoice_settings.issuer.type": {
 			Type:             "string",
 			ShortDescription: "Type of the account referenced in the request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "account"},
 				{Value: "self"},
@@ -24955,14 +30566,157 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The account on behalf of which to charge, for each of the subscription's invoices",
 		},
+		"pause_collection": {
+			Type: "clearable_object",
+		},
+		"pause_collection.behavior": {
+			Type:             "string",
+			ShortDescription: "The payment collection behavior for this subscription while paused",
+			Enum: []resource.EnumSpec{
+				{Value: "keep_as_draft"},
+				{Value: "mark_uncollectible"},
+				{Value: "void"},
+			},
+		},
+		"pause_collection.resumes_at": {
+			Type:             "integer",
+			ShortDescription: "The time after which the subscription will resume collecting payments",
+			Format:           "unix-time",
+		},
 		"payment_behavior": {
 			Type:             "string",
 			ShortDescription: "Use `allow_incomplete` to transition the subscription to `status=past_due` if a payment is required but cannot be paid",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "allow_incomplete"},
 				{Value: "default_incomplete"},
 				{Value: "error_if_incomplete"},
 				{Value: "pending_if_incomplete"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.mandate_options.transaction_type": {
+			Type:             "string",
+			ShortDescription: "Transaction type of the mandate",
+			Enum: []resource.EnumSpec{
+				{Value: "business"},
+				{Value: "personal"},
+			},
+		},
+		"payment_settings.payment_method_options.acss_debit.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
+			},
+		},
+		"payment_settings.payment_method_options.bancontact.preferred_language": {
+			Type:             "string",
+			ShortDescription: "Preferred language of the Bancontact authorization page that the customer is redirected to",
+			Enum: []resource.EnumSpec{
+				{Value: "de"},
+				{Value: "en"},
+				{Value: "fr"},
+				{Value: "nl"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "Amount to be charged for future payments, specified in the presentment currency",
+		},
+		"payment_settings.payment_method_options.card.mandate_options.amount_type": {
+			Type:             "string",
+			ShortDescription: "One of `fixed` or `maximum`",
+			Enum: []resource.EnumSpec{
+				{Value: "fixed"},
+				{Value: "maximum"},
+			},
+		},
+		"payment_settings.payment_method_options.card.mandate_options.description": {
+			Type:             "string",
+			ShortDescription: "A description of the mandate or subscription that is meant to be displayed to the customer",
+		},
+		"payment_settings.payment_method_options.card.network": {
+			Type:             "string",
+			ShortDescription: "Selected network to process this Subscription on",
+			Enum: []resource.EnumSpec{
+				{Value: "amex"},
+				{Value: "cartes_bancaires"},
+				{Value: "diners"},
+				{Value: "discover"},
+				{Value: "eftpos_au"},
+				{Value: "girocard"},
+				{Value: "interac"},
+				{Value: "jcb"},
+				{Value: "link"},
+				{Value: "mastercard"},
+				{Value: "unionpay"},
+				{Value: "unknown"},
+				{Value: "visa"},
+			},
+		},
+		"payment_settings.payment_method_options.card.request_three_d_secure": {
+			Type:             "string",
+			ShortDescription: "We strongly recommend that you rely on our SCA Engine to automatically prompt your customers for authentication based on risk level and [other requirements](https://docs.stripe.com/strong-customer-authentication)",
+			Enum: []resource.EnumSpec{
+				{Value: "any"},
+				{Value: "automatic"},
+				{Value: "challenge"},
+			},
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
+			Type:             "string",
+			ShortDescription: "The desired country code of the bank account information",
+		},
+		"payment_settings.payment_method_options.customer_balance.bank_transfer.type": {
+			Type:             "string",
+			ShortDescription: "The bank transfer type that can be used for funding",
+		},
+		"payment_settings.payment_method_options.customer_balance.funding_type": {
+			Type:             "string",
+			ShortDescription: "The funding method type to be used when there are not enough funds in the customer balance",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.amount": {
+			Type:             "integer",
+			ShortDescription: "The maximum amount that can be collected in a single invoice",
+		},
+		"payment_settings.payment_method_options.payto.mandate_options.purpose": {
+			Type:             "string",
+			ShortDescription: "The purpose for which payments are made",
+			Enum: []resource.EnumSpec{
+				{Value: "dependant_support"},
+				{Value: "government"},
+				{Value: "loan"},
+				{Value: "mortgage"},
+				{Value: "other"},
+				{Value: "pension"},
+				{Value: "personal"},
+				{Value: "retail"},
+				{Value: "salary"},
+				{Value: "tax"},
+				{Value: "utility"},
+			},
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.filters.account_subcategories": {
+			Type:             "array",
+			ShortDescription: "The account subcategories to use to filter for selectable accounts",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.permissions": {
+			Type:             "array",
+			ShortDescription: "The list of permissions to request",
+		},
+		"payment_settings.payment_method_options.us_bank_account.financial_connections.prefetch": {
+			Type:             "array",
+			ShortDescription: "List of data features that you would like to retrieve upon account creation",
+		},
+		"payment_settings.payment_method_options.us_bank_account.verification_method": {
+			Type:             "string",
+			ShortDescription: "Verification method for the intent",
+			Enum: []resource.EnumSpec{
+				{Value: "automatic"},
+				{Value: "instant"},
+				{Value: "microdeposits"},
 			},
 		},
 		"payment_settings.payment_method_types": {
@@ -24977,9 +30731,27 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 				{Value: "on_subscription"},
 			},
 		},
+		"pending_invoice_item_interval": {
+			Type: "clearable_object",
+		},
+		"pending_invoice_item_interval.interval": {
+			Type:             "string",
+			ShortDescription: "Specifies invoicing frequency",
+			Enum: []resource.EnumSpec{
+				{Value: "day"},
+				{Value: "month"},
+				{Value: "week"},
+				{Value: "year"},
+			},
+		},
+		"pending_invoice_item_interval.interval_count": {
+			Type:             "integer",
+			ShortDescription: "The number of intervals between invoices",
+		},
 		"proration_behavior": {
 			Type:             "string",
 			ShortDescription: "Determines how to handle [prorations](https://docs.stripe.com/billing/subscriptions/prorations) when the billing cycle changes (e.g., when switching plans, resetting `billing_cycle_anchor=now`, or starting a trial), or if an item's `quantity` changes",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always_invoice"},
 				{Value: "create_prorations"},
@@ -24990,6 +30762,17 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "If set, prorations will be calculated as though the subscription was updated at the given time",
 			Format:           "unix-time",
+		},
+		"transfer_data": {
+			Type: "clearable_object",
+		},
+		"transfer_data.amount_percent": {
+			Type:             "number",
+			ShortDescription: "A non-negative decimal between 0 and 100, with at most two decimal places",
+		},
+		"transfer_data.destination": {
+			Type:             "string",
+			ShortDescription: "ID of an existing, connected Stripe account",
 		},
 		"trial_end": {
 			Type:             "string",
@@ -25002,7 +30785,6 @@ var V1SubscriptionsUpdate = resource.OperationSpec{
 		"trial_settings.end_behavior.missing_payment_method": {
 			Type:             "string",
 			ShortDescription: "Indicates how the subscription should change when the trial ends if the user did not provide a payment method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "cancel"},
 				{Value: "create_invoice"},
@@ -25034,6 +30816,7 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
@@ -25047,7 +30830,6 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 		"customer_details.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"customer_details.address.line1": {
 			Type:             "string",
@@ -25093,7 +30875,6 @@ var V1TaxCalculationsCreate = resource.OperationSpec{
 		"ship_from_details.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"ship_from_details.address.line1": {
 			Type:             "string",
@@ -25199,6 +30980,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Type of the tax ID, one of `ad_nrt`, `ae_trn`, `al_tin`, `am_tin`, `ao_tin`, `ar_cuit`, `au_abn`, `au_arn`, `aw_tin`, `az_tin`, `ba_tin`, `bb_tin`, `bd_bin`, `bf_ifu`, `bg_uic`, `bh_vat`, `bj_ifu`, `bo_tin`, `br_cnpj`, `br_cpf`, `bs_tin`, `by_tin`, `ca_bn`, `ca_gst_hst`, `ca_pst_bc`, `ca_pst_mb`, `ca_pst_sk`, `ca_qst`, `cd_nif`, `ch_uid`, `ch_vat`, `cl_tin`, `cm_niu`, `cn_tin`, `co_nit`, `cr_tin`, `cv_nif`, `de_stn`, `do_rcn`, `ec_ruc`, `eg_tin`, `es_cif`, `et_tin`, `eu_oss_vat`, `eu_vat`, `gb_vat`, `ge_vat`, `gn_nif`, `hk_br`, `hr_oib`, `hu_tin`, `id_npwp`, `il_vat`, `in_gst`, `is_vat`, `jp_cn`, `jp_rn`, `jp_trn`, `ke_pin`, `kg_tin`, `kh_tin`, `kr_brn`, `kz_bin`, `la_tin`, `li_uid`, `li_vat`, `lk_vat`, `ma_vat`, `md_vat`, `me_pib`, `mk_vat`, `mr_nif`, `mx_rfc`, `my_frp`, `my_itn`, `my_sst`, `ng_tin`, `no_vat`, `no_voec`, `np_pan`, `nz_gst`, `om_vat`, `pe_ruc`, `ph_tin`, `pl_nip`, `ro_tin`, `rs_pib`, `ru_inn`, `ru_kpp`, `sa_vat`, `sg_gst`, `sg_uen`, `si_tin`, `sn_ninea`, `sr_fin`, `sv_nit`, `th_vat`, `tj_tin`, `tr_tin`, `tw_vat`, `tz_vat`, `ua_vat`, `ug_tin`, `us_ein`, `uy_ruc`, `uz_tin`, `uz_vat`, `ve_rif`, `vn_tin`, `za_vat`, `zm_tin`, or `zw_tin`",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ad_nrt"},
 				{Value: "ae_trn"},
@@ -25318,6 +31100,7 @@ var V1TaxIdsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Value of the tax ID",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -25362,37 +31145,45 @@ var V1TaxRatesCreate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Flag determining whether the tax rate is active or inactive (archived)",
+			MostCommon:       true,
 		},
 		"country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the tax rate for your internal use only",
+			MostCommon:       true,
 		},
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "The display name of the tax rate, which will be shown to users",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"inclusive": {
 			Type:             "boolean",
 			ShortDescription: "This specifies if the tax rate is inclusive or exclusive",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"jurisdiction": {
 			Type:             "string",
 			ShortDescription: "The jurisdiction for the tax rate",
+			MostCommon:       true,
 		},
 		"percentage": {
 			Type:             "number",
 			ShortDescription: "This represents the tax rate percent out of 100",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"state": {
 			Type:             "string",
 			ShortDescription: "[ISO 3166-2 subdivision code](https://en.wikipedia.org/wiki/ISO_3166-2), without country prefix",
+			MostCommon:       true,
 		},
 		"tax_type": {
 			Type:             "string",
@@ -25463,26 +31254,32 @@ var V1TaxRatesUpdate = resource.OperationSpec{
 		"active": {
 			Type:             "boolean",
 			ShortDescription: "Flag determining whether the tax rate is active or inactive (archived)",
+			MostCommon:       true,
 		},
 		"country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the tax rate for your internal use only",
+			MostCommon:       true,
 		},
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "The display name of the tax rate, which will be shown to users",
+			MostCommon:       true,
 		},
 		"jurisdiction": {
 			Type:             "string",
 			ShortDescription: "The jurisdiction for the tax rate",
+			MostCommon:       true,
 		},
 		"state": {
 			Type:             "string",
 			ShortDescription: "[ISO 3166-2 subdivision code](https://en.wikipedia.org/wiki/ISO_3166-2), without country prefix",
+			MostCommon:       true,
 		},
 		"tax_type": {
 			Type:             "string",
@@ -25516,11 +31313,13 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Time at which the Tax Registration becomes active",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"country_options.ae.standard.place_of_supply_scheme": {
 			Type:             "string",
@@ -25533,7 +31332,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ae.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25549,7 +31347,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.al.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25557,7 +31354,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.am.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25573,7 +31369,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ao.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25581,7 +31376,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.at.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25591,7 +31385,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.at.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25610,7 +31403,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.au.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25626,7 +31418,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.aw.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25634,7 +31425,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.az.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25650,7 +31440,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ba.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25666,7 +31455,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bb.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25682,7 +31470,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bd.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25690,7 +31477,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.be.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25700,7 +31486,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.be.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25719,7 +31504,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bf.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25727,7 +31511,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bg.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25737,7 +31520,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bg.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25756,7 +31538,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bh.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25764,7 +31545,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bj.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25780,7 +31560,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.bs.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25788,7 +31567,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.by.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25796,12 +31574,10 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ca.province_standard.province": {
 			Type:             "string",
 			ShortDescription: "Two-letter CA province code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
-			Required:         true,
 		},
 		"country_options.ca.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in Canada",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "province_standard"},
 				{Value: "simplified"},
@@ -25819,7 +31595,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cd.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25835,7 +31610,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ch.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -25843,7 +31617,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cl.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25851,7 +31624,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cm.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25859,7 +31631,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.co.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25867,7 +31638,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25875,7 +31645,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cv.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25883,7 +31652,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cy.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25893,7 +31661,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cy.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25904,7 +31671,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cz.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25914,7 +31680,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.cz.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25925,7 +31690,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.de.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25935,7 +31699,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.de.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25946,7 +31709,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.dk.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25956,7 +31718,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.dk.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25967,7 +31728,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ec.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -25975,7 +31735,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ee.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -25985,7 +31744,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ee.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -25996,7 +31754,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.eg.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26004,7 +31761,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.es.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26014,7 +31770,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.es.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26033,7 +31788,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.et.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26041,7 +31795,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.fi.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26051,7 +31804,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.fi.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26062,7 +31814,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.fr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26072,7 +31823,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.fr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26091,7 +31841,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.gb.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26099,7 +31848,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ge.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26115,7 +31863,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.gn.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26123,7 +31870,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.gr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26133,7 +31879,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.gr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26144,7 +31889,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.hr.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26154,7 +31898,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.hr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26165,7 +31908,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.hu.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26175,7 +31917,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.hu.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26186,7 +31927,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.id.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26194,7 +31934,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ie.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26204,7 +31943,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ie.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26215,7 +31953,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.in.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26231,7 +31968,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.is.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26239,7 +31975,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.it.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26249,7 +31984,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.it.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26268,7 +32002,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.jp.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26276,7 +32009,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ke.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26284,7 +32016,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.kg.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26292,7 +32023,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.kh.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26300,7 +32030,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.kr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26308,7 +32037,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.kz.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26316,7 +32044,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.la.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26324,7 +32051,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lk.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26332,7 +32058,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26342,7 +32067,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lt.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26353,7 +32077,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lu.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26363,7 +32086,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lu.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26374,7 +32096,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lv.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26384,7 +32105,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.lv.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26395,7 +32115,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ma.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26403,7 +32122,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.md.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26419,7 +32137,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.me.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26435,7 +32152,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.mk.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26451,7 +32167,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.mr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26459,7 +32174,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.mt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26469,7 +32183,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.mt.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26480,7 +32193,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.mx.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26488,7 +32200,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.my.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26496,7 +32207,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ng.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26504,7 +32214,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.nl.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26514,7 +32223,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.nl.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26533,7 +32241,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.no.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26541,7 +32248,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.np.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26557,7 +32263,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.nz.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26573,7 +32278,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.om.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26581,7 +32285,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.pe.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26589,7 +32292,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ph.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26597,7 +32299,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.pl.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26607,7 +32308,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.pl.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26618,7 +32318,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.pt.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26628,7 +32327,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.pt.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26639,7 +32337,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ro.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26649,7 +32346,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ro.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26668,7 +32364,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.rs.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26676,7 +32371,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ru.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26684,7 +32378,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sa.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26692,7 +32385,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.se.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26702,7 +32394,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.se.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26721,7 +32412,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sg.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26729,7 +32419,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.si.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26739,7 +32428,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.si.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26750,7 +32438,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sk.standard.place_of_supply_scheme": {
 			Type:             "string",
 			ShortDescription: "Place of supply scheme used in an EU standard registration",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "inbound_goods"},
 				{Value: "small_seller"},
@@ -26760,7 +32447,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sk.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in an EU country",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "ioss"},
 				{Value: "oss_non_union"},
@@ -26771,7 +32457,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sn.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26787,7 +32472,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.sr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26795,7 +32479,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.th.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26803,7 +32486,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.tj.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26811,7 +32493,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.tr.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26819,7 +32500,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.tw.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26827,7 +32507,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.tz.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26835,7 +32514,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ua.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26843,7 +32521,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.ug.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26851,22 +32528,18 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.us.local_amusement_tax.jurisdiction": {
 			Type:             "string",
 			ShortDescription: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction",
-			Required:         true,
 		},
 		"country_options.us.local_lease_tax.jurisdiction": {
 			Type:             "string",
 			ShortDescription: "A [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) representing the local jurisdiction",
-			Required:         true,
 		},
 		"country_options.us.state": {
 			Type:             "string",
 			ShortDescription: "Two-letter US state code ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
-			Required:         true,
 		},
 		"country_options.us.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in the US",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "local_amusement_tax"},
 				{Value: "local_lease_tax"},
@@ -26886,7 +32559,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.uy.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26894,7 +32566,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.uz.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26902,7 +32573,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.vn.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26918,7 +32588,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.za.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26926,7 +32595,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.zm.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "simplified"},
 			},
@@ -26942,7 +32610,6 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"country_options.zw.type": {
 			Type:             "string",
 			ShortDescription: "Type of registration to be created in `country`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "standard"},
 			},
@@ -26950,6 +32617,7 @@ var V1TaxRegistrationsCreate = resource.OperationSpec{
 		"expires_at": {
 			Type:             "integer",
 			ShortDescription: "If set, the Tax Registration stops being active at this time",
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -26999,10 +32667,12 @@ var V1TaxRegistrationsUpdate = resource.OperationSpec{
 		"active_from": {
 			Type:             "string",
 			ShortDescription: "Time at which the registration becomes active",
+			MostCommon:       true,
 		},
 		"expires_at": {
 			Type:             "string",
 			ShortDescription: "If set, the registration stops being active at this time",
+			MostCommon:       true,
 		},
 	},
 }
@@ -27067,6 +32737,7 @@ var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Tax Calculation ID to be used as input when creating the transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"posted_at": {
 			Type:             "integer",
@@ -27077,6 +32748,7 @@ var V1TaxTransactionsCreateFromCalculation = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A custom order or sale identifier, such as 'myOrder_123'. Must be unique across all transactions, including reversals",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -27089,11 +32761,13 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 		"flat_amount": {
 			Type:             "integer",
 			ShortDescription: "A flat amount to reverse across the entire transaction, in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units) in negative",
+			MostCommon:       true,
 		},
 		"mode": {
 			Type:             "string",
 			ShortDescription: "If `partial`, the provided line item or shipping cost amounts are reversed",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "full"},
 				{Value: "partial"},
@@ -27103,21 +32777,21 @@ var V1TaxTransactionsCreateReversal = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the Transaction to partially or fully reverse",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"reference": {
 			Type:             "string",
 			ShortDescription: "A custom identifier for this reversal, such as `myOrder_123-refund_1`, which must be unique across all transactions",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping_cost.amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units) in negative",
-			Required:         true,
 		},
 		"shipping_cost.amount_tax": {
 			Type:             "integer",
 			ShortDescription: "The amount of tax to reverse, in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units) in negative",
-			Required:         true,
 		},
 	},
 }
@@ -27161,19 +32835,31 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A File ID representing an image to display on the reader",
 		},
+		"cellular": {
+			Type: "clearable_object",
+		},
+		"cellular.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Determines whether to allow the reader to connect to a cellular network",
+		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "Name of the configuration",
 		},
+		"offline": {
+			Type: "clearable_object",
+		},
+		"offline.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Determines whether to allow transactions to be collected while reader is offline",
+		},
 		"reboot_window.end_hour": {
 			Type:             "integer",
 			ShortDescription: "Integer between 0 to 23 that represents the end hour of the reboot time window",
-			Required:         true,
 		},
 		"reboot_window.start_hour": {
 			Type:             "integer",
 			ShortDescription: "Integer between 0 to 23 that represents the start hour of the reboot time window",
-			Required:         true,
 		},
 		"stripe_s700.splashscreen": {
 			Type:             "string",
@@ -27183,9 +32869,321 @@ var V1TerminalConfigurationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
 		},
+		"tipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"tipping.aed.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.aed.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.aed.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.aud.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.aud.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.aud.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.cad.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.cad.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.cad.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.chf.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.chf.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.chf.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.czk.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.czk.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.czk.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.dkk.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.dkk.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.dkk.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.eur.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.eur.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.eur.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.gbp.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.gbp.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.gbp.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.gip.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.gip.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.gip.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.hkd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.hkd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.hkd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.huf.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.huf.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.huf.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.jpy.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.jpy.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.jpy.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.mxn.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.mxn.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.mxn.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.myr.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.myr.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.myr.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.nok.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.nok.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.nok.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.nzd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.nzd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.nzd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.pln.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.pln.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.pln.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.ron.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.ron.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.ron.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.sek.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.sek.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.sek.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.sgd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.sgd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.sgd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.usd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.usd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.usd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
 		"verifone_p400.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"wifi": {
+			Type: "clearable_object",
+		},
+		"wifi.enterprise_eap_peap.ca_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the server certificate",
+		},
+		"wifi.enterprise_eap_peap.password": {
+			Type:             "string",
+			ShortDescription: "Password for connecting to the WiFi network",
+		},
+		"wifi.enterprise_eap_peap.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.enterprise_eap_peap.username": {
+			Type:             "string",
+			ShortDescription: "Username for connecting to the WiFi network",
+		},
+		"wifi.enterprise_eap_tls.ca_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the server certificate",
+		},
+		"wifi.enterprise_eap_tls.client_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the client certificate",
+		},
+		"wifi.enterprise_eap_tls.private_key_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the client RSA private key",
+		},
+		"wifi.enterprise_eap_tls.private_key_file_password": {
+			Type:             "string",
+			ShortDescription: "Password for the private key file",
+		},
+		"wifi.enterprise_eap_tls.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.personal_psk.password": {
+			Type:             "string",
+			ShortDescription: "Password for connecting to the WiFi network",
+		},
+		"wifi.personal_psk.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.type": {
+			Type:             "string",
+			ShortDescription: "Security type of the WiFi network",
+			Enum: []resource.EnumSpec{
+				{Value: "enterprise_eap_peap"},
+				{Value: "enterprise_eap_tls"},
+				{Value: "personal_psk"},
+			},
 		},
 	},
 }
@@ -27231,9 +33229,385 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 	Path:   "/v1/terminal/configurations/{configuration}",
 	Method: "POST",
 	Params: map[string]*resource.ParamSpec{
+		"bbpos_wisepad3": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"bbpos_wisepad3.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"bbpos_wisepos_e": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"bbpos_wisepos_e.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image to display on the reader",
+		},
+		"cellular": {
+			Type: "clearable_object",
+		},
+		"cellular.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Determines whether to allow the reader to connect to a cellular network",
+		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "Name of the configuration",
+		},
+		"offline": {
+			Type: "clearable_object",
+		},
+		"offline.enabled": {
+			Type:             "boolean",
+			ShortDescription: "Determines whether to allow transactions to be collected while reader is offline",
+		},
+		"reboot_window": {
+			Type: "clearable_object",
+		},
+		"reboot_window.end_hour": {
+			Type:             "integer",
+			ShortDescription: "Integer between 0 to 23 that represents the end hour of the reboot time window",
+		},
+		"reboot_window.start_hour": {
+			Type:             "integer",
+			ShortDescription: "Integer between 0 to 23 that represents the start hour of the reboot time window",
+		},
+		"stripe_s700": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"stripe_s700.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"stripe_s710": {
+			Type: "clearable_object",
+		},
+		"stripe_s710.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"tipping": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"tipping.aed.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.aed.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.aed.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.aud.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.aud.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.aud.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.cad.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.cad.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.cad.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.chf.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.chf.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.chf.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.czk.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.czk.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.czk.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.dkk.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.dkk.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.dkk.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.eur.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.eur.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.eur.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.gbp.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.gbp.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.gbp.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.gip.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.gip.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.gip.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.hkd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.hkd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.hkd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.huf.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.huf.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.huf.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.jpy.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.jpy.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.jpy.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.mxn.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.mxn.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.mxn.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.myr.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.myr.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.myr.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.nok.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.nok.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.nok.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.nzd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.nzd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.nzd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.pln.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.pln.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.pln.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.ron.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.ron.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.ron.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.sek.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.sek.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.sek.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.sgd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.sgd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.sgd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"tipping.usd.fixed_amounts": {
+			Type:             "array",
+			ShortDescription: "Fixed amounts displayed when collecting a tip",
+		},
+		"tipping.usd.percentages": {
+			Type:             "array",
+			ShortDescription: "Percentages displayed when collecting a tip",
+		},
+		"tipping.usd.smart_tip_threshold": {
+			Type:             "integer",
+			ShortDescription: "Below this amount, fixed amounts will be displayed; above it, percentages will be displayed",
+		},
+		"verifone_p400": {
+			Type:       "clearable_object",
+			MostCommon: true,
+		},
+		"verifone_p400.splashscreen": {
+			Type:             "string",
+			ShortDescription: "A File ID representing an image you want to display on the reader",
+		},
+		"wifi": {
+			Type: "clearable_object",
+		},
+		"wifi.enterprise_eap_peap.ca_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the server certificate",
+		},
+		"wifi.enterprise_eap_peap.password": {
+			Type:             "string",
+			ShortDescription: "Password for connecting to the WiFi network",
+		},
+		"wifi.enterprise_eap_peap.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.enterprise_eap_peap.username": {
+			Type:             "string",
+			ShortDescription: "Username for connecting to the WiFi network",
+		},
+		"wifi.enterprise_eap_tls.ca_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the server certificate",
+		},
+		"wifi.enterprise_eap_tls.client_certificate_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the client certificate",
+		},
+		"wifi.enterprise_eap_tls.private_key_file": {
+			Type:             "string",
+			ShortDescription: "A File ID representing a PEM file containing the client RSA private key",
+		},
+		"wifi.enterprise_eap_tls.private_key_file_password": {
+			Type:             "string",
+			ShortDescription: "Password for the private key file",
+		},
+		"wifi.enterprise_eap_tls.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.personal_psk.password": {
+			Type:             "string",
+			ShortDescription: "Password for connecting to the WiFi network",
+		},
+		"wifi.personal_psk.ssid": {
+			Type:             "string",
+			ShortDescription: "Name of the WiFi network",
+		},
+		"wifi.type": {
+			Type:             "string",
+			ShortDescription: "Security type of the WiFi network",
+			Enum: []resource.EnumSpec{
+				{Value: "enterprise_eap_peap"},
+				{Value: "enterprise_eap_tls"},
+				{Value: "personal_psk"},
+			},
 		},
 	},
 }
@@ -27246,6 +33620,7 @@ var V1TerminalConnectionTokensCreate = resource.OperationSpec{
 		"location": {
 			Type:             "string",
 			ShortDescription: "The id of the location that this connection token is scoped to",
+			MostCommon:       true,
 		},
 	},
 }
@@ -27262,7 +33637,7 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 		"address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"address.line1": {
 			Type:             "string",
@@ -27343,6 +33718,7 @@ var V1TerminalLocationsCreate = resource.OperationSpec{
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "A name for the location",
+			MostCommon:       true,
 		},
 		"display_name_kana": {
 			Type:             "string",
@@ -27483,6 +33859,7 @@ var V1TerminalLocationsUpdate = resource.OperationSpec{
 		"display_name": {
 			Type:             "string",
 			ShortDescription: "A name for the location",
+			MostCommon:       true,
 		},
 		"display_name_kana": {
 			Type:             "string",
@@ -27511,12 +33888,12 @@ var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 		"link_options.apple_terms_and_conditions.merchant_display_name": {
 			Type:             "string",
 			ShortDescription: "The business name of the merchant accepting Apple's Terms and Conditions",
-			Required:         true,
 		},
 		"link_type": {
 			Type:             "string",
 			ShortDescription: "The type of link being generated",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "apple_terms_and_conditions"},
 			},
@@ -27524,6 +33901,7 @@ var V1TerminalOnboardingLinksCreate = resource.OperationSpec{
 		"on_behalf_of": {
 			Type:             "string",
 			ShortDescription: "Stripe account ID to generate the link for",
+			MostCommon:       true,
 		},
 	},
 }
@@ -27570,6 +33948,7 @@ var V1TerminalReadersCollectPaymentMethod = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the PaymentIntent to collect a payment method for",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -27587,6 +33966,7 @@ var V1TerminalReadersConfirmPaymentIntent = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the PaymentIntent to confirm",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -27599,15 +33979,18 @@ var V1TerminalReadersCreate = resource.OperationSpec{
 		"label": {
 			Type:             "string",
 			ShortDescription: "Custom label given to the reader for easier identification",
+			MostCommon:       true,
 		},
 		"location": {
 			Type:             "string",
 			ShortDescription: "The location to assign the reader to",
+			MostCommon:       true,
 		},
 		"registration_code": {
 			Type:             "string",
 			ShortDescription: "A code generated by the reader used for registering to an account",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -27680,6 +34063,7 @@ var V1TerminalReadersProcessPaymentIntent = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the PaymentIntent to process on the reader",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"process_config.allow_redisplay": {
 			Type:             "string",
@@ -27718,6 +34102,7 @@ var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "This field indicates whether this payment method can be shown again to its customer in a checkout flow",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "always"},
 				{Value: "limited"},
@@ -27732,6 +34117,7 @@ var V1TerminalReadersProcessSetupIntent = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ID of the SetupIntent to process on the reader",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -27744,18 +34130,22 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer in __cents__ representing how much of this charge to refund",
+			MostCommon:       true,
 		},
 		"charge": {
 			Type:             "string",
 			ShortDescription: "ID of the Charge to refund",
+			MostCommon:       true,
 		},
 		"payment_intent": {
 			Type:             "string",
 			ShortDescription: "ID of the PaymentIntent to refund",
+			MostCommon:       true,
 		},
 		"refund_application_fee": {
 			Type:             "boolean",
 			ShortDescription: "Boolean indicating whether the application fee should be refunded when refunding this charge",
+			MostCommon:       true,
 		},
 		"refund_payment_config.enable_customer_cancellation": {
 			Type:             "boolean",
@@ -27764,6 +34154,7 @@ var V1TerminalReadersRefundPayment = resource.OperationSpec{
 		"reverse_transfer": {
 			Type:             "boolean",
 			ShortDescription: "Boolean indicating whether the transfer should be reversed when refunding this charge",
+			MostCommon:       true,
 		},
 	},
 }
@@ -27782,7 +34173,7 @@ var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
 		"cart.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"cart.tax": {
@@ -27792,12 +34183,13 @@ var V1TerminalReadersSetReaderDisplay = resource.OperationSpec{
 		"cart.total": {
 			Type:             "integer",
 			ShortDescription: "Total balance of cart due in the [smallest currency unit](https://docs.stripe.com/currencies#zero-decimal)",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"type": {
 			Type:             "string",
 			ShortDescription: "Type of information to display",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "cart"},
 			},
@@ -27821,17 +34213,14 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 		"card.exp_month": {
 			Type:             "integer",
 			ShortDescription: "Two-digit number representing the card's expiration month",
-			Required:         true,
 		},
 		"card.exp_year": {
 			Type:             "integer",
 			ShortDescription: "Two- or four-digit number representing the card's expiration year",
-			Required:         true,
 		},
 		"card.number": {
 			Type:             "string",
 			ShortDescription: "The card number, as a string without any separators",
-			Required:         true,
 		},
 		"card_present.number": {
 			Type:             "string",
@@ -27844,6 +34233,7 @@ var V1TerminalReadersTestHelpersPresentPaymentMethod = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "Simulated payment type",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 				{Value: "card_present"},
@@ -27861,6 +34251,7 @@ var V1TerminalReadersTestHelpersSucceedInputCollection = resource.OperationSpec{
 		"skip_non_required_inputs": {
 			Type:             "string",
 			ShortDescription: "This parameter defines the skip behavior for input collection",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -27883,6 +34274,7 @@ var V1TerminalReadersUpdate = resource.OperationSpec{
 		"label": {
 			Type:             "string",
 			ShortDescription: "The new label of the reader",
+			MostCommon:       true,
 		},
 	},
 }
@@ -27895,21 +34287,19 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method": {
 			Type:             "string",
 			ShortDescription: "ID of an existing PaymentMethod",
+			MostCommon:       true,
 		},
 		"payment_method_data.acss_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "Customer's bank account number",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.institution_number": {
 			Type:             "string",
 			ShortDescription: "Institution number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.acss_debit.transit_number": {
 			Type:             "string",
 			ShortDescription: "Transit number of the customer's bank",
-			Required:         true,
 		},
 		"payment_method_data.allow_redisplay": {
 			Type:             "string",
@@ -27923,12 +34313,10 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.au_becs_debit.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.au_becs_debit.bsb_number": {
 			Type:             "string",
 			ShortDescription: "Bank-State-Branch number of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.bacs_debit.account_number": {
 			Type:             "string",
@@ -27937,6 +34325,30 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.bacs_debit.sort_code": {
 			Type:             "string",
 			ShortDescription: "Sort code of the bank account. (e.g., `10-20-30`)",
+		},
+		"payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -27957,7 +34369,6 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.boleto.tax_id": {
 			Type:             "string",
 			ShortDescription: "The tax ID of the customer (CPF for individual consumers or CNPJ for businesses consumers)",
-			Required:         true,
 		},
 		"payment_method_data.eps.bank": {
 			Type:             "string",
@@ -28004,7 +34415,6 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.fpx.bank": {
 			Type:             "string",
 			ShortDescription: "The customer's bank",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "affin_bank"},
 				{Value: "agrobank"},
@@ -28059,17 +34469,14 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.klarna.dob.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth, between 1 and 31",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth, between 1 and 12",
-			Required:         true,
 		},
 		"payment_method_data.klarna.dob.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of birth",
-			Required:         true,
 		},
 		"payment_method_data.naver_pay.funding": {
 			Type:             "string",
@@ -28086,17 +34493,14 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.bank_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.branch_code": {
 			Type:             "string",
 			ShortDescription: "The numeric code for the bank account's bank branch",
-			Required:         true,
 		},
 		"payment_method_data.nz_bank_account.reference": {
 			Type: "string",
@@ -28104,7 +34508,6 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.nz_bank_account.suffix": {
 			Type:             "string",
 			ShortDescription: "The suffix of the bank account number",
-			Required:         true,
 		},
 		"payment_method_data.p24.bank": {
 			Type:             "string",
@@ -28157,12 +34560,10 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.sepa_debit.iban": {
 			Type:             "string",
 			ShortDescription: "IBAN of the bank account",
-			Required:         true,
 		},
 		"payment_method_data.sofort.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter ISO code representing the country the bank account is located in",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "AT"},
 				{Value: "BE"},
@@ -28175,7 +34576,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "acss_debit"},
 				{Value: "affirm"},
@@ -28292,7 +34693,6 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"payment_method_options.card.installments.plan.type": {
 			Type:             "string",
 			ShortDescription: "Type of installment plan, one of `fixed_count`, `bonus`, or `revolving`",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bonus"},
 				{Value: "fixed_count"},
@@ -28302,10 +34702,12 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"return_url": {
 			Type:             "string",
 			ShortDescription: "Return URL used to confirm the Intent",
+			MostCommon:       true,
 		},
 		"setup_future_usage": {
 			Type:             "string",
 			ShortDescription: "Indicates that you intend to make future payments with this ConfirmationToken's payment method",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "off_session"},
 				{Value: "on_session"},
@@ -28338,7 +34740,7 @@ var V1TestHelpersConfirmationTokensCreate = resource.OperationSpec{
 		"shipping.name": {
 			Type:             "string",
 			ShortDescription: "Recipient name",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"shipping.phone": {
 			Type:             "string",
@@ -28356,11 +34758,13 @@ var V1TestHelpersCustomersFundCashBalance = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount to be used for this test cash balance transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"reference": {
@@ -28378,10 +34782,12 @@ var V1TestHelpersIssuingAuthorizationsCapture = resource.OperationSpec{
 		"capture_amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to capture from the authorization",
+			MostCommon:       true,
 		},
 		"close_authorization": {
 			Type:             "boolean",
 			ShortDescription: "Whether to close the authorization after capture",
+			MostCommon:       true,
 		},
 		"purchase_details.fleet.cardholder_prompt_data.driver_id": {
 			Type:             "string",
@@ -28521,6 +34927,7 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to authorize",
+			MostCommon:       true,
 		},
 		"amount_details.atm_fee": {
 			Type:             "integer",
@@ -28545,10 +34952,12 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Card associated with this authorization",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the authorization",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
@@ -29018,7 +35427,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"risk_assessment.card_testing_risk.level": {
 			Type:             "string",
 			ShortDescription: "The likelihood that this authorization is associated with card testing activity",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -29031,7 +35439,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"risk_assessment.fraud_risk.level": {
 			Type:             "string",
 			ShortDescription: "Stripe’s assessment of the likelihood of fraud on an authorization",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -29052,7 +35459,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"risk_assessment.merchant_dispute_risk.level": {
 			Type:             "string",
 			ShortDescription: "The likelihood that authorizations from this merchant will result in a dispute based on their history on Stripe Issuing",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "elevated"},
 				{Value: "highest"},
@@ -29083,7 +35489,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"verification_data.authentication_exemption.claimed_by": {
 			Type:             "string",
 			ShortDescription: "The entity that requested the exemption, either the acquiring merchant or the Issuing user",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "acquirer"},
 				{Value: "issuer"},
@@ -29092,7 +35497,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"verification_data.authentication_exemption.type": {
 			Type:             "string",
 			ShortDescription: "The specific exemption claimed for this authorization",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "low_value_transaction"},
 				{Value: "transaction_risk_analysis"},
@@ -29120,7 +35524,6 @@ var V1TestHelpersIssuingAuthorizationsCreate = resource.OperationSpec{
 		"verification_data.three_d_secure.result": {
 			Type:             "string",
 			ShortDescription: "The outcome of the 3D Secure authentication request",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "attempt_acknowledged"},
 				{Value: "authenticated"},
@@ -29155,6 +35558,7 @@ var V1TestHelpersIssuingAuthorizationsFinalizeAmount = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The final authorization amount that will be captured by the merchant",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"fleet.cardholder_prompt_data.driver_id": {
 			Type:             "string",
@@ -29265,10 +35669,12 @@ var V1TestHelpersIssuingAuthorizationsIncrement = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The amount to increment the authorization by",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"is_amount_controllable": {
 			Type:             "boolean",
 			ShortDescription: "If set `true`, you may provide [amount](https://docs.stripe.com/api/issuing/authorizations/approve#approve_issuing_authorization-amount) to control how much to hold for the authorization",
+			MostCommon:       true,
 		},
 	},
 }
@@ -29282,6 +35688,7 @@ var V1TestHelpersIssuingAuthorizationsRespond = resource.OperationSpec{
 			Type:             "boolean",
 			ShortDescription: "Whether to simulate the user confirming that the transaction was legitimate (true) or telling Stripe that it was fraudulent (false)",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -29294,6 +35701,7 @@ var V1TestHelpersIssuingAuthorizationsReverse = resource.OperationSpec{
 		"reverse_amount": {
 			Type:             "integer",
 			ShortDescription: "The amount to reverse from the authorization",
+			MostCommon:       true,
 		},
 	},
 }
@@ -29365,15 +35773,18 @@ var V1TestHelpersIssuingTransactionsCreateForceCapture = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to capture",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"card": {
 			Type:             "string",
 			ShortDescription: "Card associated with this transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the capture",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"merchant_data.category": {
@@ -29847,15 +36258,18 @@ var V1TestHelpersIssuingTransactionsCreateUnlinkedRefund = resource.OperationSpe
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to refund",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"card": {
 			Type:             "string",
 			ShortDescription: "Card associated with this unlinked refund transaction",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the unlinked refund",
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"merchant_data.category": {
@@ -30328,6 +36742,7 @@ var V1TestHelpersIssuingTransactionsRefund = resource.OperationSpec{
 		"refund_amount": {
 			Type:             "integer",
 			ShortDescription: "The total amount to attempt to refund",
+			MostCommon:       true,
 		},
 	},
 }
@@ -30354,17 +36769,14 @@ var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
 		"card.exp_month": {
 			Type:             "integer",
 			ShortDescription: "Two-digit number representing the card's expiration month",
-			Required:         true,
 		},
 		"card.exp_year": {
 			Type:             "integer",
 			ShortDescription: "Two- or four-digit number representing the card's expiration year",
-			Required:         true,
 		},
 		"card.number": {
 			Type:             "string",
 			ShortDescription: "The card number, as a string without any separators",
-			Required:         true,
 		},
 		"card_present.number": {
 			Type:             "string",
@@ -30377,6 +36789,7 @@ var V1TestHelpersTerminalReadersPresentPaymentMethod = resource.OperationSpec{
 		"type": {
 			Type:             "string",
 			ShortDescription: "Simulated payment type",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "card"},
 				{Value: "card_present"},
@@ -30394,6 +36807,7 @@ var V1TestHelpersTerminalReadersSucceedInputCollection = resource.OperationSpec{
 		"skip_non_required_inputs": {
 			Type:             "string",
 			ShortDescription: "This parameter defines the skip behavior for input collection",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -30417,6 +36831,7 @@ var V1TestHelpersTestClocksAdvance = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The time to advance the test clock",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 	},
@@ -30431,11 +36846,13 @@ var V1TestHelpersTestClocksCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "The initial frozen time for this test clock",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "unix-time",
 		},
 		"name": {
 			Type:             "string",
 			ShortDescription: "The name for this test clock",
+			MostCommon:       true,
 		},
 	},
 }
@@ -30555,12 +36972,12 @@ var V1TestHelpersTreasuryOutboundPaymentsUpdate = resource.OperationSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
 			ShortDescription: "ACH trace ID for funds sent over the `ach` network",
-			Required:         true,
 		},
 		"tracking_details.type": {
 			Type:             "string",
 			ShortDescription: "The US bank account network used to send funds",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -30625,12 +37042,12 @@ var V1TestHelpersTreasuryOutboundTransfersUpdate = resource.OperationSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
 			ShortDescription: "ACH trace ID for funds sent over the `ach` network",
-			Required:         true,
 		},
 		"tracking_details.type": {
 			Type:             "string",
 			ShortDescription: "The US bank account network used to send funds",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -30660,26 +37077,30 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to send funds to",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"initiating_payment_method_details.type": {
 			Type:             "string",
 			ShortDescription: "The source type",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -30700,6 +37121,7 @@ var V1TestHelpersTreasuryReceivedCreditsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies the network rails to be used",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -30717,26 +37139,30 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to pull funds from",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"initiating_payment_method_details.type": {
 			Type:             "string",
 			ShortDescription: "The source type",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -30757,6 +37183,7 @@ var V1TestHelpersTreasuryReceivedDebitsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies the network rails to be used",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 			},
@@ -30933,6 +37360,18 @@ var V1TokensCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The company's phone number (used for verification)",
 		},
+		"account.company.registration_date.day": {
+			Type:             "integer",
+			ShortDescription: "The day of registration, between 1 and 31",
+		},
+		"account.company.registration_date.month": {
+			Type:             "integer",
+			ShortDescription: "The month of registration, between 1 and 12",
+		},
+		"account.company.registration_date.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of registration",
+		},
 		"account.company.registration_number": {
 			Type:             "string",
 			ShortDescription: "The identification number given to a company when it is registered or incorporated, if distinct from the identification number used for filing taxes",
@@ -31079,6 +37518,18 @@ var V1TokensCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
 		},
+		"account.individual.dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+		},
+		"account.individual.dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+		},
+		"account.individual.dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
+		},
 		"account.individual.email": {
 			Type:             "string",
 			ShortDescription: "The individual's email address",
@@ -31222,7 +37673,7 @@ var V1TokensCreate = resource.OperationSpec{
 		"bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number for the bank account, in string form",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"bank_account.account_type": {
 			Type:             "string",
@@ -31237,7 +37688,7 @@ var V1TokensCreate = resource.OperationSpec{
 		"bank_account.country": {
 			Type:             "string",
 			ShortDescription: "The country in which the bank account is located",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"bank_account.currency": {
 			Type:             "string",
@@ -31252,9 +37703,65 @@ var V1TokensCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The routing number, sort code, or other country-appropriate institution number for the bank account",
 		},
-		"card": {
+		"card.address_city": {
 			Type:             "string",
-			ShortDescription: "The card this token will represent",
+			ShortDescription: "City / District / Suburb / Town / Village",
+		},
+		"card.address_country": {
+			Type:             "string",
+			ShortDescription: "Billing address country, if provided",
+		},
+		"card.address_line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1 (Street address / PO Box / Company name)",
+		},
+		"card.address_line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2 (Apartment / Suite / Unit / Building)",
+		},
+		"card.address_state": {
+			Type:             "string",
+			ShortDescription: "State / County / Province / Region",
+		},
+		"card.address_zip": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"card.currency": {
+			Type:             "string",
+			ShortDescription: "Required in order to add the card to an account; in all other cases, this parameter is not used",
+		},
+		"card.cvc": {
+			Type:             "string",
+			ShortDescription: "Card security code",
+		},
+		"card.exp_month": {
+			Type:             "string",
+			ShortDescription: "Two-digit number representing the card's expiration month",
+			MostCommon:       true,
+		},
+		"card.exp_year": {
+			Type:             "string",
+			ShortDescription: "Two- or four-digit number representing the card's expiration year",
+			MostCommon:       true,
+		},
+		"card.name": {
+			Type:             "string",
+			ShortDescription: "Cardholder's full name",
+		},
+		"card.networks.preferred": {
+			Type:             "string",
+			ShortDescription: "The customer's preferred card network for co-branded cards",
+			Enum: []resource.EnumSpec{
+				{Value: "cartes_bancaires"},
+				{Value: "mastercard"},
+				{Value: "visa"},
+			},
+		},
+		"card.number": {
+			Type:             "string",
+			ShortDescription: "The card number, as a string without any separators",
+			MostCommon:       true,
 		},
 		"customer": {
 			Type:             "string",
@@ -31263,7 +37770,7 @@ var V1TokensCreate = resource.OperationSpec{
 		"cvc_update.cvc": {
 			Type:             "string",
 			ShortDescription: "The CVC value, in string form",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"person.additional_tos_acceptances.account.date": {
 			Type:             "integer",
@@ -31357,6 +37864,18 @@ var V1TokensCreate = resource.OperationSpec{
 		"person.address_kanji.town": {
 			Type:             "string",
 			ShortDescription: "Town or cho-me",
+		},
+		"person.dob.day": {
+			Type:             "integer",
+			ShortDescription: "The day of birth, between 1 and 31",
+		},
+		"person.dob.month": {
+			Type:             "integer",
+			ShortDescription: "The month of birth, between 1 and 12",
+		},
+		"person.dob.year": {
+			Type:             "integer",
+			ShortDescription: "The four-digit year of birth",
 		},
 		"person.documents.company_authorization.files": {
 			Type:             "array",
@@ -31558,15 +38077,18 @@ var V1TopupsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "A positive integer representing how much to transfer",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"source": {
 			Type:             "string",
@@ -31635,6 +38157,7 @@ var V1TopupsUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 	},
 }
@@ -31647,10 +38170,12 @@ var V1TransferReversalsCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer in cents (or local equivalent) representing how much of this transfer to reverse",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string which you can attach to a reversal object",
+			MostCommon:       true,
 		},
 		"refund_application_fee": {
 			Type:             "boolean",
@@ -31699,21 +38224,25 @@ var V1TransfersCreate = resource.OperationSpec{
 		"amount": {
 			Type:             "integer",
 			ShortDescription: "A positive integer in cents (or local equivalent) representing how much to transfer",
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO code for currency](https://www.iso.org/iso-4217-currency-codes.html) in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"destination": {
 			Type:             "string",
 			ShortDescription: "The ID of a connected Stripe account. <a href=\"/docs/connect/separate-charges-and-transfers\">See the Connect documentation</a> for details",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"source_transaction": {
 			Type:             "string",
@@ -31781,6 +38310,7 @@ var V1TransfersUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 	},
 }
@@ -31794,6 +38324,7 @@ var V1TreasuryCreditReversalsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ReceivedCredit to reverse",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -31851,6 +38382,7 @@ var V1TreasuryDebitReversalsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "The ReceivedDebit to reverse",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -31923,7 +38455,7 @@ var V1TreasuryFinancialAccountsClose = resource.OperationSpec{
 		"forwarding_settings.type": {
 			Type:             "string",
 			ShortDescription: "The type of the bank account provided",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "payment_method"},
@@ -31940,51 +38472,43 @@ var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
 		"features.card_issuing.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.deposit_insurance.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.financial_addresses.aba.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.inbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.intra_stripe_flows.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_payments.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_payments.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_transfers.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "The nickname for the FinancialAccount",
+			MostCommon:       true,
 		},
 		"platform_restrictions.inbound_flows": {
 			Type:             "string",
@@ -32006,6 +38530,7 @@ var V1TreasuryFinancialAccountsCreate = resource.OperationSpec{
 			Type:             "array",
 			ShortDescription: "The currencies the FinancialAccount can hold a balance in",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -32062,47 +38587,38 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 		"features.card_issuing.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.deposit_insurance.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.financial_addresses.aba.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.inbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.intra_stripe_flows.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_payments.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_payments.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"features.outbound_transfers.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"forwarding_settings.financial_account": {
 			Type:             "string",
@@ -32115,7 +38631,7 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 		"forwarding_settings.type": {
 			Type:             "string",
 			ShortDescription: "The type of the bank account provided",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "payment_method"},
@@ -32124,6 +38640,7 @@ var V1TreasuryFinancialAccountsUpdate = resource.OperationSpec{
 		"nickname": {
 			Type:             "string",
 			ShortDescription: "The nickname for the FinancialAccount",
+			MostCommon:       true,
 		},
 		"platform_restrictions.inbound_flows": {
 			Type:             "string",
@@ -32152,47 +38669,41 @@ var V1TreasuryFinancialAccountsUpdateFeatures = resource.OperationSpec{
 		"card_issuing.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"deposit_insurance.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"financial_addresses.aba.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"inbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"intra_stripe_flows.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"outbound_payments.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"outbound_payments.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"outbound_transfers.ach.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 		"outbound_transfers.us_domestic_wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "Whether the FinancialAccount should have the Feature",
-			Required:         true,
 		},
 	},
 }
@@ -32212,30 +38723,36 @@ var V1TreasuryInboundTransfersCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to send funds to",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"origin_payment_method": {
 			Type:             "string",
 			ShortDescription: "The origin payment method to be debited for the InboundTransfer",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "The complete description that appears on your customers' statements",
+			MostCommon:       true,
 		},
 	},
 }
@@ -32335,24 +38852,53 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"customer": {
 			Type:             "string",
 			ShortDescription: "ID of the customer to whom the OutboundPayment is sent",
+			MostCommon:       true,
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"destination_payment_method": {
 			Type:             "string",
 			ShortDescription: "The PaymentMethod to use as the payment instrument for the OutboundPayment",
+			MostCommon:       true,
+		},
+		"destination_payment_method_data.billing_details.address.city": {
+			Type:             "string",
+			ShortDescription: "City, district, suburb, town, or village",
+		},
+		"destination_payment_method_data.billing_details.address.country": {
+			Type:             "string",
+			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
+		},
+		"destination_payment_method_data.billing_details.address.line1": {
+			Type:             "string",
+			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+		},
+		"destination_payment_method_data.billing_details.address.line2": {
+			Type:             "string",
+			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+		},
+		"destination_payment_method_data.billing_details.address.postal_code": {
+			Type:             "string",
+			ShortDescription: "ZIP or postal code",
+		},
+		"destination_payment_method_data.billing_details.address.state": {
+			Type:             "string",
+			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
 		},
 		"destination_payment_method_data.billing_details.email": {
 			Type:             "string",
@@ -32373,7 +38919,7 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 		"destination_payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the PaymentMethod",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
 				{Value: "us_bank_account"},
@@ -32407,6 +38953,14 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Routing number of the bank account",
 		},
+		"destination_payment_method_options.us_bank_account.network": {
+			Type:             "string",
+			ShortDescription: "Specifies the network rails to be used",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
+			},
+		},
 		"end_user_details.ip_address": {
 			Type:             "string",
 			ShortDescription: "IP address of the user initiating the OutboundPayment",
@@ -32414,16 +38968,18 @@ var V1TreasuryOutboundPaymentsCreate = resource.OperationSpec{
 		"end_user_details.present": {
 			Type:             "boolean",
 			ShortDescription: "`True` if the OutboundPayment creation request is being made on behalf of an end user by a platform",
-			Required:         true,
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to pull funds from",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "The description that appears on the receiving end for this OutboundPayment (for example, bank statement for external bank transfer)",
+			MostCommon:       true,
 		},
 	},
 }
@@ -32522,12 +39078,12 @@ var V1TreasuryOutboundPaymentsTestHelpersUpdate = resource.OperationSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
 			ShortDescription: "ACH trace ID for funds sent over the `ach` network",
-			Required:         true,
 		},
 		"tracking_details.type": {
 			Type:             "string",
 			ShortDescription: "The US bank account network used to send funds",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -32563,20 +39119,24 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"destination_payment_method": {
 			Type:             "string",
 			ShortDescription: "The PaymentMethod to use as the payment instrument for the OutboundTransfer",
+			MostCommon:       true,
 		},
 		"destination_payment_method_data.financial_account": {
 			Type:             "string",
@@ -32585,19 +39145,29 @@ var V1TreasuryOutboundTransfersCreate = resource.OperationSpec{
 		"destination_payment_method_data.type": {
 			Type:             "string",
 			ShortDescription: "The type of the destination",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "financial_account"},
+			},
+		},
+		"destination_payment_method_options.us_bank_account.network": {
+			Type:             "string",
+			ShortDescription: "Specifies the network rails to be used",
+			Enum: []resource.EnumSpec{
+				{Value: "ach"},
+				{Value: "us_domestic_wire"},
 			},
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to pull funds from",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
 			ShortDescription: "Statement descriptor to be shown on the receiving end of an OutboundTransfer",
+			MostCommon:       true,
 		},
 	},
 }
@@ -32688,12 +39258,12 @@ var V1TreasuryOutboundTransfersTestHelpersUpdate = resource.OperationSpec{
 		"tracking_details.ach.trace_id": {
 			Type:             "string",
 			ShortDescription: "ACH trace ID for funds sent over the `ach` network",
-			Required:         true,
 		},
 		"tracking_details.type": {
 			Type:             "string",
 			ShortDescription: "The US bank account network used to send funds",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -32762,26 +39332,30 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to send funds to",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"initiating_payment_method_details.type": {
 			Type:             "string",
 			ShortDescription: "The source type",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -32802,6 +39376,7 @@ var V1TreasuryReceivedCreditsTestHelpersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies the network rails to be used",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 				{Value: "us_domestic_wire"},
@@ -32858,26 +39433,30 @@ var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
 			Type:             "integer",
 			ShortDescription: "Amount (in cents) to be transferred",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
 			Required:         true,
+			MostCommon:       true,
 			Format:           "currency",
 		},
 		"description": {
 			Type:             "string",
 			ShortDescription: "An arbitrary string attached to the object",
+			MostCommon:       true,
 		},
 		"financial_account": {
 			Type:             "string",
 			ShortDescription: "The FinancialAccount to pull funds from",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"initiating_payment_method_details.type": {
 			Type:             "string",
 			ShortDescription: "The source type",
-			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "us_bank_account"},
 			},
@@ -32898,6 +39477,7 @@ var V1TreasuryReceivedDebitsTestHelpersCreate = resource.OperationSpec{
 			Type:             "string",
 			ShortDescription: "Specifies the network rails to be used",
 			Required:         true,
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "ach"},
 			},
@@ -33015,6 +39595,7 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 		"api_version": {
 			Type:             "string",
 			ShortDescription: "Events sent to this endpoint will be generated with this Stripe Version instead of your account's default Stripe Version",
+			MostCommon:       true,
 			Enum: []resource.EnumSpec{
 				{Value: "2011-01-01"},
 				{Value: "2011-06-21"},
@@ -33147,16 +39728,19 @@ var V1WebhookEndpointsCreate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An optional description of what the webhook is used for",
+			MostCommon:       true,
 		},
 		"enabled_events": {
 			Type:             "array",
 			ShortDescription: "The list of events to enable for this endpoint",
 			Required:         true,
+			MostCommon:       true,
 		},
 		"url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
 			Required:         true,
+			MostCommon:       true,
 		},
 	},
 }
@@ -33201,6 +39785,7 @@ var V1WebhookEndpointsUpdate = resource.OperationSpec{
 		"description": {
 			Type:             "string",
 			ShortDescription: "An optional description of what the webhook is used for",
+			MostCommon:       true,
 		},
 		"disabled": {
 			Type:             "boolean",
@@ -33209,10 +39794,12 @@ var V1WebhookEndpointsUpdate = resource.OperationSpec{
 		"enabled_events": {
 			Type:             "array",
 			ShortDescription: "The list of events to enable for this endpoint",
+			MostCommon:       true,
 		},
 		"url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
+			MostCommon:       true,
 		},
 	},
 }
@@ -33300,12 +39887,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 		"use_case.account_onboarding.configurations": {
 			Type:             "array",
 			ShortDescription: "Open Enum",
-			Required:         true,
 		},
 		"use_case.account_onboarding.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid",
-			Required:         true,
 		},
 		"use_case.account_onboarding.return_url": {
 			Type:             "string",
@@ -33330,12 +39915,10 @@ var V2CoreAccountLinksCreate = resource.OperationSpec{
 		"use_case.account_update.configurations": {
 			Type:             "array",
 			ShortDescription: "Open Enum",
-			Required:         true,
 		},
 		"use_case.account_update.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the Account Link is expired, has been used, or is otherwise invalid",
-			Required:         true,
 		},
 		"use_case.account_update.return_url": {
 			Type:             "string",
@@ -33393,27 +39976,22 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33421,12 +39999,10 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33442,7 +40018,6 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33458,7 +40033,6 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33466,12 +40040,10 @@ var V2CoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33634,13 +40206,11 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
-			Required:         true,
 			Format:           "date-time",
 		},
 		"additional_terms_of_service.account.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
-			Required:         true,
 		},
 		"additional_terms_of_service.account.user_agent": {
 			Type:             "string",
@@ -33653,7 +40223,6 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"address.line1": {
 			Type:             "string",
@@ -33678,27 +40247,22 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33706,12 +40270,10 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33723,12 +40285,10 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33740,12 +40300,10 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.secondary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -33753,12 +40311,10 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -33839,7 +40395,6 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"script_addresses.kana.line1": {
 			Type:             "string",
@@ -33868,7 +40423,6 @@ var V2CoreAccountPersonsCreate = resource.OperationSpec{
 		"script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"script_addresses.kanji.line1": {
 			Type:             "string",
@@ -33990,27 +40544,22 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34018,12 +40567,10 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34039,7 +40586,6 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34055,7 +40601,6 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34063,12 +40608,10 @@ var V2CoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34305,12 +40848,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -34319,12 +40860,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34332,12 +40871,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34345,12 +40882,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34358,12 +40893,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34371,12 +40904,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34384,12 +40915,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34405,7 +40934,6 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34413,12 +40941,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34426,12 +40952,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34439,12 +40963,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34456,12 +40978,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -34474,17 +40994,14 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -34624,27 +41141,22 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34652,12 +41164,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34673,7 +41183,6 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34689,7 +41198,6 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -34697,12 +41205,10 @@ var V2CoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -34906,7 +41412,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.customer.capabilities.automatic_indirect_tax.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.customer.shipping.address.city": {
 			Type:             "string",
@@ -34967,222 +41472,178 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.capabilities.ach_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.acss_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.affirm_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.afterpay_clearpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.alma_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.amazon_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.au_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.bacs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.bancontact_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.card_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.cartes_bancaires_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.cashapp_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.eps_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.fpx_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.gb_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.grabpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.ideal_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.jcb_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.jp_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.kakao_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.klarna_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.konbini_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.kr_card_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.link_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.multibanco_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.mx_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.oxxo_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.p24_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.pay_by_bank_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.payco_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.promptpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.revolut_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.samsung_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.twint_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.us_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.zip_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.card_payments.decline_on.avs_failure": {
 			Type:             "boolean",
@@ -35243,7 +41704,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.support.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"configuration.merchant.support.address.line1": {
 			Type:             "string",
@@ -35280,7 +41740,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"contact_email": {
 			Type:             "string",
@@ -35322,7 +41781,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -35333,7 +41791,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -35405,13 +41862,11 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.attestations.terms_of_service.account.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
-			Required:         true,
 			Format:           "date-time",
 		},
 		"identity.attestations.terms_of_service.account.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
-			Required:         true,
 		},
 		"identity.attestations.terms_of_service.account.user_agent": {
 			Type:             "string",
@@ -35424,7 +41879,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.address.line1": {
 			Type:             "string",
@@ -35449,12 +41903,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -35463,12 +41915,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35476,12 +41926,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35489,12 +41937,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35502,12 +41948,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35515,12 +41959,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35528,12 +41970,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35545,12 +41985,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -35558,12 +41996,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35571,12 +42007,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35584,12 +42018,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35601,12 +42033,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -35619,17 +42049,14 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -35638,7 +42065,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.line1": {
 			Type:             "string",
@@ -35667,7 +42093,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kanji.line1": {
 			Type:             "string",
@@ -35751,7 +42176,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.address.line1": {
 			Type:             "string",
@@ -35776,27 +42200,22 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35804,12 +42223,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35821,12 +42238,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -35838,12 +42253,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -35851,12 +42264,10 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -35921,7 +42332,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.script_addresses.kana.line1": {
 			Type:             "string",
@@ -35950,7 +42360,6 @@ var V2CoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.script_addresses.kanji.line1": {
 			Type:             "string",
@@ -36478,7 +42887,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -36489,7 +42897,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -36628,12 +43035,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -36642,12 +43047,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36655,12 +43058,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36668,12 +43069,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36681,12 +43080,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36694,12 +43091,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36707,12 +43102,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36728,7 +43121,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -36736,12 +43128,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36749,12 +43139,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36762,12 +43150,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36779,12 +43165,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -36797,17 +43181,14 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -36951,27 +43332,22 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -36979,12 +43355,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -37000,7 +43374,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -37016,7 +43389,6 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -37024,12 +43396,10 @@ var V2CoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -37178,12 +43548,10 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
 			ShortDescription: "The AWS account ID",
-			Required:         true,
 		},
 		"amazon_eventbridge.aws_region": {
 			Type:             "string",
 			ShortDescription: "The region of the AWS event source",
-			Required:         true,
 		},
 		"description": {
 			Type:             "string",
@@ -37232,7 +43600,6 @@ var V2CoreEventDestinationsCreate = resource.OperationSpec{
 		"webhook_endpoint.url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
-			Required:         true,
 		},
 	},
 }
@@ -37317,7 +43684,6 @@ var V2CoreEventDestinationsUpdate = resource.OperationSpec{
 		"webhook_endpoint.url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
-			Required:         true,
 		},
 	},
 }
@@ -37385,7 +43751,6 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 		"calculation.tax.type": {
 			Type:             "string",
 			ShortDescription: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -37398,7 +43763,6 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 		"invoice.time_until_due.interval": {
 			Type:             "string",
 			ShortDescription: "The interval unit for the time until due",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -37409,7 +43773,6 @@ var V2PreviewBillingBillSettingsCreate = resource.OperationSpec{
 		"invoice.time_until_due.interval_count": {
 			Type:             "integer",
 			ShortDescription: "The number of interval units",
-			Required:         true,
 		},
 		"invoice_rendering_template": {
 			Type:             "string",
@@ -37459,7 +43822,6 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 		"calculation.tax.type": {
 			Type:             "string",
 			ShortDescription: "Determines if tax will be calculated automatically based on a PTC or manually based on rules defined by the merchant",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "manual"},
@@ -37472,7 +43834,6 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 		"invoice.time_until_due.interval": {
 			Type:             "string",
 			ShortDescription: "The interval unit for the time until due",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "day"},
 				{Value: "month"},
@@ -37483,7 +43844,6 @@ var V2PreviewBillingBillSettingsUpdate = resource.OperationSpec{
 		"invoice.time_until_due.interval_count": {
 			Type:             "integer",
 			ShortDescription: "The number of interval units",
-			Required:         true,
 		},
 		"invoice_rendering_template": {
 			Type:             "string",
@@ -37516,17 +43876,14 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		"billing_cycle.day.time.hour": {
 			Type:             "integer",
 			ShortDescription: "The hour at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.day.time.minute": {
 			Type:             "integer",
 			ShortDescription: "The minute at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.day.time.second": {
 			Type:             "integer",
 			ShortDescription: "The second at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.interval_count": {
 			Type:             "integer",
@@ -37535,7 +43892,6 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		"billing_cycle.month.day_of_month": {
 			Type:             "integer",
 			ShortDescription: "The day to anchor the billing on for a type=\"month\" billing cycle from\n1-31",
-			Required:         true,
 		},
 		"billing_cycle.month.month_of_year": {
 			Type:             "integer",
@@ -37544,17 +43900,14 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		"billing_cycle.month.time.hour": {
 			Type:             "integer",
 			ShortDescription: "The hour at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.month.time.minute": {
 			Type:             "integer",
 			ShortDescription: "The minute at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.month.time.second": {
 			Type:             "integer",
 			ShortDescription: "The second at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.type": {
 			Type:             "string",
@@ -37570,22 +43923,18 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		"billing_cycle.week.day_of_week": {
 			Type:             "integer",
 			ShortDescription: "The day of the week to bill the type=week billing cycle on",
-			Required:         true,
 		},
 		"billing_cycle.week.time.hour": {
 			Type:             "integer",
 			ShortDescription: "The hour at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.week.time.minute": {
 			Type:             "integer",
 			ShortDescription: "The minute at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.week.time.second": {
 			Type:             "integer",
 			ShortDescription: "The second at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.year.day_of_month": {
 			Type:             "integer",
@@ -37598,17 +43947,14 @@ var V2PreviewBillingCadencesCreate = resource.OperationSpec{
 		"billing_cycle.year.time.hour": {
 			Type:             "integer",
 			ShortDescription: "The hour at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.year.time.minute": {
 			Type:             "integer",
 			ShortDescription: "The minute at which the billing cycle ends",
-			Required:         true,
 		},
 		"billing_cycle.year.time.second": {
 			Type:             "integer",
 			ShortDescription: "The second at which the billing cycle ends",
-			Required:         true,
 		},
 		"lookup_key": {
 			Type:             "string",
@@ -37722,12 +44068,10 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 		"email_delivery.payment_due.enabled": {
 			Type:             "boolean",
 			ShortDescription: "If true an email for the invoice would be generated and sent out",
-			Required:         true,
 		},
 		"email_delivery.payment_due.include_payment_link": {
 			Type:             "boolean",
 			ShortDescription: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice",
-			Required:         true,
 		},
 		"lookup_key": {
 			Type:             "string",
@@ -37797,7 +44141,6 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
 			Type:             "string",
 			ShortDescription: "The desired country code of the bank account information",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "BE"},
 				{Value: "DE"},
@@ -37840,7 +44183,6 @@ var V2PreviewBillingCollectionSettingsCreate = resource.OperationSpec{
 		"payment_method_options.us_bank_account.verification_method": {
 			Type:             "string",
 			ShortDescription: "Verification method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "instant"},
@@ -37899,12 +44241,10 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 		"email_delivery.payment_due.enabled": {
 			Type:             "boolean",
 			ShortDescription: "If true an email for the invoice would be generated and sent out",
-			Required:         true,
 		},
 		"email_delivery.payment_due.include_payment_link": {
 			Type:             "boolean",
 			ShortDescription: "If true the payment link to hosted invoice page would be included in email and PDF of the invoice",
-			Required:         true,
 		},
 		"live_version": {
 			Type:             "string",
@@ -37978,7 +44318,6 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 		"payment_method_options.customer_balance.bank_transfer.eu_bank_transfer.country": {
 			Type:             "string",
 			ShortDescription: "The desired country code of the bank account information",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "BE"},
 				{Value: "DE"},
@@ -38021,7 +44360,6 @@ var V2PreviewBillingCollectionSettingsUpdate = resource.OperationSpec{
 		"payment_method_options.us_bank_account.verification_method": {
 			Type:             "string",
 			ShortDescription: "Verification method",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "automatic"},
 				{Value: "instant"},
@@ -38210,12 +44548,10 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 		"use_case.account_onboarding.configurations": {
 			Type:             "array",
 			ShortDescription: "Open Enum",
-			Required:         true,
 		},
 		"use_case.account_onboarding.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the AccountLink is expired, has been used, or is otherwise invalid",
-			Required:         true,
 		},
 		"use_case.account_onboarding.return_url": {
 			Type:             "string",
@@ -38240,12 +44576,10 @@ var V2PreviewCoreAccountLinksCreate = resource.OperationSpec{
 		"use_case.account_update.configurations": {
 			Type:             "array",
 			ShortDescription: "Open Enum",
-			Required:         true,
 		},
 		"use_case.account_update.refresh_url": {
 			Type:             "string",
 			ShortDescription: "The URL the user will be redirected to if the Account Link is expired, has been used, or is otherwise invalid",
-			Required:         true,
 		},
 		"use_case.account_update.return_url": {
 			Type:             "string",
@@ -38304,27 +44638,22 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38332,12 +44661,10 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38353,7 +44680,6 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38369,7 +44695,6 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38377,12 +44702,10 @@ var V2PreviewCoreAccountPersonTokensCreate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38547,13 +44870,11 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"additional_terms_of_service.account.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
-			Required:         true,
 			Format:           "date-time",
 		},
 		"additional_terms_of_service.account.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
-			Required:         true,
 		},
 		"additional_terms_of_service.account.user_agent": {
 			Type:             "string",
@@ -38566,7 +44887,6 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"address.line1": {
 			Type:             "string",
@@ -38591,27 +44911,22 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38619,12 +44934,10 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38636,12 +44949,10 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38653,12 +44964,10 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.secondary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38666,12 +44975,10 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38752,7 +45059,6 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"script_addresses.kana.line1": {
 			Type:             "string",
@@ -38781,7 +45087,6 @@ var V2PreviewCoreAccountPersonsCreate = resource.OperationSpec{
 		"script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"script_addresses.kanji.line1": {
 			Type:             "string",
@@ -38907,27 +45212,22 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		"date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38935,12 +45235,10 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -38956,7 +45254,6 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38972,7 +45269,6 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -38980,12 +45276,10 @@ var V2PreviewCoreAccountPersonsUpdate = resource.OperationSpec{
 		"documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39227,12 +45521,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -39241,12 +45533,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39254,12 +45544,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39267,12 +45555,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39280,12 +45566,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39293,12 +45577,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39306,12 +45588,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39327,7 +45607,6 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -39335,12 +45614,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39348,12 +45625,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39361,12 +45636,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39378,12 +45651,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -39396,17 +45667,14 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -39546,27 +45814,22 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39574,12 +45837,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39595,7 +45856,6 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -39611,7 +45871,6 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -39619,12 +45878,10 @@ var V2PreviewCoreAccountTokensCreate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -39841,7 +46098,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.customer.capabilities.automatic_indirect_tax.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.customer.shipping.address.city": {
 			Type:             "string",
@@ -39902,222 +46158,178 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.capabilities.ach_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.acss_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.affirm_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.afterpay_clearpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.alma_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.amazon_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.au_becs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.bacs_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.bancontact_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.blik_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.boleto_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.card_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.cartes_bancaires_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.cashapp_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.eps_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.fpx_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.gb_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.grabpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.ideal_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.jcb_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.jp_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.kakao_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.klarna_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.konbini_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.kr_card_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.link_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.mobilepay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.multibanco_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.mx_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.naver_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.oxxo_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.p24_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.pay_by_bank_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.payco_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.paynow_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.promptpay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.revolut_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.samsung_pay_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.sepa_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.sepa_debit_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.swish_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.twint_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.us_bank_transfer_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.capabilities.zip_payments.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.merchant.card_payments.decline_on.avs_failure": {
 			Type:             "boolean",
@@ -40187,7 +46399,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.merchant.support.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"configuration.merchant.support.address.line1": {
 			Type:             "string",
@@ -40224,72 +46435,58 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"configuration.recipient.capabilities.bank_accounts.local.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.recipient.capabilities.bank_accounts.wire.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.recipient.capabilities.cards.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.recipient.capabilities.stripe_balance.stripe_transfers.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.financial_addresses.bank_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.holds_currencies.eur.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.holds_currencies.gbp.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.holds_currencies.usd.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.inbound_transfers.bank_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.outbound_payments.bank_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.outbound_payments.cards.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.outbound_payments.financial_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.outbound_transfers.bank_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"configuration.storer.capabilities.outbound_transfers.financial_accounts.requested": {
 			Type:             "boolean",
 			ShortDescription: "To request a new Capability for an account, pass true",
-			Required:         true,
 		},
 		"contact_email": {
 			Type:             "string",
@@ -40331,7 +46528,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -40342,7 +46538,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -40418,13 +46613,11 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.attestations.terms_of_service.account.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
-			Required:         true,
 			Format:           "date-time",
 		},
 		"identity.attestations.terms_of_service.account.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
-			Required:         true,
 		},
 		"identity.attestations.terms_of_service.account.user_agent": {
 			Type:             "string",
@@ -40433,13 +46626,11 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.attestations.terms_of_service.storer.date": {
 			Type:             "string",
 			ShortDescription: "The time when the Account's representative accepted the terms of service",
-			Required:         true,
 			Format:           "date-time",
 		},
 		"identity.attestations.terms_of_service.storer.ip": {
 			Type:             "string",
 			ShortDescription: "The IP address from which the Account's representative accepted the terms of service",
-			Required:         true,
 		},
 		"identity.attestations.terms_of_service.storer.user_agent": {
 			Type:             "string",
@@ -40452,7 +46643,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.address.line1": {
 			Type:             "string",
@@ -40477,12 +46667,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -40491,12 +46679,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40504,12 +46690,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40517,12 +46701,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40530,12 +46712,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40543,12 +46723,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40556,12 +46734,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40573,12 +46749,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -40586,12 +46760,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40599,12 +46771,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40612,12 +46782,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40629,12 +46797,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -40647,17 +46813,14 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -40666,7 +46829,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.line1": {
 			Type:             "string",
@@ -40695,7 +46857,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.business_details.script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kanji.line1": {
 			Type:             "string",
@@ -40779,7 +46940,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.address.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.address.line1": {
 			Type:             "string",
@@ -40804,27 +46964,22 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40832,12 +46987,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40849,12 +47002,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -40866,12 +47017,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.front_back.front": {
 			Type:             "string",
 			ShortDescription: "A [file upload](https://docs.stripe.com/api/persons/update#create_file) token representing the front of the verification document",
-			Required:         true,
 		},
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -40879,12 +47028,10 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -40949,7 +47096,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.script_addresses.kana.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.script_addresses.kana.line1": {
 			Type:             "string",
@@ -40978,7 +47124,6 @@ var V2PreviewCoreAccountsCreate = resource.OperationSpec{
 		"identity.individual.script_addresses.kanji.country": {
 			Type:             "string",
 			ShortDescription: "Two-letter country code ([ISO 3166-1 alpha-2](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2))",
-			Required:         true,
 		},
 		"identity.individual.script_addresses.kanji.line1": {
 			Type:             "string",
@@ -41588,7 +47733,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"defaults.responsibilities.fees_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating the party responsible for collecting fees from this account",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "application_custom"},
@@ -41599,7 +47743,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"defaults.responsibilities.losses_collector": {
 			Type:             "string",
 			ShortDescription: "A value indicating who is responsible for losses when this Account can’t pay back negative balances from payments",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "application"},
 				{Value: "stripe"},
@@ -41742,12 +47885,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.annual_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.annual_revenue.fiscal_year_end": {
 			Type:             "string",
@@ -41756,12 +47897,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.bank_account_ownership_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.bank_account_ownership_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41769,12 +47908,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_license.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_license.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41782,12 +47919,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_memorandum_of_association.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_memorandum_of_association.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41795,12 +47930,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_ministerial_decree.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_ministerial_decree.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41808,12 +47941,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_registration_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_registration_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41821,12 +47952,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.company_tax_id_verification.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.company_tax_id_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41842,7 +47971,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -41850,12 +47978,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_address.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_address.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41863,12 +47989,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_registration.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_registration.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41876,12 +48000,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.business_details.documents.proof_of_ultimate_beneficial_ownership.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -41893,12 +48015,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.monthly_estimated_revenue.amount.currency": {
 			Type:             "string",
 			ShortDescription: "Three-letter [ISO currency code](https://www.iso.org/iso-4217-currency-codes.html), in lowercase",
-			Required:         true,
 		},
 		"identity.business_details.monthly_estimated_revenue.amount.value": {
 			Type:             "integer",
 			ShortDescription: "A non-negative integer representing how much to charge in the [smallest currency unit](https://docs.stripe.com/currencies#minor-units)",
-			Required:         true,
 		},
 		"identity.business_details.phone": {
 			Type:             "string",
@@ -41911,17 +48031,14 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.business_details.registration_date.day": {
 			Type:             "integer",
 			ShortDescription: "The day of registration, between 1 and 31",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.month": {
 			Type:             "integer",
 			ShortDescription: "The month of registration, between 1 and 12",
-			Required:         true,
 		},
 		"identity.business_details.registration_date.year": {
 			Type:             "integer",
 			ShortDescription: "The four-digit year of registration",
-			Required:         true,
 		},
 		"identity.business_details.script_addresses.kana.city": {
 			Type:             "string",
@@ -42065,27 +48182,22 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.date_of_birth.day": {
 			Type:             "integer",
 			ShortDescription: "The day of the birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.month": {
 			Type:             "integer",
 			ShortDescription: "The month of birth",
-			Required:         true,
 		},
 		"identity.individual.date_of_birth.year": {
 			Type:             "integer",
 			ShortDescription: "The year of birth",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.company_authorization.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -42093,12 +48205,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.passport.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.passport.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -42114,7 +48224,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.primary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -42130,7 +48239,6 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.secondary_verification.type": {
 			Type:             "string",
 			ShortDescription: "The format of the verification document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "front_back"},
 			},
@@ -42138,12 +48246,10 @@ var V2PreviewCoreAccountsUpdate = resource.OperationSpec{
 		"identity.individual.documents.visa.files": {
 			Type:             "array",
 			ShortDescription: "One or more document IDs returned by a [file upload](https://docs.stripe.com/api/persons/update#create_file) with a purpose value of `account_requirement`",
-			Required:         true,
 		},
 		"identity.individual.documents.visa.type": {
 			Type:             "string",
 			ShortDescription: "The format of the document",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "files"},
 			},
@@ -42317,7 +48423,6 @@ var V2PreviewCoreBatchJobsCreate = resource.OperationSpec{
 		"notification_suppression.scope": {
 			Type:             "string",
 			ShortDescription: "The scope of notification suppression",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "all"},
 				{Value: "none"},
@@ -42347,12 +48452,10 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 		"amazon_eventbridge.aws_account_id": {
 			Type:             "string",
 			ShortDescription: "The AWS account ID",
-			Required:         true,
 		},
 		"amazon_eventbridge.aws_region": {
 			Type:             "string",
 			ShortDescription: "The region of the AWS event source",
-			Required:         true,
 		},
 		"description": {
 			Type:             "string",
@@ -42402,7 +48505,6 @@ var V2PreviewCoreEventDestinationsCreate = resource.OperationSpec{
 		"webhook_endpoint.url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
-			Required:         true,
 		},
 	},
 }
@@ -42494,7 +48596,6 @@ var V2PreviewCoreEventDestinationsUpdate = resource.OperationSpec{
 		"webhook_endpoint.url": {
 			Type:             "string",
 			ShortDescription: "The URL of the webhook endpoint",
-			Required:         true,
 		},
 	},
 }
@@ -42574,7 +48675,6 @@ var V2PreviewCoreVaultsGbBankAccountsCreate = resource.OperationSpec{
 		"confirmation_of_payee.initiate": {
 			Type:             "boolean",
 			ShortDescription: "User specifies whether Confirmation of Payee is automatically initiated when creating the bank account",
-			Required:         true,
 		},
 		"confirmation_of_payee.name": {
 			Type:             "string",
@@ -42876,7 +48976,6 @@ var V2PreviewMoneyManagementFinancialAccountsCreate = resource.OperationSpec{
 		"storage.holds_currencies": {
 			Type:             "array",
 			ShortDescription: "The currencies that this FinancialAccount can hold",
-			Required:         true,
 		},
 		"type": {
 			Type:             "string",
@@ -43194,7 +49293,6 @@ var V2PreviewMoneyManagementOutboundPaymentsCreate = resource.OperationSpec{
 		"recipient_notification.setting": {
 			Type:             "string",
 			ShortDescription: "Closed Enum",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "configured"},
 				{Value: "none"},
@@ -43293,7 +49391,6 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 		"payout_method_data.bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number or IBAN of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.bank_account_type": {
 			Type:             "string",
@@ -43310,12 +49407,10 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 		"payout_method_data.bank_account.country": {
 			Type:             "string",
 			ShortDescription: "The country code of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.routing_number": {
 			Type:             "string",
@@ -43328,27 +49423,22 @@ var V2PreviewMoneyManagementOutboundSetupIntentsCreate = resource.OperationSpec{
 		"payout_method_data.card.currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the card",
-			Required:         true,
 		},
 		"payout_method_data.card.exp_month": {
 			Type:             "string",
 			ShortDescription: "The expiration month of the card",
-			Required:         true,
 		},
 		"payout_method_data.card.exp_year": {
 			Type:             "string",
 			ShortDescription: "The expiration year of the card",
-			Required:         true,
 		},
 		"payout_method_data.card.number": {
 			Type:             "string",
 			ShortDescription: "The card number",
-			Required:         true,
 		},
 		"payout_method_data.type": {
 			Type:             "string",
 			ShortDescription: "Closed Enum",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},
@@ -43403,7 +49493,6 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 		"payout_method_data.bank_account.account_number": {
 			Type:             "string",
 			ShortDescription: "The account number or IBAN of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.bank_account_type": {
 			Type:             "string",
@@ -43420,12 +49509,10 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 		"payout_method_data.bank_account.country": {
 			Type:             "string",
 			ShortDescription: "The country code of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.currency": {
 			Type:             "string",
 			ShortDescription: "The currency of the bank account",
-			Required:         true,
 		},
 		"payout_method_data.bank_account.routing_number": {
 			Type:             "string",
@@ -43454,7 +49541,6 @@ var V2PreviewMoneyManagementOutboundSetupIntentsUpdate = resource.OperationSpec{
 		"payout_method_data.type": {
 			Type:             "string",
 			ShortDescription: "Closed Enum",
-			Required:         true,
 			Enum: []resource.EnumSpec{
 				{Value: "bank_account"},
 				{Value: "card"},

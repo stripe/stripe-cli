@@ -268,6 +268,25 @@ func init() {
 	// For known plugins not yet installed, add a hint command so users get
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
+
+	// Override the default help subcommand so that `stripe help customers create`
+	// shows all parameters (full-help mode), while `stripe customers create --help`
+	// shows only required/most-common parameters.
+	rootCmd.SetHelpCommand(&cobra.Command{
+		Use:   "help [command]",
+		Short: "Help about any command",
+		Long:  "Help provides help for any command in the application, including all parameters.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			target, _, _ := rootCmd.Find(args)
+			if target == nil || target == rootCmd {
+				return rootCmd.Usage()
+			}
+			ctx := context.WithValue(cmd.Context(), fullHelpModeKey{}, true)
+			target.SetContext(ctx)
+			return target.Help()
+		},
+		DisableFlagParsing: true,
+	})
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {

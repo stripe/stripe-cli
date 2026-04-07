@@ -195,6 +195,12 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 		cmd.Flags().SetAnnotation(flagName, "apitype", []string{paramSpec.Type})
+		if paramSpec.Required {
+			cmd.Flags().SetAnnotation(flagName, "required", []string{"true"})
+		}
+		if paramSpec.MostCommon {
+			cmd.Flags().SetAnnotation(flagName, "mostcommon", []string{"true"})
+		}
 		if paramSpec.Format != "" {
 			cmd.Flags().SetAnnotation(flagName, "format", []string{paramSpec.Format})
 		}

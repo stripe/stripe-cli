@@ -40,64 +40,110 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
 }
 
+// fullHelpModeKey is the context key used to signal full-help mode (show all params).
+// Set by the custom help subcommand; checked by WrappedRequestParamsFlagUsages.
+type fullHelpModeKey struct{}
+
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
 // commands to set values for request parameters.
+//
+// By default, only flags annotated "required" or "mostcommon" are shown, followed
+// by a "N more parameters" message. If the command's context has fullHelpModeKey set
+// (via `stripe help <command>`), or if no flags have either annotation, all flags
+// are shown.
 //
 // For enum parameters, the possible values are shown inline (e.g. --status
 // complete|expired|open), truncated with "..." if they would exceed the
 // terminal width. For other parameters, the API type is shown in angle
 // brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
-	var sb strings.Builder
+	fullHelp := cmd.Context() != nil && cmd.Context().Value(fullHelpModeKey{}) != nil
 
 	descIndent := strings.Repeat(" ", 10)
 	termWidth := getTerminalWidth()
+
+	// Collect all request flags, and separately the filtered (required/mostcommon) subset.
+	var allFlags []*pflag.Flag
+	var filteredFlags []*pflag.Flag
+	hasAnnotations := false
 
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 		if _, ok := flag.Annotations["request"]; !ok {
 			return
 		}
-
-		if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
-			const maxDisplayedEnumValues = 5
-			prefix := fmt.Sprintf("      --%s ", flag.Name)
-
-			if len(enumVals) <= maxDisplayedEnumValues {
-				fmt.Fprintf(&sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
-			} else {
-				fmt.Fprintf(&sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
-			}
-		} else if apiType, ok := flag.Annotations["apitype"]; ok {
-			typeName := apiType[0]
-			switch typeName {
-			case "array":
-				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
-			case "boolean":
-				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
-			case "clearable_object":
-				fmt.Fprintf(&sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
-			default:
-				label := typeName
-				if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
-					label = formatVals[0]
-				}
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, label)
-			}
-		} else {
-			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
-		}
-
-		if flag.Usage != "" {
-			text := flag.Usage
-			if ansi.ColorsEnabled(os.Stdout) {
-				text = renderMarkdown(flag.Usage, os.Stdout)
-			}
-			fmt.Fprintf(&sb, "%s%s\n", descIndent, wrapText(text, termWidth, len(descIndent)))
+		allFlags = append(allFlags, flag)
+		isRequired := len(flag.Annotations["required"]) > 0
+		isMostCommon := len(flag.Annotations["mostcommon"]) > 0
+		if isRequired || isMostCommon {
+			hasAnnotations = true
+			filteredFlags = append(filteredFlags, flag)
 		}
 	})
 
+	// Decide which set to render.
+	toRender := allFlags
+	if !fullHelp && hasAnnotations {
+		toRender = filteredFlags
+	}
+
+	var sb strings.Builder
+	for _, flag := range toRender {
+		writeFlagLine(&sb, flag, descIndent, termWidth)
+	}
+
+	// Append truncation hint when showing a subset.
+	if !fullHelp && hasAnnotations {
+		hidden := len(allFlags) - len(filteredFlags)
+		if hidden > 0 {
+			// Strip the root command name so the hint reads "stripe help customers create"
+			// rather than "stripe help stripe customers create".
+			cmdPath := strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" ")
+			fmt.Fprintf(&sb, "\n  + %d more parameters. Run 'stripe help %s' to see all.\n", hidden, cmdPath)
+		}
+	}
+
 	return sb.String()
+}
+
+// writeFlagLine appends a single request parameter flag entry to sb.
+func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, termWidth int) {
+	if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
+		const maxDisplayedEnumValues = 5
+		prefix := fmt.Sprintf("      --%s ", flag.Name)
+
+		if len(enumVals) <= maxDisplayedEnumValues {
+			fmt.Fprintf(sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
+		} else {
+			fmt.Fprintf(sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
+		}
+	} else if apiType, ok := flag.Annotations["apitype"]; ok {
+		typeName := apiType[0]
+		switch typeName {
+		case "array":
+			fmt.Fprintf(sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
+		case "boolean":
+			fmt.Fprintf(sb, "      --%s true|false\n", flag.Name)
+		case "clearable_object":
+			fmt.Fprintf(sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
+		default:
+			label := typeName
+			if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+				label = formatVals[0]
+			}
+			fmt.Fprintf(sb, "      --%s <%s>\n", flag.Name, label)
+		}
+	} else {
+		fmt.Fprintf(sb, "      --%s\n", flag.Name)
+	}
+
+	if flag.Usage != "" {
+		text := flag.Usage
+		if ansi.ColorsEnabled(os.Stdout) {
+			text = renderMarkdown(flag.Usage, os.Stdout)
+		}
+		fmt.Fprintf(sb, "%s%s\n", descIndent, wrapText(text, termWidth, len(descIndent)))
+	}
 }
 
 // renderMarkdown parses s as inline CommonMark and maps common formatting to
