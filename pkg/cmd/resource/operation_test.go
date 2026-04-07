@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -483,4 +485,148 @@ func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	flag := oc.Cmd.Flags().Lookup("api-base")
 	require.NotNil(t, flag)
 	require.Equal(t, serverURL, flag.DefValue)
+}
+
+func TestBuildExamples_RequiredAndMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/payment_intents",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"amount":      {Type: "integer", Required: true},
+			"currency":    {Type: "string", Required: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe payment_intents create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_MostCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "# common usage")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_NoRequiredNoMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/customers",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"limit": {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe customers list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_EnumValue(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"status": {
+				Type:     "string",
+				Required: true,
+				Enum:     []EnumSpec{{Value: "active"}, {Value: "inactive"}},
+			},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	require.Contains(t, result, "# required fields")
+	require.Contains(t, result, "$ stripe test create --status <enum>")
+}
+
+// TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
+// both Required and MostCommon alongside params that are only MostCommon. Only the required
+// section should appear; MostCommon-only params are not shown.
+func TestBuildExamples_RequiredMostCommonAndCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"currency":    {Type: "string", Required: true},
+			"amount":      {Type: "integer", Required: true, MostCommon: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_FallbackMostCommon_All(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+			"phone": {Type: "string"},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// Both MostCommon params shown; plain param omitted; no ellipsis needed
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "--phone")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackMostCommon_Truncated(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"description": {Type: "string", MostCommon: true},
+			"email":       {Type: "string", MostCommon: true},
+			"name":        {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// First two alphabetically (description, email); name omitted; ellipsis appended
+	require.Contains(t, result, "--description")
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--name")
+	require.Contains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/charges",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"created":  {Type: "integer"},
+			"currency": {Type: "string"},
+			"limit":    {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe charges list", opSpec)
+	require.Equal(t, "", result)
 }

@@ -116,6 +116,7 @@ func TestOldProfileDeleted(t *testing.T) {
 	c.InitConfig()
 
 	p.WriteConfigField("experimental.stripe_headers", "test-headers")
+	p.WriteConfigField("color", "on")
 
 	v := viper.New()
 
@@ -138,19 +139,21 @@ func TestOldProfileDeleted(t *testing.T) {
 		DisplayName:    "",
 	}
 
-	v = p.deleteProfile(v)
+	v = p.deleteAuthFields(v)
 	err = p.writeProfile(v)
 	require.NoError(t, err)
 
 	require.FileExists(t, c.ProfilesFile)
 
-	// Overwrites keys
+	// Overwrites auth keys
 	require.Equal(t, "device-after-test", v.GetString(p.GetConfigField(DeviceNameName)))
 	require.Equal(t, "sk_test_456", v.GetString(p.GetConfigField(TestModeAPIKeyName)))
 	require.Equal(t, "", v.GetString(p.GetConfigField(DisplayNameName)))
-	// Deletes nested keys
+	// Deletes experimental section
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental.stripe_headers"))))
 	require.False(t, v.IsSet(v.GetString(p.GetConfigField("experimental"))))
+	// Leaves non-auth fields untouched
+	require.Equal(t, "on", v.GetString(p.GetConfigField("color")))
 	// Leaves the other profile untouched
 	require.Equal(t, "foo-device-name", v.GetString(untouchedProfile.GetConfigField(DeviceNameName)))
 	require.Equal(t, "foo_test_123", v.GetString(untouchedProfile.GetConfigField(TestModeAPIKeyName)))
