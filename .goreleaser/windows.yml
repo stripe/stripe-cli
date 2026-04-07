@@ -41,7 +41,8 @@ changelog:
 checksum:
   name_template: "{{ .ProjectName }}-windows-checksums.txt"
 release:
-  mode: append
+  mode: keep-existing
+  replace_existing_artifacts: true
 snapshot:
   version_template: "{{ .Version }}-next"
 scoops:
