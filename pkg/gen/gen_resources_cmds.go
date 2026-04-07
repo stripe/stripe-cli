@@ -7,9 +7,10 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -47,11 +48,13 @@ type ResourceData struct {
 }
 
 type OperationData struct {
+	Name      string // operation name, e.g. "create"
 	Path      string
 	HTTPVerb  string
-	PropFlags map[string]string
-	EnumFlags map[string][]spec.StripeEnumValue
+	IsPreview bool
 	ServerURL string
+	VarName   string
+	Params    map[string]*resource.ParamSpec
 }
 
 // StripeVersionTemplateData stores the stripe version parsed from api spec
@@ -63,7 +66,12 @@ type StripeVersionTemplateData struct {
 const (
 	pathTemplate = "../gen/resources_cmds.go.tpl"
 	pathName     = "resources_cmds.go.tpl"
-	pathOutput   = "resources_cmds.go"
+
+	pathSpecTemplate = "../gen/resource_specs.go.tpl"
+	pathSpecName     = "resource_specs.go.tpl"
+
+	// output directory for generated files (relative to pkg/cmd/ working dir)
+	outputDir = "resources"
 
 	// stripe version parsing
 	stripeVersionTemplatePath = "../gen/stripe_version_header.go.tpl"
@@ -71,11 +79,17 @@ const (
 	stripeVersionPath         = "../requests/stripe_version_header.go"
 )
 
+// templateFuncs is the shared function map used across all generator templates.
+var templateFuncs = template.FuncMap{
+	"ToCamel": strcase.ToCamel,
+	"quote":   func(s string) string { return fmt.Sprintf("%q", s) },
+	"upper":   strings.ToUpper,
+}
+
 var test_helpers_path = "test_helpers"
 
 func main() {
-	// This is the script that generates the `resources.go` file from the
-	// OpenAPI spec files.
+	// This is the script that generates resource commands from the OpenAPI spec files.
 	templateData, gaVersion, previewVersion, err := getTemplateData()
 	if err != nil {
 		panic(err)
@@ -84,41 +98,48 @@ func main() {
 	// Generate the stripe version header
 	generateStripeVersionHeader(gaVersion, previewVersion)
 
-	// Load the template with a custom function map
+	// Ensure output directory exists
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		panic(err)
+	}
+
+	// Remove stale generated files before writing new ones so that renamed or
+	// removed namespaces don't leave orphaned *_gen.go files behind.
+	if err := cleanGeneratedFiles(outputDir); err != nil {
+		panic(err)
+	}
+
+	// Load the wiring template
 	tmpl := template.Must(template.
-		// Note that the template name MUST match the file name
 		New(pathName).
-		Funcs(template.FuncMap{
-			// The `ToCamel` function is used to turn snake_case strings to
-			// CamelCase strings. The template uses this to form Go variable
-			// names.
-			"ToCamel": strcase.ToCamel,
-		}).
+		Funcs(templateFuncs).
 		ParseFiles(pathTemplate))
 
-	// Execute the template
+	// Execute the wiring template into resources/resources_gen.go
 	var result bytes.Buffer
 	err = tmpl.Execute(&result, templateData)
 	if err != nil {
 		panic(err)
 	}
 
-	// Format the output of the template execution
 	formatted, err := format.Source(result.Bytes())
 	if err != nil {
+		panic(fmt.Errorf("format error in resources_gen.go: %w\n%s", err, result.String()))
+	}
+
+	wiringPath := filepath.Join(outputDir, "resources_gen.go")
+	fmt.Printf("writing %s\n", wiringPath)
+	if err := os.WriteFile(wiringPath, formatted, 0644); err != nil {
 		panic(err)
 	}
 
-	// Write the formatted source code to disk
-	fmt.Printf("writing %s\n", pathOutput)
-	err = ioutil.WriteFile(pathOutput, formatted, 0644)
-	if err != nil {
+	// Generate spec files (one per api-namespace × sub-namespace group)
+	if err := generateSpecFiles(templateData, outputDir); err != nil {
 		panic(err)
 	}
 }
 
 func generateStripeVersionHeader(version string, previewVersion string) {
-	// This generates `stripe_version_header.go`
 	stripeVersionTemplateData := &StripeVersionTemplateData{
 		StripeVersion:        version,
 		StripePreviewVersion: previewVersion,
@@ -126,19 +147,15 @@ func generateStripeVersionHeader(version string, previewVersion string) {
 
 	tmpl := template.Must(template.
 		New(stripeVersionTemplateName).
-		Funcs(template.FuncMap{
-			"ToCamel": strcase.ToCamel,
-		}).
+		Funcs(templateFuncs).
 		ParseFiles(stripeVersionTemplatePath))
 
-	// Execute the template
 	var result bytes.Buffer
 	err := tmpl.Execute(&result, stripeVersionTemplateData)
 	if err != nil {
 		panic(err)
 	}
 
-	// Format the output of the template execution
 	formatted, err := format.Source(result.Bytes())
 	if err != nil {
 		panic(err)
@@ -151,14 +168,8 @@ func generateStripeVersionHeader(version string, previewVersion string) {
 	}
 }
 
-// getTemplateData loads resource data from unified spec files that contain
-// both v1 and v2 APIs together. This approach:
-//   - Uses path-based detection to determine v1 vs v2 (see getApiNamespaceFromOperations)
-//   - Processes GA spec for v1/v2 commands, preview spec for v1-preview/v2-preview commands
-//
-// Returns template data along with GA and preview version strings for the stripe version header.
+// getTemplateData loads resource data from unified spec files.
 func getTemplateData() (*TemplateData, string, string, error) {
-	// Load both unified specs
 	gaSpec, err := spec.LoadSpec(gen.PathUnifiedSpec)
 	if err != nil {
 		return nil, "", "", err
@@ -173,7 +184,7 @@ func getTemplateData() (*TemplateData, string, string, error) {
 		ApiNamespaces: make(map[ApiNamespace]*ApiNamespaceData),
 	}
 
-	// Process GA spec - resources are split into V1 and V2 based on operation paths
+	// Process GA spec
 	for name, schema := range gaSpec.Components.Schemas {
 		if schema.XStripeOperations == nil {
 			continue
@@ -182,7 +193,6 @@ func getTemplateData() (*TemplateData, string, string, error) {
 			continue
 		}
 
-		// Determine API namespace from operation paths (v1 vs v2)
 		apiNamespace := getApiNamespaceFromOperations(schema.XStripeOperations, false)
 
 		err := genCmdTemplate(apiNamespace, name, name, data, gaSpec)
@@ -199,16 +209,14 @@ func getTemplateData() (*TemplateData, string, string, error) {
 		}
 	}
 
-	// Process Preview spec - only v2-preview resources (exclude v1-preview for now)
+	// Process Preview spec - only v2-preview resources
 	for name, schema := range previewSpec.Components.Schemas {
 		if schema.XStripeOperations == nil {
 			continue
 		}
 
-		// Determine API namespace from operation paths (v1Preview vs v2Preview)
 		apiNamespace := getApiNamespaceFromOperations(schema.XStripeOperations, true)
 
-		// Skip v1-preview resources for now
 		if apiNamespace == V1PreviewNamespace {
 			continue
 		}
@@ -230,16 +238,6 @@ func getTemplateData() (*TemplateData, string, string, error) {
 	return data, gaSpec.Info.Version, previewSpec.Info.Version, nil
 }
 
-// getApiNamespaceFromOperations determines the ApiNamespace by examining operation paths.
-//
-// The operation path is the authoritative source for determining API namespace, and guides
-// the path to the CLI command.
-//
-// Parameters:
-//   - ops: the list of operations from a schema's x-stripeOperations (must be non-nil and non-empty)
-//   - isPreview: whether this schema comes from the preview spec (determines Preview suffix)
-//
-// Returns V1Namespace/V2Namespace for GA, or V1PreviewNamespace/V2PreviewNamespace for preview.
 func getApiNamespaceFromOperations(ops *[]spec.StripeOperation, isPreview bool) ApiNamespace {
 	if ops == nil || len(*ops) == 0 {
 		panic("getApiNamespaceFromOperations called with nil or empty operations slice")
@@ -253,7 +251,6 @@ func getApiNamespaceFromOperations(ops *[]spec.StripeOperation, isPreview bool) 
 			return V2Namespace
 		}
 	}
-	// Default to v1 if no /v2/ paths found (all paths are /v1/*)
 	if isPreview {
 		return V1PreviewNamespace
 	}
@@ -264,9 +261,7 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 	origNsName, origResName := parseSchemaName(cmdName)
 	schema := stripeAPI.Components.Schemas[schemaName]
 
-	// Iterate over every operation for the resource
 	for _, op := range *schema.XStripeOperations {
-		// We're only implementing "service" operations
 		if op.MethodOn != "service" {
 			continue
 		}
@@ -280,7 +275,6 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 			resName = components[0]
 			subResName = components[1]
 		} else if strings.Contains(op.Path, test_helpers_path) && test_helpers_path != nsName {
-			// create entry in the test_helpers namespace
 			if nsName != "" {
 				err := addToTemplateData(data, apiNamespace, test_helpers_path, nsName, resName, stripeAPI, op)
 				if err != nil {
@@ -293,7 +287,6 @@ func genCmdTemplate(apiNamespace ApiNamespace, schemaName string, cmdName string
 				}
 			}
 
-			// add test_helpers as a sub-resource to the current namespace-resource entry
 			subResName = test_helpers_path
 		}
 
@@ -321,22 +314,18 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 		}
 	}
 
-	// If we haven't seen the resource before, initialize it
 	resCmdName := resource.GetResourceCmdName(resName)
 	if _, ok := data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName]; !ok {
 		data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName] = &ResourceData{
-
 			Operations:   make(map[string]*OperationData),
 			SubResources: make(map[string]*ResourceData),
 		}
 	}
 
-	// check if operations already exists
 	operationExists := true
 	subResCmdName := ""
 
 	if hasSubResources {
-		// If we haven't seen the sub-resource before, initialize it
 		subResCmdName = resource.GetResourceCmdName(subResName)
 		if _, ok := data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName]; !ok {
 			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName] = &ResourceData{
@@ -348,145 +337,344 @@ func addToTemplateData(data *TemplateData, apiNamespace ApiNamespace, nsName, re
 		_, operationExists = data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName]
 	}
 
-	// If we haven't seen the operation before, initialize it
 	if !operationExists {
 		httpString := string(op.Operation)
 		specOp := stripeAPI.Paths[spec.Path(op.Path)][spec.HTTPVerb(httpString)]
-		// Skip deprecated methods
 		if specOp.Deprecated != nil && *specOp.Deprecated == true {
 			return nil
 		}
 
-		properties, enums := getMethodProperties(apiNamespace, specOp, op)
+		isPreview := apiNamespace == V1PreviewNamespace || apiNamespace == V2PreviewNamespace
+		params := getOperationParams(apiNamespace, specOp, op)
 
-		// Extract server URL if specified
 		serverURL := ""
 		if len(specOp.Servers) > 0 {
 			serverURL = specOp.Servers[0].URL
 		}
 
+		varName := computeVarName(apiNamespace, nsName, resCmdName, subResCmdName, op.MethodName)
+
+		opData := &OperationData{
+			Name:      op.MethodName,
+			Path:      op.Path,
+			HTTPVerb:  httpString,
+			IsPreview: isPreview,
+			ServerURL: serverURL,
+			VarName:   varName,
+			Params:    params,
+		}
+
 		if hasSubResources {
-			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = &OperationData{
-				Path:      op.Path,
-				HTTPVerb:  httpString,
-				PropFlags: properties,
-				EnumFlags: enums,
-				ServerURL: serverURL,
-			}
+			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].SubResources[subResCmdName].Operations[op.MethodName] = opData
 		} else {
-			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = &OperationData{
-				Path:      op.Path,
-				HTTPVerb:  httpString,
-				PropFlags: properties,
-				EnumFlags: enums,
-				ServerURL: serverURL,
-			}
+			data.ApiNamespaces[apiNamespace].Namespaces[nsName].Resources[resCmdName].Operations[op.MethodName] = opData
 		}
 	}
 
 	return nil
 }
 
-func getMethodProperties(apiNamespace ApiNamespace, specOp *spec.Operation, op spec.StripeOperation) (map[string]string, map[string][]spec.StripeEnumValue) {
+// getOperationParams extracts parameter metadata from a spec operation, returning a map of
+// parameter name → ParamSpec. Parameter names use dot notation for nested fields.
+func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op spec.StripeOperation) map[string]*resource.ParamSpec {
+	params := make(map[string]*resource.ParamSpec)
 	httpString := string(op.Operation)
-	properties := make(map[string]string)
-	enumValues := make(map[string][]spec.StripeEnumValue)
 
 	if strings.ToUpper(httpString) == http.MethodPost {
 		if specOp.RequestBody == nil {
-			return properties, enumValues
+			return params
 		}
 
 		mediaType := getMediaType(apiNamespace)
 		requestContent := specOp.RequestBody.Content
 
 		if media, ok := requestContent[mediaType]; ok {
+			requiredSet := make(map[string]bool)
+			for _, req := range media.Schema.Required {
+				requiredSet[req] = true
+			}
+			locallyRequired := make(map[string]bool)
+
 			for propName, schema := range media.Schema.Properties {
-				// If property is metadata or expand, skip it
 				if propName == "metadata" || propName == "expand" {
 					continue
 				}
-
 				if schema.XStripeNotPublic {
 					continue
 				}
 
-				if schema.Type == "object" {
-					denormalizedProps := gen.DenormalizeObject(propName, schema)
-					for prop, propType := range denormalizedProps {
-						properties[prop] = propType
+				if obj := gen.ResolveObjectSchema(schema); obj != nil {
+					addDenormalizedParams(params, locallyRequired, propName, obj, requiredSet[propName])
+					if gen.IsClearableObject(schema) {
+						params[propName] = &resource.ParamSpec{Type: "clearable_object"}
 					}
 				} else {
 					scalarType := gen.GetType(schema)
-
 					if scalarType == nil {
 						continue
 					}
 
-					properties[propName] = *scalarType
-
-					// Save enum values if they exist
-					if len(schema.XStripeEnum) > 0 {
-						enumValues[propName] = schema.XStripeEnum
-					} else if len(schema.Enum) > 0 {
-						enumValues[propName] = enumToStripeEnumValues(schema.Enum)
+					ps := &resource.ParamSpec{
+						Type:     *scalarType,
+						Required: requiredSet[propName],
+						Format:   schema.Format,
+						Enum:     mergeEnumValues(schema),
 					}
+					params[propName] = ps
 				}
 			}
+
+			markMostCommon(params, locallyRequired, media.Schema.XStripeMostCommon)
 		}
 	} else {
 		for _, param := range specOp.Parameters {
-			// Only create flags for query string parameters
 			if param.In != "query" {
 				continue
 			}
-
-			// Skip metadata and expand params
 			if param.Name == "metadata" || param.Name == "expand" {
 				continue
 			}
 
 			schema := param.Schema
 			scalarType := gen.GetType(schema)
-
 			if scalarType == nil {
 				continue
 			}
 
-			properties[param.Name] = *scalarType
+			ps := &resource.ParamSpec{
+				Type:     *scalarType,
+				Required: param.Required,
+				Format:   schema.Format,
+				Enum:     mergeEnumValues(schema),
+			}
+			params[param.Name] = ps
+		}
+	}
 
-			// Save enum values if they exist
-			if len(schema.XStripeEnum) > 0 {
-				enumValues[param.Name] = schema.XStripeEnum
-			} else if len(schema.Enum) > 0 {
-				enumValues[param.Name] = enumToStripeEnumValues(schema.Enum)
+	return params
+}
+
+// addDenormalizedParams recursively flattens an object schema into dot-notation params.
+// For example, a "shipping" object with scalar properties "name" and "carrier" produces
+// the keys "shipping.name" and "shipping.carrier". Nested objects recurse further:
+// "shipping.address" (object) → "shipping.address.city", "shipping.address.country", etc.
+// Arrays of objects are skipped (no CLI representation for those).
+//
+// parentRequired indicates whether the object at prefix is itself required by its parent.
+// A nested field is only marked Required if every object in the ancestor chain is required —
+// i.e., parentRequired is true AND the field appears in schema.Required. This ensures that
+// Required on a ParamSpec means "unconditionally required by the API call," not merely
+// "required within its immediate parent object."
+//
+// locallyRequired is populated with keys for every scalar param that is required within its
+// immediate parent schema (regardless of whether ancestors are required). This is separate
+// from ParamSpec.Required and is used by markMostCommon's depth-1 rule: if a top-level
+// object is mostCommon, its locally-required children should also be marked mostCommon.
+func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, prefix string, schema *spec.Schema, parentRequired bool) {
+	for propName, propSchema := range schema.Properties {
+		key := prefix + "." + propName
+		isLocallyRequired := containsStr(schema.Required, propName)
+		isTrulyRequired := parentRequired && isLocallyRequired
+
+		if obj := gen.ResolveObjectSchema(propSchema); obj != nil {
+			addDenormalizedParams(params, locallyRequired, key, obj, isTrulyRequired)
+		} else {
+			scalarType := gen.GetType(propSchema)
+			if scalarType == nil {
+				continue
+			}
+
+			if isLocallyRequired {
+				locallyRequired[key] = true
+			}
+			ps := &resource.ParamSpec{
+				Type:     *scalarType,
+				Required: isTrulyRequired,
+				Format:   propSchema.Format,
+				Enum:     mergeEnumValues(propSchema),
+			}
+			params[key] = ps
+		}
+	}
+}
+
+// markMostCommon sets MostCommon on params, identifying parameters worth surfacing in CLI
+// help and tooling even when not strictly required. Two heuristics approximate this from
+// the OpenAPI spec:
+//
+//   - Depth-0 (no dots): marked when the key appears in the request body's x-stripeMostCommon
+//     annotation. Example: "description" is marked if listed in x-stripeMostCommon.
+//
+//   - Depth-1 (one dot): marked when the param is locally required within its parent AND
+//     the parent key appears in x-stripeMostCommon. "Locally required" (locallyRequired map)
+//     means required within the immediate parent schema, regardless of whether the parent
+//     itself is top-level required. The rationale: if a commonly-used object (e.g. "recurring")
+//     has fields that must be provided whenever the object is used (e.g. "interval"), those
+//     fields are worth surfacing alongside the parent.
+//
+// Depth 2+ params are never marked; the signal-to-noise tradeoff doesn't hold for deeply
+// nested fields.
+func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, rootMostCommon []string) {
+	mostCommonSet := make(map[string]bool, len(rootMostCommon))
+	for _, name := range rootMostCommon {
+		mostCommonSet[name] = true
+	}
+	for paramName, paramSpec := range params {
+		if !strings.Contains(paramName, ".") {
+			if mostCommonSet[paramName] {
+				paramSpec.MostCommon = true
+			}
+			continue
+		}
+		if strings.Count(paramName, ".") == 1 && locallyRequired[paramName] {
+			parent := paramName[:strings.Index(paramName, ".")]
+			if mostCommonSet[parent] {
+				paramSpec.MostCommon = true
+			}
+		}
+	}
+}
+
+// mergeEnumValues builds the EnumSpec slice from a schema's enum/x-stripeEnum fields.
+// enum provides the complete set of values; x-stripeEnum provides descriptions for a subset.
+func mergeEnumValues(schema *spec.Schema) []resource.EnumSpec {
+	if len(schema.Enum) == 0 && len(schema.XStripeEnum) == 0 {
+		return nil
+	}
+
+	if len(schema.Enum) > 0 {
+		var enums []resource.EnumSpec
+		for _, rawVal := range schema.Enum {
+			val, ok := rawVal.(string)
+			if !ok || val == "" {
+				continue
+			}
+			enums = append(enums, resource.EnumSpec{
+				Value: val,
+			})
+		}
+		return enums
+	}
+
+	// Fall back to x-stripeEnum only
+	var enums []resource.EnumSpec
+	for _, ev := range schema.XStripeEnum {
+		enums = append(enums, resource.EnumSpec{
+			Value: ev.Value,
+		})
+	}
+	return enums
+}
+
+func containsStr(slice []string, s string) bool {
+	for _, v := range slice {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// computeVarName returns the exported Go variable name for an OperationSpec.
+// Format: {ApiNsPrefix}{NsCamel}{ResCamel}{SubResCamel}{OpCamel}
+// e.g. V1BillingMetersCreate, V1CustomersCreate, V1ChargesTestHelpersCapture
+func computeVarName(apiNamespace ApiNamespace, nsName, resCmdName, subResCmdName, opName string) string {
+	prefix := apiNsPrefix(apiNamespace)
+	nsCase := strcase.ToCamel(nsName)
+	resCase := strcase.ToCamel(resCmdName)
+	subResCase := ""
+	if subResCmdName != "" {
+		subResCase = strcase.ToCamel(subResCmdName)
+	}
+	opCase := strcase.ToCamel(opName)
+	return prefix + nsCase + resCase + subResCase + opCase
+}
+
+func apiNsPrefix(apiNamespace ApiNamespace) string {
+	switch apiNamespace {
+	case V1Namespace:
+		return "V1"
+	case V1PreviewNamespace:
+		return "V1Preview"
+	case V2Namespace:
+		return "V2"
+	case V2PreviewNamespace:
+		return "V2Preview"
+	default:
+		return "V" + strcase.ToCamel(strings.ReplaceAll(apiNamespace, "-", " "))
+	}
+}
+
+type varEntry struct {
+	VarName string
+	Op      *OperationData
+}
+
+// cleanGeneratedFiles removes all *_gen.go files from dir so stale outputs
+// from previous generator runs (e.g. after a namespace rename or removal) are
+// not left behind.
+func cleanGeneratedFiles(dir string) error {
+	matches, err := filepath.Glob(filepath.Join(dir, "*_gen.go"))
+	if err != nil {
+		return err
+	}
+	for _, f := range matches {
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing stale generated file %s: %w", f, err)
+		}
+	}
+	return nil
+}
+
+// generateSpecFiles writes a single specs_gen.go file containing all operation
+// spec variables, sorted by VarName for stable output.
+func generateSpecFiles(data *TemplateData, outputDir string) error {
+	tmpl := template.Must(template.
+		New(pathSpecName).
+		Funcs(templateFuncs).
+		ParseFiles(pathSpecTemplate))
+
+	var entries []varEntry
+	for _, nsData := range data.ApiNamespaces {
+		for _, nsDataInner := range nsData.Namespaces {
+			for _, resData := range nsDataInner.Resources {
+				for _, opData := range resData.Operations {
+					entries = append(entries, varEntry{VarName: opData.VarName, Op: opData})
+				}
+				for _, subResData := range resData.SubResources {
+					for _, opData := range subResData.Operations {
+						entries = append(entries, varEntry{VarName: opData.VarName, Op: opData})
+					}
+				}
 			}
 		}
 	}
 
-	return properties, enumValues
-}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].VarName < entries[j].VarName
+	})
 
-// enumToStripeEnumValues converts a plain JSON Schema enum array ([]interface{})
-// to []spec.StripeEnumValue, using each value as-is with an empty description.
-func enumToStripeEnumValues(values []interface{}) []spec.StripeEnumValue {
-	result := make([]spec.StripeEnumValue, 0, len(values))
-	for _, v := range values {
-		if s, ok := v.(string); ok && s != "" {
-			result = append(result, spec.StripeEnumValue{Value: s})
-		}
+	var result bytes.Buffer
+	if err := tmpl.Execute(&result, entries); err != nil {
+		return fmt.Errorf("spec file specs_gen.go: %w", err)
 	}
-	return result
+
+	formatted, err := format.Source(result.Bytes())
+	if err != nil {
+		return fmt.Errorf("format error in specs_gen.go: %w\n%s", err, result.String())
+	}
+
+	filePath := filepath.Join(outputDir, "specs_gen.go")
+	fmt.Printf("writing %s\n", filePath)
+	return os.WriteFile(filePath, formatted, 0644)
 }
 
 // getMediaType returns the content type for request bodies based on API namespace.
-// v1 APIs use form-urlencoded, v2 APIs use JSON.
 func getMediaType(apiNamespace ApiNamespace) string {
-	mediaType := "application/x-www-form-urlencoded"
 	if apiNamespace == V2Namespace || apiNamespace == V2PreviewNamespace {
-		mediaType = "application/json"
+		return "application/json"
 	}
-	return mediaType
+	return "application/x-www-form-urlencoded"
 }
 
 func parseSchemaName(name string) (string, string) {

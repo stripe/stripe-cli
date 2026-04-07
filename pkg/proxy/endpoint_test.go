@@ -211,3 +211,42 @@ func TestClientHandler_EventDestination(t *testing.T) {
 	require.Equal(t, "", rcvCtx.webhookConversationID)
 	require.Equal(t, "evt_123", rcvCtx.v2Event.ID)
 }
+
+func TestPostV2_UsesConfiguredHTTPClient(t *testing.T) {
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	ts := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK!"))
+	}))
+	defer ts.Close()
+
+	httpClient := ts.Client()
+
+	client := NewEndpointClient(
+		ts.URL,
+		[]string{},
+		false,
+		[]string{"*"},
+		true,
+		&EndpointConfig{
+			HTTPClient: httpClient,
+			ResponseHandler: EndpointResponseHandlerFunc(func(evtCtx eventContext, forwardURL string, resp *http.Response) {
+				wg.Done()
+			}),
+		},
+	)
+
+	evtCtx := eventContext{
+		v2Event:        &V2EventPayload{ID: "evt_456"},
+		requestBody:    "{}",
+		requestHeaders: map[string]string{},
+	}
+
+	// this would fail with x509 error if PostV2 used http.DefaultClient
+	err := client.PostV2(evtCtx)
+	require.NoError(t, err)
+
+	wg.Wait()
+}

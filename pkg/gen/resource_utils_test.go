@@ -100,20 +100,48 @@ func TestGetTypeComplexArray(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestDenormalizeObject(t *testing.T) {
+func TestResolveObjectSchemaDirect(t *testing.T) {
+	s := &spec.Schema{Type: "object"}
+	assert.Equal(t, s, ResolveObjectSchema(s))
+}
+
+func TestResolveObjectSchemaAnyOf(t *testing.T) {
+	obj := &spec.Schema{Type: "object"}
 	s := &spec.Schema{
-		Properties: map[string]*spec.Schema{
-			"foo": {
-				Type: "string",
-			},
-			"bar": {
-				Type: "integer",
-			},
+		AnyOf: []*spec.Schema{
+			obj,
+			{Type: "string", Enum: []interface{}{""}},
 		},
 	}
+	assert.Equal(t, obj, ResolveObjectSchema(s))
+}
 
-	result := DenormalizeObject("test", s)
+func TestResolveObjectSchemaNone(t *testing.T) {
+	s := &spec.Schema{Type: "string"}
+	assert.Nil(t, ResolveObjectSchema(s))
+}
 
-	assert.Equal(t, "string", result["test.foo"])
-	assert.Equal(t, "integer", result["test.bar"])
+func TestIsClearableObjectTrue(t *testing.T) {
+	s := &spec.Schema{
+		AnyOf: []*spec.Schema{
+			{Type: "object"},
+			{Type: "string", Enum: []interface{}{""}},
+		},
+	}
+	assert.True(t, IsClearableObject(s))
+}
+
+func TestIsClearableObjectFalseNoAnyOf(t *testing.T) {
+	s := &spec.Schema{Type: "object"}
+	assert.False(t, IsClearableObject(s))
+}
+
+func TestIsClearableObjectFalseNoEmptyString(t *testing.T) {
+	s := &spec.Schema{
+		AnyOf: []*spec.Schema{
+			{Type: "object"},
+			{Type: "string"},
+		},
+	}
+	assert.False(t, IsClearableObject(s))
 }

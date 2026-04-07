@@ -1,0 +1,15 @@
+{
+  "database": {
+    "id": "db_1XyZ2aBcDeFgHiJkLmN8pQr",
+    "object": "v2.data.database",
+    "livemode": false,
+    "created": "2026-03-28T12:00:00Z",
+    "status": "backfilling",
+    "api_version": "2026-01-28.clover",
+    "connection": {
+      "host": "db_1XyZ2aBcDeFgHiJkLmN8pQr.db.stripe.com",
+      "port": 5432,
+      "database_name": "data"
+    }
+  }
+}

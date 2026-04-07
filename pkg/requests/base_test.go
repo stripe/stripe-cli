@@ -617,6 +617,120 @@ func TestBuildDryRunOutput_PathParamSubstitutedURL(t *testing.T) {
 	}}, *output)
 }
 
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	origStderr := os.Stderr
+	defer func() { os.Stderr = origStderr }()
+
+	stderrReader, stderrWriter, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stderr = stderrWriter
+
+	fn()
+
+	stderrWriter.Close()
+	out, err := io.ReadAll(stderrReader)
+	require.NoError(t, err)
+	return string(out)
+}
+
+func TestMakeRequest_VersionUpgradeNotice(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade to the latest API version.")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	out := captureStderr(t, func() {
+		rb := Base{APIBaseURL: ts.URL}
+		rb.Method = http.MethodGet
+		params := &RequestParameters{}
+		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		require.NoError(t, err)
+	})
+
+	require.Contains(t, out, "API version upgrade notice: Please upgrade to the latest API version.")
+}
+
+func TestMakeRequest_IntegrationPathUpgradeNotice(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate to the new integration path.")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	out := captureStderr(t, func() {
+		rb := Base{APIBaseURL: ts.URL}
+		rb.Method = http.MethodGet
+		params := &RequestParameters{}
+		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		require.NoError(t, err)
+	})
+
+	require.Contains(t, out, "API integration path upgrade notice: Please migrate to the new integration path.")
+}
+
+func TestMakeRequest_BothUpgradeNotices(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Upgrade your API version.")
+		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Migrate your integration path.")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	out := captureStderr(t, func() {
+		rb := Base{APIBaseURL: ts.URL}
+		rb.Method = http.MethodGet
+		params := &RequestParameters{}
+		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		require.NoError(t, err)
+	})
+
+	require.Contains(t, out, "API version upgrade notice: Upgrade your API version.")
+	require.Contains(t, out, "API integration path upgrade notice: Migrate your integration path.")
+}
+
+func TestMakeRequest_NoUpgradeNotice(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	out := captureStderr(t, func() {
+		rb := Base{APIBaseURL: ts.URL}
+		rb.Method = http.MethodGet
+		params := &RequestParameters{}
+		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		require.NoError(t, err)
+	})
+
+	require.NotContains(t, out, "upgrade notice:")
+}
+
+func TestMakeRequest_UpgradeNoticeSuppressed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Stripe-Api-Version-Upgrade-Notice", "Please upgrade.")
+		w.Header().Set("Stripe-Api-Integration-Path-Upgrade-Notice", "Please migrate.")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+
+	out := captureStderr(t, func() {
+		rb := Base{APIBaseURL: ts.URL, SuppressOutput: true}
+		rb.Method = http.MethodGet
+		params := &RequestParameters{}
+		_, err := rb.MakeRequest(context.Background(), "sk_test_1234", "/v1/charges", params, make(map[string]interface{}), false, nil)
+		require.NoError(t, err)
+	})
+
+	require.NotContains(t, out, "upgrade notice:")
+}
+
 func TestParseJSONDataFlag(t *testing.T) {
 	t.Run("no arguments", func(t *testing.T) {
 		data, err := parseJSONDataFlag([]string{})

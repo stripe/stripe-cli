@@ -66,8 +66,14 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
 			case "boolean":
 				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
+			case "clearable_object":
+				fmt.Fprintf(&sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
 			default:
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
+				label := typeName
+				if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+					label = formatVals[0]
+				}
+				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, label)
 			}
 		} else {
 			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
@@ -120,6 +126,7 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 		fmt.Fprintf(&sb, "  Use %s to set nested params, e.g. %s.\n", ansi.Bold("-d"), ansi.Italic(`-d "metadata[key]=value"`))
 	}
 
+	fmt.Fprintf(&sb, "  Run %s to quickly see all available commands.\n", ansi.Bold("stripe --map"))
 	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
 	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
 

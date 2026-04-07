@@ -64,6 +64,7 @@ func TestFormatAgentGuidance(t *testing.T) {
 	assert.Contains(t, output, "[Agent guidance]")
 	assert.Contains(t, output, "--api-key")
 	assert.Contains(t, output, "STRIPE_API_KEY")
+	assert.Contains(t, output, "stripe --map")
 	assert.Contains(t, output, "stripe resources")
 	assert.NotContains(t, output, "--stripe-account", "should not show --stripe-account when flag is not defined")
 	assert.NotContains(t, output, "-d", "should not show -d when data flag is not defined")
@@ -146,6 +147,25 @@ func TestAIAgentHelp_NotDetected(t *testing.T) {
 
 	assert.Empty(t, aiAgentHelpTop(root))
 	assert.Empty(t, aiAgentHelp(child))
+}
+
+func TestWrappedRequestParamsFlagUsages_FormatAnnotation(t *testing.T) {
+	cmd := &cobra.Command{Use: "create", Annotations: make(map[string]string)}
+
+	// String param with format: should show the format label instead of "string".
+	cmd.Flags().String("created", "", "")
+	cmd.Flags().SetAnnotation("created", "request", []string{"true"})
+	cmd.Flags().SetAnnotation("created", "apitype", []string{"integer"})
+	cmd.Flags().SetAnnotation("created", "format", []string{"unix-time"})
+
+	// String param without format: should show the raw type label.
+	cmd.Flags().String("description", "", "")
+	cmd.Flags().SetAnnotation("description", "request", []string{"true"})
+	cmd.Flags().SetAnnotation("description", "apitype", []string{"string"})
+
+	output := WrappedRequestParamsFlagUsages(cmd)
+	assert.Contains(t, output, "--created <unix-time>")
+	assert.Contains(t, output, "--description <string>")
 }
 
 // noop is a minimal RunE so Cobra considers the command "available".

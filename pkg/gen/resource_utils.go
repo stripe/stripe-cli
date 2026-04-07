@@ -2,6 +2,48 @@ package gen
 
 import "github.com/stripe/stripe-cli/pkg/spec"
 
+// ResolveObjectSchema returns s if it is a plain object schema (type "object" or has
+// Properties), or the first anyOf/oneOf branch that is an object schema. Returns nil if
+// no object branch is found.
+func ResolveObjectSchema(s *spec.Schema) *spec.Schema {
+	if s == nil {
+		return nil
+	}
+	if s.Type == "object" || len(s.Properties) > 0 {
+		return s
+	}
+	for _, sub := range s.AnyOf {
+		if obj := ResolveObjectSchema(sub); obj != nil {
+			return obj
+		}
+	}
+	for _, sub := range s.OneOf {
+		if obj := ResolveObjectSchema(sub); obj != nil {
+			return obj
+		}
+	}
+	return nil
+}
+
+// IsClearableObject reports whether s uses the anyOf clearable-object pattern:
+// one object branch and one empty-string-only branch. This is the Stripe v1 API
+// convention for optional nested objects that can be removed by passing "".
+func IsClearableObject(s *spec.Schema) bool {
+	if len(s.AnyOf) == 0 {
+		return false
+	}
+	hasObject, hasEmptyString := false, false
+	for _, sub := range s.AnyOf {
+		if sub.Type == "object" {
+			hasObject = true
+		}
+		if sub.Type == "string" && len(sub.Enum) == 1 && sub.Enum[0] == "" {
+			hasEmptyString = true
+		}
+	}
+	return hasObject && hasEmptyString
+}
+
 var scalarTypes = map[string]bool{
 	"boolean": true,
 	"integer": true,
@@ -40,49 +82,4 @@ func GetType(schema *spec.Schema) *string {
 	}
 
 	return nil
-}
-
-// DenormalizeObject accepts a schema and returns a map of its properties,
-// fully expanded to the lowest level. Note that the one exception to this is
-// for arrays of objects. The `GetType` function explicitly does not support
-// arrays of objects, so we don't expand those (this is due to there being no
-// way to specify an array of objects in a shell).
-//
-// We denormalize into a dot-notation since that has the most compatibility
-// across shells. This is not following proper conventions (as per
-// https://www.gnu.org/software/libc/manual/html_node/Argument-Syntax.html),
-// but our API is becoming increasingly complex and dot-notation is the most
-// compatible way to handle it (brackets are not supported in all shells).
-func DenormalizeObject(name string, schema *spec.Schema) map[string]string {
-	tmpProperties := denormalizedObject(schema)
-	properties := make(map[string]string)
-	for propName, propType := range tmpProperties {
-		properties[name+"."+propName] = propType
-	}
-	return properties
-}
-
-// denormalizeObject is a recursive function that handles the actual unfolding
-// of objects into a dot notation.
-func denormalizedObject(schema *spec.Schema) map[string]string {
-	properties := make(map[string]string)
-
-	for propName, propSchema := range schema.Properties {
-		if propSchema.Type == "object" {
-			subProperties := denormalizedObject(propSchema)
-			for subPropName, subPropSchema := range subProperties {
-				properties[propName+"."+subPropName] = subPropSchema
-			}
-		} else {
-			scalarType := GetType(propSchema)
-
-			if scalarType == nil {
-				continue
-			}
-
-			properties[propName] = *scalarType
-		}
-	}
-
-	return properties
 }

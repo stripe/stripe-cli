@@ -20,6 +20,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
+	"github.com/stripe/stripe-cli/pkg/cmd/resources"
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/login"
 	"github.com/stripe/stripe-cli/pkg/plugins"
@@ -235,10 +236,14 @@ func init() {
 	rootCmd.AddCommand(newPostinstallCmd(&Config).cmd)
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
-	addAllResourcesCmds(rootCmd)
+	resources.AddAllResourcesCmds(rootCmd, &Config)
+	err := resource.AddDatabasesCmd(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	addV2BillingStubs(rootCmd)
 
-	err := resource.PostProcessResourceCommands(rootCmd, &Config)
+	err = resource.PostProcessResourceCommands(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -255,8 +260,8 @@ func init() {
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
-			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 			installedPluginSet[p] = true
+			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
 
