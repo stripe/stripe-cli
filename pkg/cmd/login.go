@@ -75,7 +75,8 @@ For agents and scripts, use the two-step non-interactive flow:
   stripe login --complete 'https://dashboard.stripe.com/stripecli/auth/...'`,
 		Annotations: map[string]string{
 			AIAgentHelpAnnotationKey: "  Prefer setting STRIPE_API_KEY or using `--api-key` over `stripe login` for non-interactive use.\n" +
-				"  If you must login, use `stripe login --interactive` to enter an API key without opening a browser.",
+				"  If authentication is required, run `stripe login` — in agent contexts it automatically outputs\n" +
+				"  a browser URL and a `next_step` command to complete login with user action.",
 		},
 		RunE: lc.runLoginCmd,
 	}
@@ -125,7 +126,7 @@ func (lc *loginCmd) runLoginCmd(cmd *cobra.Command, args []string) error {
 		return login.PollForLogin(cmd.Context(), lc.completeURL, &Config)
 	}
 
-	if lc.nonInteractive || !term.IsTerminal(int(os.Stdin.Fd())) {
+	if lc.nonInteractive || !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
 		return login.InitiateLogin(cmd.Context(), lc.dashboardBaseURL, &Config)
 	}
 

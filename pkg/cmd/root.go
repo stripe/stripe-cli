@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/cmd/pluginhints"
 	"github.com/stripe/stripe-cli/pkg/cmd/resource"
@@ -138,25 +139,31 @@ func Execute(ctx context.Context) {
 		case requests.IsAPIKeyExpiredError(err):
 			fmt.Fprintln(os.Stderr, "The API key provided has expired. Obtain a new key from the Dashboard or run `stripe login` and try again.")
 		case isLoginRequiredError && projectNameFlag != "default":
-			fmt.Printf("You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
+			fmt.Fprintf(os.Stderr, "You provided the project name \"%[1]s\" (either via the \"--project-name\" flag or the \"STRIPE_PROJECT_NAME\" environment variable), but no config for that project was found.\nPlease run `stripe login --project-name=%[1]s` to enable commands for this project.\n", projectNameFlag)
 		case isLoginRequiredError:
 			// capitalize first letter of error because linter
 			errRunes := []rune(errString)
 			errRunes[0] = unicode.ToUpper(errRunes[0])
 
-			fmt.Printf("%s. Running `stripe login`...\n", string(errRunes))
+			if !shouldAutoLogin(os.Getenv, term.IsTerminal(int(os.Stdin.Fd()))) {
+				fmt.Fprintln(os.Stderr, string(errRunes))
+				fmt.Fprintln(os.Stderr, "  If you have an API key: set STRIPE_API_KEY or pass --api-key <key>.")
+				fmt.Fprintln(os.Stderr, "  To start a browser login (requires user action): run `stripe login` and follow the printed instructions.")
+			} else {
+				fmt.Fprintf(os.Stderr, "%s. Running `stripe login`...\n", string(errRunes))
 
-			err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
+				err = login.Login(updatedCtx, stripe.DefaultDashboardBaseURL, &Config)
 
-			if err != nil {
-				fmt.Println(err)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+				}
 			}
 
 		case strings.Contains(errString, "unknown command"):
 			showSuggestion()
 
 		default:
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 		}
 
 		os.Exit(1)
@@ -237,9 +244,13 @@ func init() {
 	rootCmd.AddCommand(newCommunityCmd().cmd)
 	rootCmd.AddCommand(newPluginCmd().cmd)
 	resources.AddAllResourcesCmds(rootCmd, &Config)
+	err := resource.AddDatabasesCmd(rootCmd, &Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 	addV2BillingStubs(rootCmd)
 
-	err := resource.PostProcessResourceCommands(rootCmd, &Config)
+	err = resource.PostProcessResourceCommands(rootCmd, &Config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -256,8 +267,8 @@ func init() {
 	for _, p := range pluginList {
 		plugin, err := plugins.LookUpPlugin(context.Background(), &Config, nfs, p)
 		if err == nil {
-			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 			installedPluginSet[p] = true
+			rootCmd.AddCommand(newPluginTemplateCmd(&Config, &plugin).cmd)
 		}
 	}
 

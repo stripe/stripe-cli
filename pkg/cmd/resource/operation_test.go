@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -433,6 +435,37 @@ func TestNewOperationCmd_FlagRegistered(t *testing.T) {
 	require.Equal(t, "", flag.Usage)
 }
 
+func TestNewOperationCmd_FormatAnnotation(t *testing.T) {
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+
+	NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/charges",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"created":     {Type: "integer", Format: "unix-time"},
+			"currency":    {Type: "string", Format: "currency"},
+			"description": {Type: "string"},
+		},
+	}, &config.Config{})
+
+	cmd := parentCmd.Commands()[0]
+
+	// Params with a format get the "format" annotation.
+	createdFlag := cmd.Flags().Lookup("created")
+	require.NotNil(t, createdFlag)
+	require.Equal(t, []string{"unix-time"}, createdFlag.Annotations["format"])
+
+	currencyFlag := cmd.Flags().Lookup("currency")
+	require.NotNil(t, currencyFlag)
+	require.Equal(t, []string{"currency"}, currencyFlag.Annotations["format"])
+
+	// Params without a format have no "format" annotation.
+	descFlag := cmd.Flags().Lookup("description")
+	require.NotNil(t, descFlag)
+	require.Nil(t, descFlag.Annotations["format"])
+}
+
 func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
@@ -452,4 +485,208 @@ func TestNewOperationCmd_WithServerURL(t *testing.T) {
 	flag := oc.Cmd.Flags().Lookup("api-base")
 	require.NotNil(t, flag)
 	require.Equal(t, serverURL, flag.DefValue)
+}
+
+func TestBuildExamples_RequiredAndMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/payment_intents",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"amount":      {Type: "integer", Required: true},
+			"currency":    {Type: "string", Required: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe payment_intents create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_MostCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "# common usage")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_NoRequiredNoMostCommon(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/customers",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"limit": {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe customers list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_EnumValue(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"status": {
+				Type:     "string",
+				Required: true,
+				Enum:     []EnumSpec{{Value: "active"}, {Value: "inactive"}},
+			},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	require.Contains(t, result, "# required fields")
+	require.Contains(t, result, "$ stripe test create --status <enum>")
+}
+
+// TestBuildExamples_RequiredMostCommonAndCommonOnly covers the case where some params are
+// both Required and MostCommon alongside params that are only MostCommon. Only the required
+// section should appear; MostCommon-only params are not shown.
+func TestBuildExamples_RequiredMostCommonAndCommonOnly(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/test",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"currency":    {Type: "string", Required: true},
+			"amount":      {Type: "integer", Required: true, MostCommon: true},
+			"description": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe test create", opSpec)
+	lines := strings.Split(result, "\n")
+	require.Len(t, lines, 2)
+	assert.Equal(t, "  # required fields", lines[0])
+	require.Contains(t, lines[1], "--amount")
+	require.Contains(t, lines[1], "--currency")
+	require.NotContains(t, lines[1], "--description")
+}
+
+func TestBuildExamples_FallbackMostCommon_All(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email": {Type: "string", MostCommon: true},
+			"name":  {Type: "string", MostCommon: true},
+			"phone": {Type: "string"},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// Both MostCommon params shown; plain param omitted; no ellipsis needed
+	require.Contains(t, result, "--email")
+	require.Contains(t, result, "--name")
+	require.NotContains(t, result, "--phone")
+	require.NotContains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackMostCommon_Truncated(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"description": {Type: "string", MostCommon: true},
+			"email":       {Type: "string", MostCommon: true},
+			"name":        {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// First two alphabetically (description, email); name omitted; ellipsis appended
+	require.Contains(t, result, "--description")
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--name")
+	require.Contains(t, result, "...")
+}
+
+func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "list",
+		Path:   "/v1/charges",
+		Method: http.MethodGet,
+		Params: map[string]*ParamSpec{
+			"created":  {Type: "integer"},
+			"currency": {Type: "string"},
+			"limit":    {Type: "integer"},
+		},
+	}
+	result := buildExamples("stripe charges list", opSpec)
+	require.Equal(t, "", result)
+}
+
+func TestClearableObject_BracesTranslatedToEmptyString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "update",
+		Path:   "/v1/customers/{id}",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"shipping": {Type: "clearable_object"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("shipping", "{}")
+	parentCmd.SetArgs([]string{"update", "cus_123"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "", vals["shipping"][0], "{} should be translated to empty string for clearable_object")
+}
+
+func TestClearableObject_BracesNotTranslatedForPlainString(t *testing.T) {
+	var gotBody string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	viper.Reset()
+	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
+	oc := NewOperationCmd(parentCmd, &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/things",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"name": {Type: "string"},
+		},
+	}, &config.Config{Profile: config.Profile{APIKey: "sk_test_1234"}})
+	oc.APIBaseURL = ts.URL
+
+	oc.Cmd.Flags().Set("name", "{}")
+	parentCmd.SetArgs([]string{"create"})
+	require.NoError(t, parentCmd.ExecuteContext(context.Background()))
+
+	vals, err := url.ParseQuery(gotBody)
+	require.NoError(t, err)
+	require.Equal(t, "{}", vals["name"][0], "{} should be sent as-is for plain string params")
 }
