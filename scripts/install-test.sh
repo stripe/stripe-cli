@@ -29,10 +29,6 @@ run_install() {
         scoop install stripe
     ;;
 
-    winget)
-        winget install Stripe.StripeCLI --accept-source-agreements --accept-package-agreements
-    ;;
-
     docker)
     ;;
 

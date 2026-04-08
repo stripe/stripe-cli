@@ -73,13 +73,30 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          sparse-checkout: |
-            scripts/install-test.sh
-          sparse-checkout-cone-mode: false
-      - shell: powershell
-        run: bash scripts/install-test.sh winget
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.0
+      - name: Build snapshot and generate winget manifests
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/windows.yml --clean --snapshot
         env:
-          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable local manifest files
+        shell: powershell
+        run: winget settings --enable LocalManifestFiles
+      - name: Install from local manifest
+        shell: powershell
+        run: |
+          $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
+          winget install --manifest $manifestDir.FullName --accept-source-agreements --accept-package-agreements
+      - name: Verify installation
+        shell: powershell
+        run: stripe --version
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
