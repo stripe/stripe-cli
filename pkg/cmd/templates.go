@@ -212,62 +212,11 @@ func visibleLen(s string) int {
 	return utf8.RuneCountInString(ansiEscRe.ReplaceAllString(s, ""))
 }
 
-// ansiFields splits s on ASCII whitespace, treating ANSI escape sequences
-// (including OSC sequences) as opaque — spaces inside an OSC sequence are
-// not used as word-break points.
-//
-// We roll this ourselves rather than using muesli/reflow because reflow's
-// wordwrap package has no concept of a continuation-line indent: combining
-// reflow/wordwrap + reflow/indent still doesn't produce a single wrapping pass
-// with a per-line prefix, and the extra dependency isn't worth the complexity.
-func ansiFields(s string) []string {
-	var words []string
-	var cur strings.Builder
-	inOSC := false
-	i := 0
-	for i < len(s) {
-		b := s[i]
-		switch {
-		case b == 0x1b && i+1 < len(s) && s[i+1] == ']':
-			// OSC sequence start (\x1b]): consume both bytes together so that
-			// spaces inside the sequence (e.g. inside a URL) don't break words.
-			inOSC = true
-			cur.WriteByte(b)
-			cur.WriteByte(s[i+1])
-			i += 2
-		case b == 0x1b && i+1 < len(s) && s[i+1] == '\\' && inOSC:
-			// String Terminator (\x1b\): consume both bytes.
-			inOSC = false
-			cur.WriteByte(b)
-			cur.WriteByte(s[i+1])
-			i += 2
-		case b == 0x07 && inOSC:
-			// BEL terminator: single byte.
-			inOSC = false
-			cur.WriteByte(b)
-			i++
-		case !inOSC && (b == ' ' || b == '\t' || b == '\n' || b == '\r'):
-			if cur.Len() > 0 {
-				words = append(words, cur.String())
-				cur.Reset()
-			}
-			i++
-		default:
-			cur.WriteByte(b)
-			i++
-		}
-	}
-	if cur.Len() > 0 {
-		words = append(words, cur.String())
-	}
-	return words
-}
-
 // wrapText word-wraps s to fit within width columns. Continuation lines are
-// indented by indent spaces. ANSI escape sequences (including OSC 8 hyperlinks)
-// are treated as zero-width for measurement purposes.
+// indented by indent spaces. ANSI escape sequences are treated as zero-width
+// for measurement purposes.
 func wrapText(s string, width, indent int) string {
-	words := ansiFields(s)
+	words := strings.Fields(s)
 	if len(words) == 0 {
 		return ""
 	}
