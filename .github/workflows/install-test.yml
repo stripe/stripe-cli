@@ -68,6 +68,18 @@ jobs:
       run: bash scripts/install-test.sh scoop
       env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+  winget:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            scripts/install-test.sh
+          sparse-checkout-cone-mode: false
+      - shell: powershell
+        run: bash scripts/install-test.sh winget
+        env:
+          PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
