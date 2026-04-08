@@ -53,3 +53,24 @@ scoops:
     homepage: https://stripe.com
     description: Stripe CLI utility
     license: Apache 2.0
+winget:
+  - name: stripe
+    publisher: "Stripe, Inc."
+    short_description: "Stripe CLI utility"
+    license: "Apache-2.0"
+    publisher_url: https://stripe.com
+    homepage: https://stripe.com
+    package_identifier: Stripe.StripeCLI
+    repository:
+      owner: microsoft
+      name: winget-pkgs
+      token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+    commit_author:
+      name: stripe-ci
+      email: support@stripe.com
