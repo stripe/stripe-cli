@@ -65,12 +65,12 @@ winget:
       owner: microsoft
       name: winget-pkgs
       token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
-    pull_request:
-      enabled: true
-      base:
-        owner: microsoft
-        name: winget-pkgs
-        branch: master
+      pull_request:
+        enabled: true
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
     commit_author:
       name: stripe-ci
       email: support@stripe.com
