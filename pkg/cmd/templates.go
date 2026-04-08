@@ -41,7 +41,7 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 }
 
 // fullHelpMode is set by PersistentPreRun when the help subcommand is invoked,
-// signalling that all parameters should be shown (not just required/mostcommon).
+// signaling that all parameters should be shown (not just required/mostcommon).
 var fullHelpMode bool
 
 // WrappedRequestParamsFlagUsages returns a string containing the usage
@@ -282,15 +282,16 @@ func wrapText(s string, width, indent int) string {
 	col := 0
 	for i, word := range words {
 		wlen := visibleLen(word)
-		if i == 0 {
+		switch {
+		case i == 0:
 			sb.WriteString(word)
 			col = wlen
-		} else if col+1+wlen > lineWidth {
+		case col+1+wlen > lineWidth:
 			sb.WriteString("\n")
 			sb.WriteString(prefix)
 			sb.WriteString(word)
 			col = wlen
-		} else {
+		default:
 			sb.WriteString(" ")
 			sb.WriteString(word)
 			col += 1 + wlen

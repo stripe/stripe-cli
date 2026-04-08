@@ -272,7 +272,6 @@ func init() {
 	// For known plugins not yet installed, add a hint command so users get
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
-
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {
