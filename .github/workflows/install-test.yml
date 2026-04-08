@@ -88,6 +88,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Validate winget manifests
         shell: powershell
+        # --ignore-warnings: GoReleaser generates manifests targeting the latest winget-pkgs
+        # schema version, which may be newer than the winget pre-installed on the GitHub
+        # runner. This causes harmless schema header warnings. The actual PR to
+        # microsoft/winget-pkgs is validated against the latest schema by their CI.
         run: |
           $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
           winget validate --ignore-warnings $manifestDir.FullName
