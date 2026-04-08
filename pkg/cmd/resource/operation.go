@@ -284,10 +284,12 @@ func buildExamples(cmdPath string, opSpec *OperationSpec) string {
 		return "  # required fields\n" + buildExampleLine(cmdPath, reqFields, opSpec.Params, false)
 	}
 
-	// No required fields: use MostCommon params if any are curated; otherwise no example.
+	// No required fields: use top-level (depth-0) non-clearable MostCommon params if any
+	// are curated; otherwise no example. Clearable_object params (e.g. --address="") and
+	// depth-1 sub-fields are excluded — examples should show scalar params only.
 	var candidates []string
 	for name, p := range opSpec.Params {
-		if p.MostCommon {
+		if p.MostCommon && !strings.Contains(name, ".") && p.Type != "clearable_object" {
 			candidates = append(candidates, name)
 		}
 	}

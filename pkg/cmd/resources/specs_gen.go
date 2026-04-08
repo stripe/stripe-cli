@@ -7065,26 +7065,32 @@ var V1CustomersCreate = resource.OperationSpec{
 		"address.city": {
 			Type:             "string",
 			ShortDescription: "City, district, suburb, town, or village",
+			MostCommon:       true,
 		},
 		"address.country": {
 			Type:             "string",
 			ShortDescription: "A freeform text field for the country",
+			MostCommon:       true,
 		},
 		"address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+			MostCommon:       true,
 		},
 		"address.line2": {
 			Type:             "string",
 			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+			MostCommon:       true,
 		},
 		"address.postal_code": {
 			Type:             "string",
 			ShortDescription: "ZIP or postal code",
+			MostCommon:       true,
 		},
 		"address.state": {
 			Type:             "string",
 			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+			MostCommon:       true,
 		},
 		"balance": {
 			Type:             "integer",
@@ -7199,6 +7205,7 @@ var V1CustomersCreate = resource.OperationSpec{
 		"shipping.phone": {
 			Type:             "string",
 			ShortDescription: "Customer phone (including extension)",
+			MostCommon:       true,
 		},
 		"source": {
 			Type: "string",
@@ -7480,26 +7487,32 @@ var V1CustomersUpdate = resource.OperationSpec{
 		"address.city": {
 			Type:             "string",
 			ShortDescription: "City, district, suburb, town, or village",
+			MostCommon:       true,
 		},
 		"address.country": {
 			Type:             "string",
 			ShortDescription: "A freeform text field for the country",
+			MostCommon:       true,
 		},
 		"address.line1": {
 			Type:             "string",
 			ShortDescription: "Address line 1, such as the street, PO Box, or company name",
+			MostCommon:       true,
 		},
 		"address.line2": {
 			Type:             "string",
 			ShortDescription: "Address line 2, such as the apartment, suite, unit, or building",
+			MostCommon:       true,
 		},
 		"address.postal_code": {
 			Type:             "string",
 			ShortDescription: "ZIP or postal code",
+			MostCommon:       true,
 		},
 		"address.state": {
 			Type:             "string",
 			ShortDescription: "State, county, province, or region ([ISO 3166-2](https://en.wikipedia.org/wiki/ISO_3166-2))",
+			MostCommon:       true,
 		},
 		"balance": {
 			Type:             "integer",
@@ -7614,6 +7627,7 @@ var V1CustomersUpdate = resource.OperationSpec{
 		"shipping.phone": {
 			Type:             "string",
 			ShortDescription: "Customer phone (including extension)",
+			MostCommon:       true,
 		},
 		"source": {
 			Type: "string",
@@ -12860,18 +12874,22 @@ var V1IssuingPersonalizationDesignsUpdate = resource.OperationSpec{
 		"carrier_text.footer_body": {
 			Type:             "string",
 			ShortDescription: "The footer body text of the carrier letter",
+			MostCommon:       true,
 		},
 		"carrier_text.footer_title": {
 			Type:             "string",
 			ShortDescription: "The footer title text of the carrier letter",
+			MostCommon:       true,
 		},
 		"carrier_text.header_body": {
 			Type:             "string",
 			ShortDescription: "The header body text of the carrier letter",
+			MostCommon:       true,
 		},
 		"carrier_text.header_title": {
 			Type:             "string",
 			ShortDescription: "The header title text of the carrier letter",
+			MostCommon:       true,
 		},
 		"lookup_key": {
 			Type:             "string",
@@ -16032,6 +16050,7 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"shipping.carrier": {
 			Type:             "string",
 			ShortDescription: "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+			MostCommon:       true,
 		},
 		"shipping.name": {
 			Type:             "string",
@@ -16041,10 +16060,12 @@ var V1PaymentIntentsConfirm = resource.OperationSpec{
 		"shipping.phone": {
 			Type:             "string",
 			ShortDescription: "Recipient phone (including extension)",
+			MostCommon:       true,
 		},
 		"shipping.tracking_number": {
 			Type:             "string",
 			ShortDescription: "The tracking number for a physical product, obtained from the delivery service",
+			MostCommon:       true,
 		},
 		"use_stripe_sdk": {
 			Type:             "boolean",
@@ -19674,6 +19695,7 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"shipping.carrier": {
 			Type:             "string",
 			ShortDescription: "The delivery service that shipped a physical product, such as Fedex, UPS, USPS, etc.",
+			MostCommon:       true,
 		},
 		"shipping.name": {
 			Type:             "string",
@@ -19683,10 +19705,12 @@ var V1PaymentIntentsUpdate = resource.OperationSpec{
 		"shipping.phone": {
 			Type:             "string",
 			ShortDescription: "Recipient phone (including extension)",
+			MostCommon:       true,
 		},
 		"shipping.tracking_number": {
 			Type:             "string",
 			ShortDescription: "The tracking number for a physical product, obtained from the delivery service",
+			MostCommon:       true,
 		},
 		"statement_descriptor": {
 			Type:             "string",
@@ -22547,10 +22571,12 @@ var V1PaymentRecordsReportPaymentAttemptInformational = resource.OperationSpec{
 		"shipping_details.name": {
 			Type:             "string",
 			ShortDescription: "The shipping recipient's name",
+			MostCommon:       true,
 		},
 		"shipping_details.phone": {
 			Type:             "string",
 			ShortDescription: "The shipping recipient's phone number",
+			MostCommon:       true,
 		},
 	},
 }
@@ -33236,6 +33262,7 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 		"bbpos_wisepad3.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
+			MostCommon:       true,
 		},
 		"bbpos_wisepos_e": {
 			Type:       "clearable_object",
@@ -33244,6 +33271,7 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 		"bbpos_wisepos_e.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image to display on the reader",
+			MostCommon:       true,
 		},
 		"cellular": {
 			Type: "clearable_object",
@@ -33281,6 +33309,7 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 		"stripe_s700.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
+			MostCommon:       true,
 		},
 		"stripe_s710": {
 			Type: "clearable_object",
@@ -33552,6 +33581,7 @@ var V1TerminalConfigurationsUpdate = resource.OperationSpec{
 		"verifone_p400.splashscreen": {
 			Type:             "string",
 			ShortDescription: "A File ID representing an image you want to display on the reader",
+			MostCommon:       true,
 		},
 		"wifi": {
 			Type: "clearable_object",

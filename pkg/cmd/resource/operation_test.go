@@ -631,6 +631,38 @@ func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
 	require.Equal(t, "", result)
 }
 
+func TestBuildExamples_FallbackExcludesClearableObject(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":   {Type: "string", MostCommon: true},
+			"address": {Type: "clearable_object", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// clearable_object should be excluded; only scalar depth-0 params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
+}
+
+func TestBuildExamples_FallbackExcludesDepth1(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":        {Type: "string", MostCommon: true},
+			"address.city": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// depth-1 sub-fields should be excluded; only depth-0 scalar params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
+}
+
 func TestClearableObject_BracesTranslatedToEmptyString(t *testing.T) {
 	var gotBody string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
