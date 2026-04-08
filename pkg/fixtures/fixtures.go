@@ -27,8 +27,9 @@ const SupportedVersions = 0
 
 // MetaFixture contains fixture metadata
 type MetaFixture struct {
-	Version         int  `json:"template_version"`
-	ExcludeMetadata bool `json:"exclude_metadata"`
+	Version         int      `json:"template_version"`
+	ExcludeMetadata bool     `json:"exclude_metadata"`
+	Aliases         []string `json:"aliases,omitempty"`
 }
 
 // FixtureData contains the whole fixture file
