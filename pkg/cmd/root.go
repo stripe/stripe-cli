@@ -60,6 +60,10 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if cmd.Name() == "help" {
+			fullHelpMode = true
+		}
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())
@@ -269,24 +273,6 @@ func init() {
 	// a helpful message instead of "unknown command".
 	pluginhints.AddHintCommands(rootCmd, &Config, installedPluginSet)
 
-	// Override the default help subcommand so that `stripe help customers create`
-	// shows all parameters (full-help mode), while `stripe customers create --help`
-	// shows only required/most-common parameters.
-	rootCmd.SetHelpCommand(&cobra.Command{
-		Use:   "help [command]",
-		Short: "Help about any command",
-		Long:  "Help provides help for any command in the application, including all parameters.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			target, _, _ := rootCmd.Find(args)
-			if target == nil || target == rootCmd {
-				return rootCmd.Usage()
-			}
-			ctx := context.WithValue(cmd.Context(), fullHelpModeKey{}, true)
-			target.SetContext(ctx)
-			return target.Help()
-		},
-		DisableFlagParsing: true,
-	})
 }
 
 func addV2BillingStubs(rootCmd *cobra.Command) {

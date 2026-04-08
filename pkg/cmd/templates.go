@@ -40,25 +40,24 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
 }
 
-// fullHelpModeKey is the context key used to signal full-help mode (show all params).
-// Set by the custom help subcommand; checked by WrappedRequestParamsFlagUsages.
-type fullHelpModeKey struct{}
+// fullHelpMode is set by PersistentPreRun when the help subcommand is invoked,
+// signalling that all parameters should be shown (not just required/mostcommon).
+var fullHelpMode bool
 
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
 // commands to set values for request parameters.
 //
 // By default, only flags annotated "required" or "mostcommon" are shown, followed
-// by a "N more parameters" message. If the command's context has fullHelpModeKey set
-// (via `stripe help <command>`), or if no flags have either annotation, all flags
-// are shown.
+// by a "N more parameters" message. If fullHelpMode is set (via `stripe help <command>`),
+// or if no flags have either annotation, all flags are shown.
 //
 // For enum parameters, the possible values are shown inline (e.g. --status
 // complete|expired|open), truncated with "..." if they would exceed the
 // terminal width. For other parameters, the API type is shown in angle
 // brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
-	fullHelp := cmd.Context() != nil && cmd.Context().Value(fullHelpModeKey{}) != nil
+	fullHelp := fullHelpMode
 
 	descIndent := strings.Repeat(" ", 10)
 	termWidth := getTerminalWidth()
