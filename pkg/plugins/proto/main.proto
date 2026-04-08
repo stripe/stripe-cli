@@ -18,12 +18,18 @@ message RunCommandResponse {
 
 message AdditionalInfo {
   IsTerminal is_terminal = 1;
+  TerminalDimensions terminal_dimensions = 2;
 }
 
 message IsTerminal {
   bool stdin = 1;
   bool stdout = 2;
   bool stderr = 3;
+}
+
+message TerminalDimensions {
+  uint32 width = 1;
+  uint32 height = 2;
 }
 
 service CoreCLIHelper {
