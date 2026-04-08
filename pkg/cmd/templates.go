@@ -74,7 +74,8 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 		allFlags = append(allFlags, flag)
 		isRequired := len(flag.Annotations["required"]) > 0
 		isMostCommon := len(flag.Annotations["mostcommon"]) > 0
-		if isRequired || isMostCommon {
+		isClearableObject := len(flag.Annotations["apitype"]) > 0 && flag.Annotations["apitype"][0] == "clearable_object"
+		if (isRequired || isMostCommon) && !isClearableObject {
 			hasAnnotations = true
 			filteredFlags = append(filteredFlags, flag)
 		}
