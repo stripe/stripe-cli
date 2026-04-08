@@ -354,6 +354,34 @@ func (p *Plugin) verifyChecksum(binary io.Reader, version string) error {
 	return nil
 }
 
+func buildAdditionalInfo(logger *log.Entry) *proto.AdditionalInfo {
+	var terminalDimensions *proto.TerminalDimensions
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		width, height, err := term.GetSize(int(os.Stdout.Fd()))
+		if err == nil {
+			terminalDimensions = &proto.TerminalDimensions{
+				Width:  uint32(width),
+				Height: uint32(height),
+			}
+		} else {
+			// Fail silently, this shouldn't block the plugin from running
+			logger.Debugf("could not get terminal dimensions: %s", err)
+			terminalDimensions = &proto.TerminalDimensions{
+				Width:  0,
+				Height: 0,
+			}
+		}
+	}
+	return &proto.AdditionalInfo{
+		IsTerminal: &proto.IsTerminal{
+			Stdin:  term.IsTerminal(int(os.Stdin.Fd())),
+			Stdout: term.IsTerminal(int(os.Stdout.Fd())),
+			Stderr: term.IsTerminal(int(os.Stderr.Fd())),
+		},
+		TerminalDimensions: terminalDimensions,
+	}
+}
+
 // Run boots up the binary and then sends the command to it via RPC
 func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, args []string) error {
 	logger := log.WithFields(log.Fields{
@@ -475,26 +503,12 @@ func (p *Plugin) Run(ctx context.Context, config *config.Config, fs afero.Fs, ar
 		}
 	case DispatcherGRPC:
 		logger.Debug("negotiated gRPC with plugin process")
-		additionalInfo := &proto.AdditionalInfo{
-			IsTerminal: &proto.IsTerminal{
-				Stdin:  term.IsTerminal(int(os.Stdin.Fd())),
-				Stdout: term.IsTerminal(int(os.Stdout.Fd())),
-				Stderr: term.IsTerminal(int(os.Stderr.Fd())),
-			},
-		}
-		if err = d.RunCommand(additionalInfo, args); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger), args); err != nil {
 			return err
 		}
 	case DispatcherV3:
 		logger.Debug("negotiated gRPC with plugin process (v3)")
-		additionalInfo := &proto.AdditionalInfo{
-			IsTerminal: &proto.IsTerminal{
-				Stdin:  term.IsTerminal(int(os.Stdin.Fd())),
-				Stdout: term.IsTerminal(int(os.Stdout.Fd())),
-				Stderr: term.IsTerminal(int(os.Stderr.Fd())),
-			},
-		}
-		if err = d.RunCommand(additionalInfo, args, NewCoreCLIHelper(ctx)); err != nil {
+		if err = d.RunCommand(buildAdditionalInfo(logger), args, NewCoreCLIHelper(ctx)); err != nil {
 			return err
 		}
 	default:
