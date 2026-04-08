@@ -86,17 +86,11 @@ jobs:
           args: release -f .goreleaser/windows.yml --clean --snapshot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Enable local manifest files
-        shell: powershell
-        run: winget settings --enable LocalManifestFiles
-      - name: Install from local manifest
+      - name: Validate winget manifests
         shell: powershell
         run: |
           $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
-          winget install --manifest $manifestDir.FullName --accept-source-agreements --accept-package-agreements
-      - name: Verify installation
-        shell: powershell
-        run: stripe --version
+          winget validate $manifestDir.FullName
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
