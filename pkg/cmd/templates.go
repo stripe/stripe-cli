@@ -66,8 +66,14 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
 			case "boolean":
 				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
+			case "clearable_object":
+				fmt.Fprintf(&sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
 			default:
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, typeName)
+				label := typeName
+				if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+					label = formatVals[0]
+				}
+				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, label)
 			}
 		} else {
 			fmt.Fprintf(&sb, "      --%s\n", flag.Name)

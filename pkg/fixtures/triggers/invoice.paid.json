@@ -1,6 +1,7 @@
 {
   "_meta": {
-    "template_version": 0
+    "template_version": 0,
+    "aliases": ["invoice.payment_succeeded"]
   },
   "fixtures": [
     {
