@@ -294,7 +294,8 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 
 	fmt.Fprintf(&sb, "  Run %s to quickly see all available commands.\n", ansi.Bold("stripe --map"))
 	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
-	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Run %s to see operations and required/common parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Run %s to see the full parameter list for a specific operation.\n", ansi.Bold("stripe help [resource] [operation]"))
 
 	if cmd.Flags().Lookup("stripe-account") != nil {
 		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
