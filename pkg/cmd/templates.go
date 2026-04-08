@@ -99,7 +99,7 @@ func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
 			// Strip the root command name so the hint reads "stripe help customers create"
 			// rather than "stripe help stripe customers create".
 			cmdPath := strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" ")
-			fmt.Fprintf(&sb, "\n  + %d more parameters. Run 'stripe help %s' to see all.\n", hidden, cmdPath)
+			fmt.Fprintf(&sb, "\n%s\n", ansi.Italic(fmt.Sprintf("  ... and %d more parameters (stripe help %s)", hidden, cmdPath)))
 		}
 	}
 
