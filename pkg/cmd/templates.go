@@ -2,13 +2,19 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/yuin/goldmark"
+	goldmarkast "github.com/yuin/goldmark/ast"
+	goldmarktext "github.com/yuin/goldmark/text"
 	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
@@ -34,52 +40,212 @@ func WrappedLocalFlagUsages(cmd *cobra.Command) string {
 	return cmd.LocalFlags().FlagUsagesWrapped(getTerminalWidth())
 }
 
+// fullHelpMode is set by PersistentPreRun when the help subcommand is invoked,
+// signaling that all parameters should be shown (not just required/mostcommon).
+var fullHelpMode bool
+
 // WrappedRequestParamsFlagUsages returns a string containing the usage
 // information for all request parameters flags, i.e. flags used in operation
 // commands to set values for request parameters.
+//
+// By default, only flags annotated "required" or "mostcommon" are shown, followed
+// by a "N more parameters" message. If fullHelpMode is set (via `stripe help <command>`),
+// or if no flags have either annotation, all flags are shown.
 //
 // For enum parameters, the possible values are shown inline (e.g. --status
 // complete|expired|open), truncated with "..." if they would exceed the
 // terminal width. For other parameters, the API type is shown in angle
 // brackets (e.g. --amount <integer>).
 func WrappedRequestParamsFlagUsages(cmd *cobra.Command) string {
-	var sb strings.Builder
+	fullHelp := fullHelpMode
+
+	descIndent := strings.Repeat(" ", 10)
+	termWidth := getTerminalWidth()
+
+	// Collect all request flags, and separately the filtered (required/mostcommon) subset.
+	var allFlags []*pflag.Flag
+	var filteredFlags []*pflag.Flag
+	hasAnnotations := false
 
 	cmd.LocalFlags().VisitAll(func(flag *pflag.Flag) {
 		if _, ok := flag.Annotations["request"]; !ok {
 			return
 		}
-
-		if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
-			const maxDisplayedEnumValues = 5
-			prefix := fmt.Sprintf("      --%s ", flag.Name)
-
-			if len(enumVals) <= maxDisplayedEnumValues {
-				fmt.Fprintf(&sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
-			} else {
-				fmt.Fprintf(&sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
-			}
-		} else if apiType, ok := flag.Annotations["apitype"]; ok {
-			typeName := apiType[0]
-			switch typeName {
-			case "array":
-				fmt.Fprintf(&sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
-			case "boolean":
-				fmt.Fprintf(&sb, "      --%s true|false\n", flag.Name)
-			case "clearable_object":
-				fmt.Fprintf(&sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
-			default:
-				label := typeName
-				if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
-					label = formatVals[0]
-				}
-				fmt.Fprintf(&sb, "      --%s <%s>\n", flag.Name, label)
-			}
-		} else {
-			fmt.Fprintf(&sb, "      --%s\n", flag.Name)
+		allFlags = append(allFlags, flag)
+		isRequired := len(flag.Annotations["required"]) > 0
+		isMostCommon := len(flag.Annotations["mostcommon"]) > 0
+		isClearableObject := len(flag.Annotations["apitype"]) > 0 && flag.Annotations["apitype"][0] == "clearable_object"
+		if (isRequired || isMostCommon) && !isClearableObject {
+			hasAnnotations = true
+			filteredFlags = append(filteredFlags, flag)
 		}
 	})
 
+	// Decide which set to render.
+	toRender := allFlags
+	if !fullHelp && hasAnnotations {
+		toRender = filteredFlags
+	}
+
+	var sb strings.Builder
+	for _, flag := range toRender {
+		writeFlagLine(&sb, flag, descIndent, termWidth)
+	}
+
+	// Append truncation hint when showing a subset.
+	if !fullHelp && hasAnnotations {
+		hidden := len(allFlags) - len(filteredFlags)
+		if hidden > 0 {
+			// Strip the root command name so the hint reads "stripe help customers create"
+			// rather than "stripe help stripe customers create".
+			cmdPath := strings.TrimPrefix(cmd.CommandPath(), cmd.Root().Name()+" ")
+			fmt.Fprintf(&sb, "\n%s\n", ansi.Italic(fmt.Sprintf("  ... and %d more parameters (stripe help %s)", hidden, cmdPath)))
+		}
+	}
+
+	return sb.String()
+}
+
+// writeFlagLine appends a single request parameter flag entry to sb.
+func writeFlagLine(sb *strings.Builder, flag *pflag.Flag, descIndent string, termWidth int) {
+	if enumVals, hasEnum := flag.Annotations["enum"]; hasEnum {
+		const maxDisplayedEnumValues = 5
+		prefix := fmt.Sprintf("      --%s ", flag.Name)
+
+		if len(enumVals) <= maxDisplayedEnumValues {
+			fmt.Fprintf(sb, "%s%s\n", prefix, strings.Join(enumVals, "|"))
+		} else {
+			fmt.Fprintf(sb, "%s%s|...\n", prefix, strings.Join(enumVals[:maxDisplayedEnumValues], "|"))
+		}
+	} else if apiType, ok := flag.Annotations["apitype"]; ok {
+		typeName := apiType[0]
+		switch typeName {
+		case "array":
+			fmt.Fprintf(sb, "      --%s <%s>  [can be specified multiple times]\n", flag.Name, "string")
+		case "boolean":
+			fmt.Fprintf(sb, "      --%s true|false\n", flag.Name)
+		case "clearable_object":
+			fmt.Fprintf(sb, "      --%s=\"\"  (pass empty string to remove this field)\n", flag.Name)
+		default:
+			label := typeName
+			if formatVals, hasFormat := flag.Annotations["format"]; hasFormat && len(formatVals) > 0 {
+				label = formatVals[0]
+			}
+			fmt.Fprintf(sb, "      --%s <%s>\n", flag.Name, label)
+		}
+	} else {
+		fmt.Fprintf(sb, "      --%s\n", flag.Name)
+	}
+
+	if flag.Usage != "" {
+		text := flag.Usage
+		if ansi.ColorsEnabled(os.Stdout) {
+			text = renderMarkdown(flag.Usage, os.Stdout)
+		}
+		fmt.Fprintf(sb, "%s%s\n", descIndent, wrapText(text, termWidth, len(descIndent)))
+	}
+}
+
+// renderMarkdown parses s as inline CommonMark and maps common formatting to
+// ANSI codes: bold, italic, code spans, and links.
+func renderMarkdown(s string, w io.Writer) string {
+	doc := goldmark.New().Parser().Parse(goldmarktext.NewReader([]byte(s)))
+	var sb strings.Builder
+	renderNode(doc, []byte(s), w, &sb)
+	return strings.TrimSpace(sb.String())
+}
+
+func renderNode(n goldmarkast.Node, src []byte, w io.Writer, sb *strings.Builder) {
+	switch node := n.(type) {
+	case *goldmarkast.Text:
+		sb.Write(node.Segment.Value(src))
+		return
+	case *goldmarkast.CodeSpan:
+		var code strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			if t, ok := c.(*goldmarkast.Text); ok {
+				code.Write(t.Segment.Value(src))
+			}
+		}
+		color := ansi.Color(w)
+		sb.WriteString(color.Sprintf(color.Bold(color.Blue(code.String()))))
+		return
+	case *goldmarkast.Emphasis:
+		var inner strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &inner)
+		}
+		if node.Level == 2 {
+			sb.WriteString(ansi.Bold(inner.String()))
+		} else {
+			sb.WriteString(ansi.Italic(inner.String()))
+		}
+		return
+	case *goldmarkast.Link:
+		var linkText strings.Builder
+		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
+			renderNode(c, src, w, &linkText)
+		}
+		url := string(node.Destination)
+		color := ansi.Color(w)
+		sb.WriteString(color.Sprintf(color.Bold(linkText.String())))
+		sb.WriteByte(' ')
+		sb.WriteString(ansi.Linkify(color.Sprintf(color.Faint(color.Underline(color.Cyan(url)))), url, w))
+		return
+	}
+	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
+		renderNode(c, src, w, sb)
+	}
+}
+
+// ansiEscRe matches CSI escape sequences (\x1b[...m) and OSC sequences
+// (\x1b]...\x1b\) used by ANSI color codes and OSC 8 hyperlinks.
+//
+// Note: github.com/acarl005/stripansi is already in go.mod and could replace
+// this regex in visibleLen, but its pattern targets BEL-terminated OSC
+// (\x1b]...\x07) and may not cover the ST-terminated form (\x1b]...\x1b\)
+// used by OSC 8 hyperlinks. Using our own regex keeps the two cases consistent.
+var ansiEscRe = regexp.MustCompile("\x1b(?:\\[[0-9;]*[a-zA-Z]|\\][^\x1b]*\x1b\\\\)")
+
+// visibleLen returns the display width of s, ignoring ANSI escape bytes.
+func visibleLen(s string) int {
+	return utf8.RuneCountInString(ansiEscRe.ReplaceAllString(s, ""))
+}
+
+// wrapText word-wraps s to fit within width columns. Continuation lines are
+// indented by indent spaces. ANSI escape sequences are treated as zero-width
+// for measurement purposes.
+func wrapText(s string, width, indent int) string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return ""
+	}
+
+	prefix := strings.Repeat(" ", indent)
+	lineWidth := width - indent
+	if lineWidth < 20 {
+		lineWidth = 20
+	}
+
+	var sb strings.Builder
+	col := 0
+	for i, word := range words {
+		wlen := visibleLen(word)
+		switch {
+		case i == 0:
+			sb.WriteString(word)
+			col = wlen
+		case col+1+wlen > lineWidth:
+			sb.WriteString("\n")
+			sb.WriteString(prefix)
+			sb.WriteString(word)
+			col = wlen
+		default:
+			sb.WriteString(" ")
+			sb.WriteString(word)
+			col += 1 + wlen
+		}
+	}
 	return sb.String()
 }
 
@@ -128,7 +294,8 @@ func formatAgentGuidance(cmd *cobra.Command) string {
 
 	fmt.Fprintf(&sb, "  Run %s to quickly see all available commands.\n", ansi.Bold("stripe --map"))
 	fmt.Fprintf(&sb, "  Run %s to discover all available API resources.\n", ansi.Bold("stripe resources"))
-	fmt.Fprintf(&sb, "  Run %s to see operations and parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Run %s to see operations and required/common parameters for a resource.\n", ansi.Bold("stripe [resource] --help"))
+	fmt.Fprintf(&sb, "  Run %s to see the full parameter list for a specific operation.\n", ansi.Bold("stripe help [resource] [operation]"))
 
 	if cmd.Flags().Lookup("stripe-account") != nil {
 		fmt.Fprintf(&sb, "  Use %s to make requests on behalf of connected accounts.", ansi.Bold("--stripe-account"))
@@ -238,13 +405,10 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 }
 
 func getTerminalWidth() int {
-	var width int
-
 	width, _, err := term.GetSize(0)
 	if err != nil {
-		width = 80
+		return 80
 	}
-
 	return width
 }
 

@@ -418,7 +418,7 @@ func TestConstructParamFromDot(t *testing.T) {
 	require.Equal(t, "shipping[address][line1]", param)
 }
 
-func TestNewOperationCmd_FlagRegistered(t *testing.T) {
+func TestNewOperationCmd_FlagUsageFromDescription(t *testing.T) {
 	parentCmd := &cobra.Command{Annotations: make(map[string]string)}
 
 	oc := NewOperationCmd(parentCmd, &OperationSpec{
@@ -426,13 +426,13 @@ func TestNewOperationCmd_FlagRegistered(t *testing.T) {
 		Path:   "/v1/customers",
 		Method: http.MethodPost,
 		Params: map[string]*ParamSpec{
-			"email": {Type: "string"},
+			"email": {Type: "string", ShortDescription: "The customer's email address"},
 		},
 	}, &config.Config{})
 
 	flag := oc.Cmd.Flags().Lookup("email")
 	require.NotNil(t, flag)
-	require.Equal(t, "", flag.Usage)
+	require.Equal(t, "The customer's email address", flag.Usage)
 }
 
 func TestNewOperationCmd_FormatAnnotation(t *testing.T) {
@@ -629,6 +629,38 @@ func TestBuildExamples_FallbackNoMostCommon_Empty(t *testing.T) {
 	}
 	result := buildExamples("stripe charges list", opSpec)
 	require.Equal(t, "", result)
+}
+
+func TestBuildExamples_FallbackExcludesClearableObject(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":   {Type: "string", MostCommon: true},
+			"address": {Type: "clearable_object", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// clearable_object should be excluded; only scalar depth-0 params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
+}
+
+func TestBuildExamples_FallbackExcludesDepth1(t *testing.T) {
+	opSpec := &OperationSpec{
+		Name:   "create",
+		Path:   "/v1/customers",
+		Method: http.MethodPost,
+		Params: map[string]*ParamSpec{
+			"email":        {Type: "string", MostCommon: true},
+			"address.city": {Type: "string", MostCommon: true},
+		},
+	}
+	result := buildExamples("stripe customers create", opSpec)
+	// depth-1 sub-fields should be excluded; only depth-0 scalar params shown
+	require.Contains(t, result, "--email")
+	require.NotContains(t, result, "--address")
 }
 
 func TestClearableObject_BracesTranslatedToEmptyString(t *testing.T) {

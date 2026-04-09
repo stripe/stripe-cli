@@ -61,6 +61,10 @@ var rootCmd = &cobra.Command{
 		getLogin(&fs, &Config),
 	),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if cmd.Name() == "help" {
+			fullHelpMode = true
+		}
+
 		// if getting the config errors, don't fail running the command
 		merchant, _ := Config.Profile.GetAccountID()
 		telemetryMetadata := stripe.GetEventMetadata(cmd.Context())

@@ -176,24 +176,31 @@ func NewOperationCmd(parentCmd *cobra.Command, opSpec *OperationSpec, cfg *confi
 		// it's ok to treat all flags as string flags because we don't send any default flag values to the API
 		// i.e. "account_balance" default is "" not 0 but this is ok
 		flagName := strings.ReplaceAll(prop, "_", "-")
+		desc := paramSpec.ShortDescription
 
 		switch paramSpec.Type {
 		case "array":
-			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, "")
+			operationCmd.arrayFlags[flagName] = cmd.Flags().StringArray(flagName, []string{}, desc)
 		case "string":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "clearable_object":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "number":
-			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", "")
+			operationCmd.stringFlags[flagName] = cmd.Flags().String(flagName, "", desc)
 		case "integer":
-			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, "")
+			operationCmd.integerFlags[flagName] = cmd.Flags().Int(flagName, -1, desc)
 		case "boolean":
-			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, "")
+			operationCmd.boolFlags[flagName] = cmd.Flags().Bool(flagName, false, desc)
 		default:
 		}
 		cmd.Flags().SetAnnotation(flagName, "request", []string{"true"})
 		cmd.Flags().SetAnnotation(flagName, "apitype", []string{paramSpec.Type})
+		if paramSpec.Required {
+			cmd.Flags().SetAnnotation(flagName, "required", []string{"true"})
+		}
+		if paramSpec.MostCommon {
+			cmd.Flags().SetAnnotation(flagName, "mostcommon", []string{"true"})
+		}
 		if paramSpec.Format != "" {
 			cmd.Flags().SetAnnotation(flagName, "format", []string{paramSpec.Format})
 		}
@@ -277,10 +284,12 @@ func buildExamples(cmdPath string, opSpec *OperationSpec) string {
 		return "  # required fields\n" + buildExampleLine(cmdPath, reqFields, opSpec.Params, false)
 	}
 
-	// No required fields: use MostCommon params if any are curated; otherwise no example.
+	// No required fields: use top-level (depth-0) non-clearable MostCommon params if any
+	// are curated; otherwise no example. Clearable_object params (e.g. --address="") and
+	// depth-1 sub-fields are excluded — examples should show scalar params only.
 	var candidates []string
 	for name, p := range opSpec.Params {
-		if p.MostCommon {
+		if p.MostCommon && !strings.Contains(name, ".") && p.Type != "clearable_object" {
 			candidates = append(candidates, name)
 		}
 	}

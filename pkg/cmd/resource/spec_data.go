@@ -13,7 +13,8 @@ type OperationSpec struct {
 
 // ParamSpec describes a single parameter of an API operation.
 type ParamSpec struct {
-	Type string // "string" | "integer" | "boolean" | "number" | "array"
+	Type             string // "string" | "integer" | "boolean" | "number" | "array"
+	ShortDescription string
 
 	// Required is true when the parameter is unconditionally required by the API —
 	// the parameter itself and every ancestor object in its dot-path must all be required.

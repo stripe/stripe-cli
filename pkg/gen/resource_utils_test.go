@@ -145,3 +145,47 @@ func TestIsClearableObjectFalseNoEmptyString(t *testing.T) {
 	}
 	assert.False(t, IsClearableObject(s))
 }
+
+func TestFirstSentence(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+		reason   string
+	}{
+		// Core mechanics
+		{"Multi. Sentence.", "Multi", "basic split"},
+		{"Single sentence.", "Single sentence", "trailing period stripped"},
+		{"First sentence.\nSecond sentence.", "First sentence", "single newline as sentence separator"},
+		{"First para.\n\nSecond para.", "First para", "paragraph break"},
+		{"", "", "empty"},
+
+		// canEndSentence: uppercase letter (acronym before period)
+		{"Destination URL. The URL is activated at onboarding.", "Destination URL", "uppercase letter ends word before period"},
+
+		// canEndSentence: closing bracket / backtick / double-quote
+		{"Amount in cents (e.g., 100 for $1.00). Must be.", "Amount in cents (e.g., 100 for $1.00)", "closing paren before period"},
+		{"Set `enabled`. Next sentence.", "Set `enabled`", "backtick before period"},
+		{"See [docs](https://example.com). Sign in.", "See [docs](https://example.com)", "markdown link — closing paren before period"},
+		{`State code, such as "NY" or "TX".`, `State code, such as "NY" or "TX"`, "closing double-quote before period — trailing period stripped"},
+		{`State code, such as "NY" or "TX". Required.`, `State code, such as "NY" or "TX"`, "closing double-quote before period — mid-string split"},
+
+		// canStartSentence
+		{"U.S. only. Required.", "U.S. only", "lowercase after period does not start sentence — prevents U.S. split"},
+		{"Apply taxes. (Examples include VAT and GST.)", "Apply taxes", "open paren followed by uppercase starts sentence"},
+
+		// sentenceAbbrevs
+		{"Uses e.g., card. Next.", "Uses e.g., card", "e.g. — period not followed by space, separator check prevents split"},
+		{"Uses e.g. Card instead.", "Uses e.g. Card instead", "e.g. — sentenceAbbrevs prevents split even before uppercase"},
+		{"Uses i.e., physical goods. Next.", "Uses i.e., physical goods", "i.e. abbreviation"},
+
+		// etc. special-cased separately from sentenceAbbrevs
+		{"Accepts USD, EUR, etc.", "Accepts USD, EUR, etc.", "etc. at end of string retains period"},
+		{"Accepts USD, EUR, etc. Contact support.", "Accepts USD, EUR, etc", "etc. mid-string is a valid sentence boundary"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.reason, func(t *testing.T) {
+			assert.Equal(t, tc.expected, FirstSentence(tc.input))
+		})
+	}
+}

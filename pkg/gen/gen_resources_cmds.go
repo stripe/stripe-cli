@@ -393,7 +393,7 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			for _, req := range media.Schema.Required {
 				requiredSet[req] = true
 			}
-			locallyRequired := make(map[string]bool)
+			subResourceCandidates := make(map[string]bool)
 
 			for propName, schema := range media.Schema.Properties {
 				if propName == "metadata" || propName == "expand" {
@@ -404,9 +404,12 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 				}
 
 				if obj := gen.ResolveObjectSchema(schema); obj != nil {
-					addDenormalizedParams(params, locallyRequired, propName, obj, requiredSet[propName])
+					addDenormalizedParams(params, subResourceCandidates, propName, obj, requiredSet[propName])
 					if gen.IsClearableObject(schema) {
 						params[propName] = &resource.ParamSpec{Type: "clearable_object"}
+						for _, subName := range obj.XStripeMostCommon {
+							subResourceCandidates[propName+"."+subName] = true
+						}
 					}
 				} else {
 					scalarType := gen.GetType(schema)
@@ -415,16 +418,17 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 					}
 
 					ps := &resource.ParamSpec{
-						Type:     *scalarType,
-						Required: requiredSet[propName],
-						Format:   schema.Format,
-						Enum:     mergeEnumValues(schema),
+						Type:             *scalarType,
+						ShortDescription: gen.FirstSentence(schema.Description),
+						Required:         requiredSet[propName],
+						Format:           schema.Format,
+						Enum:             mergeEnumValues(schema),
 					}
 					params[propName] = ps
 				}
 			}
 
-			markMostCommon(params, locallyRequired, media.Schema.XStripeMostCommon)
+			markMostCommon(params, subResourceCandidates, media.Schema.XStripeMostCommon)
 		}
 	} else {
 		for _, param := range specOp.Parameters {
@@ -442,10 +446,11 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 			}
 
 			ps := &resource.ParamSpec{
-				Type:     *scalarType,
-				Required: param.Required,
-				Format:   schema.Format,
-				Enum:     mergeEnumValues(schema),
+				Type:             *scalarType,
+				ShortDescription: gen.FirstSentence(param.Description),
+				Required:         param.Required,
+				Format:           schema.Format,
+				Enum:             mergeEnumValues(schema),
 			}
 			params[param.Name] = ps
 		}
@@ -466,32 +471,33 @@ func getOperationParams(apiNamespace ApiNamespace, specOp *spec.Operation, op sp
 // Required on a ParamSpec means "unconditionally required by the API call," not merely
 // "required within its immediate parent object."
 //
-// locallyRequired is populated with keys for every scalar param that is required within its
-// immediate parent schema (regardless of whether ancestors are required). This is separate
-// from ParamSpec.Required and is used by markMostCommon's depth-1 rule: if a top-level
-// object is mostCommon, its locally-required children should also be marked mostCommon.
-func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, prefix string, schema *spec.Schema, parentRequired bool) {
+// subResourceCandidates is populated with depth-1 keys (exactly one dot) for scalar params
+// that are locally required within their immediate parent schema. This is used by
+// markMostCommon's depth-1 rule: if a top-level object is MostCommon, its locally-required
+// children are also surfaced. Depth-2+ keys are not added; markMostCommon never marks them.
+func addDenormalizedParams(params map[string]*resource.ParamSpec, subResourceCandidates map[string]bool, prefix string, schema *spec.Schema, parentRequired bool) {
 	for propName, propSchema := range schema.Properties {
 		key := prefix + "." + propName
 		isLocallyRequired := containsStr(schema.Required, propName)
 		isTrulyRequired := parentRequired && isLocallyRequired
 
 		if obj := gen.ResolveObjectSchema(propSchema); obj != nil {
-			addDenormalizedParams(params, locallyRequired, key, obj, isTrulyRequired)
+			addDenormalizedParams(params, subResourceCandidates, key, obj, isTrulyRequired)
 		} else {
 			scalarType := gen.GetType(propSchema)
 			if scalarType == nil {
 				continue
 			}
 
-			if isLocallyRequired {
-				locallyRequired[key] = true
+			if isLocallyRequired && strings.Count(key, ".") == 1 {
+				subResourceCandidates[key] = true
 			}
 			ps := &resource.ParamSpec{
-				Type:     *scalarType,
-				Required: isTrulyRequired,
-				Format:   propSchema.Format,
-				Enum:     mergeEnumValues(propSchema),
+				Type:             *scalarType,
+				ShortDescription: gen.FirstSentence(propSchema.Description),
+				Required:         isTrulyRequired,
+				Format:           propSchema.Format,
+				Enum:             mergeEnumValues(propSchema),
 			}
 			params[key] = ps
 		}
@@ -505,16 +511,16 @@ func addDenormalizedParams(params map[string]*resource.ParamSpec, locallyRequire
 //   - Depth-0 (no dots): marked when the key appears in the request body's x-stripeMostCommon
 //     annotation. Example: "description" is marked if listed in x-stripeMostCommon.
 //
-//   - Depth-1 (one dot): marked when the param is locally required within its parent AND
-//     the parent key appears in x-stripeMostCommon. "Locally required" (locallyRequired map)
-//     means required within the immediate parent schema, regardless of whether the parent
-//     itself is top-level required. The rationale: if a commonly-used object (e.g. "recurring")
-//     has fields that must be provided whenever the object is used (e.g. "interval"), those
-//     fields are worth surfacing alongside the parent.
+//   - Depth-1 (one dot): marked when the param appears in subResourceCandidates AND the
+//     parent key appears in x-stripeMostCommon. subResourceCandidates contains two kinds of
+//     entries: scalar params that are locally required within their parent object (so that
+//     if you're going to provide a commonly-used object, its required fields are surfaced),
+//     and scalar params listed in a clearable_object parent's own x-stripeMostCommon
+//     annotation (so that the sub-object's curated fields are surfaced alongside the parent).
 //
 // Depth 2+ params are never marked; the signal-to-noise tradeoff doesn't hold for deeply
 // nested fields.
-func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[string]bool, rootMostCommon []string) {
+func markMostCommon(params map[string]*resource.ParamSpec, subResourceCandidates map[string]bool, rootMostCommon []string) {
 	mostCommonSet := make(map[string]bool, len(rootMostCommon))
 	for _, name := range rootMostCommon {
 		mostCommonSet[name] = true
@@ -526,7 +532,7 @@ func markMostCommon(params map[string]*resource.ParamSpec, locallyRequired map[s
 			}
 			continue
 		}
-		if strings.Count(paramName, ".") == 1 && locallyRequired[paramName] {
+		if strings.Count(paramName, ".") == 1 && subResourceCandidates[paramName] {
 			parent := paramName[:strings.Index(paramName, ".")]
 			if mostCommonSet[parent] {
 				paramSpec.MostCommon = true
