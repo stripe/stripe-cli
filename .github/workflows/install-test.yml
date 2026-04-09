@@ -68,6 +68,33 @@ jobs:
       run: bash scripts/install-test.sh scoop
       env:
           PAGERDUTY_INTEGRATION_KEY: ${{ secrets.PAGERDUTY_INTEGRATION_KEY }}
+  winget:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.26.0
+      - name: Build snapshot and generate winget manifests
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release -f .goreleaser/windows.yml --clean --snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate winget manifests
+        shell: powershell
+        # --ignore-warnings: GoReleaser generates manifests targeting the latest winget-pkgs
+        # schema version, which may be newer than the winget pre-installed on the GitHub
+        # runner. This causes harmless schema header warnings. The actual PR to
+        # microsoft/winget-pkgs is validated against the latest schema by their CI.
+        run: |
+          $manifestDir = Get-ChildItem -Path dist/winget/manifests -Recurse -Directory | Where-Object { $_.GetFiles("*.yaml").Count -gt 0 } | Select-Object -First 1
+          winget validate --ignore-warnings $manifestDir.FullName
   docker:
     runs-on: ubuntu-latest
     container: stripe/stripe-cli:latest
