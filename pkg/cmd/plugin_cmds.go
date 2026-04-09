@@ -12,6 +12,7 @@ import (
 
 	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
+	"github.com/stripe/stripe-cli/pkg/stripe"
 	"github.com/stripe/stripe-cli/pkg/validators"
 )
 
@@ -19,6 +20,7 @@ type pluginTemplateCmd struct {
 	cfg        *config.Config
 	cmd        *cobra.Command
 	fs         afero.Fs
+	baseURL    string
 	ParsedArgs []string
 }
 
@@ -28,6 +30,7 @@ func newPluginTemplateCmd(config *config.Config, plugin *plugins.Plugin) *plugin
 	ptc := &pluginTemplateCmd{}
 	ptc.fs = afero.NewOsFs()
 	ptc.cfg = config
+	ptc.baseURL = stripe.DefaultAPIBaseURL
 
 	ptc.cmd = &cobra.Command{
 		Use:   plugin.Shortname,
@@ -110,8 +113,9 @@ func (ptc *pluginTemplateCmd) runPluginCmd(cmd *cobra.Command, args []string) er
 		"prefix": "cmd.pluginCmd.runPluginCmd",
 	}).Debug("Running plugin...")
 
-	err = plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
-	plugins.CleanupAllClients()
+	err = plugins.WithBackgroundUpdate(ctx, ptc.cfg, fs, ptc.baseURL, &plugin, os.Stderr, func() error {
+		return plugin.Run(ctx, ptc.cfg, fs, ptc.ParsedArgs)
+	})
 
 	if err != nil {
 		if err == validators.ErrAPIKeyNotConfigured {

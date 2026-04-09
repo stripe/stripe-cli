@@ -186,13 +186,13 @@ func StrikeThrough(text string) string {
 // Private functions
 //
 
+type fder interface{ Fd() uintptr }
+
 func isTerminal(w io.Writer) bool {
-	switch v := w.(type) {
-	case *os.File:
-		return term.IsTerminal(int(v.Fd()))
-	default:
-		return false
+	if f, ok := w.(fder); ok {
+		return term.IsTerminal(int(f.Fd()))
 	}
+	return false
 }
 
 func isPlugin() bool {

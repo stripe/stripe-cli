@@ -22,6 +22,21 @@ func TestLookUpLatestVersion(t *testing.T) {
 	require.Equal(t, "2.0.1", version)
 }
 
+func TestLookupLatestVersionForMajor(t *testing.T) {
+	fs := setUpFS()
+	config := &TestConfig{}
+
+	plugin, _ := LookUpPlugin(context.Background(), config, fs, "appA")
+	version := plugin.LookupLatestVersionForMajor(1)
+	require.Equal(t, "1.0.1", version)
+
+	version = plugin.LookupLatestVersionForMajor(2)
+	require.Equal(t, "2.0.1", version)
+
+	version = plugin.LookupLatestVersionForMajor(3)
+	require.Equal(t, "", version)
+}
+
 func TestInstall(t *testing.T) {
 	fs := setUpFS()
 	config := &TestConfig{}
