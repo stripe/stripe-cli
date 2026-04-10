@@ -791,7 +791,6 @@ func addV2ResourcesCmds(rootCmd *cobra.Command, cfg *config.Config) {
 	rCoreAccountPersonsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_persons")
 	rCoreAccountTokensCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "account_tokens")
 	rCoreAccountsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "accounts")
-	rCoreApprovalRequestsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "approval_requests")
 	rCoreEventDestinationsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "event_destinations")
 	rCoreEventsCmd := resource.NewResourceCmd(nsCoreCmd.Cmd, "events")
 
@@ -824,11 +823,6 @@ func addV2ResourcesCmds(rootCmd *cobra.Command, cfg *config.Config) {
 	resource.NewOperationCmd(rCoreEventDestinationsCmd.Cmd, &V2CoreEventDestinationsUpdate, cfg)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, &V2CoreEventsList, cfg)
 	resource.NewOperationCmd(rCoreEventsCmd.Cmd, &V2CoreEventsRetrieve, cfg)
-	resource.NewOperationCmd(rCoreApprovalRequestsCmd.Cmd, &V2CoreApprovalRequestsList, cfg)
-	resource.NewOperationCmd(rCoreApprovalRequestsCmd.Cmd, &V2CoreApprovalRequestsRetrieve, cfg)
-	resource.NewOperationCmd(rCoreApprovalRequestsCmd.Cmd, &V2CoreApprovalRequestsSubmit, cfg)
-	resource.NewOperationCmd(rCoreApprovalRequestsCmd.Cmd, &V2CoreApprovalRequestsCancel, cfg)
-	resource.NewOperationCmd(rCoreApprovalRequestsCmd.Cmd, &V2CoreApprovalRequestsExecute, cfg)
 }
 
 func addV2PreviewResourcesCmds(rootCmd *cobra.Command, cfg *config.Config) {

@@ -43748,46 +43748,6 @@ var V2CoreEventsRetrieve = resource.OperationSpec{
 	Method: "GET",
 }
 
-var V2CoreApprovalRequestsRetrieve = resource.OperationSpec{
-	Name:   "retrieve",
-	Path:   "/v2/core/approval_requests/{id}",
-	Method: "GET",
-}
-
-var V2CoreApprovalRequestsList = resource.OperationSpec{
-	Name:   "list",
-	Path:   "/v2/core/approval_requests",
-	Method: "GET",
-	Params: map[string]*resource.ParamSpec{
-		"limit": {
-			Type:             "integer",
-			ShortDescription: "Maximum number of results to return",
-		},
-		"page": {
-			Type:             "string",
-			ShortDescription: "Cursor for the requested page",
-		},
-	},
-}
-
-var V2CoreApprovalRequestsSubmit = resource.OperationSpec{
-	Name:   "submit",
-	Path:   "/v2/core/approval_requests/{id}/submit",
-	Method: "POST",
-}
-
-var V2CoreApprovalRequestsCancel = resource.OperationSpec{
-	Name:   "cancel",
-	Path:   "/v2/core/approval_requests/{id}/cancel",
-	Method: "POST",
-}
-
-var V2CoreApprovalRequestsExecute = resource.OperationSpec{
-	Name:   "execute",
-	Path:   "/v2/core/approval_requests/{id}/execute",
-	Method: "POST",
-}
-
 var V2PreviewBillingBillSettingVersionsList = resource.OperationSpec{
 	Name:      "list",
 	Path:      "/v2/billing/bill_settings/{bill_setting_id}/versions",
