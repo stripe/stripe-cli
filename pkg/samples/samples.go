@@ -388,7 +388,8 @@ func (s *SampleManager) WriteDotEnv(ctx context.Context, sampleLocation string) 
 
 		// We refuse to write through a symlink to prevent a malicious
 		// sample from overwriting files outside the destination directory.
-		if isSymlink(envFile) {
+		// Use Lstat so we inspect the link entry itself instead of following it.
+		if entry, err := os.Lstat(envFile); err == nil && entry.Mode().Type() == os.ModeSymlink {
 			return fmt.Errorf("refusing to write .env: %s is a symlink", envFile)
 		}
 

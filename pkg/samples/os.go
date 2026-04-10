@@ -9,17 +9,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-// isSymlink returns true if the file at path is a symbolic link.
-// Returns false if the path does not exist or cannot be stat'd.
-func isSymlink(path string) bool {
-	// os.Lstat inspects the link entry itself (rather than following it like os.Stat)
-	entry, err := os.Lstat(path)
-	if err != nil {
-		return false
-	}
-	return entry.Mode().Type() == os.ModeSymlink
-}
-
 // cacheFolder is the local directory where we place local copies of samples
 func (s *SampleManager) cacheFolder() (string, error) {
 	configPath := s.Config.GetConfigFolder(os.Getenv("XDG_CONFIG_HOME"))
