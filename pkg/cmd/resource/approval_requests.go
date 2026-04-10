@@ -1,8 +1,6 @@
 package resource
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/stripe/stripe-cli/pkg/config"
@@ -59,7 +57,7 @@ func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) erro
 	}
 
 	if coreCmd == nil {
-		return errors.New("could not find core command")
+		return nil
 	}
 
 	rApprovalRequestsCmd := NewResourceCmd(coreCmd, "approval_requests")
