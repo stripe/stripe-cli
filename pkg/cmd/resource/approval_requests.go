@@ -31,6 +31,12 @@ var approvalRequestsSpecs = []OperationSpec{
 		Name:   "submit",
 		Path:   "/v2/core/approval_requests/{id}/submit",
 		Method: "POST",
+		Params: map[string]*ParamSpec{
+			"reason": {
+				Type:             "string",
+				ShortDescription: "The reason for submitting the approval request",
+			},
+		},
 	},
 	{
 		Name:   "cancel",
