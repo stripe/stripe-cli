@@ -67,6 +67,7 @@ func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) erro
 	}
 
 	rApprovalRequestsCmd := NewResourceCmd(coreCmd, "approval_requests")
+	rApprovalRequestsCmd.Cmd.Hidden = true
 
 	for i := range approvalRequestsSpecs {
 		NewOperationCmd(rApprovalRequestsCmd.Cmd, &approvalRequestsSpecs[i], cfg)
