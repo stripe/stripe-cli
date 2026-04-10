@@ -92,16 +92,16 @@ func (s *SampleManager) GetFiles(path string) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
-
 	for _, f := range files {
 		// We only want regular files, not directories or symlinks.
 		// Filtering symlinks prevents malicious sample repositories from
 		// using symlinks to escape the destination directory.
-		if !f.IsDir() && !isSymlink(filepath.Join(path, f.Name())) {
+		// Checking mode bits is efficient and avoids path based symlink checks.
+		mode := f.Mode()
+		if !mode.IsDir() && mode&os.ModeSymlink == 0 {
 			file = append(file, f.Name())
 		}
 	}
-
 	return file, nil
 }
 
@@ -117,14 +117,4 @@ func (s *SampleManager) delete(name string) error {
 	}
 
 	return nil
-}
-
-func folderSearch(folders []string, name string) bool {
-	for _, folder := range folders {
-		if folder == name {
-			return true
-		}
-	}
-
-	return false
 }

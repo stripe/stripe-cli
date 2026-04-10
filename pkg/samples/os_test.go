@@ -20,11 +20,8 @@ func home() string {
 func TestFolderSearch(t *testing.T) {
 	folders := []string{"foo", "bar", "baz"}
 
-	expectedFound := folderSearch(folders, "bar")
-	expectedNotFound := folderSearch(folders, "box")
-
-	assert.True(t, expectedFound)
-	assert.False(t, expectedNotFound)
+	assert.True(t, contains(folders, "bar"))
+	assert.False(t, contains(folders, "box"))
 }
 
 func TestCacheFolder(t *testing.T) {
@@ -141,6 +138,6 @@ func TestGetFiles(t *testing.T) {
 
 func TestFoldersSearch(t *testing.T) {
 	folders := []string{"bender", "fry", "leela"}
-	assert.True(t, folderSearch(folders, "leela"))
-	assert.False(t, folderSearch(folders, "zoidberg"))
+	assert.True(t, contains(folders, "leela"))
+	assert.False(t, contains(folders, "zoidberg"))
 }
