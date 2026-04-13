@@ -64,7 +64,6 @@ winget:
     repository:
       owner: stripe
       name: winget-pkgs
-      branch: "stripe-cli-{{.Version}}"
       token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
       pull_request:
         enabled: true
