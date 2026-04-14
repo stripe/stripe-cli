@@ -60,10 +60,11 @@ winget:
     license: "Apache-2.0"
     publisher_url: https://stripe.com
     homepage: https://stripe.com
-    package_identifier: Stripe.StripeCLI
+    package_identifier: Stripe.StripeCli
     repository:
       owner: stripe
       name: winget-pkgs
+      branch: "stripe-cli-{{.Version}}"
       token: "{{ .Env.WINGET_GITHUB_TOKEN }}"
       pull_request:
         enabled: true
