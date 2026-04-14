@@ -115,9 +115,9 @@ func selectShell(shell string, writeToStdout bool) error {
 		return genFish(writeToStdout, autoDetected)
 	default:
 		if shell != "" {
-			return fmt.Errorf("Unsupported shell %q. Supported shells are: bash, zsh, fish", shell)
+			return fmt.Errorf("unsupported shell %q; supported shells are: bash, zsh, fish", shell)
 		}
-		return fmt.Errorf("Could not automatically detect your shell. Please run the command with the `--shell` flag for bash, zsh, or fish")
+		return fmt.Errorf("could not automatically detect your shell; please run the command with the --shell flag for bash, zsh, or fish")
 	}
 }
 

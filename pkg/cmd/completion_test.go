@@ -74,7 +74,7 @@ func TestSelectShellErrors(t *testing.T) {
 	t.Run("explicit unsupported shell produces unsupported error", func(t *testing.T) {
 		err := selectShell("powershell", true)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "Unsupported shell")
+		assert.Contains(t, err.Error(), "unsupported shell")
 		assert.Contains(t, err.Error(), "powershell")
 	})
 
