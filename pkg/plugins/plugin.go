@@ -15,9 +15,9 @@ import (
 	"runtime"
 	"time"
 
+	"golang.org/x/term"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"golang.org/x/term"
 
 	"github.com/stripe/stripe-cli/pkg/ansi"
 	"github.com/stripe/stripe-cli/pkg/config"
