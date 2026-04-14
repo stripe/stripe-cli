@@ -296,7 +296,7 @@ func addPluginToList(pluginList *PluginList, pl Plugin) {
 
 func findPluginIndex(list *PluginList, p Plugin) int {
 	for i, pp := range list.Plugins {
-		if pp.MagicCookieValue == p.MagicCookieValue {
+		if pp.Shortname == p.Shortname {
 			return i
 		}
 	}
