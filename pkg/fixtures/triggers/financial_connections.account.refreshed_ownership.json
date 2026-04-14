@@ -1,0 +1,35 @@
+{
+  "_meta": {
+    "template_version": 0
+  },
+  "fixtures": [
+    {
+      "name": "customer",
+      "path": "/v1/customers",
+      "method": "post",
+      "params": {
+        "description": "(created by Stripe CLI)"
+      }
+    },
+    {
+      "name": "fc_session",
+      "path": "/v1/financial_connections/sessions",
+      "method": "post",
+      "params": {
+        "account_holder": {
+          "type": "customer",
+          "customer": "${customer:id}"
+        },
+        "permissions": ["balances", "ownership", "payment_method", "transactions"]
+      }
+    },
+    {
+      "name": "fc_refresh",
+      "path": "/v1/financial_connections/accounts/${fc_session:accounts.data.0.id}/refresh",
+      "method": "post",
+      "params": {
+        "features": ["ownership"]
+      }
+    }
+  ]
+}
