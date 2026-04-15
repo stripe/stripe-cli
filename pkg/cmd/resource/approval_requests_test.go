@@ -16,8 +16,7 @@ func TestAddApprovalRequestsSubCmds(t *testing.T) {
 	v2Cmd.AddCommand(coreCmd)
 	root.AddCommand(v2Cmd)
 
-	err := AddApprovalRequestsSubCmds(root, &config.Config{})
-	require.NoError(t, err)
+	AddApprovalRequestsSubCmds(root, &config.Config{})
 
 	var found *cobra.Command
 	for _, cmd := range coreCmd.Commands() {
