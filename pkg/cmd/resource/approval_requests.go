@@ -52,18 +52,12 @@ var approvalRequestsSpecs = []OperationSpec{
 
 // AddApprovalRequestsSubCmds patches approval_requests commands into the
 // auto-generated `core` namespace command tree.
-func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) error {
-	var coreCmd *cobra.Command
-
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Use == "core" {
-			coreCmd = cmd
-			break
-		}
-	}
-
-	if coreCmd == nil {
-		return nil
+func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) {
+	coreCmd, _, err := rootCmd.Find([]string{"v2", "core"})
+	if err != nil || coreCmd.Name() != "core" {
+		// Fail open if "stripe v2 core" command is not found
+		// This is best effort while the approval_requests API is still in private preview
+		return
 	}
 
 	rApprovalRequestsCmd := NewResourceCmd(coreCmd, "approval_requests")
@@ -72,6 +66,4 @@ func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) erro
 	for i := range approvalRequestsSpecs {
 		NewOperationCmd(rApprovalRequestsCmd.Cmd, &approvalRequestsSpecs[i], cfg)
 	}
-
-	return nil
 }
