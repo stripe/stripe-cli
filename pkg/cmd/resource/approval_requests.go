@@ -53,9 +53,21 @@ var approvalRequestsSpecs = []OperationSpec{
 // AddApprovalRequestsSubCmds patches approval_requests commands into the
 // auto-generated `core` namespace command tree.
 func AddApprovalRequestsSubCmds(rootCmd *cobra.Command, cfg *config.Config) error {
+	var v2Cmd *cobra.Command
 	var coreCmd *cobra.Command
 
 	for _, cmd := range rootCmd.Commands() {
+		if cmd.Use == "v2" {
+			v2Cmd = cmd
+			break
+		}
+	}
+
+	if v2Cmd == nil {
+		return nil
+	}
+
+	for _, cmd := range v2Cmd.Commands() {
 		if cmd.Use == "core" {
 			coreCmd = cmd
 			break
