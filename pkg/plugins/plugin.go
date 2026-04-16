@@ -25,6 +25,7 @@ import (
 
 	hclog "github.com/hashicorp/go-hclog"
 	hcplugin "github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/go-version"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 )
@@ -173,6 +174,28 @@ func (p *Plugin) LookUpLatestVersion() string {
 	return version
 }
 
+// LookupLatestVersionForMajor finds the latest version for a given major version
+// If no version is found, returns an empty string
+func (p *Plugin) LookupLatestVersionForMajor(major int) string {
+	opsystem := runtime.GOOS
+	arch := runtime.GOARCH
+
+	var v string
+	for _, pkg := range p.Releases {
+		if pkg.OS == opsystem && pkg.Arch == arch {
+			parsedVersion, err := version.NewVersion(pkg.Version)
+			if err != nil {
+				continue
+			}
+			if parsedVersion.Segments()[0] == major {
+				v = pkg.Version
+			}
+		}
+	}
+
+	return v
+}
+
 // getReleaseForVersion finds the release object for a specific version on the current platform
 func (p *Plugin) getReleaseForVersion(version string) *Release {
 	opsystem := runtime.GOOS
@@ -189,14 +212,18 @@ func (p *Plugin) getReleaseForVersion(version string) *Release {
 
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
-	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+	return p.install(ctx, cfg, fs, version, baseURL, os.Stdout, true)
+}
+
+func (p *Plugin) install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string, out io.Writer, doCleanup bool) error {
+	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), out)
 
 	apiKey, _ := cfg.GetProfile().GetAPIKey(false)
 
 	pluginData, err := requests.GetPluginData(ctx, baseURL, stripe.APIVersion, apiKey, cfg.GetProfile())
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s'", p.Shortname)), out)
 
 		log.WithFields(log.Fields{
 			"prefix": "plugins.plugin.Install",
@@ -209,11 +236,11 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	release := p.getReleaseForVersion(version)
 	if release != nil {
 		if nodeVersion, requiresNode := GetRuntimeRequirement(*release); requiresNode {
-			ansi.StopSpinner(spinner, "", os.Stdout)
+			ansi.StopSpinner(spinner, "", out)
 			if err := InstallNodeRuntime(ctx, cfg, fs, nodeVersion); err != nil {
 				return fmt.Errorf("failed to install required Node.js runtime: %w", err)
 			}
-			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)
+			spinner = ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), out)
 		}
 	}
 
@@ -223,7 +250,7 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	err = p.downloadAndSavePlugin(cfg, pluginDownloadURL, fs, version)
 
 	if err != nil {
-		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), os.Stdout)
+		ansi.StopSpinner(spinner, ansi.Faint(fmt.Sprintf("could not install plugin '%s': %s", p.Shortname, err)), out)
 		return err
 	}
 
@@ -244,10 +271,11 @@ func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, v
 	// sync list of installed plugins to file
 	cfg.WriteConfigField("installed_plugins", installedList)
 
-	// Once the plugin is successfully downloaded, clean up other versions
-	p.cleanUpPluginPath(cfg, fs, version)
-
-	ansi.StopSpinner(spinner, "", os.Stdout)
+	if doCleanup {
+		// Once the plugin is successfully downloaded, clean up other versions
+		p.cleanUpPluginPath(cfg, fs, version)
+	}
+	ansi.StopSpinner(spinner, "", out)
 
 	return nil
 }

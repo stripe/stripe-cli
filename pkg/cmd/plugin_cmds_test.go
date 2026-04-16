@@ -1,18 +1,24 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/stripe/stripe-cli/pkg/config"
 	"github.com/stripe/stripe-cli/pkg/plugins"
 )
 
-func createPluginCmd() *pluginTemplateCmd {
+func createPluginCmd(cfg *config.Config) *pluginTemplateCmd {
 	plugin := plugins.Plugin{
 		Shortname:        "test",
 		Shortdesc:        "test your stuff",
@@ -26,7 +32,7 @@ func createPluginCmd() *pluginTemplateCmd {
 		}},
 	}
 
-	pluginCmd := newPluginTemplateCmd(&Config, &plugin)
+	pluginCmd := newPluginTemplateCmd(cfg, &plugin)
 
 	return pluginCmd
 }
@@ -35,7 +41,8 @@ func createPluginCmd() *pluginTemplateCmd {
 // This is a complex dance between the CLI itself and the plugin, so the flags come from
 // two different sources as a result. This test is here to catch any non-obvious regressions
 func TestFlagsArePassedAsArgs(t *testing.T) {
-	pluginCmd := createPluginCmd()
+	cfg := &config.Config{}
+	pluginCmd := createPluginCmd(cfg)
 	rootCmd.AddCommand(pluginCmd.cmd)
 
 	Execute(context.Background())
@@ -132,6 +139,105 @@ func TestAddPluginSubcommandStubsSkipsEmptyName(t *testing.T) {
 	assert.Equal(t, "also-valid", cmds[0].Name())
 	assert.Equal(t, "valid", cmds[1].Name())
 }
+
+// TestWithBackgroundUpdate_FnRuns verifies that fn is invoked and completes.
+func TestWithBackgroundUpdate_FnRuns(t *testing.T) {
+	cfg := &config.Config{}
+	fs := afero.NewMemMapFs()
+	plugin := plugins.Plugin{Shortname: "test"}
+
+	called := false
+	err := plugins.WithBackgroundUpdate(context.Background(), cfg, fs, "", &plugin, io.Discard, func() error {
+		called = true
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+// TestWithBackgroundUpdate_PropagatesError verifies that an error returned by fn
+// is returned by WithBackgroundUpdate.
+func TestWithBackgroundUpdate_PropagatesError(t *testing.T) {
+	cfg := &config.Config{}
+	fs := afero.NewMemMapFs()
+	plugin := plugins.Plugin{Shortname: "test"}
+
+	want := errors.New("plugin failed")
+	err := plugins.WithBackgroundUpdate(context.Background(), cfg, fs, "", &plugin, io.Discard, func() error {
+		return want
+	})
+
+	assert.Equal(t, want, err)
+}
+
+// TestWithBackgroundUpdate_UpdateOutputAppearsAfterFn verifies that any output
+// written by the background update goroutine is only flushed to the underlying
+// writer after fn returns — never interleaved with fn's execution.
+func TestWithBackgroundUpdate_UpdateOutputAppearsAfterFn(t *testing.T) {
+	cfg := &config.Config{}
+	fs := afero.NewMemMapFs()
+	plugin := plugins.Plugin{Shortname: "test"}
+
+	var mu sync.Mutex
+	var events []string
+
+	// recordWriter appends each Write as an event.
+	out := &funcWriter{fn: func(p []byte) (int, error) {
+		mu.Lock()
+		events = append(events, "write:"+string(p))
+		mu.Unlock()
+		return len(p), nil
+	}}
+
+	err := plugins.WithBackgroundUpdate(context.Background(), cfg, fs, "", &plugin, out, func() error {
+		mu.Lock()
+		events = append(events, "fn:done")
+		mu.Unlock()
+		return nil
+	})
+
+	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+	// If there were any writes (update output), they must come after fn:done.
+	fnIdx := -1
+	for i, e := range events {
+		if e == "fn:done" {
+			fnIdx = i
+		}
+	}
+	// fn must have run
+	require.GreaterOrEqual(t, fnIdx, 0, "fn:done not recorded")
+	for i, e := range events {
+		if strings.HasPrefix(e, "write:") {
+			assert.Greater(t, i, fnIdx, "update write at index %d appeared before fn:done at index %d", i, fnIdx)
+		}
+	}
+}
+
+// TestWithBackgroundUpdate_NilErrorOnSuccess verifies a nil error on clean fn exit.
+func TestWithBackgroundUpdate_NilErrorOnSuccess(t *testing.T) {
+	cfg := &config.Config{}
+	fs := afero.NewMemMapFs()
+	plugin := plugins.Plugin{Shortname: "test"}
+
+	// Provide a non-nil out to ensure the writer path is exercised.
+	var buf bytes.Buffer
+	err := plugins.WithBackgroundUpdate(context.Background(), cfg, fs, "", &plugin, &buf, func() error {
+		return nil
+	})
+
+	assert.NoError(t, err)
+}
+
+// funcWriter is a minimal io.Writer backed by a function, used in tests.
+type funcWriter struct {
+	fn func([]byte) (int, error)
+}
+
+func (f *funcWriter) Write(p []byte) (int, error) { return f.fn(p) }
 
 func TestSubsliceAfter(t *testing.T) {
 	tests := []struct {
