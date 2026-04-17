@@ -65,22 +65,37 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (version string, skipped bool, isLatest bool, err error) {
-	pluginName, version := parseInstallArg(arg)
-
-	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
-
-	if err != nil {
-		return version, false, false, err
+func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
+	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+		return err
 	}
 
-	if len(version) == 0 {
+	color := ansi.Color(os.Stdout)
+
+	// Refresh the plugin before proceeding
+	if err := plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL); err != nil {
+		return err
+	}
+
+	pluginName, version := parseInstallArg(args[0])
+
+	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
+	if err != nil {
+		return err
+	}
+
+	isLatest := len(version) == 0
+	if isLatest {
 		version = plugin.LookUpLatestVersion()
-		isLatest = true
 	}
 
 	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
-		return version, true, isLatest, nil
+		if isLatest {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
+		} else {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
+		}
+		return nil
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
@@ -89,42 +104,11 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (versi
 		}).Debug("Ctrl+C received, cleaning up...")
 	})
 
-	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
-
-	return version, false, isLatest, err
-}
-
-func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
-	if err := stripe.ValidateAPIBaseURL(ic.apiBaseURL); err != nil {
+	if err := plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL); err != nil {
 		return err
 	}
 
-	var err error
-	var version string
-	color := ansi.Color(os.Stdout)
-
-	// Refresh the plugin before proceeding
-	err = plugins.RefreshPluginManifest(cmd.Context(), ic.cfg, ic.fs, ic.apiBaseURL)
-	if err != nil {
-		return err
-	}
-
-	var skipped bool
-	var isLatest bool
-	version, skipped, isLatest, err = ic.installPluginByName(cmd, args[0])
-	if err != nil {
-		return err
-	}
-
-	if skipped {
-		if isLatest {
-			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
-		} else {
-			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
-		}
-	} else {
-		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
-	}
+	fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
 
 	return nil
 }
