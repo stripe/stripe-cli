@@ -65,17 +65,22 @@ func parseInstallArg(arg string) (string, string) {
 	return plugin, version
 }
 
-func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (version string, err error) {
+func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (version string, skipped bool, isLatest bool, err error) {
 	pluginName, version := parseInstallArg(arg)
 
 	plugin, err := plugins.LookUpPlugin(cmd.Context(), ic.cfg, ic.fs, pluginName)
 
 	if err != nil {
-		return version, err
+		return version, false, false, err
 	}
 
 	if len(version) == 0 {
 		version = plugin.LookUpLatestVersion()
+		isLatest = true
+	}
+
+	if plugin.IsVersionInstalled(ic.cfg, ic.fs, version) {
+		return version, true, isLatest, nil
 	}
 
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
@@ -86,7 +91,7 @@ func (ic *InstallCmd) installPluginByName(cmd *cobra.Command, arg string) (versi
 
 	err = plugin.Install(ctx, ic.cfg, ic.fs, version, ic.apiBaseURL)
 
-	return version, err
+	return version, false, isLatest, err
 }
 
 func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
@@ -104,12 +109,22 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	version, err = ic.installPluginByName(cmd, args[0])
+	var skipped bool
+	var isLatest bool
+	version, skipped, isLatest, err = ic.installPluginByName(cmd, args[0])
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
+	if skipped {
+		if isLatest {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed (latest).", version)))
+		} else {
+			fmt.Println(color.Green(fmt.Sprintf("✔ v%s is already installed.", version)))
+		}
+	} else {
+		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
+	}
 
 	return nil
 }
