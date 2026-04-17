@@ -30,6 +30,8 @@ https://stripe.com/docs/api
 To delete a charge:
 
   $ stripe delete /customers/cus_FROPkgsHVRRspg`,
+		Example: `stripe delete /v1/customers/cus_abc123
+  stripe delete /v1/customers/cus_abc123 --dry-run`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 

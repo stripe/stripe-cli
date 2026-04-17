@@ -32,7 +32,8 @@ https://stripe.com/docs/api
 		Example: `stripe post /payment_intents \
     -d amount=2000 \
     -d currency=usd \
-    -d "payment_method_types[]=card"`,
+    -d "payment_method_types[]=card"
+  stripe post /v1/customers -d email=test@example.com --dry-run`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 

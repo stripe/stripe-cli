@@ -27,7 +27,8 @@ id. You can also make normal HTTP GET requests to the Stripe API by providing
 the API path.`,
 		Example: `stripe get ch_1EGYgUByst5pquEtjb0EkYha
   stripe get cus_G6GQwbr1dWXt9O
-  stripe get /v1/charges --limit 50`,
+  stripe get /v1/charges --limit 50
+  stripe get /v1/customers --dry-run`,
 		RunE: gc.reqs.RunRequestsCmd,
 	}
 
