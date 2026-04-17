@@ -195,6 +195,25 @@ func (p *Plugin) IsVersionInstalled(config config.IConfig, fs afero.Fs, version 
 	return err == nil
 }
 
+// InstalledVersion returns the currently installed version of the plugin, or empty string if none.
+func (p *Plugin) InstalledVersion(config config.IConfig, fs afero.Fs) string {
+	pluginsDir := getPluginsDir(config)
+	pluginDir := filepath.Join(pluginsDir, p.Shortname)
+
+	entries, err := afero.ReadDir(fs, pluginDir)
+	if err != nil {
+		return ""
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			return entry.Name()
+		}
+	}
+
+	return ""
+}
+
 // Install installs the plugin of the given version
 func (p *Plugin) Install(ctx context.Context, cfg config.IConfig, fs afero.Fs, version string, baseURL string) error {
 	spinner := ansi.StartNewSpinner(ansi.Faint(fmt.Sprintf("installing '%s' v%s...", p.Shortname, version)), os.Stdout)

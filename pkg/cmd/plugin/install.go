@@ -98,6 +98,8 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
+	prevVersion := plugin.InstalledVersion(ic.cfg, ic.fs)
+
 	ctx := withSIGTERMCancel(cmd.Context(), func() {
 		log.WithFields(log.Fields{
 			"prefix": "cmd.installCmd.runInstallCmd",
@@ -108,7 +110,11 @@ func (ic *InstallCmd) runInstallCmd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
+	if prevVersion != "" {
+		fmt.Println(color.Green(fmt.Sprintf("✔ upgraded from v%s to v%s.", prevVersion, version)))
+	} else {
+		fmt.Println(color.Green(fmt.Sprintf("✔ installation of v%s complete.", version)))
+	}
 
 	return nil
 }
